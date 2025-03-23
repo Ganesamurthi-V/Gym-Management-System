@@ -2,7 +2,7 @@
 
 > Know exactly who paid, who didn't, and who's about to expire — without using notebooks.
 
-**GymFlow** is a full-stack gym management SaaS built for small to mid-size gyms in **Tamil Nadu and Puducherry, India**. It features intelligent area normalization powered by AI, a premium mobile-first UI, and complete multi-tenant data isolation.
+**GymFlow** is a full-stack gym management SaaS built for small to mid-size gyms in **Tamil Nadu and Puducherry, India**. It features intelligent area normalization powered by AI, a premium mobile-first UI, and complete multi-tenant data isolation..
 
 ---
 

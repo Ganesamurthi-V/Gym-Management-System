@@ -3,7 +3,7 @@ import { ReportsClient } from './ReportsClient'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 
 export default async function ReportsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 

@@ -3,7 +3,7 @@ import { PaymentsClient } from './PaymentsClient'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 export default async function PaymentsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 

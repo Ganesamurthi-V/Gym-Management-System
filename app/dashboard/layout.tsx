@@ -7,10 +7,16 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabase = await createClient()
 
-  if (!user) {
+  // ✅ Use getUser instead of getSession
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  // ✅ Handle auth failure properly
+  if (error || !user) {
     redirect('/auth/login')
   }
 

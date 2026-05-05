@@ -4,7 +4,7 @@ import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 
 async function getMembers(gymId: string): Promise<MemberWithStatus[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: memberships } = await supabase
     .from('memberships')
@@ -58,7 +58,7 @@ async function getMembers(gymId: string): Promise<MemberWithStatus[]> {
 }
 
 export default async function MembersPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 

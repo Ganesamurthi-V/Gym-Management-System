@@ -5,7 +5,7 @@ import type { MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
 
 async function getDashboardData(gymId: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const today = format(new Date(), 'yyyy-MM-dd')
 
   // Get all members with their latest membership
@@ -61,7 +61,7 @@ async function getDashboardData(gymId: string) {
 }
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return null

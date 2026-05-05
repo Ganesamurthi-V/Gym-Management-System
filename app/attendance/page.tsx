@@ -5,7 +5,7 @@ import { format } from 'date-fns'
 import { BottomNav } from '@/components/layout/BottomNav'
 
 export default async function AttendancePage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 

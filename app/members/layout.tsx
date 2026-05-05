@@ -1,4 +1,4 @@
-import { BottomNav } from '@/components/layout/BottomNav'
+// import { BottomNav } from '@/components/layout/BottomNav'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -19,7 +19,7 @@ export default async function AppLayout({
       <main className="max-w-lg mx-auto pb-24">
         {children}
       </main>
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

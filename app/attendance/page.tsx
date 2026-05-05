@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AttendanceClient } from './AttendanceClient'
 import { getMemberStatus } from '@/lib/utils'
 import { format } from 'date-fns'
-import { BottomNav } from '@/components/layout/BottomNav'
+// import { BottomNav } from '@/components/layout/BottomNav'
 
 export default async function AttendancePage() {
   const supabase = await createClient()
@@ -58,7 +58,7 @@ export default async function AttendancePage() {
       <main className="max-w-lg mx-auto pb-24">
         <AttendanceClient members={members} gymId={gym.id} today={today} totalPresent={presentSet.size} />
       </main>
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

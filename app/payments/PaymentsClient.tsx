@@ -4,11 +4,20 @@ import { useState, useMemo } from 'react'
 import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import type { Membership } from '@/types'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, parseISO, isWithinInterval } from 'date-fns'
 import ExcelJS from 'exceljs'
 
-interface Payment extends Membership {
+interface Payment {
+  id: string
+  member_id: string
+  gym_id: string
+  plan: string
+  start_date: string
+  end_date: string
+  amount: number
+  admission_fee: number | null
+  payment_mode: string
+  created_at: string
   member?: { id: string; name: string; phone: string; member_number: number }
 }
 
@@ -47,17 +56,13 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
   const supabase = createClient()
 
-  // Sparkline: computed from ALL payments using created_at month bucketing
   const sparkline = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
-      const d = subMonths(new Date(), 5 - i) // oldest first
+      const d     = subMonths(new Date(), 5 - i)
       const start = startOfMonth(d)
       const end   = endOfMonth(d)
       const total = payments
-        .filter(p => {
-          const created = parseISO(p.created_at)
-          return isWithinInterval(created, { start, end })
-        })
+        .filter(p => isWithinInterval(parseISO(p.created_at), { start, end }))
         .reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
       return { label: format(d, 'MMM yy'), total }
     })
@@ -66,10 +71,7 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
   const filtered = useMemo(() => {
     const range = getPeriodRange(period)
     return payments.filter(p => {
-      if (range) {
-        const d = parseISO(p.created_at)
-        if (!isWithinInterval(d, range)) return false
-      }
+      if (range && !isWithinInterval(parseISO(p.created_at), range)) return false
       if (modeFilter !== 'all' && p.payment_mode !== modeFilter) return false
       if (search) {
         const q = search.toLowerCase()
@@ -145,7 +147,6 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
 
   return (
     <div className="space-y-4 md:space-y-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">Payments</h1>
         <button onClick={exportExcel}
@@ -154,7 +155,6 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
         </button>
       </div>
 
-      {/* Total collected banner */}
       <div className="card p-5 bg-gradient-to-br from-brand-500 to-brand-600">
         <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-1">Total Collected</p>
         <p className="text-3xl font-bold text-white">{formatCurrency(totalCollected)}</p>
@@ -166,18 +166,15 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
         </div>
       </div>
 
-      {/* 6-month sparkline — built from ALL payments via created_at */}
       <div className="card p-4">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">6-Month Revenue (all payments)</p>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">6-Month Revenue</p>
         <div className="flex items-end gap-2 h-16">
           {sparkline.map((s, i) => (
             <div key={s.label} className="flex-1 flex flex-col items-center gap-1">
               <div className="w-full rounded-t-sm transition-all"
                 style={{
                   height: `${Math.max((s.total / maxBar) * 52, s.total > 0 ? 4 : 0)}px`,
-                  background: i === sparkline.length - 1
-                    ? 'linear-gradient(to top, #f97316, #fb923c)'
-                    : '#e5e7eb',
+                  background: i === sparkline.length - 1 ? 'linear-gradient(to top, #f97316, #fb923c)' : '#e5e7eb',
                 }}
               />
               <span className="text-[9px] text-gray-400 whitespace-nowrap">{s.label}</span>
@@ -186,7 +183,6 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
         </div>
       </div>
 
-      {/* Pending dues */}
       {localPending.length > 0 && (
         <div className="card p-4 border-amber-200 bg-amber-50">
           <div className="flex items-center justify-between mb-3">
@@ -226,7 +222,6 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
         </div>
       )}
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {(['today', 'week', 'month', 'all'] as Period[]).map(p => (

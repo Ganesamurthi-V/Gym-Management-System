@@ -187,3 +187,6 @@ CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_n
 
 --for pending amount
 ALTER TABLE members ADD COLUMN IF NOT EXISTS pending_amount INTEGER NOT NULL DEFAULT 0;
+
+-- [Migration 5] Add age to members
+ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age < 120);

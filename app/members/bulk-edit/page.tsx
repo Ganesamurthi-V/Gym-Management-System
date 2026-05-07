@@ -12,7 +12,7 @@ export default async function EditMembersPage() {
 
   const { data: members } = await supabase
     .from('members')
-    .select('id, member_number, name, phone, gender, area')
+    .select('id, member_number, name, phone, gender, area, pending_amount')
     .eq('gym_id', gym.id)
     .order('member_number', { ascending: true })
 

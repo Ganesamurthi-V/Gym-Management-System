@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { PaymentsClient } from './PaymentsClient'
-import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 export default async function PaymentsPage() {
   const supabase = await createClient()
@@ -9,42 +8,33 @@ export default async function PaymentsPage() {
 
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id')
+    .select('id, name')
     .eq('owner_id', user.id)
     .single()
 
   if (!gym) return null
 
-  // Get recent payments (last 50)
+  // All payments with member info — no limit, needed for accurate sparkline
   const { data: payments } = await supabase
     .from('memberships')
-    .select(`*, member:members(name, phone)`)
+    .select('*, member:members(id, name, phone, member_number)')
     .eq('gym_id', gym.id)
     .order('created_at', { ascending: false })
-    .limit(50)
 
-  // This month's revenue
-  const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-  const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd')
-
-  const { data: monthPayments } = await supabase
-    .from('memberships')
-    .select('amount, admission_fee, payment_mode')
+  // Members with pending dues
+  const { data: pendingMembers } = await supabase
+    .from('members')
+    .select('id, name, phone, member_number, pending_amount')
     .eq('gym_id', gym.id)
-    .gte('start_date', monthStart)
-    .lte('start_date', monthEnd)
-
-  const monthRevenue = (monthPayments ?? []).reduce((sum, p) => sum + p.amount + (p.admission_fee ?? 0), 0)
-  const cashRevenue = (monthPayments ?? []).filter(p => p.payment_mode === 'cash').reduce((sum, p) => sum + p.amount + (p.admission_fee ?? 0), 0)
-  const upiRevenue = (monthPayments ?? []).filter(p => p.payment_mode === 'upi').reduce((sum, p) => sum + p.amount + (p.admission_fee ?? 0), 0)
+    .gt('pending_amount', 0)
+    .order('pending_amount', { ascending: false })
 
   return (
     <PaymentsClient
       payments={payments ?? []}
+      pendingMembers={pendingMembers ?? []}
       gymId={gym.id}
-      monthRevenue={monthRevenue}
-      cashRevenue={cashRevenue}
-      upiRevenue={upiRevenue}
+      gymName={gym.name}
     />
   )
 }

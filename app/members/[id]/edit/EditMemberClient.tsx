@@ -31,6 +31,7 @@ export function EditMemberClient({ member }: Props) {
     name: member.name,
     phone: member.phone,
     gender: (member.gender ?? '') as 'male' | 'female' | 'other' | '',
+    age: member.age ? String(member.age) : '',
     area: member.area ?? '',
     member_number: String(member.member_number),
   })
@@ -39,13 +40,9 @@ export function EditMemberClient({ member }: Props) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  // Real-time duplicate check when member_number changes
   useEffect(() => {
     const num = parseInt(form.member_number)
-    if (!num || num === member.member_number) {
-      setNumError('')
-      return
-    }
+    if (!num || num === member.member_number) { setNumError(''); return }
     setCheckingNum(true)
     setNumError('')
     const timer = setTimeout(async () => {
@@ -53,23 +50,13 @@ export function EditMemberClient({ member }: Props) {
       if (!user) return
       const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
       if (!gym) return
-      const { data } = await supabase
-        .from('members')
-        .select('id')
-        .eq('gym_id', gym.id)
-        .eq('member_number', num)
-        .single()
-      if (data) {
-        setNumError(`Member ID #${num} is already taken`)
-      } else {
-        setNumError('')
-      }
+      const { data } = await supabase.from('members').select('id').eq('gym_id', gym.id).eq('member_number', num).single()
+      setNumError(data ? `Member ID #${num} is already taken` : '')
       setCheckingNum(false)
     }, 500)
     return () => clearTimeout(timer)
   }, [form.member_number])
 
-  // Compute what changed
   const changes: { field: string; label: string; from: string; to: string }[] = []
   if (form.member_number !== String(member.member_number))
     changes.push({ field: 'member_number', label: 'Member ID', from: `#${member.member_number}`, to: `#${form.member_number}` })
@@ -79,6 +66,8 @@ export function EditMemberClient({ member }: Props) {
     changes.push({ field: 'phone', label: 'Phone', from: member.phone, to: form.phone })
   if (form.gender !== (member.gender ?? ''))
     changes.push({ field: 'gender', label: 'Gender', from: member.gender ?? '—', to: form.gender || '—' })
+  if (form.age !== (member.age ? String(member.age) : ''))
+    changes.push({ field: 'age', label: 'Age', from: member.age ? `${member.age} yrs` : '—', to: form.age ? `${form.age} yrs` : '—' })
   if (form.area !== (member.area ?? ''))
     changes.push({ field: 'area', label: 'Area', from: member.area ?? '—', to: form.area || '—' })
 
@@ -103,6 +92,7 @@ export function EditMemberClient({ member }: Props) {
           name: form.name.trim(),
           phone: form.phone.trim(),
           ...(form.gender ? { gender: form.gender } : { gender: null }),
+          age: form.age ? parseInt(form.age) : null,
           area: form.area.trim() || null,
         })
         .eq('id', member.id)
@@ -150,9 +140,7 @@ export function EditMemberClient({ member }: Props) {
           <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-amber-800">Warning — This action cannot be undone</p>
-            <p className="text-xs text-amber-700 mt-1">
-              Once saved to the server, these changes are permanent and cannot be reversed. Please verify all details carefully before confirming.
-            </p>
+            <p className="text-xs text-amber-700 mt-1">Once saved, these changes are permanent. Please verify all details carefully.</p>
           </div>
         </div>
 
@@ -197,17 +185,10 @@ export function EditMemberClient({ member }: Props) {
             <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-medium">{error}</div>
           )}
 
-          {/* Member ID */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Member ID
-            </label>
-            <input
-              type="number" min="1"
-              value={form.member_number}
-              onChange={e => update('member_number', e.target.value)}
-              className={`input-field w-36 ${numError ? 'border-red-400 focus:ring-red-400' : ''}`}
-            />
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Member ID</label>
+            <input type="number" min="1" value={form.member_number} onChange={e => update('member_number', e.target.value)}
+              className={`input-field w-36 ${numError ? 'border-red-400 focus:ring-red-400' : ''}`} />
             {checkingNum && <p className="text-xs text-gray-400 mt-1.5">Checking...</p>}
             {numError && <p className="text-xs text-red-500 mt-1.5 font-medium">{numError}</p>}
             {!numError && !checkingNum && form.member_number !== String(member.member_number) && (
@@ -215,38 +196,39 @@ export function EditMemberClient({ member }: Props) {
             )}
           </div>
 
-          {/* Name */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Full Name *</label>
-            <input type="text" value={form.name} onChange={e => update('name', e.target.value)}
-              className="input-field" required />
+            <input type="text" value={form.name} onChange={e => update('name', e.target.value)} className="input-field" required />
           </div>
 
-          {/* Phone */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number *</label>
             <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)}
               className="input-field" required pattern="[0-9]{10}" maxLength={10} />
-            <p className="text-xs text-gray-400 mt-1.5">10-digit mobile number</p>
           </div>
 
-          {/* Gender */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['male', 'female', 'other'] as const).map(g => (
-                <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
-                  className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                    form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
-                  }`}
-                >
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </button>
-              ))}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['male', 'female', 'other'] as const).map(g => (
+                  <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
+                      form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                  >
+                    {g === 'male' ? 'M' : g === 'female' ? 'F' : 'O'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Age</label>
+              <input type="number" value={form.age} onChange={e => update('age', e.target.value)}
+                className="input-field" placeholder="25" min="1" max="120" />
             </div>
           </div>
 
-          {/* Area */}
           <div className="relative">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Area / Locality</label>
             <input type="text" value={areaInput}

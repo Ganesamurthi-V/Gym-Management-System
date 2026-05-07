@@ -27,6 +27,7 @@ export default function NewMemberPage() {
     name: '',
     phone: '',
     gender: '' as 'male' | 'female' | 'other' | '',
+    age: '',
     area: '',
     member_number: '',
     plan: 'monthly' as Plan,
@@ -84,7 +85,6 @@ export default function NewMemberPage() {
 
       const memberNumber = parseInt(form.member_number) || (nextMemberNumber ?? 1)
 
-      // If the chosen number is already taken, find the highest and use next
       const { data: existingNum } = await supabase
         .from('members').select('id').eq('gym_id', gym.id).eq('member_number', memberNumber).single()
 
@@ -108,6 +108,7 @@ export default function NewMemberPage() {
           phone: form.phone.trim(),
           pending_amount: parseInt(form.pending_amount) || 0,
           ...(form.gender && { gender: form.gender }),
+          ...(form.age && { age: parseInt(form.age) }),
           ...(form.area.trim() && { area: form.area.trim() }),
         })
         .select()
@@ -168,9 +169,7 @@ export default function NewMemberPage() {
           <div className="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm font-medium">{error}</div>
         )}
 
-        {/* Preview Card */}
         <div className="card overflow-hidden mb-4">
-          {/* Card Header */}
           <div className="bg-gradient-to-br from-brand-500 to-brand-600 p-5">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-white/25 rounded-2xl flex items-center justify-center">
@@ -185,10 +184,10 @@ export default function NewMemberPage() {
             </div>
           </div>
 
-          {/* Details Grid */}
           <div className="p-5 space-y-3">
             <DetailRow icon={<Phone className="w-4 h-4 text-gray-400" />} label="Phone" value={form.phone} />
             {form.gender && <DetailRow icon={<User className="w-4 h-4 text-gray-400" />} label="Gender" value={form.gender.charAt(0).toUpperCase() + form.gender.slice(1)} />}
+            {form.age && <DetailRow icon={<User className="w-4 h-4 text-gray-400" />} label="Age" value={`${form.age} yrs`} />}
             {form.area && <DetailRow icon={<MapPin className="w-4 h-4 text-gray-400" />} label="Area" value={form.area} />}
             <DetailRow icon={<Calendar className="w-4 h-4 text-gray-400" />} label="Plan" value={planLabel} />
             <DetailRow icon={<Calendar className="w-4 h-4 text-gray-400" />} label="Start Date" value={formatDate(form.start_date)} />
@@ -196,7 +195,6 @@ export default function NewMemberPage() {
             <DetailRow icon={<CreditCard className="w-4 h-4 text-gray-400" />} label="Payment Mode" value={form.payment_mode.toUpperCase()} />
           </div>
 
-          {/* Payment Summary */}
           <div className="mx-5 mb-5 bg-gray-50 rounded-xl p-4 space-y-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Payment Summary</p>
             <div className="flex justify-between text-sm">
@@ -222,25 +220,19 @@ export default function NewMemberPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-3">
-          {/* Decline */}
           <Link href="/members"
             className="flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 font-semibold text-sm rounded-2xl border border-red-200 hover:bg-red-100 transition-all"
           >
             <X className="w-4 h-4" />
             Decline
           </Link>
-
-          {/* Edit */}
           <button onClick={() => setStep('form')}
             className="flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-700 font-semibold text-sm rounded-2xl hover:bg-gray-200 transition-all"
           >
             <Edit2 className="w-4 h-4" />
             Edit
           </button>
-
-          {/* Approve */}
           <button onClick={handleApprove} disabled={loading}
             className="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold text-sm rounded-2xl shadow-md shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-60"
           >
@@ -295,19 +287,26 @@ export default function NewMemberPage() {
               className="input-field" placeholder="Rahul Sharma" required autoFocus />
           </div>
 
-          {/* Gender */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['male', 'female', 'other'] as const).map((g) => (
-                <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
-                  className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                    form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
-                  }`}
-                >
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </button>
-              ))}
+          {/* Gender + Age */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['male', 'female', 'other'] as const).map((g) => (
+                  <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
+                      form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                  >
+                    {g === 'male' ? 'M' : g === 'female' ? 'F' : 'O'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Age</label>
+              <input type="number" value={form.age} onChange={(e) => update('age', e.target.value)}
+                className="input-field" placeholder="25" min="1" max="120" />
             </div>
           </div>
 
@@ -387,7 +386,6 @@ export default function NewMemberPage() {
             </div>
           </div>
 
-          {/* Total */}
           {(admissionFee > 0 || membershipFee > 0) && (
             <div className="bg-brand-50 rounded-xl px-4 py-3 space-y-1.5">
               <div className="flex justify-between text-sm">
@@ -426,7 +424,7 @@ export default function NewMemberPage() {
           {/* Pending Due */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Pending Due (₹) <span className="text-gray-400 font-normal normal-case">optional — if member didn't pay full amount</span>
+              Pending Due (₹) <span className="text-gray-400 font-normal normal-case">optional</span>
             </label>
             <input type="number" value={form.pending_amount} onChange={(e) => update('pending_amount', e.target.value)}
               className="input-field" placeholder="0" min="0" />

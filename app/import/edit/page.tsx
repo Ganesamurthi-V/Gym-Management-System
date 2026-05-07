@@ -14,7 +14,7 @@ interface DoneResult { success: number; skipped: number }
 
 const EDIT_FIELDS: (keyof ImportedRow)[] = [
   "member_number", "name", "phone", "plan", "start_date",
-  "amount", "payment_mode", "gender", "area",
+  "amount", "payment_mode", "gender", "age", "area",
 ];
 
 export default function ImportEditPage() {
@@ -37,14 +37,14 @@ export default function ImportEditPage() {
     if (!stored) { router.push("/import"); return; }
     const parsed = JSON.parse(stored);
     setRows(parsed);
-    setOriginalRows(JSON.parse(stored));
+    const origStored = sessionStorage.getItem("import_rows_original");
+    setOriginalRows(origStored ? JSON.parse(origStored) : JSON.parse(stored));
   }, []);
 
   function updateRow(idx: number, field: keyof ImportedRow, value: string) {
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
   }
 
-  // Compare by index — works even when phone/name is edited
   function isRowChanged(rowIdx: number): boolean {
     const row = rows[rowIdx];
     const orig = originalRows[rowIdx];
@@ -114,6 +114,7 @@ export default function ImportEditPage() {
             name: row.name,
             phone: row.phone,
             ...(row.gender && { gender: row.gender }),
+            ...(row.age && { age: parseInt(row.age) }),
             ...(row.area   && { area: row.area }),
           };
         }))
@@ -137,6 +138,7 @@ export default function ImportEditPage() {
       if (msErr) throw new Error(msErr.message);
 
       sessionStorage.removeItem("import_rows");
+      sessionStorage.removeItem("import_rows_original");
       setDoneResult({ success: toInsert.length, skipped });
       setStep("done");
     } catch (err: any) {
@@ -146,7 +148,6 @@ export default function ImportEditPage() {
     }
   }
 
-  // ── Done ──────────────────────────────────────────────────────────────────
   if (step === "done") {
     return (
       <div className="max-w-xl mx-auto">
@@ -167,7 +168,6 @@ export default function ImportEditPage() {
     );
   }
 
-  // ── Preview ───────────────────────────────────────────────────────────────
   if (step === "preview") {
     return (
       <div className="max-w-4xl mx-auto space-y-5">
@@ -202,7 +202,7 @@ export default function ImportEditPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {["#", "Name", "Phone", "Plan", "Start Date", "Amount", "Mode", "Gender", "Area"].map(h => (
+                  {["#", "Name", "Phone", "Plan", "Start Date", "Amount", "Mode", "Gender", "Age", "Area"].map(h => (
                     <th key={h} className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -221,6 +221,7 @@ export default function ImportEditPage() {
                       <td className="px-4 py-2.5"><span className={hi(rowIdx, "amount")}>₹{row.amount}</span></td>
                       <td className="px-4 py-2.5 uppercase"><span className={hi(rowIdx, "payment_mode")}>{row.payment_mode}</span></td>
                       <td className="px-4 py-2.5 capitalize"><span className={hi(rowIdx, "gender")}>{row.gender || "—"}</span></td>
+                      <td className="px-4 py-2.5"><span className={hi(rowIdx, "age")}>{row.age || "—"}</span></td>
                       <td className="px-4 py-2.5"><span className={hi(rowIdx, "area")}>{row.area || "—"}</span></td>
                     </tr>
                   );
@@ -238,9 +239,7 @@ export default function ImportEditPage() {
           <AlertTriangle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-blue-800">Please review carefully before importing</p>
-            <p className="text-xs text-blue-700 mt-1">
-              You can still go back and edit any details. Once you confirm and click Import, the data will be saved to the server. Green highlighted values are ones you edited.
-            </p>
+            <p className="text-xs text-blue-700 mt-1">Once you confirm and click Import, the data will be saved to the server.</p>
           </div>
         </div>
 
@@ -322,6 +321,7 @@ export default function ImportEditPage() {
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Mode</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Gender</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-16">Age</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[150px]">Area</th>
               </tr>
             </thead>
@@ -395,6 +395,11 @@ export default function ImportEditPage() {
                         <option value="female">Female</option>
                         <option value="other">Other</option>
                       </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" value={row.age} disabled={isSkipped} min="1" max="120"
+                        onChange={e => updateRow(idx, "age", e.target.value)}
+                        className={`w-14 ${cls}`} placeholder="—" />
                     </td>
                     <td className="px-3 py-2 relative">
                       <input type="text" value={row.area} disabled={isSkipped}

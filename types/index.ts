@@ -16,6 +16,7 @@ export interface Member {
   name: string
   phone: string
   gender?: 'male' | 'female' | 'other' | null
+  age?: number | null
   area?: string | null
   pending_amount: number
   created_at: string

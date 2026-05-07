@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2 } from 'lucide-react'
+import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
 
 interface Props {
@@ -15,13 +16,62 @@ type FilterType = 'all' | 'active' | 'expiring' | 'expired'
 
 export function MembersClient({ members, gymId }: Props) {
   const [search, setSearch] = useState('')
+  const [idSearch, setIdSearch] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
+  const [fixing, setFixing] = useState(false)
+  const supabase = createClient()
 
-  const filtered = members.filter((m) => {
-    const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
-    const matchesFilter = filter === 'all' || m.status === filter
-    return matchesSearch && matchesFilter
-  })
+  // Detect duplicate member_numbers
+  const numCount = members.reduce((acc, m) => {
+    if (m.member_number != null) acc[m.member_number] = (acc[m.member_number] ?? 0) + 1
+    return acc
+  }, {} as Record<number, number>)
+  const duplicateIds = new Set(Object.entries(numCount).filter(([, c]) => c > 1).map(([id]) => Number(id)))
+
+  async function fixDuplicates() {
+    setFixing(true)
+
+    // Sort by member_number so first occurrence keeps its number
+    const sorted = [...members].sort((a, b) => (a.member_number ?? 0) - (b.member_number ?? 0))
+
+    // Track which numbers are finalized (first occurrence locks in its number)
+    const finalized = new Set<number>()
+    const updates: { id: string; newNum: number }[] = []
+
+    for (const m of sorted) {
+      const num = m.member_number ?? 0
+      if (!finalized.has(num)) {
+        // First occurrence — keep this number
+        finalized.add(num)
+      } else {
+        // Duplicate — find next number not yet finalized
+        let next = num + 1
+        while (finalized.has(next)) next++
+        finalized.add(next)
+        updates.push({ id: m.id, newNum: next })
+      }
+    }
+
+    // Apply all updates
+    for (const { id, newNum } of updates) {
+      await supabase.from('members').update({ member_number: newNum }).eq('id', id)
+    }
+
+    setFixing(false)
+    window.location.reload()
+  }
+
+  const filtered = members
+    .filter((m) => {
+      const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
+      const matchesId = idSearch === '' || (m.member_number != null && String(m.member_number).includes(idSearch))
+      const matchesFilter = filter === 'all' || m.status === filter
+      return matchesSearch && matchesId && matchesFilter
+    })
+    .sort((a, b) => {
+      if (idSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
+      return 0
+    })
 
   const counts = {
     all:      members.length,
@@ -72,13 +122,42 @@ export function MembersClient({ members, gymId }: Props) {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input type="search" placeholder="Search by name or phone..."
-          value={search} onChange={(e) => setSearch(e.target.value)}
-          className="input-field pl-9"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input type="search" placeholder="Search by name or phone..."
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            className="input-field pl-9"
+          />
+        </div>
+        <div className="relative w-36">
+          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input type="search" placeholder="Member ID"
+            value={idSearch} onChange={(e) => setIdSearch(e.target.value)}
+            className="input-field pl-9"
+          />
+        </div>
       </div>
+
+      {/* Duplicate ID warning */}
+      {duplicateIds.size > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span className="text-red-500 text-lg">⚠️</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-red-700">Duplicate Member IDs detected</p>
+            <p className="text-xs text-red-600 mt-0.5">
+              IDs {Array.from(duplicateIds).map(id => `#${id}`).join(', ')} are assigned to multiple members.
+            </p>
+          </div>
+          <button
+            onClick={fixDuplicates}
+            disabled={fixing}
+            className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all disabled:opacity-60"
+          >
+            {fixing ? 'Fixing...' : 'Auto-Fix IDs'}
+          </button>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar">
@@ -108,7 +187,12 @@ export function MembersClient({ members, gymId }: Props) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 font-mono">#{member.member_number}</span>
+                  <span className={cn(
+                    'text-[10px] font-mono',
+                    duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-gray-400'
+                  )}>
+                    #{member.member_number}{duplicateIds.has(member.member_number) && ' ⚠'}
+                  </span>
                   <p className="font-bold text-gray-900 text-sm truncate">{member.name}</p>
                   <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-bold border flex-shrink-0', cls)}>{label}</span>
                 </div>
@@ -164,7 +248,15 @@ export function MembersClient({ members, gymId }: Props) {
               const { label, cls } = statusConfig[member.status]
               return (
                 <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3.5 text-gray-400 font-mono text-xs">#{member.member_number}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={cn(
+                      'font-mono text-xs',
+                      duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-gray-400'
+                    )}>
+                      #{member.member_number}
+                      {duplicateIds.has(member.member_number) && <span className="ml-1">⚠</span>}
+                    </span>
+                  </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 ${avatarColors[member.status]} rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0`}>

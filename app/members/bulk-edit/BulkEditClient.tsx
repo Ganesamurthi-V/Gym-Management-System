@@ -13,7 +13,9 @@ interface MemberRow {
   name: string
   phone: string
   gender: string | null
+  age: number | null
   area: string | null
+  pending_amount: number
 }
 
 interface EditedRow {
@@ -22,7 +24,9 @@ interface EditedRow {
   name: string
   phone: string
   gender: string
+  age: string
   area: string
+  pending_amount: string
 }
 
 type Step = 'edit' | 'preview'
@@ -31,6 +35,8 @@ interface Props {
   members: MemberRow[]
   gymId: string
 }
+
+const cls = 'px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white'
 
 export function EditMembersClient({ members, gymId }: Props) {
   const router = useRouter()
@@ -53,7 +59,9 @@ export function EditMembersClient({ members, gymId }: Props) {
         name: m.name,
         phone: m.phone,
         gender: m.gender ?? '',
+        age: m.age ? String(m.age) : '',
         area: m.area ?? '',
+        pending_amount: String(m.pending_amount ?? 0),
       }
     })
     return map
@@ -69,8 +77,10 @@ export function EditMembersClient({ members, gymId }: Props) {
       e.name !== m.name ||
       e.phone !== m.phone ||
       e.gender !== (m.gender ?? '') ||
+      e.age !== (m.age ? String(m.age) : '') ||
       e.area !== (m.area ?? '') ||
-      parseInt(e.member_number) !== m.member_number
+      parseInt(e.member_number) !== m.member_number ||
+      parseInt(e.pending_amount) !== (m.pending_amount ?? 0)
     )
   }).map(m => ({ original: m, edited: edits[m.id] }))
 
@@ -100,7 +110,9 @@ export function EditMembersClient({ members, gymId }: Props) {
             name: edited.name.trim(),
             phone: edited.phone.trim(),
             gender: edited.gender || null,
+            age: edited.age ? parseInt(edited.age) : null,
             area: edited.area.trim() || null,
+            pending_amount: parseInt(edited.pending_amount) || 0,
           })
           .eq('id', original.id)
         if (err) throw new Error(`Failed to update ${original.name}: ${err.message}`)
@@ -141,27 +153,31 @@ export function EditMembersClient({ members, gymId }: Props) {
           </div>
           <div className="divide-y divide-gray-50">
             {changes.map(({ original, edited }) => {
-              const fieldChanges: { label: string; from: string; to: string }[] = []
+              const diffs: { label: string; from: string; to: string }[] = []
               if (parseInt(edited.member_number) !== original.member_number)
-                fieldChanges.push({ label: 'ID', from: `#${original.member_number}`, to: `#${edited.member_number}` })
+                diffs.push({ label: 'ID', from: `#${original.member_number}`, to: `#${edited.member_number}` })
               if (edited.name !== original.name)
-                fieldChanges.push({ label: 'Name', from: original.name, to: edited.name })
+                diffs.push({ label: 'Name', from: original.name, to: edited.name })
               if (edited.phone !== original.phone)
-                fieldChanges.push({ label: 'Phone', from: original.phone, to: edited.phone })
+                diffs.push({ label: 'Phone', from: original.phone, to: edited.phone })
               if (edited.gender !== (original.gender ?? ''))
-                fieldChanges.push({ label: 'Gender', from: original.gender ?? '—', to: edited.gender || '—' })
+                diffs.push({ label: 'Gender', from: original.gender ?? '—', to: edited.gender || '—' })
+              if (edited.age !== (original.age ? String(original.age) : ''))
+                diffs.push({ label: 'Age', from: original.age ? `${original.age} yrs` : '—', to: edited.age ? `${edited.age} yrs` : '—' })
               if (edited.area !== (original.area ?? ''))
-                fieldChanges.push({ label: 'Area', from: original.area ?? '—', to: edited.area || '—' })
+                diffs.push({ label: 'Area', from: original.area ?? '—', to: edited.area || '—' })
+              if (parseInt(edited.pending_amount) !== (original.pending_amount ?? 0))
+                diffs.push({ label: 'Due', from: `₹${original.pending_amount ?? 0}`, to: `₹${edited.pending_amount}` })
               return (
                 <div key={original.id} className="px-5 py-4">
                   <p className="text-sm font-bold text-gray-900 mb-2">#{original.member_number} — {original.name}</p>
                   <div className="space-y-1.5 pl-3 border-l-2 border-brand-200">
-                    {fieldChanges.map(fc => (
-                      <div key={fc.label} className="flex items-center gap-2 text-xs">
-                        <span className="w-12 font-bold text-gray-400 uppercase">{fc.label}</span>
-                        <span className="text-red-500 line-through">{fc.from}</span>
+                    {diffs.map(d => (
+                      <div key={d.label} className="flex items-center gap-2 text-xs">
+                        <span className="w-14 font-bold text-gray-400 uppercase">{d.label}</span>
+                        <span className="text-red-500 line-through">{d.from}</span>
                         <span className="text-gray-400">→</span>
-                        <span className="text-emerald-600 font-semibold">{fc.to}</span>
+                        <span className="text-emerald-600 font-semibold">{d.to}</span>
                       </div>
                     ))}
                   </div>
@@ -174,10 +190,8 @@ export function EditMembersClient({ members, gymId }: Props) {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-amber-800">Warning — These changes cannot be undone</p>
-            <p className="text-xs text-amber-700 mt-1">
-              Once saved to the server, all {changes.length} changes are permanent. Please review carefully before confirming.
-            </p>
+            <p className="text-sm font-bold text-amber-800">Please review carefully before saving</p>
+            <p className="text-xs text-amber-700 mt-1">Once saved, all {changes.length} changes will be updated on the server.</p>
           </div>
         </div>
 
@@ -248,11 +262,13 @@ export function EditMembersClient({ members, gymId }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-24">ID</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">ID</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Gender</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">Age</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[180px]">Area</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Pending Due (₹)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -260,8 +276,11 @@ export function EditMembersClient({ members, gymId }: Props) {
                 const e = edits[m.id]
                 const changed =
                   e.name !== m.name || e.phone !== m.phone ||
-                  e.gender !== (m.gender ?? '') || e.area !== (m.area ?? '') ||
-                  parseInt(e.member_number) !== m.member_number
+                  e.gender !== (m.gender ?? '') ||
+                  e.age !== (m.age ? String(m.age) : '') ||
+                  e.area !== (m.area ?? '') ||
+                  parseInt(e.member_number) !== m.member_number ||
+                  parseInt(e.pending_amount) !== (m.pending_amount ?? 0)
                 const areaSuggestions = e.area.length > 0
                   ? AREAS.filter(a => a.toLowerCase().includes(e.area.toLowerCase()))
                   : []
@@ -271,52 +290,51 @@ export function EditMembersClient({ members, gymId }: Props) {
                     <td className="px-4 py-2">
                       <input type="number" min="1" value={e.member_number}
                         onChange={ev => updateField(m.id, 'member_number', ev.target.value)}
-                        className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
-                      />
+                        className={`w-20 ${cls}`} />
                     </td>
                     <td className="px-4 py-2">
                       <input type="text" value={e.name}
                         onChange={ev => updateField(m.id, 'name', ev.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
-                      />
+                        className={`w-full ${cls}`} />
                     </td>
                     <td className="px-4 py-2">
                       <input type="tel" value={e.phone} maxLength={10}
                         onChange={ev => updateField(m.id, 'phone', ev.target.value)}
-                        className="w-32 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
-                      />
+                        className={`w-32 ${cls}`} />
                     </td>
                     <td className="px-4 py-2">
-                      <select value={e.gender}
-                        onChange={ev => updateField(m.id, 'gender', ev.target.value)}
-                        className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
-                      >
+                      <select value={e.gender} onChange={ev => updateField(m.id, 'gender', ev.target.value)} className={cls}>
                         <option value="">—</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>
                       </select>
                     </td>
-                    {/* Area with suggestions */}
+                    <td className="px-4 py-2">
+                      <input type="number" min="1" max="120" value={e.age}
+                        onChange={ev => updateField(m.id, 'age', ev.target.value)}
+                        className={`w-16 ${cls}`} placeholder="—" />
+                    </td>
                     <td className="px-4 py-2 relative">
                       <input type="text" value={e.area}
                         onChange={ev => { updateField(m.id, 'area', ev.target.value); setActiveAreaId(m.id) }}
                         onFocus={() => { clearTimeout(blurTimers.current[m.id]); setActiveAreaId(m.id) }}
                         onBlur={() => { blurTimers.current[m.id] = setTimeout(() => setActiveAreaId(null), 150) }}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
-                        placeholder="Area"
-                        autoComplete="off"
-                      />
+                        className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
                       {activeAreaId === m.id && areaSuggestions.length > 0 && (
                         <ul className="absolute z-30 left-4 right-4 bg-white border border-gray-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5">
                           {areaSuggestions.slice(0, 6).map(a => (
-                            <li key={a}
-                              onMouseDown={() => { updateField(m.id, 'area', a); setActiveAreaId(null) }}
+                            <li key={a} onMouseDown={() => { updateField(m.id, 'area', a); setActiveAreaId(null) }}
                               className="px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer"
                             >{a}</li>
                           ))}
                         </ul>
                       )}
+                    </td>
+                    <td className="px-4 py-2">
+                      <input type="number" min="0" value={e.pending_amount}
+                        onChange={ev => updateField(m.id, 'pending_amount', ev.target.value)}
+                        className={`w-28 ${cls}`} placeholder="0" />
                     </td>
                   </tr>
                 )

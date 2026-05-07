@@ -43,14 +43,11 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
     e.preventDefault()
     setLoading(true)
     setError('')
-
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
-
       const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
       if (!gym) throw new Error('Gym not found')
-
       const end_date = calcEndDate(renewForm.start_date, renewForm.plan, renewForm.plan === 'custom' ? parseInt(renewForm.custom_months) || 1 : undefined)
       const { error: err } = await supabase.from('memberships').insert({
         member_id: member.id,
@@ -61,7 +58,6 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
         amount: parseInt(renewForm.amount),
         payment_mode: renewForm.payment_mode,
       })
-
       if (err) throw err
       setShowRenewForm(false)
       router.refresh()
@@ -92,48 +88,48 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/members" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-              Members
-            </Link>
-            <span className="text-gray-300">/</span>
-            <h1 className="text-xl font-bold text-gray-900">Member Details</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href={`/members/${member.id}/edit`}
-              className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-700 px-3 py-2 rounded-lg hover:bg-brand-50 transition-all font-semibold">
-              <Edit2 className="w-4 h-4" />
-              Edit
-            </Link>
-            <button onClick={handleDelete} className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-all">
-              <Trash2 className="w-4 h-4" />
-              Delete
-            </button>
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/members" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            <ArrowLeft className="w-4 h-4" />Members
+          </Link>
+          <span className="text-gray-300">/</span>
+          <h1 className="text-xl font-bold text-gray-900">Member Details</h1>
         </div>
-        {/* Profile Card */}
-        <div className="card overflow-hidden">
-          <div className={`bg-gradient-to-br ${statusConfig[status].bar} p-5`}>
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-white/25 rounded-2xl flex items-center justify-center shadow-sm">
-                <span className="text-white font-bold text-xl">{initials}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-xl leading-tight truncate">{member.name}</p>
-                <p className="text-white/80 text-sm mt-0.5">{member.phone}</p>
-                <p className="text-white/60 text-xs mt-0.5">Member #{member.member_number}</p>
-                <span className={cn('inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full', statusConfig[status].className)}>
-                  {statusConfig[status].label}
-                </span>
-              </div>
+        <div className="flex items-center gap-2">
+          <Link href={`/members/${member.id}/edit`}
+            className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-700 px-3 py-2 rounded-lg hover:bg-brand-50 transition-all font-semibold">
+            <Edit2 className="w-4 h-4" />Edit
+          </Link>
+          <button onClick={handleDelete} className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-all">
+            <Trash2 className="w-4 h-4" />Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className={`bg-gradient-to-br ${statusConfig[status].bar} p-5`}>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-white/25 rounded-2xl flex items-center justify-center shadow-sm">
+              <span className="text-white font-bold text-xl">{initials}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold text-xl leading-tight truncate">{member.name}</p>
+              <p className="text-white/80 text-sm mt-0.5">{member.phone}</p>
+              <p className="text-white/60 text-xs mt-0.5">Member #{member.member_number}</p>
+              <span className={cn('inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full', statusConfig[status].className)}>
+                {statusConfig[status].label}
+              </span>
             </div>
           </div>
+        </div>
 
+        <div className="p-4 grid grid-cols-2 gap-3">
+          {member.gender && <InfoTile label="Gender" value={member.gender.charAt(0).toUpperCase() + member.gender.slice(1)} />}
+          {member.age && <InfoTile label="Age" value={`${member.age} yrs`} />}
+          {member.area && <InfoTile label="Area" value={member.area} />}
           {latestMembership && (
-            <div className="p-4 grid grid-cols-2 gap-3">
+            <>
               <InfoTile label="Plan" value={latestMembership.plan.charAt(0).toUpperCase() + latestMembership.plan.slice(1)} />
               <InfoTile label="Start Date" value={formatDate(latestMembership.start_date)} />
               <InfoTile label="Expires" value={formatDate(latestMembership.end_date)} />
@@ -142,164 +138,137 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
                 value={daysRemaining >= 0 ? `${daysRemaining} remaining` : `${Math.abs(daysRemaining)} overdue`}
                 highlight={daysRemaining < 0}
               />
-            </div>
+            </>
           )}
         </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          {latestMembership && (
-            <a
-              href={buildWhatsAppLink(member.phone, member.name, latestMembership.end_date)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-emerald-200 active:scale-[0.98] transition-all"
-            >
-              <MessageCircle className="w-4 h-4" />
-              WhatsApp
-            </a>
-          )}
-          <button
-            onClick={() => setShowRenewForm(!showRenewForm)}
-            className="flex items-center justify-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-brand-200 active:scale-[0.98] transition-all"
+      <div className="grid grid-cols-2 gap-3">
+        {latestMembership && (
+          <a href={buildWhatsAppLink(member.phone, member.name, latestMembership.end_date)}
+            target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-emerald-200 active:scale-[0.98] transition-all"
           >
-            <Plus className="w-4 h-4" />
-            Renew
-          </button>
-        </div>
+            <MessageCircle className="w-4 h-4" />WhatsApp
+          </a>
+        )}
+        <button onClick={() => setShowRenewForm(!showRenewForm)}
+          className="flex items-center justify-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-brand-200 active:scale-[0.98] transition-all"
+        >
+          <Plus className="w-4 h-4" />Renew
+        </button>
+      </div>
 
-        {/* Renew Form */}
-        {showRenewForm && (
-          <div className="card p-4">
-            <h3 className="font-bold text-gray-900 mb-4">Renew Membership</h3>
-            {error && (
-              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>
-            )}
-            <form onSubmit={handleRenew} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Plan</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => (
-                    <button
-                      key={plan}
-                      type="button"
-                      onClick={() => setRenewForm(p => ({ ...p, plan }))}
-                      className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                        renewForm.plan === plan
-                          ? 'border-brand-500 bg-brand-50 text-brand-700'
-                          : 'border-gray-200 bg-white text-gray-500'
-                      }`}
-                    >
-                      {plan === 'monthly' ? '1M' : plan === 'quarterly' ? '3M' : plan === 'annual' ? '12M' : 'Custom'}
-                    </button>
-                  ))}
+      {showRenewForm && (
+        <div className="card p-4">
+          <h3 className="font-bold text-gray-900 mb-4">Renew Membership</h3>
+          {error && <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>}
+          <form onSubmit={handleRenew} className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Plan</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => (
+                  <button key={plan} type="button" onClick={() => setRenewForm(p => ({ ...p, plan }))}
+                    className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
+                      renewForm.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                  >
+                    {plan === 'monthly' ? '1M' : plan === 'quarterly' ? '3M' : plan === 'annual' ? '12M' : 'Custom'}
+                  </button>
+                ))}
+              </div>
+              {renewForm.plan === 'custom' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input type="number" min="1" max="24" value={renewForm.custom_months}
+                    onChange={(e) => setRenewForm(p => ({ ...p, custom_months: e.target.value }))}
+                    className="input-field w-28" placeholder="e.g. 2" required />
+                  <span className="text-sm text-gray-500 font-medium">months</span>
                 </div>
-                {renewForm.plan === 'custom' && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      max="24"
-                      value={renewForm.custom_months}
-                      onChange={(e) => setRenewForm(p => ({ ...p, custom_months: e.target.value }))}
-                      className="input-field w-28"
-                      placeholder="e.g. 2"
-                      required
-                    />
-                    <span className="text-sm text-gray-500 font-medium">months</span>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Start Date</label>
+              <input type="date" value={renewForm.start_date} onChange={(e) => setRenewForm(p => ({ ...p, start_date: e.target.value }))} className="input-field" required />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Amount (₹)</label>
+              <input type="number" value={renewForm.amount} onChange={(e) => setRenewForm(p => ({ ...p, amount: e.target.value }))} className="input-field" placeholder="1500" required />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Payment Mode</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['cash', 'upi', 'card'] as PaymentMode[]).map((mode) => (
+                  <button key={mode} type="button" onClick={() => setRenewForm(p => ({ ...p, payment_mode: mode }))}
+                    className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
+                      renewForm.payment_mode === mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                  >
+                    {mode.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button type="submit" disabled={loading} className="btn-primary">
+              {loading ? 'Saving...' : <><Check className="w-4 h-4" /> Confirm Renewal</>}
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="flex items-center gap-2 p-4 border-b border-gray-50">
+          <div className="w-7 h-7 bg-brand-50 rounded-xl flex items-center justify-center">
+            <CreditCard className="w-3.5 h-3.5 text-brand-600" />
+          </div>
+          <h3 className="font-bold text-gray-900">Payment History</h3>
+        </div>
+        {memberships.length === 0 ? (
+          <p className="p-5 text-sm text-gray-400 text-center">No payments recorded</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {memberships.map((m) => (
+              <div key={m.id} className="p-4 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-gray-900">{formatCurrency(m.amount + (m.admission_fee ?? 0))}</p>
+                    {(m.admission_fee ?? 0) > 0 && (
+                      <span className="text-xs text-gray-400">
+                        (membership {formatCurrency(m.amount)}, admission {formatCurrency(m.admission_fee ?? 0)})
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Start Date</label>
-                <input type="date" value={renewForm.start_date} onChange={(e) => setRenewForm(p => ({ ...p, start_date: e.target.value }))} className="input-field" required />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Amount (₹)</label>
-                <input type="number" value={renewForm.amount} onChange={(e) => setRenewForm(p => ({ ...p, amount: e.target.value }))} className="input-field" placeholder="1500" required />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Payment Mode</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['cash', 'upi', 'card'] as PaymentMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setRenewForm(p => ({ ...p, payment_mode: mode }))}
-                      className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                        renewForm.payment_mode === mode
-                          ? 'border-brand-500 bg-brand-50 text-brand-700'
-                          : 'border-gray-200 bg-white text-gray-500'
-                      }`}
-                    >
-                      {mode.toUpperCase()}
-                    </button>
-                  ))}
+                  <p className="text-xs text-gray-400 mt-0.5">{m.payment_mode.toUpperCase()} · {formatDate(m.start_date)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-700 capitalize">{m.plan}</p>
+                  <p className="text-xs text-gray-400">until {formatDate(m.end_date)}</p>
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="btn-primary">
-                {loading ? 'Saving...' : <><Check className="w-4 h-4" /> Confirm Renewal</>}
-              </button>
-            </form>
+            ))}
           </div>
         )}
+      </div>
 
-        {/* Payment History */}
-        <div className="card">
-          <div className="flex items-center gap-2 p-4 border-b border-gray-50">
-            <div className="w-7 h-7 bg-brand-50 rounded-xl flex items-center justify-center">
-              <CreditCard className="w-3.5 h-3.5 text-brand-600" />
-            </div>
-            <h3 className="font-bold text-gray-900">Payment History</h3>
+      <div className="card mb-6">
+        <div className="flex items-center gap-2 p-4 border-b border-gray-50">
+          <div className="w-7 h-7 bg-emerald-50 rounded-xl flex items-center justify-center">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
           </div>
-          {memberships.length === 0 ? (
-            <p className="p-5 text-sm text-gray-400 text-center">No payments recorded</p>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {memberships.map((m) => (
-                <div key={m.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-900">{formatCurrency(m.amount + (m.admission_fee ?? 0))}</p>
-                      {(m.admission_fee ?? 0) > 0 && (
-                        <span className="text-xs text-gray-400">
-                          (membership {formatCurrency(m.amount)}, admission {formatCurrency(m.admission_fee ?? 0)})
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{m.payment_mode.toUpperCase()} · {formatDate(m.start_date)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-700 capitalize">{m.plan}</p>
-                    <p className="text-xs text-gray-400">until {formatDate(m.end_date)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <h3 className="font-bold text-gray-900">Recent Attendance</h3>
         </div>
-
-        {/* Recent Attendance */}
-        <div className="card mb-6">
-          <div className="flex items-center gap-2 p-4 border-b border-gray-50">
-            <div className="w-7 h-7 bg-emerald-50 rounded-xl flex items-center justify-center">
-              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-            </div>
-            <h3 className="font-bold text-gray-900">Recent Attendance</h3>
+        {attendance.length === 0 ? (
+          <p className="p-5 text-sm text-gray-400 text-center">No attendance recorded</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {attendance.map((a) => (
+              <div key={a.id} className="px-4 py-3 flex items-center gap-3">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+                <span className="text-sm text-gray-700 font-medium">{formatDate(a.date)}</span>
+              </div>
+            ))}
           </div>
-          {attendance.length === 0 ? (
-            <p className="p-5 text-sm text-gray-400 text-center">No attendance recorded</p>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {attendance.map((a) => (
-                <div key={a.id} className="px-4 py-3 flex items-center gap-3">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                  <span className="text-sm text-gray-700 font-medium">{formatDate(a.date)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
+      </div>
     </div>
   )
 }

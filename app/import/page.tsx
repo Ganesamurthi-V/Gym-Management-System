@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, ArrowLeft, Check, AlertTriangle } from "lucide-react";
+import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { matchArea } from "@/lib/areas";
 import Link from "next/link";
@@ -17,6 +17,7 @@ export interface ImportedRow {
   amount: string;
   payment_mode: string;
   gender: string;
+  age: string;
   area: string;
   member_number: string;
   _status?: "ok" | "duplicate" | "error";
@@ -33,6 +34,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   amount:       ["amount", "fee", "fees", "price", "cost", "amountpaid", "amount paid", "paidamount", "paid amount", "charge", "charges", "totalamount", "total amount", "feeamount", "fee amount", "membershipfee", "membership fee", "monthlyfee", "monthly fee", "subscriptionfee", "subscription fee", "planfee", "plan fee", "gymfee", "gym fee", "rs", "inr", "rupees", "paid"],
   payment_mode: ["payment_mode", "paymentmode", "payment mode", "mode", "paymode", "pay mode", "paymenttype", "payment type", "paytype", "method", "paymentmethod", "payment method", "transactiontype", "transaction type"],
   gender:       ["gender", "sex", "male/female", "m/f", "gendertype", "gender type"],
+  age:          ["age", "years", "yrs", "memberage", "member age", "ageyears", "age years"],
   area:         ["area", "locality", "location", "address", "place", "zone", "region", "city", "town", "neighbourhood", "neighborhood", "sector", "colony", "street", "village"],
 };
 
@@ -183,15 +185,16 @@ export default function ImportPage() {
     const parsed: ImportedRow[] = [];
     ws.eachRow({ includeEmpty: false }, (row, rowIndex) => {
       if (rowIndex === 1) return;
-      const name        = getCol(row, colMap, "name");
-      const rawPhone    = getCol(row, colMap, "phone");
-      const phone       = rawPhone.replace(/\D/g, "").slice(-10);
-      const plan        = normalizePlan(getCol(row, colMap, "plan") || "monthly");
-      const rawDate     = getCol(row, colMap, "start_date");
-      const amount      = getCol(row, colMap, "amount") || "0";
+      const name         = getCol(row, colMap, "name");
+      const rawPhone     = getCol(row, colMap, "phone");
+      const phone        = rawPhone.replace(/\D/g, "").slice(-10);
+      const plan         = normalizePlan(getCol(row, colMap, "plan") || "monthly");
+      const rawDate      = getCol(row, colMap, "start_date");
+      const amount       = getCol(row, colMap, "amount") || "0";
       const payment_mode = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
-      const gender      = normalizeGender(getCol(row, colMap, "gender"));
-      const area        = matchArea(getCol(row, colMap, "area"));
+      const gender       = normalizeGender(getCol(row, colMap, "gender"));
+      const age          = getCol(row, colMap, "age");
+      const area         = matchArea(getCol(row, colMap, "area"));
       const member_number = getCol(row, colMap, "member_number");
 
       let start_date: string;
@@ -220,16 +223,12 @@ export default function ImportPage() {
       if (!name) _error = "Missing name";
       else if (!phone || phone.length !== 10) _error = "Invalid phone";
 
-      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, area, member_number, _status: _error ? "error" : "ok", _error });
+      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, age, area, member_number, _status: _error ? "error" : "ok", _error });
     });
 
-    // Fix duplicate member_numbers within file
-    // nextFileNum starts from MAX(DB)+1, then skips any numbers already used in the file
-    const maxDbNum = dbNums.size > 0 ? Math.max(...dbNums) : 0;
     const fileNumsUsed = new Set(
       parsed.filter(r => r._status !== "error" && r.member_number).map(r => parseInt(r.member_number))
     );
-    // Find next number not in DB and not already used in file
     let nextFileNum = 1;
     while (dbNums.has(nextFileNum) || fileNumsUsed.has(nextFileNum)) nextFileNum++;
 
@@ -238,7 +237,6 @@ export default function ImportPage() {
       if (r._status === "error") return;
       if (r.member_number) {
         if (assignedNums.has(r.member_number)) {
-          // Find next available number not in DB and not already assigned
           while (dbNums.has(nextFileNum) || assignedNums.has(String(nextFileNum))) nextFileNum++;
           const newNum = String(nextFileNum++);
           r._error = `ID #${r.member_number} duplicate — auto-assigned #${newNum}`;
@@ -250,7 +248,6 @@ export default function ImportPage() {
       }
     });
 
-    // Mark phone duplicates within file
     const phoneCount = new Map<string, number>();
     parsed.forEach(r => phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1));
     parsed.forEach(r => {
@@ -259,7 +256,6 @@ export default function ImportPage() {
       }
     });
 
-    // Mark DB conflicts
     parsed.forEach(r => {
       if (r._status !== "error") {
         if (dbPhones.has(r.phone)) {
@@ -279,8 +275,8 @@ export default function ImportPage() {
   }
 
   function handleProceedToEdit() {
-    // Store parsed rows in sessionStorage and navigate to import-edit page
     sessionStorage.setItem("import_rows", JSON.stringify(rows));
+    sessionStorage.setItem("import_rows_original", JSON.stringify(rows.map(r => ({ ...r }))));
     router.push("/import/edit");
   }
 
@@ -289,7 +285,7 @@ export default function ImportPage() {
 
   const FIELD_LABELS: Record<string, string> = {
     member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan", start_date: "Start Date",
-    amount: "Amount", payment_mode: "Payment Mode", gender: "Gender", area: "Area",
+    amount: "Amount", payment_mode: "Payment Mode", gender: "Gender", age: "Age", area: "Area",
   };
 
   return (
@@ -300,6 +296,25 @@ export default function ImportPage() {
         </Link>
         <span className="text-gray-300">/</span>
         <h1 className="text-xl font-bold text-gray-900">Import Members</h1>
+      </div>
+
+      {/* Mode selector */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="card p-4 border-2 border-brand-300 bg-brand-50/30">
+          <div className="flex items-center gap-2 mb-1">
+            <Upload className="w-4 h-4 text-brand-600" />
+            <span className="text-sm font-bold text-brand-700">Auto Import</span>
+            <span className="text-xs bg-brand-100 text-brand-600 px-2 py-0.5 rounded-full font-semibold">Active</span>
+          </div>
+          <p className="text-xs text-gray-500">Columns are auto-detected using smart fuzzy matching</p>
+        </div>
+        <Link href="/import/manual" className="card p-4 hover:border-gray-300 hover:bg-gray-50 transition-all">
+          <div className="flex items-center gap-2 mb-1">
+            <Shuffle className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-bold text-gray-700">Manual Mapping</span>
+          </div>
+          <p className="text-xs text-gray-500">Drag & drop to manually map Excel columns to database fields</p>
+        </Link>
       </div>
 
       {/* Upload area */}
@@ -335,7 +350,6 @@ export default function ImportPage() {
 
       {rows.length > 0 && (
         <>
-          {/* Summary */}
           <div className="grid grid-cols-3 gap-3">
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-emerald-600">{validRows.filter(r => !r._error).length}</p>
@@ -351,7 +365,6 @@ export default function ImportPage() {
             </div>
           </div>
 
-          {/* Preview table */}
           <div className="card overflow-hidden">
             <p className="px-5 py-3.5 text-sm font-bold text-gray-700 border-b border-gray-100">
               Preview ({rows.length} rows)
@@ -365,6 +378,7 @@ export default function ImportPage() {
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Plan</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Age</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Area</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</th>
                   </tr>
@@ -387,6 +401,7 @@ export default function ImportPage() {
                       </td>
                       <td className="px-4 py-2.5 text-gray-500">{row.phone}</td>
                       <td className="px-4 py-2.5 text-gray-500 capitalize">{row.plan}</td>
+                      <td className="px-4 py-2.5 text-gray-500">{row.age || "—"}</td>
                       <td className="px-4 py-2.5 text-gray-500">{row.area || "—"}</td>
                       <td className="px-4 py-2.5 text-gray-500">₹{row.amount}</td>
                     </tr>

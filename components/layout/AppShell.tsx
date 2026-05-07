@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { label: 'Dues',       href: '/dues',         icon: AlertIcon },
   { label: 'Attendance', href: '/attendance',   icon: CalendarIcon },
   { label: 'Reports',    href: '/reports',      icon: ChartIcon },
-  { label: 'Import',     href: '/import',       icon: UploadIcon },
 ] as const
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

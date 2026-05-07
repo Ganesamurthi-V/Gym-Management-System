@@ -37,10 +37,12 @@ export default async function MembersPage() {
     return {
       id: m.id,
       gym_id: m.gym_id,
+      member_number: m.member_number,
       name: m.name,
       phone: m.phone,
       gender: m.gender,
       area: m.area,
+      pending_amount: m.pending_amount,
       created_at: m.created_at,
       latest_membership: latest,
       status,

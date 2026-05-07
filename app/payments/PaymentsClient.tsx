@@ -5,7 +5,7 @@ import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check 
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, parseISO, isWithinInterval } from 'date-fns'
-import ExcelJS from 'exceljs'
+// ExcelJS is lazy-loaded on demand to avoid adding ~500KB to the initial bundle
 
 interface Payment {
   id: string
@@ -106,6 +106,7 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
   }
 
   async function exportExcel() {
+    const ExcelJS = (await import('exceljs')).default
     const wb = new ExcelJS.Workbook()
     const ws = wb.addWorksheet('Payments')
     ws.columns = [

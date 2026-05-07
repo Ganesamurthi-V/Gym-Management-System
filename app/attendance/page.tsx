@@ -18,7 +18,7 @@ export default async function AttendancePage() {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  // Fetch members with their latest membership (sorted in DB)
+  // Fetch active members with their latest membership end_date only
   const { data: members } = await supabase
     .from('members')
     .select(`
@@ -26,8 +26,7 @@ export default async function AttendancePage() {
       name,
       phone,
       memberships(
-        end_date,
-        created_at
+        end_date
       )
     `)
     .eq('gym_id', gym.id)
@@ -43,11 +42,13 @@ export default async function AttendancePage() {
   const presentSet = new Set((todayAttendance ?? []).map(a => a.member_id))
 
   const activeMembers = (members ?? []).map(m => {
-    // Sort memberships by created_at desc to get latest — done in JS since Supabase nested selects don't support order
-    const sorted = (m.memberships as any[] ?? [])
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    const latest = sorted[0]
-    const status = latest ? getMemberStatus(latest.end_date) : 'expired'
+    // Pick the membership with the latest end_date (max) — avoids JS sort
+    const memberships = m.memberships as { end_date: string }[] ?? []
+    const latestEndDate = memberships.reduce(
+      (max, ms) => ms.end_date > max ? ms.end_date : max,
+      ''
+    )
+    const status = latestEndDate ? getMemberStatus(latestEndDate) : 'expired'
     return { id: m.id, name: m.name, phone: m.phone, present: presentSet.has(m.id), status }
   }).filter(m => m.status !== 'expired')
 

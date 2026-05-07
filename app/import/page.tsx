@@ -5,7 +5,6 @@ import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { matchArea } from "@/lib/areas";
 import Link from "next/link";
-import ExcelJS from "exceljs";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 
@@ -86,20 +85,22 @@ function buildColumnMap(headers: string[]): Record<string, number> {
   return map;
 }
 
-function cellStr(value: ExcelJS.CellValue): string {
+// Use unknown instead of ExcelJS.CellValue — avoids static import requirement
+function cellStr(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value.trim();
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return String(value);
   if (typeof value === "object" && "richText" in (value as object))
-    return (value as ExcelJS.CellRichTextValue).richText.map(r => r.text).join("").trim();
+    return ((value as { richText: { text: string }[] }).richText).map(r => r.text).join("").trim();
   if (value instanceof Date) return format(value, "yyyy-MM-dd");
   if (typeof value === "object" && "result" in (value as object))
-    return cellStr((value as ExcelJS.CellFormulaValue).result as ExcelJS.CellValue);
+    return cellStr((value as { result: unknown }).result);
   return String(value).trim();
 }
 
-function getCol(row: ExcelJS.Row, colMap: Record<string, number>, field: string): string {
+// Row typed as any — ExcelJS.Row not available without static import
+function getCol(row: any, colMap: Record<string, number>, field: string): string {
   const idx = colMap[field];
   if (!idx) return "";
   return cellStr(row.getCell(idx).value);
@@ -145,6 +146,9 @@ export default function ImportPage() {
     if (!file) return;
     setParsing(true);
 
+    // Lazy-load ExcelJS — keeps ~500KB out of the initial JS bundle
+    const ExcelJS = (await import("exceljs")).default;
+
     const { data: { user } } = await supabase.auth.getUser();
     const { data: gym } = user
       ? await supabase.from("gyms").select("id").eq("owner_id", user.id).single()
@@ -175,7 +179,7 @@ export default function ImportPage() {
     if (!ws) { setParsing(false); return; }
 
     const headers: string[] = [];
-    ws.getRow(1).eachCell({ includeEmpty: true }, cell => headers.push(cellStr(cell.value)));
+    ws.getRow(1).eachCell({ includeEmpty: true }, (cell: any) => headers.push(cellStr(cell.value)));
     const colMap = buildColumnMap(headers);
 
     const detected: Record<string, string> = {};
@@ -183,18 +187,18 @@ export default function ImportPage() {
     setDetectedColumns(detected);
 
     const parsed: ImportedRow[] = [];
-    ws.eachRow({ includeEmpty: false }, (row, rowIndex) => {
+    ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
       if (rowIndex === 1) return;
-      const name         = getCol(row, colMap, "name");
-      const rawPhone     = getCol(row, colMap, "phone");
-      const phone        = rawPhone.replace(/\D/g, "").slice(-10);
-      const plan         = normalizePlan(getCol(row, colMap, "plan") || "monthly");
-      const rawDate      = getCol(row, colMap, "start_date");
-      const amount       = getCol(row, colMap, "amount") || "0";
-      const payment_mode = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
-      const gender       = normalizeGender(getCol(row, colMap, "gender"));
-      const age          = getCol(row, colMap, "age");
-      const area         = matchArea(getCol(row, colMap, "area"));
+      const name          = getCol(row, colMap, "name");
+      const rawPhone      = getCol(row, colMap, "phone");
+      const phone         = rawPhone.replace(/\D/g, "").slice(-10);
+      const plan          = normalizePlan(getCol(row, colMap, "plan") || "monthly");
+      const rawDate       = getCol(row, colMap, "start_date");
+      const amount        = getCol(row, colMap, "amount") || "0";
+      const payment_mode  = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
+      const gender        = normalizeGender(getCol(row, colMap, "gender"));
+      const age           = getCol(row, colMap, "age");
+      const area          = matchArea(getCol(row, colMap, "area"));
       const member_number = getCol(row, colMap, "member_number");
 
       let start_date: string;

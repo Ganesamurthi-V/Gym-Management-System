@@ -9,7 +9,12 @@ async function getDashboardData(gymId: string) {
   const today = format(new Date(), 'yyyy-MM-dd')
 
   const [membershipsRes, attendanceRes, todayPaymentsRes, duesRes] = await Promise.all([
-    supabase.from('memberships').select('*, member:members(*)').eq('gym_id', gymId).order('created_at', { ascending: false }),
+    // Only select columns needed for status calculation and expiring list
+    supabase
+      .from('memberships')
+      .select('member_id, end_date, member:members(id, name, phone, member_number)')
+      .eq('gym_id', gymId)
+      .order('created_at', { ascending: false }),
     supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('date', today),
     supabase.from('memberships').select('amount, admission_fee').eq('gym_id', gymId).eq('start_date', today),
     supabase.from('members').select('pending_amount').eq('gym_id', gymId),
@@ -20,7 +25,7 @@ async function getDashboardData(gymId: string) {
     if (!m.member || memberMap.has(m.member_id)) continue
     const status = getMemberStatus(m.end_date)
     const daysRemaining = getDaysRemaining(m.end_date)
-    memberMap.set(m.member_id, { ...m.member, latest_membership: m, status, days_remaining: daysRemaining })
+    memberMap.set(m.member_id, { ...(m.member as any), latest_membership: m as any, status, days_remaining: daysRemaining })
   }
 
   const allMembers = Array.from(memberMap.values())

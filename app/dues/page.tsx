@@ -10,19 +10,22 @@ export default async function DuesPage() {
   const { data: gym } = await supabase.from('gyms').select('id, name').eq('owner_id', user.id).single()
   if (!gym) return null
 
-  // Get all members with pending dues
+  // Filter pending_amount > 0 in DB, only fetch needed columns
   const { data: members } = await supabase
     .from('members')
-    .select('id, name, phone, member_number, pending_amount, memberships(end_date, created_at)')
+    .select('id, name, phone, member_number, pending_amount, memberships(end_date)')
     .eq('gym_id', gym.id)
-    .order('name')
+    .gt('pending_amount', 0)
+    .order('pending_amount', { ascending: false })
 
   const dueMembers = (members ?? [])
     .map(m => {
-      const sorted = (m.memberships as any[] ?? [])
-        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      const latest = sorted[0]
-      const status = latest ? getMemberStatus(latest.end_date) : 'expired'
+      const memberships = m.memberships as { end_date: string }[] ?? []
+      const latestEndDate = memberships.reduce(
+        (max, ms) => ms.end_date > max ? ms.end_date : max,
+        ''
+      )
+      const status = latestEndDate ? getMemberStatus(latestEndDate) : 'expired'
       return {
         id: m.id,
         name: m.name,
@@ -32,8 +35,6 @@ export default async function DuesPage() {
         status,
       }
     })
-    .filter(m => m.pending_amount > 0)
-    .sort((a, b) => b.pending_amount - a.pending_amount)
 
   const totalDues = dueMembers.reduce((s, m) => s + m.pending_amount, 0)
 

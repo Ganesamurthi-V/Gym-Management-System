@@ -47,8 +47,7 @@ export default async function ReportsPage() {
     supabase
       .from('memberships')
       .select('member_id, end_date, plan')
-      .eq('gym_id', gym.id)
-      .order('created_at', { ascending: false }),
+      .eq('gym_id', gym.id),
     supabase
       .from('members')
       .select('id, gender, age, area, created_at')

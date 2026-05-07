@@ -3,60 +3,6 @@ import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 
-async function getMembers(gymId: string): Promise<MemberWithStatus[]> {
-  const supabase = await createClient()
-
-  const { data: memberships } = await supabase
-    .from('memberships')
-    .select(`*, member:members(*)`)
-    .eq('gym_id', gymId)
-    .order('created_at', { ascending: false })
-
-  const memberMap = new Map<string, MemberWithStatus>()
-
-  if (memberships) {
-    for (const m of memberships) {
-      if (!m.member) continue
-      if (!memberMap.has(m.member_id)) {
-        const status = getMemberStatus(m.end_date)
-        const daysRemaining = getDaysRemaining(m.end_date)
-        memberMap.set(m.member_id, {
-          ...m.member,
-          latest_membership: m,
-          status,
-          days_remaining: daysRemaining,
-        })
-      }
-    }
-  }
-
-  // Also get members with no memberships
-  const { data: allMembers } = await supabase
-    .from('members')
-    .select('*')
-    .eq('gym_id', gymId)
-    .order('name')
-
-  if (allMembers) {
-    for (const m of allMembers) {
-      if (!memberMap.has(m.id)) {
-        memberMap.set(m.id, {
-          ...m,
-          latest_membership: null,
-          status: 'expired',
-          days_remaining: -999,
-        })
-      }
-    }
-  }
-
-  return Array.from(memberMap.values()).sort((a, b) => {
-    // Sort: expiring first, then active, then expired
-    const order = { expiring: 0, active: 1, expired: 2 }
-    return order[a.status] - order[b.status]
-  })
-}
-
 export default async function MembersPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -70,7 +16,40 @@ export default async function MembersPage() {
 
   if (!gym) return null
 
-  const members = await getMembers(gym.id)
+  // Single query: all members with their memberships
+  const { data: members } = await supabase
+    .from('members')
+    .select(`
+      *,
+      memberships(
+        id, plan, start_date, end_date, amount, payment_mode, created_at, member_id, gym_id
+      )
+    `)
+    .eq('gym_id', gym.id)
+    .order('name')
 
-  return <MembersClient members={members} gymId={gym.id} />
+  const result: MemberWithStatus[] = (members ?? []).map(m => {
+    const sorted = (m.memberships as any[] ?? [])
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    const latest = sorted[0] ?? null
+    const status = latest ? getMemberStatus(latest.end_date) : 'expired'
+    const days_remaining = latest ? getDaysRemaining(latest.end_date) : -999
+    return {
+      id: m.id,
+      gym_id: m.gym_id,
+      name: m.name,
+      phone: m.phone,
+      gender: m.gender,
+      area: m.area,
+      created_at: m.created_at,
+      latest_membership: latest,
+      status,
+      days_remaining,
+    }
+  }).sort((a, b) => {
+    const order = { expiring: 0, active: 1, expired: 2 }
+    return order[a.status] - order[b.status]
+  })
+
+  return <MembersClient members={result} gymId={gym.id} />
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, Circle, CalendarCheck, Search } from 'lucide-react'
+import { CheckCircle2, Circle, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -27,115 +27,89 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
   const supabase = createClient()
 
   const totalPresent = members.filter(m => m.present).length
+  const attendanceRate = members.length > 0 ? Math.round((totalPresent / members.length) * 100) : 0
+  const displayDate = format(new Date(today), 'EEEE, dd MMM yyyy')
 
   async function toggleAttendance(memberId: string, isPresent: boolean) {
-    // Optimistic update
-    setMembers(prev =>
-      prev.map(m => m.id === memberId ? { ...m, present: !isPresent } : m)
-    )
-
+    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, present: !isPresent } : m))
     if (isPresent) {
-      // Remove attendance
-      await supabase
-        .from('attendance')
-        .delete()
-        .eq('member_id', memberId)
-        .eq('date', today)
-        .eq('gym_id', gymId)
+      await supabase.from('attendance').delete().eq('member_id', memberId).eq('date', today).eq('gym_id', gymId)
     } else {
-      // Add attendance
-      const { error } = await supabase.from('attendance').insert({
-        member_id: memberId,
-        gym_id: gymId,
-        date: today,
-      })
-
-      if (error) {
-        // Revert on error
-        setMembers(prev =>
-          prev.map(m => m.id === memberId ? { ...m, present: isPresent } : m)
-        )
-      }
+      const { error } = await supabase.from('attendance').insert({ member_id: memberId, gym_id: gymId, date: today })
+      if (error) setMembers(prev => prev.map(m => m.id === memberId ? { ...m, present: isPresent } : m))
     }
   }
 
   const filtered = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.phone.includes(search)
+    m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
   )
 
-  const displayDate = format(new Date(today), 'EEEE, dd MMM yyyy')
-
   return (
-    <div>
-      {/* Header */}
-      <div className="bg-white px-4 pt-10 pb-4 border-b border-gray-100 sticky top-0 z-10">
-        <div className="flex items-center gap-2 mb-1">
-          <CalendarCheck className="w-5 h-5 text-brand-600" />
-          <h1 className="text-xl font-bold text-gray-900">Attendance</h1>
+    <div className="space-y-4 md:space-y-5">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Attendance</h1>
+          <p className="text-xs md:text-sm text-gray-400 mt-0.5">{displayDate}</p>
         </div>
-        <p className="text-sm text-gray-500 mb-3">{displayDate}</p>
-
-        {/* Count */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="bg-brand-50 text-brand-700 px-3 py-1.5 rounded-xl text-sm font-semibold">
-            {totalPresent} present
+        <div className="flex items-center gap-2">
+          <div className="card px-3 py-2 text-center">
+            <p className="text-lg md:text-xl font-bold text-emerald-600">{totalPresent}</p>
+            <p className="text-[10px] md:text-xs text-gray-400">Present</p>
           </div>
-          <div className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-xl text-sm font-medium">
-            {members.length - totalPresent} absent
+          <div className="card px-3 py-2 text-center">
+            <p className="text-lg md:text-xl font-bold text-gray-500">{members.length - totalPresent}</p>
+            <p className="text-[10px] md:text-xs text-gray-400">Absent</p>
           </div>
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="search"
-            placeholder="Search member..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input-field pl-10 py-3"
-          />
+          <div className="card px-3 py-2 text-center">
+            <p className="text-lg md:text-xl font-bold text-blue-600">{attendanceRate}%</p>
+            <p className="text-[10px] md:text-xs text-gray-400">Rate</p>
+          </div>
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-2">
-        {filtered.length === 0 ? (
-          <div className="card p-8 text-center text-gray-400 text-sm">
-            No active members found
-          </div>
-        ) : (
-          filtered.map((member) => (
-            <button
-              key={member.id}
+      {/* Progress bar */}
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
+          style={{ width: `${attendanceRate}%` }} />
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="search" placeholder="Search member..."
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          className="input-field pl-9"
+        />
+      </div>
+
+      {/* Members grid — 1 col mobile, 2 col tablet, 3 col desktop */}
+      {filtered.length === 0 ? (
+        <div className="card p-12 text-center text-gray-400">No active members found</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {filtered.map((member) => (
+            <button key={member.id}
               onClick={() => toggleAttendance(member.id, member.present)}
               className={cn(
-                'w-full card p-4 flex items-center gap-4 active:scale-[0.99] transition-all text-left',
-                member.present ? 'border-green-200 bg-green-50' : ''
+                'card p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-all',
+                member.present ? 'border-emerald-200 bg-emerald-50' : 'hover:border-gray-300'
               )}
             >
-              {member.present ? (
-                <CheckCircle2 className="w-7 h-7 text-green-500 flex-shrink-0" />
-              ) : (
-                <Circle className="w-7 h-7 text-gray-300 flex-shrink-0" />
-              )}
+              {member.present
+                ? <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0" />
+                : <Circle className="w-6 h-6 text-gray-200 flex-shrink-0" />
+              }
               <div className="flex-1 min-w-0">
-                <p className={cn(
-                  'font-semibold truncate',
-                  member.present ? 'text-green-800' : 'text-gray-900'
-                )}>
-                  {member.name}
-                </p>
-                <p className={cn(
-                  'text-sm',
-                  member.present ? 'text-green-600' : 'text-gray-500'
-                )}>
-                  {member.present ? 'Present ✓' : 'Tap to mark present'}
+                <p className={cn('font-semibold truncate text-sm', member.present ? 'text-emerald-800' : 'text-gray-900')}>{member.name}</p>
+                <p className={cn('text-xs mt-0.5', member.present ? 'text-emerald-600 font-medium' : 'text-gray-400')}>
+                  {member.present ? '✓ Present' : 'Tap to mark'}
                 </p>
               </div>
             </button>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

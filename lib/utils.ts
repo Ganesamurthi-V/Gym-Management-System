@@ -12,12 +12,14 @@ export function getPlanDuration(plan: Plan): number {
     case 'monthly': return 1
     case 'quarterly': return 3
     case 'annual': return 12
+    case 'custom': return 1
   }
 }
 
-export function calcEndDate(startDate: string, plan: Plan): string {
+export function calcEndDate(startDate: string, plan: Plan, customMonths?: number): string {
   const start = parseISO(startDate)
-  const end = addMonths(start, getPlanDuration(plan))
+  const months = plan === 'custom' ? (customMonths ?? 1) : getPlanDuration(plan)
+  const end = addMonths(start, months)
   return format(end, 'yyyy-MM-dd')
 }
 
@@ -62,6 +64,7 @@ export const PLAN_LABELS: Record<Plan, string> = {
   monthly: 'Monthly (1 month)',
   quarterly: 'Quarterly (3 months)',
   annual: 'Annual (12 months)',
+  custom: 'Custom',
 }
 
 export const PAYMENT_MODE_LABELS: Record<string, string> = {

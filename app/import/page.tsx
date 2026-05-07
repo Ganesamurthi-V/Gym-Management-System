@@ -3,375 +3,406 @@
 import { useState } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { calcEndDate } from "@/lib/utils";
+import { matchArea } from "@/lib/areas";
 import Link from "next/link";
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
-interface ParsedRow {
+export interface ImportedRow {
   name: string;
   phone: string;
   plan: string;
   start_date: string;
   amount: string;
   payment_mode: string;
+  gender: string;
+  area: string;
+  member_number: string;
   _status?: "ok" | "duplicate" | "error";
   _error?: string;
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────────
+// ── Smart column alias dictionary ─────────────────────────────────────────────
+const COLUMN_ALIASES: Record<string, string[]> = {
+  name:         ["name", "fullname", "full name", "membername", "member name", "customer", "customername", "client", "clientname", "person", "studentname", "student name"],
+  phone:        ["phone", "mobile", "mobileno", "mobile no", "phoneno", "phone no", "contact", "contactno", "contact no", "number", "cell", "cellphone", "whatsapp", "mob", "ph"],
+  member_number:["member_number", "membernumber", "member number", "memberid", "member id", "member_id", "id", "no", "num", "number", "sl", "slno", "sl no", "serial", "serialno", "serial no", "serialnumber", "serial number", "personnumber", "person number", "personid", "person id", "regid", "reg id", "regno", "reg no", "registrationid", "registration id", "registrationnumber", "registration number", "gymid", "gym id", "gymno", "gym no", "rollno", "roll no", "rollnumber", "roll number"],
+  plan:         ["plan", "membership", "membershipplan", "membership plan", "package", "subscription", "type", "membershiptype", "membership type", "plantype", "plan type", "duration"],
+  start_date:   ["start_date", "startdate", "start date", "joiningdate", "joining date", "joindate", "join date", "date", "from", "fromdate", "from date", "admissiondate", "admission date", "enrolldate", "enroll date", "createdat", "created_at", "created at", "joineddate", "joined date", "joinedon", "joined on", "registrationdate", "registration date", "regdate", "reg date", "doj", "dateofjoining", "date of joining"],
+  amount:       ["amount", "fee", "fees", "price", "cost", "amountpaid", "amount paid", "paidamount", "paid amount", "charge", "charges", "totalamount", "total amount", "feeamount", "fee amount", "membershipfee", "membership fee", "monthlyfee", "monthly fee", "subscriptionfee", "subscription fee", "planfee", "plan fee", "gymfee", "gym fee", "rs", "inr", "rupees", "paid"],
+  payment_mode: ["payment_mode", "paymentmode", "payment mode", "mode", "paymode", "pay mode", "paymenttype", "payment type", "paytype", "method", "paymentmethod", "payment method", "transactiontype", "transaction type"],
+  gender:       ["gender", "sex", "male/female", "m/f", "gendertype", "gender type"],
+  area:         ["area", "locality", "location", "address", "place", "zone", "region", "city", "town", "neighbourhood", "neighborhood", "sector", "colony", "street", "village"],
+};
 
-/** Resolve any ExcelJS cell value to a plain string */
+function norm(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+const ALIAS_MAP = new Map<string, string>();
+for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
+  for (const alias of aliases) ALIAS_MAP.set(norm(alias), field);
+}
+
+function detectField(header: string): string | null {
+  const n = norm(header);
+  if (!n) return null;
+  if (ALIAS_MAP.has(n)) return ALIAS_MAP.get(n)!;
+  if (n.length >= 4) {
+    for (const [alias, field] of ALIAS_MAP.entries()) {
+      if (alias.length >= 4 && (n.includes(alias) || alias.includes(n))) return field;
+    }
+  }
+  let bestField: string | null = null, bestDist = Infinity;
+  for (const [alias, field] of ALIAS_MAP.entries()) {
+    if (Math.abs(n.length - alias.length) > 3) continue;
+    const dist = levenshtein(n, alias);
+    const maxAllowed = alias.length <= 8 ? 2 : 3;
+    if (dist <= maxAllowed && dist < bestDist) { bestDist = dist; bestField = field; }
+  }
+  return bestField;
+}
+
+function buildColumnMap(headers: string[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  headers.forEach((h, i) => {
+    const field = detectField(h);
+    if (field && !(field in map)) map[field] = i + 1;
+  });
+  return map;
+}
+
 function cellStr(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value.trim();
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return String(value);
-  // RichText
-  if (typeof value === "object" && "richText" in (value as object)) {
-    return (value as ExcelJS.CellRichTextValue).richText
-      .map((r) => r.text)
-      .join("")
-      .trim();
-  }
-  // Date (ExcelJS returns JS Date objects for date cells)
+  if (typeof value === "object" && "richText" in (value as object))
+    return (value as ExcelJS.CellRichTextValue).richText.map(r => r.text).join("").trim();
   if (value instanceof Date) return format(value, "yyyy-MM-dd");
-  // Shared formula result
-  if (typeof value === "object" && "result" in (value as object)) {
-    return cellStr(
-      (value as ExcelJS.CellFormulaValue).result as ExcelJS.CellValue
-    );
-  }
+  if (typeof value === "object" && "result" in (value as object))
+    return cellStr((value as ExcelJS.CellFormulaValue).result as ExcelJS.CellValue);
   return String(value).trim();
 }
 
-/** Pull a cell by trying multiple case variants of a header name */
-function getField(
-  row: ExcelJS.Row,
-  headers: string[],
-  ...keys: string[]
-): string {
-  for (const key of keys) {
-    const idx = headers.findIndex(
-      (h) => h?.toLowerCase() === key.toLowerCase()
-    );
-    if (idx !== -1) {
-      const cell = row.getCell(idx + 1); // ExcelJS columns are 1-indexed
-      const val = cellStr(cell.value);
-      if (val) return val;
-    }
-  }
+function getCol(row: ExcelJS.Row, colMap: Record<string, number>, field: string): string {
+  const idx = colMap[field];
+  if (!idx) return "";
+  return cellStr(row.getCell(idx).value);
+}
+
+function excelSerialToDate(serial: number): string {
+  return format(new Date(Math.round((serial - 25569) * 86400 * 1000)), "yyyy-MM-dd");
+}
+
+function normalizeGender(raw: string): string {
+  const v = raw.toLowerCase().trim();
+  if (["m", "male", "boy", "man", "gents", "gent"].includes(v)) return "male";
+  if (["f", "female", "girl", "woman", "ladies", "lady"].includes(v)) return "female";
+  if (["o", "other", "others", "na", "n/a"].includes(v)) return "other";
   return "";
 }
 
-/** Convert an Excel serial date number to yyyy-MM-dd */
-function excelSerialToDate(serial: number): string {
-  const ms = Math.round((serial - 25569) * 86400 * 1000);
-  return format(new Date(ms), "yyyy-MM-dd");
+function normalizePlan(raw: string): string {
+  const v = raw.toLowerCase().trim();
+  if (["monthly", "month", "1month", "1 month", "1m", "30days", "30 days"].includes(v)) return "monthly";
+  if (["quarterly", "quarter", "3months", "3 months", "3m", "90days", "90 days"].includes(v)) return "quarterly";
+  if (["annual", "yearly", "year", "12months", "12 months", "12m", "1year", "1 year", "365days"].includes(v)) return "annual";
+  return "monthly";
 }
 
-// ── component ──────────────────────────────────────────────────────────────────
+function normalizePaymentMode(raw: string): string {
+  const v = raw.toLowerCase().trim();
+  if (["cash", "c", "hand", "inhand"].includes(v)) return "cash";
+  if (["upi", "gpay", "googlepay", "phonepay", "phonepe", "paytm", "bhim", "online", "neft", "imps"].includes(v)) return "upi";
+  if (["card", "debit", "credit", "debitcard", "creditcard", "swipe"].includes(v)) return "card";
+  return "cash";
+}
 
 export default function ImportPage() {
-  const [rows, setRows] = useState<ParsedRow[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [importResult, setImportResult] = useState({ success: 0, skipped: 0 });
+  const [rows, setRows] = useState<ImportedRow[]>([]);
+  const [detectedColumns, setDetectedColumns] = useState<Record<string, string>>({});
+  const [parsing, setParsing] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setParsing(true);
 
-    const buffer = await file.arrayBuffer();
-    const wb = new ExcelJS.Workbook();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: gym } = user
+      ? await supabase.from("gyms").select("id").eq("owner_id", user.id).single()
+      : { data: null };
 
-    // ExcelJS supports both .xlsx and .csv via different readers
+    const [existingMembersRes, existingNumsRes] = gym
+      ? await Promise.all([
+          supabase.from("members").select("phone").eq("gym_id", gym.id) as Promise<{ data: { phone: string }[] | null }>,
+          supabase.from("members").select("member_number").eq("gym_id", gym.id) as Promise<{ data: { member_number: number }[] | null }>,
+        ])
+      : [{ data: null }, { data: null }];
+
+    const dbPhones = new Set((existingMembersRes.data ?? []).map(m => m.phone));
+    const dbNums   = new Set((existingNumsRes.data ?? []).map(m => m.member_number));
+
     const isCSV = file.name.endsWith(".csv");
+    const wb = new ExcelJS.Workbook();
     if (isCSV) {
-      await wb.csv.load(buffer);
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const ws = wb.addWorksheet("Sheet1");
+      lines.forEach(line => ws.addRow(line.split(",").map(v => v.trim().replace(/^"|"$/g, ""))));
     } else {
-      await wb.xlsx.load(buffer);
+      await wb.xlsx.load(await file.arrayBuffer());
     }
 
     const ws = wb.worksheets[0];
-    if (!ws) return;
+    if (!ws) { setParsing(false); return; }
 
-    // First row = headers
-    const headerRow = ws.getRow(1);
     const headers: string[] = [];
-    headerRow.eachCell({ includeEmpty: true }, (cell) => {
-      headers.push(cellStr(cell.value));
-    });
+    ws.getRow(1).eachCell({ includeEmpty: true }, cell => headers.push(cellStr(cell.value)));
+    const colMap = buildColumnMap(headers);
 
-    const parsed: ParsedRow[] = [];
+    const detected: Record<string, string> = {};
+    for (const [field, idx] of Object.entries(colMap)) detected[field] = headers[idx - 1];
+    setDetectedColumns(detected);
 
+    const parsed: ImportedRow[] = [];
     ws.eachRow({ includeEmpty: false }, (row, rowIndex) => {
-      if (rowIndex === 1) return; // skip header
+      if (rowIndex === 1) return;
+      const name        = getCol(row, colMap, "name");
+      const rawPhone    = getCol(row, colMap, "phone");
+      const phone       = rawPhone.replace(/\D/g, "").slice(-10);
+      const plan        = normalizePlan(getCol(row, colMap, "plan") || "monthly");
+      const rawDate     = getCol(row, colMap, "start_date");
+      const amount      = getCol(row, colMap, "amount") || "0";
+      const payment_mode = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
+      const gender      = normalizeGender(getCol(row, colMap, "gender"));
+      const area        = matchArea(getCol(row, colMap, "area"));
+      const member_number = getCol(row, colMap, "member_number");
 
-      const name = getField(row, headers, "name", "Name", "NAME");
-      const rawPhone = getField(
-        row,
-        headers,
-        "phone",
-        "Phone",
-        "mobile",
-        "Mobile"
-      );
-      const phone = rawPhone.replace(/\D/g, "").slice(-10);
-      const planRaw = getField(row, headers, "plan", "Plan") || "monthly";
-      const plan = planRaw.toLowerCase().trim();
-      const rawDate = getField(
-        row,
-        headers,
-        "start_date",
-        "Start Date",
-        "date"
-      );
-      const amount = getField(row, headers, "amount", "Amount") || "0";
-      const pmRaw =
-        getField(row, headers, "payment_mode", "Payment Mode") || "cash";
-      const payment_mode = pmRaw.toLowerCase().trim();
-
-      // Resolve start_date (could be serial number string from Excel)
       let start_date: string;
-      const dateNum = Number(rawDate);
-      if (!isNaN(dateNum) && rawDate !== "" && !rawDate.includes("-")) {
-        start_date = excelSerialToDate(dateNum);
+      const rawDateTrimmed = rawDate.trim();
+      const datetimeMatch = rawDateTrimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (datetimeMatch) {
+        start_date = datetimeMatch[1];
       } else {
-        start_date = rawDate || format(new Date(), "yyyy-MM-dd");
+        const dateNum = Number(rawDateTrimmed);
+        if (!isNaN(dateNum) && rawDateTrimmed !== "" && !rawDateTrimmed.includes("-") && !rawDateTrimmed.includes("/")) {
+          start_date = excelSerialToDate(dateNum);
+        } else if (rawDateTrimmed.includes("/")) {
+          const parts = rawDateTrimmed.split("/");
+          if (parts.length === 3) {
+            const [a, b, c] = parts;
+            start_date = `${c.length === 4 ? c : `20${c}`}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+          } else {
+            start_date = format(new Date(), "yyyy-MM-dd");
+          }
+        } else {
+          start_date = rawDateTrimmed || format(new Date(), "yyyy-MM-dd");
+        }
       }
 
       let _error = "";
       if (!name) _error = "Missing name";
       else if (!phone || phone.length !== 10) _error = "Invalid phone";
 
-      parsed.push({
-        name,
-        phone,
-        plan: ["monthly", "quarterly", "annual"].includes(plan)
-          ? plan
-          : "monthly",
-        start_date,
-        amount,
-        payment_mode: ["cash", "upi", "card"].includes(payment_mode)
-          ? payment_mode
-          : "cash",
-        _status: _error ? "error" : "ok",
-        _error,
-      });
+      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, area, member_number, _status: _error ? "error" : "ok", _error });
     });
 
-    // Mark duplicates within file
-    const phoneCount = new Map<string, number>();
-    parsed.forEach((r) =>
-      phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1)
+    // Fix duplicate member_numbers within file
+    // nextFileNum starts from MAX(DB)+1, then skips any numbers already used in the file
+    const maxDbNum = dbNums.size > 0 ? Math.max(...dbNums) : 0;
+    const fileNumsUsed = new Set(
+      parsed.filter(r => r._status !== "error" && r.member_number).map(r => parseInt(r.member_number))
     );
-    parsed.forEach((r) => {
+    // Find next number not in DB and not already used in file
+    let nextFileNum = 1;
+    while (dbNums.has(nextFileNum) || fileNumsUsed.has(nextFileNum)) nextFileNum++;
+
+    const assignedNums = new Set<string>();
+    parsed.forEach(r => {
+      if (r._status === "error") return;
+      if (r.member_number) {
+        if (assignedNums.has(r.member_number)) {
+          // Find next available number not in DB and not already assigned
+          while (dbNums.has(nextFileNum) || assignedNums.has(String(nextFileNum))) nextFileNum++;
+          const newNum = String(nextFileNum++);
+          r._error = `ID #${r.member_number} duplicate — auto-assigned #${newNum}`;
+          r.member_number = newNum;
+          assignedNums.add(newNum);
+        } else {
+          assignedNums.add(r.member_number);
+        }
+      }
+    });
+
+    // Mark phone duplicates within file
+    const phoneCount = new Map<string, number>();
+    parsed.forEach(r => phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1));
+    parsed.forEach(r => {
       if (r._status !== "error" && phoneCount.get(r.phone)! > 1) {
-        r._status = "duplicate";
-        r._error = "Duplicate phone in file";
+        r._status = "duplicate"; r._error = "Duplicate phone in file";
+      }
+    });
+
+    // Mark DB conflicts
+    parsed.forEach(r => {
+      if (r._status !== "error") {
+        if (dbPhones.has(r.phone)) {
+          r._status = "duplicate"; r._error = "Phone already exists in database";
+        } else if (r.member_number && dbNums.has(parseInt(r.member_number))) {
+          while (dbNums.has(nextFileNum) || assignedNums.has(String(nextFileNum))) nextFileNum++;
+          const newNum = String(nextFileNum++);
+          r._error = `ID #${r.member_number} exists in DB — auto-assigned #${newNum}`;
+          r.member_number = newNum;
+          assignedNums.add(newNum);
+        }
       }
     });
 
     setRows(parsed);
+    setParsing(false);
   }
 
-  async function handleImport() {
-    setImporting(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: gym } = await supabase
-      .from("gyms")
-      .select("id")
-      .eq("owner_id", user.id)
-      .single();
-
-    if (!gym) return;
-
-    const { data: existing } = await supabase
-      .from("members")
-      .select("phone")
-      .eq("gym_id", gym.id);
-
-    const existingPhones = new Set((existing ?? []).map((m) => m.phone));
-
-    let success = 0;
-    let skipped = 0;
-
-    for (const row of rows) {
-      if (row._status === "error") {
-        skipped++;
-        continue;
-      }
-      existingPhones.add(row.phone);
-
-      const { data: member, error: mErr } = await supabase
-        .from("members")
-        .insert({ gym_id: gym.id, name: row.name, phone: row.phone })
-        .select()
-        .single();
-
-      if (mErr || !member) {
-        skipped++;
-        continue;
-      }
-
-      const end_date = calcEndDate(row.start_date, row.plan as any);
-      await supabase.from("memberships").insert({
-        member_id: member.id,
-        gym_id: gym.id,
-        plan: row.plan,
-        start_date: row.start_date,
-        end_date,
-        amount: parseInt(row.amount) || 0,
-        payment_mode: row.payment_mode,
-      });
-
-      success++;
-    }
-
-    setImportResult({ success, skipped });
-    setDone(true);
-    setImporting(false);
+  function handleProceedToEdit() {
+    // Store parsed rows in sessionStorage and navigate to import-edit page
+    sessionStorage.setItem("import_rows", JSON.stringify(rows));
+    router.push("/import/edit");
   }
 
-  const validRows = rows.filter((r) => r._status === "ok");
-  const errorRows = rows.filter((r) => r._status !== "ok");
+  const validRows = rows.filter(r => r._status === "ok");
+  const errorRows = rows.filter(r => r._status !== "ok");
+
+  const FIELD_LABELS: Record<string, string> = {
+    member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan", start_date: "Start Date",
+    amount: "Amount", payment_mode: "Payment Mode", gender: "Gender", area: "Area",
+  };
 
   return (
-    <div>
-      <div className="bg-white px-4 pt-10 pb-4 border-b border-gray-100 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/members"
-            className="p-2 -ml-2 rounded-xl active:bg-gray-100"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </Link>
-          <h1 className="text-xl font-bold text-gray-900">Import Members</h1>
-        </div>
+    <div className="max-w-3xl space-y-5">
+      <div className="flex items-center gap-3">
+        <Link href="/members" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+          <ArrowLeft className="w-4 h-4" />Members
+        </Link>
+        <span className="text-gray-300">/</span>
+        <h1 className="text-xl font-bold text-gray-900">Import Members</h1>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
-        {done ? (
-          <div className="card p-6 text-center">
-            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-7 h-7 text-green-600" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-900 mb-1">
-              Import Complete
-            </h2>
-            <p className="text-gray-600">
-              {importResult.success} members imported · {importResult.skipped}{" "}
-              skipped
-            </p>
-            <Link href="/members" className="btn-primary mt-4">
-              View Members
-            </Link>
+      {/* Upload area */}
+      <div className="card p-6">
+        <label className="flex flex-col items-center gap-3 py-10 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-all">
+          <Upload className="w-8 h-8 text-gray-400" />
+          <div className="text-center">
+            <p className="font-semibold text-gray-700">Upload CSV or Excel file</p>
+            <p className="text-sm text-gray-400 mt-0.5">Columns are auto-detected — any header name works</p>
           </div>
-        ) : (
-          <>
-            {/* Upload area */}
-            <div className="card p-4">
-              <label className="flex flex-col items-center gap-3 py-8 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer active:bg-gray-50">
-                <Upload className="w-8 h-8 text-gray-400" />
-                <div className="text-center">
-                  <p className="font-medium text-gray-700">
-                    Upload CSV or Excel file
-                  </p>
-                  <p className="text-sm text-gray-400 mt-0.5">
-                    Columns: name, phone, plan, start_date, amount, payment_mode
-                  </p>
-                </div>
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFile}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            {/* Template hint */}
-            <div className="bg-blue-50 rounded-xl p-3 text-sm text-blue-700">
-              <strong>Column headers (case-insensitive):</strong>
-              <br />
-              name · phone · plan (monthly/quarterly/annual) · start_date
-              (YYYY-MM-DD) · amount · payment_mode (cash/upi/card)
-            </div>
-
-            {rows.length > 0 && (
-              <>
-                {/* Summary */}
-                <div className="flex gap-3">
-                  <div className="flex-1 bg-green-50 rounded-xl p-3 text-center">
-                    <p className="text-xl font-bold text-green-700">
-                      {validRows.length}
-                    </p>
-                    <p className="text-xs text-green-600">Ready to import</p>
-                  </div>
-                  <div className="flex-1 bg-red-50 rounded-xl p-3 text-center">
-                    <p className="text-xl font-bold text-red-700">
-                      {errorRows.length}
-                    </p>
-                    <p className="text-xs text-red-600">Will be skipped</p>
-                  </div>
-                </div>
-
-                {/* Preview */}
-                <div className="card">
-                  <p className="p-4 text-sm font-semibold text-gray-700 border-b border-gray-50">
-                    Preview ({rows.length} rows)
-                  </p>
-                  <div className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
-                    {rows.map((row, i) => (
-                      <div
-                        key={i}
-                        className={`p-3 flex items-center gap-3 ${
-                          row._status === "ok" ? "" : "bg-red-50"
-                        }`}
-                      >
-                        {row._status === "ok" ? (
-                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {row.name || "(no name)"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {row.phone} · {row.plan}
-                          </p>
-                          {row._error && (
-                            <p className="text-xs text-red-500">{row._error}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {validRows.length > 0 && (
-                  <button
-                    onClick={handleImport}
-                    disabled={importing}
-                    className="btn-primary"
-                  >
-                    {importing
-                      ? "Importing..."
-                      : `Import ${validRows.length} Members`}
-                  </button>
-                )}
-              </>
-            )}
-          </>
-        )}
+          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
+        </label>
+        {parsing && <p className="text-center text-sm text-gray-400 mt-3">Reading file...</p>}
       </div>
+
+      {/* Detected columns */}
+      {Object.keys(detectedColumns).length > 0 && (
+        <div className="card p-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Detected Columns</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(FIELD_LABELS).map(([field, label]) => (
+              <div key={field} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                detectedColumns[field] ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-400 border-gray-200"
+              }`}>
+                {detectedColumns[field] ? <Check className="w-3 h-3" /> : <span>–</span>}
+                {label}
+                {detectedColumns[field] && <span className="opacity-60">← "{detectedColumns[field]}"</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <>
+          {/* Summary */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="card p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{validRows.filter(r => !r._error).length}</p>
+              <p className="text-sm text-gray-500 mt-0.5">Ready</p>
+            </div>
+            <div className="card p-4 text-center">
+              <p className="text-2xl font-bold text-amber-500">{validRows.filter(r => r._error).length}</p>
+              <p className="text-sm text-gray-500 mt-0.5">ID auto-fixed</p>
+            </div>
+            <div className="card p-4 text-center">
+              <p className="text-2xl font-bold text-red-500">{errorRows.length}</p>
+              <p className="text-sm text-gray-500 mt-0.5">Will be skipped</p>
+            </div>
+          </div>
+
+          {/* Preview table */}
+          <div className="card overflow-hidden">
+            <p className="px-5 py-3.5 text-sm font-bold text-gray-700 border-b border-gray-100">
+              Preview ({rows.length} rows)
+            </p>
+            <div className="overflow-x-auto max-h-72 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide"></th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">#</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Plan</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Area</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {rows.map((row, i) => (
+                    <tr key={i} className={row._status !== "ok" ? "bg-red-50" : row._error ? "bg-amber-50" : "hover:bg-gray-50"}>
+                      <td className="px-4 py-2.5">
+                        {row._status !== "ok"
+                          ? <AlertTriangle className="w-4 h-4 text-red-500" />
+                          : row._error
+                          ? <AlertTriangle className="w-4 h-4 text-amber-500" />
+                          : <Check className="w-4 h-4 text-emerald-500" />}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-400 font-mono text-xs">{row.member_number || "—"}</td>
+                      <td className="px-4 py-2.5 font-medium text-gray-900">
+                        {row.name || <span className="text-gray-400">(no name)</span>}
+                        {row._error && row._status !== "ok" && <p className="text-xs text-red-500 mt-0.5">{row._error}</p>}
+                        {row._error && row._status === "ok" && <p className="text-xs text-amber-600 mt-0.5">{row._error}</p>}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500">{row.phone}</td>
+                      <td className="px-4 py-2.5 text-gray-500 capitalize">{row.plan}</td>
+                      <td className="px-4 py-2.5 text-gray-500">{row.area || "—"}</td>
+                      <td className="px-4 py-2.5 text-gray-500">₹{row.amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {validRows.length > 0 && (
+            <button onClick={handleProceedToEdit} className="btn-primary">
+              Edit & Review {validRows.length} Members →
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -7,7 +7,8 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  html {
+  html, body {
+    @apply h-full overflow-hidden;
     scroll-behavior: smooth;
   }
 
@@ -18,27 +19,27 @@
 
 @layer components {
   .btn-primary {
-    @apply flex items-center justify-center gap-2 w-full py-3.5 px-4 bg-brand-600 text-white font-semibold rounded-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base;
+    @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl shadow-sm shadow-brand-200 hover:from-brand-600 hover:to-brand-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm;
   }
 
   .btn-secondary {
-    @apply flex items-center justify-center gap-2 w-full py-3.5 px-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 active:scale-[0.98] transition-all text-base;
+    @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all text-sm;
   }
 
   .btn-ghost {
-    @apply flex items-center justify-center gap-2 py-2 px-3 text-gray-600 rounded-lg active:bg-gray-100 transition-all text-sm;
+    @apply flex items-center justify-center gap-2 py-2 px-3 text-gray-500 rounded-xl active:bg-gray-100 transition-all text-sm;
   }
 
   .input-field {
-    @apply w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all;
+    @apply w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all shadow-sm;
   }
 
   .card {
-    @apply bg-white rounded-2xl border border-gray-100 shadow-sm;
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm;
   }
 
   .status-active {
-    @apply bg-green-50 text-green-700 border border-green-200;
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
   }
 
   .status-expiring {
@@ -47,5 +48,13 @@
 
   .status-expired {
     @apply bg-red-50 text-red-700 border border-red-200;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

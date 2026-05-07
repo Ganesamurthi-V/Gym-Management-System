@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { AttendanceClient } from './AttendanceClient'
 import { getMemberStatus } from '@/lib/utils'
 import { format } from 'date-fns'
-// import { BottomNav } from '@/components/layout/BottomNav'
 
 export default async function AttendancePage() {
   const supabase = await createClient()
@@ -19,15 +18,22 @@ export default async function AttendancePage() {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  // Get all active/expiring members
-  const { data: memberships } = await supabase
-    .from('memberships')
-    .select(`*, member:members(*)`)
+  // Fetch members with their latest membership (sorted in DB)
+  const { data: members } = await supabase
+    .from('members')
+    .select(`
+      id,
+      name,
+      phone,
+      memberships(
+        end_date,
+        created_at
+      )
+    `)
     .eq('gym_id', gym.id)
-    .gte('end_date', today)
-    .order('created_at', { ascending: false })
+    .order('name')
 
-  // Get today's attendance
+  // Fetch today's attendance
   const { data: todayAttendance } = await supabase
     .from('attendance')
     .select('member_id')
@@ -36,29 +42,21 @@ export default async function AttendancePage() {
 
   const presentSet = new Set((todayAttendance ?? []).map(a => a.member_id))
 
-  // Build unique active member list
-  const memberMap = new Map<string, any>()
-  for (const m of memberships ?? []) {
-    if (!m.member || memberMap.has(m.member_id)) continue
-    const status = getMemberStatus(m.end_date)
-    if (status !== 'expired') {
-      memberMap.set(m.member_id, {
-        id: m.member.id,
-        name: m.member.name,
-        phone: m.member.phone,
-        present: presentSet.has(m.member_id),
-      })
-    }
-  }
-
-  const members = Array.from(memberMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  const activeMembers = (members ?? []).map(m => {
+    // Sort memberships by created_at desc to get latest — done in JS since Supabase nested selects don't support order
+    const sorted = (m.memberships as any[] ?? [])
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    const latest = sorted[0]
+    const status = latest ? getMemberStatus(latest.end_date) : 'expired'
+    return { id: m.id, name: m.name, phone: m.phone, present: presentSet.has(m.id), status }
+  }).filter(m => m.status !== 'expired')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-lg mx-auto pb-24">
-        <AttendanceClient members={members} gymId={gym.id} today={today} totalPresent={presentSet.size} />
-      </main>
-      {/* <BottomNav /> */}
-    </div>
+    <AttendanceClient
+      members={activeMembers}
+      gymId={gym.id}
+      today={today}
+      totalPresent={presentSet.size}
+    />
   )
 }

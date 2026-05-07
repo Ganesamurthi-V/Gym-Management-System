@@ -29,14 +29,14 @@ export default async function PaymentsPage() {
 
   const { data: monthPayments } = await supabase
     .from('memberships')
-    .select('amount, payment_mode')
+    .select('amount, admission_fee, payment_mode')
     .eq('gym_id', gym.id)
     .gte('start_date', monthStart)
     .lte('start_date', monthEnd)
 
-  const monthRevenue = (monthPayments ?? []).reduce((sum, p) => sum + p.amount, 0)
-  const cashRevenue = (monthPayments ?? []).filter(p => p.payment_mode === 'cash').reduce((sum, p) => sum + p.amount, 0)
-  const upiRevenue = (monthPayments ?? []).filter(p => p.payment_mode === 'upi').reduce((sum, p) => sum + p.amount, 0)
+  const monthRevenue = (monthPayments ?? []).reduce((sum, p) => sum + p.amount + (p.admission_fee ?? 0), 0)
+  const cashRevenue = (monthPayments ?? []).filter(p => p.payment_mode === 'cash').reduce((sum, p) => sum + p.amount + (p.admission_fee ?? 0), 0)
+  const upiRevenue = (monthPayments ?? []).filter(p => p.payment_mode === 'upi').reduce((sum, p) => sum + p.amount + (p.admission_fee ?? 0), 0)
 
   return (
     <PaymentsClient

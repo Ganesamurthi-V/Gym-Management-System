@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { buildWhatsAppLink, formatDate, formatCurrency, calcEndDate, cn } from '@/lib/utils'
+import { buildWhatsAppLink, formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
 import type { Member, Membership, Attendance, MemberStatus, Plan, PaymentMode } from '@/types'
 import { format } from 'date-fns'
 
@@ -145,12 +145,22 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
 
       <div className="grid grid-cols-2 gap-3">
         {latestMembership && (
-          <a href={buildWhatsAppLink(member.phone, member.name, latestMembership.end_date)}
-            target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-emerald-200 active:scale-[0.98] transition-all"
-          >
-            <MessageCircle className="w-4 h-4" />WhatsApp
-          </a>
+          isValidPhone(member.phone) ? (
+            <a href={buildWhatsAppLink(member.phone, member.name, latestMembership.end_date)}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-emerald-200 active:scale-[0.98] transition-all"
+            >
+              <MessageCircle className="w-4 h-4" />WhatsApp
+            </a>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-1 bg-gray-100 text-gray-400 py-3.5 rounded-2xl text-sm cursor-not-allowed">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4" />
+                <span className="font-semibold">WhatsApp</span>
+              </div>
+              <span className="text-[10px] text-center px-2 leading-tight">Invalid phone number — cannot send message</span>
+            </div>
+          )
         )}
         <button onClick={() => setShowRenewForm(!showRenewForm)}
           className="flex items-center justify-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-brand-200 active:scale-[0.98] transition-all"

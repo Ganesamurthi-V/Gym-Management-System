@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle } from "lucide-react";
+import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { matchArea } from "@/lib/areas";
 import Link from "next/link";
@@ -138,6 +138,7 @@ export default function ImportPage() {
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<Record<string, string>>({});
   const [parsing, setParsing] = useState(false);
+  const [parseStage, setParseStage] = useState(0); // 0=idle 1=reading 2=detecting 3=processing 4=done
   const supabase = createClient();
   const router = useRouter();
 
@@ -145,9 +146,11 @@ export default function ImportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setParsing(true);
+    setParseStage(1);
 
     // Lazy-load ExcelJS — keeps ~500KB out of the initial JS bundle
     const ExcelJS = (await import("exceljs")).default;
+    setParseStage(2);
 
     const { data: { user } } = await supabase.auth.getUser();
     const { data: gym } = user
@@ -185,6 +188,7 @@ export default function ImportPage() {
     const detected: Record<string, string> = {};
     for (const [field, idx] of Object.entries(colMap)) detected[field] = headers[idx - 1];
     setDetectedColumns(detected);
+    setParseStage(3);
 
     const parsed: ImportedRow[] = [];
     ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
@@ -225,56 +229,61 @@ export default function ImportPage() {
 
       let _error = "";
       if (!name) _error = "Missing name";
-      else if (!phone || phone.length !== 10) _error = "Invalid phone";
+      else if (phone && phone.length !== 10) _error = "Invalid phone — WhatsApp reminders won't work";
 
-      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, age, area, member_number, _status: _error ? "error" : "ok", _error });
+      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, age, area, member_number, _status: !name ? "error" : "ok", _error });
     });
 
-    const fileNumsUsed = new Set(
-      parsed.filter(r => r._status !== "error" && r.member_number).map(r => parseInt(r.member_number))
-    );
-    let nextFileNum = 1;
-    while (dbNums.has(nextFileNum) || fileNumsUsed.has(nextFileNum)) nextFileNum++;
-
+    // Build assignedNums incrementally, checking both DB and file conflicts together
     const assignedNums = new Set<string>();
+
+    function nextAvailable(): string {
+      let n = 1;
+      while (dbNums.has(n) || assignedNums.has(String(n))) n++;
+      return String(n);
+    }
+
+    // Pass 1: fix phone duplicates within file (skip blank phones)
+    const phoneCount = new Map<string, number>();
     parsed.forEach(r => {
-      if (r._status === "error") return;
+      if (r.phone) phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1);
+    });
+    parsed.forEach(r => {
+      if (r._status !== "error" && r.phone && phoneCount.get(r.phone)! > 1) {
+        r._status = "duplicate"; r._error = "Duplicate phone in file";
+      }
+    });
+
+    // Pass 2: assign/fix member numbers — checks both file duplicates AND DB conflicts together
+    const seenNums = new Set<string>();
+    parsed.forEach(r => {
+      if (r._status === "error" || r._status === "duplicate") return;
       if (r.member_number) {
-        if (assignedNums.has(r.member_number)) {
-          while (dbNums.has(nextFileNum) || assignedNums.has(String(nextFileNum))) nextFileNum++;
-          const newNum = String(nextFileNum++);
-          r._error = `ID #${r.member_number} duplicate — auto-assigned #${newNum}`;
-          r.member_number = newNum;
+        const inDB = dbNums.has(parseInt(r.member_number));
+        const inFile = seenNums.has(r.member_number);
+        if (inDB || inFile) {
+          const reason = inDB ? "exists in DB" : "duplicate";
+          const newNum = nextAvailable();
           assignedNums.add(newNum);
+          seenNums.add(newNum);
+          r._error = `ID #${r.member_number} ${reason} — auto-assigned #${newNum}`;
+          r.member_number = newNum;
         } else {
+          seenNums.add(r.member_number);
           assignedNums.add(r.member_number);
         }
       }
     });
 
-    const phoneCount = new Map<string, number>();
-    parsed.forEach(r => phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1));
+    // Pass 3: flag DB phone conflicts (skip blank phones)
     parsed.forEach(r => {
-      if (r._status !== "error" && phoneCount.get(r.phone)! > 1) {
-        r._status = "duplicate"; r._error = "Duplicate phone in file";
-      }
-    });
-
-    parsed.forEach(r => {
-      if (r._status !== "error") {
-        if (dbPhones.has(r.phone)) {
-          r._status = "duplicate"; r._error = "Phone already exists in database";
-        } else if (r.member_number && dbNums.has(parseInt(r.member_number))) {
-          while (dbNums.has(nextFileNum) || assignedNums.has(String(nextFileNum))) nextFileNum++;
-          const newNum = String(nextFileNum++);
-          r._error = `ID #${r.member_number} exists in DB — auto-assigned #${newNum}`;
-          r.member_number = newNum;
-          assignedNums.add(newNum);
-        }
+      if (r._status !== "error" && r._status !== "duplicate" && r.phone && dbPhones.has(r.phone)) {
+        r._status = "duplicate"; r._error = "Phone already exists in database";
       }
     });
 
     setRows(parsed);
+    setParseStage(4);
     setParsing(false);
   }
 
@@ -323,15 +332,46 @@ export default function ImportPage() {
 
       {/* Upload area */}
       <div className="card p-6">
-        <label className="flex flex-col items-center gap-3 py-10 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-all">
-          <Upload className="w-8 h-8 text-gray-400" />
-          <div className="text-center">
-            <p className="font-semibold text-gray-700">Upload CSV or Excel file</p>
-            <p className="text-sm text-gray-400 mt-0.5">Columns are auto-detected — any header name works</p>
-          </div>
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
+        <label className={`flex flex-col items-center gap-3 py-10 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+            parsing ? 'border-brand-300 bg-brand-50/40 cursor-not-allowed' : 'border-gray-200 hover:border-brand-400 hover:bg-brand-50/30'
+          }`}>
+          {parsing ? (
+            <div className="flex flex-col items-center gap-4 py-2">
+              <div className="relative w-16 h-16">
+                <div className="absolute inset-0 rounded-full border-4 border-brand-100" />
+                <div className="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin" />
+                <FileSpreadsheet className="absolute inset-0 m-auto w-6 h-6 text-brand-500" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-bold text-brand-700">
+                  {parseStage === 1 && '📂 Reading your file...'}
+                  {parseStage === 2 && '🔍 Detecting columns...'}
+                  {parseStage === 3 && '⚡ Processing rows...'}
+                  {parseStage === 4 && '✅ Almost done!'}
+                </p>
+                <p className="text-xs text-gray-400">Your data is getting cooked 🍳</p>
+              </div>
+              <div className="w-48 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full animate-progress-bar" />
+              </div>
+              <div className="flex gap-1.5">
+                {[0,1,2].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce-dot"
+                    style={{ animationDelay: `${i * 0.2}s` }} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <Upload className="w-8 h-8 text-gray-400" />
+              <div className="text-center">
+                <p className="font-semibold text-gray-700">Upload CSV or Excel file</p>
+                <p className="text-sm text-gray-400 mt-0.5">Columns are auto-detected — any header name works</p>
+              </div>
+            </>
+          )}
+          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" disabled={parsing} />
         </label>
-        {parsing && <p className="text-center text-sm text-gray-400 mt-3">Reading file...</p>}
       </div>
 
       {/* Detected columns */}
@@ -416,8 +456,13 @@ export default function ImportPage() {
           </div>
 
           {validRows.length > 0 && (
-            <button onClick={handleProceedToEdit} className="btn-primary">
-              Edit & Review {validRows.length} Members →
+            <button onClick={handleProceedToEdit}
+              className="btn-primary group relative overflow-hidden">
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                <Zap className="w-4 h-4" />
+                Edit & Review {validRows.length} Members →
+              </span>
+              <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
             </button>
           )}
         </>

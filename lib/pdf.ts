@@ -1,5 +1,14 @@
 import { format } from 'date-fns'
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 interface PaymentRow {
   memberName: string
   memberNumber: number
@@ -28,7 +37,7 @@ export function generateDailyCollectionPDF(data: DailyReportData) {
   const rows = payments.map(p => `
     <tr>
       <td>#${p.memberNumber}</td>
-      <td>${p.memberName}</td>
+      <td>${escapeHtml(p.memberName)}</td>
       <td style="text-transform:capitalize">${p.plan}</td>
       <td>${p.payment_mode.toUpperCase()}</td>
       <td style="text-align:right">${fmt(p.amount)}</td>
@@ -64,7 +73,7 @@ export function generateDailyCollectionPDF(data: DailyReportData) {
     </head>
     <body>
       <div class="header">
-        <h1>${gymName}</h1>
+        <h1>${escapeHtml(gymName)}</h1>
         <p>Daily Collection Report — ${displayDate}</p>
       </div>
 

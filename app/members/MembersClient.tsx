@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash } from 'lucide-react'
-import { buildWhatsAppLink, formatDate, cn } from '@/lib/utils'
+import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
 
@@ -206,12 +206,20 @@ export function MembersClient({ members, gymId }: Props) {
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {member.latest_membership && member.status !== 'active' && (
-                  <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
-                    target="_blank" rel="noopener noreferrer"
-                    className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </a>
+                  isValidPhone(member.phone) ? (
+                    <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
+                      target="_blank" rel="noopener noreferrer"
+                      className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center"
+                      title="Send WhatsApp reminder"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </a>
+                  ) : (
+                    <div className="w-8 h-8 bg-gray-200 text-gray-400 rounded-lg flex items-center justify-center cursor-not-allowed"
+                      title="Invalid phone number — cannot send WhatsApp message">
+                      <MessageCircle className="w-4 h-4" />
+                    </div>
+                  )
                 )}
                 <Link href={`/members/${member.id}`} className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center">
                   <ChevronRight className="w-4 h-4" />
@@ -282,12 +290,20 @@ export function MembersClient({ members, gymId }: Props) {
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2 justify-end">
                       {member.latest_membership && member.status !== 'active' && (
-                        <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />Remind
-                        </a>
+                        isValidPhone(member.phone) ? (
+                          <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors"
+                            title="Send WhatsApp reminder"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />Remind
+                          </a>
+                        ) : (
+                          <div className="flex items-center gap-1.5 bg-gray-200 text-gray-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-not-allowed"
+                            title="Invalid phone number — cannot send WhatsApp message">
+                            <MessageCircle className="w-3.5 h-3.5" />Remind
+                          </div>
+                        )
                       )}
                       <Link href={`/members/${member.id}`} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                         <ChevronRight className="w-4 h-4" />

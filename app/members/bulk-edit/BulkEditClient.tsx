@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Check, AlertTriangle, Edit2, Search } from 'lucide-react'
+import { ArrowLeft, Check, AlertTriangle, Edit2, Search, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AREAS } from '@/lib/areas'
 
@@ -49,6 +49,39 @@ export function EditMembersClient({ members, gymId }: Props) {
   const [error, setError] = useState('')
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null)
   const blurTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  function toggleSelect(id: string) {
+    setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filtered.length) setSelected(new Set())
+    else setSelected(new Set(filtered.map(m => m.id)))
+  }
+
+  async function handleBulkDelete() {
+    setDeleting(true)
+    setError('')
+    try {
+      for (const id of Array.from(selected)) {
+        const { error: e1 } = await supabase.from('attendance').delete().eq('member_id', id)
+        if (e1) throw e1
+        const { error: e2 } = await supabase.from('memberships').delete().eq('member_id', id)
+        if (e2) throw e2
+        const { error: e3 } = await supabase.from('members').delete().eq('id', id)
+        if (e3) throw e3
+      }
+      router.push('/members')
+      router.refresh()
+    } catch (err: any) {
+      setError('Failed to delete: ' + (err.message || 'Unknown error'))
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
 
   const [edits, setEdits] = useState<Record<string, EditedRow>>(() => {
     const map: Record<string, EditedRow> = {}
@@ -249,6 +282,55 @@ export function EditMembersClient({ members, gymId }: Props) {
 
       {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
 
+      {/* Bulk delete bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <p className="text-sm font-semibold text-red-700">{selected.size} member{selected.size !== 1 ? 's' : ''} selected</p>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />Remove Members
+          </button>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">Delete {selected.size} member{selected.size !== 1 ? 's' : ''}?</p>
+                <p className="text-xs text-gray-500 mt-0.5">This will also delete all their payments and attendance.</p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <p className="text-sm font-bold text-red-700">⚠️ This action cannot be recovered.</p>
+              <p className="text-xs text-red-600 mt-1">All data for the selected members will be permanently deleted from the database.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="py-2.5 bg-gray-100 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-200 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                className="py-2.5 bg-red-500 text-white font-semibold text-sm rounded-xl hover:bg-red-600 transition-all disabled:opacity-60"
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input type="search" placeholder="Search members..."
@@ -262,6 +344,13 @@ export function EditMembersClient({ members, gymId }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="px-4 py-3 w-10">
+                  <input type="checkbox"
+                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded accent-red-500 cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">ID</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
@@ -286,7 +375,14 @@ export function EditMembersClient({ members, gymId }: Props) {
                   : []
 
                 return (
-                  <tr key={m.id} className={changed ? 'bg-brand-50/40' : 'hover:bg-gray-50'}>
+                  <tr key={m.id} className={selected.has(m.id) ? 'bg-red-50' : changed ? 'bg-brand-50/40' : 'hover:bg-gray-50'}>
+                    <td className="px-4 py-2">
+                      <input type="checkbox"
+                        checked={selected.has(m.id)}
+                        onChange={() => toggleSelect(m.id)}
+                        className="w-4 h-4 rounded accent-red-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-2">
                       <input type="number" min="1" value={e.member_number}
                         onChange={ev => updateField(m.id, 'member_number', ev.target.value)}

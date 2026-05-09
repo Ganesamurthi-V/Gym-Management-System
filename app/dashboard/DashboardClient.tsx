@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, Dumbbell, CalendarCheck, TrendingUp, FileText, IndianRupee, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { buildWhatsAppLink, formatDate, formatCurrency } from '@/lib/utils'
+import { buildWhatsAppLink, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyCollectionPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
@@ -35,14 +35,13 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   function handleBulkRemind() {
     if (expiringMembers.length === 0) return
     setSendingBulk(true)
-    // Open each WhatsApp link with a small delay so browser doesn't block popups
     expiringMembers.forEach((member, i) => {
       if (!member.latest_membership) return
       setTimeout(() => {
         window.open(buildWhatsAppLink(member.phone, member.name, member.latest_membership!.end_date), '_blank')
       }, i * 600)
     })
-    setTimeout(() => { setSendingBulk(false); setBulkSent(true) }, expiringMembers.length * 600 + 500)
+    setTimeout(() => { setSendingBulk(false) }, expiringMembers.length * 600 + 500)
   }
 
   // Feature 3: Daily Collection PDF
@@ -203,13 +202,21 @@ function ExpiringMemberRow({ member }: { member: MemberWithStatus }) {
         {daysLeft === 0 ? 'Expires today' : daysLeft < 0 ? `${Math.abs(daysLeft)}d ago` : `${daysLeft}d left`}
       </p>
       {member.latest_membership && (
-        <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
-          target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors whitespace-nowrap"
-        >
-          <MessageCircle className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Remind</span>
-        </a>
+        isValidPhone(member.phone) ? (
+          <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
+            target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors whitespace-nowrap"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Remind</span>
+          </a>
+        ) : (
+          <div className="flex items-center gap-1 bg-gray-200 text-gray-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-not-allowed whitespace-nowrap"
+            title="Invalid phone number — cannot send WhatsApp message">
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Remind</span>
+          </div>
+        )
       )}
     </div>
   )

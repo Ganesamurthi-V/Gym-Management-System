@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { calcEndDate, formatDate, formatCurrency } from '@/lib/utils'
+import { calcEndDate, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import { AREAS } from '@/lib/areas'
 import type { Plan, PaymentMode } from '@/types'
 import { format } from 'date-fns'
@@ -81,7 +81,7 @@ export default function NewMemberPage() {
 
       const { data: existing } = await supabase
         .from('members').select('id').eq('gym_id', gym.id).eq('phone', form.phone).single()
-      if (existing) throw new Error('A member with this phone number already exists.')
+      if (existing && form.phone.trim()) throw new Error('A member with this phone number already exists.')
 
       const memberNumber = parseInt(form.member_number) || (nextMemberNumber ?? 1)
 
@@ -125,8 +125,8 @@ export default function NewMemberPage() {
           plan: form.plan === 'custom' ? 'monthly' : form.plan,
           start_date: form.start_date,
           end_date,
-          amount: parseInt(form.amount) || 0,
-          admission_fee: parseInt(form.admission_fee) || 0,
+          amount: Math.floor(Number(form.amount)) || 0,
+          admission_fee: Math.floor(Number(form.admission_fee)) || 0,
           payment_mode: form.payment_mode,
         })
 
@@ -145,10 +145,10 @@ export default function NewMemberPage() {
     ? calcEndDate(form.start_date, form.plan, form.plan === 'custom' ? parseInt(form.custom_months) || 1 : undefined)
     : null
 
-  const admissionFee = parseInt(form.admission_fee) || 0
-  const membershipFee = parseInt(form.amount) || 0
+  const admissionFee = Math.floor(Number(form.admission_fee)) || 0
+  const membershipFee = Math.floor(Number(form.amount)) || 0
   const totalAmount = admissionFee + membershipFee
-  const pendingAmount = parseInt(form.pending_amount) || 0
+  const pendingAmount = Math.floor(Number(form.pending_amount)) || 0
 
   const planLabel = form.plan === 'monthly' ? '1 Month' : form.plan === 'quarterly' ? '3 Months' : form.plan === 'annual' ? '1 Year' : `${form.custom_months} Months (Custom)`
 
@@ -312,10 +312,13 @@ export default function NewMemberPage() {
 
           {/* Phone */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number *</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number</label>
             <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)}
-              className="input-field" placeholder="9876543210" required pattern="[0-9]{10}" maxLength={10} />
-            <p className="text-xs text-gray-400 mt-1.5">10-digit mobile number</p>
+              className="input-field" placeholder="9876543210" maxLength={10} />
+            {form.phone && !isValidPhone(form.phone)
+              ? <p className="text-xs text-amber-600 font-medium mt-1.5">⚠️ Invalid phone number — WhatsApp reminders won't work for this member</p>
+              : <p className="text-xs text-gray-400 mt-1.5">10-digit mobile number</p>
+            }
           </div>
 
           {/* Area */}

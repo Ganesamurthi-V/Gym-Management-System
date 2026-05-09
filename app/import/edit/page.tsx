@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, AlertTriangle, Search } from "lucide-react";
+import { ArrowLeft, Check, AlertTriangle, Search, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { calcEndDate } from "@/lib/utils";
 import { AREAS } from "@/lib/areas";
@@ -151,17 +151,23 @@ export default function ImportEditPage() {
   if (step === "done") {
     return (
       <div className="max-w-xl mx-auto">
-        <div className="card p-10 text-center">
-          <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="w-7 h-7 text-emerald-600" />
+        <div className="card p-10 text-center animate-pop-in">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-100">
+            <Check className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-1">Import Complete</h2>
-          <p className="text-gray-500">
-            <span className="text-emerald-600 font-bold">{doneResult.success} imported</span>
-            {doneResult.skipped > 0 && <> · <span className="text-red-500 font-bold">{doneResult.skipped} skipped</span></>}
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Import Complete! 🎉</h2>
+          <p className="text-gray-500 mt-2">
+            <span className="text-emerald-600 font-bold text-lg">{doneResult.success}</span>
+            <span className="text-gray-400"> members imported successfully</span>
+            {doneResult.skipped > 0 && (
+              <><br /><span className="text-red-400 text-sm">{doneResult.skipped} skipped</span></>
+            )}
           </p>
+          <div className="mt-4 mx-auto w-48 h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full animate-fill-bar" />
+          </div>
           <div className="mt-6">
-            <Link href="/members" className="btn-primary">View Members</Link>
+            <Link href="/members" className="btn-primary">View Members →</Link>
           </div>
         </div>
       </div>
@@ -260,10 +266,21 @@ export default function ImportEditPage() {
             <ArrowLeft className="w-4 h-4" />Back to Edit
           </button>
           <button onClick={handleSave} disabled={!confirmed || loading}
-            className="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold text-sm rounded-2xl shadow-md shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40"
+            className="relative flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold text-sm rounded-2xl shadow-md shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40 overflow-hidden group"
           >
-            <Check className="w-4 h-4" />
-            {loading ? "Importing..." : `Import ${validRows.length} Members`}
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Importing {validRows.length} members...</span>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Import {validRows.length} Members</span>
+                <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+              </>
+            )}
           </button>
         </div>
       </div>

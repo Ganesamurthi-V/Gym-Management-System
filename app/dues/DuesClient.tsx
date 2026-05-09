@@ -48,7 +48,9 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
       .update({ pending_amount: newPending })
       .eq('id', member.id)
 
-    if (!error) {
+    if (error) {
+      alert('Failed to record payment. Please try again.')
+    } else {
       setMembers(prev => prev
         .map(m => m.id === member.id ? { ...m, pending_amount: newPending } : m)
         .filter(m => m.pending_amount > 0)

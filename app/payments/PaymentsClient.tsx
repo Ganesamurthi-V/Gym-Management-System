@@ -4,8 +4,7 @@ import { useState, useMemo } from 'react'
 import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, parseISO, isWithinInterval } from 'date-fns'
-// ExcelJS is lazy-loaded on demand to avoid adding ~500KB to the initial bundle
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
 
 interface Payment {
   id: string
@@ -36,7 +35,7 @@ interface Props {
   gymName: string
 }
 
-type Period = 'today' | 'week' | 'month' | 'all'
+type Period = 'today' | 'week' | 'month' | 'all' | 'custom'
 type ModeFilter = 'all' | 'cash' | 'upi' | 'card'
 
 function getPeriodRange(period: Period): { start: Date; end: Date } | null {
@@ -51,46 +50,38 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
   const [search, setSearch]   = useState('')
+  const [idSearch, setIdSearch] = useState('')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo]     = useState('')
   const [showPending, setShowPending] = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
   const supabase = createClient()
 
-  const sparkline = useMemo(() => {
-    return Array.from({ length: 6 }, (_, i) => {
-      const d     = subMonths(new Date(), 5 - i)
-      const start = startOfMonth(d)
-      const end   = endOfMonth(d)
-      const total = payments
-        .filter(p => isWithinInterval(parseISO(p.created_at), { start, end }))
-        .reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
-      return { label: format(d, 'MMM yy'), total }
-    })
-  }, [payments])
-
   const filtered = useMemo(() => {
-    const range = getPeriodRange(period)
+    const range = period === 'custom' && customFrom && customTo
+      ? { start: startOfDay(parseISO(customFrom)), end: endOfDay(parseISO(customTo)) }
+      : getPeriodRange(period)
     return payments.filter(p => {
-      if (range && !isWithinInterval(parseISO(p.created_at), range)) return false
+      if (range && !isWithinInterval(parseISO(p.start_date), range)) return false
       if (modeFilter !== 'all' && p.payment_mode !== modeFilter) return false
+      if (idSearch && !String(p.member?.member_number).includes(idSearch.trim())) return false
       if (search) {
         const q = search.toLowerCase()
         if (
           !p.member?.name.toLowerCase().includes(q) &&
-          !p.member?.phone.includes(q) &&
-          !String(p.member?.member_number).includes(q)
+          !p.member?.phone.includes(q)
         ) return false
       }
       return true
     })
-  }, [payments, period, modeFilter, search])
+  }, [payments, period, modeFilter, search, idSearch, customFrom, customTo])
 
   const totalCollected = filtered.reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
   const cashTotal  = filtered.filter(p => p.payment_mode === 'cash').reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
   const upiTotal   = filtered.filter(p => p.payment_mode === 'upi').reduce((s, p)  => s + p.amount + (p.admission_fee ?? 0), 0)
   const cardTotal  = filtered.filter(p => p.payment_mode === 'card').reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
   const totalPending = localPending.reduce((s, m) => s + m.pending_amount, 0)
-  const maxBar = Math.max(...sparkline.map(s => s.total), 1)
 
   const modeConfig = {
     cash: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <Banknote className="w-4 h-4 text-emerald-600" /> },
@@ -157,30 +148,19 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
       </div>
 
       <div className="card p-5 bg-gradient-to-br from-brand-500 to-brand-600">
-        <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-1">Total Collected</p>
+        <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-1">
+          {period === 'today' ? "Today's Collection"
+            : period === 'week' ? "This Week's Collection"
+            : period === 'month' ? "This Month's Collection"
+            : period === 'custom' && customFrom && customTo ? `${customFrom} → ${customTo}`
+            : 'All Time Collection'}
+        </p>
         <p className="text-3xl font-bold text-white">{formatCurrency(totalCollected)}</p>
         <div className="flex flex-wrap gap-4 mt-3">
           <span className="text-white/70 text-xs">Cash <span className="text-white font-bold">{formatCurrency(cashTotal)}</span></span>
           <span className="text-white/70 text-xs">UPI <span className="text-white font-bold">{formatCurrency(upiTotal)}</span></span>
           <span className="text-white/70 text-xs">Card <span className="text-white font-bold">{formatCurrency(cardTotal)}</span></span>
-          <span className="text-white/70 text-xs">{filtered.length} transactions</span>
-        </div>
-      </div>
-
-      <div className="card p-4">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">6-Month Revenue</p>
-        <div className="flex items-end gap-2 h-16">
-          {sparkline.map((s, i) => (
-            <div key={s.label} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full rounded-t-sm transition-all"
-                style={{
-                  height: `${Math.max((s.total / maxBar) * 52, s.total > 0 ? 4 : 0)}px`,
-                  background: i === sparkline.length - 1 ? 'linear-gradient(to top, #f97316, #fb923c)' : '#e5e7eb',
-                }}
-              />
-              <span className="text-[9px] text-gray-400 whitespace-nowrap">{s.label}</span>
-            </div>
-          ))}
+          <span className="text-white/70 text-xs">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
@@ -225,12 +205,12 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {(['today', 'week', 'month', 'all'] as Period[]).map(p => (
+          {(['today', 'week', 'month', 'all', 'custom'] as Period[]).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
                 period === p ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-500'
               }`}>
-              {p === 'all' ? 'All Time' : p.charAt(0).toUpperCase() + p.slice(1)}
+              {p === 'all' ? 'All Time' : p === 'custom' ? 'Custom' : p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
           ))}
         </div>
@@ -246,11 +226,37 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input type="search" placeholder="Search by name, phone or ID..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="input-field pl-9" />
+      {period === 'custom' && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">From</label>
+            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+              className="input-field w-40" />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">To</label>
+            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+              className="input-field w-40" />
+          </div>
+          {customFrom && customTo && (
+            <span className="text-xs text-gray-400 font-medium">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input type="search" placeholder="Search by name or phone..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="input-field pl-9" />
+        </div>
+        <div className="relative w-36">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">#</span>
+          <input type="search" placeholder="Member ID"
+            value={idSearch} onChange={e => setIdSearch(e.target.value)}
+            className="input-field pl-7" />
+        </div>
       </div>
 
       {/* Mobile cards */}

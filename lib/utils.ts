@@ -24,19 +24,16 @@ export function calcEndDate(startDate: string, plan: Plan, customMonths?: number
 }
 
 export function getMemberStatus(endDate: string): MemberStatus {
-  const today = new Date()
-  const end = parseISO(endDate)
-  const daysLeft = differenceInDays(end, today)
-
-  if (daysLeft < 0) return 'expired'
+  const today = format(new Date(), 'yyyy-MM-dd')
+  if (endDate < today) return 'expired'
+  const daysLeft = differenceInDays(parseISO(endDate), parseISO(today))
   if (daysLeft <= 7) return 'expiring'
   return 'active'
 }
 
 export function getDaysRemaining(endDate: string): number {
-  const today = new Date()
-  const end = parseISO(endDate)
-  return differenceInDays(end, today)
+  const today = format(new Date(), 'yyyy-MM-dd')
+  return differenceInDays(parseISO(endDate), parseISO(today))
 }
 
 export function formatDate(date: string): string {
@@ -49,6 +46,10 @@ export function formatCurrency(amount: number): string {
     currency: 'INR',
     maximumFractionDigits: 0,
   }).format(amount)
+}
+
+export function isValidPhone(phone: string): boolean {
+  return /^[0-9]{10}$/.test(phone.replace(/\D/g, '').slice(-10))
 }
 
 export function buildWhatsAppLink(phone: string, memberName: string, endDate: string): string {

@@ -52,7 +52,7 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: gym } = await supabase.from('gyms').select('*').eq('owner_id', user.id).single()
+  const { data: gym } = await supabase.from('gyms').select('id, name').eq('owner_id', user.id).single()
   if (!gym) {
     return (
       <div className="card p-6 text-center">

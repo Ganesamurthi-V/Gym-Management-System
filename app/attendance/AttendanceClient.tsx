@@ -23,6 +23,7 @@ interface Props {
 export function AttendanceClient({ members: initialMembers, gymId, today, totalPresent: initialPresent }: Props) {
   const [members, setMembers] = useState(initialMembers)
   const [search, setSearch] = useState('')
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
   const supabase = createClient()
 
@@ -31,13 +32,17 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
   const displayDate = format(new Date(today), 'EEEE, dd MMM yyyy')
 
   async function toggleAttendance(memberId: string, isPresent: boolean) {
+    if (loadingIds.has(memberId)) return
+    setLoadingIds(prev => new Set(prev).add(memberId))
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, present: !isPresent } : m))
     if (isPresent) {
-      await supabase.from('attendance').delete().eq('member_id', memberId).eq('date', today).eq('gym_id', gymId)
+      const { error } = await supabase.from('attendance').delete().eq('member_id', memberId).eq('date', today).eq('gym_id', gymId)
+      if (error) setMembers(prev => prev.map(m => m.id === memberId ? { ...m, present: isPresent } : m))
     } else {
       const { error } = await supabase.from('attendance').insert({ member_id: memberId, gym_id: gymId, date: today })
       if (error) setMembers(prev => prev.map(m => m.id === memberId ? { ...m, present: isPresent } : m))
     }
+    setLoadingIds(prev => { const s = new Set(prev); s.delete(memberId); return s })
   }
 
   const filtered = members.filter(m =>

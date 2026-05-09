@@ -8,6 +8,9 @@ export function createClient() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+    client.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') client = null
+    })
   }
   return client
 }

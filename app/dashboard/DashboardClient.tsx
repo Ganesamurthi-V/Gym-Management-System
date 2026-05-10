@@ -18,18 +18,11 @@ interface Props {
 }
 
 export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Props) {
-  const [loggingOut, setLoggingOut] = useState(false)
   const [sendingBulk, setSendingBulk] = useState(false)
   const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-
-  async function handleLogout() {
-    setLoggingOut(true)
-    await supabase.auth.signOut()
-    router.push('/auth/login')
-  }
 
   // Feature 1: Bulk WhatsApp Reminders
   function handleBulkRemind() {
@@ -78,12 +71,6 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Dashboard</h1>
         </div>
-        <button onClick={handleLogout} disabled={loggingOut}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">Logout</span>
-        </button>
       </div>
 
       {/* Stats Grid — 2 cols mobile, 3 cols desktop (added dues + collection) */}

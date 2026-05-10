@@ -1,6 +1,7 @@
 // Server component — no 'use client' directive
 // Only NavClient (pathname-dependent nav) hydrates on the client
 import NavClient from './NavClient'
+import AccountMenu from './AccountMenu'
 
 function DumbbellIcon({ className }: { className?: string }) {
   return (
@@ -51,9 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-base font-bold text-gray-900">GymFlow</span>
           </div>
           <div className="hidden md:block" />
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center">
-            <span className="text-brand-700 font-bold text-xs">GY</span>
-          </div>
+          <AccountMenu />
         </header>
 
         {/* Page content — only this scrolls */}

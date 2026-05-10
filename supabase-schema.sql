@@ -236,6 +236,22 @@ CREATE TABLE IF NOT EXISTS geo_aliases (
 CREATE INDEX IF NOT EXISTS idx_geo_aliases_norm ON geo_aliases(alias_normalized);
 CREATE INDEX IF NOT EXISTS idx_geo_aliases_locality ON geo_aliases(locality_id);
 
+-- geo_gym_aliases: gym-specific learned aliases
+CREATE TABLE IF NOT EXISTS geo_gym_aliases (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  alias_raw TEXT NOT NULL,
+  alias_normalized TEXT NOT NULL,
+  canonical_name TEXT NOT NULL,
+  created_by UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(alias_normalized, gym_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_geo_gym_aliases_gym ON geo_gym_aliases(gym_id);
+CREATE INDEX IF NOT EXISTS idx_geo_gym_aliases_norm ON geo_gym_aliases(alias_normalized);
+
 -- geo_normalization_log: audit trail
 CREATE TABLE IF NOT EXISTS geo_normalization_log (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -279,6 +295,7 @@ CREATE INDEX IF NOT EXISTS idx_geo_queue_status ON geo_review_queue(status) WHER
 -- RLS
 ALTER TABLE geo_localities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE geo_aliases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE geo_gym_aliases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE geo_normalization_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE geo_review_queue ENABLE ROW LEVEL SECURITY;
 
@@ -288,14 +305,15 @@ CREATE POLICY "Authenticated users can read localities"
 CREATE POLICY "Authenticated users can read aliases"
   ON geo_aliases FOR SELECT USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY "Authenticated users can insert aliases"
-  ON geo_aliases FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+-- Hardened: Only service role or admins should modify global localities/aliases
+-- For this SaaS, we restrict to SELECT for regular authenticated users.
 
-CREATE POLICY "Authenticated users can insert localities"
-  ON geo_localities FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-
-CREATE POLICY "Authenticated users can update localities"
-  ON geo_localities FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Gym owners can manage their own gym aliases"
+  ON geo_gym_aliases FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = geo_gym_aliases.gym_id AND owner_id = auth.uid())
+    AND (created_by = auth.uid() OR created_by IS NULL)
+  );
 
 CREATE POLICY "Gym owners can view their normalization logs"
   ON geo_normalization_log FOR SELECT

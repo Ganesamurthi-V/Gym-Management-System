@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, AlertTriangle, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, AlertTriangle, Search, Loader2, MapPin, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { calcEndDate } from "@/lib/utils";
-import { AREAS } from "@/lib/areas";
+import { searchLocalities } from "@/lib/geo/matchArea";
 import type { ImportedRow } from "../page";
 
 type Step = "edit" | "preview" | "done";
@@ -23,6 +23,8 @@ export default function ImportEditPage() {
 
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [originalRows, setOriginalRows] = useState<ImportedRow[]>([]);
+  const [dbNums, setDbNums] = useState<Set<number>>(new Set());
+  const [hasIdCol, setHasIdCol] = useState(false);
   const [step, setStep] = useState<Step>("edit");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,37 +32,131 @@ export default function ImportEditPage() {
   const [error, setError] = useState("");
   const [doneResult, setDoneResult] = useState<DoneResult>({ success: 0, skipped: 0 });
   const [activeAreaIdx, setActiveAreaIdx] = useState<number | null>(null);
+  const [areaSuggestions, setAreaSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const blurTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const searchTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const tableInnerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("import_rows");
     if (!stored) { router.push("/import"); return; }
-    const parsed = JSON.parse(stored);
+    const parsed: ImportedRow[] = JSON.parse(stored);
     setRows(parsed);
     const origStored = sessionStorage.getItem("import_rows_original");
-    setOriginalRows(origStored ? JSON.parse(origStored) : JSON.parse(stored));
+    setOriginalRows(origStored ? JSON.parse(origStored) : parsed.map(r => ({ ...r })));
+    setHasIdCol(sessionStorage.getItem("import_has_id_col") === "1");
+    // Load DB nums for live uniqueness validation
+    async function loadDbNums() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: gym } = await supabase.from("gyms").select("id").eq("owner_id", user.id).single();
+      if (!gym) return;
+      const { data } = await supabase.from("members").select("member_number").eq("gym_id", gym.id) as { data: { member_number: number }[] | null };
+      setDbNums(new Set((data ?? []).map(m => m.member_number)));
+    }
+    loadDbNums();
   }, []);
+
+  // Sync mirror scrollbar width to table inner width
+  useEffect(() => {
+    if (tableInnerRef.current && mirrorRef.current) {
+      mirrorRef.current.firstElementChild && ((mirrorRef.current.firstElementChild as HTMLElement).style.width = tableInnerRef.current.scrollWidth + 'px');
+    }
+  }, [rows]);
+
+  // Keep mirror and table scroll in sync
+  useEffect(() => {
+    const table = scrollRef.current;
+    const mirror = mirrorRef.current;
+    if (!table || !mirror) return;
+    let fromTable = false, fromMirror = false;
+    const onTable = () => { if (fromMirror) { fromMirror = false; return; } fromTable = true; mirror.scrollLeft = table.scrollLeft; };
+    const onMirror = () => { if (fromTable) { fromTable = false; return; } fromMirror = true; table.scrollLeft = mirror.scrollLeft; };
+    table.addEventListener('scroll', onTable);
+    mirror.addEventListener('scroll', onMirror);
+    return () => { table.removeEventListener('scroll', onTable); mirror.removeEventListener('scroll', onMirror); };
+  }, [rows]);
+
+  function deleteSelected() {
+    setRows(prev => {
+      const remaining = prev.filter((_, i) => !selected.has(i));
+      if (hasIdCol) return remaining; // file had IDs — don't touch them
+      const usedNums = new Set(
+        remaining.filter(r => !r._id_auto).map(r => parseInt(r.member_number)).filter(Boolean)
+      );
+      const dbAndUsed = new Set([...Array.from(dbNums), ...Array.from(usedNums)]);
+      let next = 1;
+      function nextAvail() {
+        while (dbAndUsed.has(next)) next++;
+        const n = next++;
+        dbAndUsed.add(n);
+        return String(n);
+      }
+      return remaining.map(r =>
+        r._id_auto ? { ...r, member_number: nextAvail() } : r
+      );
+    });
+    setOriginalRows(prev => prev.filter((_, i) => !selected.has(i)));
+    setSelected(new Set());
+  }
+
+  function toggleSelect(idx: number) {
+    setSelected(prev => { const s = new Set(prev); s.has(idx) ? s.delete(idx) : s.add(idx); return s; });
+  }
+
+  function toggleSelectAll() {
+    const visibleIdxs = filtered.map(r => r._idx);
+    const allSelected = visibleIdxs.every(i => selected.has(i));
+    setSelected(prev => {
+      const s = new Set(prev);
+      allSelected ? visibleIdxs.forEach(i => s.delete(i)) : visibleIdxs.forEach(i => s.add(i));
+      return s;
+    });
+  }
 
   function updateRow(idx: number, field: keyof ImportedRow, value: string) {
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
   }
 
-  function isRowChanged(rowIdx: number): boolean {
-    const row = rows[rowIdx];
-    const orig = originalRows[rowIdx];
+  function validateId(idx: number, value: string) {
+    const num = parseInt(value);
+    if (!value || isNaN(num)) {
+      setRows(prev => prev.map((r, i) => i === idx ? { ...r, _id_conflict: false, _id_missing: true } : r));
+      return;
+    }
+    const inDB = dbNums.has(num);
+    const inFile = rows.some((r, i) => i !== idx && r._status !== "error" && r._status !== "duplicate" && parseInt(r.member_number) === num);
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, _id_conflict: inDB || inFile, _id_missing: false } : r));
+  }
+
+  const handleAreaSearch = useCallback((idx: number, query: string) => {
+    clearTimeout(searchTimers.current[idx]);
+    if (query.length < 2) { setAreaSuggestions(prev => ({ ...prev, [idx]: [] })); return; }
+    searchTimers.current[idx] = setTimeout(async () => {
+      const results = await searchLocalities(query);
+      setAreaSuggestions(prev => ({ ...prev, [idx]: results }));
+    }, 200);
+  }, []);
+
+  function isRowChanged(row: ImportedRow): boolean {
+    const orig = originalRows.find(r => r._rowId === row._rowId);
     if (!orig) return false;
     return EDIT_FIELDS.some(f => row[f] !== orig[f]);
   }
 
-  function isCellChanged(rowIdx: number, field: keyof ImportedRow): boolean {
-    const orig = originalRows[rowIdx];
+  function isCellChanged(row: ImportedRow, field: keyof ImportedRow): boolean {
+    const orig = originalRows.find(r => r._rowId === row._rowId);
     if (!orig) return false;
-    return rows[rowIdx]?.[field] !== orig[field];
+    return row[field] !== orig[field];
   }
 
   const validRows = rows.filter(r => r._status !== "error" && r._status !== "duplicate");
   const skippedRows = rows.filter(r => r._status === "error" || r._status === "duplicate");
-  const editedCount = rows.reduce((count, _, i) => count + (isRowChanged(i) ? 1 : 0), 0);
+  const editedCount = rows.reduce((count, row) => count + (isRowChanged(row) ? 1 : 0), 0);
 
   const filtered = rows.map((r, i) => ({ ...r, _idx: i })).filter(r =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -68,12 +164,16 @@ export default function ImportEditPage() {
     r.member_number.includes(search)
   );
 
-  const hi = (rowIdx: number, field: keyof ImportedRow) =>
-    isCellChanged(rowIdx, field)
+  const hi = (row: ImportedRow, field: keyof ImportedRow) =>
+    isCellChanged(row, field)
       ? "bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.5 rounded"
       : "";
 
+  const conflictCount = rows.filter(r => r._id_conflict).length;
+  const missingIdCount = validRows.filter(r => !r.member_number || !parseInt(r.member_number)).length;
+
   function handlePreview() {
+    if (missingIdCount > 0) { setError(`${missingIdCount} member${missingIdCount !== 1 ? 's are' : ' is'} missing a Member ID — fill them in before importing`); return; }
     setError("");
     setConfirmed(false);
     setStep("preview");
@@ -101,11 +201,19 @@ export default function ImportEditPage() {
       const toInsert = validRows;
       const skipped = skippedRows.length;
 
+      // Final guard — re-check uniqueness at save time
+      for (const row of toInsert) {
+        const num = parseInt(row.member_number);
+        if (!num) throw new Error(`Member "${row.name}" is missing a Member ID`);
+        if (existingNumSet.has(num)) throw new Error(`Member ID #${num} is already taken ("${row.name}")`);
+        existingNumSet.add(num);
+      }
+
       const { data: insertedMembers, error: batchErr } = await supabase
         .from("members")
         .insert(toInsert.map(row => {
-          let num = row.member_number ? parseInt(row.member_number) : 0;
-          if (!num || existingNumSet.has(num)) num = nextAvailable;
+          let num = parseInt(row.member_number);
+          if (!num || existingNumSet.has(num)) { num = nextAvailable; nextAvailable++; }
           existingNumSet.add(num);
           if (num >= nextAvailable) nextAvailable = num + 1;
           return {
@@ -115,7 +223,7 @@ export default function ImportEditPage() {
             phone: row.phone,
             ...(row.gender && { gender: row.gender }),
             ...(row.age && { age: parseInt(row.age) }),
-            ...(row.area   && { area: row.area }),
+            ...(row.area && { area: row.area }),
           };
         }))
         .select("id, phone") as { data: { id: string; phone: string }[] | null; error: any };
@@ -215,20 +323,19 @@ export default function ImportEditPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {validRows.map((row) => {
-                  const rowIdx = rows.indexOf(row);
-                  const anyChanged = isRowChanged(rowIdx);
+                  const anyChanged = isRowChanged(row);
                   return (
-                    <tr key={rowIdx} className={anyChanged ? "bg-emerald-50/40" : "hover:bg-gray-50"}>
-                      <td className="px-4 py-2.5 font-mono text-xs"><span className={hi(rowIdx, "member_number")}>{row.member_number || "—"}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(rowIdx, "name")}>{row.name}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(rowIdx, "phone")}>{row.phone}</span></td>
-                      <td className="px-4 py-2.5 capitalize"><span className={hi(rowIdx, "plan")}>{row.plan}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(rowIdx, "start_date")}>{row.start_date}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(rowIdx, "amount")}>₹{row.amount}</span></td>
-                      <td className="px-4 py-2.5 uppercase"><span className={hi(rowIdx, "payment_mode")}>{row.payment_mode}</span></td>
-                      <td className="px-4 py-2.5 capitalize"><span className={hi(rowIdx, "gender")}>{row.gender || "—"}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(rowIdx, "age")}>{row.age || "—"}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(rowIdx, "area")}>{row.area || "—"}</span></td>
+                    <tr key={row._rowId} className={anyChanged ? "bg-emerald-50/40" : "hover:bg-gray-50"}>
+                      <td className="px-4 py-2.5 font-mono text-xs"><span className={hi(row, "member_number")}>{row.member_number || "—"}</span></td>
+                      <td className="px-4 py-2.5"><span className={hi(row, "name")}>{row.name}</span></td>
+                      <td className="px-4 py-2.5"><span className={hi(row, "phone")}>{row.phone}</span></td>
+                      <td className="px-4 py-2.5 capitalize"><span className={hi(row, "plan")}>{row.plan}</span></td>
+                      <td className="px-4 py-2.5"><span className={hi(row, "start_date")}>{row.start_date}</span></td>
+                      <td className="px-4 py-2.5"><span className={hi(row, "amount")}>₹{row.amount}</span></td>
+                      <td className="px-4 py-2.5 uppercase"><span className={hi(row, "payment_mode")}>{row.payment_mode}</span></td>
+                      <td className="px-4 py-2.5 capitalize"><span className={hi(row, "gender")}>{row.gender || "—"}</span></td>
+                      <td className="px-4 py-2.5"><span className={hi(row, "age")}>{row.age || "—"}</span></td>
+                      <td className="px-4 py-2.5"><span className={hi(row, "area")}>{row.area || "—"}</span></td>
                     </tr>
                   );
                 })}
@@ -272,7 +379,6 @@ export default function ImportEditPage() {
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Importing {validRows.length} members...</span>
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
               </>
             ) : (
               <>
@@ -288,6 +394,8 @@ export default function ImportEditPage() {
   }
 
   // ── Edit ──────────────────────────────────────────────────────────────────
+  const cls = "px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-gray-50 disabled:text-gray-400";
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -299,13 +407,21 @@ export default function ImportEditPage() {
           <h1 className="text-xl font-bold text-gray-900">Edit Before Importing</h1>
         </div>
         <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button onClick={deleteSelected}
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 text-sm font-semibold rounded-lg border border-red-200 hover:bg-red-100 transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete {selected.size}
+            </button>
+          )}
           {editedCount > 0 && (
             <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-200">
               {editedCount} edited
             </span>
           )}
-          <button onClick={handlePreview}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all"
+          <button onClick={handlePreview} disabled={conflictCount > 0 || missingIdCount > 0}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all disabled:opacity-40"
           >
             <Check className="w-4 h-4" />Review & Import
           </button>
@@ -318,17 +434,60 @@ export default function ImportEditPage() {
         <span className="text-red-500 font-semibold">{skippedRows.length} will be skipped</span>
       </div>
 
+      {(conflictCount > 0 || missingIdCount > 0 || error) && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+          <p className="text-sm font-semibold text-red-700">
+            {missingIdCount > 0 && `${missingIdCount} member${missingIdCount !== 1 ? 's are' : ' is'} missing a Member ID`}
+            {missingIdCount > 0 && conflictCount > 0 && " · "}
+            {conflictCount > 0 && `${conflictCount} Member ID${conflictCount !== 1 ? 's are' : ' is'} already taken`}
+            {(missingIdCount > 0 || conflictCount > 0) ? " — fix before importing" : error}
+          </p>
+        </div>
+      )}
+
+      {/* Areas needing review banner */}
+      {(() => {
+        const needsReview = rows.filter(r => r.area && (r._area_confidence ?? 1) < 0.90);
+        if (needsReview.length === 0) return null;
+        return (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <MapPin className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <p className="text-sm font-semibold text-amber-800">
+              {needsReview.length} area{needsReview.length !== 1 ? 's' : ''} need review — check the dots in the Area column
+            </p>
+            <div className="flex items-center gap-2 ml-auto text-xs text-amber-700">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Suggested</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Unresolved</span>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input type="search" placeholder="Search..." value={search}
           onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
       </div>
 
+      {/* Sticky mirror scrollbar */}
+      <div ref={mirrorRef} className="sticky top-0 z-20 overflow-x-auto overflow-y-hidden h-3 bg-transparent">
+        <div style={{ height: 1 }} />
+      </div>
+
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div ref={scrollRef} className="overflow-x-auto">
+          <div ref={tableInnerRef}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="px-3 py-3 w-8">
+                  <input type="checkbox"
+                    checked={filtered.length > 0 && filtered.every(r => selected.has(r._idx))}
+                    onChange={toggleSelectAll}
+                    className="w-3.5 h-3.5 rounded accent-red-500 cursor-pointer"
+                  />
+                </th>
                 <th className="px-3 py-3 w-8"></th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">ID</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
@@ -339,30 +498,49 @@ export default function ImportEditPage() {
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Mode</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Gender</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-16">Age</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[150px]">Area</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[150px]">Area ✦</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map(row => {
                 const idx = row._idx;
                 const isSkipped = row._status === "error" || row._status === "duplicate";
-                const changed = isRowChanged(idx);
-                const areaSuggestions = row.area.length > 0
-                  ? AREAS.filter(a => a.toLowerCase().includes(row.area.toLowerCase()))
-                  : [];
-                const cls = "px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-gray-50 disabled:text-gray-400";
+                const changed = isRowChanged(row);
+                const suggestions = areaSuggestions[idx] ?? [];
 
                 return (
-                  <tr key={idx} className={isSkipped ? "bg-red-50 opacity-60" : changed ? "bg-brand-50/20" : "hover:bg-gray-50"}>
+                  <tr key={idx} className={isSkipped ? "bg-red-50 opacity-60" : selected.has(idx) ? "bg-red-50/60" : changed ? "bg-brand-50/20" : "hover:bg-gray-50"}>
+                    <td className="px-3 py-2">
+                      <input type="checkbox"
+                        checked={selected.has(idx)}
+                        onChange={() => toggleSelect(idx)}
+                        className="w-3.5 h-3.5 rounded accent-red-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 py-2">
                       {isSkipped ? <AlertTriangle className="w-4 h-4 text-red-400" />
                         : row._error ? <AlertTriangle className="w-4 h-4 text-amber-400" />
                         : <Check className="w-4 h-4 text-emerald-500" />}
                     </td>
                     <td className="px-3 py-2">
-                      <input type="text" value={row.member_number} disabled={isSkipped}
-                        onChange={e => updateRow(idx, "member_number", e.target.value)}
-                        className={`w-16 ${cls}`} />
+                      <div className="flex flex-col gap-0.5">
+                        <input
+                          type="number" min="1"
+                          value={row.member_number}
+                          disabled={isSkipped}
+                          onChange={e => updateRow(idx, "member_number", e.target.value)}
+                          onBlur={e => validateId(idx, e.target.value)}
+                          className={`w-16 ${cls} ${
+                            (row._id_conflict || row._id_missing) ? 'border-red-400 bg-red-50 text-red-700' : ''
+                          }`}
+                        />
+                        {row._id_auto && !row._id_conflict && (
+                          <span className="text-[9px] text-amber-500 font-semibold leading-none" title="No ID in file — auto-assigned. You can change it.">auto ⚠</span>
+                        )}
+                        {row._id_conflict && (
+                          <span className="text-[9px] text-red-500 font-semibold leading-none">taken!</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <input type="text" value={row.name} disabled={isSkipped}
@@ -419,18 +597,37 @@ export default function ImportEditPage() {
                         className={`w-14 ${cls}`} placeholder="—" />
                     </td>
                     <td className="px-3 py-2 relative">
-                      <input type="text" value={row.area} disabled={isSkipped}
-                        onChange={e => { updateRow(idx, "area", e.target.value); setActiveAreaIdx(idx); }}
-                        onFocus={() => { clearTimeout(blurTimers.current[idx]); setActiveAreaIdx(idx); }}
-                        onBlur={() => { blurTimers.current[idx] = setTimeout(() => setActiveAreaIdx(null), 150); }}
-                        className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
-                      {activeAreaIdx === idx && areaSuggestions.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        {row.area && !isSkipped && (
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            (row._area_confidence ?? 1) >= 0.90 ? 'bg-emerald-500' :
+                            (row._area_confidence ?? 1) >= 0.70 ? 'bg-amber-400' : 'bg-red-400'
+                          }`} title={`${((row._area_confidence ?? 1) * 100).toFixed(0)}% confidence (${row._area_matched_by ?? 'unknown'})`} />
+                        )}
+                        <input type="text" value={row.area} disabled={isSkipped}
+                          onChange={e => {
+                            updateRow(idx, "area", e.target.value);
+                            setActiveAreaIdx(idx);
+                            handleAreaSearch(idx, e.target.value);
+                          }}
+                          onFocus={() => { clearTimeout(blurTimers.current[idx]); setActiveAreaIdx(idx); }}
+                          onBlur={() => { blurTimers.current[idx] = setTimeout(() => setActiveAreaIdx(null), 150); }}
+                          className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
+                      </div>
+                      {activeAreaIdx === idx && suggestions.length > 0 && (
                         <ul className="absolute z-30 left-3 right-3 bg-white border border-gray-200 rounded-xl shadow-xl max-h-36 overflow-y-auto mt-0.5">
-                          {areaSuggestions.slice(0, 5).map(a => (
-                            <li key={a}
-                              onMouseDown={() => { updateRow(idx, "area", a); setActiveAreaIdx(null); }}
+                          {suggestions.slice(0, 5).map(a => (
+                            <li key={a.id}
+                              onMouseDown={() => {
+                                updateRow(idx, "area", a.name);
+                                updateRow(idx, "_area_confidence" as any, "1");
+                                setActiveAreaIdx(null);
+                              }}
                               className="px-3 py-1.5 text-xs text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer"
-                            >{a}</li>
+                            >
+                              <span className="font-medium">{a.name}</span>
+                              {a.district && <span className="text-gray-400 ml-1">{a.district}</span>}
+                            </li>
                           ))}
                         </ul>
                       )}
@@ -440,6 +637,7 @@ export default function ImportEditPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

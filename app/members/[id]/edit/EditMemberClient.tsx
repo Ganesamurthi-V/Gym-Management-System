@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Check, Edit2, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { AREAS } from '@/lib/areas'
+import { searchLocalities } from '@/lib/geo/matchArea'
 import type { Member } from '@/types'
 
 type Step = 'form' | 'preview'
@@ -23,6 +23,8 @@ export function EditMemberClient({ member }: Props) {
   const [error, setError] = useState('')
   const [areaInput, setAreaInput] = useState(member.area ?? '')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [areaSuggestions, setAreaSuggestions] = useState<Array<{ id: string; name: string; district: string }>>([])  
+  const areaSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [confirmed, setConfirmed] = useState(false)
   const [numError, setNumError] = useState('')
   const [checkingNum, setCheckingNum] = useState(false)
@@ -232,17 +234,29 @@ export function EditMemberClient({ member }: Props) {
           <div className="relative">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Area / Locality</label>
             <input type="text" value={areaInput}
-              onChange={e => { setAreaInput(e.target.value); update('area', e.target.value); setShowSuggestions(true) }}
+              onChange={e => {
+                setAreaInput(e.target.value)
+                update('area', e.target.value)
+                setShowSuggestions(true)
+                if (areaSearchTimer.current) clearTimeout(areaSearchTimer.current)
+                areaSearchTimer.current = setTimeout(async () => {
+                  const results = await searchLocalities(e.target.value)
+                  setAreaSuggestions(results)
+                }, 200)
+              }}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               className="input-field" placeholder="Type to search area..." autoComplete="off"
             />
-            {showSuggestions && areaInput.length > 0 && AREAS.filter(a => a.toLowerCase().includes(areaInput.toLowerCase())).length > 0 && (
+            {showSuggestions && areaSuggestions.length > 0 && (
               <ul className="absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-2xl mt-1 shadow-xl max-h-48 overflow-y-auto">
-                {AREAS.filter(a => a.toLowerCase().includes(areaInput.toLowerCase())).map(a => (
-                  <li key={a} onMouseDown={() => { update('area', a); setAreaInput(a); setShowSuggestions(false) }}
+                {areaSuggestions.map(a => (
+                  <li key={a.id} onMouseDown={() => { update('area', a.name); setAreaInput(a.name); setShowSuggestions(false) }}
                     className="px-4 py-3 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl font-medium"
-                  >{a}</li>
+                  >
+                    {a.name}
+                    {a.district && <span className="text-xs text-gray-400 ml-1">{a.district}</span>}
+                  </li>
                 ))}
               </ul>
             )}

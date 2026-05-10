@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { calcEndDate, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
-import { AREAS } from '@/lib/areas'
+import { searchLocalities } from '@/lib/geo/matchArea'
 import type { Plan, PaymentMode } from '@/types'
 import { format } from 'date-fns'
 import Link from 'next/link'
@@ -21,7 +21,12 @@ export default function NewMemberPage() {
   const [error, setError] = useState('')
   const [areaInput, setAreaInput] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [areaSuggestions, setAreaSuggestions] = useState<Array<{ id: string; name: string; district: string }>>([])  
+  const areaSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [nextMemberNumber, setNextMemberNumber] = useState<number | null>(null)
+  const [numError, setNumError] = useState('')
+  const [checkingNum, setCheckingNum] = useState(false)
+  const [gymId, setGymId] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     name: '',
@@ -45,6 +50,7 @@ export default function NewMemberPage() {
       if (!user) return
       const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
       if (!gym) return
+      setGymId(gym.id)
       const { data } = await supabase
         .from('members')
         .select('member_number')
@@ -58,12 +64,27 @@ export default function NewMemberPage() {
     fetchNextNumber()
   }, [])
 
+  useEffect(() => {
+    const num = parseInt(form.member_number)
+    if (!num || !gymId) { setNumError(form.member_number ? '' : 'Member ID is required'); return }
+    setCheckingNum(true)
+    setNumError('')
+    const timer = setTimeout(async () => {
+      const { data } = await supabase.from('members').select('id').eq('gym_id', gymId).eq('member_number', num).single()
+      setNumError(data ? `Member ID #${num} is already taken` : '')
+      setCheckingNum(false)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [form.member_number, gymId])
+
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
   function handlePreview(e: React.FormEvent) {
     e.preventDefault()
+    if (!form.member_number) { setError('Member ID is required'); return }
+    if (numError) return
     setError('')
     setStep('preview')
   }
@@ -83,21 +104,14 @@ export default function NewMemberPage() {
         .from('members').select('id').eq('gym_id', gym.id).eq('phone', form.phone).single()
       if (existing && form.phone.trim()) throw new Error('A member with this phone number already exists.')
 
-      const memberNumber = parseInt(form.member_number) || (nextMemberNumber ?? 1)
+      const memberNumber = parseInt(form.member_number)
+      if (!memberNumber) throw new Error('Member ID is required')
 
       const { data: existingNum } = await supabase
         .from('members').select('id').eq('gym_id', gym.id).eq('member_number', memberNumber).single()
+      if (existingNum) throw new Error(`Member ID #${memberNumber} is already taken`)
 
-      let finalMemberNumber = memberNumber
-      if (existingNum) {
-        const { data: maxData } = await supabase
-          .from('members')
-          .select('member_number')
-          .eq('gym_id', gym.id)
-          .order('member_number', { ascending: false })
-          .limit(1)
-        finalMemberNumber = ((maxData as any)?.[0]?.member_number ?? 0) + 1
-      }
+      const finalMemberNumber = memberNumber
 
       const { data: member, error: memberError } = await supabase
         .from('members')
@@ -265,19 +279,24 @@ export default function NewMemberPage() {
           {/* Member ID */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Member ID
-              <span className="ml-2 text-gray-400 font-normal normal-case">(optional — auto-assigned if left)</span>
+              Member ID <span className="text-red-500">*</span>
             </label>
             <div className="flex items-center gap-2">
               <input type="number" value={form.member_number} onChange={(e) => update('member_number', e.target.value)}
-                className="input-field w-36" placeholder={nextMemberNumber ? String(nextMemberNumber) : '...'} min="1" />
+                className={`input-field w-36 ${numError ? 'border-red-400 focus:ring-red-400' : ''}`}
+                placeholder={nextMemberNumber ? String(nextMemberNumber) : '...'} min="1" required />
               {nextMemberNumber && (
                 <span className="text-xs text-gray-400">
-                  Next: <button type="button" onClick={() => update('member_number', String(nextMemberNumber))}
+                  Suggested: <button type="button" onClick={() => update('member_number', String(nextMemberNumber))}
                     className="text-brand-600 font-semibold hover:underline">#{nextMemberNumber}</button>
                 </span>
               )}
             </div>
+            {checkingNum && <p className="text-xs text-gray-400 mt-1.5">Checking...</p>}
+            {numError && <p className="text-xs text-red-500 mt-1.5 font-medium">⚠ {numError}</p>}
+            {!numError && !checkingNum && form.member_number && (
+              <p className="text-xs text-emerald-600 mt-1.5 font-medium">✓ Available</p>
+            )}
           </div>
 
           {/* Name */}
@@ -325,17 +344,29 @@ export default function NewMemberPage() {
           <div className="relative">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Area / Locality</label>
             <input type="text" value={areaInput}
-              onChange={(e) => { setAreaInput(e.target.value); update('area', e.target.value); setShowSuggestions(true) }}
+              onChange={(e) => {
+                setAreaInput(e.target.value)
+                update('area', e.target.value)
+                setShowSuggestions(true)
+                if (areaSearchTimer.current) clearTimeout(areaSearchTimer.current)
+                areaSearchTimer.current = setTimeout(async () => {
+                  const results = await searchLocalities(e.target.value)
+                  setAreaSuggestions(results)
+                }, 200)
+              }}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               className="input-field" placeholder="Type to search area..." autoComplete="off"
             />
-            {showSuggestions && areaInput.length > 0 && AREAS.filter(a => a.toLowerCase().includes(areaInput.toLowerCase())).length > 0 && (
+            {showSuggestions && areaSuggestions.length > 0 && (
               <ul className="absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-2xl mt-1 shadow-xl max-h-48 overflow-y-auto">
-                {AREAS.filter(a => a.toLowerCase().includes(areaInput.toLowerCase())).map(a => (
-                  <li key={a} onMouseDown={() => { update('area', a); setAreaInput(a); setShowSuggestions(false) }}
+                {areaSuggestions.map(a => (
+                  <li key={a.id} onMouseDown={() => { update('area', a.name); setAreaInput(a.name); setShowSuggestions(false) }}
                     className="px-4 py-3 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl font-medium"
-                  >{a}</li>
+                  >
+                    {a.name}
+                    {a.district && <span className="text-xs text-gray-400 ml-1">{a.district}</span>}
+                  </li>
                 ))}
               </ul>
             )}
@@ -434,7 +465,7 @@ export default function NewMemberPage() {
           </div>
 
           <div className="pt-2">
-            <button type="submit" className="btn-primary">
+            <button type="submit" disabled={!!numError || checkingNum || !form.member_number} className="btn-primary disabled:opacity-50">
               Review & Confirm →
             </button>
           </div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { matchArea } from "@/lib/areas";
+import { matchAreaLegacy } from "@/lib/areas";
 import Link from "next/link";
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
@@ -179,7 +179,7 @@ export default function ManualImportPage() {
       const payment_mode = normalizePaymentMode(get("payment_mode") || "cash");
       const gender       = normalizeGender(get("gender"));
       const age          = get("age").replace(/\D/g, "");
-      const area         = matchArea(get("area"));
+      const area         = matchAreaLegacy(get("area"));
       const member_number = get("member_number");
 
       // Constraint validation

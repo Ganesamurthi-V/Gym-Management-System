@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Check, AlertTriangle, Edit2, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, AlertTriangle, Edit2, Search, Trash2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { AREAS } from '@/lib/areas'
+import { searchLocalities, matchAreaBatch } from '@/lib/geo/matchArea'
 
 interface MemberRow {
   id: string
@@ -31,6 +31,11 @@ interface EditedRow {
 
 type Step = 'edit' | 'preview'
 
+interface AreaMeta {
+  confidence: number
+  matched_by: string
+}
+
 interface Props {
   members: MemberRow[]
   gymId: string
@@ -48,7 +53,38 @@ export function EditMembersClient({ members, gymId }: Props) {
   const [confirmed, setConfirmed] = useState(false)
   const [error, setError] = useState('')
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null)
+  const [areaSuggestions, setAreaSuggestions] = useState<Record<string, Array<{ id: string; name: string; district: string }>>>({})
+  const [areaMeta, setAreaMeta] = useState<Record<string, AreaMeta>>({})
   const blurTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const searchTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  // Normalize all existing area values on mount
+  useEffect(() => {
+    const withArea = members.filter(m => m.area)
+    if (withArea.length === 0) return
+    const BATCH = 50
+    async function run() {
+      const inputs = withArea.map(m => ({ raw: m.area!, gymId }))
+      const results: AreaMeta[] = []
+      for (let i = 0; i < inputs.length; i += BATCH) {
+        const batch = await matchAreaBatch(inputs.slice(i, i + BATCH))
+        batch.forEach(r => results.push({ confidence: r.confidence_score, matched_by: r.matched_by }))
+      }
+      const meta: Record<string, AreaMeta> = {}
+      withArea.forEach((m, i) => { meta[m.id] = results[i] })
+      setAreaMeta(meta)
+    }
+    run()
+  }, [])
+
+  const handleAreaSearch = useCallback((memberId: string, query: string) => {
+    clearTimeout(searchTimers.current[memberId])
+    if (query.length < 2) { setAreaSuggestions(prev => ({ ...prev, [memberId]: [] })); return }
+    searchTimers.current[memberId] = setTimeout(async () => {
+      const results = await searchLocalities(query)
+      setAreaSuggestions(prev => ({ ...prev, [memberId]: results }))
+    }, 200)
+  }, [])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -339,6 +375,24 @@ export function EditMembersClient({ members, gymId }: Props) {
         />
       </div>
 
+      {/* Areas needing review banner */}
+      {(() => {
+        const needsReview = members.filter(m => m.area && areaMeta[m.id] && areaMeta[m.id].confidence < 0.90)
+        if (needsReview.length === 0) return null
+        return (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <MapPin className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <p className="text-sm font-semibold text-amber-800">
+              {needsReview.length} area{needsReview.length !== 1 ? 's' : ''} need review
+            </p>
+            <div className="flex items-center gap-2 ml-auto text-xs text-amber-700">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Suggested</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Unresolved</span>
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -356,7 +410,7 @@ export function EditMembersClient({ members, gymId }: Props) {
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Gender</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">Age</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[180px]">Area</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[180px]">Area ✦</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Pending Due (₹)</th>
               </tr>
             </thead>
@@ -370,9 +424,6 @@ export function EditMembersClient({ members, gymId }: Props) {
                   e.area !== (m.area ?? '') ||
                   parseInt(e.member_number) !== m.member_number ||
                   parseInt(e.pending_amount) !== (m.pending_amount ?? 0)
-                const areaSuggestions = e.area.length > 0
-                  ? AREAS.filter(a => a.toLowerCase().includes(e.area.toLowerCase()))
-                  : []
 
                 return (
                   <tr key={m.id} className={selected.has(m.id) ? 'bg-red-50' : changed ? 'bg-brand-50/40' : 'hover:bg-gray-50'}>
@@ -412,17 +463,38 @@ export function EditMembersClient({ members, gymId }: Props) {
                         className={`w-16 ${cls}`} placeholder="—" />
                     </td>
                     <td className="px-4 py-2 relative">
-                      <input type="text" value={e.area}
-                        onChange={ev => { updateField(m.id, 'area', ev.target.value); setActiveAreaId(m.id) }}
-                        onFocus={() => { clearTimeout(blurTimers.current[m.id]); setActiveAreaId(m.id) }}
-                        onBlur={() => { blurTimers.current[m.id] = setTimeout(() => setActiveAreaId(null), 150) }}
-                        className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
-                      {activeAreaId === m.id && areaSuggestions.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        {e.area && areaMeta[m.id] && (
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            areaMeta[m.id].confidence >= 0.90 ? 'bg-emerald-500' :
+                            areaMeta[m.id].confidence >= 0.70 ? 'bg-amber-400' : 'bg-red-400'
+                          }`} title={`${(areaMeta[m.id].confidence * 100).toFixed(0)}% confidence (${areaMeta[m.id].matched_by})`} />
+                        )}
+                        <input type="text" value={e.area}
+                          onChange={ev => {
+                            updateField(m.id, 'area', ev.target.value)
+                            setActiveAreaId(m.id)
+                            handleAreaSearch(m.id, ev.target.value)
+                            // clear meta so dot disappears while editing
+                            setAreaMeta(prev => { const n = { ...prev }; delete n[m.id]; return n })
+                          }}
+                          onFocus={() => { clearTimeout(blurTimers.current[m.id]); setActiveAreaId(m.id) }}
+                          onBlur={() => { blurTimers.current[m.id] = setTimeout(() => setActiveAreaId(null), 150) }}
+                          className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
+                      </div>
+                      {activeAreaId === m.id && (areaSuggestions[m.id] ?? []).length > 0 && (
                         <ul className="absolute z-30 left-4 right-4 bg-white border border-gray-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5">
-                          {areaSuggestions.slice(0, 6).map(a => (
-                            <li key={a} onMouseDown={() => { updateField(m.id, 'area', a); setActiveAreaId(null) }}
+                          {(areaSuggestions[m.id] ?? []).slice(0, 6).map(a => (
+                            <li key={a.id} onMouseDown={() => {
+                              updateField(m.id, 'area', a.name)
+                              setAreaMeta(prev => ({ ...prev, [m.id]: { confidence: 1.0, matched_by: 'manual' } }))
+                              setActiveAreaId(null)
+                            }}
                               className="px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer"
-                            >{a}</li>
+                            >
+                              {a.name}
+                              {a.district && <span className="text-xs text-gray-400 ml-1">{a.district}</span>}
+                            </li>
                           ))}
                         </ul>
                       )}

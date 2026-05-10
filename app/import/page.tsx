@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { matchArea } from "@/lib/areas";
+import { matchAreaBatch } from "@/lib/geo/matchArea";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -19,8 +19,14 @@ export interface ImportedRow {
   age: string;
   area: string;
   member_number: string;
+  _rowId?: number;          // stable identity across deletions
   _status?: "ok" | "duplicate" | "error";
   _error?: string;
+  _area_confidence?: number;
+  _area_matched_by?: string;
+  _id_auto?: boolean;       // true = was auto-assigned (no ID in file)
+  _id_conflict?: boolean;   // true = user typed a conflicting ID
+  _id_missing?: boolean;    // true = ID is empty/not provided
 }
 
 // ── Smart column alias dictionary ─────────────────────────────────────────────
@@ -134,22 +140,54 @@ function normalizePaymentMode(raw: string): string {
   return "cash";
 }
 
+const WORD_NUMS: Record<string, number> = {
+  zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,
+  eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,
+  eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,
+  eighty:80,ninety:90,
+};
+
+function normalizeAge(raw: string): string {
+  if (!raw) return "";
+  // strip suffixes like "yrs", "years", "yr", "y"
+  const cleaned = raw.toLowerCase().replace(/\s*(years?|yrs?|y)\b/g, "").trim();
+  // already a number
+  const num = parseInt(cleaned);
+  if (!isNaN(num) && num > 0 && num <= 120) return String(num);
+  // word form: "twenty five", "twentyfive", "twenty-five"
+  const words = cleaned.replace(/-/g, " ").split(/\s+/);
+  let total = 0;
+  for (const w of words) {
+    const n = WORD_NUMS[w];
+    if (n === undefined) return ""; // unrecognised word — drop it
+    total += n;
+  }
+  return total > 0 && total <= 120 ? String(total) : "";
+}
+
 export default function ImportPage() {
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<Record<string, string>>({});
   const [parsing, setParsing] = useState(false);
-  const [parseStage, setParseStage] = useState(0); // 0=idle 1=reading 2=detecting 3=processing 4=done
+  const [parseStage, setParseStage] = useState(0); // 0=idle 1=reading 2=detecting 3=processing 4=normalizing-areas 5=done
   const supabase = createClient();
   const router = useRouter();
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Security: file size limit 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File too large. Maximum size is 10MB.");
+      return;
+    }
+
     setParsing(true);
     setParseStage(1);
 
-    // Lazy-load ExcelJS — keeps ~500KB out of the initial JS bundle
-    const ExcelJS = (await import("exceljs")).default;
+    const ExcelJSModule = await import("exceljs");
+    const ExcelJS = ExcelJSModule.default || ExcelJSModule;
     setParseStage(2);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -173,13 +211,27 @@ export default function ImportPage() {
       const text = await file.text();
       const lines = text.split(/\r?\n/).filter(Boolean);
       const ws = wb.addWorksheet("Sheet1");
-      lines.forEach(line => ws.addRow(line.split(",").map(v => v.trim().replace(/^"|"$/g, ""))));
+      // Security: strip CSV formula injection
+      lines.forEach(line => ws.addRow(
+        line.split(",").map(v => {
+          const val = v.trim().replace(/^"|"$/g, "");
+          return /^[=+\-@]/.test(val) ? "'" + val : val;
+        })
+      ));
     } else {
       await wb.xlsx.load(await file.arrayBuffer());
     }
 
     const ws = wb.worksheets[0];
     if (!ws) { setParsing(false); return; }
+
+    // Security: row count limits
+    const totalRows = ws.rowCount - 1;
+    if (totalRows > 50000) {
+      alert("File has too many rows (max 50,000). Please split the file.");
+      setParsing(false);
+      return;
+    }
 
     const headers: string[] = [];
     ws.getRow(1).eachCell({ includeEmpty: true }, (cell: any) => headers.push(cellStr(cell.value)));
@@ -201,8 +253,8 @@ export default function ImportPage() {
       const amount        = getCol(row, colMap, "amount") || "0";
       const payment_mode  = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
       const gender        = normalizeGender(getCol(row, colMap, "gender"));
-      const age           = getCol(row, colMap, "age");
-      const area          = matchArea(getCol(row, colMap, "area"));
+      const age           = normalizeAge(getCol(row, colMap, "age"));
+      const rawArea       = getCol(row, colMap, "area");
       const member_number = getCol(row, colMap, "member_number");
 
       let start_date: string;
@@ -231,7 +283,26 @@ export default function ImportPage() {
       if (!name) _error = "Missing name";
       else if (phone && phone.length !== 10) _error = "Invalid phone — WhatsApp reminders won't work";
 
-      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, age, area, member_number, _status: !name ? "error" : "ok", _error });
+      // area will be filled after batch normalization
+      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, age, area: rawArea, member_number, _rowId: parsed.length, _status: !name ? "error" : "ok", _error });
+    });
+
+    // Batch normalize all area values
+    setParseStage(4);
+    const BATCH_SIZE = 50;
+    const areaInputs = parsed.map(r => ({ raw: r.area, gymId: gym?.id }));
+    const areaResults: any[] = [];
+    for (let i = 0; i < areaInputs.length; i += BATCH_SIZE) {
+      const batch = await matchAreaBatch(areaInputs.slice(i, i + BATCH_SIZE));
+      areaResults.push(...batch);
+    }
+    parsed.forEach((r, i) => {
+      const res = areaResults[i];
+      if (res) {
+        r.area = res.normalized_value;
+        r._area_confidence = res.confidence_score;
+        r._area_matched_by = res.matched_by;
+      }
     });
 
     // Build assignedNums incrementally, checking both DB and file conflicts together
@@ -254,20 +325,27 @@ export default function ImportPage() {
       }
     });
 
-    // Pass 2: assign/fix member numbers — checks both file duplicates AND DB conflicts together
+    // Pass 2: assign/fix member numbers — auto-assign if missing, flag conflicts for manual fix
     const seenNums = new Set<string>();
     parsed.forEach(r => {
       if (r._status === "error" || r._status === "duplicate") return;
-      if (r.member_number) {
+      if (!r.member_number) {
+        const newNum = nextAvailable();
+        assignedNums.add(newNum);
+        seenNums.add(newNum);
+        r.member_number = newNum;
+        r._id_auto = true;
+      } else {
         const inDB = dbNums.has(parseInt(r.member_number));
         const inFile = seenNums.has(r.member_number);
         if (inDB || inFile) {
-          const reason = inDB ? "exists in DB" : "duplicate";
           const newNum = nextAvailable();
           assignedNums.add(newNum);
           seenNums.add(newNum);
-          r._error = `ID #${r.member_number} ${reason} — auto-assigned #${newNum}`;
+          r._id_conflict = true;
+          r._error = `ID #${r.member_number} ${inDB ? 'exists in DB' : 'duplicate in file'} — auto-assigned #${newNum}`;
           r.member_number = newNum;
+          r._id_auto = true;
         } else {
           seenNums.add(r.member_number);
           assignedNums.add(r.member_number);
@@ -283,13 +361,14 @@ export default function ImportPage() {
     });
 
     setRows(parsed);
-    setParseStage(4);
+    setParseStage(5);
     setParsing(false);
   }
 
   function handleProceedToEdit() {
     sessionStorage.setItem("import_rows", JSON.stringify(rows));
     sessionStorage.setItem("import_rows_original", JSON.stringify(rows.map(r => ({ ...r }))));
+    sessionStorage.setItem("import_has_id_col", detectedColumns.member_number ? "1" : "0");
     router.push("/import/edit");
   }
 
@@ -347,7 +426,8 @@ export default function ImportPage() {
                   {parseStage === 1 && '📂 Reading your file...'}
                   {parseStage === 2 && '🔍 Detecting columns...'}
                   {parseStage === 3 && '⚡ Processing rows...'}
-                  {parseStage === 4 && '✅ Almost done!'}
+                  {parseStage === 4 && '🗺️ Normalizing areas...'}
+                  {parseStage === 5 && '✅ Almost done!'}
                 </p>
                 <p className="text-xs text-gray-400">Your data is getting cooked 🍳</p>
               </div>
@@ -394,18 +474,24 @@ export default function ImportPage() {
 
       {rows.length > 0 && (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-emerald-600">{validRows.filter(r => !r._error).length}</p>
               <p className="text-sm text-gray-500 mt-0.5">Ready</p>
             </div>
             <div className="card p-4 text-center">
-              <p className="text-2xl font-bold text-amber-500">{validRows.filter(r => r._error).length}</p>
-              <p className="text-sm text-gray-500 mt-0.5">ID auto-fixed</p>
+              <p className="text-2xl font-bold text-amber-500">{validRows.filter(r => r._id_auto).length}</p>
+              <p className="text-sm text-gray-500 mt-0.5">ID auto-assigned</p>
             </div>
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-red-500">{errorRows.length}</p>
               <p className="text-sm text-gray-500 mt-0.5">Will be skipped</p>
+            </div>
+            <div className="card p-4 text-center">
+              <p className="text-2xl font-bold text-orange-500">
+                {rows.filter(r => r.area && (r._area_confidence ?? 1) < 0.90).length}
+              </p>
+              <p className="text-sm text-gray-500 mt-0.5">Areas need review</p>
             </div>
           </div>
 
@@ -423,7 +509,7 @@ export default function ImportPage() {
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Plan</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Age</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Area</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Area ✦</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</th>
                   </tr>
                 </thead>
@@ -446,7 +532,20 @@ export default function ImportPage() {
                       <td className="px-4 py-2.5 text-gray-500">{row.phone}</td>
                       <td className="px-4 py-2.5 text-gray-500 capitalize">{row.plan}</td>
                       <td className="px-4 py-2.5 text-gray-500">{row.age || "—"}</td>
-                      <td className="px-4 py-2.5 text-gray-500">{row.area || "—"}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          {row.area ? (
+                            <>
+                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                (row._area_confidence ?? 0) >= 0.90 ? 'bg-emerald-500' :
+                                (row._area_confidence ?? 0) >= 0.70 ? 'bg-amber-400' :
+                                row._area_matched_by === 'unresolved' ? 'bg-red-400' : 'bg-gray-300'
+                              }`} title={`Confidence: ${((row._area_confidence ?? 0) * 100).toFixed(0)}% (${row._area_matched_by ?? 'unknown'})`} />
+                              <span className="text-gray-500 text-xs">{row.area}</span>
+                            </>
+                          ) : <span className="text-gray-300">—</span>}
+                        </div>
+                      </td>
                       <td className="px-4 py-2.5 text-gray-500">₹{row.amount}</td>
                     </tr>
                   ))}

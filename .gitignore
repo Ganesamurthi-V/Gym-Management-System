@@ -4,3 +4,6 @@ node_modules
 .env.local
 .env.*.local
 package-lock.json
+geo_normalization.sql
+supabase-geo-intelligence-migrations.sql
+GEO_INTELLIGENCE_MIGRATIONS.sql

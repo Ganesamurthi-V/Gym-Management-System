@@ -32,8 +32,8 @@ export interface ImportedRow {
 // ── Smart column alias dictionary ─────────────────────────────────────────────
 const COLUMN_ALIASES: Record<string, string[]> = {
   name:         ["name", "fullname", "full name", "membername", "member name", "customer", "customername", "client", "clientname", "person", "studentname", "student name"],
-  phone:        ["phone", "mobile", "mobileno", "mobile no", "phoneno", "phone no", "contact", "contactno", "contact no", "number", "cell", "cellphone", "whatsapp", "mob", "ph"],
-  member_number:["member_number", "membernumber", "member number", "memberid", "member id", "member_id", "id", "no", "num", "number", "sl", "slno", "sl no", "serial", "serialno", "serial no", "serialnumber", "serial number", "personnumber", "person number", "personid", "person id", "regid", "reg id", "regno", "reg no", "registrationid", "registration id", "registrationnumber", "registration number", "gymid", "gym id", "gymno", "gym no", "rollno", "roll no", "rollnumber", "roll number"],
+  phone:        ["phone", "mobile", "mobileno", "mobile no", "phoneno", "phone no", "contact", "contactno", "contact no", "cell", "cellphone", "whatsapp", "mob", "ph", "phonenumber", "phone number", "mobilenumber", "mobile number"],
+  member_number:["member_number", "membernumber", "member number", "member#", "member #", "mem#", "mem #", "memberid", "member id", "member_id", "#", "id", "no", "num", "number", "sl", "slno", "sl no", "serial", "serialno", "serial no", "serialnumber", "serial number", "personnumber", "person number", "personid", "person id", "regid", "reg id", "regno", "reg no", "registrationid", "registration id", "registrationnumber", "registration number", "gymid", "gym id", "gymno", "gym no", "rollno", "roll no", "rollnumber", "roll number"],
   plan:         ["plan", "membership", "membershipplan", "membership plan", "package", "subscription", "type", "membershiptype", "membership type", "plantype", "plan type", "duration"],
   start_date:   ["start_date", "startdate", "start date", "joiningdate", "joining date", "joindate", "join date", "date", "from", "fromdate", "from date", "admissiondate", "admission date", "enrolldate", "enroll date", "createdat", "created_at", "created at", "joineddate", "joined date", "joinedon", "joined on", "registrationdate", "registration date", "regdate", "reg date", "doj", "dateofjoining", "date of joining"],
   amount:       ["amount", "fee", "fees", "price", "cost", "amountpaid", "amount paid", "paidamount", "paid amount", "charge", "charges", "totalamount", "total amount", "feeamount", "fee amount", "membershipfee", "membership fee", "monthlyfee", "monthly fee", "subscriptionfee", "subscription fee", "planfee", "plan fee", "gymfee", "gym fee", "rs", "inr", "rupees", "paid"],
@@ -76,7 +76,7 @@ function detectField(header: string): string | null {
   for (const [alias, field] of ALIAS_MAP.entries()) {
     if (Math.abs(n.length - alias.length) > 3) continue;
     const dist = levenshtein(n, alias);
-    const maxAllowed = alias.length <= 8 ? 2 : 3;
+    const maxAllowed = alias.length <= 8 ? 1 : 2;
     if (dist <= maxAllowed && dist < bestDist) { bestDist = dist; bestField = field; }
   }
   return bestField;
@@ -302,8 +302,23 @@ export default function ImportPage() {
         r.area = res.normalized_value;
         r._area_confidence = res.confidence_score;
         r._area_matched_by = res.matched_by;
+        // Store suggestions and AI reasoning for the review page
+        (r as any).suggestions = res.suggestions;
+        (r as any).ai_reasoning = res.ai_reasoning;
       }
     });
+
+    // Detect dataset cluster — stored in sessionStorage for the review page banner
+    try {
+      const clusterRes = await fetch('/api/geo/cluster-detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: parsed.map(r => r.area).filter(Boolean) }),
+      });
+      if (clusterRes.ok) {
+        sessionStorage.setItem('import_cluster', JSON.stringify(await clusterRes.json()));
+      }
+    } catch { }
 
     // Build assignedNums incrementally, checking both DB and file conflicts together
     const assignedNums = new Set<string>();
@@ -369,7 +384,11 @@ export default function ImportPage() {
     sessionStorage.setItem("import_rows", JSON.stringify(rows));
     sessionStorage.setItem("import_rows_original", JSON.stringify(rows.map(r => ({ ...r }))));
     sessionStorage.setItem("import_has_id_col", detectedColumns.member_number ? "1" : "0");
-    router.push("/import/edit");
+    // Route to area review page if any areas have low confidence or are unresolved
+    const needsReview = rows.some(
+      r => r.area && ((r._area_confidence ?? 1) < 0.90 || r._area_matched_by === 'unresolved')
+    );
+    router.push(needsReview ? "/import/review" : "/import/edit");
   }
 
   const validRows = rows.filter(r => r._status === "ok");
@@ -487,11 +506,21 @@ export default function ImportPage() {
               <p className="text-2xl font-bold text-red-500">{errorRows.length}</p>
               <p className="text-sm text-gray-500 mt-0.5">Will be skipped</p>
             </div>
-            <div className="card p-4 text-center">
+            <div
+              className="card p-4 text-center cursor-pointer hover:border-amber-300 transition-colors"
+              onClick={() => {
+                if (rows.some(r => r.area && (r._area_confidence ?? 1) < 0.90)) handleProceedToEdit();
+              }}
+            >
               <p className="text-2xl font-bold text-orange-500">
                 {rows.filter(r => r.area && (r._area_confidence ?? 1) < 0.90).length}
               </p>
               <p className="text-sm text-gray-500 mt-0.5">Areas need review</p>
+              {rows.filter(r => r._area_matched_by === 'ai').length > 0 && (
+                <p className="text-[10px] text-blue-500 mt-0.5">
+                  {rows.filter(r => r._area_matched_by === 'ai').length} AI-inferred
+                </p>
+              )}
             </div>
           </div>
 
@@ -559,7 +588,9 @@ export default function ImportPage() {
               className="btn-primary group relative overflow-hidden">
               <span className="relative z-10 flex items-center justify-center gap-2">
                 <Zap className="w-4 h-4" />
-                Edit & Review {validRows.length} Members →
+                {rows.some(r => r.area && (r._area_confidence ?? 1) < 0.90)
+                  ? `Review Areas & Continue →`
+                  : `Edit & Review ${validRows.length} Members →`}
               </span>
               <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
             </button>

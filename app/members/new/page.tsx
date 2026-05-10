@@ -20,8 +20,9 @@ export default function NewMemberPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [areaInput, setAreaInput] = useState('')
+  const [areaConfirmed, setAreaConfirmed] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [areaSuggestions, setAreaSuggestions] = useState<Array<{ id: string; name: string; district: string }>>([])  
+  const [areaSuggestions, setAreaSuggestions] = useState<Array<{ id: string; name: string; district: string }>>([])
   const areaSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [nextMemberNumber, setNextMemberNumber] = useState<number | null>(null)
   const [numError, setNumError] = useState('')
@@ -85,6 +86,7 @@ export default function NewMemberPage() {
     e.preventDefault()
     if (!form.member_number) { setError('Member ID is required'); return }
     if (numError) return
+    if (areaInput.trim() && !areaConfirmed) { setError('Please select an area from the suggestions list'); return }
     setError('')
     setStep('preview')
   }
@@ -139,8 +141,8 @@ export default function NewMemberPage() {
           plan: form.plan === 'custom' ? 'monthly' : form.plan,
           start_date: form.start_date,
           end_date,
-          amount: Math.floor(Number(form.amount)) || 0,
-          admission_fee: Math.floor(Number(form.admission_fee)) || 0,
+          amount: parseInt(form.amount, 10) || 0,
+          admission_fee: parseInt(form.admission_fee, 10) || 0,
           payment_mode: form.payment_mode,
         })
 
@@ -159,10 +161,10 @@ export default function NewMemberPage() {
     ? calcEndDate(form.start_date, form.plan, form.plan === 'custom' ? parseInt(form.custom_months) || 1 : undefined)
     : null
 
-  const admissionFee = Math.floor(Number(form.admission_fee)) || 0
-  const membershipFee = Math.floor(Number(form.amount)) || 0
+  const admissionFee = parseInt(form.admission_fee, 10) || 0
+  const membershipFee = parseInt(form.amount, 10) || 0
   const totalAmount = admissionFee + membershipFee
-  const pendingAmount = Math.floor(Number(form.pending_amount)) || 0
+  const pendingAmount = parseInt(form.pending_amount, 10) || 0
 
   const planLabel = form.plan === 'monthly' ? '1 Month' : form.plan === 'quarterly' ? '3 Months' : form.plan === 'annual' ? '1 Year' : `${form.custom_months} Months (Custom)`
 
@@ -345,23 +347,36 @@ export default function NewMemberPage() {
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Area / Locality</label>
             <input type="text" value={areaInput}
               onChange={(e) => {
-                setAreaInput(e.target.value)
-                update('area', e.target.value)
+                const val = e.target.value
+                setAreaInput(val)
+                setAreaConfirmed(false)
+                update('area', '')
                 setShowSuggestions(true)
                 if (areaSearchTimer.current) clearTimeout(areaSearchTimer.current)
-                areaSearchTimer.current = setTimeout(async () => {
-                  const results = await searchLocalities(e.target.value)
-                  setAreaSuggestions(results)
-                }, 200)
+                if (val.trim()) {
+                  areaSearchTimer.current = setTimeout(async () => {
+                    const results = await searchLocalities(val)
+                    setAreaSuggestions(results)
+                  }, 200)
+                } else {
+                  setAreaSuggestions([])
+                }
               }}
-              onFocus={() => setShowSuggestions(true)}
+              onFocus={() => { if (areaSuggestions.length > 0) setShowSuggestions(true) }}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              className="input-field" placeholder="Type to search area..." autoComplete="off"
+              className={`input-field ${areaInput.trim() && !areaConfirmed ? 'border-amber-400 focus:ring-amber-400' : ''}`}
+              placeholder="Type to search area..." autoComplete="off"
             />
             {showSuggestions && areaSuggestions.length > 0 && (
               <ul className="absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-2xl mt-1 shadow-xl max-h-48 overflow-y-auto">
                 {areaSuggestions.map(a => (
-                  <li key={a.id} onMouseDown={() => { update('area', a.name); setAreaInput(a.name); setShowSuggestions(false) }}
+                  <li key={a.id} onMouseDown={() => {
+                    update('area', a.name)
+                    setAreaInput(a.name)
+                    setAreaConfirmed(true)
+                    setShowSuggestions(false)
+                    setAreaSuggestions([])
+                  }}
                     className="px-4 py-3 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl font-medium"
                   >
                     {a.name}
@@ -369,6 +384,20 @@ export default function NewMemberPage() {
                   </li>
                 ))}
               </ul>
+            )}
+            {areaInput.trim() && !areaConfirmed && (
+              <p className="text-xs text-amber-600 font-medium mt-1.5">⚠ Please select an area from the list</p>
+            )}
+            {areaConfirmed && form.area && (
+              <p className="text-xs text-emerald-600 font-medium mt-1.5">✓ {form.area}</p>
+            )}
+            {areaConfirmed && (
+              <button type="button" onClick={() => { setAreaInput(''); setAreaConfirmed(false); update('area', ''); setAreaSuggestions([]) }}
+                className="absolute right-3 top-[2.1rem] text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Clear area"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
           </div>
 

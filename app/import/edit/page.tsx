@@ -172,8 +172,18 @@ export default function ImportEditPage() {
   const conflictCount = rows.filter(r => r._id_conflict).length;
   const missingIdCount = validRows.filter(r => !r.member_number || !parseInt(r.member_number)).length;
 
+  const hasReviewState = typeof window !== "undefined" && !!sessionStorage.getItem("import_review_state");
+
+  function goBackToReview() {
+    // Persist current edits so they survive the round-trip
+    sessionStorage.setItem("import_rows", JSON.stringify(rows));
+    router.push("/import/review");
+  }
+
   function handlePreview() {
     if (missingIdCount > 0) { setError(`${missingIdCount} member${missingIdCount !== 1 ? 's are' : ' is'} missing a Member ID — fill them in before importing`); return; }
+    // Clear review state cache — user is committing to import
+    sessionStorage.removeItem("import_review_state");
     setError("");
     setConfirmed(false);
     setStep("preview");
@@ -400,9 +410,15 @@ export default function ImportEditPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/import" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-            <ArrowLeft className="w-4 h-4" />Import
-          </Link>
+          {hasReviewState ? (
+            <button onClick={goBackToReview} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+              <ArrowLeft className="w-4 h-4" />Review Areas
+            </button>
+          ) : (
+            <Link href="/import" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+              <ArrowLeft className="w-4 h-4" />Import
+            </Link>
+          )}
           <span className="text-gray-300">/</span>
           <h1 className="text-xl font-bold text-gray-900">Edit Before Importing</h1>
         </div>
@@ -535,7 +551,7 @@ export default function ImportEditPage() {
                           }`}
                         />
                         {row._id_auto && !row._id_conflict && (
-                          <span className="text-[9px] text-amber-500 font-semibold leading-none" title="No ID in file — auto-assigned. You can change it.">auto ⚠</span>
+                          <span className="text-[9px] text-amber-500 font-semibold leading-none" title="No ID in file — auto-assigned. You can change it.">auto asigned </span>
                         )}
                         {row._id_conflict && (
                           <span className="text-[9px] text-red-500 font-semibold leading-none">taken!</span>
@@ -547,6 +563,9 @@ export default function ImportEditPage() {
                         onChange={e => updateRow(idx, "name", e.target.value)}
                         className={`w-36 ${cls}`} />
                       {row._error && <p className="text-[10px] text-amber-600 mt-0.5">{row._error}</p>}
+                      {!isSkipped && row.phone && row.phone.length !== 10 && (
+                        <p className="text-[9px] text-amber-600 font-semibold mt-0.5 leading-tight">⚠ WhatsApp won't work</p>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <input type="tel" value={row.phone} disabled={isSkipped} maxLength={10}

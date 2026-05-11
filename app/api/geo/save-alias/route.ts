@@ -1,75 +1,146 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { normalizeInput } from '@/lib/geo/normalizer'
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+
+function mapSupabaseError(error: { code: string; message: string }) {
+  if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
+  if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
+  if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
+  if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
+  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
+}
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const startTime = Date.now()
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  const body = await req.json().catch(() => ({}))
-  const rawInput: string = String(body.raw_input ?? '').slice(0, 200).trim()
-  const canonicalName: string = String(body.canonical_name ?? '').slice(0, 200).trim()
-  const gymId: string | undefined = body.gym_id
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Session expired or invalid' }
+      }, { status: 401 })
+    }
 
-  if (!rawInput || !canonicalName) {
-    return NextResponse.json({ error: 'raw_input and canonical_name are required' }, { status: 400 })
+    const { allowed } = checkRateLimit(user.id, '/api/geo/save-alias', ROUTE_LIMITS.SAVE_ALIAS)
+    if (!allowed) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'RATE_LIMITED', message: 'Too many requests' }
+      }, { status: 429 })
+    }
+
+    let body
+    try {
+      body = await req.json()
+    } catch (e) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' }
+      }, { status: 400 })
+    }
+
+    const rawInput: string = String(body.raw_input ?? '').slice(0, 200).trim()
+    const canonicalName: string = String(body.canonical_name ?? '').slice(0, 200).trim()
+    const gymId: string | undefined = body.gym_id
+
+    if (!rawInput || !canonicalName) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'BAD_REQUEST', message: 'raw_input and canonical_name are required' }
+      }, { status: 400 })
+    }
+
+    const aliasNormalized = normalizeInput(rawInput)
+
+    const { error: upsertError } = await supabase
+      .from('geo_gym_aliases')
+      .upsert(
+        {
+          alias_raw: rawInput,
+          alias_normalized: aliasNormalized,
+          canonical_name: canonicalName,
+          gym_id: gymId ?? null,
+          created_by: user.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'gym_id,alias_normalized' }
+      )
+
+    if (upsertError) {
+      const mapped = mapSupabaseError(upsertError)
+      return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+    }
+
+    if (gymId) {
+      void supabase
+        .from('geo_review_queue')
+        .update({
+          status: 'resolved',
+          resolved_to: canonicalName,
+          resolved_by: user.id,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq('gym_id', gymId)
+        .eq('raw_input', rawInput)
+        .eq('status', 'pending')
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: { raw: rawInput, canonical: canonicalName },
+      meta: { duration_ms: Date.now() - startTime }
+    })
+
+  } catch (err: any) {
+    return NextResponse.json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+    }, { status: 500 })
   }
-
-  const aliasNormalized = normalizeInput(rawInput)
-
-  const { error } = await supabase
-    .from('geo_gym_aliases')
-    .upsert(
-      {
-        alias_raw: rawInput,
-        alias_normalized: aliasNormalized,
-        canonical_name: canonicalName,
-        gym_id: gymId ?? null,
-        created_by: user.id,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'alias_normalized,gym_id' }
-    )
-
-  if (error) {
-    console.error('[save-alias] DB error saving alias')
-    return NextResponse.json({ error: 'Failed to save alias' }, { status: 500 })
-  }
-
-  if (gymId) {
-    void supabase
-      .from('geo_review_queue')
-      .update({
-        status: 'resolved',
-        resolved_to: canonicalName,
-        resolved_by: user.id,
-        resolved_at: new Date().toISOString(),
-      })
-      .eq('gym_id', gymId)
-      .eq('raw_input', rawInput)
-      .eq('status', 'pending')
-  }
-
-  return NextResponse.json({ success: true, alias: { raw: rawInput, canonical: canonicalName } })
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const startTime = Date.now()
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  const gymId = req.nextUrl.searchParams.get('gym_id')
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Session expired or invalid' }
+      }, { status: 401 })
+    }
 
-  const query = supabase
-    .from('geo_gym_aliases')
-    .select('id, alias_raw, canonical_name, created_at')
-    .order('created_at', { ascending: false })
+    const gymId = req.nextUrl.searchParams.get('gym_id')
 
-  if (gymId) query.eq('gym_id', gymId)
+    const query = supabase
+      .from('geo_gym_aliases')
+      .select('id, alias_raw, canonical_name, created_at')
+      .order('created_at', { ascending: false })
+      .limit(50)
 
-  const { data, error } = await query.limit(500)
-  if (error) return NextResponse.json({ error: 'Failed to fetch aliases' }, { status: 500 })
+    if (gymId) query.eq('gym_id', gymId)
 
-  return NextResponse.json(data ?? [])
+    const { data, error } = await query
+    if (error) {
+      const mapped = mapSupabaseError(error)
+      return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: data ?? [],
+      meta: { duration_ms: Date.now() - startTime }
+    })
+
+  } catch (err: any) {
+    return NextResponse.json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+    }, { status: 500 })
+  }
 }

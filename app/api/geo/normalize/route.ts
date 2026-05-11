@@ -4,188 +4,13 @@ import { normalizeInput, toPhoneticKey, expandAbbreviations } from '@/lib/geo/no
 import { scoreAgainstList } from '@/lib/geo/fuzzyMatch'
 import { ALIAS_MAP } from '@/lib/geo/aliases'
 import { CONFIDENCE } from '@/lib/geo/types'
-import type { NormalizationResult } from '@/lib/geo/types'
-
-// Simple in-memory rate limiter: userId → { count, resetAt }
-const rateLimiter = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT = 10
-const RATE_WINDOW_MS = 60_000
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now()
-  const entry = rateLimiter.get(userId)
-  if (!entry || now > entry.resetAt) {
-    rateLimiter.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT) return false
-  entry.count++
-  return true
-}
+import { geminiInferLocation } from '@/lib/geo/aiInference'
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { withTimeout } from '@/lib/timeout'
+import type { NormalizationResult, AIInferenceResult } from '@/lib/geo/types'
 
 function sanitize(s: string): string {
   return s.replace(/\0/g, '').slice(0, 500)
-}
-
-export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  if (!checkRateLimit(user.id)) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
-  }
-
-  const body = await req.json().catch(() => ({}))
-  const rawInput: string = sanitize(String(body.raw_input ?? ''))
-  const gymId: string | undefined = body.gym_id
-
-  if (!rawInput.trim()) {
-    return NextResponse.json(buildUnresolved(rawInput))
-  }
-
-  const normalized = expandAbbreviations(normalizeInput(rawInput))
-
-  // ── Step 1: Alias lookup ──────────────────────────────────────────────────
-  const aliasHit = ALIAS_MAP[normalized]
-  if (aliasHit) {
-    const { data: locality } = await supabase
-      .from('geo_localities')
-      .select('id, name, district, state')
-      .eq('name_normalized', normalizeInput(aliasHit))
-      .eq('is_active', true)
-      .single()
-
-    const result: NormalizationResult = {
-      raw_input: rawInput,
-      normalized_value: aliasHit,
-      canonical_locality_id: locality?.id ?? null,
-      confidence_score: 1.0,
-      matched_by: 'alias',
-      geo_hierarchy: {
-        state: locality?.state ?? '',
-        district: locality?.district ?? '',
-        city: aliasHit,
-        locality: '',
-      },
-      suggestions: [{ name: aliasHit, confidence: 1.0, matched_by: 'alias' }],
-      requires_review: false,
-    }
-    void logNormalization(supabase, result, gymId)
-    return NextResponse.json(result)
-  }
-
-  // ── Step 2: Exact match ───────────────────────────────────────────────────
-  const { data: exactMatch } = await supabase
-    .from('geo_localities')
-    .select('id, name, district, state')
-    .eq('name_normalized', normalized)
-    .eq('is_active', true)
-    .single()
-
-  if (exactMatch) {
-    const result: NormalizationResult = {
-      raw_input: rawInput,
-      normalized_value: exactMatch.name,
-      canonical_locality_id: exactMatch.id,
-      confidence_score: 1.0,
-      matched_by: 'exact',
-      geo_hierarchy: {
-        state: exactMatch.state,
-        district: exactMatch.district,
-        city: exactMatch.name,
-        locality: '',
-      },
-      suggestions: [{ name: exactMatch.name, confidence: 1.0, matched_by: 'exact' }],
-      requires_review: false,
-    }
-    void logNormalization(supabase, result, gymId)
-    return NextResponse.json(result)
-  }
-
-  // ── Step 3: DB alias table lookup ─────────────────────────────────────────
-  const { data: dbAlias } = await supabase
-    .from('geo_aliases')
-    .select('locality_id, geo_localities(id, name, district, state)')
-    .eq('alias_normalized', normalized)
-    .single()
-
-  if (dbAlias?.geo_localities) {
-    const loc = dbAlias.geo_localities as any
-    const result: NormalizationResult = {
-      raw_input: rawInput,
-      normalized_value: loc.name,
-      canonical_locality_id: loc.id,
-      confidence_score: 1.0,
-      matched_by: 'alias',
-      geo_hierarchy: {
-        state: loc.state,
-        district: loc.district,
-        city: loc.name,
-        locality: '',
-      },
-      suggestions: [{ name: loc.name, confidence: 1.0, matched_by: 'alias' }],
-      requires_review: false,
-    }
-    void logNormalization(supabase, result, gymId)
-    return NextResponse.json(result)
-  }
-
-  // ── Step 4: Trigram + fuzzy scoring ──────────────────────────────────────
-  const { data: trigramCandidates } = await supabase
-    .rpc('search_localities_trigram', { query_text: normalized, result_limit: 10 })
-
-  const candidates = (trigramCandidates ?? []) as Array<{
-    id: string; name: string; name_normalized: string; name_phonetic: string; district: string; state: string; trgm_score: number
-  }>
-
-  if (candidates.length === 0) {
-    const result = buildUnresolved(rawInput)
-    void logNormalization(supabase, result, gymId)
-    void addToQueue(supabase, result, gymId, [])
-    return NextResponse.json(result)
-  }
-
-  const scored = scoreAgainstList(normalized, candidates, 5)
-  const best = scored[0]
-  const second = scored[1]
-
-  if (!best || best.score < 0.40) {
-    const result = buildUnresolved(rawInput)
-    void logNormalization(supabase, result, gymId)
-    void addToQueue(supabase, result, gymId, scored)
-    return NextResponse.json(result)
-  }
-
-  // Determine matched_by
-  const topCandidate = candidates.find(c => c.id === best.id)
-  let matchedBy: NormalizationResult['matched_by'] = 'fuzzy'
-  if ((topCandidate?.trgm_score ?? 0) > 0.8) matchedBy = 'trigram'
-  else if (toPhoneticKey(normalized) === toPhoneticKey(topCandidate?.name_normalized ?? '')) matchedBy = 'phonetic'
-
-  const requiresReview = best.score < CONFIDENCE.UNRESOLVED
-  const suggestions = scored.map(s => ({ name: s.name, confidence: s.score, matched_by: s.matched_by }))
-
-  const result: NormalizationResult = {
-    raw_input: rawInput,
-    normalized_value: best.name,
-    canonical_locality_id: best.id,
-    confidence_score: best.score,
-    matched_by: matchedBy,
-    geo_hierarchy: {
-      state: topCandidate?.state ?? '',
-      district: topCandidate?.district ?? '',
-      city: best.name,
-      locality: '',
-    },
-    suggestions,
-    requires_review: requiresReview,
-  }
-
-  void logNormalization(supabase, result, gymId)
-  if (requiresReview) void addToQueue(supabase, result, gymId, scored)
-
-  return NextResponse.json(result)
 }
 
 function buildUnresolved(raw: string): NormalizationResult {
@@ -198,6 +23,307 @@ function buildUnresolved(raw: string): NormalizationResult {
     geo_hierarchy: { state: '', district: '', city: '', locality: '' },
     suggestions: [],
     requires_review: true,
+  }
+}
+
+function mapSupabaseError(error: { code: string; message: string }) {
+  if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
+  if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
+  if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
+  if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
+  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
+}
+
+export async function POST(req: NextRequest) {
+  const startTime = Date.now()
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Session expired or invalid' }
+      }, { status: 401 })
+    }
+
+    const { allowed } = checkRateLimit(user.id, '/api/geo/normalize', ROUTE_LIMITS.NORMALIZE)
+    if (!allowed) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'RATE_LIMITED', message: 'Too many requests' }
+      }, { status: 429 })
+    }
+
+    let body
+    try {
+      body = await req.json()
+    } catch (e) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' }
+      }, { status: 400 })
+    }
+
+    const rawInput: string = sanitize(String(body.raw_input ?? ''))
+    const gymId: string | undefined = body.gym_id
+
+    if (!rawInput.trim()) {
+      return NextResponse.json({
+        success: true,
+        data: buildUnresolved(rawInput),
+        meta: { duration_ms: Date.now() - startTime }
+      })
+    }
+
+    const normalized = expandAbbreviations(normalizeInput(rawInput))
+
+    // ── Step 1: Alias lookup ──────────────────────────────────────────────────
+    const aliasHit = ALIAS_MAP[normalized]
+    if (aliasHit) {
+      const { data: locality, error: locError } = await supabase
+        .from('geo_localities')
+        .select('id, name, district, state')
+        .eq('name_normalized', normalizeInput(aliasHit))
+        .eq('is_active', true)
+        .single()
+
+      if (locError && locError.code !== 'PGRST116') {
+        const mapped = mapSupabaseError(locError)
+        return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+      }
+
+      const result: NormalizationResult = {
+        raw_input: rawInput,
+        normalized_value: aliasHit,
+        canonical_locality_id: locality?.id ?? null,
+        confidence_score: 1.0,
+        matched_by: 'alias',
+        geo_hierarchy: {
+          state: locality?.state ?? '',
+          district: locality?.district ?? '',
+          city: aliasHit,
+          locality: '',
+        },
+        suggestions: [{ name: aliasHit, confidence: 1.0, matched_by: 'alias' }],
+        requires_review: false,
+      }
+      void logNormalization(supabase, result, gymId)
+      return NextResponse.json({
+        success: true,
+        data: result,
+        meta: { duration_ms: Date.now() - startTime }
+      })
+    }
+
+    // ── Step 2: Exact match ───────────────────────────────────────────────────
+    const { data: exactMatch, error: exactError } = await supabase
+      .from('geo_localities')
+      .select('id, name, district, state')
+      .eq('name_normalized', normalized)
+      .eq('is_active', true)
+      .single()
+
+    if (exactError && exactError.code !== 'PGRST116') {
+      const mapped = mapSupabaseError(exactError)
+      return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+    }
+
+    if (exactMatch) {
+      const result: NormalizationResult = {
+        raw_input: rawInput,
+        normalized_value: exactMatch.name,
+        canonical_locality_id: exactMatch.id,
+        confidence_score: 1.0,
+        matched_by: 'exact',
+        geo_hierarchy: {
+          state: exactMatch.state,
+          district: exactMatch.district,
+          city: exactMatch.name,
+          locality: '',
+        },
+        suggestions: [{ name: exactMatch.name, confidence: 1.0, matched_by: 'exact' }],
+        requires_review: false,
+      }
+      void logNormalization(supabase, result, gymId)
+      return NextResponse.json({
+        success: true,
+        data: result,
+        meta: { duration_ms: Date.now() - startTime }
+      })
+    }
+
+    // ── Step 3: DB alias table lookup ─────────────────────────────────────────
+    const { data: dbAlias, error: aliasError } = await supabase
+      .from('geo_aliases')
+      .select('locality_id, geo_localities(id, name, district, state)')
+      .eq('alias_normalized', normalized)
+      .single()
+
+    if (aliasError && aliasError.code !== 'PGRST116') {
+      const mapped = mapSupabaseError(aliasError)
+      return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+    }
+
+    if (dbAlias?.geo_localities) {
+      const loc = dbAlias.geo_localities as any
+      const result: NormalizationResult = {
+        raw_input: rawInput,
+        normalized_value: loc.name,
+        canonical_locality_id: loc.id,
+        confidence_score: 1.0,
+        matched_by: 'alias',
+        geo_hierarchy: {
+          state: loc.state,
+          district: loc.district,
+          city: loc.name,
+          locality: '',
+        },
+        suggestions: [{ name: loc.name, confidence: 1.0, matched_by: 'alias' }],
+        requires_review: false,
+      }
+      void logNormalization(supabase, result, gymId)
+      return NextResponse.json({
+        success: true,
+        data: result,
+        meta: { duration_ms: Date.now() - startTime }
+      })
+    }
+
+    // ── Step 4: Trigram + fuzzy scoring ──────────────────────────────────────
+    const { data: trigramCandidates, error: trigramError } = await supabase
+      .rpc('search_localities_trigram', { query_text: normalized, result_limit: 10 })
+
+    if (trigramError) {
+      const mapped = mapSupabaseError(trigramError)
+      return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+    }
+
+    const candidates = (trigramCandidates ?? []) as Array<{
+      id: string; name: string; name_normalized: string; name_phonetic: string; district: string; state: string; trgm_score: number
+    }>
+
+    const scored = scoreAgainstList(normalized, candidates, 5)
+    const best = scored[0]
+
+    if (best && best.score >= 0.40) {
+      const topCandidate = candidates.find(c => c.id === best.id)
+      let matchedBy: NormalizationResult['matched_by'] = 'fuzzy'
+      if ((topCandidate?.trgm_score ?? 0) > 0.8) matchedBy = 'trigram'
+      else if (toPhoneticKey(normalized) === toPhoneticKey(topCandidate?.name_normalized ?? '')) matchedBy = 'phonetic'
+
+      const requiresReview = best.score < CONFIDENCE.UNRESOLVED
+      const suggestions = scored.map(s => ({ name: s.name, confidence: s.score, matched_by: s.matched_by }))
+
+      const result: NormalizationResult = {
+        raw_input: rawInput,
+        normalized_value: best.name,
+        canonical_locality_id: best.id,
+        confidence_score: best.score,
+        matched_by: matchedBy,
+        geo_hierarchy: {
+          state: topCandidate?.state ?? '',
+          district: topCandidate?.district ?? '',
+          city: best.name,
+          locality: '',
+        },
+        suggestions,
+        requires_review: requiresReview,
+      }
+
+      void logNormalization(supabase, result, gymId)
+      if (requiresReview) void addToQueue(supabase, result, gymId, scored)
+
+      return NextResponse.json({
+        success: true,
+        data: result,
+        meta: { duration_ms: Date.now() - startTime }
+      })
+    }
+
+    // ── Step 5: Gemini AI Fallback (with 3-layer cache) ───────────────────────
+    const cacheKey = rawInput.toLowerCase().trim()
+    const geminiApiKey = process.env.GEMINI_API_KEY ?? ''
+
+    if (geminiApiKey) {
+      // 1. Memory check (handled by geminiInferLocation but we'll try to be explicit here if we could,
+      // but geminiInferLocation already has AI_CACHE. Let's just call it and it will handle memory)
+
+      // 2. DB cache check
+      const { data: dbCached } = await supabase
+        .from('geo_ai_cache')
+        .select('probable_location, district, state, confidence, reasoning')
+        .eq('raw_input_normalized', cacheKey)
+        .single()
+
+      let aiResult: AIInferenceResult | null = null
+
+      if (dbCached) {
+        aiResult = {
+          probable_location: dbCached.probable_location,
+          district: dbCached.district,
+          state: dbCached.state,
+          confidence: dbCached.confidence,
+          reasoning: dbCached.reasoning
+        }
+      } else {
+        // 3. Gemini (only if both miss)
+        try {
+          aiResult = await withTimeout(geminiInferLocation(rawInput, geminiApiKey), 5000)
+
+          if (aiResult && aiResult.probable_location && typeof aiResult.confidence === 'number') {
+            // Write to DB cache immediately
+            void supabase.from('geo_ai_cache').upsert({
+              raw_input_normalized: cacheKey,
+              raw_input_display: rawInput.trim(),
+              probable_location: aiResult.probable_location,
+              district: aiResult.district,
+              state: aiResult.state,
+              confidence: aiResult.confidence,
+              reasoning: aiResult.reasoning,
+            }, { onConflict: 'raw_input_normalized' })
+          }
+        } catch (e) {
+          console.warn('[Normalize] Gemini timeout or error:', e)
+          aiResult = null
+        }
+      }
+
+      if (aiResult && aiResult.confidence >= 0.40) {
+        const result: NormalizationResult = {
+          raw_input: rawInput,
+          normalized_value: aiResult.probable_location,
+          canonical_locality_id: null,
+          confidence_score: aiResult.confidence,
+          matched_by: 'ai',
+          geo_hierarchy: { state: aiResult.state, district: aiResult.district, city: aiResult.probable_location, locality: '' },
+          suggestions: [{ name: aiResult.probable_location, confidence: aiResult.confidence, matched_by: 'ai' }],
+          requires_review: aiResult.confidence < CONFIDENCE.AUTO_ACCEPT,
+          ai_reasoning: aiResult.reasoning,
+        }
+        void logNormalization(supabase, result, gymId)
+        return NextResponse.json({
+          success: true,
+          data: result,
+          meta: { duration_ms: Date.now() - startTime }
+        })
+      }
+    }
+
+    const unresolved = buildUnresolved(rawInput)
+    void logNormalization(supabase, unresolved, gymId)
+    void addToQueue(supabase, unresolved, gymId, scored)
+    return NextResponse.json({
+      success: true,
+      data: unresolved,
+      meta: { duration_ms: Date.now() - startTime }
+    })
+
+  } catch (err: any) {
+    return NextResponse.json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+    }, { status: 500 })
   }
 }
 

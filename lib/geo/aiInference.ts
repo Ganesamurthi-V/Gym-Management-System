@@ -2,6 +2,19 @@ import type { AIInferenceResult } from './types'
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
+/**
+ * Groq llama-3.1-8b-instant limits:
+ *   - 30 RPM  (requests per minute)
+ *   - 14,400 RPD (requests per day)
+ *   - 6,000 TPM  (tokens per minute)
+ *   - 500,000 TPD (tokens per day)
+ *
+ * Token strategy:
+ *   - Single inference:  max_tokens = 150  (JSON response is small)
+ *   - Batch inference:   max_tokens = min(items * 120, 500)  (capped to stay in 6k TPM)
+ *   - Retry backoff:     2 s → 4 s  (fits inside the 1-minute RPM window)
+ */
+
 const SYSTEM_PROMPT = `You are a regional location intelligence expert specialised in Tamil Nadu and Puducherry, India.
 
 Given a messy locality input from a gym member database, infer the most probable location.
@@ -52,15 +65,15 @@ const AI_CACHE = new Map<string, AIInferenceResult>()
 async function callGroq(
   prompt: string,
   apiKey: string,
-  maxTokens = 1000
+  maxTokens = 150
 ): Promise<string | null> {
   const MAX_RETRIES = 3
   let lastStatus = 0
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
-      // Longer backoff: 30s, 60s — Gemini free tier resets every minute
-      const wait = attempt === 1 ? 2000 : 5000
+      // Groq 30 RPM: backoff 2 s then 4 s keeps us safely within the window
+      const wait = attempt === 1 ? 2000 : 4000
       console.warn(`[GeoAI] Waiting ${wait}ms before retry ${attempt + 1}...`)
       await new Promise(r => setTimeout(r, wait))
     }
@@ -93,12 +106,14 @@ async function callGroq(
       lastStatus = res.status
 
       if (res.status === 429) {
-        console.warn(`[GeoAI] Rate limited (429), attempt ${attempt + 1}/${MAX_RETRIES}`)
+        // Groq rate-limit — wait 60 s then retry (RPM resets every minute)
+        console.warn(`[GeoAI] Rate limited (429), attempt ${attempt + 1}/${MAX_RETRIES}. Waiting 60s...`)
+        await new Promise(r => setTimeout(r, 60000))
         continue
       }
 
       if (!res.ok) {
-        console.warn('[GeoAI] Gorq API error:', res.status)
+        console.warn('[GeoAI] Groq API error:', res.status)
         return null
       }
 
@@ -138,7 +153,9 @@ export async function groqInferLocation(
     : ''
 
   const prompt = `${SYSTEM_PROMPT}\n\nInput: "${rawInput}"${contextHint}\n\nInfer the location:`
-  const text = await callGroq(prompt, apiKey, 200)
+
+  // 150 tokens is plenty for a single JSON object response
+  const text = await callGroq(prompt, apiKey, 150)
   if (!text) return null
 
   try {
@@ -157,8 +174,12 @@ export async function groqInferLocation(
 }
 
 /**
- * Batch inference — sends ALL inputs in a SINGLE Gemini request.
+ * Batch inference — sends ALL inputs in a SINGLE Groq request.
  * Dramatically reduces API calls and avoids rate limiting.
+ *
+ * Token budget: 6,000 TPM on Groq free tier.
+ * Each item needs roughly 120 output tokens; cap batch response at 500 tokens
+ * to stay comfortably within the per-minute limit.
  */
 export async function groqInferBatch(
   inputs: string[],
@@ -187,7 +208,8 @@ export async function groqInferBatch(
     return resultMap
   }
 
-  // Multiple inputs — ONE batch request instead of N individual requests
+  // Multiple inputs — ONE batch request instead of N individual requests.
+  // Cap at 500 tokens to stay within the 6,000 TPM limit.
   const contextHint = clusterHint?.top_district
     ? `\nContext: This dataset appears to be from ${clusterHint.top_district}, ${clusterHint.top_state}. Prefer nearby locations.`
     : ''
@@ -195,8 +217,9 @@ export async function groqInferBatch(
   const inputList = needsFetch.map((inp, i) => `${i + 1}. "${inp}"`).join('\n')
   const prompt = `${BATCH_SYSTEM_PROMPT}${contextHint}\n\nInputs:\n${inputList}\n\nReturn a JSON array with ${needsFetch.length} objects:`
 
-  // Allow ~150 tokens per input for the response
-  const text = await callGroq(prompt, apiKey, needsFetch.length * 150 + 100)
+  // Allow ~120 tokens per item, hard cap at 500 to respect 6k TPM
+  const tokenBudget = Math.min(needsFetch.length * 120 + 100, 500)
+  const text = await callGroq(prompt, apiKey, tokenBudget)
 
   if (!text) {
     // All failed — mark as null
@@ -217,7 +240,7 @@ export async function groqInferBatch(
 
     if (!Array.isArray(parsed)) throw new Error('Response is not an array')
 
-    // Map results back by position (Gemini returns in same order)
+    // Map results back by position (Groq returns in same order)
     parsed.forEach((item, idx) => {
       const key = needsFetch[idx] ?? item.input?.toLowerCase().trim()
       if (!key) return
@@ -239,7 +262,7 @@ export async function groqInferBatch(
       resultMap.set(key, result)
     })
 
-    // Fill any missing entries (if Gemini returned fewer items than expected)
+    // Fill any missing entries (if Groq returned fewer items than expected)
     for (const input of needsFetch) {
       if (!resultMap.has(input)) resultMap.set(input, null)
     }

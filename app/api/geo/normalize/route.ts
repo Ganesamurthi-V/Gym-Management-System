@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── Step 5: Gemini AI Fallback (with 3-layer cache) ───────────────────────
+    // ── Step 5: Groq AI Fallback (with 3-layer cache) ────────────────────────
     const cacheKey = rawInput.toLowerCase().trim()
     const groqApiKey = process.env.GROQ_API_KEY ?? ''
 
@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
           reasoning: dbCached.reasoning
         }
       } else {
-        // 3. Gemini (only if both miss)
+        // 3. Groq (only if both miss)
         try {
           aiResult = await withTimeout(groqInferLocation(rawInput, groqApiKey), 5000)
 

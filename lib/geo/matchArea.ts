@@ -41,7 +41,9 @@ export async function matchArea(raw: string, gymId?: string): Promise<Normalizat
       body: JSON.stringify({ raw_input: raw, gym_id: gymId }),
     })
     if (!res.ok) return fallback(raw)
-    return await res.json()
+    // API returns { success: true, data: NormalizationResult, meta: {...} }
+    const json = await res.json()
+    return json?.data ?? fallback(raw)
   } catch {
     return fallback(raw)
   }
@@ -89,7 +91,9 @@ export async function matchAreaBatch(
     if (!res.ok) {
       needsAPI.forEach(({ i, raw }) => { results[i] = fallback(raw) })
     } else {
-      const apiResults: NormalizationResult[] = await res.json()
+      // API returns { success: true, data: NormalizationResult[], meta: {...} }
+      const json = await res.json()
+      const apiResults: NormalizationResult[] = json?.data ?? []
       needsAPI.forEach(({ i }, idx) => { results[i] = apiResults[idx] ?? fallback(inputs[i].raw) })
     }
   } catch {
@@ -113,7 +117,9 @@ export async function searchLocalities(
     const params = new URLSearchParams({ q: query, limit: '8' })
     const res = await fetch(`/api/geo/search?${params}`)
     if (!res.ok) return []
-    const data = await res.json()
+    const json = await res.json()
+    // Search API returns { data: [...] } or plain array — handle both
+    const data = Array.isArray(json) ? json : (json?.data ?? [])
     // If alias matched, bubble it to top
     if (aliasHit) {
       const idx = data.findIndex((d: any) => d.name === aliasHit)

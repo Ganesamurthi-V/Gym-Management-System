@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Phase 2: Gemini AI fallback (SERIAL with 4s gap)
+    // Phase 2: Groq AI fallback (SERIAL with 2s gap — 30 RPM limit)
     const groqApiKey = process.env.GROQ_API_KEY ?? ''
     const needsAI = inputs.map((inp, i) => ({ ...inp, i })).filter(({ i }) => phase1Results[i] === null)
     const finalResults: NormalizationResult[] = [...phase1Results] as NormalizationResult[]
@@ -218,8 +218,8 @@ export async function POST(req: NextRequest) {
             reasoning: dbCached.reasoning
           }
         } else {
-          // 3. Gemini check (only if cache misses)
-          if (index > 0) await new Promise(r => setTimeout(r, 4000)) // 4s gap for 15 RPM
+          // 3. Groq check (only if cache misses)
+          if (index > 0) await new Promise(r => setTimeout(r, 2000)) // 2s gap for 30 RPM
 
           try {
             aiResult = await withTimeout(groqInferLocation(raw_input, groqApiKey, {
@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
               }, { onConflict: 'raw_input_normalized' })
             }
           } catch (e) {
-            console.warn(`[Batch] Gorq timeout for ${raw_input}`)
+            console.warn(`[Batch] Groq timeout for ${raw_input}`)
             aiResult = null
           }
         }

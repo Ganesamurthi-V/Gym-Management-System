@@ -464,6 +464,19 @@ export default function ImportReviewPage() {
                               </div>
                             )}
 
+                            {(row.suggestions ?? []).length === 0 && (
+                              <p className="text-xs text-gray-400 italic">
+                                No suggestions found — type a location in the input above to override manually.
+                              </p>
+                            )}
+
+                            {row.ai_reasoning && (
+                              <p className="text-[10px] text-blue-600 flex items-center gap-1">
+                                <span className="font-bold uppercase tracking-widest text-blue-400">AI:</span>
+                                {row.ai_reasoning}
+                              </p>
+                            )}
+
                             {row._area_override && row._area_override !== row._original_area && (
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" checked={row._save_alias ?? false}

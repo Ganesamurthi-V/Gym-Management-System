@@ -40,17 +40,10 @@ export async function geminiInferLocation(
 
   const prompt = `Input: "${rawInput}"${contextHint}\n\nInfer the location:`
 
-  const MAX_RETRIES = 3
+  const MAX_RETRIES = 1 // Instructions say do not retry on timeout
   let lastStatus = 0
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    // Exponential backoff: 5s, 15s, 30s — long enough for Gemini free tier RPM reset
-    if (attempt > 0) {
-      const wait = attempt === 1 ? 5000 : attempt === 2 ? 15000 : 30000
-      console.warn(`[GeoAI] Waiting ${wait}ms before retry ${attempt + 1}...`)
-      await new Promise(r => setTimeout(r, wait))
-    }
-
     try {
       const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST',
@@ -58,17 +51,10 @@ export async function geminiInferLocation(
         body: JSON.stringify({
           contents: [{ parts: [{ text: SYSTEM_PROMPT + '\n\n' + prompt }] }],
           generationConfig: { temperature: 0.1, maxOutputTokens: 200 },
-        }),
-        signal: AbortSignal.timeout(10000),
+        })
       })
 
       lastStatus = res.status
-
-      // 429 = rate limited — retry after backoff
-      if (res.status === 429) {
-        console.warn(`[GeoAI] Rate limited (429), attempt ${attempt + 1}/${MAX_RETRIES}`)
-        continue
-      }
 
       if (!res.ok) {
         console.warn('[GeoAI] Gemini API error:', res.status)
@@ -77,11 +63,8 @@ export async function geminiInferLocation(
 
       const data = await res.json()
       const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-      console.log('[GeoAI] Raw response text:', text)
       const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      console.log('[GeoAI] Cleaned text:', cleaned)
       const parsed: AIInferenceResult = JSON.parse(cleaned)
-      console.log('[GeoAI] Parsed:', parsed)
 
       if (!parsed.probable_location || !parsed.state || typeof parsed.confidence !== 'number') {
         console.warn('[GeoAI] Invalid shape:', parsed)
@@ -97,7 +80,6 @@ export async function geminiInferLocation(
     }
   }
 
-  console.warn(`[GeoAI] All ${MAX_RETRIES} attempts failed (last status: ${lastStatus})`)
   return null
 }
 
@@ -113,7 +95,6 @@ export async function geminiInferBatch(
   for (const input of needsFetch) {
     const result = await geminiInferLocation(input, apiKey, clusterHint)
     resultMap.set(input, result)
-    // Respect Gemini free tier: 15 RPM = 1 request per 4 seconds minimum
     if (needsFetch.length > 1) await new Promise(r => setTimeout(r, 4500))
   }
 

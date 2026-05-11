@@ -4,7 +4,7 @@ import { normalizeInput, toPhoneticKey, expandAbbreviations } from '@/lib/geo/no
 import { scoreAgainstList } from '@/lib/geo/fuzzyMatch'
 import { ALIAS_MAP } from '@/lib/geo/aliases'
 import { CONFIDENCE } from '@/lib/geo/types'
-import { geminiInferLocation } from '@/lib/geo/aiInference'
+import { groqInferLocation } from '@/lib/geo/aiInference'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, AIInferenceResult } from '@/lib/geo/types'
@@ -243,11 +243,11 @@ export async function POST(req: NextRequest) {
 
     // ── Step 5: Gemini AI Fallback (with 3-layer cache) ───────────────────────
     const cacheKey = rawInput.toLowerCase().trim()
-    const geminiApiKey = process.env.GEMINI_API_KEY ?? ''
+    const groqApiKey = process.env.GROQ_API_KEY ?? ''
 
-    if (geminiApiKey) {
-      // 1. Memory check (handled by geminiInferLocation but we'll try to be explicit here if we could,
-      // but geminiInferLocation already has AI_CACHE. Let's just call it and it will handle memory)
+    if (groqApiKey) {
+      // 1. Memory check (handled by groqInferLocation but we'll try to be explicit here if we could,
+      // but groqInferLocation already has AI_CACHE. Let's just call it and it will handle memory)
 
       // 2. DB cache check
       const { data: dbCached } = await supabase
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
       } else {
         // 3. Gemini (only if both miss)
         try {
-          aiResult = await withTimeout(geminiInferLocation(rawInput, geminiApiKey), 5000)
+          aiResult = await withTimeout(groqInferLocation(rawInput, groqApiKey), 5000)
 
           if (aiResult && aiResult.probable_location && typeof aiResult.confidence === 'number') {
             // Write to DB cache immediately
@@ -284,7 +284,7 @@ export async function POST(req: NextRequest) {
             }, { onConflict: 'raw_input_normalized' })
           }
         } catch (e) {
-          console.warn('[Normalize] Gemini timeout or error:', e)
+          console.warn('[Normalize] Groq timeout or error:', e)
           aiResult = null
         }
       }

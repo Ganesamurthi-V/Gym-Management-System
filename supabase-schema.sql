@@ -196,7 +196,8 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age 
 -- ================================================
 
 -- Enable pg_trgm for fast fuzzy text search
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- Install in extensions schema to avoid extension_in_public warning
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
 
 -- geo_localities: canonical place database
 CREATE TABLE IF NOT EXISTS geo_localities (
@@ -220,7 +221,7 @@ CREATE TABLE IF NOT EXISTS geo_localities (
 CREATE INDEX IF NOT EXISTS idx_geo_localities_name_norm ON geo_localities(name_normalized);
 CREATE INDEX IF NOT EXISTS idx_geo_localities_state ON geo_localities(state);
 CREATE INDEX IF NOT EXISTS idx_geo_localities_district ON geo_localities(district);
-CREATE INDEX IF NOT EXISTS idx_geo_localities_trgm ON geo_localities USING gin(name_normalized gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_geo_localities_trgm ON geo_localities USING gin(name_normalized extensions.gin_trgm_ops);
 
 -- geo_aliases: alternate spellings → canonical locality
 CREATE TABLE IF NOT EXISTS geo_aliases (
@@ -351,6 +352,7 @@ RETURNS TABLE(
   trgm_score FLOAT
 )
 LANGUAGE sql STABLE
+SET search_path = public, extensions
 AS $$
   SELECT
     id, name, name_normalized, name_phonetic, district, state,
@@ -375,6 +377,7 @@ RETURNS TABLE(
   state TEXT
 )
 LANGUAGE sql STABLE
+SET search_path = public, extensions
 AS $$
   SELECT id, name, district, state
   FROM geo_localities
@@ -388,3 +391,8 @@ AS $$
     similarity(name_normalized, query_text) DESC
   LIMIT result_limit;
 $$;
+
+-- ── Security hardening ────────────────────────────────────────────────────
+-- Revoke EXECUTE on rls_auto_enable from anon and authenticated roles
+-- Fixes: anon_security_definer_function_executable warning
+REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon, authenticated;

@@ -1,3 +1,13 @@
+/**
+ * Server-side in-memory rate limiter.
+ *
+ * Groq llama-3.1-8b-instant limits (free tier):
+ *   30 RPM  |  14,400 RPD  |  6,000 TPM  |  500,000 TPD
+ *
+ * ROUTE_LIMITS below are per-user-per-minute caps enforced BEFORE we hit Groq,
+ * so the sum of all users' requests stays under 30 RPM globally.
+ */
+
 interface RateLimitEntry {
   count: number
   resetAt: number
@@ -25,8 +35,16 @@ export function checkRateLimit(userId: string, route: string, rpm: number): { al
 }
 
 export const ROUTE_LIMITS = {
-  NORMALIZE: 10,
-  BATCH_NORMALIZE: 3,
+  /**
+   * Single normalisation — each call may use 1 Groq request.
+   * Allow max 5 calls/user/min to leave headroom for other routes.
+   */
+  NORMALIZE: 5,
+  /**
+   * Batch normalisation — each call may use 1 Groq batch request.
+   * Keep to 2/user/min; batches are heavier on tokens.
+   */
+  BATCH_NORMALIZE: 2,
   SAVE_ALIAS: 20,
-  DEFAULT: 50
+  DEFAULT: 30,
 } as const

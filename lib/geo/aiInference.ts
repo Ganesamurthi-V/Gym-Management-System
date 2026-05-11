@@ -1,6 +1,6 @@
 import type { AIInferenceResult } from './types'
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 const SYSTEM_PROMPT = `You are a regional location intelligence expert specialised in Tamil Nadu and Puducherry, India.
 
@@ -49,7 +49,7 @@ Respond ONLY with a valid JSON array (one object per input, in the same order), 
 
 const AI_CACHE = new Map<string, AIInferenceResult>()
 
-async function callGemini(
+async function callGroq(
   prompt: string,
   apiKey: string,
   maxTokens = 1000
@@ -60,22 +60,36 @@ async function callGemini(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       // Longer backoff: 30s, 60s — Gemini free tier resets every minute
-      const wait = attempt === 1 ? 30000 : 60000
+      const wait = attempt === 1 ? 2000 : 5000
       console.warn(`[GeoAI] Waiting ${wait}ms before retry ${attempt + 1}...`)
       await new Promise(r => setTimeout(r, wait))
     }
 
     try {
-      const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      const res = await fetch(GROQ_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: maxTokens },
+          model: 'llama-3.1-8b-instant',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a regional location intelligence expert specialised in Tamil Nadu and Puducherry, India.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: maxTokens,
         }),
         signal: AbortSignal.timeout(30000),
       })
-
       lastStatus = res.status
 
       if (res.status === 429) {
@@ -84,13 +98,20 @@ async function callGemini(
       }
 
       if (!res.ok) {
-        console.warn('[GeoAI] Gemini API error:', res.status)
+        console.warn('[GeoAI] Gorq API error:', res.status)
         return null
       }
 
       const data = await res.json()
-      const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-      return text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const text: string = data?.choices?.[0]?.message?.content ?? ''
+
+      const cleaned = text
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim()
+
+      return cleaned
     } catch (err) {
       console.warn('[GeoAI] Request failed:', String(err))
       return null
@@ -102,7 +123,7 @@ async function callGemini(
 }
 
 /** Single input inference — used when only 1 item needs AI */
-export async function geminiInferLocation(
+export async function groqInferLocation(
   rawInput: string,
   apiKey: string,
   clusterHint?: { top_district: string; top_state: string }
@@ -117,7 +138,7 @@ export async function geminiInferLocation(
     : ''
 
   const prompt = `${SYSTEM_PROMPT}\n\nInput: "${rawInput}"${contextHint}\n\nInfer the location:`
-  const text = await callGemini(prompt, apiKey, 200)
+  const text = await callGroq(prompt, apiKey, 200)
   if (!text) return null
 
   try {
@@ -139,7 +160,7 @@ export async function geminiInferLocation(
  * Batch inference — sends ALL inputs in a SINGLE Gemini request.
  * Dramatically reduces API calls and avoids rate limiting.
  */
-export async function geminiInferBatch(
+export async function groqInferBatch(
   inputs: string[],
   apiKey: string,
   clusterHint?: { top_district: string; top_state: string }
@@ -161,7 +182,7 @@ export async function geminiInferBatch(
 
   // Single input — use the simpler single-item prompt
   if (needsFetch.length === 1) {
-    const result = await geminiInferLocation(needsFetch[0], apiKey, clusterHint)
+    const result = await groqInferLocation(needsFetch[0], apiKey, clusterHint)
     resultMap.set(needsFetch[0], result)
     return resultMap
   }
@@ -175,7 +196,7 @@ export async function geminiInferBatch(
   const prompt = `${BATCH_SYSTEM_PROMPT}${contextHint}\n\nInputs:\n${inputList}\n\nReturn a JSON array with ${needsFetch.length} objects:`
 
   // Allow ~150 tokens per input for the response
-  const text = await callGemini(prompt, apiKey, needsFetch.length * 150 + 100)
+  const text = await callGroq(prompt, apiKey, needsFetch.length * 150 + 100)
 
   if (!text) {
     // All failed — mark as null

@@ -7,3 +7,4 @@ package-lock.json
 geo_normalization.sql
 supabase-geo-intelligence-migrations.sql
 GEO_INTELLIGENCE_MIGRATIONS.sql
+.vscode

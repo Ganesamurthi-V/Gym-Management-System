@@ -103,7 +103,7 @@ export async function matchAreaBatch(
   return results as NormalizationResult[]
 }
 
-/** Lightweight autocomplete search — calls GET /api/geo/search */
+/** Lightweight autocomplete search — calls GET /api/geo/search, falls back to client-side seed data */
 export async function searchLocalities(
   query: string
 ): Promise<Array<{ id: string; name: string; district: string; state: string }>> {
@@ -113,23 +113,61 @@ export async function searchLocalities(
   const n = normalizeInput(query)
   const aliasHit = ALIAS_MAP[n]
 
+  // ── Try the API first ────────────────────────────────────────────────────
   try {
     const params = new URLSearchParams({ q: query, limit: '8' })
     const res = await fetch(`/api/geo/search?${params}`)
-    if (!res.ok) return []
-    const json = await res.json()
-    // Search API returns { data: [...] } or plain array — handle both
-    const data = Array.isArray(json) ? json : (json?.data ?? [])
-    // If alias matched, bubble it to top
-    if (aliasHit) {
-      const idx = data.findIndex((d: any) => d.name === aliasHit)
-      if (idx > 0) {
-        const [item] = data.splice(idx, 1)
-        data.unshift(item)
+    if (res.ok) {
+      const json = await res.json()
+      const data: Array<{ id: string; name: string; district: string; state: string }> =
+        Array.isArray(json) ? json : (json?.data ?? [])
+
+      if (data.length > 0) {
+        // Bubble alias match to top
+        if (aliasHit) {
+          const idx = data.findIndex(d => d.name === aliasHit)
+          if (idx > 0) { const [item] = data.splice(idx, 1); data.unshift(item) }
+        }
+        return data
       }
     }
-    return data
-  } catch {
-    return []
+  } catch { /* fall through to client-side */ }
+
+  // ── Client-side fallback — search seed data directly ────────────────────
+  // This ensures suggestions always appear even when the localities table is
+  // empty or the API is unavailable.
+  const { SEED_LOCALITIES_DEDUPED } = await import('./seed-data')
+  const qNorm = normalizeInput(query)
+  const qLower = query.toLowerCase()
+
+  const scored = SEED_LOCALITIES_DEDUPED
+    .map(loc => {
+      const locNorm = loc.name_normalized
+      let score = 0
+      if (locNorm === qNorm)                          score = 100  // exact
+      else if (locNorm.startsWith(qNorm))             score = 90   // prefix
+      else if (locNorm.includes(qNorm))               score = 70   // substring
+      else if (loc.name.toLowerCase().startsWith(qLower)) score = 85
+      else if (loc.name.toLowerCase().includes(qLower))   score = 60
+      else if (loc.name_phonetic?.startsWith(normalizeInput(qNorm))) score = 40
+      return { loc, score }
+    })
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+
+  const results = scored.map(({ loc }) => ({
+    id:       loc.name_normalized,
+    name:     loc.name,
+    district: loc.district ?? '',
+    state:    loc.state ?? '',
+  }))
+
+  // Bubble alias match to top
+  if (aliasHit) {
+    const idx = results.findIndex(r => r.name === aliasHit)
+    if (idx > 0) { const [item] = results.splice(idx, 1); results.unshift(item) }
   }
+
+  return results
 }

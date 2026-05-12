@@ -551,7 +551,7 @@ export default function ImportEditPage() {
                           }`}
                         />
                         {row._id_auto && !row._id_conflict && (
-                          <span className="text-[9px] text-amber-500 font-semibold leading-none" title="No ID in file — auto-assigned. You can change it.">auto asigned </span>
+                          <span className="text-[9px] text-amber-500 font-semibold leading-none" title="No ID in file — auto-assigned. You can change it."></span>
                         )}
                         {row._id_conflict && (
                           <span className="text-[9px] text-red-500 font-semibold leading-none">taken!</span>

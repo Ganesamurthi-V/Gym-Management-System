@@ -3,10 +3,18 @@
 import { useState } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { matchAreaBatch } from "@/lib/geo/matchArea";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import {
+  cellStr as sharedCellStr,
+  excelSerialToDate as sharedExcelSerialToDate,
+  normalizePlan,
+  normalizeGender,
+  normalizePaymentMode,
+  normalizeAge,
+} from "@/lib/import/normalizers";
+import { runImportPipeline } from "@/lib/import/pipeline";
 
 export interface ImportedRow {
   name: string;
@@ -93,16 +101,7 @@ function buildColumnMap(headers: string[]): Record<string, number> {
 
 // Use unknown instead of ExcelJS.CellValue — avoids static import requirement
 function cellStr(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return String(value);
-  if (typeof value === "object" && "richText" in (value as object))
-    return ((value as { richText: { text: string }[] }).richText).map(r => r.text).join("").trim();
-  if (value instanceof Date) return format(value, "yyyy-MM-dd");
-  if (typeof value === "object" && "result" in (value as object))
-    return cellStr((value as { result: unknown }).result);
-  return String(value).trim();
+  return sharedCellStr(value);
 }
 
 // Row typed as any — ExcelJS.Row not available without static import
@@ -113,56 +112,7 @@ function getCol(row: any, colMap: Record<string, number>, field: string): string
 }
 
 function excelSerialToDate(serial: number): string {
-  return format(new Date(Math.round((serial - 25569) * 86400 * 1000)), "yyyy-MM-dd");
-}
-
-function normalizeGender(raw: string): string {
-  const v = raw.toLowerCase().trim();
-  if (["m", "male", "boy", "man", "gents", "gent"].includes(v)) return "male";
-  if (["f", "female", "girl", "woman", "ladies", "lady"].includes(v)) return "female";
-  if (["o", "other", "others", "na", "n/a"].includes(v)) return "other";
-  return "";
-}
-
-function normalizePlan(raw: string): string {
-  const v = raw.toLowerCase().trim();
-  if (["monthly", "month", "1month", "1 month", "1m", "30days", "30 days"].includes(v)) return "monthly";
-  if (["quarterly", "quarter", "3months", "3 months", "3m", "90days", "90 days"].includes(v)) return "quarterly";
-  if (["annual", "yearly", "year", "12months", "12 months", "12m", "1year", "1 year", "365days"].includes(v)) return "annual";
-  return "monthly";
-}
-
-function normalizePaymentMode(raw: string): string {
-  const v = raw.toLowerCase().trim();
-  if (["cash", "c", "hand", "inhand"].includes(v)) return "cash";
-  if (["upi", "gpay", "googlepay", "phonepay", "phonepe", "paytm", "bhim", "online", "neft", "imps"].includes(v)) return "upi";
-  if (["card", "debit", "credit", "debitcard", "creditcard", "swipe"].includes(v)) return "card";
-  return "cash";
-}
-
-const WORD_NUMS: Record<string, number> = {
-  zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,
-  eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,
-  eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,
-  eighty:80,ninety:90,
-};
-
-function normalizeAge(raw: string): string {
-  if (!raw) return "";
-  // strip suffixes like "yrs", "years", "yr", "y"
-  const cleaned = raw.toLowerCase().replace(/\s*(years?|yrs?|y)\b/g, "").trim();
-  // already a number
-  const num = parseInt(cleaned);
-  if (!isNaN(num) && num > 0 && num <= 120) return String(num);
-  // word form: "twenty five", "twentyfive", "twenty-five"
-  const words = cleaned.replace(/-/g, " ").split(/\s+/);
-  let total = 0;
-  for (const w of words) {
-    const n = WORD_NUMS[w];
-    if (n === undefined) return ""; // unrecognised word — drop it
-    total += n;
-  }
-  return total > 0 && total <= 120 ? String(total) : "";
+  return sharedExcelSerialToDate(serial);
 }
 
 export default function ImportPage() {
@@ -183,27 +133,20 @@ export default function ImportPage() {
       return;
     }
 
+    // Clear all stale session state from any previous import session
+    // so the review page never loads old data when a new file is uploaded
+    sessionStorage.removeItem("import_rows");
+    sessionStorage.removeItem("import_rows_original");
+    sessionStorage.removeItem("import_review_state");
+    sessionStorage.removeItem("import_cluster");
+    sessionStorage.removeItem("import_has_id_col");
+
     setParsing(true);
     setParseStage(1);
 
     const ExcelJSModule = await import("exceljs");
     const ExcelJS = ExcelJSModule.default || ExcelJSModule;
     setParseStage(2);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: gym } = user
-      ? await supabase.from("gyms").select("id").eq("owner_id", user.id).single()
-      : { data: null };
-
-    const [existingMembersRes, existingNumsRes] = gym
-      ? await Promise.all([
-          supabase.from("members").select("phone").eq("gym_id", gym.id) as Promise<{ data: { phone: string }[] | null }>,
-          supabase.from("members").select("member_number").eq("gym_id", gym.id) as Promise<{ data: { member_number: number }[] | null }>,
-        ])
-      : [{ data: null }, { data: null }];
-
-    const dbPhones = new Set((existingMembersRes.data ?? []).map(m => m.phone));
-    const dbNums   = new Set((existingNumsRes.data ?? []).map(m => m.member_number));
 
     const isCSV = file.name.endsWith(".csv");
     const wb = new ExcelJS.Workbook();
@@ -250,7 +193,12 @@ export default function ImportPage() {
       const phone         = rawPhone.replace(/\D/g, "").slice(-10);
       const plan          = normalizePlan(getCol(row, colMap, "plan") || "monthly");
       const rawDate       = getCol(row, colMap, "start_date");
-      const amount        = getCol(row, colMap, "amount") || "0";
+      const rawAmount = getCol(row, colMap, "amount");
+      const parsedAmount = parseInt(rawAmount.replace(/[^\d]/g, ""));
+      // Pass "0" when amount is missing — the shared pipeline fills it from gym_plan_prices
+      const amount = (!rawAmount || isNaN(parsedAmount) || parsedAmount === 0)
+        ? "0"
+        : String(parsedAmount);
       const payment_mode  = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
       const gender        = normalizeGender(getCol(row, colMap, "gender"));
       const age           = normalizeAge(getCol(row, colMap, "age"));
@@ -283,99 +231,21 @@ export default function ImportPage() {
       if (!name) _error = "Missing name";
       else if (phone && phone.length !== 10) _error = "Invalid phone — WhatsApp reminders won't work";
 
-      // area will be filled after batch normalization
+      // area will be filled by the shared pipeline
       parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, age, area: rawArea, member_number, _rowId: parsed.length, _status: !name ? "error" : "ok", _error });
     });
 
-    // Batch normalize all area values
+    // ── Run shared pipeline (areas, cluster, prices, IDs) ─────────────────
     setParseStage(4);
-    const BATCH_SIZE = 50;
-    const areaInputs = parsed.map(r => ({ raw: r.area, gymId: gym?.id }));
-    const areaResults: any[] = [];
-    for (let i = 0; i < areaInputs.length; i += BATCH_SIZE) {
-      const batch = await matchAreaBatch(areaInputs.slice(i, i + BATCH_SIZE));
-      areaResults.push(...batch);
-    }
-    parsed.forEach((r, i) => {
-      const res = areaResults[i];
-      if (res) {
-        r.area = res.normalized_value;
-        r._area_confidence = res.confidence_score;
-        r._area_matched_by = res.matched_by;
-        // Store suggestions and AI reasoning for the review page
-        (r as any).suggestions = res.suggestions;
-        (r as any).ai_reasoning = res.ai_reasoning;
-      }
+    const { rows: pipelineRows } = await runImportPipeline(parsed, {
+      supabase,
+      onStage: stage => {
+        if (stage === "areas") setParseStage(4);
+        if (stage === "ids")   setParseStage(5);
+      },
     });
 
-    // Detect dataset cluster — stored in sessionStorage for the review page banner
-    try {
-      const clusterRes = await fetch('/api/geo/cluster-detect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: parsed.map(r => r.area).filter(Boolean) }),
-      });
-      if (clusterRes.ok) {
-        sessionStorage.setItem('import_cluster', JSON.stringify(await clusterRes.json()));
-      }
-    } catch { }
-
-    // Build assignedNums incrementally, checking both DB and file conflicts together
-    const assignedNums = new Set<string>();
-
-    function nextAvailable(): string {
-      let n = 1;
-      while (dbNums.has(n) || assignedNums.has(String(n))) n++;
-      return String(n);
-    }
-
-    // Pass 1: fix phone duplicates within file (skip blank phones)
-    const phoneCount = new Map<string, number>();
-    parsed.forEach(r => {
-      if (r.phone) phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1);
-    });
-    parsed.forEach(r => {
-      if (r._status !== "error" && r.phone && phoneCount.get(r.phone)! > 1) {
-        r._status = "duplicate"; r._error = "Duplicate phone in file";
-      }
-    });
-
-    // Pass 2: assign/fix member numbers — auto-assign if missing, flag conflicts for manual fix
-    const seenNums = new Set<string>();
-    parsed.forEach(r => {
-      if (r._status === "error" || r._status === "duplicate") return;
-      if (!r.member_number) {
-        const newNum = nextAvailable();
-        assignedNums.add(newNum);
-        seenNums.add(newNum);
-        r.member_number = newNum;
-        r._id_auto = true;
-      } else {
-        const inDB = dbNums.has(parseInt(r.member_number));
-        const inFile = seenNums.has(r.member_number);
-        if (inDB || inFile) {
-          const newNum = nextAvailable();
-          assignedNums.add(newNum);
-          seenNums.add(newNum);
-          r._id_conflict = true;
-          r._error = `ID #${r.member_number} ${inDB ? 'exists in DB' : 'duplicate in file'} — auto-assigned #${newNum}`;
-          r.member_number = newNum;
-          r._id_auto = true;
-        } else {
-          seenNums.add(r.member_number);
-          assignedNums.add(r.member_number);
-        }
-      }
-    });
-
-    // Pass 3: flag DB phone conflicts (skip blank phones)
-    parsed.forEach(r => {
-      if (r._status !== "error" && r._status !== "duplicate" && r.phone && dbPhones.has(r.phone)) {
-        r._status = "duplicate"; r._error = "Phone already exists in database";
-      }
-    });
-
-    setRows(parsed);
+    setRows(pipelineRows);
     setParseStage(5);
     setParsing(false);
   }

@@ -396,3 +396,22 @@ $$;
 -- Revoke EXECUTE on rls_auto_enable from anon and authenticated roles
 -- Fixes: anon_security_definer_function_executable warning
 REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon, authenticated;
+
+-- Create the gym plan prices table
+CREATE TABLE IF NOT EXISTS gym_plan_prices (
+  gym_id    UUID PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
+  monthly   INTEGER NOT NULL DEFAULT 1500,
+  quarterly INTEGER NOT NULL DEFAULT 4000,
+  annual    INTEGER NOT NULL DEFAULT 10000,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS: only the gym owner can read their own prices
+ALTER TABLE gym_plan_prices ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Owner can read own plan prices"
+  ON gym_plan_prices FOR SELECT
+  USING (
+    gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid())
+  );

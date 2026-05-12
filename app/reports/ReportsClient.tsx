@@ -141,126 +141,162 @@ export function ReportsClient({
     const today = formatDate(new Date().toISOString())
 
     // 1. Letterhead
-    doc.setFontSize(22)
-    doc.setTextColor(17, 24, 39)
-    doc.text(gymName, 14, 20)
+    doc.setFillColor(249, 115, 22) // brand-500
+    doc.rect(0, 0, 210, 40, 'F')
+
+    doc.setFontSize(28)
+    doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold')
+    doc.text(gymName.toUpperCase(), 14, 25)
 
     doc.setFontSize(10)
-    doc.setTextColor(107, 114, 128)
-    doc.text(`City: ${gymCity || 'Pondicherry / Chennai'}`, 14, 27)
-    doc.text(`GST: ${gymGST || 'N/A'} | Contact: ${gymPhone || 'N/A'}`, 14, 32)
-
-    doc.setDrawColor(229, 231, 235)
-    doc.line(14, 38, 196, 38)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`${gymCity || 'Tamil Nadu / Puducherry'} | GST: ${gymGST || 'N/A'} | Contact: ${gymPhone || 'N/A'}`, 14, 33)
 
     // 2. Report period and generated date
-    doc.setFontSize(12)
+    let currentY = 55
+    doc.setFontSize(16)
     doc.setTextColor(17, 24, 39)
-    doc.text(`Business Report: ${dateRange.replace(/-/g, ' ').toUpperCase()}`, 14, 48)
+    doc.text('Business Intelligence Report', 14, currentY)
+
     doc.setFontSize(10)
     doc.setTextColor(107, 114, 128)
-    doc.text(`Generated on: ${today}`, 196, 48, { align: 'right' })
+    doc.text(`Period: ${dateRange.replace(/-/g, ' ').toUpperCase()}`, 14, currentY + 7)
+    doc.text(`Generated: ${today}`, 196, currentY + 7, { align: 'right' })
 
-    // 3. Summary stat boxes in a 2x2 grid
-    const startY = 55
-    const cardWidth = 88
-    const cardHeight = 25
+    // 3. Summary stat boxes (3x2 grid)
+    currentY += 15
+    const cardWidth = 62
+    const cardHeight = 28
+    const gutter = 5
 
-    const drawStat = (label: string, value: string, x: number, y: number) => {
+    const drawStat = (label: string, value: string, x: number, y: number, isLast = false) => {
       doc.setFillColor(249, 250, 251)
-      doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'F')
-      doc.setFontSize(9)
+      doc.setDrawColor(229, 231, 235)
+      doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD')
+      doc.setFontSize(8)
       doc.setTextColor(107, 114, 128)
+      doc.setFont('helvetica', 'bold')
       doc.text(label.toUpperCase(), x + 5, y + 8)
       doc.setFontSize(14)
-      doc.setTextColor(17, 24, 39)
-      doc.text(value, x + 5, y + 18)
+      doc.setTextColor(isLast ? 185 : 17, isLast ? 28 : 24, isLast ? 28 : 39)
+      doc.text(value, x + 5, y + 19)
     }
 
-    drawStat('Total Revenue', formatCurrency(currentRevenue), 14, startY)
-    drawStat('Active Members', activeCount.toString(), 108, startY)
-    drawStat('Dues Collected', formatCurrency(totalDuesAmount), 14, startY + 30)
-    drawStat('Attendance Rate', `${attendanceRate}%`, 108, startY + 30)
+    drawStat('Total Revenue', formatCurrency(currentRevenue), 14, currentY)
+    drawStat('Active Members', activeCount.toString(), 14 + cardWidth + gutter, currentY)
+    drawStat('Avg Monthly', formatCurrency(Math.round(months.reduce((a, b) => a + b.total, 0) / 6)), 14 + (cardWidth + gutter) * 2, currentY)
 
-    let currentY = startY + 65
+    currentY += cardHeight + gutter
+    drawStat('New Members', filteredNewMembers.toString(), 14, currentY)
+    drawStat('Attendance Rate', `${attendanceRate}%`, 14 + cardWidth + gutter, currentY)
+    drawStat('Total Dues', formatCurrency(totalDuesAmount), 14 + (cardWidth + gutter) * 2, currentY, true)
+
+    currentY += cardHeight + 15
 
     // 4. Revenue trend table
     doc.setFontSize(12)
     doc.setTextColor(17, 24, 39)
-    doc.text('Revenue Trend (Last 6 Months)', 14, currentY)
+    doc.text('Revenue Analytics (Last 6 Months)', 14, currentY)
     currentY += 5
 
     autoTable(doc, {
       startY: currentY,
-      head: [['Month', 'Cash', 'UPI', 'Card', 'Transactions', 'Total']],
+      head: [['Month', 'Cash', 'UPI', 'Transactions', 'Revenue']],
       body: months.map(m => [
         m.label,
         formatCurrency(m.cash),
         formatCurrency(m.upi),
-        formatCurrency(m.card),
         m.transactions,
         formatCurrency(m.total)
       ]),
       theme: 'striped',
-      headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [250, 251, 252] },
+      headStyles: { fillColor: [249, 115, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9 },
       margin: { left: 14, right: 14 }
     })
 
     currentY = (doc as any).lastAutoTable.finalY + 15
 
-    // 5. Member plan distribution table
-    doc.text('Plan Distribution', 14, currentY)
+    // 5. Demographics (Gender & Plan)
+    doc.setFontSize(12)
+    doc.text('Member Demographics & Plans', 14, currentY)
     currentY += 5
 
     autoTable(doc, {
       startY: currentY,
-      head: [['Plan', 'Count', 'Percentage']],
-      body: [
-        ['Monthly', planCounts.monthly, `${Math.round(planCounts.monthly / totalPlanCount * 100)}%`],
-        ['Quarterly', planCounts.quarterly, `${Math.round(planCounts.quarterly / totalPlanCount * 100)}%`],
-        ['Annual', planCounts.annual, `${Math.round(planCounts.annual / totalPlanCount * 100)}%`],
-      ],
+      head: [['Segment', 'Male', 'Female', 'Monthly', 'Quarterly', 'Annual']],
+      body: [[
+        'Count',
+        genderCounts.male,
+        genderCounts.female,
+        planCounts.monthly,
+        planCounts.quarterly,
+        planCounts.annual
+      ]],
+      theme: 'grid',
+      headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81] },
+      styles: { halign: 'center' },
+      margin: { left: 14, right: 14 }
+    })
+
+    // New page
+    doc.addPage()
+    currentY = 20
+
+    // 6. Area-wise distribution
+    doc.setFontSize(12)
+    doc.text('Geographic Distribution (Top Localities)', 14, currentY)
+    currentY += 5
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Area / Locality', 'Members', 'Percentage']],
+      body: topAreas.map(a => [a.area, a.count, `${Math.round(a.count / totalMembers * 100)}%`]),
+      theme: 'striped',
+      headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255] },
+      margin: { left: 14, right: 14 }
+    })
+
+    currentY = (doc as any).lastAutoTable.finalY + 15
+
+    // 7. Age distribution
+    doc.setFontSize(12)
+    doc.text('Age Group Breakdown', 14, currentY)
+    currentY += 5
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Age Range', 'Member Count', 'Status']],
+      body: Object.entries(ageBuckets).map(([range, count]) => [
+        range,
+        count,
+        count > (totalMembers / 4) ? 'High' : 'Normal'
+      ]),
       theme: 'grid',
       headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81] },
       margin: { left: 14, right: 14 }
     })
 
-    // New page for remaining sections
-    doc.addPage()
-    currentY = 20
-
-    // 6. Area-wise member count table
-    doc.text('Top Areas Distribution', 14, currentY)
-    currentY += 5
-
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Area / Locality', 'Member Count']],
-      body: topAreas.map(a => [a.area, a.count]),
-      theme: 'striped',
-      headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81] },
-      margin: { left: 14, right: 14 }
-    })
-
     currentY = (doc as any).lastAutoTable.finalY + 15
 
-    // 7. Dues overdue list
-    doc.setTextColor(185, 28, 28) // Red color for dues
-    doc.text('Outstanding Dues List', 14, currentY)
-    doc.setTextColor(17, 24, 39)
-    currentY += 5
+    // 8. Dues list (Critical)
+    if (membersWithDues.length > 0) {
+      doc.setTextColor(185, 28, 28)
+      doc.text('Overdue Collection List', 14, currentY)
+      currentY += 5
 
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Member Name', 'Phone', 'Amount Overdue']],
-      body: membersWithDues.map(m => [m.name, m.phone, formatCurrency(m.amount)]),
-      theme: 'striped',
-      headStyles: { fillColor: [254, 242, 242], textColor: [153, 27, 27] },
-      margin: { left: 14, right: 14 }
-    })
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Member Name', 'Phone', 'Pending Amount']],
+        body: membersWithDues.map(m => [m.name, m.phone, formatCurrency(m.amount)]),
+        theme: 'striped',
+        headStyles: { fillColor: [185, 28, 28], textColor: [255, 255, 255] },
+        margin: { left: 14, right: 14 }
+      })
+    }
 
-    // 8. Footer
+    // 9. Footer
     const pageCount = (doc as any).internal.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
@@ -291,44 +327,44 @@ export function ReportsClient({
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-slide-up">
       {/* TN/Puducherry Friendly Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="space-y-1">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 opacity-50" />
+        <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2 text-brand-600 font-bold text-xs uppercase tracking-widest">
             <BarChart2 className="w-4 h-4" />
-            Business Analytics
+            Business Intelligence
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{gymName}</h1>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{gymName}</h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {gymCity || 'Pondicherry / Chennai'}</span>
-            <span className="flex items-center gap-1"><Receipt className="w-3.5 h-3.5" /> GST: {gymGST || 'N/A'}</span>
-            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {gymPhone || 'N/A'}</span>
-            <span className="flex items-center gap-1 text-xs font-medium text-gray-400">| {formatDate(new Date().toISOString())}</span>
+            <span className="flex items-center gap-1 font-medium"><MapPin className="w-3.5 h-3.5 text-brand-400" /> {gymCity || 'Tamil Nadu / Puducherry'}</span>
+            <span className="flex items-center gap-1 font-medium"><Receipt className="w-3.5 h-3.5 text-brand-400" /> GST: {gymGST || 'N/A'}</span>
+            <span className="flex items-center gap-1 font-medium"><Calendar className="w-3.5 h-3.5 text-brand-400" /> {gymPhone || 'N/A'}</span>
           </div>
         </div>
-        <div className="flex flex-col md:flex-row items-center gap-2">
+        <div className="flex flex-col md:flex-row items-center gap-2 relative z-10">
           {dateRange === 'custom' && (
             <div className="flex items-center gap-2 animate-pop-in">
               <input
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="px-2 py-1.5 text-xs font-medium bg-gray-50 border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
+                className="px-2 py-1.5 text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
               />
-              <span className="text-gray-400 text-xs">to</span>
+              <span className="text-gray-400 text-xs font-bold">to</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="px-2 py-1.5 text-xs font-medium bg-gray-50 border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
+                className="px-2 py-1.5 text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           )}
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as DateRange)}
-            className="px-3 py-2 text-sm font-semibold bg-gray-50 border-none rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+            className="px-3 py-2 text-sm font-bold bg-gray-50 border-2 border-gray-100 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer"
           >
             <option value="this-month">This Month</option>
             <option value="last-month">Last Month</option>
@@ -336,8 +372,8 @@ export function ReportsClient({
             <option value="custom">Custom Range</option>
           </select>
           <button onClick={exportPDF}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition-all shadow-sm">
-            <Download className="w-4 h-4" />Export PDF
+            className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-black text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-lg hover:shadow-lg hover:shadow-brand-200 transition-all active:scale-95">
+            <Download className="w-4 h-4" />EXPORT REPORT
           </button>
         </div>
       </div>

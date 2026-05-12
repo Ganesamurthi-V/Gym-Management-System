@@ -61,7 +61,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 animate-slide-up">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
@@ -85,26 +85,29 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {/* Quick Actions */}
-        <div className="card p-4 md:p-5 space-y-2.5">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quick Actions</p>
-          <Link href="/members/new" className="flex items-center gap-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3 font-semibold text-sm hover:from-brand-600 hover:to-brand-700 transition-all">
-            <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-4 h-4" /></div>
+        <div className="card p-4 md:p-5 space-y-3 bg-gradient-to-b from-white to-gray-50">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+            <TrendingUp className="w-3 h-3" />
+            Quick Actions
+          </p>
+          <Link href="/members/new" className="flex items-center gap-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-5 h-5" /></div>
             Add New Member
           </Link>
-          <Link href="/attendance" className="flex items-center gap-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-3 font-semibold text-sm hover:from-blue-600 hover:to-blue-700 transition-all">
-            <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center"><CalendarCheck className="w-4 h-4" /></div>
+          <Link href="/attendance" className="flex items-center gap-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-blue-200 active:scale-95 transition-all">
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><CalendarCheck className="w-5 h-5" /></div>
             Mark Attendance
           </Link>
           {/* Feature 3: Daily Collection PDF */}
           <button onClick={handleDailyPDF} disabled={generatingPDF}
-            className="w-full flex items-center gap-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl p-3 font-semibold text-sm hover:from-purple-600 hover:to-purple-700 transition-all disabled:opacity-60"
+            className="w-full flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
           >
-            <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-4 h-4" /></div>
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-5 h-5" /></div>
             {generatingPDF ? 'Generating...' : "Today's Collection PDF"}
           </button>
-          <Link href="/dues" className="flex items-center gap-3 bg-red-50 text-red-700 rounded-xl p-3 font-semibold text-sm hover:bg-red-100 transition-all border border-red-200">
-            <div className="w-7 h-7 bg-red-100 rounded-lg flex items-center justify-center"><IndianRupee className="w-4 h-4" /></div>
-            View Fee Dues {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">{formatCurrency(stats.total_dues)}</span>}
+          <Link href="/dues" className="flex items-center gap-3 bg-white text-red-600 rounded-xl p-3.5 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
+            <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5" /></div>
+            View Fee Dues {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">{formatCurrency(stats.total_dues)}</span>}
           </Link>
         </div>
 

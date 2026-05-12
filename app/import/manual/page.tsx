@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, ArrowLeft, Check, AlertTriangle, ArrowRight } from "lucide-react";
+import { Upload, ArrowLeft, Check, AlertTriangle, ArrowRight, FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { matchAreaLegacy } from "@/lib/areas";
 import Link from "next/link";
-import ExcelJS from "exceljs";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import type { ImportedRow } from "../page";
+import {
+  cellStr,
+  normalizePlan,
+  normalizeGender,
+  normalizePaymentMode,
+  normalizeAge,
+  normalizeDate,
+} from "@/lib/import/normalizers";
+import { runImportPipeline } from "@/lib/import/pipeline";
 
 interface ColumnMapping {
   excelColumn: string;
@@ -16,74 +23,17 @@ interface ColumnMapping {
 }
 
 const DB_FIELDS = [
-  { key: "name",         label: "Name",         required: true  },
-  { key: "phone",        label: "Phone",        required: true  },
-  { key: "member_number",label: "Member #",     required: false },
-  { key: "plan",         label: "Plan",         required: false },
-  { key: "start_date",   label: "Start Date",   required: false },
-  { key: "amount",       label: "Amount",       required: false },
-  { key: "payment_mode", label: "Payment Mode", required: false },
-  { key: "gender",       label: "Gender",       required: false },
-  { key: "age",          label: "Age",          required: false },
-  { key: "area",         label: "Area",         required: false },
+  { key: "name",          label: "Name",         required: true  },
+  { key: "phone",         label: "Phone",        required: true  },
+  { key: "member_number", label: "Member #",     required: false },
+  { key: "plan",          label: "Plan",         required: false },
+  { key: "start_date",    label: "Start Date",   required: false },
+  { key: "amount",        label: "Amount",       required: false },
+  { key: "payment_mode",  label: "Payment Mode", required: false },
+  { key: "gender",        label: "Gender",       required: false },
+  { key: "age",           label: "Age",          required: false },
+  { key: "area",          label: "Area",         required: false },
 ];
-
-function cellStr(value: ExcelJS.CellValue): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return String(value);
-  if (typeof value === "object" && "richText" in (value as object))
-    return (value as ExcelJS.CellRichTextValue).richText.map(r => r.text).join("").trim();
-  if (value instanceof Date) return format(value, "yyyy-MM-dd");
-  if (typeof value === "object" && "result" in (value as object))
-    return cellStr((value as ExcelJS.CellFormulaValue).result as ExcelJS.CellValue);
-  return String(value).trim();
-}
-
-function excelSerialToDate(serial: number): string {
-  return format(new Date(Math.round((serial - 25569) * 86400 * 1000)), "yyyy-MM-dd");
-}
-
-function normalizeGender(raw: string): string {
-  const v = raw.toLowerCase().trim();
-  if (["m", "male", "boy", "man", "gents", "gent"].includes(v)) return "male";
-  if (["f", "female", "girl", "woman", "ladies", "lady"].includes(v)) return "female";
-  if (["o", "other", "others", "na", "n/a"].includes(v)) return "other";
-  return "";
-}
-
-function normalizePlan(raw: string): string {
-  const v = raw.toLowerCase().trim();
-  if (["monthly", "month", "1month", "1 month", "1m", "30days", "30 days"].includes(v)) return "monthly";
-  if (["quarterly", "quarter", "3months", "3 months", "3m", "90days", "90 days"].includes(v)) return "quarterly";
-  if (["annual", "yearly", "year", "12months", "12 months", "12m", "1year", "1 year", "365days"].includes(v)) return "annual";
-  return "monthly";
-}
-
-function normalizePaymentMode(raw: string): string {
-  const v = raw.toLowerCase().trim();
-  if (["cash", "c", "hand", "inhand"].includes(v)) return "cash";
-  if (["upi", "gpay", "googlepay", "phonepay", "phonepe", "paytm", "bhim", "online", "neft", "imps"].includes(v)) return "upi";
-  if (["card", "debit", "credit", "debitcard", "creditcard", "swipe"].includes(v)) return "card";
-  return "cash";
-}
-
-function normalizeDate(raw: string): string {
-  const t = raw.trim();
-  const m = t.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (m) return m[1];
-  const n = Number(t);
-  if (!isNaN(n) && t !== "" && !t.includes("-") && !t.includes("/")) return excelSerialToDate(n);
-  if (t.includes("/")) {
-    const parts = t.split("/");
-    if (parts.length === 3) {
-      const [a, b, c] = parts;
-      return `${c.length === 4 ? c : `20${c}`}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-    }
-  }
-  return t || format(new Date(), "yyyy-MM-dd");
-}
 
 export default function ManualImportPage() {
   const [step, setStep] = useState<"upload" | "map">("upload");
@@ -91,8 +41,8 @@ export default function ManualImportPage() {
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
   const [rawData, setRawData] = useState<string[][]>([]);
   const [draggedExcel, setDraggedExcel] = useState<string | null>(null);
-  const [dbNums, setDbNums] = useState<Set<number>>(new Set());
-  const [dbPhones, setDbPhones] = useState<Set<string>>(new Set());
+  const [processing, setProcessing] = useState(false);
+  const [processStage, setProcessStage] = useState<string>("");
 
   const supabase = createClient();
   const router = useRouter();
@@ -101,13 +51,36 @@ export default function ManualImportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Security: file size limit 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File too large. Maximum size is 10MB.");
+      return;
+    }
+
+    // Clear all stale session state from any previous import session
+    // so the review page never loads old data when a new file is uploaded
+    sessionStorage.removeItem("import_rows");
+    sessionStorage.removeItem("import_rows_original");
+    sessionStorage.removeItem("import_review_state");
+    sessionStorage.removeItem("import_cluster");
+    sessionStorage.removeItem("import_has_id_col");
+
+    const ExcelJSModule = await import("exceljs");
+    const ExcelJS = ExcelJSModule.default || ExcelJSModule;
+
     const isCSV = file.name.endsWith(".csv");
     const wb = new ExcelJS.Workbook();
     if (isCSV) {
       const text = await file.text();
       const lines = text.split(/\r?\n/).filter(Boolean);
       const ws = wb.addWorksheet("Sheet1");
-      lines.forEach(line => ws.addRow(line.split(",").map(v => v.trim().replace(/^"|"$/g, ""))));
+      // Security: strip CSV formula injection
+      lines.forEach(line => ws.addRow(
+        line.split(",").map(v => {
+          const val = v.trim().replace(/^"|"$/g, "");
+          return /^[=+\-@]/.test(val) ? "'" + val : val;
+        })
+      ));
     } else {
       await wb.xlsx.load(await file.arrayBuffer());
     }
@@ -115,29 +88,22 @@ export default function ManualImportPage() {
     const ws = wb.worksheets[0];
     if (!ws) return;
 
+    // Security: row count limit
+    if (ws.rowCount - 1 > 50000) {
+      alert("File has too many rows (max 50,000). Please split the file.");
+      return;
+    }
+
     const headers: string[] = [];
-    ws.getRow(1).eachCell({ includeEmpty: true }, cell => headers.push(cellStr(cell.value)));
+    ws.getRow(1).eachCell({ includeEmpty: true }, (cell: any) => headers.push(cellStr(cell.value)));
+
     const data: string[][] = [];
-    ws.eachRow({ includeEmpty: false }, (row, rowIndex) => {
+    ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
       if (rowIndex === 1) return;
       const rowData: string[] = [];
       headers.forEach((_, colIdx) => rowData.push(cellStr(row.getCell(colIdx + 1).value)));
       data.push(rowData);
     });
-
-    // Fetch DB state once
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: gym } = user
-      ? await supabase.from("gyms").select("id").eq("owner_id", user.id).single()
-      : { data: null };
-    if (gym) {
-      const [phonesRes, numsRes] = await Promise.all([
-        supabase.from("members").select("phone").eq("gym_id", gym.id),
-        supabase.from("members").select("member_number").eq("gym_id", gym.id),
-      ]);
-      setDbPhones(new Set((phonesRes.data ?? []).map((m: any) => m.phone)));
-      setDbNums(new Set((numsRes.data ?? []).map((m: any) => m.member_number)));
-    }
 
     setExcelColumns(headers);
     setRawData(data);
@@ -159,105 +125,81 @@ export default function ManualImportPage() {
     ));
   }
 
-  function buildNormalizedRows(rows: string[][]): ImportedRow[] {
+  /** Build pre-normalized rows from raw data using the shared normalizers */
+  function buildParsedRows(rows: string[][]): ImportedRow[] {
     const colIndexMap = new Map<string, number>();
     excelColumns.forEach((col, idx) => colIndexMap.set(col, idx));
 
-    return rows.map(row => {
-      const get = (field: string) => {
+    return rows.map((row, rowIdx) => {
+      const get = (field: string): string => {
         const colIdx = colIndexMap.get(
           mappings.find(m => m.dbField === field)?.excelColumn ?? ""
         );
         return colIdx !== undefined ? row[colIdx] || "" : "";
       };
 
-      const name         = get("name");
-      const phone        = get("phone").replace(/\D/g, "").slice(-10);
-      const plan         = normalizePlan(get("plan") || "monthly");
-      const start_date   = normalizeDate(get("start_date"));
-      const amount       = get("amount") || "0";
-      const payment_mode = normalizePaymentMode(get("payment_mode") || "cash");
-      const gender       = normalizeGender(get("gender"));
-      const age          = get("age").replace(/\D/g, "");
-      const area         = matchAreaLegacy(get("area"));
+      const name          = get("name");
+      const phone         = get("phone").replace(/\D/g, "").slice(-10);
+      const plan          = normalizePlan(get("plan") || "monthly");
+      const start_date    = normalizeDate(get("start_date"));
+      const rawAmt        = get("amount").replace(/[^\d]/g, "");
+      const amount        = rawAmt || "0"; // pipeline will fill from plan prices if "0"
+      const payment_mode  = normalizePaymentMode(get("payment_mode") || "cash");
+      const gender        = normalizeGender(get("gender"));
+      const age           = normalizeAge(get("age"));
+      const area          = get("area"); // raw — pipeline will normalize
       const member_number = get("member_number");
 
-      // Constraint validation
       let _error = "";
-      if (!name)                        _error = "Missing name";
-      else if (!phone || phone.length !== 10) _error = "Invalid phone";
+      if (!name)                                    _error = "Missing name";
+      else if (phone && phone.length !== 10)        _error = "Invalid phone — WhatsApp reminders won't work";
       else if (age && (parseInt(age) < 1 || parseInt(age) > 120)) _error = "Age must be 1–120";
 
       return {
         name, phone, plan, start_date, amount, payment_mode,
         gender, age, area, member_number,
-        _status: _error ? "error" : "ok",
+        _rowId: rowIdx,
+        _status: !name ? "error" : "ok",
         _error,
       } as ImportedRow;
     });
   }
 
-  function resolveIds(parsed: ImportedRow[]): ImportedRow[] {
-    const fileNumsUsed = new Set(
-      parsed.filter(r => r._status !== "error" && r.member_number).map(r => parseInt(r.member_number))
+  async function handleProceedToEdit() {
+    setProcessing(true);
+    setProcessStage("🗺️ Normalizing areas…");
+
+    const parsed = buildParsedRows(rawData);
+
+    // Run the full shared pipeline — same as auto-import
+    const { rows: pipelineRows } = await runImportPipeline(parsed, {
+      supabase,
+      onStage: stage => {
+        if (stage === "areas")  setProcessStage("🗺️ Normalizing areas…");
+        if (stage === "prices") setProcessStage("💰 Filling plan prices…");
+        if (stage === "ids")    setProcessStage("🔢 Assigning member IDs…");
+      },
+    });
+
+    sessionStorage.setItem("import_rows", JSON.stringify(pipelineRows));
+    sessionStorage.setItem("import_rows_original", JSON.stringify(pipelineRows.map(r => ({ ...r }))));
+    sessionStorage.setItem("import_has_id_col",
+      mappings.some(m => m.dbField === "member_number") ? "1" : "0"
     );
-    let next = 1;
-    while (dbNums.has(next) || fileNumsUsed.has(next)) next++;
 
-    const assigned = new Set<string>();
-    parsed.forEach(r => {
-      if (r._status === "error") return;
-      if (r.member_number) {
-        if (assigned.has(r.member_number)) {
-          while (dbNums.has(next) || assigned.has(String(next))) next++;
-          const newNum = String(next++);
-          r._error = `ID #${r.member_number} duplicate — auto-assigned #${newNum}`;
-          r.member_number = newNum;
-          assigned.add(newNum);
-        } else {
-          assigned.add(r.member_number);
-        }
-      }
-    });
+    setProcessing(false);
 
-    // Mark phone duplicates within file
-    const phoneCount = new Map<string, number>();
-    parsed.forEach(r => phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1));
-    parsed.forEach(r => {
-      if (r._status !== "error" && phoneCount.get(r.phone)! > 1) {
-        r._status = "duplicate"; r._error = "Duplicate phone in file";
-      }
-    });
-
-    // Mark DB conflicts
-    parsed.forEach(r => {
-      if (r._status !== "error") {
-        if (dbPhones.has(r.phone)) {
-          r._status = "duplicate"; r._error = "Phone already exists in database";
-        } else if (r.member_number && dbNums.has(parseInt(r.member_number))) {
-          while (dbNums.has(next) || assigned.has(String(next))) next++;
-          const newNum = String(next++);
-          r._error = `ID #${r.member_number} exists in DB — auto-assigned #${newNum}`;
-          r.member_number = newNum;
-          assigned.add(newNum);
-        }
-      }
-    });
-
-    return parsed;
-  }
-
-  function handleProceedToEdit() {
-    const normalized = buildNormalizedRows(rawData);
-    const resolved = resolveIds(normalized);
-    sessionStorage.setItem("import_rows", JSON.stringify(resolved));
-    sessionStorage.setItem("import_rows_original", JSON.stringify(resolved.map(r => ({ ...r }))));
-    router.push("/import/edit");
+    // Route to area review if any areas need attention — same logic as auto-import
+    const needsReview = pipelineRows.some(
+      r => r.area && ((r._area_confidence ?? 1) < 0.90 || r._area_matched_by === "unresolved")
+    );
+    router.push(needsReview ? "/import/review" : "/import/edit");
   }
 
   const mappedFields = new Set(mappings.filter(m => m.dbField).map(m => m.dbField));
   const requiredMapped = DB_FIELDS.filter(f => f.required).every(f => mappedFields.has(f.key));
 
+  // ── Map step ──────────────────────────────────────────────────────────────
   if (step === "map") {
     return (
       <div className="max-w-6xl mx-auto space-y-5">
@@ -275,6 +217,7 @@ export default function ManualImportPage() {
             <p className="text-sm font-bold text-amber-800">Drag Excel columns to Database fields</p>
             <p className="text-xs text-amber-700 mt-1">
               Name and Phone are required. Click a mapped field to unmap it.
+              Areas will be normalized and reviewed just like auto-import.
             </p>
           </div>
         </div>
@@ -348,15 +291,35 @@ export default function ManualImportPage() {
           </div>
         </div>
 
-        <button onClick={handleProceedToEdit} disabled={!requiredMapped} className="btn-primary">
+        {/* Processing overlay */}
+        {processing && (
+          <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-4 border-brand-100" />
+              <div className="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin" />
+              <FileSpreadsheet className="absolute inset-0 m-auto w-6 h-6 text-brand-500" />
+            </div>
+            <p className="text-sm font-bold text-brand-700">{processStage}</p>
+            <p className="text-xs text-gray-400">Running the full import pipeline…it may take upto 5-10 min 
+            </p>
+            <p className="text-xs text-gray-400">Do not close or change the tab until this process completes
+            </p>
+          </div>
+        )}
+
+        <button
+          onClick={handleProceedToEdit}
+          disabled={!requiredMapped || processing}
+          className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           <Check className="w-4 h-4" />
-          Preview & Edit {rawData.length} Rows →
+          {processing ? processStage : `Preview & Edit ${rawData.length} Rows →`}
         </button>
       </div>
     );
   }
 
-  // ── Upload ────────────────────────────────────────────────────────────────
+  // ── Upload step ───────────────────────────────────────────────────────────
   return (
     <div className="max-w-3xl mx-auto space-y-5">
       <div className="flex items-center gap-3">

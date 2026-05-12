@@ -6,7 +6,8 @@ import Link from "next/link";
 import {
   ArrowLeft, Check, AlertTriangle, MapPin, Search,
   Cpu, Zap, RefreshCw, Save, ChevronDown, ChevronUp,
-  Filter, CheckSquare, Square, BookOpen, X,
+  Filter, CheckSquare, Square, BookOpen, X, CheckCircle,
+  Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { searchLocalities } from "@/lib/geo/matchArea";
@@ -64,6 +65,8 @@ export default function ImportReviewPage() {
   const [selectedIdxs, setSelectedIdxs] = useState<Set<number>>(new Set());
   const [showBulkBar, setShowBulkBar] = useState(false);
   const [clusterInfo, setClusterInfo] = useState<{ top_district: string; top_state: string; confidence: number } | null>(null);
+  const [acceptingAll, setAcceptingAll] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("import_rows");
@@ -180,6 +183,32 @@ export default function ImportReviewPage() {
     });
   }
 
+  function handleDeleteSelected() {
+    if (selectedIdxs.size === 0) return;
+    if (!confirm(`Delete ${selectedIdxs.size} selected row${selectedIdxs.size !== 1 ? "s" : ""}?`)) return;
+    
+    setDeleting(true);
+    const selectedSet = new Set(selectedIdxs);
+    setRows(prev => prev.filter(r => !selectedSet.has(r._idx)));
+    setSelectedIdxs(new Set());
+    setDeleting(false);
+  }
+
+  async function handleAcceptAll() {
+    setAcceptingAll(true);
+    // Accept all unresolved/low confidence rows
+    setRows(prev => prev.map(r => {
+      if (r._review_done) return r;
+      return {
+        ...r,
+        _review_done: true,
+        _area_confidence: Math.max(r._area_confidence ?? 0, 0.90),
+        _area_matched_by: r._area_matched_by === "unresolved" ? "manual" : r._area_matched_by,
+      };
+    }));
+    setAcceptingAll(false);
+  }
+
   // Persist current review state so back-navigation from edit restores it
   function persistReviewState() {
     sessionStorage.setItem("import_review_state", JSON.stringify(rows));
@@ -294,27 +323,20 @@ export default function ImportReviewPage() {
           ))}
         </div>
 
-        <button onClick={() => setShowBulkBar(!showBulkBar)}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+        <button onClick={handleAcceptAll} disabled={acceptingAll || stats.done === stats.total}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Filter className="w-3.5 h-3.5" />
-          Bulk replace {selectedIdxs.size > 0 && <span className="bg-brand-500 text-white rounded-full px-1.5">{selectedIdxs.size}</span>}
+          <CheckCircle className="w-3.5 h-3.5" />
+          {acceptingAll ? "Accepting all…" : `Accept All (${stats.needsReview + stats.unresolved})`}
+        </button>
+
+        <button onClick={handleDeleteSelected} disabled={deleting || selectedIdxs.size === 0}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          {deleting ? "Deleting…" : `Delete Selected (${selectedIdxs.size})`}
         </button>
       </div>
-
-      {/* Bulk replace bar */}
-      {showBulkBar && (
-        <div className="flex items-center gap-3 bg-brand-50 border border-brand-200 rounded-xl px-4 py-3">
-          <p className="text-sm font-semibold text-brand-700 whitespace-nowrap">Replace {selectedIdxs.size} selected →</p>
-          <input type="text" placeholder="New area name…" value={bulkValue}
-            onChange={e => setBulkValue(e.target.value)} className="flex-1 input-field" />
-          <button onClick={applyBulkReplace} disabled={!bulkValue.trim() || selectedIdxs.size === 0}
-            className="btn-primary text-sm px-4 py-2 disabled:opacity-40">Apply</button>
-          <button onClick={() => setShowBulkBar(false)} className="text-gray-400 hover:text-gray-600">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* Review table */}
       <div className="card overflow-hidden">
@@ -401,11 +423,11 @@ export default function ImportReviewPage() {
                             ))}
                           </ul>
                         )}
-                        {method === "ai" && row.ai_reasoning && isExpanded && (
+                        {method === "ai" && isExpanded && (
                           <div className="absolute z-40 left-3 right-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mt-1">
                             <p className="text-[10px] text-blue-700 flex items-center gap-1">
                               <Cpu className="w-3 h-3" />
-                              {row.ai_reasoning}
+                              AI Suggestion
                             </p>
                           </div>
                         )}
@@ -467,13 +489,6 @@ export default function ImportReviewPage() {
                             {(row.suggestions ?? []).length === 0 && (
                               <p className="text-xs text-gray-400 italic">
                                 No suggestions found — type a location in the input above to override manually.
-                              </p>
-                            )}
-
-                            {row.ai_reasoning && (
-                              <p className="text-[10px] text-blue-600 flex items-center gap-1">
-                                <span className="font-bold uppercase tracking-widest text-blue-400">AI:</span>
-                                {row.ai_reasoning}
                               </p>
                             )}
 

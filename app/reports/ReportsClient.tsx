@@ -128,8 +128,8 @@ export function ReportsClient({
         })
       }).reduce((acc, m) => acc + m.count, 0)
     }
-    const sliceMap = { 'this-month': 1, 'last-month': 1, 'this-quarter': 3 }
-    const slice = dateRange === 'custom' ? 6 : (sliceMap[dateRange as keyof typeof sliceMap] || 6)
+    const sliceMap: Record<string, number> = { 'this-month': 1, 'last-month': 1, 'this-quarter': 3 }
+    const slice = sliceMap[dateRange] || 6
     const startIndex = dateRange === 'last-month' ? 1 : 0
     return newMembersByMonth.slice(startIndex, startIndex + (dateRange === 'last-month' ? 1 : slice)).reduce((acc, m) => acc + m.count, 0)
   }, [newMembersByMonth, dateRange, customStart, customEnd])

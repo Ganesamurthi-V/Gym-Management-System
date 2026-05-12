@@ -111,8 +111,8 @@ export async function runImportPipeline(
   // Fetch existing DB state
   const [existingMembersRes, existingNumsRes] = gym
     ? await Promise.all([
-        supabase.from("members").select("phone").eq("gym_id", gym.id) as Promise<{ data: { phone: string }[] | null }>,
-        supabase.from("members").select("member_number").eq("gym_id", gym.id) as Promise<{ data: { member_number: number }[] | null }>,
+        supabase.from("members").select("phone").eq("gym_id", gym.id) as unknown as Promise<{ data: { phone: string }[] | null }>,
+        supabase.from("members").select("member_number").eq("gym_id", gym.id) as unknown as Promise<{ data: { member_number: number }[] | null }>,
       ])
     : [{ data: null }, { data: null }];
 

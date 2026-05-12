@@ -10,11 +10,14 @@ export default async function AccountPage() {
 
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id, name, created_at')
+    .select('id, name, created_at, onboarding_data')
     .eq('owner_id', user.id)
     .single()
 
   if (!gym) return null
+
+  // Extract onboarding details stored in JSONB
+  const ob = (gym.onboarding_data ?? {}) as Record<string, any>
 
   // Fetch summary counts for display
   const [membersRes, membershipsRes, attendanceRes] = await Promise.all([
@@ -32,6 +35,12 @@ export default async function AccountPage() {
       memberCount={membersRes.count ?? 0}
       membershipCount={membershipsRes.count ?? 0}
       attendanceCount={attendanceRes.count ?? 0}
+      gymType={ob.gymType ?? null}
+      gymCity={ob.city ?? null}
+      gymPhone={ob.phone ?? null}
+      gymAddress={ob.address ?? null}
+      openingYear={ob.openingYear ?? null}
+      branchCount={ob.branchCount ?? null}
     />
   )
 }

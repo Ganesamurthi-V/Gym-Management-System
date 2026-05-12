@@ -420,3 +420,50 @@ CREATE POLICY "Owner can read own plan prices"
   USING (
     gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid())
   );
+
+
+-- ================================================
+-- [Migration 8] Onboarding system
+-- ================================================
+
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS onboarding_data JSONB;
+
+-- Update existing gyms to mark onboarding as completed (they were created before this feature)
+UPDATE gyms SET onboarding_completed = TRUE WHERE onboarding_completed IS NULL OR onboarding_completed = FALSE;
+
+-- RLS already covers gyms table
+
+-- Allow gym owners to update onboarding_data and onboarding_completed on their own gym
+-- (covered by the existing "Users can update their own gym" policy)
+
+-- ================================================
+-- [Migration 9] Joining fees per plan in gym_plan_prices
+-- ================================================
+
+ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_monthly   INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_quarterly  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_annual     INTEGER NOT NULL DEFAULT 0;
+
+-- Allow owners to write their own plan prices
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can upsert own plan prices'
+  ) THEN
+    CREATE POLICY "Owner can upsert own plan prices"
+      ON gym_plan_prices FOR INSERT
+      WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can update own plan prices'
+  ) THEN
+    CREATE POLICY "Owner can update own plan prices"
+      ON gym_plan_prices FOR UPDATE
+      USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  END IF;
+END $$;

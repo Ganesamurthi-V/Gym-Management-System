@@ -356,7 +356,7 @@ export function ReportsClient({
           icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
           label="Active Members"
           value={activeCount}
-          sub={`${Math.round(activeCount/totalMembers*100)}% of total`}
+          sub={totalMembers > 0 ? `${Math.round(activeCount/totalMembers*100)}% of total` : 'No members yet'}
           color="bg-emerald-50"
           iconColor="text-emerald-600"
         />
@@ -509,35 +509,55 @@ export function ReportsClient({
               <PieChart className="w-5 h-5 text-purple-500" />
               Plan Distribution
             </h2>
+            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">
+              {totalPlanCount} members
+            </span>
           </div>
 
-          <div className="space-y-8 py-4">
-            <div className="flex h-12 w-full rounded-2xl overflow-hidden shadow-inner bg-gray-100">
-              <div
-                className="bg-brand-500 h-full transition-all duration-1000 flex items-center justify-center text-[10px] font-black text-white"
-                style={{ width: `${(planCounts.monthly / totalPlanCount) * 100}%` }}
-              >
-                {planCounts.monthly > 0 && 'M'}
-              </div>
-              <div
-                className="bg-emerald-500 h-full transition-all duration-1000 flex items-center justify-center text-[10px] font-black text-white border-l border-white/20"
-                style={{ width: `${(planCounts.quarterly / totalPlanCount) * 100}%` }}
-              >
-                {planCounts.quarterly > 0 && 'Q'}
-              </div>
-              <div
-                className="bg-purple-500 h-full transition-all duration-1000 flex items-center justify-center text-[10px] font-black text-white border-l border-white/20"
-                style={{ width: `${(planCounts.annual / totalPlanCount) * 100}%` }}
-              >
-                {planCounts.annual > 0 && 'A'}
-              </div>
-            </div>
+          <div className="space-y-5">
+            {[
+              { label: 'Monthly',   count: planCounts.monthly,   color: 'bg-brand-500',   text: 'text-brand-600',   bg: 'bg-brand-50'   },
+              { label: 'Quarterly', count: planCounts.quarterly, color: 'bg-emerald-500', text: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Annual',    count: planCounts.annual,    color: 'bg-purple-500',  text: 'text-purple-600',  bg: 'bg-purple-50'  },
+            ].map(({ label, count, color, text, bg }) => {
+              const pct = totalPlanCount > 0 ? Math.round((count / totalPlanCount) * 100) : 0
+              return (
+                <div key={label} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={cn('w-2.5 h-2.5 rounded-full', color)} />
+                      <span className="text-sm font-semibold text-gray-700">{label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full', bg, text)}>
+                        {pct}%
+                      </span>
+                      <span className="text-sm font-black text-gray-900 w-6 text-right">{count}</span>
+                    </div>
+                  </div>
+                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full transition-all duration-700', color)}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <PlanItem label="Monthly" count={planCounts.monthly} total={totalPlanCount} color="bg-brand-500" />
-              <PlanItem label="Quarterly" count={planCounts.quarterly} total={totalPlanCount} color="bg-emerald-500" />
-              <PlanItem label="Annual" count={planCounts.annual} total={totalPlanCount} color="bg-purple-500" />
-            </div>
+          {/* Summary row */}
+          <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
+            {[
+              { label: 'Monthly',   count: planCounts.monthly,   color: 'text-brand-600'   },
+              { label: 'Quarterly', count: planCounts.quarterly, color: 'text-emerald-600' },
+              { label: 'Annual',    count: planCounts.annual,    color: 'text-purple-600'  },
+            ].map(({ label, count, color }) => (
+              <div key={label}>
+                <p className={cn('text-xl font-black', color)}>{count}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -553,7 +573,7 @@ function PlanItem({ label, count, total, color }: { label: string; count: number
         <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{label}</span>
       </div>
       <p className="text-2xl font-black text-gray-900">{count}</p>
-      <p className="text-[10px] font-bold text-gray-400">{Math.round(count/total*100)}% of members</p>
+      <p className="text-[10px] font-bold text-gray-400">{total > 0 ? Math.round(count/total*100) : 0}% of members</p>
     </div>
   )
 }

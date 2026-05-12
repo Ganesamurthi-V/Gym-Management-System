@@ -12,6 +12,16 @@ import Link from 'next/link'
 
 type Step = 'form' | 'preview'
 
+// Plan prices fetched from gym_plan_prices table (set during onboarding)
+interface PlanPrices {
+  monthly: number
+  quarterly: number
+  annual: number
+  joining_fee_monthly: number
+  joining_fee_quarterly: number
+  joining_fee_annual: number
+}
+
 export default function NewMemberPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -28,6 +38,7 @@ export default function NewMemberPage() {
   const [numError, setNumError] = useState('')
   const [checkingNum, setCheckingNum] = useState(false)
   const [gymId, setGymId] = useState<string | null>(null)
+  const [planPrices, setPlanPrices] = useState<PlanPrices | null>(null)
 
   const [form, setForm] = useState({
     name: '',
@@ -46,23 +57,49 @@ export default function NewMemberPage() {
   })
 
   useEffect(() => {
-    async function fetchNextNumber() {
+    async function fetchInitialData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
       if (!gym) return
       setGymId(gym.id)
-      const { data } = await supabase
+
+      // Fetch next member number
+      const { data: memberData } = await supabase
         .from('members')
         .select('member_number')
         .eq('gym_id', gym.id)
         .order('member_number', { ascending: false })
         .limit(1)
-      const last = data?.[0]?.member_number ?? 0
+      const last = memberData?.[0]?.member_number ?? 0
       setNextMemberNumber(last + 1)
       setForm(prev => ({ ...prev, member_number: String(last + 1) }))
+
+      // Fetch plan prices set during onboarding
+      const { data: prices } = await supabase
+        .from('gym_plan_prices')
+        .select('monthly, quarterly, annual, joining_fee_monthly, joining_fee_quarterly, joining_fee_annual')
+        .eq('gym_id', gym.id)
+        .single()
+
+      if (prices) {
+        setPlanPrices({
+          monthly:              prices.monthly              ?? 0,
+          quarterly:            prices.quarterly            ?? 0,
+          annual:               prices.annual               ?? 0,
+          joining_fee_monthly:  prices.joining_fee_monthly  ?? 0,
+          joining_fee_quarterly:prices.joining_fee_quarterly ?? 0,
+          joining_fee_annual:   prices.joining_fee_annual   ?? 0,
+        })
+        // Pre-fill for the default plan (monthly)
+        setForm(prev => ({
+          ...prev,
+          amount:        prices.monthly              ? String(prices.monthly)             : prev.amount,
+          admission_fee: prices.joining_fee_monthly  ? String(prices.joining_fee_monthly) : prev.admission_fee,
+        }))
+      }
     }
-    fetchNextNumber()
+    fetchInitialData()
   }, [])
 
   useEffect(() => {
@@ -80,6 +117,28 @@ export default function NewMemberPage() {
 
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  // When plan changes, auto-fill price and joining fee from onboarding config
+  function selectPlan(plan: Plan) {
+    setForm(prev => {
+      const next = { ...prev, plan }
+      if (planPrices && plan !== 'custom') {
+        const priceMap: Record<string, number> = {
+          monthly:   planPrices.monthly,
+          quarterly: planPrices.quarterly,
+          annual:    planPrices.annual,
+        }
+        const joiningMap: Record<string, number> = {
+          monthly:   planPrices.joining_fee_monthly,
+          quarterly: planPrices.joining_fee_quarterly,
+          annual:    planPrices.joining_fee_annual,
+        }
+        next.amount        = priceMap[plan]   ? String(priceMap[plan])   : prev.amount
+        next.admission_fee = joiningMap[plan] ? String(joiningMap[plan]) : prev.admission_fee
+      }
+      return next
+    })
   }
 
   function handlePreview(e: React.FormEvent) {
@@ -405,15 +464,21 @@ export default function NewMemberPage() {
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Plan *</label>
             <div className="grid grid-cols-4 gap-2">
-              {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => (
-                <button key={plan} type="button" onClick={() => update('plan', plan)}
-                  className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                    form.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
-                  }`}
-                >
-                  {plan === 'monthly' ? '1 Month' : plan === 'quarterly' ? '3 Months' : plan === 'annual' ? '1 Year' : 'Custom'}
-                </button>
-              ))}
+              {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => {
+                const priceHint = planPrices && plan !== 'custom'
+                  ? { monthly: planPrices.monthly, quarterly: planPrices.quarterly, annual: planPrices.annual }[plan]
+                  : null
+                return (
+                  <button key={plan} type="button" onClick={() => selectPlan(plan)}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
+                      form.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                  >
+                    <span className="block">{plan === 'monthly' ? '1 Month' : plan === 'quarterly' ? '3 Months' : plan === 'annual' ? '1 Year' : 'Custom'}</span>
+                    {priceHint ? <span className="block text-[10px] font-normal mt-0.5 opacity-70">₹{priceHint.toLocaleString('en-IN')}</span> : null}
+                  </button>
+                )
+              })}
             </div>
             {form.plan === 'custom' && (
               <div className="mt-2 flex items-center gap-2">

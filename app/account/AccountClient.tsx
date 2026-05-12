@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Settings, Lock, Trash2, AlertTriangle, Eye, EyeOff,
   Building2, Mail, Calendar, Users, CreditCard, CalendarCheck,
-  ChevronLeft, Check, X, ShieldAlert, Hash,
+  ChevronLeft, Check, X, ShieldAlert, Hash, MapPin, Phone,
+  Edit3,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
@@ -18,9 +19,15 @@ interface Props {
   memberCount: number
   membershipCount: number
   attendanceCount: number
+  gymType?: string | null
+  gymCity?: string | null
+  gymPhone?: string | null
+  gymAddress?: string | null
+  openingYear?: number | null
+  branchCount?: number | null
 }
 
-type ModalType = 'gym-name' | 'password' | 'delete-data' | 'delete-gym' | null
+type ModalType = 'gym-name' | 'gym-info' | 'password' | 'delete-data' | 'delete-gym' | null
 
 export function AccountClient({
   email,
@@ -30,6 +37,12 @@ export function AccountClient({
   memberCount,
   membershipCount,
   attendanceCount,
+  gymType,
+  gymCity,
+  gymPhone,
+  gymAddress,
+  openingYear,
+  branchCount,
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
@@ -40,6 +53,24 @@ export function AccountClient({
 
   // Gym name form
   const [newGymName, setNewGymName] = useState(initialGymName)
+
+  // Gym info form (editable onboarding fields)
+  const [gymInfo, setGymInfo] = useState({
+    gymType:     gymType     ?? '',
+    gymCity:     gymCity     ?? '',
+    gymPhone:    gymPhone    ?? '',
+    gymAddress:  gymAddress  ?? '',
+    openingYear: openingYear ? String(openingYear) : '',
+    branchCount: branchCount ? String(branchCount) : '1',
+  })
+
+  // Toast notification
+  const [toast, setToast] = useState<{ text: string; visible: boolean }>({ text: '', visible: false })
+
+  function showToast(text: string) {
+    setToast({ text, visible: true })
+    setTimeout(() => setToast(t => ({ ...t, visible: false })), 3000)
+  }
 
   // Password form
   const [newPassword, setNewPassword] = useState('')
@@ -59,6 +90,15 @@ export function AccountClient({
     setNewGymName(gymName)
     setNewPassword('')
     setConfirmPassword('')
+    // Reset gym info form to current values
+    setGymInfo({
+      gymType:     gymType     ?? '',
+      gymCity:     gymCity     ?? '',
+      gymPhone:    gymPhone    ?? '',
+      gymAddress:  gymAddress  ?? '',
+      openingYear: openingYear ? String(openingYear) : '',
+      branchCount: branchCount ? String(branchCount) : '1',
+    })
     setActiveModal(type)
   }
 
@@ -84,7 +124,46 @@ export function AccountClient({
     } else {
       setGymName(trimmed)
       setMessage({ type: 'success', text: 'Gym name updated successfully.' })
-      setTimeout(closeModal, 1500)
+      setTimeout(() => { closeModal(); showToast('Gym name updated') }, 1200)
+    }
+    setIsSaving(false)
+  }
+
+  // ── Update gym info (onboarding_data patch) ──────────────────────────────────
+  async function handleUpdateGymInfo(e: React.FormEvent) {
+    e.preventDefault()
+    setIsSaving(true)
+    setMessage(null)
+
+    // Merge new values into existing onboarding_data JSONB
+    const { data: current } = await supabase
+      .from('gyms')
+      .select('onboarding_data')
+      .eq('id', gymId)
+      .single()
+
+    const existing = (current?.onboarding_data ?? {}) as Record<string, unknown>
+    const merged = {
+      ...existing,
+      gymType:     gymInfo.gymType     || null,
+      city:        gymInfo.gymCity     || null,
+      phone:       gymInfo.gymPhone    || null,
+      address:     gymInfo.gymAddress  || null,
+      openingYear: gymInfo.openingYear ? parseInt(gymInfo.openingYear) : null,
+      branchCount: gymInfo.branchCount ? parseInt(gymInfo.branchCount) : 1,
+    }
+
+    const { error } = await supabase
+      .from('gyms')
+      .update({ onboarding_data: merged })
+      .eq('id', gymId)
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message })
+    } else {
+      closeModal()
+      showToast('Gym info saved')
+      router.refresh()
     }
     setIsSaving(false)
   }
@@ -107,7 +186,7 @@ export function AccountClient({
       setMessage({ type: 'error', text: error.message })
     } else {
       setMessage({ type: 'success', text: 'Password updated. You may need to log in again on other devices.' })
-      setTimeout(closeModal, 2000)
+      setTimeout(() => { closeModal(); showToast('Password updated') }, 1500)
     }
     setIsSaving(false)
   }
@@ -164,6 +243,18 @@ export function AccountClient({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+
+      {/* ── Toast notification ── */}
+      <div className={`fixed bottom-6 right-6 z-[70] transition-all duration-300 ${
+        toast.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+      }`}>
+        <div className="flex items-center gap-2.5 bg-gray-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl">
+          <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Check className="w-3 h-3 text-white" />
+          </div>
+          {toast.text}
+        </div>
+      </div>
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
@@ -236,11 +327,89 @@ export function AccountClient({
             <p className="text-xl font-bold text-gray-900">{attendanceCount}</p>
           </div>
         </div>
+
+        {/* Onboarding details */}
+        <div className="pt-3 border-t border-gray-100 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Gym Info</p>
+            <button
+              onClick={() => openModal('gym-info')}
+              className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              Edit
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(gymType || gymInfo.gymType) && (
+              <div className="bg-gray-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Type</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymType || gymType || '—'}</p>
+              </div>
+            )}
+            {(gymCity || gymInfo.gymCity) && (
+              <div className="bg-gray-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">City</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymCity || gymCity || '—'}</p>
+              </div>
+            )}
+            {(gymPhone || gymInfo.gymPhone) && (
+              <div className="bg-gray-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymPhone || gymPhone || '—'}</p>
+              </div>
+            )}
+            {(openingYear || gymInfo.openingYear) && (
+              <div className="bg-gray-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Est.</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.openingYear || openingYear || '—'}</p>
+              </div>
+            )}
+            {(Number(gymInfo.branchCount) > 1 || (branchCount && branchCount > 1)) && (
+              <div className="bg-gray-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Branches</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.branchCount || branchCount || '—'}</p>
+              </div>
+            )}
+            {(gymAddress || gymInfo.gymAddress) && (
+              <div className="bg-gray-50 rounded-xl px-3 py-2 col-span-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Address</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymAddress || gymAddress || '—'}</p>
+              </div>
+            )}
+            {/* Show edit prompt if no info yet */}
+            {!gymType && !gymCity && !gymPhone && !gymAddress && !openingYear && !gymInfo.gymType && !gymInfo.gymCity && (
+              <div className="col-span-2 text-center py-4">
+                <p className="text-sm text-gray-400">No gym info added yet.</p>
+                <button onClick={() => openModal('gym-info')}
+                  className="text-sm text-brand-600 font-semibold hover:underline mt-1">
+                  Add gym details →
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Settings Actions */}
       <div className="card divide-y divide-gray-100 overflow-hidden">
         <p className="px-5 pt-4 pb-2 text-xs font-bold text-gray-400 uppercase tracking-widest">Settings</p>
+
+        <button
+          onClick={() => openModal('gym-info')}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-800">Edit Gym Info</p>
+              <p className="text-xs text-gray-400 mt-0.5">Type, city, phone, address, year</p>
+            </div>
+          </div>
+          <ChevronLeft className="w-4 h-4 text-gray-300 rotate-180 group-hover:text-gray-500 transition-colors" />
+        </button>
 
         <button
           onClick={() => openModal('gym-name')}
@@ -332,6 +501,96 @@ export function AccountClient({
       </div>
 
       {/* ── Modals ── */}
+
+      {/* Edit Gym Info Modal */}
+      {activeModal === 'gym-info' && (
+        <Modal title="Edit Gym Info" onClose={closeModal}>
+          <form onSubmit={handleUpdateGymInfo} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Gym Type</label>
+                <select
+                  value={gymInfo.gymType}
+                  onChange={e => setGymInfo(p => ({ ...p, gymType: e.target.value }))}
+                  className="input-field"
+                >
+                  <option value="">Select type</option>
+                  {['Gym', 'Fitness Center', 'CrossFit', 'Yoga Studio', 'Martial Arts', 'Other'].map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">City</label>
+                <input
+                  type="text"
+                  value={gymInfo.gymCity}
+                  onChange={e => setGymInfo(p => ({ ...p, gymCity: e.target.value }))}
+                  className="input-field"
+                  placeholder="e.g. Chennai"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Phone</label>
+                <input
+                  type="tel"
+                  value={gymInfo.gymPhone}
+                  onChange={e => setGymInfo(p => ({ ...p, gymPhone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                  className="input-field"
+                  placeholder="10-digit number"
+                  maxLength={10}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Opening Year</label>
+                <input
+                  type="number"
+                  value={gymInfo.openingYear}
+                  onChange={e => setGymInfo(p => ({ ...p, openingYear: e.target.value }))}
+                  className="input-field"
+                  placeholder={String(new Date().getFullYear())}
+                  min={1950}
+                  max={new Date().getFullYear()}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Number of Branches</label>
+              <input
+                type="number"
+                value={gymInfo.branchCount}
+                onChange={e => setGymInfo(p => ({ ...p, branchCount: e.target.value }))}
+                className="input-field"
+                placeholder="1"
+                min={1}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Address</label>
+              <textarea
+                value={gymInfo.gymAddress}
+                onChange={e => setGymInfo(p => ({ ...p, gymAddress: e.target.value }))}
+                className="input-field resize-none"
+                rows={3}
+                placeholder="Full gym address..."
+              />
+            </div>
+
+            <MessageBanner message={message} />
+            <div className="flex gap-2">
+              <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
+              <button type="submit" disabled={isSaving} className="btn-primary">
+                {isSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {/* Edit Gym Name Modal */}
       {activeModal === 'gym-name' && (

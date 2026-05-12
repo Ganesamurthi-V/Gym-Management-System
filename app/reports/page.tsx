@@ -9,13 +9,31 @@ export default async function ReportsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
+  // Select only the base columns that are guaranteed to exist.
+  // Optional profile columns (city, gst_number, phone) are fetched separately
+  // so a missing migration doesn't silently return null and blank the page.
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id, name, city, gst_number, phone')
+    .select('id, name')
     .eq('owner_id', user.id)
     .single()
 
-  if (!gym) return null
+  if (!gym) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+        <p className="text-2xl font-bold text-gray-300">No gym found</p>
+        <p className="text-sm text-gray-400">Set up your gym profile first to see reports.</p>
+      </div>
+    )
+  }
+
+  // Fetch optional profile columns separately — gracefully ignore if missing
+  const { data: gymProfile } = await supabase
+    .from('gyms')
+    .select('city, gst_number, phone')
+    .eq('id', gym.id)
+    .single()
+    .then(r => r.error ? { data: null } : r)
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
@@ -163,9 +181,9 @@ export default async function ReportsPage() {
       attendanceByDay={attendanceByDay}
       topAreas={topAreas}
       gymName={gym.name}
-      gymCity={gym.city}
-      gymGST={gym.gst_number}
-      gymPhone={gym.phone}
+      gymCity={gymProfile?.city ?? null}
+      gymGST={gymProfile?.gst_number ?? null}
+      gymPhone={gymProfile?.phone ?? null}
       membersWithDues={membersWithDues}
       totalDuesAmount={totalDuesAmount}
     />

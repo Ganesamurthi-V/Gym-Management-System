@@ -189,6 +189,11 @@ CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_n
 -- [Migration 5] Add age to members
 ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age < 120);
 
+-- [Migration 7] Add profile info to gyms
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS gst_number TEXT;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS phone TEXT;
+
 
 -- ================================================
 -- GEO NORMALIZATION ENGINE (Migration 6)

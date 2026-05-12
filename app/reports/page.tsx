@@ -11,7 +11,7 @@ export default async function ReportsPage() {
 
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id, name')
+    .select('id, name, city, gst_number, phone')
     .eq('owner_id', user.id)
     .single()
 
@@ -50,7 +50,7 @@ export default async function ReportsPage() {
       .eq('gym_id', gym.id),
     supabase
       .from('members')
-      .select('id, gender, age, area, created_at')
+      .select('id, name, phone, gender, age, area, pending_amount, created_at')
       .eq('gym_id', gym.id),
     supabase
       .from('attendance')
@@ -136,8 +136,18 @@ export default async function ReportsPage() {
   }
   const topAreas = Object.entries(areaCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
+    .slice(0, 10) // Show more areas for better distribution view
     .map(([area, count]) => ({ area, count }))
+
+  // Dues calculation
+  const membersWithDues = members
+    .filter(m => m.pending_amount > 0)
+    .map(m => ({
+      name: m.name,
+      phone: m.phone,
+      amount: m.pending_amount
+    }))
+  const totalDuesAmount = membersWithDues.reduce((sum, m) => sum + m.amount, 0)
 
   return (
     <ReportsClient
@@ -153,6 +163,11 @@ export default async function ReportsPage() {
       attendanceByDay={attendanceByDay}
       topAreas={topAreas}
       gymName={gym.name}
+      gymCity={gym.city}
+      gymGST={gym.gst_number}
+      gymPhone={gym.phone}
+      membersWithDues={membersWithDues}
+      totalDuesAmount={totalDuesAmount}
     />
   )
 }

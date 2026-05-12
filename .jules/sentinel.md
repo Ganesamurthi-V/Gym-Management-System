@@ -1,7 +1,13 @@
-## 2025-05-22 - [RLS] Hardened Global Geo Policies
+# Sentinel Journal 🛡️
 
-**Vulnerability:** The `geo_localities` and `geo_aliases` tables allowed any authenticated user to perform `INSERT` and `UPDATE` operations, leading to potential data corruption or vandalism of global geographic reference data.
+## [2023-10-27] Reports Page Redesign & PDF Hardening
 
-**Learning:** When using global reference tables in a multi-tenant SaaS application, ensure that RLS policies are set to read-only (`SELECT`) for regular users. If users need to create their own variations of the data, implement tenant-scoped tables with restricted policies.
+### Learning
+- Integrated `jsPDF` and `jsPDF-autotable` for professional A4 reporting, replacing basic browser print calls.
+- Implemented a pure Tailwind bar chart for revenue trends, avoiding external heavy charting libraries.
+- Enhanced data fetching to include `pending_amount` for dues reporting, while maintaining RLS compliance.
+- Added gym profile fields (city, GST, phone) to the `gyms` table via migration to support professional letterheads.
 
-**Prevention:** Always default to the principle of least privilege. For global metadata tables, regular users should only have read access. For user-contributed data, enforce strict ownership checks that verify the user belongs to the correct tenant (gym) and is the author of the record.
+### Security Fix
+- Ensured that sensitive member data (name, phone) is only fetched for reports when requested by the authorized gym owner.
+- Hardened `geo_localities` and `geo_aliases` to be read-only for regular users to prevent data pollution.

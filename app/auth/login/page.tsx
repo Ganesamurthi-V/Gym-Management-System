@@ -45,7 +45,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-white rounded-3xl p-6 shadow-2xl">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Sign in to your gym</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-6">Sign in to your gym</h2>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Email
               </label>
               <input
@@ -70,7 +70,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -86,7 +86,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -102,7 +102,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-gray-400 mt-6">
+          <p className="text-center text-xs text-slate-400 mt-6">
             Contact your gym admin if you need access
           </p>
         </div>

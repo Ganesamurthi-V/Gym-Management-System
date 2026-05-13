@@ -249,12 +249,12 @@ export default function ImportReviewPage() {
     <div className="max-w-5xl space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/import" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />Import
         </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold text-gray-900">Review Areas</h1>
-        <span className="ml-auto text-xs text-gray-400">Step 2 of 3</span>
+        <span className="text-slate-300">/</span>
+        <h1 className="text-xl font-bold text-slate-900">Review Areas</h1>
+        <span className="ml-auto text-xs text-slate-400">Step 2 of 3</span>
       </div>
 
       {/* Cluster intelligence banner */}
@@ -275,7 +275,7 @@ export default function ImportReviewPage() {
       {/* Stats */}
       <div className="grid grid-cols-5 gap-3">
         {[
-          { label: "Total", value: stats.total, cls: "text-gray-900" },
+          { label: "Total", value: stats.total, cls: "text-slate-900" },
           { label: "Auto-accepted", value: stats.autoAccepted, cls: "text-emerald-600" },
           { label: "Needs review", value: stats.needsReview, cls: "text-amber-500" },
           { label: "Unresolved", value: stats.unresolved, cls: "text-red-500" },
@@ -283,36 +283,36 @@ export default function ImportReviewPage() {
         ].map(s => (
           <div key={s.label} className="card p-4 text-center">
             <p className={`text-2xl font-bold ${s.cls}`}>{s.value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Progress bar */}
       <div className="card px-5 py-3 flex items-center gap-4">
-        <p className="text-xs font-semibold text-gray-500 whitespace-nowrap">Review progress</p>
-        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <p className="text-xs font-semibold text-slate-500 whitespace-nowrap">Review progress</p>
+        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500"
             style={{ width: `${stats.total > 0 ? (stats.done / stats.total) * 100 : 0}%` }}
           />
         </div>
-        <p className="text-xs font-bold text-gray-600 whitespace-nowrap">{stats.done}/{stats.total}</p>
+        <p className="text-xs font-bold text-slate-600 whitespace-nowrap">{stats.done}/{stats.total}</p>
       </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="Search name or area…" value={search}
             onChange={e => setSearch(e.target.value)} className="input-field pl-9 w-full" />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-gray-100 rounded-xl p-1">
+        <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl p-1">
           {(["all", "low", "unresolved", "done"] as FilterMode[]).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
-                filter === f ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
+                filter === f ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
               }`}
             >
               {f === "low" ? "Low confidence" : f === "done" ? "Reviewed" : f}
@@ -343,22 +343,22 @@ export default function ImportReviewPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
+              <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="px-3 py-3 w-8">
-                  <button onClick={toggleSelectAll} className="text-gray-400 hover:text-gray-600">
+                  <button onClick={toggleSelectAll} className="text-slate-400 hover:text-slate-600">
                     {filtered.length > 0 && filtered.every(r => selectedIdxs.has(r._idx))
                       ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                   </button>
                 </th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Member</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Raw Input</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[180px]">Suggested Match</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Confidence</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Method</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Actions</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Raw Input</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide min-w-[180px]">Suggested Match</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Confidence</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Method</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-50">
               {filtered.map(row => {
                 const conf = row._area_confidence ?? 0;
                 const method = row._area_matched_by;
@@ -377,20 +377,20 @@ export default function ImportReviewPage() {
                         method === "unresolved" || conf === 0 ? "bg-red-50/40" :
                         conf < 0.70 ? "bg-orange-50/30" :
                         conf < 0.90 ? "bg-amber-50/20" :
-                        "hover:bg-gray-50"
+                        "hover:bg-slate-50"
                       }`}
                     >
                       <td className="px-3 py-3">
-                        <button onClick={() => toggleSelect(row._idx)} className="text-gray-400 hover:text-brand-500">
+                        <button onClick={() => toggleSelect(row._idx)} className="text-slate-400 hover:text-brand-500">
                           {isSelected ? <CheckSquare className="w-4 h-4 text-brand-500" /> : <Square className="w-4 h-4" />}
                         </button>
                       </td>
                       <td className="px-3 py-3">
-                        <p className="font-medium text-gray-900">{row.name || "—"}</p>
-                        <p className="text-xs text-gray-400">#{row.member_number}</p>
+                        <p className="font-medium text-slate-900">{row.name || "—"}</p>
+                        <p className="text-xs text-slate-400">#{row.member_number}</p>
                       </td>
                       <td className="px-3 py-3">
-                        <span className="font-mono text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                        <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
                           {row._original_area || "—"}
                         </span>
                       </td>
@@ -412,13 +412,13 @@ export default function ImportReviewPage() {
                           />
                         </div>
                         {isExpanded && rowSuggestions.length > 0 && (
-                          <ul className="absolute z-30 left-3 right-3 bg-white border border-gray-200 rounded-xl shadow-xl mt-0.5 max-h-36 overflow-y-auto">
+                          <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl mt-0.5 max-h-36 overflow-y-auto">
                             {rowSuggestions.map(s => (
                               <li key={s.id} onMouseDown={() => selectSuggestion(row._idx, s.name)}
                                 className="px-3 py-2 text-xs hover:bg-brand-50 hover:text-brand-700 cursor-pointer flex items-center justify-between"
                               >
                                 <span className="font-medium">{s.name}</span>
-                                {s.district && <span className="text-gray-400">{s.district}</span>}
+                                {s.district && <span className="text-slate-400">{s.district}</span>}
                               </li>
                             ))}
                           </ul>
@@ -438,7 +438,7 @@ export default function ImportReviewPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3">
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1 text-xs text-slate-500">
                           {methodIcon(method)}
                           <span className="capitalize">{method ?? "—"}</span>
                         </span>
@@ -457,7 +457,7 @@ export default function ImportReviewPage() {
                             </button>
                           )}
                           <button onClick={() => setExpandedIdx(isExpanded ? null : row._idx)}
-                            className="text-gray-400 hover:text-gray-600 transition-colors" title="More options"
+                            className="text-slate-400 hover:text-slate-600 transition-colors" title="More options"
                           >
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
@@ -466,20 +466,20 @@ export default function ImportReviewPage() {
                     </tr>
 
                     {isExpanded && (
-                      <tr key={`exp-${row._idx}`} className="bg-gray-50/80 border-b border-gray-100">
+                      <tr key={`exp-${row._idx}`} className="bg-slate-50/80 border-b border-slate-100">
                         <td colSpan={7} className="px-6 py-4">
                           <div className="flex flex-wrap items-center gap-6">
                             {(row.suggestions ?? []).length > 0 && (
                               <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Other suggestions</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Other suggestions</p>
                                 <div className="flex flex-wrap gap-1.5">
                                   {row.suggestions!.map((s, si) => (
                                     <button key={si} onClick={() => selectSuggestion(row._idx, s.name)}
-                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs hover:border-brand-400 hover:bg-brand-50 transition-all"
+                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs hover:border-brand-400 hover:bg-brand-50 transition-all"
                                     >
                                       <span className={`w-1.5 h-1.5 rounded-full ${confidenceColor(s.confidence)}`} />
                                       {s.name}
-                                      <span className="text-gray-400">{(s.confidence * 100).toFixed(0)}%</span>
+                                      <span className="text-slate-400">{(s.confidence * 100).toFixed(0)}%</span>
                                     </button>
                                   ))}
                                 </div>
@@ -487,7 +487,7 @@ export default function ImportReviewPage() {
                             )}
 
                             {(row.suggestions ?? []).length === 0 && (
-                              <p className="text-xs text-gray-400 italic">
+                              <p className="text-xs text-slate-400 italic">
                                 No suggestions found — type a location in the input above to override manually.
                               </p>
                             )}
@@ -497,12 +497,12 @@ export default function ImportReviewPage() {
                                 <input type="checkbox" checked={row._save_alias ?? false}
                                   onChange={() => toggleSaveAlias(row._idx)}
                                   className="w-4 h-4 accent-brand-500 rounded" />
-                                <span className="text-xs text-gray-600">
-                                  Save <span className="font-mono bg-gray-100 px-1 rounded">{row._original_area}</span>
+                                <span className="text-xs text-slate-600">
+                                  Save <span className="font-mono bg-slate-100 px-1 rounded">{row._original_area}</span>
                                   {" → "}
                                   <span className="font-semibold text-brand-700">{row._area_override}</span> as alias
                                 </span>
-                                <span className="text-[10px] text-gray-400">(auto-recognized in future imports)</span>
+                                <span className="text-[10px] text-slate-400">(auto-recognized in future imports)</span>
                               </label>
                             )}
 
@@ -521,7 +521,7 @@ export default function ImportReviewPage() {
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-400">
                     No rows match current filter
                   </td>
                 </tr>

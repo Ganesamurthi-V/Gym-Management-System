@@ -204,11 +204,11 @@ export default function ManualImportPage() {
     return (
       <div className="max-w-6xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
-          <Link href="/import" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
+          <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900">
             <ArrowLeft className="w-4 h-4" />Import
           </Link>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Map Columns</h1>
+          <span className="text-slate-300">/</span>
+          <h1 className="text-xl font-bold text-slate-900">Map Columns</h1>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
@@ -225,7 +225,7 @@ export default function ManualImportPage() {
         <div className="grid grid-cols-2 gap-6">
           {/* Excel columns */}
           <div className="card p-5">
-            <h3 className="text-sm font-bold text-gray-700 mb-4">Excel Columns ({excelColumns.length})</h3>
+            <h3 className="text-sm font-bold text-slate-700 mb-4">Excel Columns ({excelColumns.length})</h3>
             <div className="space-y-2">
               {mappings.map(m => (
                 <div
@@ -236,7 +236,7 @@ export default function ManualImportPage() {
                   className={`px-4 py-3 rounded-lg border-2 cursor-move transition-all ${
                     m.dbField
                       ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                      : "bg-white border-gray-200 text-gray-700 hover:border-brand-300"
+                      : "bg-white border-slate-200 text-slate-700 hover:border-brand-300"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -257,7 +257,7 @@ export default function ManualImportPage() {
 
           {/* DB fields */}
           <div className="card p-5">
-            <h3 className="text-sm font-bold text-gray-700 mb-4">Database Fields</h3>
+            <h3 className="text-sm font-bold text-slate-700 mb-4">Database Fields</h3>
             <div className="space-y-2">
               {DB_FIELDS.map(field => {
                 const mapped = mappings.find(m => m.dbField === field.key);
@@ -270,12 +270,12 @@ export default function ManualImportPage() {
                     className={`px-4 py-3 rounded-lg border-2 transition-all ${
                       mapped
                         ? "bg-brand-50 border-brand-300 cursor-pointer hover:bg-brand-100"
-                        : "bg-gray-50 border-dashed border-gray-300"
+                        : "bg-slate-50 border-dashed border-slate-300"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-sm text-gray-900">{field.label}</span>
+                        <span className="font-medium text-sm text-slate-900">{field.label}</span>
                         {field.required && <span className="ml-2 text-xs text-red-500">*</span>}
                       </div>
                       {mapped && (
@@ -300,9 +300,9 @@ export default function ManualImportPage() {
               <FileSpreadsheet className="absolute inset-0 m-auto w-6 h-6 text-brand-500" />
             </div>
             <p className="text-sm font-bold text-brand-700">{processStage}</p>
-            <p className="text-xs text-gray-400">Running the full import pipeline…it may take upto 5-10 min 
+            <p className="text-xs text-slate-400">Running the full import pipeline…it may take upto 5-10 min 
             </p>
-            <p className="text-xs text-gray-400">Do not close or change the tab until this process completes
+            <p className="text-xs text-slate-400">Do not close or change the tab until this process completes
             </p>
           </div>
         )}
@@ -323,22 +323,22 @@ export default function ManualImportPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-5">
       <div className="flex items-center gap-3">
-        <Link href="/import" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
+        <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900">
           <ArrowLeft className="w-4 h-4" />Import
         </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold text-gray-900">Manual Column Mapping</h1>
+        <span className="text-slate-300">/</span>
+        <h1 className="text-xl font-bold text-slate-900">Manual Column Mapping</h1>
         <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-semibold border border-amber-200">
           Drag & Drop
         </span>
       </div>
 
       <div className="card p-6">
-        <label className="flex flex-col items-center gap-3 py-10 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-all">
-          <Upload className="w-8 h-8 text-gray-400" />
+        <label className="flex flex-col items-center gap-3 py-10 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-all">
+          <Upload className="w-8 h-8 text-slate-400" />
           <div className="text-center">
-            <p className="font-semibold text-gray-700">Upload Excel or CSV file</p>
-            <p className="text-sm text-gray-400 mt-0.5">You'll manually map columns to database fields</p>
+            <p className="font-semibold text-slate-700">Upload Excel or CSV file</p>
+            <p className="text-sm text-slate-400 mt-0.5">You'll manually map columns to database fields</p>
           </div>
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
         </label>

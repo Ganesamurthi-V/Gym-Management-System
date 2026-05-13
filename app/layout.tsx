@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Sora } from 'next/font/google'
 import AppShell from '@/components/layout/AppShell'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const sora = Sora({ subsets: ['latin'], variable: '--font-sora' })
 
 export const metadata: Metadata = {
   title: 'GymFlow — Gym Management',
@@ -14,14 +14,18 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#f97316',
+  themeColor: '#2563EB',
 }
+
+import { SmoothScrollProvider } from '@/components/providers/SmoothScrollProvider'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.variable} font-sans antialiased h-full bg-gray-50 text-gray-900`}>
-        <AppShell>{children}</AppShell>
+    <html lang="en">
+      <body className={`${sora.variable} font-sans antialiased bg-white text-slate-900`}>
+        <SmoothScrollProvider>
+          <AppShell>{children}</AppShell>
+        </SmoothScrollProvider>
       </body>
     </html>
   )

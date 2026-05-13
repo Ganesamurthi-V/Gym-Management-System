@@ -248,7 +248,7 @@ export function AccountClient({
       <div className={`fixed bottom-6 right-6 z-[70] transition-all duration-300 ${
         toast.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
       }`}>
-        <div className="flex items-center gap-2.5 bg-gray-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl">
+        <div className="flex items-center gap-2.5 bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl">
           <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
             <Check className="w-3 h-3 text-white" />
           </div>
@@ -259,29 +259,29 @@ export function AccountClient({
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all"
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Account Settings</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Manage your gym profile and account</p>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Account Settings</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Manage your gym profile and account</p>
         </div>
       </div>
 
       {/* Gym Info Card */}
       <div className="card p-5 space-y-4">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Gym Profile</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Gym Profile</p>
 
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm">
             <Building2 className="w-7 h-7 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-gray-900 truncate">{gymName}</h2>
+            <h2 className="text-lg font-bold text-slate-900 truncate">{gymName}</h2>
             <div className="flex items-center gap-1.5 mt-1">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-sm text-gray-500">Member since {formatDate(gymCreatedAt)}</span>
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-sm text-slate-500">Member since {formatDate(gymCreatedAt)}</span>
             </div>
           </div>
         </div>
@@ -289,13 +289,13 @@ export function AccountClient({
         {/* Read-only info fields */}
         <div className="space-y-3 pt-1">
           <ReadOnlyField
-            icon={<Mail className="w-3.5 h-3.5 text-gray-400" />}
+            icon={<Mail className="w-3.5 h-3.5 text-slate-400" />}
             label="Login Email"
             value={email}
             note="Contact admin to change your email"
           />
           <ReadOnlyField
-            icon={<Hash className="w-3.5 h-3.5 text-gray-400" />}
+            icon={<Hash className="w-3.5 h-3.5 text-slate-400" />}
             label="Gym ID"
             value={gymId}
             mono
@@ -304,34 +304,34 @@ export function AccountClient({
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-100">
+        <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
           <div className="text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
               <Users className="w-3.5 h-3.5 text-brand-500" />
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Members</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Members</span>
             </div>
-            <p className="text-xl font-bold text-gray-900">{memberCount}</p>
+            <p className="text-xl font-bold text-slate-900">{memberCount}</p>
           </div>
-          <div className="text-center border-x border-gray-100">
+          <div className="text-center border-x border-slate-100">
             <div className="flex items-center justify-center gap-1.5 mb-1">
               <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Payments</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Payments</span>
             </div>
-            <p className="text-xl font-bold text-gray-900">{membershipCount}</p>
+            <p className="text-xl font-bold text-slate-900">{membershipCount}</p>
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
               <CalendarCheck className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Check-ins</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Check-ins</span>
             </div>
-            <p className="text-xl font-bold text-gray-900">{attendanceCount}</p>
+            <p className="text-xl font-bold text-slate-900">{attendanceCount}</p>
           </div>
         </div>
 
         {/* Onboarding details */}
-        <div className="pt-3 border-t border-gray-100 space-y-2">
+        <div className="pt-3 border-t border-slate-100 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Gym Info</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Gym Info</p>
             <button
               onClick={() => openModal('gym-info')}
               className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
@@ -342,45 +342,45 @@ export function AccountClient({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(gymType || gymInfo.gymType) && (
-              <div className="bg-gray-50 rounded-xl px-3 py-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Type</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymType || gymType || '—'}</p>
+              <div className="bg-slate-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Type</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{gymInfo.gymType || gymType || '—'}</p>
               </div>
             )}
             {(gymCity || gymInfo.gymCity) && (
-              <div className="bg-gray-50 rounded-xl px-3 py-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">City</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymCity || gymCity || '—'}</p>
+              <div className="bg-slate-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">City</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{gymInfo.gymCity || gymCity || '—'}</p>
               </div>
             )}
             {(gymPhone || gymInfo.gymPhone) && (
-              <div className="bg-gray-50 rounded-xl px-3 py-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymPhone || gymPhone || '—'}</p>
+              <div className="bg-slate-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Phone</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{gymInfo.gymPhone || gymPhone || '—'}</p>
               </div>
             )}
             {(openingYear || gymInfo.openingYear) && (
-              <div className="bg-gray-50 rounded-xl px-3 py-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Est.</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.openingYear || openingYear || '—'}</p>
+              <div className="bg-slate-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Est.</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{gymInfo.openingYear || openingYear || '—'}</p>
               </div>
             )}
             {(Number(gymInfo.branchCount) > 1 || (branchCount && branchCount > 1)) && (
-              <div className="bg-gray-50 rounded-xl px-3 py-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Branches</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.branchCount || branchCount || '—'}</p>
+              <div className="bg-slate-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Branches</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{gymInfo.branchCount || branchCount || '—'}</p>
               </div>
             )}
             {(gymAddress || gymInfo.gymAddress) && (
-              <div className="bg-gray-50 rounded-xl px-3 py-2 col-span-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Address</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{gymInfo.gymAddress || gymAddress || '—'}</p>
+              <div className="bg-slate-50 rounded-xl px-3 py-2 col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Address</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{gymInfo.gymAddress || gymAddress || '—'}</p>
               </div>
             )}
             {/* Show edit prompt if no info yet */}
             {!gymType && !gymCity && !gymPhone && !gymAddress && !openingYear && !gymInfo.gymType && !gymInfo.gymCity && (
               <div className="col-span-2 text-center py-4">
-                <p className="text-sm text-gray-400">No gym info added yet.</p>
+                <p className="text-sm text-slate-400">No gym info added yet.</p>
                 <button onClick={() => openModal('gym-info')}
                   className="text-sm text-brand-600 font-semibold hover:underline mt-1">
                   Add gym details →
@@ -392,55 +392,55 @@ export function AccountClient({
       </div>
 
       {/* Settings Actions */}
-      <div className="card divide-y divide-gray-100 overflow-hidden">
-        <p className="px-5 pt-4 pb-2 text-xs font-bold text-gray-400 uppercase tracking-widest">Settings</p>
+      <div className="card divide-y divide-slate-100 overflow-hidden">
+        <p className="px-5 pt-4 pb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Settings</p>
 
         <button
           onClick={() => openModal('gym-info')}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors group"
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors group"
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
               <MapPin className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-gray-800">Edit Gym Info</p>
-              <p className="text-xs text-gray-400 mt-0.5">Type, city, phone, address, year</p>
+              <p className="text-sm font-semibold text-slate-800">Edit Gym Info</p>
+              <p className="text-xs text-slate-400 mt-0.5">Type, city, phone, address, year</p>
             </div>
           </div>
-          <ChevronLeft className="w-4 h-4 text-gray-300 rotate-180 group-hover:text-gray-500 transition-colors" />
+          <ChevronLeft className="w-4 h-4 text-slate-300 rotate-180 group-hover:text-slate-500 transition-colors" />
         </button>
 
         <button
           onClick={() => openModal('gym-name')}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors group"
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors group"
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
               <Settings className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-gray-800">Edit Gym Name</p>
-              <p className="text-xs text-gray-400 mt-0.5">Currently: {gymName}</p>
+              <p className="text-sm font-semibold text-slate-800">Edit Gym Name</p>
+              <p className="text-xs text-slate-400 mt-0.5">Currently: {gymName}</p>
             </div>
           </div>
-          <ChevronLeft className="w-4 h-4 text-gray-300 rotate-180 group-hover:text-gray-500 transition-colors" />
+          <ChevronLeft className="w-4 h-4 text-slate-300 rotate-180 group-hover:text-slate-500 transition-colors" />
         </button>
 
         <button
           onClick={() => openModal('password')}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors group"
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors group"
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
               <Lock className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-gray-800">Change Password</p>
-              <p className="text-xs text-gray-400 mt-0.5">Update your login password</p>
+              <p className="text-sm font-semibold text-slate-800">Change Password</p>
+              <p className="text-xs text-slate-400 mt-0.5">Update your login password</p>
             </div>
           </div>
-          <ChevronLeft className="w-4 h-4 text-gray-300 rotate-180 group-hover:text-gray-500 transition-colors" />
+          <ChevronLeft className="w-4 h-4 text-slate-300 rotate-180 group-hover:text-slate-500 transition-colors" />
         </button>
       </div>
 
@@ -461,8 +461,8 @@ export function AccountClient({
                 <Trash2 className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">Delete All Member Data</p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                <p className="text-sm font-semibold text-slate-800">Delete All Member Data</p>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                   Permanently removes all members, payments, and attendance records.
                   Your gym login and account will remain active.
                 </p>
@@ -483,8 +483,8 @@ export function AccountClient({
                 <AlertTriangle className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">Delete Entire Gym Account</p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                <p className="text-sm font-semibold text-slate-800">Delete Entire Gym Account</p>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                   Permanently deletes everything — all data AND your login account.
                   This cannot be undone.
                 </p>
@@ -508,7 +508,7 @@ export function AccountClient({
           <form onSubmit={handleUpdateGymInfo} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Gym Type</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Gym Type</label>
                 <select
                   value={gymInfo.gymType}
                   onChange={e => setGymInfo(p => ({ ...p, gymType: e.target.value }))}
@@ -521,7 +521,7 @@ export function AccountClient({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">City</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">City</label>
                 <input
                   type="text"
                   value={gymInfo.gymCity}
@@ -534,7 +534,7 @@ export function AccountClient({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Phone</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Phone</label>
                 <input
                   type="tel"
                   value={gymInfo.gymPhone}
@@ -545,7 +545,7 @@ export function AccountClient({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Opening Year</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Opening Year</label>
                 <input
                   type="number"
                   value={gymInfo.openingYear}
@@ -559,7 +559,7 @@ export function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Number of Branches</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Number of Branches</label>
               <input
                 type="number"
                 value={gymInfo.branchCount}
@@ -571,7 +571,7 @@ export function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Address</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Address</label>
               <textarea
                 value={gymInfo.gymAddress}
                 onChange={e => setGymInfo(p => ({ ...p, gymAddress: e.target.value }))}
@@ -597,7 +597,7 @@ export function AccountClient({
         <Modal title="Edit Gym Name" onClose={closeModal}>
           <form onSubmit={handleUpdateGymName} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                 Gym Name
               </label>
               <input
@@ -609,7 +609,7 @@ export function AccountClient({
                 required
                 autoFocus
               />
-              <p className="text-xs text-gray-400 mt-1.5">2–60 characters, letters, numbers, spaces, or dots only.</p>
+              <p className="text-xs text-slate-400 mt-1.5">2–60 characters, letters, numbers, spaces, or dots only.</p>
             </div>
             <MessageBanner message={message} />
             <div className="flex gap-2">
@@ -627,7 +627,7 @@ export function AccountClient({
         <Modal title="Change Password" onClose={closeModal}>
           <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                 New Password
               </label>
               <div className="relative">
@@ -643,14 +643,14 @@ export function AccountClient({
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                 Confirm New Password
               </label>
               <input
@@ -692,7 +692,7 @@ export function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Type <span className="text-orange-600 font-mono">{gymName}</span> to confirm
               </label>
               <input
@@ -741,7 +741,7 @@ export function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Type <span className="text-red-600 font-mono">{gymName}</span> to confirm
               </label>
               <input
@@ -789,9 +789,9 @@ function Modal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden animate-pop-in shadow-2xl">
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${danger ? 'border-red-100 bg-red-50' : 'border-gray-100'}`}>
-          <h3 className={`font-bold ${danger ? 'text-red-800' : 'text-gray-900'}`}>{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${danger ? 'border-red-100 bg-red-50' : 'border-slate-100'}`}>
+          <h3 className={`font-bold ${danger ? 'text-red-800' : 'text-slate-900'}`}>{title}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -831,14 +831,14 @@ function ReadOnlyField({
   mono?: boolean
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
       <div className="flex items-center gap-1.5 mb-1">
         {icon}
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</span>
       </div>
-      <p className={`text-sm text-gray-700 break-all ${mono ? 'font-mono' : 'font-medium'}`}>{value}</p>
-      <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+      <p className={`text-sm text-slate-700 break-all ${mono ? 'font-mono' : 'font-medium'}`}>{value}</p>
+      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
         {note}
       </p>
     </div>

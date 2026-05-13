@@ -112,25 +112,25 @@ export function EditMemberClient({ member }: Props) {
     return (
       <div className="max-w-xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => setStep('form')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+          <button onClick={() => setStep('form')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Edit
           </button>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Review Changes</h1>
+          <span className="text-slate-300">/</span>
+          <h1 className="text-xl font-bold text-slate-900">Review Changes</h1>
         </div>
 
         <div className="card overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
             <Edit2 className="w-4 h-4 text-brand-500" />
-            <h2 className="font-bold text-gray-900">Changes for #{member.member_number} — {member.name}</h2>
+            <h2 className="font-bold text-slate-900">Changes for #{member.member_number} — {member.name}</h2>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-slate-50">
             {changes.map(c => (
               <div key={c.field} className="px-5 py-3.5 flex items-center gap-4">
-                <div className="w-20 text-xs font-bold text-gray-400 uppercase tracking-wide flex-shrink-0">{c.label}</div>
+                <div className="w-20 text-xs font-bold text-slate-400 uppercase tracking-wide flex-shrink-0">{c.label}</div>
                 <div className="flex-1 flex items-center gap-3 min-w-0">
                   <span className="text-sm text-red-500 line-through truncate">{c.from}</span>
-                  <span className="text-gray-400">→</span>
+                  <span className="text-slate-400">→</span>
                   <span className="text-sm text-emerald-600 font-semibold truncate">{c.to}</span>
                 </div>
               </div>
@@ -149,14 +149,14 @@ export function EditMemberClient({ member }: Props) {
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)}
             className="w-4 h-4 rounded accent-brand-600" />
-          <span className="text-sm text-gray-700 font-medium">I have reviewed the changes and confirm they are correct</span>
+          <span className="text-sm text-slate-700 font-medium">I have reviewed the changes and confirm they are correct</span>
         </label>
 
         {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
 
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setStep('form')}
-            className="flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-700 font-semibold text-sm rounded-2xl hover:bg-gray-200 transition-all"
+            className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 font-semibold text-sm rounded-2xl hover:bg-slate-200 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />Back to Edit
           </button>
@@ -174,11 +174,11 @@ export function EditMemberClient({ member }: Props) {
   return (
     <div className="max-w-xl mx-auto space-y-5">
       <div className="flex items-center gap-3">
-        <Link href={`/members/${member.id}`} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <Link href={`/members/${member.id}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />Member Details
         </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold text-gray-900">Edit Member</h1>
+        <span className="text-slate-300">/</span>
+        <h1 className="text-xl font-bold text-slate-900">Edit Member</h1>
       </div>
 
       <div className="card p-5">
@@ -188,10 +188,10 @@ export function EditMemberClient({ member }: Props) {
           )}
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Member ID</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Member ID</label>
             <input type="number" min="1" value={form.member_number} onChange={e => update('member_number', e.target.value)}
               className={`input-field w-36 ${numError ? 'border-red-400 focus:ring-red-400' : ''}`} />
-            {checkingNum && <p className="text-xs text-gray-400 mt-1.5">Checking...</p>}
+            {checkingNum && <p className="text-xs text-slate-400 mt-1.5">Checking...</p>}
             {numError && <p className="text-xs text-red-500 mt-1.5 font-medium">{numError}</p>}
             {!numError && !checkingNum && form.member_number !== String(member.member_number) && (
               <p className="text-xs text-emerald-600 mt-1.5 font-medium">✓ Available</p>
@@ -199,24 +199,24 @@ export function EditMemberClient({ member }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Full Name *</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Full Name *</label>
             <input type="text" value={form.name} onChange={e => update('name', e.target.value)} className="input-field" required />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number *</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Phone Number *</label>
             <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)}
               className="input-field" required pattern="[0-9]{10}" maxLength={10} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Gender</label>
               <div className="grid grid-cols-3 gap-2">
                 {(['male', 'female', 'other'] as const).map(g => (
                   <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
                     className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                      form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-500'
+                      form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
                     }`}
                   >
                     {g === 'male' ? 'M' : g === 'female' ? 'F' : 'O'}
@@ -225,14 +225,14 @@ export function EditMemberClient({ member }: Props) {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Age</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Age</label>
               <input type="number" value={form.age} onChange={e => update('age', e.target.value)}
                 className="input-field" placeholder="25" min="1" max="120" />
             </div>
           </div>
 
           <div className="relative">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Area / Locality</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Area / Locality</label>
             <input type="text" value={areaInput}
               onChange={e => {
                 setAreaInput(e.target.value)
@@ -249,13 +249,13 @@ export function EditMemberClient({ member }: Props) {
               className="input-field" placeholder="Type to search area..." autoComplete="off"
             />
             {showSuggestions && areaSuggestions.length > 0 && (
-              <ul className="absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-2xl mt-1 shadow-xl max-h-48 overflow-y-auto">
+              <ul className="absolute z-20 left-0 right-0 bg-white border border-slate-200 rounded-2xl mt-1 shadow-xl max-h-48 overflow-y-auto">
                 {areaSuggestions.map(a => (
                   <li key={a.id} onMouseDown={() => { update('area', a.name); setAreaInput(a.name); setShowSuggestions(false) }}
-                    className="px-4 py-3 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl font-medium"
+                    className="px-4 py-3 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl font-medium"
                   >
                     {a.name}
-                    {a.district && <span className="text-xs text-gray-400 ml-1">{a.district}</span>}
+                    {a.district && <span className="text-xs text-slate-400 ml-1">{a.district}</span>}
                   </li>
                 ))}
               </ul>

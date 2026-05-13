@@ -23,7 +23,7 @@ export default function NavClient() {
         {NAV_ITEMS.map(({ label, href, icon: Icon }) => (
           <Link key={href} href={href}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-              isActive(href) ? 'bg-brand-50 text-brand-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+              isActive(href) ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             <Icon className={`w-4 h-4 flex-shrink-0 ${isActive(href) ? 'text-brand-600' : 'group-hover:text-brand-600'}`} />
@@ -33,11 +33,11 @@ export default function NavClient() {
       </nav>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 flex">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 flex">
         {NAV_ITEMS.slice(0, 6).map(({ label, href, icon: Icon }) => (
           <Link key={href} href={href}
             className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold transition-colors ${
-              isActive(href) ? 'text-brand-600' : 'text-gray-400'
+              isActive(href) ? 'text-brand-600' : 'text-slate-400'
             }`}
           >
             <Icon className="w-5 h-5" />

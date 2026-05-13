@@ -54,34 +54,34 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
       {/* Page header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Attendance</h1>
-          <p className="text-xs md:text-sm text-gray-400 mt-0.5">{displayDate}</p>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Attendance</h1>
+          <p className="text-xs md:text-sm text-slate-400 mt-0.5">{displayDate}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="card px-3 py-2 text-center">
             <p className="text-lg md:text-xl font-bold text-emerald-600">{totalPresent}</p>
-            <p className="text-[10px] md:text-xs text-gray-400">Present</p>
+            <p className="text-[10px] md:text-xs text-slate-400">Present</p>
           </div>
           <div className="card px-3 py-2 text-center">
-            <p className="text-lg md:text-xl font-bold text-gray-500">{members.length - totalPresent}</p>
-            <p className="text-[10px] md:text-xs text-gray-400">Absent</p>
+            <p className="text-lg md:text-xl font-bold text-slate-500">{members.length - totalPresent}</p>
+            <p className="text-[10px] md:text-xs text-slate-400">Absent</p>
           </div>
           <div className="card px-3 py-2 text-center">
             <p className="text-lg md:text-xl font-bold text-blue-600">{attendanceRate}%</p>
-            <p className="text-[10px] md:text-xs text-gray-400">Rate</p>
+            <p className="text-[10px] md:text-xs text-slate-400">Rate</p>
           </div>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
         <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
           style={{ width: `${attendanceRate}%` }} />
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input type="search" placeholder="Search member..."
           value={search} onChange={(e) => setSearch(e.target.value)}
           className="input-field pl-9"
@@ -90,7 +90,7 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
 
       {/* Members grid — 1 col mobile, 2 col tablet, 3 col desktop */}
       {filtered.length === 0 ? (
-        <div className="card p-12 text-center text-gray-400">No active members found</div>
+        <div className="card p-12 text-center text-slate-400">No active members found</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {filtered.map((member) => (
@@ -98,16 +98,16 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
               onClick={() => toggleAttendance(member.id, member.present)}
               className={cn(
                 'card p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-all',
-                member.present ? 'border-emerald-200 bg-emerald-50' : 'hover:border-gray-300'
+                member.present ? 'border-emerald-200 bg-emerald-50' : 'hover:border-slate-300'
               )}
             >
               {member.present
                 ? <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0" />
-                : <Circle className="w-6 h-6 text-gray-200 flex-shrink-0" />
+                : <Circle className="w-6 h-6 text-slate-200 flex-shrink-0" />
               }
               <div className="flex-1 min-w-0">
-                <p className={cn('font-semibold truncate text-sm', member.present ? 'text-emerald-800' : 'text-gray-900')}>{member.name}</p>
-                <p className={cn('text-xs mt-0.5', member.present ? 'text-emerald-600 font-medium' : 'text-gray-400')}>
+                <p className={cn('font-semibold truncate text-sm', member.present ? 'text-emerald-800' : 'text-slate-900')}>{member.name}</p>
+                <p className={cn('text-xs mt-0.5', member.present ? 'text-emerald-600 font-medium' : 'text-slate-400')}>
                   {member.present ? '✓ Present' : 'Tap to mark'}
                 </p>
               </div>

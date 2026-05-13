@@ -1,30 +1,26 @@
 import { FitnessLoader } from '@/components/ui/FitnessLoader'
 
-export default function MembersLoading() {
+export default function Loading() {
   return (
-    <div className="space-y-5 animate-slide-up">
-      <div className="flex items-center justify-between">
-        <div className="skeleton h-8 w-32" />
-        <div className="flex gap-2">
-          <div className="skeleton h-10 w-24 rounded-xl" />
+    <div className="relative h-full min-h-[600px] w-full animate-pulse-soft">
+      {/* Background skeletons to blur out */}
+      <div className="space-y-6 opacity-40">
+        <div className="flex justify-between items-center mb-8">
+          <div className="skeleton h-8 w-48 rounded-lg" />
           <div className="skeleton h-10 w-32 rounded-xl" />
         </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="card p-6 h-32 skeleton" />
+          <div className="card p-6 h-32 skeleton" />
+          <div className="card p-6 h-32 skeleton" />
+        </div>
+        
+        <div className="card p-6 h-96 skeleton w-full mt-6" />
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3">
-        <div className="skeleton h-11 flex-1 rounded-xl" />
-        <div className="skeleton h-11 w-full md:w-48 rounded-xl" />
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-        {[100, 80, 100, 90, 110].map((w, i) => (
-          <div key={i} className="skeleton h-9 rounded-full flex-shrink-0" style={{ width: w }} />
-        ))}
-      </div>
-
-      <div className="card overflow-hidden">
-        <FitnessLoader />
-      </div>
+      {/* The glass blur overlay and creative animation */}
+      <FitnessLoader />
     </div>
   )
 }

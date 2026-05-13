@@ -21,8 +21,8 @@ export default async function ReportsPage() {
   if (!gym) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
-        <p className="text-2xl font-bold text-gray-300">No gym found</p>
-        <p className="text-sm text-gray-400">Set up your gym profile first to see reports.</p>
+        <p className="text-2xl font-bold text-slate-300">No gym found</p>
+        <p className="text-sm text-slate-400">Set up your gym profile first to see reports.</p>
       </div>
     )
   }

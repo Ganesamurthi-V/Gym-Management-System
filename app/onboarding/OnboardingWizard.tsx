@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -7,7 +7,7 @@ import {
   ChevronRight, ChevronLeft, Check, Plus, Trash2, X, Clock, Users, TrendingUp, Zap
 } from 'lucide-react'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --- Types --------------------------------------------------------------------
 
 interface MembershipPlan {
   planName: string
@@ -71,7 +71,7 @@ interface OnboardingData {
   aiPersonalization: AIPersonalizationData
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// --- Constants ----------------------------------------------------------------
 
 const STORAGE_KEY = 'gymflow_onboarding'
 
@@ -135,14 +135,14 @@ const STEPS = [
 const WORKING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const LEAD_SOURCES = ['Walk-in', 'Instagram', 'Facebook', 'WhatsApp', 'Referral', 'Google', 'Other']
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// --- Props --------------------------------------------------------------------
 
 interface OnboardingWizardProps {
   gymId: string | null
   gymName: string
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// --- Component ----------------------------------------------------------------
 
 export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   const router = useRouter()
@@ -304,8 +304,8 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col overflow-hidden">
-      {/* ── Header ── */}
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col overflow-hidden">
+      {/* -- Header -- */}
       <div className="bg-gradient-to-r from-brand-500 to-brand-600 px-4 pt-safe-top flex-shrink-0">
         <div className="max-w-2xl mx-auto">
           {/* Logo row */}
@@ -364,7 +364,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         </div>
       </div>
 
-      {/* ── Step content ── */}
+      {/* -- Step content -- */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-6">
           {/* Step header */}
@@ -382,11 +382,11 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <StepIcon className="w-5 h-5 text-brand-600" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{step.title}</h1>
-                <p className="text-sm text-gray-500">{step.subtitle}</p>
+                <h1 className="text-xl font-bold text-slate-900">{step.title}</h1>
+                <p className="text-sm text-slate-500">{step.subtitle}</p>
               </div>
               {!step.required && (
-                <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full font-medium">
+                <span className="ml-auto text-xs bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-medium">
                   Optional
                 </span>
               )}
@@ -432,8 +432,8 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         </div>
       </div>
 
-      {/* ── Navigation ── */}
-      <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-4 pb-safe-bottom">
+      {/* -- Navigation -- */}
+      <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 py-4 pb-safe-bottom">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           {currentStep > 0 ? (
             <button onClick={handleBack} className="btn-secondary w-auto px-5">
@@ -482,14 +482,14 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   )
 }
 
-// ─── Step 1: Gym Details ──────────────────────────────────────────────────────
+// --- Step 1: Gym Details ------------------------------------------------------
 
 function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p: Partial<GymDetailsData>) => void }) {
   return (
     <div className="space-y-4">
       <div className="card p-4 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">
             Gym Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -503,7 +503,7 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Gym Type</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Gym Type</label>
           <select
             value={data.gymType}
             onChange={e => onChange({ gymType: e.target.value })}
@@ -517,7 +517,7 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Number of Branches</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Number of Branches</label>
             <input
               type="number"
               min={1}
@@ -527,7 +527,7 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Opening Year</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Opening Year</label>
             <input
               type="number"
               min={1950}
@@ -541,7 +541,7 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">City</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">City</label>
             <input
               type="text"
               value={data.city}
@@ -551,7 +551,7 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Phone</label>
             <input
               type="tel"
               value={data.phone}
@@ -570,7 +570,7 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Address</label>
           <textarea
             value={data.address}
             onChange={e => onChange({ address: e.target.value })}
@@ -584,7 +584,7 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
   )
 }
 
-// ─── Step 2: Membership Plans ─────────────────────────────────────────────────
+// --- Step 2: Membership Plans -------------------------------------------------
 
 function StepMembershipPlans({
   plans,
@@ -602,7 +602,7 @@ function StepMembershipPlans({
       {plans.map((plan, i) => (
         <div key={i} className="card p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">Plan {i + 1}</span>
+            <span className="text-sm font-semibold text-slate-700">Plan {i + 1}</span>
             {plans.length > 1 && (
               <button
                 onClick={() => onRemove(i)}
@@ -615,7 +615,7 @@ function StepMembershipPlans({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Plan Name</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Plan Name</label>
               <input
                 type="text"
                 value={plan.planName}
@@ -625,7 +625,7 @@ function StepMembershipPlans({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Duration</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Duration</label>
               <select
                 value={plan.duration}
                 onChange={e => onUpdate(i, { duration: e.target.value as MembershipPlan['duration'] })}
@@ -641,7 +641,7 @@ function StepMembershipPlans({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Price (₹)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Price (?)</label>
               <input
                 type="number"
                 min={0}
@@ -652,7 +652,7 @@ function StepMembershipPlans({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Joining Fee (₹)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Joining Fee (?)</label>
               <input
                 type="number"
                 min={0}
@@ -672,7 +672,7 @@ function StepMembershipPlans({
                 onChange={e => onUpdate(i, { hasDiscount: e.target.checked })}
                 className="w-4 h-4 rounded accent-brand-500"
               />
-              <span className="text-xs text-gray-600">Has Discount</span>
+              <span className="text-xs text-slate-600">Has Discount</span>
             </label>
             {plan.hasDiscount && (
               <div className="flex items-center gap-1.5">
@@ -685,7 +685,7 @@ function StepMembershipPlans({
                   className="input-field w-20 text-center"
                   placeholder="0"
                 />
-                <span className="text-xs text-gray-500">%</span>
+                <span className="text-xs text-slate-500">%</span>
               </div>
             )}
             <label className="flex items-center gap-2 cursor-pointer ml-auto">
@@ -695,7 +695,7 @@ function StepMembershipPlans({
                 onChange={e => onUpdate(i, { hasFreezeOption: e.target.checked })}
                 className="w-4 h-4 rounded accent-brand-500"
               />
-              <span className="text-xs text-gray-600">Freeze Option</span>
+              <span className="text-xs text-slate-600">Freeze Option</span>
             </label>
           </div>
         </div>
@@ -712,7 +712,7 @@ function StepMembershipPlans({
   )
 }
 
-// ─── Step 3: Business Metrics ─────────────────────────────────────────────────
+// --- Step 3: Business Metrics -------------------------------------------------
 
 function StepBusinessMetrics({ data, onChange }: { data: BusinessMetricsData; onChange: (p: Partial<BusinessMetricsData>) => void }) {
   const fields: { key: keyof BusinessMetricsData; label: string; icon: React.ReactNode; prefix?: string }[] = [
@@ -720,8 +720,8 @@ function StepBusinessMetrics({ data, onChange }: { data: BusinessMetricsData; on
     { key: 'monthlyJoins', label: 'Monthly New Joins', icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
     { key: 'cancellations', label: 'Monthly Cancellations', icon: <X className="w-4 h-4 text-red-400" /> },
     { key: 'trainersCount', label: 'Number of Trainers', icon: <Dumbbell className="w-4 h-4 text-purple-500" /> },
-    { key: 'monthlyRevenue', label: 'Monthly Revenue', icon: <BarChart2 className="w-4 h-4 text-blue-500" />, prefix: '₹' },
-    { key: 'monthlyExpenses', label: 'Monthly Expenses', icon: <BarChart2 className="w-4 h-4 text-orange-400" />, prefix: '₹' },
+    { key: 'monthlyRevenue', label: 'Monthly Revenue', icon: <BarChart2 className="w-4 h-4 text-blue-500" />, prefix: '?' },
+    { key: 'monthlyExpenses', label: 'Monthly Expenses', icon: <BarChart2 className="w-4 h-4 text-orange-400" />, prefix: '?' },
   ]
 
   return (
@@ -729,13 +729,13 @@ function StepBusinessMetrics({ data, onChange }: { data: BusinessMetricsData; on
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {fields.map(f => (
           <div key={f.key}>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
               {f.icon}
               {f.label}
             </label>
             <div className="relative">
               {f.prefix && (
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{f.prefix}</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{f.prefix}</span>
               )}
               <input
                 type="number"
@@ -753,7 +753,7 @@ function StepBusinessMetrics({ data, onChange }: { data: BusinessMetricsData; on
   )
 }
 
-// ─── Step 4: Operations ───────────────────────────────────────────────────────
+// --- Step 4: Operations -------------------------------------------------------
 
 function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p: Partial<OperationsData>) => void }) {
   const toggleDay = (day: string) => {
@@ -768,7 +768,7 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
       <div className="card p-4 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
               <Clock className="w-4 h-4 text-brand-500" />
               Opening Time
             </label>
@@ -780,8 +780,8 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
             />
           </div>
           <div>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-              <Clock className="w-4 h-4 text-gray-400" />
+            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
+              <Clock className="w-4 h-4 text-slate-400" />
               Closing Time
             </label>
             <input
@@ -794,7 +794,7 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Working Days</label>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Working Days</label>
           <div className="flex flex-wrap gap-2">
             {WORKING_DAYS.map(day => (
               <button
@@ -804,7 +804,7 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   data.workingDays.includes(day)
                     ? 'bg-brand-500 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {day}
@@ -814,7 +814,7 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Attendance Method</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Attendance Method</label>
           <select
             value={data.attendanceMethod}
             onChange={e => onChange({ attendanceMethod: e.target.value })}
@@ -827,7 +827,7 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Existing Software (if any)</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Existing Software (if any)</label>
           <input
             type="text"
             value={data.existingSoftware}
@@ -839,14 +839,14 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
 
         <div className="flex items-center justify-between py-1">
           <div>
-            <p className="text-sm font-medium text-gray-700">Import Existing Data</p>
-            <p className="text-xs text-gray-500">Migrate members from your old system</p>
+            <p className="text-sm font-medium text-slate-700">Import Existing Data</p>
+            <p className="text-xs text-slate-500">Migrate members from your old system</p>
           </div>
           <button
             type="button"
             onClick={() => onChange({ wantsToImportData: !data.wantsToImportData })}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              data.wantsToImportData ? 'bg-brand-500' : 'bg-gray-200'
+              data.wantsToImportData ? 'bg-brand-500' : 'bg-slate-200'
             }`}
           >
             <span
@@ -861,7 +861,7 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
   )
 }
 
-// ─── Step 5: Marketing ────────────────────────────────────────────────────────
+// --- Step 5: Marketing --------------------------------------------------------
 
 function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: Partial<MarketingData>) => void }) {
   const toggleSource = (source: string) => {
@@ -875,7 +875,7 @@ function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: 
     <div className="space-y-4">
       <div className="card p-4 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Lead Sources</label>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Lead Sources</label>
           <div className="flex flex-wrap gap-2">
             {LEAD_SOURCES.map(source => (
               <button
@@ -885,7 +885,7 @@ function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: 
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   data.leadSources.includes(source)
                     ? 'bg-brand-500 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {source}
@@ -895,7 +895,7 @@ function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Instagram Profile Link</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Instagram Profile Link</label>
           <input
             type="text"
             value={data.instagramLink}
@@ -913,14 +913,14 @@ function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: 
           ].map(item => (
             <div key={item.key} className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-700">{item.label}</p>
-                <p className="text-xs text-gray-500">{item.desc}</p>
+                <p className="text-sm font-medium text-slate-700">{item.label}</p>
+                <p className="text-xs text-slate-500">{item.desc}</p>
               </div>
               <button
                 type="button"
                 onClick={() => onChange({ [item.key]: !data[item.key] } as Partial<MarketingData>)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  data[item.key] ? 'bg-brand-500' : 'bg-gray-200'
+                  data[item.key] ? 'bg-brand-500' : 'bg-slate-200'
                 }`}
               >
                 <span
@@ -935,7 +935,7 @@ function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: 
 
         {data.renewalReminders && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Remind Days Before Expiry</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Remind Days Before Expiry</label>
             <input
               type="number"
               min={1}
@@ -951,7 +951,7 @@ function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: 
   )
 }
 
-// ─── Step 6: AI Personalization ───────────────────────────────────────────────
+// --- Step 6: AI Personalization -----------------------------------------------
 
 function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData; onChange: (p: Partial<AIPersonalizationData>) => void }) {
   return (
@@ -965,7 +965,7 @@ function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Biggest Challenge</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Biggest Challenge</label>
           <select
             value={data.biggestChallenge}
             onChange={e => onChange({ biggestChallenge: e.target.value })}
@@ -979,7 +979,7 @@ function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Main Goal</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Main Goal</label>
           <select
             value={data.mainGoal}
             onChange={e => onChange({ mainGoal: e.target.value })}
@@ -993,7 +993,7 @@ function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Additional Notes</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Additional Notes</label>
           <textarea
             value={data.additionalNotes}
             onChange={e => onChange({ additionalNotes: e.target.value })}

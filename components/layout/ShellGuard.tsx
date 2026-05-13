@@ -27,15 +27,15 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
   if (isShellless) return <>{children}</>
 
   return (
-    <div className="flex h-full">
+    <div className="min-h-full">
 
       {/* ── Desktop Sidebar ── */}
-      <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-gray-100">
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center shadow-sm">
+      <aside className="hidden md:flex flex-col w-60 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-30">
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-slate-100">
+          <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-sm">
             <DumbbellIcon className="w-4 h-4 text-white" />
           </div>
-          <span className="text-lg font-bold text-gray-900 tracking-tight">GymFlow</span>
+          <span className="text-lg font-bold text-slate-900 tracking-tight">GymFlow</span>
         </div>
         <NavClient />
         <div className="px-3 pb-4">
@@ -51,21 +51,21 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
       </aside>
 
       {/* ── Main area ── */}
-      <div className="flex-1 md:ml-60 flex flex-col h-full overflow-hidden">
-        {/* Top bar */}
-        <header className="h-14 md:h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20">
+      <div className="md:pl-60 flex flex-col min-h-screen">
+        {/* Top bar - fixed on mobile, sticky/scroll with page or fixed on desktop */}
+        <header className="sticky top-0 h-14 md:h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20">
           <div className="flex items-center gap-2 md:hidden">
-            <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-cyan-500 rounded-lg flex items-center justify-center">
               <DumbbellIcon className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-base font-bold text-gray-900">GymFlow</span>
+            <span className="text-base font-bold text-slate-900">GymFlow</span>
           </div>
           <div className="hidden md:block" />
           <AccountMenu />
         </header>
 
-        {/* Page content — only this scrolls */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6 w-full">
+        {/* Page content — natural flow */}
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-8 w-full bg-slate-50">
           {children}
         </main>
       </div>

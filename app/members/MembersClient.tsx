@@ -81,7 +81,7 @@ export function MembersClient({ members, gymId }: Props) {
   }
 
   const filterConfig: { key: FilterType; label: string; activeClass: string }[] = [
-    { key: 'all',      label: 'All',      activeClass: 'bg-gray-900 text-white' },
+    { key: 'all',      label: 'All',      activeClass: 'bg-slate-900 text-white' },
     { key: 'active',   label: 'Active',   activeClass: 'bg-emerald-500 text-white' },
     { key: 'expiring', label: 'Expiring', activeClass: 'bg-amber-500 text-white' },
     { key: 'expired',  label: 'Expired',  activeClass: 'bg-red-500 text-white' },
@@ -103,13 +103,13 @@ export function MembersClient({ members, gymId }: Props) {
     <div className="space-y-4 md:space-y-5">
       {/* Page header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Members</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Members</h1>
         <div className="flex items-center gap-2">
-          <Link href="/import" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">
+          <Link href="/import" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Upload className="w-4 h-4" />
             <span className="hidden sm:inline">Import</span>
           </Link>
-          <Link href="/members/bulk-edit" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">
+          <Link href="/members/bulk-edit" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Edit2 className="w-4 h-4" />
             <span className="hidden sm:inline">Edit Members</span>
           </Link>
@@ -124,14 +124,14 @@ export function MembersClient({ members, gymId }: Props) {
       {/* Search */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="Search by name or phone..."
             value={search} onChange={(e) => setSearch(e.target.value)}
             className="input-field pl-9"
           />
         </div>
         <div className="relative w-36">
-          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="Member ID"
             value={idSearch} onChange={(e) => setIdSearch(e.target.value)}
             className="input-field pl-9"
@@ -164,7 +164,7 @@ export function MembersClient({ members, gymId }: Props) {
         {filterConfig.map(({ key, label, activeClass }) => (
           <button key={key} onClick={() => setFilter(key)}
             className={cn('flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all',
-              filter === key ? activeClass : 'bg-white border border-gray-200 text-gray-500')}
+              filter === key ? activeClass : 'bg-white border border-slate-200 text-slate-500')}
           >
             {label} <span className="opacity-60">({counts[key]})</span>
           </button>
@@ -175,7 +175,7 @@ export function MembersClient({ members, gymId }: Props) {
       <div className="md:hidden space-y-2">
         {filtered.length === 0 ? (
           <div className="card p-10 text-center">
-            <p className="text-gray-400 text-sm">No members found</p>
+            <p className="text-slate-400 text-sm">No members found</p>
             <Link href="/members/new" className="text-brand-600 text-sm font-semibold mt-1 inline-block">+ Add first member</Link>
           </div>
         ) : filtered.map((member) => {
@@ -189,16 +189,16 @@ export function MembersClient({ members, gymId }: Props) {
                 <div className="flex items-center gap-2">
                   <span className={cn(
                     'text-[10px] font-mono',
-                    duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-gray-400'
+                    duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-slate-400'
                   )}>
                     #{member.member_number}{duplicateIds.has(member.member_number) && ' ⚠'}
                   </span>
-                  <p className="font-bold text-gray-900 text-sm truncate">{member.name}</p>
+                  <p className="font-bold text-slate-900 text-sm truncate">{member.name}</p>
                   <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-bold border flex-shrink-0', cls)}>{label}</span>
                 </div>
-                <p className="text-xs text-gray-400">{member.phone}</p>
+                <p className="text-xs text-slate-400">{member.phone}</p>
                 {member.latest_membership && (
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     Expires {formatDate(member.latest_membership.end_date)}
                     {' · '}{member.days_remaining >= 0 ? `${member.days_remaining}d left` : `${Math.abs(member.days_remaining)}d ago`}
                   </p>
@@ -215,13 +215,13 @@ export function MembersClient({ members, gymId }: Props) {
                       <MessageCircle className="w-4 h-4" />
                     </a>
                   ) : (
-                    <div className="w-8 h-8 bg-gray-200 text-gray-400 rounded-lg flex items-center justify-center cursor-not-allowed"
+                    <div className="w-8 h-8 bg-slate-200 text-slate-400 rounded-lg flex items-center justify-center cursor-not-allowed"
                       title="Invalid phone number — cannot send WhatsApp message">
                       <MessageCircle className="w-4 h-4" />
                     </div>
                   )
                 )}
-                <Link href={`/members/${member.id}`} className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center">
+                <Link href={`/members/${member.id}`} className="w-8 h-8 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center">
                   <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -234,20 +234,20 @@ export function MembersClient({ members, gymId }: Props) {
       <div className="hidden md:block card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">#</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Member</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Plan</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Expires</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Status</th>
+            <tr className="border-b border-slate-100 bg-slate-50">
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Expires</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Status</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-slate-50">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
                   No members found.{' '}
                   <Link href="/members/new" className="text-brand-600 font-semibold hover:underline">Add first member</Link>
                 </td>
@@ -255,11 +255,11 @@ export function MembersClient({ members, gymId }: Props) {
             ) : filtered.map((member) => {
               const { label, cls } = statusConfig[member.status]
               return (
-                <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={member.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-5 py-3.5">
                     <span className={cn(
                       'font-mono text-xs',
-                      duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-gray-400'
+                      duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-slate-400'
                     )}>
                       #{member.member_number}
                       {duplicateIds.has(member.member_number) && <span className="ml-1">⚠</span>}
@@ -270,15 +270,15 @@ export function MembersClient({ members, gymId }: Props) {
                       <div className={`w-8 h-8 ${avatarColors[member.status]} rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0`}>
                         {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
-                      <span className="font-semibold text-gray-900">{member.name}</span>
+                      <span className="font-semibold text-slate-900">{member.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500">{member.phone}</td>
-                  <td className="px-5 py-3.5 text-gray-500 capitalize">{member.latest_membership?.plan ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-500">
+                  <td className="px-5 py-3.5 text-slate-500">{member.phone}</td>
+                  <td className="px-5 py-3.5 text-slate-500 capitalize">{member.latest_membership?.plan ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-slate-500">
                     {member.latest_membership ? (
                       <span>{formatDate(member.latest_membership.end_date)}
-                        <span className="ml-1.5 text-xs text-gray-400">
+                        <span className="ml-1.5 text-xs text-slate-400">
                           ({member.days_remaining >= 0 ? `${member.days_remaining}d left` : `${Math.abs(member.days_remaining)}d ago`})
                         </span>
                       </span>
@@ -299,13 +299,13 @@ export function MembersClient({ members, gymId }: Props) {
                             <MessageCircle className="w-3.5 h-3.5" />Remind
                           </a>
                         ) : (
-                          <div className="flex items-center gap-1.5 bg-gray-200 text-gray-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-not-allowed"
+                          <div className="flex items-center gap-1.5 bg-slate-200 text-slate-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-not-allowed"
                             title="Invalid phone number — cannot send WhatsApp message">
                             <MessageCircle className="w-3.5 h-3.5" />Remind
                           </div>
                         )
                       )}
-                      <Link href={`/members/${member.id}`} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                      <Link href={`/members/${member.id}`} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                         <ChevronRight className="w-4 h-4" />
                       </Link>
                     </div>

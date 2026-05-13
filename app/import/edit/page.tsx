@@ -273,10 +273,10 @@ export default function ImportEditPage() {
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-100">
             <Check className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Import Complete! 🎉</h2>
-          <p className="text-gray-500 mt-2">
+          <h2 className="text-xl font-bold text-slate-900 mb-1">Import Complete! 🎉</h2>
+          <p className="text-slate-500 mt-2">
             <span className="text-emerald-600 font-bold text-lg">{doneResult.success}</span>
-            <span className="text-gray-400"> members imported successfully</span>
+            <span className="text-slate-400"> members imported successfully</span>
             {doneResult.skipped > 0 && (
               <><br /><span className="text-red-400 text-sm">{doneResult.skipped} skipped</span></>
             )}
@@ -296,46 +296,46 @@ export default function ImportEditPage() {
     return (
       <div className="max-w-4xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => setStep("edit")} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+          <button onClick={() => setStep("edit")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Back to Edit
           </button>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Review Before Importing</h1>
+          <span className="text-slate-300">/</span>
+          <h1 className="text-xl font-bold text-slate-900">Review Before Importing</h1>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600">{validRows.length}</p>
-            <p className="text-sm text-gray-500 mt-0.5">Will be imported</p>
+            <p className="text-sm text-slate-500 mt-0.5">Will be imported</p>
           </div>
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-brand-600">{editedCount}</p>
-            <p className="text-sm text-gray-500 mt-0.5">Edited by you</p>
+            <p className="text-sm text-slate-500 mt-0.5">Edited by you</p>
           </div>
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-red-500">{skippedRows.length}</p>
-            <p className="text-sm text-gray-500 mt-0.5">Will be skipped</p>
+            <p className="text-sm text-slate-500 mt-0.5">Will be skipped</p>
           </div>
         </div>
 
         <div className="card overflow-hidden">
-          <p className="px-5 py-3.5 text-sm font-bold text-gray-700 border-b border-gray-100">
+          <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100">
             Members to be imported ({validRows.length})
           </p>
           <div className="overflow-x-auto max-h-64 overflow-y-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
+                <tr className="bg-slate-50 border-b border-slate-100">
                   {["#", "Name", "Phone", "Plan", "Start Date", "Amount", "Mode", "Gender", "Age", "Area"].map(h => (
-                    <th key={h} className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-slate-50">
                 {validRows.map((row) => {
                   const anyChanged = isRowChanged(row);
                   return (
-                    <tr key={row._rowId} className={anyChanged ? "bg-emerald-50/40" : "hover:bg-gray-50"}>
+                    <tr key={row._rowId} className={anyChanged ? "bg-emerald-50/40" : "hover:bg-slate-50"}>
                       <td className="px-4 py-2.5 font-mono text-xs"><span className={hi(row, "member_number")}>{row.member_number || "—"}</span></td>
                       <td className="px-4 py-2.5"><span className={hi(row, "name")}>{row.name}</span></td>
                       <td className="px-4 py-2.5"><span className={hi(row, "phone")}>{row.phone}</span></td>
@@ -352,9 +352,9 @@ export default function ImportEditPage() {
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
+          <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span>
-            <span className="text-xs text-gray-400">Green highlight = value edited by you</span>
+            <span className="text-xs text-slate-400">Green highlight = value edited by you</span>
           </div>
         </div>
 
@@ -369,7 +369,7 @@ export default function ImportEditPage() {
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)}
             className="w-4 h-4 rounded accent-brand-600" />
-          <span className="text-sm text-gray-700 font-medium">
+          <span className="text-sm text-slate-700 font-medium">
             I have reviewed all {validRows.length} members and confirm the data is correct
           </span>
         </label>
@@ -378,7 +378,7 @@ export default function ImportEditPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setStep("edit")}
-            className="flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-700 font-semibold text-sm rounded-2xl hover:bg-gray-200 transition-all"
+            className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 font-semibold text-sm rounded-2xl hover:bg-slate-200 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />Back to Edit
           </button>
@@ -404,23 +404,23 @@ export default function ImportEditPage() {
   }
 
   // ── Edit ──────────────────────────────────────────────────────────────────
-  const cls = "px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-gray-50 disabled:text-gray-400";
+  const cls = "px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-slate-50 disabled:text-slate-400";
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {hasReviewState ? (
-            <button onClick={goBackToReview} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            <button onClick={goBackToReview} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
               <ArrowLeft className="w-4 h-4" />Review Areas
             </button>
           ) : (
-            <Link href="/import" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
               <ArrowLeft className="w-4 h-4" />Import
             </Link>
           )}
-          <span className="text-gray-300">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Edit Before Importing</h1>
+          <span className="text-slate-300">/</span>
+          <h1 className="text-xl font-bold text-slate-900">Edit Before Importing</h1>
         </div>
         <div className="flex items-center gap-2">
           {selected.size > 0 && (
@@ -444,7 +444,7 @@ export default function ImportEditPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 text-sm text-gray-500">
+      <div className="flex items-center gap-3 text-sm text-slate-500">
         <span className="text-emerald-600 font-semibold">{validRows.length} valid</span>
         <span>·</span>
         <span className="text-red-500 font-semibold">{skippedRows.length} will be skipped</span>
@@ -481,7 +481,7 @@ export default function ImportEditPage() {
       })()}
 
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input type="search" placeholder="Search..." value={search}
           onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
       </div>
@@ -496,7 +496,7 @@ export default function ImportEditPage() {
           <div ref={tableInnerRef}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
+              <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="px-3 py-3 w-8">
                   <input type="checkbox"
                     checked={filtered.length > 0 && filtered.every(r => selected.has(r._idx))}
@@ -505,19 +505,19 @@ export default function ImportEditPage() {
                   />
                 </th>
                 <th className="px-3 py-3 w-8"></th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">ID</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Plan</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Start Date</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Mode</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Gender</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-16">Age</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[150px]">Area ✦</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide w-20">ID</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Name</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Start Date</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Gender</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide w-16">Age</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide min-w-[150px]">Area ✦</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-50">
               {filtered.map(row => {
                 const idx = row._idx;
                 const isSkipped = row._status === "error" || row._status === "duplicate";
@@ -525,7 +525,7 @@ export default function ImportEditPage() {
                 const suggestions = areaSuggestions[idx] ?? [];
 
                 return (
-                  <tr key={idx} className={isSkipped ? "bg-red-50 opacity-60" : selected.has(idx) ? "bg-red-50/60" : changed ? "bg-brand-50/20" : "hover:bg-gray-50"}>
+                  <tr key={idx} className={isSkipped ? "bg-red-50 opacity-60" : selected.has(idx) ? "bg-red-50/60" : changed ? "bg-brand-50/20" : "hover:bg-slate-50"}>
                     <td className="px-3 py-2">
                       <input type="checkbox"
                         checked={selected.has(idx)}
@@ -634,7 +634,7 @@ export default function ImportEditPage() {
                           className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
                       </div>
                       {activeAreaIdx === idx && suggestions.length > 0 && (
-                        <ul className="absolute z-30 left-3 right-3 bg-white border border-gray-200 rounded-xl shadow-xl max-h-36 overflow-y-auto mt-0.5">
+                        <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl max-h-36 overflow-y-auto mt-0.5">
                           {suggestions.slice(0, 5).map(a => (
                             <li key={a.id}
                               onMouseDown={() => {
@@ -642,10 +642,10 @@ export default function ImportEditPage() {
                                 updateRow(idx, "_area_confidence" as any, "1");
                                 setActiveAreaIdx(null);
                               }}
-                              className="px-3 py-1.5 text-xs text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer"
+                              className="px-3 py-1.5 text-xs text-slate-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer"
                             >
                               <span className="font-medium">{a.name}</span>
-                              {a.district && <span className="text-gray-400 ml-1">{a.district}</span>}
+                              {a.district && <span className="text-slate-400 ml-1">{a.district}</span>}
                             </li>
                           ))}
                         </ul>

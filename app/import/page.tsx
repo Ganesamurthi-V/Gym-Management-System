@@ -272,11 +272,11 @@ export default function ImportPage() {
   return (
     <div className="max-w-3xl space-y-5">
       <div className="flex items-center gap-3">
-        <Link href="/members" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />Members
         </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold text-gray-900">Import Members</h1>
+        <span className="text-slate-300">/</span>
+        <h1 className="text-xl font-bold text-slate-900">Import Members</h1>
       </div>
 
       {/* Mode selector */}
@@ -287,21 +287,21 @@ export default function ImportPage() {
             <span className="text-sm font-bold text-brand-700">Auto Import</span>
             <span className="text-xs bg-brand-100 text-brand-600 px-2 py-0.5 rounded-full font-semibold">Active</span>
           </div>
-          <p className="text-xs text-gray-500">Columns are auto-detected using smart fuzzy matching</p>
+          <p className="text-xs text-slate-500">Columns are auto-detected using smart fuzzy matching</p>
         </div>
-        <Link href="/import/manual" className="card p-4 hover:border-gray-300 hover:bg-gray-50 transition-all">
+        <Link href="/import/manual" className="card p-4 hover:border-slate-300 hover:bg-slate-50 transition-all">
           <div className="flex items-center gap-2 mb-1">
-            <Shuffle className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-bold text-gray-700">Manual Mapping</span>
+            <Shuffle className="w-4 h-4 text-slate-500" />
+            <span className="text-sm font-bold text-slate-700">Manual Mapping</span>
           </div>
-          <p className="text-xs text-gray-500">Drag & drop to manually map Excel columns to database fields</p>
+          <p className="text-xs text-slate-500">Drag & drop to manually map Excel columns to database fields</p>
         </Link>
       </div>
 
       {/* Upload area */}
       <div className="card p-6">
         <label className={`flex flex-col items-center gap-3 py-10 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
-            parsing ? 'border-brand-300 bg-brand-50/40 cursor-not-allowed' : 'border-gray-200 hover:border-brand-400 hover:bg-brand-50/30'
+            parsing ? 'border-brand-300 bg-brand-50/40 cursor-not-allowed' : 'border-slate-200 hover:border-brand-400 hover:bg-brand-50/30'
           }`}>
           {parsing ? (
             <div className="flex flex-col items-center gap-4 py-2">
@@ -318,9 +318,9 @@ export default function ImportPage() {
                   {parseStage === 4 && '🗺️ Normalizing areas...'}
                   {parseStage === 5 && '✅ Almost done!'}
                 </p>
-                <p className="text-xs text-gray-400">Your data is getting cooked 🍳</p>
+                <p className="text-xs text-slate-400">Your data is getting cooked 🍳</p>
               </div>
-              <div className="w-48 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full animate-progress-bar" />
               </div>
               <div className="flex gap-1.5">
@@ -332,10 +332,10 @@ export default function ImportPage() {
             </div>
           ) : (
             <>
-              <Upload className="w-8 h-8 text-gray-400" />
+              <Upload className="w-8 h-8 text-slate-400" />
               <div className="text-center">
-                <p className="font-semibold text-gray-700">Upload CSV or Excel file</p>
-                <p className="text-sm text-gray-400 mt-0.5">Columns are auto-detected — any header name works</p>
+                <p className="font-semibold text-slate-700">Upload CSV or Excel file</p>
+                <p className="text-sm text-slate-400 mt-0.5">Columns are auto-detected — any header name works</p>
               </div>
             </>
           )}
@@ -346,11 +346,11 @@ export default function ImportPage() {
       {/* Detected columns */}
       {Object.keys(detectedColumns).length > 0 && (
         <div className="card p-4">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Detected Columns</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Detected Columns</p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(FIELD_LABELS).map(([field, label]) => (
               <div key={field} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                detectedColumns[field] ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-400 border-gray-200"
+                detectedColumns[field] ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-400 border-slate-200"
               }`}>
                 {detectedColumns[field] ? <Check className="w-3 h-3" /> : <span>–</span>}
                 {label}
@@ -366,15 +366,15 @@ export default function ImportPage() {
           <div className="grid grid-cols-4 gap-3">
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-emerald-600">{validRows.filter(r => !r._error).length}</p>
-              <p className="text-sm text-gray-500 mt-0.5">Ready</p>
+              <p className="text-sm text-slate-500 mt-0.5">Ready</p>
             </div>
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-amber-500">{validRows.filter(r => r._id_auto).length}</p>
-              <p className="text-sm text-gray-500 mt-0.5">ID auto-assigned</p>
+              <p className="text-sm text-slate-500 mt-0.5">ID auto-assigned</p>
             </div>
             <div className="card p-4 text-center">
               <p className="text-2xl font-bold text-red-500">{errorRows.length}</p>
-              <p className="text-sm text-gray-500 mt-0.5">Will be skipped</p>
+              <p className="text-sm text-slate-500 mt-0.5">Will be skipped</p>
             </div>
             <div
               className="card p-4 text-center cursor-pointer hover:border-amber-300 transition-colors"
@@ -385,7 +385,7 @@ export default function ImportPage() {
               <p className="text-2xl font-bold text-orange-500">
                 {rows.filter(r => r.area && (r._area_confidence ?? 1) < 0.90).length}
               </p>
-              <p className="text-sm text-gray-500 mt-0.5">Areas need review</p>
+              <p className="text-sm text-slate-500 mt-0.5">Areas need review</p>
               {rows.filter(r => r._area_matched_by === 'ai').length > 0 && (
                 <p className="text-[10px] text-blue-500 mt-0.5">
                   {rows.filter(r => r._area_matched_by === 'ai').length} AI-inferred
@@ -395,26 +395,26 @@ export default function ImportPage() {
           </div>
 
           <div className="card overflow-hidden">
-            <p className="px-5 py-3.5 text-sm font-bold text-gray-700 border-b border-gray-100">
+            <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100">
               Preview ({rows.length} rows)
             </p>
             <div className="overflow-x-auto max-h-72 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide"></th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">#</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Plan</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Age</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Area ✦</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</th>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide"></th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide">Name</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide">Age</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide">Area ✦</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-slate-50">
                   {rows.map((row, i) => (
-                    <tr key={i} className={row._status !== "ok" ? "bg-red-50" : row._error ? "bg-amber-50" : "hover:bg-gray-50"}>
+                    <tr key={i} className={row._status !== "ok" ? "bg-red-50" : row._error ? "bg-amber-50" : "hover:bg-slate-50"}>
                       <td className="px-4 py-2.5">
                         {row._status !== "ok"
                           ? <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -422,15 +422,15 @@ export default function ImportPage() {
                           ? <AlertTriangle className="w-4 h-4 text-amber-500" />
                           : <Check className="w-4 h-4 text-emerald-500" />}
                       </td>
-                      <td className="px-4 py-2.5 text-gray-400 font-mono text-xs">{row.member_number || "—"}</td>
-                      <td className="px-4 py-2.5 font-medium text-gray-900">
-                        {row.name || <span className="text-gray-400">(no name)</span>}
+                      <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">{row.member_number || "—"}</td>
+                      <td className="px-4 py-2.5 font-medium text-slate-900">
+                        {row.name || <span className="text-slate-400">(no name)</span>}
                         {row._error && row._status !== "ok" && <p className="text-xs text-red-500 mt-0.5">{row._error}</p>}
                         {row._error && row._status === "ok" && <p className="text-xs text-amber-600 mt-0.5">{row._error}</p>}
                       </td>
-                      <td className="px-4 py-2.5 text-gray-500">{row.phone}</td>
-                      <td className="px-4 py-2.5 text-gray-500 capitalize">{row.plan}</td>
-                      <td className="px-4 py-2.5 text-gray-500">{row.age || "—"}</td>
+                      <td className="px-4 py-2.5 text-slate-500">{row.phone}</td>
+                      <td className="px-4 py-2.5 text-slate-500 capitalize">{row.plan}</td>
+                      <td className="px-4 py-2.5 text-slate-500">{row.age || "—"}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-1.5">
                           {row.area ? (
@@ -438,14 +438,14 @@ export default function ImportPage() {
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                                 (row._area_confidence ?? 0) >= 0.90 ? 'bg-emerald-500' :
                                 (row._area_confidence ?? 0) >= 0.70 ? 'bg-amber-400' :
-                                row._area_matched_by === 'unresolved' ? 'bg-red-400' : 'bg-gray-300'
+                                row._area_matched_by === 'unresolved' ? 'bg-red-400' : 'bg-slate-300'
                               }`} title={`Confidence: ${((row._area_confidence ?? 0) * 100).toFixed(0)}% (${row._area_matched_by ?? 'unknown'})`} />
-                              <span className="text-gray-500 text-xs">{row.area}</span>
+                              <span className="text-slate-500 text-xs">{row.area}</span>
                             </>
-                          ) : <span className="text-gray-300">—</span>}
+                          ) : <span className="text-slate-300">—</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-500">₹{row.amount}</td>
+                      <td className="px-4 py-2.5 text-slate-500">₹{row.amount}</td>
                     </tr>
                   ))}
                 </tbody>

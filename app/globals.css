@@ -8,12 +8,42 @@
   }
 
   html, body {
-    @apply h-full;
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-gray-50;
+    @apply bg-white;
+  }
+
+  html.lenis, html.lenis body {
+    height: auto;
+  }
+
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  .lenis.lenis-scrolling iframe {
+    pointer-events: none;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
   }
 }
 
@@ -23,19 +53,19 @@
   }
 
   .btn-secondary {
-    @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all text-sm;
+    @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-white text-slate-700 font-semibold rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all text-sm;
   }
 
   .btn-ghost {
-    @apply flex items-center justify-center gap-2 py-2 px-3 text-gray-500 rounded-xl active:bg-gray-100 transition-all text-sm;
+    @apply flex items-center justify-center gap-2 py-2 px-3 text-slate-500 rounded-xl active:bg-slate-100 transition-all text-sm;
   }
 
   .input-field {
-    @apply w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all shadow-sm;
+    @apply w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all shadow-sm;
   }
 
   .card {
-    @apply bg-white rounded-xl border border-gray-200 shadow-sm;
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
   }
 
   .status-active {
@@ -59,7 +89,7 @@
   }
 
   .skeleton {
-    @apply relative overflow-hidden bg-gray-100 rounded-lg;
+    @apply relative overflow-hidden bg-slate-100 rounded-lg;
   }
   .skeleton::after {
     content: '';

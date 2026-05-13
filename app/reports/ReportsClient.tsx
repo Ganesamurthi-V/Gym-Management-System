@@ -51,7 +51,7 @@ type DateRange = 'this-month' | 'last-month' | 'this-quarter' | 'custom'
 
 function Bar({ value, max, color }: { value: number; max: number; color: string }) {
   return (
-    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
       <div className={`h-full rounded-full transition-all duration-700 ${color}`}
         style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }} />
     </div>
@@ -67,10 +67,10 @@ function StatCard({ icon, label, value, sub, color, iconColor }: {
         <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center`}>{icon}</div>
       </div>
       <div>
-        <p className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{value}</p>
-        <p className="text-sm font-medium text-gray-500 mt-1">{label}</p>
-        {sub && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
+        <p className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">{value}</p>
+        <p className="text-sm font-medium text-slate-500 mt-1">{label}</p>
+        {sub && <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
           {sub}
         </p>}
       </div>
@@ -329,15 +329,15 @@ export function ReportsClient({
   return (
     <div className="space-y-6 pb-12 animate-slide-up">
       {/* TN/Puducherry Friendly Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 opacity-50" />
         <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2 text-brand-600 font-bold text-xs uppercase tracking-widest">
             <BarChart2 className="w-4 h-4" />
             Business Intelligence
           </div>
-          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{gymName}</h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">{gymName}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
             <span className="flex items-center gap-1 font-medium"><MapPin className="w-3.5 h-3.5 text-brand-400" /> {gymCity || 'Tamil Nadu / Puducherry'}</span>
             <span className="flex items-center gap-1 font-medium"><Receipt className="w-3.5 h-3.5 text-brand-400" /> GST: {gymGST || 'N/A'}</span>
             <span className="flex items-center gap-1 font-medium"><Calendar className="w-3.5 h-3.5 text-brand-400" /> {gymPhone || 'N/A'}</span>
@@ -350,21 +350,21 @@ export function ReportsClient({
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="px-2 py-1.5 text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
+                className="px-2 py-1.5 text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
               />
-              <span className="text-gray-400 text-xs font-bold">to</span>
+              <span className="text-slate-400 text-xs font-bold">to</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="px-2 py-1.5 text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
+                className="px-2 py-1.5 text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           )}
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as DateRange)}
-            className="px-3 py-2 text-sm font-bold bg-gray-50 border-2 border-gray-100 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer"
+            className="px-3 py-2 text-sm font-bold bg-slate-50 border-2 border-slate-100 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer"
           >
             <option value="this-month">This Month</option>
             <option value="last-month">Last Month</option>
@@ -418,7 +418,7 @@ export function ReportsClient({
         {/* Revenue Trend Chart */}
         <div className="lg:col-span-2 card p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="font-bold text-slate-900 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-brand-500" />
               Revenue Trend (Last 6 Months)
             </h2>
@@ -427,7 +427,7 @@ export function ReportsClient({
             {[...months].reverse().map((m, i) => (
               <div key={m.label} className="flex-1 flex flex-col items-center gap-2 group">
                 <div className="relative w-full flex flex-col items-center">
-                  <div className="absolute -top-8 bg-gray-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute -top-8 bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                     {formatCurrency(m.total)}
                   </div>
                   <div
@@ -438,22 +438,22 @@ export function ReportsClient({
                     style={{ height: `${(m.total / maxRevenue) * 160}px` }}
                   />
                 </div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase">{m.label.split(' ')[0]}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">{m.label.split(' ')[0]}</span>
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-50">
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-50">
             <div className="text-center">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Avg Monthly</p>
-              <p className="text-sm font-bold text-gray-900">{formatCurrency(Math.round(months.reduce((a, b) => a + b.total, 0) / 6))}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Monthly</p>
+              <p className="text-sm font-bold text-slate-900">{formatCurrency(Math.round(months.reduce((a, b) => a + b.total, 0) / 6))}</p>
             </div>
-            <div className="text-center border-x border-gray-50">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Highest</p>
-              <p className="text-sm font-bold text-gray-900">{formatCurrency(maxRevenue)}</p>
+            <div className="text-center border-x border-slate-50">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Highest</p>
+              <p className="text-sm font-bold text-slate-900">{formatCurrency(maxRevenue)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payments</p>
-              <p className="text-sm font-bold text-gray-900">{months.reduce((a, b) => a + b.transactions, 0)}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payments</p>
+              <p className="text-sm font-bold text-slate-900">{months.reduce((a, b) => a + b.transactions, 0)}</p>
             </div>
           </div>
         </div>
@@ -476,16 +476,16 @@ export function ReportsClient({
 
               <div className="space-y-3">
                 {membersWithDues.slice(0, 3).map((m, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
+                  <div key={i} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
                     <div>
-                      <p className="text-sm font-bold text-gray-900">{m.name}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">{m.phone}</p>
+                      <p className="text-sm font-bold text-slate-900">{m.name}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">{m.phone}</p>
                     </div>
                     <p className="text-sm font-bold text-red-600">{formatCurrency(m.amount)}</p>
                   </div>
                 ))}
                 {membersWithDues.length > 3 && (
-                  <p className="text-center text-xs font-medium text-gray-400">+{membersWithDues.length - 3} more members</p>
+                  <p className="text-center text-xs font-medium text-slate-400">+{membersWithDues.length - 3} more members</p>
                 )}
               </div>
             </div>
@@ -505,30 +505,30 @@ export function ReportsClient({
         {/* Top Areas Section */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="font-bold text-slate-900 flex items-center gap-2">
               <MapPinned className="w-5 h-5 text-emerald-500" />
               Top Areas (Puducherry & Chennai)
             </h2>
-            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">By Localities</span>
+            <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">By Localities</span>
           </div>
 
           <div className="space-y-5">
             {topAreas.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400 font-medium">No area data available for this gym.</p>
+              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <MapPin className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm text-slate-400 font-medium">No area data available for this gym.</p>
               </div>
             ) : (
               topAreas.map(({ area, count }) => (
                 <div key={area} className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="font-bold text-gray-700 flex items-center gap-1.5">
+                    <span className="font-bold text-slate-700 flex items-center gap-1.5">
                       <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
                       {area}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">{Math.round(count/totalMembers*100)}%</span>
-                      <span className="font-black text-gray-900">{count}</span>
+                      <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded">{Math.round(count/totalMembers*100)}%</span>
+                      <span className="font-black text-slate-900">{count}</span>
                     </div>
                   </div>
                   <Bar value={count} max={maxArea} color="bg-emerald-500 shadow-sm" />
@@ -541,11 +541,11 @@ export function ReportsClient({
         {/* Plan Distribution Section */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="font-bold text-slate-900 flex items-center gap-2">
               <PieChart className="w-5 h-5 text-purple-500" />
               Plan Distribution
             </h2>
-            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">
+            <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
               {totalPlanCount} members
             </span>
           </div>
@@ -562,16 +562,16 @@ export function ReportsClient({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={cn('w-2.5 h-2.5 rounded-full', color)} />
-                      <span className="text-sm font-semibold text-gray-700">{label}</span>
+                      <span className="text-sm font-semibold text-slate-700">{label}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full', bg, text)}>
                         {pct}%
                       </span>
-                      <span className="text-sm font-black text-gray-900 w-6 text-right">{count}</span>
+                      <span className="text-sm font-black text-slate-900 w-6 text-right">{count}</span>
                     </div>
                   </div>
-                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className={cn('h-full rounded-full transition-all duration-700', color)}
                       style={{ width: `${pct}%` }}
@@ -583,7 +583,7 @@ export function ReportsClient({
           </div>
 
           {/* Summary row */}
-          <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
+          <div className="mt-6 pt-4 border-t border-slate-100 grid grid-cols-3 gap-2 text-center">
             {[
               { label: 'Monthly',   count: planCounts.monthly,   color: 'text-brand-600'   },
               { label: 'Quarterly', count: planCounts.quarterly, color: 'text-emerald-600' },
@@ -591,7 +591,7 @@ export function ReportsClient({
             ].map(({ label, count, color }) => (
               <div key={label}>
                 <p className={cn('text-xl font-black', color)}>{count}</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">{label}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{label}</p>
               </div>
             ))}
           </div>
@@ -603,13 +603,13 @@ export function ReportsClient({
 
 function PlanItem({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
   return (
-    <div className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
+    <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
       <div className="flex items-center gap-2 mb-2">
         <div className={cn("w-2.5 h-2.5 rounded-full", color)} />
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{label}</span>
       </div>
-      <p className="text-2xl font-black text-gray-900">{count}</p>
-      <p className="text-[10px] font-bold text-gray-400">{total > 0 ? Math.round(count/total*100) : 0}% of members</p>
+      <p className="text-2xl font-black text-slate-900">{count}</p>
+      <p className="text-[10px] font-bold text-slate-400">{total > 0 ? Math.round(count/total*100) : 0}% of members</p>
     </div>
   )
 }

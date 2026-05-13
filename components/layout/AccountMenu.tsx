@@ -83,47 +83,47 @@ export default function AccountMenu() {
           <div className="fixed inset-0 bg-black/20 z-40 md:hidden" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown Panel */}
-          <div className="fixed md:absolute top-14 md:top-full left-4 right-4 md:left-auto md:right-0 mt-2 md:w-64 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden transition-all animate-pop-in">
-            <div className="p-4 border-b border-gray-50">
-              {gymName && <p className="text-sm font-bold text-gray-900 truncate">{gymName}</p>}
-              <p className="text-xs font-medium text-gray-400 truncate mt-0.5">{email}</p>
+          <div className="fixed md:absolute top-14 md:top-full left-4 right-4 md:left-auto md:right-0 mt-2 md:w-64 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden transition-all animate-pop-in">
+            <div className="p-4 border-b border-slate-50">
+              {gymName && <p className="text-sm font-bold text-slate-900 truncate">{gymName}</p>}
+              <p className="text-xs font-medium text-slate-400 truncate mt-0.5">{email}</p>
             </div>
 
             <div className="p-2">
               <Link href="/account" onClick={() => setIsOpen(false)}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
                     <User className="w-4 h-4" />
                   </div>
-                  <span className="text-sm font-semibold text-gray-700">Account Settings</span>
+                  <span className="text-sm font-semibold text-slate-700">Account Settings</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
               <Link href="/account" onClick={() => setIsOpen(false)}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+                  <div className="w-8 h-8 bg-cyan-50 rounded-lg flex items-center justify-center text-cyan-600">
                     <Settings className="w-4 h-4" />
                   </div>
-                  <span className="text-sm font-semibold text-gray-700">Edit Gym Name</span>
+                  <span className="text-sm font-semibold text-slate-700">Edit Gym Name</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
               <Link href="/account" onClick={() => setIsOpen(false)}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600">
                     <Lock className="w-4 h-4" />
                   </div>
-                  <span className="text-sm font-semibold text-gray-700">Change Password</span>
+                  <span className="text-sm font-semibold text-slate-700">Change Password</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
               <div className="w-full flex items-center justify-between p-3 rounded-xl opacity-60 cursor-not-allowed">
@@ -132,14 +132,14 @@ export default function AccountMenu() {
                     <Bell className="w-4 h-4" />
                   </div>
                   <div className="flex flex-col items-start">
-                    <span className="text-sm font-semibold text-gray-700">Notifications</span>
+                    <span className="text-sm font-semibold text-slate-700">Notifications</span>
                     <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">Coming soon</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-2 border-t border-gray-50">
+            <div className="p-2 border-t border-slate-50">
               <button onClick={handleLogout}
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 text-red-600 transition-colors"
               >

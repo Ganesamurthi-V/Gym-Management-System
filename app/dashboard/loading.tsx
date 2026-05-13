@@ -1,41 +1,26 @@
 import { FitnessLoader } from '@/components/ui/FitnessLoader'
 
-export default function DashboardLoading() {
+export default function Loading() {
   return (
-    <div className="space-y-6 animate-slide-up">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="skeleton h-4 w-24" />
-          <div className="skeleton h-8 w-40" />
+    <div className="relative h-full min-h-[600px] w-full animate-pulse-soft">
+      {/* Background skeletons to blur out */}
+      <div className="space-y-6 opacity-40">
+        <div className="flex justify-between items-center mb-8">
+          <div className="skeleton h-8 w-48 rounded-lg" />
+          <div className="skeleton h-10 w-32 rounded-xl" />
         </div>
-        <div className="skeleton h-10 w-24 rounded-xl" />
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="card p-6 h-32 skeleton" />
+          <div className="card p-6 h-32 skeleton" />
+          <div className="card p-6 h-32 skeleton" />
+        </div>
+        
+        <div className="card p-6 h-96 skeleton w-full mt-6" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="card p-4 space-y-3">
-            <div className="skeleton h-8 w-8 rounded-xl" />
-            <div className="skeleton h-8 w-12" />
-            <div className="skeleton h-3 w-20" />
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card p-5 space-y-4">
-          <div className="skeleton h-4 w-32" />
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="skeleton h-14 w-full rounded-xl" />
-          ))}
-        </div>
-        <div className="card md:col-span-2 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <div className="skeleton h-5 w-48" />
-            <div className="skeleton h-8 w-32 rounded-lg" />
-          </div>
-          <FitnessLoader />
-        </div>
-      </div>
+      {/* The glass blur overlay and creative animation */}
+      <FitnessLoader />
     </div>
   )
 }

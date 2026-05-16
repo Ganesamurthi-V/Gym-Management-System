@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -67,6 +67,20 @@ export default function ImportReviewPage() {
   const [clusterInfo, setClusterInfo] = useState<{ top_district: string; top_state: string; confidence: number } | null>(null);
   const [acceptingAll, setAcceptingAll] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Wheel isolation: any element with data-scroll-box scrolls independently
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      const box = (e.target as HTMLElement).closest('[data-scroll-box]') as HTMLElement | null;
+      if (!box) return;
+      const { scrollTop, scrollHeight, clientHeight } = box;
+      const atTop    = scrollTop <= 0 && e.deltaY < 0;
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
+      if (!atTop && !atBottom) e.preventDefault();
+    };
+    document.addEventListener('wheel', onWheel, { passive: false });
+    return () => document.removeEventListener('wheel', onWheel);
+  }, []);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("import_rows");
@@ -254,7 +268,22 @@ export default function ImportReviewPage() {
         </Link>
         <span className="text-slate-300">/</span>
         <h1 className="text-xl font-bold text-slate-900">Review Areas</h1>
-        <span className="ml-auto text-xs text-slate-400">Step 2 of 3</span>
+        <span className="text-xs text-slate-400">Step 2 of 3</span>
+        {/* Save & Continue button duplicated at top for quick access */}
+        <div className="ml-auto flex items-center gap-3">
+          {saveMsg && (
+            <p className="text-sm text-emerald-600 font-semibold flex items-center gap-1">
+              <Check className="w-4 h-4" />{saveMsg}
+            </p>
+          )}
+          <button onClick={goBack} className="btn-secondary text-sm px-4 py-2 w-auto">← Back</button>
+          <button onClick={handleSaveAndProceed} disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-xl shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all disabled:opacity-60"
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving…" : "Save & Continue →"}
+          </button>
+        </div>
       </div>
 
       {/* Cluster intelligence banner */}
@@ -412,7 +441,7 @@ export default function ImportReviewPage() {
                           />
                         </div>
                         {isExpanded && rowSuggestions.length > 0 && (
-                          <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl mt-0.5 max-h-36 overflow-y-auto">
+                          <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl mt-0.5 max-h-36 overflow-y-auto" data-scroll-box>
                             {rowSuggestions.map(s => (
                               <li key={s.id} onMouseDown={() => selectSuggestion(row._idx, s.name)}
                                 className="px-3 py-2 text-xs hover:bg-brand-50 hover:text-brand-700 cursor-pointer flex items-center justify-between"

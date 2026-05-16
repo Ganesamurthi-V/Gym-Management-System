@@ -6,6 +6,7 @@ import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash } from '
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
+import { formatMemberId } from '@/types'
 
 interface Props {
   members: MemberWithStatus[]
@@ -64,7 +65,7 @@ export function MembersClient({ members, gymId }: Props) {
   const filtered = members
     .filter((m) => {
       const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
-      const matchesId = idSearch === '' || (m.member_number != null && String(m.member_number).includes(idSearch))
+      const matchesId = idSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(idSearch.toLowerCase()))
       const matchesFilter = filter === 'all' || m.status === filter
       return matchesSearch && matchesId && matchesFilter
     })
@@ -132,7 +133,7 @@ export function MembersClient({ members, gymId }: Props) {
         </div>
         <div className="relative w-36">
           <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="search" placeholder="Member ID"
+          <input type="search" placeholder="GF0001"
             value={idSearch} onChange={(e) => setIdSearch(e.target.value)}
             className="input-field pl-9"
           />
@@ -146,7 +147,7 @@ export function MembersClient({ members, gymId }: Props) {
           <div className="flex-1">
             <p className="text-sm font-bold text-red-700">Duplicate Member IDs detected</p>
             <p className="text-xs text-red-600 mt-0.5">
-              IDs {Array.from(duplicateIds).map(id => `#${id}`).join(', ')} are assigned to multiple members.
+              IDs {Array.from(duplicateIds).map(id => formatMemberId(id)).join(', ')} are assigned to multiple members.
             </p>
           </div>
           <button
@@ -191,7 +192,7 @@ export function MembersClient({ members, gymId }: Props) {
                     'text-[10px] font-mono',
                     duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-slate-400'
                   )}>
-                    #{member.member_number}{duplicateIds.has(member.member_number) && ' ⚠'}
+                    {formatMemberId(member.member_number)}{duplicateIds.has(member.member_number) && ' ⚠'}
                   </span>
                   <p className="font-bold text-slate-900 text-sm truncate">{member.name}</p>
                   <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-bold border flex-shrink-0', cls)}>{label}</span>
@@ -261,7 +262,7 @@ export function MembersClient({ members, gymId }: Props) {
                       'font-mono text-xs',
                       duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-slate-400'
                     )}>
-                      #{member.member_number}
+                      {formatMemberId(member.member_number)}
                       {duplicateIds.has(member.member_number) && <span className="ml-1">⚠</span>}
                     </span>
                   </td>

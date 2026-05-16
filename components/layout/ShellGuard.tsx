@@ -1,11 +1,13 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import NavClient from './NavClient'
+import { ChevronLeft } from 'lucide-react'
+import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
 
-// Pages that should render WITHOUT the sidebar/header shell
 const SHELL_EXCLUDED = ['/auth/', '/onboarding']
+const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
 
 function DumbbellIcon({ className }: { className?: string }) {
   return (
@@ -21,41 +23,104 @@ function DumbbellIcon({ className }: { className?: string }) {
 
 export default function ShellGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isShellless = SHELL_EXCLUDED.some(prefix => pathname.startsWith(prefix))
+  const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
-  // Auth and onboarding pages — render bare, no sidebar/header
+  const [collapsed, setCollapsed] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem(SIDEBAR_KEY)
+    if (saved === 'true') setCollapsed(true)
+    setMounted(true)
+  }, [])
+
+  function toggle() {
+    setCollapsed(prev => {
+      localStorage.setItem(SIDEBAR_KEY, String(!prev))
+      return !prev
+    })
+  }
+
   if (isShellless) return <>{children}</>
 
   return (
     <div className="min-h-full">
 
       {/* ── Desktop Sidebar ── */}
-      <aside className="hidden md:flex flex-col w-60 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-30">
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-slate-100">
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-sm">
+      <aside
+        onClick={collapsed ? toggle : undefined}
+        className={`
+          hidden md:flex flex-col bg-white border-r border-slate-200
+          fixed inset-y-0 left-0 z-30 overflow-hidden
+          transition-[width] duration-300 ease-in-out
+          ${collapsed ? 'w-14 cursor-pointer' : 'w-60 cursor-default'}
+        `}
+      >
+        {/* ── Logo row ── */}
+        <div className="flex items-center h-16 border-b border-slate-100 flex-shrink-0 px-3">
+          {/* Logo icon — always visible */}
+          <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
             <DumbbellIcon className="w-4 h-4 text-white" />
           </div>
-          <span className="text-lg font-bold text-slate-900 tracking-tight">GymFlow</span>
+
+          {/* GymFlow text + collapse arrow — only when expanded */}
+          <div className={`
+            flex items-center flex-1 min-w-0 ml-3
+            transition-all duration-200
+            ${collapsed ? 'opacity-0 w-0 ml-0 overflow-hidden' : 'opacity-100'}
+          `}>
+            <span className="text-lg font-bold text-slate-900 tracking-tight flex-1 truncate whitespace-nowrap">
+              GymFlow
+            </span>
+            {/* Arrow — only visible when expanded, click to collapse */}
+            <button
+              onClick={e => { e.stopPropagation(); toggle() }}
+              title="Collapse sidebar"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex-shrink-0 ml-1"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <NavClient />
-        <div className="px-3 pb-4">
-          <a href="/members/new"
-            className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all"
+
+        {/* ── Nav links ── */}
+        <NavClient collapsed={collapsed} />
+
+        {/* ── Add Member button ── */}
+        <div className={`flex-shrink-0 transition-all duration-200 ${collapsed ? 'px-2 pb-4' : 'px-3 pb-4'}`}>
+          <a
+            href="/members/new"
+            onClick={e => e.stopPropagation()}
+            title={collapsed ? 'Add Member' : undefined}
+            className={`
+              flex items-center justify-center gap-2 w-full py-2.5
+              bg-gradient-to-r from-brand-500 to-brand-600 text-white
+              text-sm font-semibold rounded-xl
+              hover:from-brand-600 hover:to-brand-700 transition-all
+            `}
           >
-            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M8 3v10M3 8h10" strokeLinecap="round" />
             </svg>
-            Add Member
+            <span className={`
+              whitespace-nowrap overflow-hidden transition-all duration-200
+              ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}
+            `}>
+              Add Member
+            </span>
           </a>
         </div>
       </aside>
 
       {/* ── Main area ── */}
-      <div className="md:pl-60 flex flex-col min-h-screen">
-        {/* Top bar - fixed on mobile, sticky/scroll with page or fixed on desktop */}
-        <header className="sticky top-0 h-14 md:h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20">
+      <div className={`
+        flex flex-col min-h-screen
+        transition-[padding] duration-300 ease-in-out
+        ${collapsed ? 'md:pl-14' : 'md:pl-60'}
+      `}>
+        <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20">
           <div className="flex items-center gap-2 md:hidden">
-            <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-cyan-500 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
               <DumbbellIcon className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="text-base font-bold text-slate-900">GymFlow</span>
@@ -64,12 +129,13 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
           <AccountMenu />
         </header>
 
-        {/* Page content — natural flow */}
         <main className="flex-1 p-4 md:p-6 pb-24 md:pb-8 w-full bg-slate-50">
           {children}
         </main>
       </div>
 
+      {/* ── Mobile nav ── */}
+      <MobileNav />
     </div>
   )
 }

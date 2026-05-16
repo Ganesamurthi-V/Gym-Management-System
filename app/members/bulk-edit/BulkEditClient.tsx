@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Check, AlertTriangle, Edit2, Search, Trash2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { searchLocalities, matchAreaBatch } from '@/lib/geo/matchArea'
+import { formatMemberId } from '@/types'
 
 interface MemberRow {
   id: string
@@ -57,6 +58,20 @@ export function EditMembersClient({ members, gymId }: Props) {
   const [areaMeta, setAreaMeta] = useState<Record<string, AreaMeta>>({})
   const blurTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const searchTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  // Wheel isolation for all data-scroll-box elements
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      const box = (e.target as HTMLElement).closest('[data-scroll-box]') as HTMLElement | null
+      if (!box) return
+      const { scrollTop, scrollHeight, clientHeight } = box
+      const atTop    = scrollTop <= 0 && e.deltaY < 0
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0
+      if (!atTop && !atBottom) e.preventDefault()
+    }
+    document.addEventListener('wheel', onWheel, { passive: false })
+    return () => document.removeEventListener('wheel', onWheel)
+  }, [])
 
   // Normalize all existing area values on mount
   useEffect(() => {
@@ -224,7 +239,7 @@ export function EditMembersClient({ members, gymId }: Props) {
             {changes.map(({ original, edited }) => {
               const diffs: { label: string; from: string; to: string }[] = []
               if (parseInt(edited.member_number) !== original.member_number)
-                diffs.push({ label: 'ID', from: `#${original.member_number}`, to: `#${edited.member_number}` })
+                diffs.push({ label: 'ID', from: formatMemberId(original.member_number), to: formatMemberId(parseInt(edited.member_number)) })
               if (edited.name !== original.name)
                 diffs.push({ label: 'Name', from: original.name, to: edited.name })
               if (edited.phone !== original.phone)
@@ -239,7 +254,7 @@ export function EditMembersClient({ members, gymId }: Props) {
                 diffs.push({ label: 'Due', from: `₹${original.pending_amount ?? 0}`, to: `₹${edited.pending_amount}` })
               return (
                 <div key={original.id} className="px-5 py-4">
-                  <p className="text-sm font-bold text-slate-900 mb-2">#{original.member_number} — {original.name}</p>
+                  <p className="text-sm font-bold text-slate-900 mb-2">{formatMemberId(original.member_number)} — {original.name}</p>
                   <div className="space-y-1.5 pl-3 border-l-2 border-brand-200">
                     {diffs.map(d => (
                       <div key={d.label} className="flex items-center gap-2 text-xs">
@@ -435,9 +450,15 @@ export function EditMembersClient({ members, gymId }: Props) {
                       />
                     </td>
                     <td className="px-4 py-2">
-                      <input type="number" min="1" value={e.member_number}
-                        onChange={ev => updateField(m.id, 'member_number', ev.target.value)}
-                        className={`w-20 ${cls}`} />
+                      <input type="text" value={e.member_number ? `GF${e.member_number.padStart(4, '0')}` : ''}
+                        onChange={ev => {
+                          const raw = ev.target.value.trim().toUpperCase()
+                          const digits = raw.startsWith('GF') ? raw.slice(2) : raw
+                          const num = parseInt(digits, 10)
+                          updateField(m.id, 'member_number', isNaN(num) ? '' : String(num))
+                        }}
+                        placeholder="GF0001"
+                        className={`w-24 ${cls}`} />
                     </td>
                     <td className="px-4 py-2">
                       <input type="text" value={e.name}
@@ -483,7 +504,7 @@ export function EditMembersClient({ members, gymId }: Props) {
                           className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
                       </div>
                       {activeAreaId === m.id && (areaSuggestions[m.id] ?? []).length > 0 && (
-                        <ul className="absolute z-30 left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5">
+                        <ul className="absolute z-30 left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5" data-scroll-box>
                           {(areaSuggestions[m.id] ?? []).slice(0, 6).map(a => (
                             <li key={a.id} onMouseDown={() => {
                               updateField(m.id, 'area', a.name)

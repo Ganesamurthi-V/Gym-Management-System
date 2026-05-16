@@ -467,3 +467,42 @@ DO $$ BEGIN
       USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
   END IF;
 END $$;
+
+-- ================================================
+-- [Migration 10] Google Places hybrid geo metadata
+-- Stores supplementary Google data alongside existing canonical area columns.
+-- The canonical area columns (area, _area_confidence, etc.) remain unchanged.
+-- ================================================
+
+-- Add Google Places metadata columns to members table
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_place_id       TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_formatted_addr TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_locality_raw   TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_city_raw       TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_state_raw      TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_postal_code    TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_latitude       NUMERIC(10, 7);
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_longitude      NUMERIC(10, 7);
+
+-- Index for place_id lookups (deduplication, analytics)
+CREATE INDEX IF NOT EXISTS idx_members_google_place_id ON members(google_place_id) WHERE google_place_id IS NOT NULL;
+
+-- NOTE: google_place_id is supplementary metadata only.
+-- The canonical area is still stored in members.area (free text, normalized by GymFlow pipeline).
+-- Do NOT use google_place_id as a foreign key or canonical identifier.
+
+-- Migration: Add legacy_member_id column to members table
+-- Run this in your Supabase SQL editor or via the Supabase CLI.
+--
+-- Purpose:
+--   When importing members from external systems (e.g. old gym software),
+--   the original ID (e.g. "C1006", "MEM-042") is preserved here.
+--   The new canonical ID format is GF-prefixed: GF0001, GF0042, etc.,
+--   derived from the integer member_number column.
+
+ALTER TABLE members
+  ADD COLUMN IF NOT EXISTS legacy_member_id TEXT DEFAULT NULL;
+
+COMMENT ON COLUMN members.legacy_member_id IS
+  'Original member ID from an external/legacy system, preserved during import. '
+  'The canonical GymFlow ID is derived from member_number as GF + zero-padded 4 digits.';

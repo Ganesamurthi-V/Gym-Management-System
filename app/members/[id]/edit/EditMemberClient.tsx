@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Check, Edit2, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { searchLocalities } from '@/lib/geo/matchArea'
 import type { Member } from '@/types'
+import { formatMemberId, parseMemberId } from '@/types'
+import GooglePlacesAutocomplete from '@/components/location/GooglePlacesAutocomplete'
 
 type Step = 'form' | 'preview'
 
@@ -21,10 +22,6 @@ export function EditMemberClient({ member }: Props) {
   const [step, setStep] = useState<Step>('form')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [areaInput, setAreaInput] = useState(member.area ?? '')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [areaSuggestions, setAreaSuggestions] = useState<Array<{ id: string; name: string; district: string }>>([])  
-  const areaSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [confirmed, setConfirmed] = useState(false)
   const [numError, setNumError] = useState('')
   const [checkingNum, setCheckingNum] = useState(false)
@@ -37,7 +34,6 @@ export function EditMemberClient({ member }: Props) {
     area: member.area ?? '',
     member_number: String(member.member_number),
   })
-
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
@@ -53,7 +49,7 @@ export function EditMemberClient({ member }: Props) {
       const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
       if (!gym) return
       const { data } = await supabase.from('members').select('id').eq('gym_id', gym.id).eq('member_number', num).single()
-      setNumError(data ? `Member ID #${num} is already taken` : '')
+      setNumError(data ? `${formatMemberId(num)} is already taken` : '')
       setCheckingNum(false)
     }, 500)
     return () => clearTimeout(timer)
@@ -61,7 +57,7 @@ export function EditMemberClient({ member }: Props) {
 
   const changes: { field: string; label: string; from: string; to: string }[] = []
   if (form.member_number !== String(member.member_number))
-    changes.push({ field: 'member_number', label: 'Member ID', from: `#${member.member_number}`, to: `#${form.member_number}` })
+    changes.push({ field: 'member_number', label: 'Member ID', from: formatMemberId(member.member_number), to: formatMemberId(parseInt(form.member_number)) })
   if (form.name !== member.name)
     changes.push({ field: 'name', label: 'Name', from: member.name, to: form.name })
   if (form.phone !== member.phone)
@@ -122,7 +118,7 @@ export function EditMemberClient({ member }: Props) {
         <div className="card overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
             <Edit2 className="w-4 h-4 text-brand-500" />
-            <h2 className="font-bold text-slate-900">Changes for #{member.member_number} — {member.name}</h2>
+            <h2 className="font-bold text-slate-900">Changes for {formatMemberId(member.member_number)} — {member.name}</h2>
           </div>
           <div className="divide-y divide-slate-50">
             {changes.map(c => (
@@ -189,7 +185,14 @@ export function EditMemberClient({ member }: Props) {
 
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Member ID</label>
-            <input type="number" min="1" value={form.member_number} onChange={e => update('member_number', e.target.value)}
+            <input type="text" value={form.member_number ? `GF${form.member_number.padStart(4, '0')}` : ''}
+              onChange={e => {
+                const raw = e.target.value.trim().toUpperCase()
+                const digits = raw.startsWith('GF') ? raw.slice(2) : raw
+                const num = parseInt(digits, 10)
+                update('member_number', isNaN(num) ? '' : String(num))
+              }}
+              placeholder="GF0001"
               className={`input-field w-36 ${numError ? 'border-red-400 focus:ring-red-400' : ''}`} />
             {checkingNum && <p className="text-xs text-slate-400 mt-1.5">Checking...</p>}
             {numError && <p className="text-xs text-red-500 mt-1.5 font-medium">{numError}</p>}
@@ -231,35 +234,13 @@ export function EditMemberClient({ member }: Props) {
             </div>
           </div>
 
-          <div className="relative">
+          <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Area / Locality</label>
-            <input type="text" value={areaInput}
-              onChange={e => {
-                setAreaInput(e.target.value)
-                update('area', e.target.value)
-                setShowSuggestions(true)
-                if (areaSearchTimer.current) clearTimeout(areaSearchTimer.current)
-                areaSearchTimer.current = setTimeout(async () => {
-                  const results = await searchLocalities(e.target.value)
-                  setAreaSuggestions(results)
-                }, 200)
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              className="input-field" placeholder="Type to search area..." autoComplete="off"
+            <GooglePlacesAutocomplete
+              value={form.area}
+              onChange={(val) => update('area', val)}
+              onClear={() => update('area', '')}
             />
-            {showSuggestions && areaSuggestions.length > 0 && (
-              <ul className="absolute z-20 left-0 right-0 bg-white border border-slate-200 rounded-2xl mt-1 shadow-xl max-h-48 overflow-y-auto">
-                {areaSuggestions.map(a => (
-                  <li key={a.id} onMouseDown={() => { update('area', a.name); setAreaInput(a.name); setShowSuggestions(false) }}
-                    className="px-4 py-3 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl font-medium"
-                  >
-                    {a.name}
-                    {a.district && <span className="text-xs text-slate-400 ml-1">{a.district}</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           <button type="submit" disabled={!!numError || checkingNum} className="btn-primary disabled:opacity-50">

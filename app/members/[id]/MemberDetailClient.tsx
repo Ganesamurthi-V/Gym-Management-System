@@ -7,6 +7,7 @@ import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Ed
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
 import type { Member, Membership, Attendance, MemberStatus, Plan, PaymentMode } from '@/types'
+import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
 
 interface Props {
@@ -116,7 +117,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
             <div className="flex-1 min-w-0">
               <p className="text-white font-bold text-xl leading-tight truncate">{member.name}</p>
               <p className="text-white/80 text-sm mt-0.5">{member.phone}</p>
-              <p className="text-white/60 text-xs mt-0.5">Member #{member.member_number}</p>
+              <p className="text-white/60 text-xs mt-0.5">{formatMemberId(member.member_number)}</p>
               <span className={cn('inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full', statusConfig[status].className)}>
                 {statusConfig[status].label}
               </span>
@@ -128,6 +129,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           {member.gender && <InfoTile label="Gender" value={member.gender.charAt(0).toUpperCase() + member.gender.slice(1)} />}
           {member.age && <InfoTile label="Age" value={`${member.age} yrs`} />}
           {member.area && <InfoTile label="Area" value={member.area} />}
+          {member.legacy_member_id && <InfoTile label="Legacy ID" value={member.legacy_member_id} />}
           {latestMembership && (
             <>
               <InfoTile label="Plan" value={latestMembership.plan.charAt(0).toUpperCase() + latestMembership.plan.slice(1)} />

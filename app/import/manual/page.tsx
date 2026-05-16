@@ -14,6 +14,7 @@ import {
   normalizePaymentMode,
   normalizeAge,
   normalizeDate,
+  normalizeMemberNumber,
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
 
@@ -148,7 +149,7 @@ export default function ManualImportPage() {
       const gender        = normalizeGender(get("gender"));
       const age           = normalizeAge(get("age"));
       const area          = get("area"); // raw — pipeline will normalize
-      const member_number = get("member_number");
+      const { number: member_number } = normalizeMemberNumber(get("member_number"));
 
       let _error = "";
       if (!name)                                    _error = "Missing name";

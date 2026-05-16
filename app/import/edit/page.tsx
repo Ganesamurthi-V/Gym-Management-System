@@ -40,6 +40,68 @@ export default function ImportEditPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const tableInnerRef = useRef<HTMLDivElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+
+  // Lenis on the preview table (step=preview)
+  useEffect(() => {
+    const el = previewScrollRef.current;
+    if (!el || step !== "preview") return;
+    let lenis: any = null;
+    let rafId: number;
+    async function init() {
+      const { default: Lenis } = await import('lenis');
+      lenis = new Lenis({
+        wrapper: el as HTMLElement,
+        content: (el as HTMLElement).firstElementChild as HTMLElement,
+        duration: 0.9,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: 'vertical',
+        smoothWheel: true,
+      });
+      function raf(time: number) { lenis.raf(time); rafId = requestAnimationFrame(raf); }
+      rafId = requestAnimationFrame(raf);
+    }
+    init();
+    // Non-passive wheel: scroll preview box, not page
+    const onWheel = (e: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = el as HTMLElement;
+      const canDown = e.deltaY > 0 && scrollTop + clientHeight < scrollHeight - 1;
+      const canUp   = e.deltaY < 0 && scrollTop > 0;
+      if (canDown || canUp) e.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      if (lenis) lenis.destroy();
+      cancelAnimationFrame(rafId);
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [step]);
+
+  // Track sidebar collapsed state for the fixed scrollbar left offset
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    setSidebarCollapsed(localStorage.getItem('gymflow_sidebar_collapsed') === 'true');
+    // Listen for storage changes (sidebar toggle)
+    const onStorage = () => setSidebarCollapsed(localStorage.getItem('gymflow_sidebar_collapsed') === 'true');
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Wheel isolation for all data-scroll-box elements
+  // Uses non-passive listener ONLY on the specific scroll boxes, not document-wide
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      const box = (e.target as HTMLElement).closest('[data-scroll-box]') as HTMLElement | null;
+      if (!box) return;
+      const { scrollTop, scrollHeight, clientHeight } = box;
+      // Only prevent default when the box can actually scroll further
+      const canScrollDown = e.deltaY > 0 && scrollTop + clientHeight < scrollHeight - 1;
+      const canScrollUp   = e.deltaY < 0 && scrollTop > 0;
+      if (canScrollDown || canScrollUp) e.preventDefault();
+    };
+    document.addEventListener('wheel', onWheel, { passive: false });
+    return () => document.removeEventListener('wheel', onWheel);
+  }, []);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("import_rows");
@@ -78,8 +140,19 @@ export default function ImportEditPage() {
     const onMirror = () => { if (fromTable) { fromTable = false; return; } fromMirror = true; table.scrollLeft = mirror.scrollLeft; };
     table.addEventListener('scroll', onTable);
     mirror.addEventListener('scroll', onMirror);
-    return () => { table.removeEventListener('scroll', onTable); mirror.removeEventListener('scroll', onMirror); };
+
+    // Block wheel on the mirror bar — only drag should move it, not wheel
+    const blockWheel = (e: WheelEvent) => e.preventDefault();
+    mirror.addEventListener('wheel', blockWheel, { passive: false });
+
+    return () => {
+      table.removeEventListener('scroll', onTable);
+      mirror.removeEventListener('scroll', onMirror);
+      mirror.removeEventListener('wheel', blockWheel);
+    };
   }, [rows]);
+  // NOTE: No horizontal wheel-to-scroll on the table — that caused lag.
+  // The table scrolls horizontally via the mirror scrollbar (drag only).
 
   function deleteSelected() {
     setRows(prev => {
@@ -234,6 +307,7 @@ export default function ImportEditPage() {
             ...(row.gender && { gender: row.gender }),
             ...(row.age && { age: parseInt(row.age) }),
             ...(row.area && { area: row.area }),
+            legacy_member_id: row.legacy_member_id || null,
           };
         }))
         .select("id, phone") as { data: { id: string; phone: string }[] | null; error: any };
@@ -322,9 +396,15 @@ export default function ImportEditPage() {
           <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100">
             Members to be imported ({validRows.length})
           </p>
-          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+          {/* Lenis smooth scroll — cursor inside scrolls table, outside scrolls page */}
+          <div
+            ref={previewScrollRef}
+            className="overflow-hidden"
+            style={{ height: '256px' }}
+          >
+            <div> {/* Lenis content wrapper */}
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-100">
                   {["#", "Name", "Phone", "Plan", "Start Date", "Amount", "Mode", "Gender", "Age", "Area"].map(h => (
                     <th key={h} className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
@@ -336,7 +416,7 @@ export default function ImportEditPage() {
                   const anyChanged = isRowChanged(row);
                   return (
                     <tr key={row._rowId} className={anyChanged ? "bg-emerald-50/40" : "hover:bg-slate-50"}>
-                      <td className="px-4 py-2.5 font-mono text-xs"><span className={hi(row, "member_number")}>{row.member_number || "—"}</span></td>
+                      <td className="px-4 py-2.5 font-mono text-xs"><span className={hi(row, "member_number")}>{row.member_number ? `GF${row.member_number.padStart(4, '0')}` : "—"}</span></td>
                       <td className="px-4 py-2.5"><span className={hi(row, "name")}>{row.name}</span></td>
                       <td className="px-4 py-2.5"><span className={hi(row, "phone")}>{row.phone}</span></td>
                       <td className="px-4 py-2.5 capitalize"><span className={hi(row, "plan")}>{row.plan}</span></td>
@@ -351,6 +431,7 @@ export default function ImportEditPage() {
                 })}
               </tbody>
             </table>
+            </div> {/* end Lenis content wrapper */}
           </div>
           <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span>
@@ -407,7 +488,7 @@ export default function ImportEditPage() {
   const cls = "px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-slate-50 disabled:text-slate-400";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {hasReviewState ? (
@@ -486,15 +567,22 @@ export default function ImportEditPage() {
           onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
       </div>
 
-      {/* Sticky mirror scrollbar */}
-      <div ref={mirrorRef} className="sticky top-0 z-20 overflow-x-auto overflow-y-hidden h-3 bg-transparent">
+      {/* Fixed mirror scrollbar — follows user as they scroll down, always at bottom of viewport */}
+      <div
+        ref={mirrorRef}
+        className="fixed bottom-0 z-30 overflow-x-auto overflow-y-hidden h-3 bg-white/90 backdrop-blur-sm border-t border-slate-200"
+        style={{
+          left: sidebarCollapsed ? '3.5rem' : '15rem',
+          right: 0,
+        }}
+      >
         <div style={{ height: 1 }} />
       </div>
 
       <div className="card overflow-hidden">
         <div ref={scrollRef} className="overflow-x-auto">
-          <div ref={tableInnerRef}>
-          <table className="w-full text-sm">
+          <div ref={tableInnerRef} className="pr-6 min-w-max">
+          <table className="text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="px-3 py-3 w-8">
@@ -514,7 +602,7 @@ export default function ImportEditPage() {
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Gender</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide w-16">Age</th>
-                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide min-w-[150px]">Area ✦</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide" style={{ minWidth: '180px', maxWidth: '220px', width: '200px' }}>Area ✦</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -541,17 +629,28 @@ export default function ImportEditPage() {
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-0.5">
                         <input
-                          type="number" min="1"
-                          value={row.member_number}
+                          type="text"
+                          value={row.member_number ? `GF${row.member_number.padStart(4, '0')}` : ''}
                           disabled={isSkipped}
-                          onChange={e => updateRow(idx, "member_number", e.target.value)}
-                          onBlur={e => validateId(idx, e.target.value)}
-                          className={`w-16 ${cls} ${
+                          onChange={e => {
+                            // Accept "GF0001" or plain "1" — strip prefix and store integer string
+                            const raw = e.target.value.trim().toUpperCase();
+                            const digits = raw.startsWith('GF') ? raw.slice(2) : raw;
+                            const num = parseInt(digits, 10);
+                            updateRow(idx, "member_number", isNaN(num) ? '' : String(num));
+                          }}
+                          onBlur={e => {
+                            const raw = e.target.value.trim().toUpperCase();
+                            const digits = raw.startsWith('GF') ? raw.slice(2) : raw;
+                            validateId(idx, digits);
+                          }}
+                          placeholder="GF0001"
+                          className={`w-20 ${cls} ${
                             (row._id_conflict || row._id_missing) ? 'border-red-400 bg-red-50 text-red-700' : ''
                           }`}
                         />
                         {row._id_auto && !row._id_conflict && (
-                          <span className="text-[9px] text-amber-500 font-semibold leading-none" title="No ID in file — auto-assigned. You can change it."></span>
+                          <span className="text-[9px] text-amber-500 font-semibold leading-none" title="No ID in file — auto-assigned. You can change it.">auto</span>
                         )}
                         {row._id_conflict && (
                           <span className="text-[9px] text-red-500 font-semibold leading-none">taken!</span>
@@ -615,8 +714,8 @@ export default function ImportEditPage() {
                         onChange={e => updateRow(idx, "age", e.target.value)}
                         className={`w-14 ${cls}`} placeholder="—" />
                     </td>
-                    <td className="px-3 py-2 relative">
-                      <div className="flex items-center gap-1.5">
+                    <td className="px-3 py-2 relative" style={{ minWidth: '180px', maxWidth: '220px', width: '200px' }}>
+                      <div className="flex items-center gap-1.5 w-full overflow-hidden">
                         {row.area && !isSkipped && (
                           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                             (row._area_confidence ?? 1) >= 0.90 ? 'bg-emerald-500' :
@@ -631,10 +730,10 @@ export default function ImportEditPage() {
                           }}
                           onFocus={() => { clearTimeout(blurTimers.current[idx]); setActiveAreaIdx(idx); }}
                           onBlur={() => { blurTimers.current[idx] = setTimeout(() => setActiveAreaIdx(null), 150); }}
-                          className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
+                          className={`flex-1 min-w-0 ${cls}`} placeholder="Area" autoComplete="off" />
                       </div>
                       {activeAreaIdx === idx && suggestions.length > 0 && (
-                        <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl max-h-36 overflow-y-auto mt-0.5">
+                        <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl max-h-36 overflow-y-auto mt-0.5" data-scroll-box>
                           {suggestions.slice(0, 5).map(a => (
                             <li key={a.id}
                               onMouseDown={() => {

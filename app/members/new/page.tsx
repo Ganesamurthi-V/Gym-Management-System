@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { calcEndDate, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
-import { searchLocalities } from '@/lib/geo/matchArea'
 import type { Plan, PaymentMode } from '@/types'
+import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import GooglePlacesAutocomplete from '@/components/location/GooglePlacesAutocomplete'
+import type { NormalizedPlaceResult } from '@/services/location/normalizeGooglePlace'
 
 type Step = 'form' | 'preview'
 
@@ -29,11 +31,7 @@ export default function NewMemberPage() {
   const [step, setStep] = useState<Step>('form')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [areaInput, setAreaInput] = useState('')
-  const [areaConfirmed, setAreaConfirmed] = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [areaSuggestions, setAreaSuggestions] = useState<Array<{ id: string; name: string; district: string }>>([])
-  const areaSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [googleMeta, setGoogleMeta] = useState<NormalizedPlaceResult | null>(null)
   const [nextMemberNumber, setNextMemberNumber] = useState<number | null>(null)
   const [numError, setNumError] = useState('')
   const [checkingNum, setCheckingNum] = useState(false)
@@ -109,7 +107,7 @@ export default function NewMemberPage() {
     setNumError('')
     const timer = setTimeout(async () => {
       const { data } = await supabase.from('members').select('id').eq('gym_id', gymId).eq('member_number', num).single()
-      setNumError(data ? `Member ID #${num} is already taken` : '')
+      setNumError(data ? `${formatMemberId(num)} is already taken` : '')
       setCheckingNum(false)
     }, 400)
     return () => clearTimeout(timer)
@@ -145,7 +143,6 @@ export default function NewMemberPage() {
     e.preventDefault()
     if (!form.member_number) { setError('Member ID is required'); return }
     if (numError) return
-    if (areaInput.trim() && !areaConfirmed) { setError('Please select an area from the suggestions list'); return }
     setError('')
     setStep('preview')
   }
@@ -170,7 +167,7 @@ export default function NewMemberPage() {
 
       const { data: existingNum } = await supabase
         .from('members').select('id').eq('gym_id', gym.id).eq('member_number', memberNumber).single()
-      if (existingNum) throw new Error(`Member ID #${memberNumber} is already taken`)
+      if (existingNum) throw new Error(`${formatMemberId(memberNumber)} is already taken`)
 
       const finalMemberNumber = memberNumber
 
@@ -185,6 +182,17 @@ export default function NewMemberPage() {
           ...(form.gender && { gender: form.gender }),
           ...(form.age && { age: parseInt(form.age) }),
           ...(form.area.trim() && { area: form.area.trim() }),
+          // Google Places supplementary metadata (never used as canonical ID)
+          ...(googleMeta && {
+            google_place_id:       googleMeta.google.placeId       || null,
+            google_formatted_addr: googleMeta.google.formattedAddress || null,
+            google_locality_raw:   googleMeta.google.locality       || null,
+            google_city_raw:       googleMeta.google.city           || null,
+            google_state_raw:      googleMeta.google.state          || null,
+            google_postal_code:    googleMeta.google.postalCode     || null,
+            google_latitude:       googleMeta.google.latitude,
+            google_longitude:      googleMeta.google.longitude,
+          }),
         })
         .select()
         .single()
@@ -254,7 +262,7 @@ export default function NewMemberPage() {
               </div>
               <div>
                 <p className="text-white font-bold text-xl">{form.name}</p>
-                <p className="text-white/70 text-sm mt-0.5">Member #{form.member_number || nextMemberNumber}</p>
+                <p className="text-white/70 text-sm mt-0.5">{formatMemberId(parseInt(form.member_number) || nextMemberNumber || 0)}</p>
               </div>
             </div>
           </div>
@@ -343,13 +351,19 @@ export default function NewMemberPage() {
               Member ID <span className="text-red-500">*</span>
             </label>
             <div className="flex items-center gap-2">
-              <input type="number" value={form.member_number} onChange={(e) => update('member_number', e.target.value)}
+              <input type="text" value={form.member_number ? `GF${form.member_number.padStart(4, '0')}` : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.trim().toUpperCase()
+                  const digits = raw.startsWith('GF') ? raw.slice(2) : raw
+                  const num = parseInt(digits, 10)
+                  update('member_number', isNaN(num) ? '' : String(num))
+                }}
                 className={`input-field w-36 ${numError ? 'border-red-400 focus:ring-red-400' : ''}`}
-                placeholder={nextMemberNumber ? String(nextMemberNumber) : '...'} min="1" required />
+                placeholder={nextMemberNumber ? formatMemberId(nextMemberNumber) : 'GF0001'} required />
               {nextMemberNumber && (
                 <span className="text-xs text-slate-400">
                   Suggested: <button type="button" onClick={() => update('member_number', String(nextMemberNumber))}
-                    className="text-brand-600 font-semibold hover:underline">#{nextMemberNumber}</button>
+                    className="text-brand-600 font-semibold hover:underline">{formatMemberId(nextMemberNumber)}</button>
                 </span>
               )}
             </div>
@@ -402,61 +416,24 @@ export default function NewMemberPage() {
           </div>
 
           {/* Area */}
-          <div className="relative">
+          <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Area / Locality</label>
-            <input type="text" value={areaInput}
-              onChange={(e) => {
-                const val = e.target.value
-                setAreaInput(val)
-                setAreaConfirmed(false)
-                update('area', '')
-                setShowSuggestions(true)
-                if (areaSearchTimer.current) clearTimeout(areaSearchTimer.current)
-                if (val.trim()) {
-                  areaSearchTimer.current = setTimeout(async () => {
-                    const results = await searchLocalities(val)
-                    setAreaSuggestions(results)
-                  }, 200)
-                } else {
-                  setAreaSuggestions([])
-                }
+            <GooglePlacesAutocomplete
+              value={form.area}
+              gymId={gymId ?? undefined}
+              onChange={(val, normalized) => {
+                update('area', val)
+                if (normalized) setGoogleMeta(normalized)
               }}
-              onFocus={() => { if (areaSuggestions.length > 0) setShowSuggestions(true) }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              className={`input-field ${areaInput.trim() && !areaConfirmed ? 'border-amber-400 focus:ring-amber-400' : ''}`}
-              placeholder="Type to search area..." autoComplete="off"
+              onClear={() => { update('area', ''); setGoogleMeta(null) }}
             />
-            {showSuggestions && areaSuggestions.length > 0 && (
-              <ul className="absolute z-20 left-0 right-0 bg-white border border-slate-200 rounded-2xl mt-1 shadow-xl max-h-48 overflow-y-auto">
-                {areaSuggestions.map(a => (
-                  <li key={a.id} onMouseDown={() => {
-                    update('area', a.name)
-                    setAreaInput(a.name)
-                    setAreaConfirmed(true)
-                    setShowSuggestions(false)
-                    setAreaSuggestions([])
-                  }}
-                    className="px-4 py-3 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl font-medium"
-                  >
-                    {a.name}
-                    {a.district && <span className="text-xs text-slate-400 ml-1">{a.district}</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {areaInput.trim() && !areaConfirmed && (
-              <p className="text-xs text-amber-600 font-medium mt-1.5">⚠ Please select an area from the list</p>
-            )}
-            {areaConfirmed && form.area && (
-              <p className="text-xs text-emerald-600 font-medium mt-1.5">✓ {form.area}</p>
-            )}
-            {areaConfirmed && (
-              <button type="button" onClick={() => { setAreaInput(''); setAreaConfirmed(false); update('area', ''); setAreaSuggestions([]) }}
-                className="absolute right-3 top-[2.1rem] text-slate-400 hover:text-slate-600 transition-colors"
-                aria-label="Clear area"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            {form.area && googleMeta && (
+              <p className="text-xs text-emerald-600 font-medium mt-1.5 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                {googleMeta.confidence_score >= 0.9
+                  ? `Matched: ${googleMeta.canonical_area}`
+                  : `Suggested: ${googleMeta.canonical_area} — review recommended`}
+              </p>
             )}
           </div>
 

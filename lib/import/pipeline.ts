@@ -156,7 +156,11 @@ export async function runImportPipeline(
         assignedNums.add(newNum);
         seenNums.add(newNum);
         r._id_conflict = true;
-        r._error = `ID #${r.member_number} ${inDB ? "exists in DB" : "duplicate in file"} — auto-assigned #${newNum}`;
+        // Preserve the original ID as legacy before overwriting
+        if (!r.legacy_member_id && r.member_number) {
+          r.legacy_member_id = `GF${r.member_number.padStart(4, '0')}`;
+        }
+        r._error = `ID GF${r.member_number.padStart(4, '0')} ${inDB ? "exists in DB" : "duplicate in file"} — auto-assigned GF${newNum.padStart(4, '0')}`;
         r.member_number = newNum;
         r._id_auto = true;
       } else {

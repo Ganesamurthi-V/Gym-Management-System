@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error, count } = await supabase
       .from('members')
-      .select('id, name, phone, age, gender, member_number, created_at', { count: 'exact' })
+      .select('id, name, phone, age, gender, member_number, legacy_member_id, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

@@ -65,7 +65,8 @@ export default async function ReportsPage() {
     supabase
       .from('memberships')
       .select('member_id, end_date, plan')
-      .eq('gym_id', gym.id),
+      .eq('gym_id', gym.id)
+      .order('end_date', { ascending: false }),
     supabase
       .from('members')
       .select('id, name, phone, gender, age, area, pending_amount, created_at')
@@ -167,6 +168,20 @@ export default async function ReportsPage() {
     }))
   const totalDuesAmount = membersWithDues.reduce((sum, m) => sum + m.amount, 0)
 
+  // Expiring memberships
+  const expiringMembers = members.map(m => {
+    const endDate = latestByMember.get(m.id)
+    return {
+      name: m.name,
+      phone: m.phone,
+      endDate: endDate || null,
+      plan: planByMember.get(m.id) || 'None'
+    }
+  }).filter(m => m.endDate)
+    .sort((a, b) => (a.endDate || '').localeCompare(b.endDate || ''))
+
+  const attendanceTodayCount = (attendanceData.data ?? []).filter(a => a.date === today).length
+
   return (
     <ReportsClient
       months={months}
@@ -186,6 +201,8 @@ export default async function ReportsPage() {
       gymPhone={gymProfile?.phone ?? null}
       membersWithDues={membersWithDues}
       totalDuesAmount={totalDuesAmount}
+      expiringMembers={expiringMembers}
+      attendanceTodayCount={attendanceTodayCount}
     />
   )
 }

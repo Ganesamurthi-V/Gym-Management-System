@@ -47,20 +47,9 @@ export function useLenisScroll(
 
     init()
 
-    // Non-passive wheel listener — isolates scroll to this box
-    const onWheel = (e: WheelEvent) => {
-      const target = el as HTMLElement
-      const { scrollTop, scrollHeight, clientHeight } = target
-      const atTop    = scrollTop <= 0 && e.deltaY < 0
-      const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0
-      if (!atTop && !atBottom) e.preventDefault()
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-
     return () => {
       if (lenis) lenis.destroy()
       cancelAnimationFrame(rafId)
-      el.removeEventListener('wheel', onWheel)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)

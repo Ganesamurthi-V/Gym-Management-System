@@ -336,7 +336,7 @@ export default function ImportEditPage() {
 
   if (step === "preview") {
     return (
-      <div className="max-w-4xl mx-auto space-y-5">
+      <div className="max-w-7xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => setStep("edit")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Back to Edit
@@ -345,7 +345,7 @@ export default function ImportEditPage() {
           <h1 className="text-xl font-bold text-slate-900">Review Before Importing</h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600">{validRows.length}</p>
             <p className="text-sm text-slate-500 mt-0.5">Will be imported</p>
@@ -456,8 +456,8 @@ export default function ImportEditPage() {
   const cls = "px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-slate-50 disabled:text-slate-400";
 
   return (
-    <div className="space-y-4 pb-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 pb-6 max-w-[1600px] mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {hasReviewState ? (
             <button onClick={goBackToReview} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
@@ -529,7 +529,7 @@ export default function ImportEditPage() {
         );
       })()}
 
-      <div className="relative max-w-sm">
+      <div className="relative w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input type="search" placeholder="Search..." value={search}
           onChange={e => setSearch(e.target.value)} className="input-field pl-9" />

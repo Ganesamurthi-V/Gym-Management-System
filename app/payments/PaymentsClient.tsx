@@ -138,8 +138,8 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900">Payments</h1>
         <button onClick={exportExcel}
           className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
@@ -244,14 +244,14 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="Search by name or phone..."
             value={search} onChange={e => setSearch(e.target.value)}
             className="input-field pl-9" />
         </div>
-        <div className="relative w-36">
+        <div className="relative sm:w-40">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">#</span>
           <input type="search" placeholder="Member ID"
             value={idSearch} onChange={e => setIdSearch(e.target.value)}
@@ -287,7 +287,8 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
 
       {/* Desktop table */}
       <div className="hidden md:block card overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
@@ -332,7 +333,8 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
               )
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   )

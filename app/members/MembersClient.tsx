@@ -101,9 +101,9 @@ export function MembersClient({ members, gymId }: Props) {
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900">Members</h1>
         <div className="flex items-center gap-2">
           <Link href="/import" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
@@ -123,7 +123,7 @@ export function MembersClient({ members, gymId }: Props) {
       </div>
 
       {/* Search */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="Search by name or phone..."
@@ -131,7 +131,7 @@ export function MembersClient({ members, gymId }: Props) {
             className="input-field pl-9"
           />
         </div>
-        <div className="relative w-36">
+        <div className="relative sm:w-40">
           <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="GF0001"
             value={idSearch} onChange={(e) => setIdSearch(e.target.value)}
@@ -233,7 +233,8 @@ export function MembersClient({ members, gymId }: Props) {
 
       {/* Desktop: Table */}
       <div className="hidden md:block card overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
@@ -315,7 +316,8 @@ export function MembersClient({ members, gymId }: Props) {
               )
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   )

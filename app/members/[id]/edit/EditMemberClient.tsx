@@ -106,7 +106,7 @@ export function EditMemberClient({ member }: Props) {
   // ── Preview ───────────────────────────────────────────────────────────────
   if (step === 'preview') {
     return (
-      <div className="max-w-xl mx-auto space-y-5">
+      <div className="max-w-2xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => setStep('form')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Edit
@@ -168,7 +168,7 @@ export function EditMemberClient({ member }: Props) {
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-xl mx-auto space-y-5">
+    <div className="max-w-2xl mx-auto space-y-5">
       <div className="flex items-center gap-3">
         <Link href={`/members/${member.id}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />Member Details

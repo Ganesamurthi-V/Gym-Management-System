@@ -223,7 +223,7 @@ export default function ManualImportPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Excel columns */}
           <div className="card p-5">
             <h3 className="text-sm font-bold text-slate-700 mb-4">Excel Columns ({excelColumns.length})</h3>

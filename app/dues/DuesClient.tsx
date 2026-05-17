@@ -62,7 +62,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-4 md:space-y-5 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900">Fee Dues</h1>

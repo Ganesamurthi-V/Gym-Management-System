@@ -118,19 +118,23 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
         transition-[padding] duration-300 ease-in-out
         ${collapsed ? 'md:pl-14' : 'md:pl-60'}
       `}>
-        <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20">
-          <div className="flex items-center gap-2 md:hidden">
-            <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
-              <DumbbellIcon className="w-3.5 h-3.5 text-white" />
+        <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
+          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex items-center justify-between">
+            <div className="flex items-center gap-2 md:hidden">
+              <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
+                <DumbbellIcon className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-base font-bold text-slate-900">GymFlow</span>
             </div>
-            <span className="text-base font-bold text-slate-900">GymFlow</span>
+            <div className="hidden md:block" />
+            <AccountMenu />
           </div>
-          <div className="hidden md:block" />
-          <AccountMenu />
         </header>
 
-        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-8 w-full bg-slate-50">
-          {children}
+        <main className="flex-1 w-full bg-slate-50">
+          <div className="p-4 md:p-6 pb-24 md:pb-8">
+            {children}
+          </div>
         </main>
       </div>
 

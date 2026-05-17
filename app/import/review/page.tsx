@@ -260,7 +260,7 @@ export default function ImportReviewPage() {
   }
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="max-w-7xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
@@ -302,7 +302,7 @@ export default function ImportReviewPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
         {[
           { label: "Total", value: stats.total, cls: "text-slate-900" },
           { label: "Auto-accepted", value: stats.autoAccepted, cls: "text-emerald-600" },

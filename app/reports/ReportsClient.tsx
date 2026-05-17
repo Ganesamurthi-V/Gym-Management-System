@@ -327,7 +327,7 @@ export function ReportsClient({
   }
 
   return (
-    <div className="space-y-6 pb-12 animate-slide-up">
+    <div className="space-y-6 pb-12 animate-slide-up max-w-7xl mx-auto">
       {/* TN/Puducherry Friendly Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 opacity-50" />

@@ -304,7 +304,7 @@ export function AccountClient({
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
           <div className="text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
               <Users className="w-3.5 h-3.5 text-brand-500" />
@@ -340,7 +340,7 @@ export function AccountClient({
               Edit
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {(gymType || gymInfo.gymType) && (
               <div className="bg-slate-50 rounded-xl px-3 py-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Type</p>
@@ -372,14 +372,14 @@ export function AccountClient({
               </div>
             )}
             {(gymAddress || gymInfo.gymAddress) && (
-              <div className="bg-slate-50 rounded-xl px-3 py-2 col-span-2">
+              <div className="bg-slate-50 rounded-xl px-3 py-2 sm:col-span-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Address</p>
                 <p className="text-sm font-semibold text-slate-800 mt-0.5">{gymInfo.gymAddress || gymAddress || '—'}</p>
               </div>
             )}
             {/* Show edit prompt if no info yet */}
             {!gymType && !gymCity && !gymPhone && !gymAddress && !openingYear && !gymInfo.gymType && !gymInfo.gymCity && (
-              <div className="col-span-2 text-center py-4">
+              <div className="sm:col-span-2 text-center py-4">
                 <p className="text-sm text-slate-400">No gym info added yet.</p>
                 <button onClick={() => openModal('gym-info')}
                   className="text-sm text-brand-600 font-semibold hover:underline mt-1">
@@ -506,7 +506,7 @@ export function AccountClient({
       {activeModal === 'gym-info' && (
         <Modal title="Edit Gym Info" onClose={closeModal}>
           <form onSubmit={handleUpdateGymInfo} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Gym Type</label>
                 <select

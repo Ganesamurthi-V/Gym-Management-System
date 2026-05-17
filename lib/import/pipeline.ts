@@ -155,7 +155,7 @@ export async function runImportPipeline(
         const newNum = nextAvailable();
         assignedNums.add(newNum);
         seenNums.add(newNum);
-        r._id_conflict = true;
+        r._id_conflict = false;
         // Preserve the original ID as legacy before overwriting
         if (!r.legacy_member_id && r.member_number) {
           r.legacy_member_id = `GF${r.member_number.padStart(4, '0')}`;

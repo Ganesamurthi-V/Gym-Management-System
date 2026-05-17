@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   normalizeMemberNumber,
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
+import { useLenisScroll } from "@/lib/hooks/useLenisScroll";
 
 export interface ImportedRow {
   name: string;
@@ -413,8 +414,9 @@ export default function ImportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
-  // tableScrollRef is kept for potential future use; no Lenis needed —
-  // native overflow-y-auto handles both desktop and mobile touch correctly.
+  // Use Lenis smooth scroll on the preview box container
+  useLenisScroll(tableScrollRef, [rows]);
+
   const supabase = createClient();
   const router = useRouter();
 
@@ -663,7 +665,7 @@ export default function ImportPage() {
           <div
             ref={tableScrollRef}
             data-lenis-prevent
-            className="overflow-y-auto overflow-x-auto rounded-b-2xl"
+            className="overflow-y-auto overflow-x-auto no-scrollbar rounded-b-2xl"
             style={{ maxHeight: 'min(380px, 55vh)', WebkitOverflowScrolling: 'touch' }}
           >
             <table className="w-full text-sm">

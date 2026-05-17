@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { calcEndDate } from "@/lib/utils";
 import { searchLocalities } from "@/lib/geo/matchArea";
 import type { ImportedRow } from "../page";
+import { useLenisScroll } from "@/lib/hooks/useLenisScroll";
 
 type Step = "edit" | "preview" | "done";
 interface DoneResult { success: number; skipped: number }
@@ -42,8 +43,8 @@ export default function ImportEditPage() {
   const tableInnerRef = useRef<HTMLDivElement>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
 
-  // previewScrollRef uses native overflow-y-auto — no Lenis needed,
-  // native scroll works correctly on both desktop and mobile touch.
+  // Use Lenis smooth scroll on the final preview box container
+  useLenisScroll(previewScrollRef, [rows, step]);
 
   // Track sidebar collapsed state for the fixed scrollbar left offset
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -368,7 +369,7 @@ export default function ImportEditPage() {
           <div
             ref={previewScrollRef}
             data-lenis-prevent
-            className="overflow-y-auto overflow-x-auto"
+            className="overflow-y-auto overflow-x-auto no-scrollbar"
             style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}
           >
             <table className="w-full text-sm">
@@ -590,7 +591,7 @@ export default function ImportEditPage() {
                     </td>
                     <td className="px-3 py-2">
                       {isSkipped ? <AlertTriangle className="w-4 h-4 text-red-400" />
-                        : row._error ? <AlertTriangle className="w-4 h-4 text-amber-400" />
+                        : (row._id_conflict || row._id_missing) ? <AlertTriangle className="w-4 h-4 text-amber-400" />
                         : <Check className="w-4 h-4 text-emerald-500" />}
                     </td>
                     <td className="px-3 py-2">

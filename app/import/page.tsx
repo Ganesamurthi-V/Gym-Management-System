@@ -413,42 +413,8 @@ export default function ImportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
-  // Lenis smooth scroll on the preview table box.
-  // Attach a non-passive native wheel listener so the outer page scroll
-  // doesn't steal the event when the cursor is inside the table.
-  useEffect(() => {
-    const el = tableScrollRef.current;
-    if (!el || rows.length === 0) return;
-
-    let lenis: any = null;
-
-    async function initLenis() {
-      const LenisModule = await import('lenis');
-      const Lenis = LenisModule.default;
-      lenis = new Lenis({
-        wrapper: el ?? undefined,
-        content: (el?.firstElementChild as HTMLElement) ?? undefined,
-        duration: 1.2,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        orientation: 'vertical',
-        smoothWheel: true,
-        touchMultiplier: 2,
-        infinite: false,
-      });
-
-      function raf(time: number) {
-        lenis.raf(time);
-        requestAnimationFrame(raf);
-      }
-      requestAnimationFrame(raf);
-    }
-
-    initLenis();
-
-    return () => {
-      if (lenis) lenis.destroy();
-    };
-  }, [rows]);
+  // tableScrollRef is kept for potential future use; no Lenis needed —
+  // native overflow-y-auto handles both desktop and mobile touch correctly.
   const supabase = createClient();
   const router = useRouter();
 
@@ -693,13 +659,13 @@ export default function ImportPage() {
             <p className="text-sm font-bold text-slate-700">Preview — {rows.length} rows</p>
             <p className="text-xs text-slate-400">Scroll to see all</p>
           </div>
-          {/* Lenis smooth scroll container */}
+          {/* Scrollable container — native scroll works on all devices including mobile */}
           <div
             ref={tableScrollRef}
-            className="overflow-hidden"
-            style={{ height: 'min(380px, 55vh)', touchAction: 'none' }}
+            className="overflow-y-auto overflow-x-auto"
+            style={{ maxHeight: 'min(380px, 55vh)' }}
           >
-            <div> {/* Lenis content wrapper */}
+            <div> {/* content wrapper */}
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-100 border-b border-slate-200">

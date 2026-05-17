@@ -42,40 +42,8 @@ export default function ImportEditPage() {
   const tableInnerRef = useRef<HTMLDivElement>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
 
-  // Lenis on the preview table (step=preview)
-  useEffect(() => {
-    const el = previewScrollRef.current;
-    if (!el || step !== "preview") return;
-    let lenis: any = null;
-    let rafId: number;
-    async function init() {
-      const { default: Lenis } = await import('lenis');
-      lenis = new Lenis({
-        wrapper: el as HTMLElement,
-        content: (el as HTMLElement).firstElementChild as HTMLElement,
-        duration: 0.9,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        orientation: 'vertical',
-        smoothWheel: true,
-      });
-      function raf(time: number) { lenis.raf(time); rafId = requestAnimationFrame(raf); }
-      rafId = requestAnimationFrame(raf);
-    }
-    init();
-    // Non-passive wheel: scroll preview box, not page
-    const onWheel = (e: WheelEvent) => {
-      const { scrollTop, scrollHeight, clientHeight } = el as HTMLElement;
-      const canDown = e.deltaY > 0 && scrollTop + clientHeight < scrollHeight - 1;
-      const canUp   = e.deltaY < 0 && scrollTop > 0;
-      if (canDown || canUp) e.preventDefault();
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => {
-      if (lenis) lenis.destroy();
-      cancelAnimationFrame(rafId);
-      el.removeEventListener('wheel', onWheel);
-    };
-  }, [step]);
+  // previewScrollRef uses native overflow-y-auto — no Lenis needed,
+  // native scroll works correctly on both desktop and mobile touch.
 
   // Track sidebar collapsed state for the fixed scrollbar left offset
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -396,13 +364,13 @@ export default function ImportEditPage() {
           <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100">
             Members to be imported ({validRows.length})
           </p>
-          {/* Lenis smooth scroll — cursor inside scrolls table, outside scrolls page */}
+          {/* Native scroll — works on desktop and mobile touch */}
           <div
             ref={previewScrollRef}
-            className="overflow-hidden"
-            style={{ height: '256px' }}
+            className="overflow-y-auto overflow-x-auto"
+            style={{ maxHeight: '60vh' }}
           >
-            <div> {/* Lenis content wrapper */}
+            <div> {/* content wrapper */}
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-100">

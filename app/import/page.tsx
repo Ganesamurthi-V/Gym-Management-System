@@ -598,7 +598,7 @@ export default function ImportPage() {
   // ── AFTER UPLOAD ──────────────────────────────────────────────────────────
   if (rows.length > 0) {
     return (
-      <div className="flex flex-col max-w-5xl space-y-4">
+      <div className="max-w-5xl space-y-4 pb-6">
 
         {/* ── Top bar ── */}
         <div className="flex items-center justify-between flex-shrink-0">
@@ -654,18 +654,18 @@ export default function ImportPage() {
         </div>
 
         {/* ── Preview table — fixed height, independently scrollable ── */}
-        <div className="card overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="card">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-2xl">
             <p className="text-sm font-bold text-slate-700">Preview — {rows.length} rows</p>
             <p className="text-xs text-slate-400">Scroll to see all</p>
           </div>
-          {/* Scrollable container — native scroll works on all devices including mobile */}
+          {/* Scrollable container — data-lenis-prevent tells root Lenis to hand off wheel events here */}
           <div
             ref={tableScrollRef}
-            className="overflow-y-auto overflow-x-auto"
-            style={{ maxHeight: 'min(380px, 55vh)' }}
+            data-lenis-prevent
+            className="overflow-y-auto overflow-x-auto rounded-b-2xl"
+            style={{ maxHeight: 'min(380px, 55vh)', WebkitOverflowScrolling: 'touch' }}
           >
-            <div> {/* content wrapper */}
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-100 border-b border-slate-200">
@@ -703,7 +703,6 @@ export default function ImportPage() {
                 ))}
               </tbody>
             </table>
-            </div> {/* end Lenis content wrapper */}
           </div>
         </div>
 

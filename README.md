@@ -186,14 +186,16 @@ Supports `.csv` and `.xlsx` files. Column headers are auto-detected (fuzzy match
 1. **Parse** — read file, detect columns, normalize all fields
 2. **Area normalization** — 11-step geo pipeline per row (alias → exact → trigram → fuzzy → AI)
 3. **Area review** — low-confidence areas flagged for manual review, delete selected rows
-4. **Edit** — final table edit before import
-5. **Confirm** — preview + checkbox confirm → insert to DB
+4. **Edit** — final table edit before import; preview table is independently scrollable on mobile
+5. **Confirm** — preview + checkbox confirm → insert to DB; preview list is independently scrollable on mobile
 
 **Plan normalization** handles: `monthly`, `month`, `1m`, `yearly` → `annual`, `6months` → `quarterly`, `halfyear`, numeric durations, and 40+ more aliases.
 
 **Amount auto-fill**: if amount is missing or 0, fills from `gym_plan_prices` based on detected plan.
 
 Both auto-import and manual-mapping import run the same shared pipeline (`lib/import/pipeline.ts`).
+
+> **Mobile note**: The upload preview table, the edit-step preview table, and the bulk-edit changes summary all use native `overflow-y-auto` scroll — they are independently scrollable on mobile touch devices without blocking the page scroll.
 
 ---
 
@@ -284,6 +286,7 @@ Headers are case-insensitive and fuzzy-matched. Any of these work for "phone": `
 | AI area inference (Gemini 2.0 Flash) | ✅ |
 | Area review page with delete selected | ✅ |
 | Stale session fix (new file clears old review state) | ✅ |
+| Mobile-scrollable import preview & bulk-edit preview | ✅ |
 | Monthly revenue reports | ✅ |
 | Plan distribution chart (per-plan bars) | ✅ |
 | PDF report export | ✅ |

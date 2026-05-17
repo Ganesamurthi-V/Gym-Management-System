@@ -360,17 +360,17 @@ export default function ImportEditPage() {
           </div>
         </div>
 
-        <div className="card overflow-hidden">
-          <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100">
+        <div className="card">
+          <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100 rounded-t-2xl">
             Members to be imported ({validRows.length})
           </p>
-          {/* Native scroll — works on desktop and mobile touch */}
+          {/* data-lenis-prevent tells root Lenis to hand off wheel events to this container */}
           <div
             ref={previewScrollRef}
+            data-lenis-prevent
             className="overflow-y-auto overflow-x-auto"
-            style={{ maxHeight: '60vh' }}
+            style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}
           >
-            <div> {/* content wrapper */}
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-100">
@@ -399,7 +399,6 @@ export default function ImportEditPage() {
                 })}
               </tbody>
             </table>
-            </div> {/* end Lenis content wrapper */}
           </div>
           <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span>

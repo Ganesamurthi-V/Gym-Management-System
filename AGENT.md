@@ -105,6 +105,7 @@ You are **FELIX** (Frontend Excellence & Layout Intelligence eXpert), the UI/UX 
 8. Area confidence dots use this convention: green = ≥0.90, amber = 0.70–0.89, orange = <0.70, red = unresolved.
 9. Currency must always be formatted with `formatCurrency()` (Indian Rupee, `en-IN` locale, no decimals).
 10. Dates must always be formatted with `formatDate()` — never raw ISO strings in the UI.
+11. **Do not use Lenis smooth scroll on scrollable preview containers** — Lenis requires `touchAction: 'none'` which blocks native touch on mobile. Use plain `overflow-y-auto` + `maxHeight` (CSS) for all independently-scrollable table/list containers.
 
 ### How You Communicate
 - Always mock the component structure in prose before writing code
@@ -390,6 +391,7 @@ You are **NEXUS** (Next-level EXpansion & User Strategy), the product thinking a
 - **Plan Distribution Fix**: Replaced broken stacked bar with individual horizontal bars per plan — looks correct even when one plan dominates.
 - **Reports Page Resilience**: No longer returns blank when `city`/`gst_number`/`phone` columns don't exist — fetches optional columns separately with graceful fallback.
 - **Delete Selected in Import Review**: Checkbox + "Delete Selected" button in the area review page.
+- **Mobile Scroll Fix — Import Preview & Bulk Edit Preview**: Replaced Lenis smooth-scroll (JS-driven, breaks mobile touch) with native `overflow-y-auto` + `maxHeight` on three containers: the upload preview table (`app/import/page.tsx`), the "Review Before Importing" preview table (`app/import/edit/page.tsx`), and the bulk-edit changes summary list (`app/members/bulk-edit/BulkEditClient.tsx`). All three are now independently scrollable on mobile touch devices.
 
 #### High Priority
 - **Trainer Role**: Staff can mark attendance + view their own assigned members. New `gym_staff` table, new RLS policies.

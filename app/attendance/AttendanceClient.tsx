@@ -50,9 +50,9 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
   )
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
       {/* Page header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">Attendance</h1>
           <p className="text-xs md:text-sm text-slate-400 mt-0.5">{displayDate}</p>

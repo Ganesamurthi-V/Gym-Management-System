@@ -88,9 +88,9 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
   const initials = member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="max-w-4xl mx-auto space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 md:gap-3">
           <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Members
           </Link>
@@ -125,7 +125,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           </div>
         </div>
 
-        <div className="p-4 grid grid-cols-2 gap-3">
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {member.gender && <InfoTile label="Gender" value={member.gender.charAt(0).toUpperCase() + member.gender.slice(1)} />}
           {member.age && <InfoTile label="Age" value={`${member.age} yrs`} />}
           {member.area && <InfoTile label="Area" value={member.area} />}

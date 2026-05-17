@@ -238,7 +238,7 @@ export default function NewMemberPage() {
   // ── Preview Card ──────────────────────────────────────────────────────────
   if (step === 'preview') {
     return (
-      <div className="max-w-xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setStep('form')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -329,7 +329,7 @@ export default function NewMemberPage() {
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-xl mx-auto">
+    <div className="max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />

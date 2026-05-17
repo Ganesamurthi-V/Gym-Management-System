@@ -627,7 +627,7 @@ export default function ImportPage() {
         </div>
 
         {/* ── Stats row ── */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Ready",          value: validRows.filter(r => !r._error).length, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
             { label: "ID Auto-assigned", value: autoIdRows.length,                    color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-200"   },

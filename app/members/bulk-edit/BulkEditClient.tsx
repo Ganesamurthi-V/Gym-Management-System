@@ -308,8 +308,8 @@ export function EditMembersClient({ members, gymId }: Props) {
 
   // ── Edit Table ────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Members
@@ -382,7 +382,7 @@ export function EditMembersClient({ members, gymId }: Props) {
         </div>
       )}
 
-      <div className="relative max-w-sm">
+      <div className="relative w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input type="search" placeholder="Search members..."
           value={search} onChange={e => setSearch(e.target.value)}

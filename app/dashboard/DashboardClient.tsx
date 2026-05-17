@@ -61,7 +61,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-slide-up">
+    <div className="space-y-4 md:space-y-6 animate-slide-up max-w-7xl mx-auto">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
@@ -69,12 +69,12 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             <Dumbbell className="w-4 h-4 text-brand-500" />
             <span className="text-sm text-slate-500 font-medium">{gymName}</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Dashboard</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
         </div>
       </div>
 
-      {/* Stats Grid — 2 cols mobile, 3 cols desktop (added dues + collection) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Stats Grid — 2 cols mobile, 3 cols tablet, 6 cols desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
         <StatCard icon={<Users className="w-4 h-4 text-emerald-600" />} label="Active" value={stats.total_active} bg="bg-emerald-50" href="/members?filter=active" />
         <StatCard icon={<CheckSquare className="w-4 h-4 text-brand-600" />} label="Attendance" value={stats.today_attendance} bg="bg-brand-50" href="/attendance" />
         <StatCard icon={<Clock className="w-4 h-4 text-amber-600" />} label="Expiring" value={stats.expiring_this_week} bg="bg-amber-50" href="/members?filter=expiring" />

@@ -66,6 +66,7 @@ export interface MemberWithStatus extends Member {
   latest_membership: Membership | null
   status: MemberStatus
   days_remaining: number
+  join_date?: string
 }
 
 export interface DashboardStats {

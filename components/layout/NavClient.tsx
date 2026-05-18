@@ -31,7 +31,7 @@ export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {
             title={collapsed ? label : undefined}
             className={`
               flex items-center rounded-xl text-sm font-medium transition-all group
-              ${collapsed ? 'justify-center px-0 py-3 mx-1' : 'gap-3 px-3 py-2.5'}
+              ${collapsed ? 'justify-center px-0 py-3 mx-1 group-hover/sidebar:justify-start group-hover/sidebar:gap-3 group-hover/sidebar:px-3 group-hover/sidebar:py-2.5 group-hover/sidebar:mx-0' : 'gap-3 px-3 py-2.5'}
               ${active
                 ? 'bg-brand-50 text-brand-700'
                 : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
@@ -45,7 +45,7 @@ export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {
             {/* Label — fades out when collapsed */}
             <span className={`
               whitespace-nowrap overflow-hidden transition-all duration-200
-              ${collapsed ? 'w-0 opacity-0' : 'flex-1 opacity-100'}
+              ${collapsed ? 'w-0 opacity-0 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100 group-hover/sidebar:flex-1' : 'flex-1 opacity-100'}
             `}>
               {label}
             </span>

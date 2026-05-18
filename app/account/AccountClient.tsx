@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Settings, Lock, Trash2, AlertTriangle, Eye, EyeOff,
+  Settings, Copy, Lock, Trash2, AlertTriangle, Eye, EyeOff,
   Building2, Mail, Calendar, Users, CreditCard, CalendarCheck,
   ChevronLeft, Check, X, ShieldAlert, Hash, MapPin, Phone,
   Edit3,
@@ -692,9 +692,19 @@ export function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Type <span className="text-orange-600 font-mono">{gymName}</span> to confirm
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Type <span className="text-orange-600 font-mono">{gymName}</span> to confirm
+                </label>
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(gymName); showToast('Copied to clipboard') }}
+                  className="text-xs text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </button>
+              </div>
               <input
                 type="text"
                 value={deleteConfirmText}
@@ -741,9 +751,19 @@ export function AccountClient({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Type <span className="text-red-600 font-mono">{gymName}</span> to confirm
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Type <span className="text-red-600 font-mono">{gymName}</span> to confirm
+                </label>
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(gymName); showToast('Copied to clipboard') }}
+                  className="text-xs text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </button>
+              </div>
               <input
                 type="text"
                 value={deleteConfirmText}
@@ -787,7 +807,7 @@ function Modal({
   danger?: boolean
 }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden animate-pop-in shadow-2xl">
         <div className={`flex items-center justify-between px-5 py-4 border-b ${danger ? 'border-red-100 bg-red-50' : 'border-slate-100'}`}>
           <h3 className={`font-bold ${danger ? 'text-red-800' : 'text-slate-900'}`}>{title}</h3>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, ArrowLeft, Check, AlertTriangle, ArrowRight, FileSpreadsheet } from "lucide-react";
+import { Upload, ArrowLeft, Check, AlertTriangle, ArrowRight, FileSpreadsheet, Shuffle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -15,6 +15,7 @@ import {
   normalizeAge,
   normalizeDate,
   normalizeMemberNumber,
+  isRecognizedPlan,
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
 
@@ -44,6 +45,12 @@ export default function ManualImportPage() {
   const [draggedExcel, setDraggedExcel] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [processStage, setProcessStage] = useState<string>("");
+
+  const [unmappedPlans, setUnmappedPlans] = useState<string[]>([]);
+  const [planMapping, setPlanMapping] = useState<Record<string, string>>({});
+  const [tempImportState, setTempImportState] = useState<{
+    parsedRows: ImportedRow[];
+  } | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -141,7 +148,8 @@ export default function ManualImportPage() {
 
       const name          = get("name");
       const phone         = get("phone").replace(/\D/g, "").slice(-10);
-      const plan          = normalizePlan(get("plan") || "monthly");
+      const rawPlan       = get("plan");
+      const plan          = normalizePlan(rawPlan || "monthly");
       const start_date    = normalizeDate(get("start_date"));
       const rawAmt        = get("amount").replace(/[^\d]/g, "");
       const amount        = rawAmt || "0"; // pipeline will fill from plan prices if "0"
@@ -157,7 +165,7 @@ export default function ManualImportPage() {
       else if (age && (parseInt(age) < 1 || parseInt(age) > 120)) _error = "Age must be 1–120";
 
       return {
-        name, phone, plan, start_date, amount, payment_mode,
+        name, phone, plan, _rawPlan: rawPlan ? rawPlan.trim() : undefined, start_date, amount, payment_mode,
         gender, age, area, member_number,
         _rowId: rowIdx,
         _status: !name ? "error" : "ok",
@@ -171,6 +179,29 @@ export default function ManualImportPage() {
     setProcessStage("🗺️ Normalizing areas…");
 
     const parsed = buildParsedRows(rawData);
+
+    // Detect unrecognized plans
+    const unrecognizedSet = new Set<string>();
+    parsed.forEach(r => {
+      if (r._rawPlan && !isRecognizedPlan(r._rawPlan)) {
+        unrecognizedSet.add(r._rawPlan);
+      }
+    });
+
+    const unrecognizedList = Array.from(unrecognizedSet).filter(Boolean);
+    if (unrecognizedList.length > 0) {
+      setUnmappedPlans(unrecognizedList);
+      const initialMapping: Record<string, string> = {};
+      unrecognizedList.forEach(p => {
+        initialMapping[p] = "monthly";
+      });
+      setPlanMapping(initialMapping);
+      setTempImportState({
+        parsedRows: parsed,
+      });
+      setProcessing(false);
+      return;
+    }
 
     // Run the full shared pipeline — same as auto-import
     const { rows: pipelineRows } = await runImportPipeline(parsed, {
@@ -197,8 +228,95 @@ export default function ManualImportPage() {
     router.push(needsReview ? "/import/review" : "/import/edit");
   }
 
+  async function applyPlanMappingAndProceed() {
+    if (!tempImportState) return;
+    setProcessing(true);
+    setProcessStage("🗺️ Normalizing areas…");
+
+    const mappedRows = tempImportState.parsedRows.map(r => {
+      if (r._rawPlan && planMapping[r._rawPlan]) {
+        return {
+          ...r,
+          plan: planMapping[r._rawPlan],
+        };
+      }
+      return r;
+    });
+
+    const { rows: pipelineRows } = await runImportPipeline(mappedRows, {
+      supabase,
+      onStage: stage => {
+        if (stage === "areas")  setProcessStage("🗺️ Normalizing areas…");
+        if (stage === "prices") setProcessStage("💰 Filling plan prices…");
+        if (stage === "ids")    setProcessStage("🔢 Assigning member IDs…");
+      },
+    });
+
+    sessionStorage.setItem("import_rows", JSON.stringify(pipelineRows));
+    sessionStorage.setItem("import_rows_original", JSON.stringify(pipelineRows.map(r => ({ ...r }))));
+    sessionStorage.setItem("import_has_id_col",
+      mappings.some(m => m.dbField === "member_number") ? "1" : "0"
+    );
+
+    setProcessing(false);
+    setUnmappedPlans([]);
+    setPlanMapping({});
+    setTempImportState(null);
+
+    const needsReview = pipelineRows.some(
+      r => r.area && ((r._area_confidence ?? 1) < 0.90 || r._area_matched_by === "unresolved")
+    );
+    router.push(needsReview ? "/import/review" : "/import/edit");
+  }
+
   const mappedFields = new Set(mappings.filter(m => m.dbField).map(m => m.dbField));
   const requiredMapped = DB_FIELDS.filter(f => f.required).every(f => mappedFields.has(f.key));
+
+  if (unmappedPlans.length > 0) {
+    return (
+      <div className="max-w-xl mx-auto space-y-6 py-10">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Shuffle className="w-8 h-8 text-brand-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Map Unrecognized Memberships</h2>
+          <p className="text-sm text-slate-500 mt-2">
+            We detected plans in your Excel file that don't match our database plans. Map them to correct durations.
+          </p>
+        </div>
+
+        <div className="card p-6 space-y-4">
+          {unmappedPlans.map((rawPlan) => (
+            <div key={rawPlan} className="flex items-center justify-between gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-sm font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                {rawPlan}
+              </span>
+              <span className="text-slate-400 font-bold">→</span>
+              <select
+                value={planMapping[rawPlan] || "monthly"}
+                onChange={(e) => setPlanMapping({ ...planMapping, [rawPlan]: e.target.value })}
+                className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-semibold"
+              >
+                <option value="monthly">Monthly (1 Month)</option>
+                <option value="quarterly">Quarterly (3 Months)</option>
+                <option value="annual">Annual (1 Year)</option>
+              </select>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={applyPlanMappingAndProceed}
+          className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full"
+        >
+          <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
+            Confirm & Proceed <ArrowRight className="w-4 h-4" />
+          </span>
+          <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+        </button>
+      </div>
+    );
+  }
 
   // ── Map step ──────────────────────────────────────────────────────────────
   if (step === "map") {

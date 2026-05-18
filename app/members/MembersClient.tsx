@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash } from 'lucide-react'
+import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
@@ -19,6 +19,16 @@ export function MembersClient({ members, gymId }: Props) {
   const [search, setSearch] = useState('')
   const [idSearch, setIdSearch] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
+  const [showAdvFilterModal, setShowAdvFilterModal] = useState(false)
+  const [advFilters, setAdvFilters] = useState({
+    quick: null as string | null,
+    status: [] as string[],
+    plan: 'all',
+    paymentStatus: 'all',
+    gender: 'all',
+    joined: 'all',
+    ageRange: 'all',
+  })
   const [fixing, setFixing] = useState(false)
   const supabase = createClient()
 
@@ -62,12 +72,104 @@ export function MembersClient({ members, gymId }: Props) {
     window.location.reload()
   }
 
+  const uniquePlans = Array.from(new Set(members.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]
+
   const filtered = members
     .filter((m) => {
       const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
       const matchesId = idSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(idSearch.toLowerCase()))
       const matchesFilter = filter === 'all' || m.status === filter
-      return matchesSearch && matchesId && matchesFilter
+      
+      let matchesAdv = true
+      
+      // Quick Filters
+      if (advFilters.quick === 'active_expiring') {
+        if (m.status !== 'active' && m.status !== 'expiring') matchesAdv = false
+      } else if (advFilters.quick === 'unpaid') {
+        if (!((m.pending_amount ?? 0) > 0)) matchesAdv = false
+      } else if (advFilters.quick === 'new') {
+        const dateStr = m.latest_membership?.start_date || m.created_at
+        const joinedDate = new Date(dateStr)
+        const now = new Date()
+        const isNew = joinedDate.getMonth() === now.getMonth() && joinedDate.getFullYear() === now.getFullYear()
+        if (!isNew) matchesAdv = false
+      }
+      
+      // Status
+      if (advFilters.status.length > 0) {
+        if (!advFilters.status.includes(m.status)) matchesAdv = false
+      }
+      
+      // Plan
+      if (advFilters.plan !== 'all') {
+        if (!m.latest_membership?.plan || m.latest_membership.plan !== advFilters.plan) matchesAdv = false
+      }
+      
+      // Payment Status
+      if (advFilters.paymentStatus === 'fully') {
+        if ((m.pending_amount ?? 0) > 0) matchesAdv = false
+      } else if (advFilters.paymentStatus === 'partial') {
+        const total = m.latest_membership?.amount ?? 0
+        const pending = m.pending_amount ?? 0
+        if (!(pending > 0 && total > pending)) matchesAdv = false
+      } else if (advFilters.paymentStatus === 'unpaid') {
+        const total = m.latest_membership?.amount ?? 0
+        const pending = m.pending_amount ?? 0
+        if (!(pending > 0 && pending >= total)) matchesAdv = false
+      }
+      
+      // Age Range
+      if (advFilters.ageRange !== 'all') {
+        const ageStr = String(m.age || '').replace(/[^0-9]/g, '')
+        const age = ageStr ? Number(ageStr) : null
+        if (!age) matchesAdv = false
+        else if (advFilters.ageRange === 'under18' && age >= 18) matchesAdv = false
+        else if (advFilters.ageRange === '18-30' && (age < 18 || age > 30)) matchesAdv = false
+        else if (advFilters.ageRange === '31-50' && (age < 31 || age > 50)) matchesAdv = false
+        else if (advFilters.ageRange === 'above50' && age <= 50) matchesAdv = false
+      }
+      
+      // Gender
+      if (advFilters.gender !== 'all') {
+        const g = m.gender?.toLowerCase()
+        const isMale = g === 'male' || g === 'm'
+        const isFemale = g === 'female' || g === 'f'
+        if (advFilters.gender === 'male' && !isMale) matchesAdv = false
+        if (advFilters.gender === 'female' && !isFemale) matchesAdv = false
+      }
+      
+      // Joined — parse as local date (YYYY-MM-DD) to avoid UTC midnight shifting the day
+      if (advFilters.joined !== 'all') {
+        const dateStr = m.join_date
+        if (!dateStr) {
+          matchesAdv = false
+        } else {
+          const [y, mo, d] = dateStr.split('-').map(Number)
+          const joinedDate = new Date(y, mo - 1, d)
+          const now = new Date()
+
+          if (advFilters.joined === 'today') {
+            if (
+              joinedDate.getFullYear() !== now.getFullYear() ||
+              joinedDate.getMonth() !== now.getMonth() ||
+              joinedDate.getDate() !== now.getDate()
+            ) matchesAdv = false
+          } else if (advFilters.joined === 'this-month') {
+            if (
+              joinedDate.getMonth() !== now.getMonth() ||
+              joinedDate.getFullYear() !== now.getFullYear()
+            ) matchesAdv = false
+          } else if (advFilters.joined === 'last-3-months') {
+            const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+            if (joinedDate < threeMonthsAgo || joinedDate > now) matchesAdv = false
+          } else if (advFilters.joined === 'last-6-months') {
+            const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
+            if (joinedDate < sixMonthsAgo || joinedDate > now) matchesAdv = false
+          }
+        }
+      }
+      
+      return matchesSearch && matchesId && matchesFilter && matchesAdv
     })
     .sort((a, b) => {
       if (idSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
@@ -79,6 +181,7 @@ export function MembersClient({ members, gymId }: Props) {
     active:   members.filter(m => m.status === 'active').length,
     expiring: members.filter(m => m.status === 'expiring').length,
     expired:  members.filter(m => m.status === 'expired').length,
+    overdue:  members.filter(m => (m.pending_amount ?? 0) > 0).length,
   }
 
   const filterConfig: { key: FilterType; label: string; activeClass: string }[] = [
@@ -106,6 +209,18 @@ export function MembersClient({ members, gymId }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900">Members</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAdvFilterModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <Filter className="w-4 h-4" />
+            <span>Advanced Filter</span>
+            {Object.values(advFilters).filter(v => v !== 'all' && v !== null && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
+              <span className="w-4 h-4 bg-brand-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                !
+              </span>
+            )}
+          </button>
           <Link href="/import" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Upload className="w-4 h-4" />
             <span className="hidden sm:inline">Import</span>
@@ -119,6 +234,46 @@ export function MembersClient({ members, gymId }: Props) {
             <span className="hidden sm:inline">Add Member</span>
             <span className="sm:hidden">Add</span>
           </Link>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-brand-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Users className="w-4 h-4 text-brand-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Total Members</p>
+            <p className="text-lg font-bold text-slate-900">{counts.all}</p>
+          </div>
+        </div>
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Check className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Active</p>
+            <p className="text-lg font-bold text-emerald-600">{counts.active}</p>
+          </div>
+        </div>
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <X className="w-4 h-4 text-red-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Expired</p>
+            <p className="text-lg font-bold text-red-600">{counts.expired}</p>
+          </div>
+        </div>
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Overdue Dues</p>
+            <p className="text-lg font-bold text-amber-600">{counts.overdue}</p>
+          </div>
         </div>
       </div>
 
@@ -319,6 +474,209 @@ export function MembersClient({ members, gymId }: Props) {
           </table>
         </div>
       </div>
+
+      {/* Advanced Filter Modal */}
+      {showAdvFilterModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAdvFilterModal(false)} />
+          
+          {/* Modal Container */}
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-pop-in">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-brand-600 to-brand-700 p-6 text-white relative">
+                <button
+                  onClick={() => setShowAdvFilterModal(false)}
+                  className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Filter className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">Advanced Member Filters ✨</h2>
+                    <p className="text-white/80 text-sm">Filter by status, plan, payment, gender, age & more</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                {/* Quick Filters */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Zap className="w-4 h-4 text-violet-600" />
+                    <h3 className="text-sm font-bold text-slate-700">Quick Filters</h3>
+                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">One-click</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setAdvFilters({...advFilters, quick: advFilters.quick === 'active_expiring' ? null : 'active_expiring'})}
+                      className={cn('flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all',
+                        advFilters.quick === 'active_expiring' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100')}
+                    >
+                      <Check className="w-4 h-4" /> Active + Expiring Soon
+                    </button>
+                    <button
+                      onClick={() => setAdvFilters({...advFilters, quick: advFilters.quick === 'unpaid' ? null : 'unpaid'})}
+                      className={cn('flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all',
+                        advFilters.quick === 'unpaid' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100')}
+                    >
+                      <CreditCard className="w-4 h-4" /> Unpaid + Overdue
+                    </button>
+                    <button
+                      onClick={() => setAdvFilters({...advFilters, quick: advFilters.quick === 'new' ? null : 'new'})}
+                      className={cn('flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all',
+                        advFilters.quick === 'new' ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-700 hover:bg-pink-100')}
+                    >
+                      <Calendar className="w-4 h-4" /> New this Month
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Grid Filters */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Status */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1.5">
+                      <Users className="w-4 h-4 text-slate-400" /> Member Status
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {['active', 'expiring', 'expired'].map(s => (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            const current = advFilters.status;
+                            const next = current.includes(s) ? current.filter(x => x !== s) : [...current, s];
+                            setAdvFilters({...advFilters, status: next});
+                          }}
+                          className={cn('text-xs font-semibold px-3 py-1.5 rounded-full transition-all',
+                            advFilters.status.includes(s) ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}
+                        >
+                          {s.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Plan */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1.5">
+                      <Target className="w-4 h-4 text-slate-400" /> Membership Plan
+                    </label>
+                    <select
+                      value={advFilters.plan}
+                      onChange={e => setAdvFilters({...advFilters, plan: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="all">All Plans</option>
+                      {uniquePlans.map(plan => (
+                        <option key={plan} value={plan}>{plan}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Payment Status */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1.5">
+                      <CreditCard className="w-4 h-4 text-slate-400" /> Payment Status
+                    </label>
+                    <select
+                      value={advFilters.paymentStatus}
+                      onChange={e => setAdvFilters({...advFilters, paymentStatus: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="all">All</option>
+                      <option value="fully">Fully Paid</option>
+                      <option value="partial">Partial Payment</option>
+                      <option value="unpaid">Unpaid</option>
+                    </select>
+                  </div>
+                  
+                  {/* Gender */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1.5">
+                      <Users className="w-4 h-4 text-slate-400" /> Gender
+                    </label>
+                    <select
+                      value={advFilters.gender}
+                      onChange={e => setAdvFilters({...advFilters, gender: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="all">All</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+
+                  {/* Age Range */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1.5">
+                      <Hash className="w-4 h-4 text-slate-400" /> Age Range
+                    </label>
+                    <select
+                      value={advFilters.ageRange}
+                      onChange={e => setAdvFilters({...advFilters, ageRange: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="all">All</option>
+                      <option value="under18">Under 18</option>
+                      <option value="18-30">18 - 30</option>
+                      <option value="31-50">31 - 50</option>
+                      <option value="above50">Above 50</option>
+                    </select>
+                  </div>
+                  
+                  {/* Joined */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1.5">
+                      <Calendar className="w-4 h-4 text-slate-400" /> Joined
+                    </label>
+                    <select
+                      value={advFilters.joined}
+                      onChange={e => setAdvFilters({...advFilters, joined: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="all">All</option>
+                      <option value="today">Today</option>
+                      <option value="this-month">This Month</option>
+                      <option value="last-3-months">Last 3 Months</option>
+                      <option value="last-6-months">Last 6 Months</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="bg-slate-50 px-6 py-4 flex items-center justify-between border-t border-slate-100">
+                <button
+                  onClick={() => setAdvFilters({ quick: null, status: [], plan: 'all', paymentStatus: 'all', gender: 'all', joined: 'all', ageRange: 'all' })}
+                  className="text-sm text-slate-500 hover:text-slate-700 font-semibold flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" /> Clear All
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowAdvFilterModal(false)}
+                    className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setShowAdvFilterModal(false)}
+                    className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-semibold hover:bg-brand-700 transition-all shadow-md shadow-brand-100"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

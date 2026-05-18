@@ -14,9 +14,11 @@ import {
   normalizePaymentMode,
   normalizeAge,
   normalizeMemberNumber,
+  isRecognizedPlan,
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
 import { useLenisScroll } from "@/lib/hooks/useLenisScroll";
+import { ArrowRight } from "lucide-react";
 
 export interface ImportedRow {
   name: string;
@@ -39,7 +41,21 @@ export interface ImportedRow {
   _id_auto?: boolean;
   _id_conflict?: boolean;
   _id_missing?: boolean;
+  _rawPlan?: string;
 }
+
+const EXPECTED_COLUMNS = [
+  { key: "name", label: "Name", required: true },
+  { key: "phone", label: "Phone", required: true },
+  { key: "member_number", label: "Member #", required: false },
+  { key: "plan", label: "Plan", required: false },
+  { key: "start_date", label: "Start Date", required: false },
+  { key: "amount", label: "Amount", required: false },
+  { key: "payment_mode", label: "Payment Mode", required: false },
+  { key: "gender", label: "Gender", required: false },
+  { key: "age", label: "Age", required: false },
+  { key: "area", label: "Area", required: false },
+];
 
 const COLUMN_ALIASES: Record<string, string[]> = {
   name: [
@@ -414,22 +430,68 @@ export default function ImportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
+  const [unmappedPlans, setUnmappedPlans] = useState<string[]>([]);
+  const [planMapping, setPlanMapping] = useState<Record<string, string>>({});
+  const [tempImportState, setTempImportState] = useState<{
+    parsedRows: ImportedRow[];
+    detectedColumns: Record<string, string>;
+    fileName: string;
+  } | null>(null);
+
+  // New states for column mapping
+  const [showMapping, setShowMapping] = useState(false);
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [fileSamples, setFileSamples] = useState<Record<string, string>>({});
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [tempFile, setTempFile] = useState<File | null>(null);
+
   // Use Lenis smooth scroll on the preview box container
   useLenisScroll(tableScrollRef, [rows]);
 
   const supabase = createClient();
   const router = useRouter();
 
-  async function processFile(file: File) {
+  async function applyPlanMappingAndProceed() {
+    if (!tempImportState) return;
+    setParsing(true);
+    setParseStage(4);
+
+    const mappedRows = tempImportState.parsedRows.map(r => {
+      if (r._rawPlan && planMapping[r._rawPlan]) {
+        return {
+          ...r,
+          plan: planMapping[r._rawPlan],
+        };
+      }
+      return r;
+    });
+
+    const { rows: pipelineRows } = await runImportPipeline(mappedRows, {
+      supabase,
+      onStage: stage => { if (stage === "areas") setParseStage(4); if (stage === "ids") setParseStage(5); },
+    });
+
+    setRows(pipelineRows);
+    setDetectedColumns(tempImportState.detectedColumns);
+    setFileName(tempImportState.fileName);
+    setParseStage(5);
+    setParsing(false);
+    setUnmappedPlans([]);
+    setTempImportState(null);
+  }
+
+  async function processFile(file: File, userMapping?: Record<string, string>) {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { alert("File too large. Maximum size is 10MB."); return; }
 
     setFileName(file.name);
-    sessionStorage.removeItem("import_rows");
-    sessionStorage.removeItem("import_rows_original");
-    sessionStorage.removeItem("import_review_state");
-    sessionStorage.removeItem("import_cluster");
-    sessionStorage.removeItem("import_has_id_col");
+    if (!userMapping) {
+      sessionStorage.removeItem("import_rows");
+      sessionStorage.removeItem("import_rows_original");
+      sessionStorage.removeItem("import_review_state");
+      sessionStorage.removeItem("import_cluster");
+      sessionStorage.removeItem("import_has_id_col");
+    }
 
     setParsing(true);
     setParseStage(1);
@@ -458,21 +520,84 @@ export default function ImportPage() {
     if (!ws) { setParsing(false); return; }
     if (ws.rowCount - 1 > 50000) { alert("File has too many rows (max 50,000)."); setParsing(false); return; }
 
-    const headers: string[] = [];
-    ws.getRow(1).eachCell({ includeEmpty: true }, (cell: any) => headers.push(cellStr(cell.value)));
-    const colMap = buildColumnMap(headers);
-    const detected: Record<string, string> = {};
-    for (const [field, idx] of Object.entries(colMap)) detected[field] = headers[idx - 1];
-    setDetectedColumns(detected);
+    let headerRowIndex = 1;
+    let maxDetectedFields = 0;
+    let bestHeaders: string[] = [];
+    
+    const scanLimit = Math.min(ws.rowCount, 50);
+    for (let i = 1; i <= scanLimit; i++) {
+      const row = ws.getRow(i);
+      const rowHeaders: string[] = [];
+      row.eachCell({ includeEmpty: true }, (cell: any) => rowHeaders.push(cellStr(cell.value)));
+      
+      let detectedCount = 0;
+      rowHeaders.forEach(h => {
+        if (detectField(h)) detectedCount++;
+      });
+      
+      if (detectedCount > maxDetectedFields) {
+        maxDetectedFields = detectedCount;
+        headerRowIndex = i;
+        bestHeaders = rowHeaders;
+      }
+    }
+    
+    if (maxDetectedFields < 2) {
+      headerRowIndex = 1;
+      bestHeaders = [];
+      ws.getRow(1).eachCell({ includeEmpty: true }, (cell: any) => bestHeaders.push(cellStr(cell.value)));
+    }
+
+    const headers = bestHeaders;
+    let colMap: Record<string, number> = {};
+    const summaryMapping: Record<string, string> = {};
+    
+    if (userMapping) {
+      for (const [header, field] of Object.entries(userMapping)) {
+        if (field && field !== "ignore") {
+          const idx = headers.indexOf(header);
+          if (idx !== -1) colMap[field] = idx + 1;
+          summaryMapping[field] = header;
+        }
+      }
+      setDetectedColumns(summaryMapping);
+    } else {
+      colMap = buildColumnMap(headers);
+      
+      // Get samples from the row after the header
+      const sampleRow = ws.getRow(headerRowIndex + 1);
+      const samples: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        samples[h] = cellStr(sampleRow.getCell(i + 1).value);
+      });
+      setFileSamples(samples);
+
+      // Create initial mapping { fileHeader: dbField }
+      const initialMapping: Record<string, string> = {};
+      for (const [field, idx] of Object.entries(colMap)) {
+        const header = headers[idx - 1];
+        if (header) initialMapping[header] = field;
+      }
+      
+      setColumnMapping(initialMapping);
+      setFileHeaders(headers);
+      setTempFile(file);
+      setShowMapping(true);
+      setParsing(false);
+      return;
+    }
+
     setParseStage(3);
 
     const parsed: ImportedRow[] = [];
+    const unrecognizedSet = new Set<string>();
     ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
-      if (rowIndex === 1) return;
+      if (rowIndex <= headerRowIndex) return;
       const name         = getCol(row, colMap, "name");
       const rawPhone     = getCol(row, colMap, "phone");
       const phone        = rawPhone.replace(/\D/g, "").slice(-10);
-      const plan         = normalizePlan(getCol(row, colMap, "plan") || "monthly");
+      const rawPlan      = getCol(row, colMap, "plan");
+      const plan         = normalizePlan(rawPlan || "monthly");
       const rawDate      = getCol(row, colMap, "start_date");
       const rawAmount    = getCol(row, colMap, "amount");
       const parsedAmount = parseInt(rawAmount.replace(/[^\d]/g, ""));
@@ -505,8 +630,46 @@ export default function ImportPage() {
       let _error = "";
       if (!name) _error = "Missing name";
       else if (phone && phone.length !== 10) _error = "Invalid phone";
-      parsed.push({ name, phone, plan, start_date, amount, payment_mode, gender, age, area: rawArea, member_number, legacy_member_id: legacy_member_id || undefined, _rowId: parsed.length, _status: !name ? "error" : "ok", _error });
+
+      if (rawPlan && !isRecognizedPlan(rawPlan)) {
+        unrecognizedSet.add(rawPlan.trim());
+      }
+
+      parsed.push({
+        name,
+        phone,
+        plan,
+        _rawPlan: rawPlan ? rawPlan.trim() : undefined,
+        start_date,
+        amount,
+        payment_mode,
+        gender,
+        age,
+        area: rawArea,
+        member_number,
+        legacy_member_id: legacy_member_id || undefined,
+        _rowId: parsed.length,
+        _status: !name ? "error" : "ok",
+        _error
+      });
     });
+
+    const unrecognizedList = Array.from(unrecognizedSet).filter(Boolean);
+    if (unrecognizedList.length > 0) {
+      setUnmappedPlans(unrecognizedList);
+      const initialMapping: Record<string, string> = {};
+      unrecognizedList.forEach(p => {
+        initialMapping[p] = "monthly";
+      });
+      setPlanMapping(initialMapping);
+      setTempImportState({
+        parsedRows: parsed,
+        detectedColumns: summaryMapping,
+        fileName: file.name,
+      });
+      setParsing(false);
+      return;
+    }
 
     setParseStage(4);
     const { rows: pipelineRows } = await runImportPipeline(parsed, {
@@ -544,6 +707,9 @@ export default function ImportPage() {
     setDetectedColumns({});
     setFileName("");
     setParseStage(0);
+    setUnmappedPlans([]);
+    setPlanMapping({});
+    setTempImportState(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -597,10 +763,149 @@ export default function ImportPage() {
     );
   }
 
+  // ── COLUMN MAPPING ────────────────────────────────────────────────────────
+  if (showMapping && tempFile) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Shuffle className="w-8 h-8 text-brand-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Map Columns</h2>
+          <p className="text-sm text-slate-500 mt-2">
+            We've auto-detected columns. Verify and map any leftover columns.
+          </p>
+        </div>
+
+        <div className="card p-6 space-y-4">
+          {fileHeaders.map((header) => {
+            const sample = fileSamples[header];
+            const mappedField = columnMapping[header];
+            const isMapped = mappedField && mappedField !== "ignore";
+            
+            return (
+              <div key={header} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-xl transition-all ${isMapped ? "bg-brand-50/50 border-brand-200" : "bg-slate-50 border-slate-200"}`}>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                  <span className="text-sm font-bold text-slate-700 truncate">
+                    {header}
+                  </span>
+                  {sample && (
+                    <span className="text-xs text-slate-400 truncate">
+                      Sample: {sample}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-400 font-bold hidden sm:inline">→</span>
+                  <select
+                    value={columnMapping[header] || ""}
+                    onChange={(e) => setColumnMapping({ ...columnMapping, [header]: e.target.value })}
+                    className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-semibold w-full sm:w-auto min-w-[200px]"
+                  >
+                    <option value="">Don't import this field</option>
+                    <optgroup label="Required Fields">
+                      {EXPECTED_COLUMNS.filter(c => c.required).map(col => {
+                        const alreadyMapped = Object.entries(columnMapping).some(([h, f]) => f === col.key && h !== header);
+                        return (
+                          <option key={col.key} value={col.key} disabled={alreadyMapped}>
+                            {col.label} * {alreadyMapped ? "(already mapped)" : ""}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                    <optgroup label="Optional Fields">
+                      {EXPECTED_COLUMNS.filter(c => !c.required).map(col => {
+                        const alreadyMapped = Object.entries(columnMapping).some(([h, f]) => f === col.key && h !== header);
+                        return (
+                          <option key={col.key} value={col.key} disabled={alreadyMapped}>
+                            {col.label} {alreadyMapped ? "(already mapped)" : ""}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => {
+            const mappedDbFields = Object.values(columnMapping);
+            const missingRequired = EXPECTED_COLUMNS.filter(c => c.required && !mappedDbFields.includes(c.key));
+            
+            if (missingRequired.length > 0) {
+              alert(`Please map all required fields: ${missingRequired.map(c => c.label).join(", ")}`);
+              return;
+            }
+            
+            setShowMapping(false);
+            processFile(tempFile, columnMapping);
+          }}
+          className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full"
+        >
+          <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
+            Process File <ArrowRight className="w-4 h-4" />
+          </span>
+          <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+        </button>
+      </div>
+    );
+  }
+
+  // ── UNMAPPED PLANS MAPPING ────────────────────────────────────────────────
+  if (unmappedPlans.length > 0) {
+    return (
+      <div className="max-w-xl mx-auto space-y-6">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Shuffle className="w-8 h-8 text-brand-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Map Unrecognized Memberships</h2>
+          <p className="text-sm text-slate-500 mt-2">
+            We detected plans in your Excel file that don't match our database plans. Map them to correct durations.
+          </p>
+        </div>
+
+        <div className="card p-6 space-y-4">
+          {unmappedPlans.map((rawPlan) => (
+            <div key={rawPlan} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-sm font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm text-center sm:text-left w-full sm:w-auto">
+                {rawPlan}
+              </span>
+              <span className="text-slate-400 font-bold hidden sm:inline">→</span>
+              <select
+                value={planMapping[rawPlan] || "monthly"}
+                onChange={(e) => setPlanMapping({ ...planMapping, [rawPlan]: e.target.value })}
+                className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-semibold w-full sm:w-auto"
+              >
+                <option value="monthly">Monthly (1 Month)</option>
+                <option value="quarterly">Quarterly (3 Months)</option>
+                <option value="annual">Annual (1 Year)</option>
+              </select>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={applyPlanMappingAndProceed}
+          className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full"
+        >
+          <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
+            Confirm & Proceed <ArrowRight className="w-4 h-4" />
+          </span>
+          <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+        </button>
+      </div>
+    );
+  }
+
   // ── AFTER UPLOAD ──────────────────────────────────────────────────────────
   if (rows.length > 0) {
     return (
-      <div className="max-w-5xl space-y-4 pb-6">
+      <div className="max-w-5xl mx-auto space-y-4 pb-6">
 
         {/* ── Top bar ── */}
         <div className="flex items-center justify-between flex-shrink-0">

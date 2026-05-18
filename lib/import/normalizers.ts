@@ -1,4 +1,4 @@
-﻿/**
+/**
  * lib/import/normalizers.ts
  * Single source of truth for all field normalization used in both
  * auto-import and manual-mapping import flows.
@@ -36,6 +36,18 @@ export function normalizePlan(raw: string): string {
     return "annual";
   }
   return "monthly";
+}
+
+export function isRecognizedPlan(raw: string): boolean {
+  const v = raw.toLowerCase().trim().replace(/[\s\-_]+/g, "");
+  if (!v) return true; // Empty plan falls back to monthly, no prompt needed
+  if (["monthly","month","1month","1m","30days","30day","onemonth","mo","mon","mthly","mth"].includes(v)) return true;
+  if (["quarterly","quarter","3months","3month","3m","90days","90day","threemonths","threemonth","3mo","qtrly","qtr","q"].includes(v)) return true;
+  if (["6months","6month","6m","sixmonths","sixmonth","halfyear","halfyearly","biannual","semiannual","180days","180day"].includes(v)) return true;
+  if (["annual","annually","yearly","year","1year","12months","12month","12m","365days","365day","oneyear","1yr","yr","yrs","twelvemonths","twelvemonth","pa","perannum"].includes(v)) return true;
+  const num = parseInt(v);
+  if (!isNaN(num)) return true;
+  return false;
 }
 
 export function normalizeGender(raw: string): string {

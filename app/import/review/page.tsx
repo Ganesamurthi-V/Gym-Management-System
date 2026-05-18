@@ -148,23 +148,49 @@ export default function ImportReviewPage() {
   }
 
   function updateArea(idx: number, value: string) {
-    setRows(prev => prev.map((r, i) =>
-      i === idx ? { ...r, area: value, _area_override: value, _review_done: false } : r
+    const targetOriginal = rows.find(r => r._idx === idx)?._original_area;
+    setRows(prev => prev.map((r) =>
+      r._original_area === targetOriginal
+        ? { ...r, area: value, _area_override: value, _review_done: false }
+        : r
     ));
   }
 
   function acceptRow(idx: number) {
-    setRows(prev => prev.map((r, i) =>
-      i === idx ? { ...r, _review_done: true, _area_confidence: Math.max(r._area_confidence ?? 0, 0.90) } : r
+    const targetOriginal = rows.find(r => r._idx === idx)?._original_area;
+    const targetVal = rows.find(r => r._idx === idx)?.area;
+    setRows(prev => prev.map((r) =>
+      r._original_area === targetOriginal
+        ? { ...r, area: targetVal ?? r.area, _area_override: targetVal ?? r._area_override, _review_done: true, _area_confidence: Math.max(r._area_confidence ?? 0, 0.90) }
+        : r
     ));
-    setSuggestions(p => ({ ...p, [idx]: [] }));
+    setSuggestions(p => {
+      const copy = { ...p };
+      rows.forEach(r => {
+        if (r._original_area === targetOriginal) {
+          delete copy[r._idx];
+        }
+      });
+      return copy;
+    });
   }
 
   function selectSuggestion(idx: number, name: string) {
-    setRows(prev => prev.map((r, i) =>
-      i === idx ? { ...r, area: name, _area_override: name, _area_confidence: 1.0, _area_matched_by: "manual", _review_done: true } : r
+    const targetOriginal = rows.find(r => r._idx === idx)?._original_area;
+    setRows(prev => prev.map((r) =>
+      r._original_area === targetOriginal
+        ? { ...r, area: name, _area_override: name, _area_confidence: 1.0, _area_matched_by: "manual", _review_done: true }
+        : r
     ));
-    setSuggestions(p => ({ ...p, [idx]: [] }));
+    setSuggestions(p => {
+      const copy = { ...p };
+      rows.forEach(r => {
+        if (r._original_area === targetOriginal) {
+          delete copy[r._idx];
+        }
+      });
+      return copy;
+    });
   }
 
   function toggleSaveAlias(idx: number) {

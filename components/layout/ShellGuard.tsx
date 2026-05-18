@@ -52,8 +52,8 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
         className={`
           hidden md:flex flex-col bg-white border-r border-slate-200
           fixed inset-y-0 left-0 z-30 overflow-hidden
-          transition-[width] duration-300 ease-in-out
-          ${collapsed ? 'w-14 cursor-pointer' : 'w-60 cursor-default'}
+          transition-[width] duration-300 ease-in-out group/sidebar
+          ${collapsed ? 'w-14 cursor-pointer hover:w-60' : 'w-60 cursor-default'}
         `}
       >
         {/* ── Logo row ── */}
@@ -67,7 +67,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
           <div className={`
             flex items-center flex-1 min-w-0 ml-3
             transition-all duration-200
-            ${collapsed ? 'opacity-0 w-0 ml-0 overflow-hidden' : 'opacity-100'}
+            ${collapsed ? 'opacity-0 w-0 ml-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto group-hover/sidebar:ml-3' : 'opacity-100'}
           `}>
             <span className="text-lg font-bold text-slate-900 tracking-tight flex-1 truncate whitespace-nowrap">
               GymFlow
@@ -87,7 +87,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
         <NavClient collapsed={collapsed} />
 
         {/* ── Add Member button ── */}
-        <div className={`flex-shrink-0 transition-all duration-200 ${collapsed ? 'px-2 pb-4' : 'px-3 pb-4'}`}>
+        <div className={`flex-shrink-0 transition-all duration-200 ${collapsed ? 'px-2 pb-4 group-hover/sidebar:px-3' : 'px-3 pb-4'}`}>
           <a
             href="/members/new"
             onClick={e => e.stopPropagation()}
@@ -104,7 +104,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
             </svg>
             <span className={`
               whitespace-nowrap overflow-hidden transition-all duration-200
-              ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}
+              ${collapsed ? 'w-0 opacity-0 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100' : 'w-auto opacity-100'}
             `}>
               Add Member
             </span>
@@ -114,12 +114,12 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
 
       {/* ── Main area ── */}
       <div className={`
-        flex flex-col min-h-screen
+        flex flex-col min-h-screen min-w-0
         transition-[padding] duration-300 ease-in-out
         ${collapsed ? 'md:pl-14' : 'md:pl-60'}
       `}>
         <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
-          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex items-center justify-between">
+          <div className="w-full px-4 md:px-6 flex items-center justify-between">
             <div className="flex items-center gap-2 md:hidden">
               <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
                 <DumbbellIcon className="w-3.5 h-3.5 text-white" />
@@ -131,7 +131,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
           </div>
         </header>
 
-        <main className="flex-1 w-full bg-slate-50">
+        <main className="flex-1 w-full bg-slate-50 min-w-0">
           <div className="p-4 md:p-6 pb-24 md:pb-8">
             {children}
           </div>

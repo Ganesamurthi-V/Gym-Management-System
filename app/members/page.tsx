@@ -24,7 +24,7 @@ export default async function MembersPage() {
   const { data: members } = await supabase
     .from('members')
     .select(`
-      id, gym_id, member_number, name, phone, gender, area, pending_amount, created_at,
+      id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at,
       memberships(
         id, plan, start_date, end_date, amount, payment_mode, created_at, member_id, gym_id
       )
@@ -34,11 +34,26 @@ export default async function MembersPage() {
     .limit(PAGE_SIZE)
 
   const result: MemberWithStatus[] = (members ?? []).map(m => {
-    const sorted = (m.memberships as any[] ?? [])
-      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    const latest = sorted[0] ?? null
-    const status = latest ? getMemberStatus(latest.end_date) : 'expired'
-    const days_remaining = latest ? getDaysRemaining(latest.end_date) : -999
+    const memberships = m.memberships as any[] ?? [];
+    
+    // Latest membership for status
+    const sortedByCreated = [...memberships].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const latest = sortedByCreated[0] ?? null;
+    
+    // Oldest membership for join date
+    const sortedByStartDate = [...memberships].sort((a, b) => {
+      const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+      const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
+      return dateA - dateB;
+    });
+    const oldest = sortedByStartDate[0] ?? null;
+    
+    // Fallback to created_at (date part) if no memberships
+    const join_date = oldest?.start_date?.substring(0, 10) || m.created_at?.substring(0, 10) || "";
+    
+    const status = latest ? getMemberStatus(latest.end_date) : 'expired';
+    const days_remaining = latest ? getDaysRemaining(latest.end_date) : -999;
+    
     return {
       id: m.id,
       gym_id: m.gym_id,
@@ -46,12 +61,14 @@ export default async function MembersPage() {
       name: m.name,
       phone: m.phone,
       gender: m.gender,
+      age: m.age,
       area: m.area,
       pending_amount: m.pending_amount,
       created_at: m.created_at,
       latest_membership: latest,
       status,
       days_remaining,
+      join_date,
     }
   }).sort((a, b) => {
     const order = { expiring: 0, active: 1, expired: 2 }

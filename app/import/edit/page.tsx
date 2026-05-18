@@ -292,6 +292,7 @@ export default function ImportEditPage() {
           member_id: memberId, gym_id: gym.id, plan: row.plan,
           start_date: row.start_date, end_date,
           amount: parseInt(row.amount) || 0, payment_mode: row.payment_mode,
+          created_at: row.start_date + "T00:00:00Z",
         };
       }).filter(Boolean) as any[];
 
@@ -535,20 +536,15 @@ export default function ImportEditPage() {
           onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
       </div>
 
-      {/* Fixed mirror scrollbar — follows user as they scroll down, always at bottom of viewport */}
       <div
         ref={mirrorRef}
-        className="fixed bottom-0 z-30 overflow-x-auto overflow-y-hidden h-3 bg-white/90 backdrop-blur-sm border-t border-slate-200"
-        style={{
-          left: sidebarCollapsed ? '3.5rem' : '15rem',
-          right: 0,
-        }}
+        className={`fixed bottom-0 z-30 overflow-x-auto overflow-y-hidden h-3 bg-white/90 backdrop-blur-sm border-t border-slate-200 left-0 right-0 ${sidebarCollapsed ? 'md:left-14' : 'md:left-60'}`}
       >
         <div style={{ height: 1 }} />
       </div>
 
-      <div className="card overflow-hidden">
-        <div ref={scrollRef} className="overflow-x-auto">
+      <div className="card overflow-hidden w-full max-w-full">
+        <div ref={scrollRef} className="overflow-x-auto" data-lenis-prevent>
           <div ref={tableInnerRef} className="pr-6 min-w-max">
           <table className="text-sm">
             <thead>

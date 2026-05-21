@@ -6,8 +6,8 @@ import './globals.css'
 const sora = Sora({ subsets: ['latin'], variable: '--font-sora' })
 
 export const metadata: Metadata = {
-  title: 'GymFlow — Gym Management',
-  description: 'Simple gym management for Indian gyms',
+  title: 'GymDesk — Gym Management',
+  description: 'A powerful, intelligent management system for modern fitness centers in Tamil Nadu and Puducherry.',
   icons: { icon: '/favicon.ico' },
 }
 

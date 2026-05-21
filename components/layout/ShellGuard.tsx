@@ -7,7 +7,7 @@ import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
 
 const SHELL_EXCLUDED = ['/auth/', '/onboarding']
-const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
+const SIDEBAR_KEY = 'GymDesk_sidebar_collapsed'
 
 function DumbbellIcon({ className }: { className?: string }) {
   return (
@@ -63,14 +63,14 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
             <DumbbellIcon className="w-4 h-4 text-white" />
           </div>
 
-          {/* GymFlow text + collapse arrow — only when expanded */}
+          {/* GymDesk text + collapse arrow — only when expanded */}
           <div className={`
             flex items-center flex-1 min-w-0 ml-3
             transition-all duration-200
             ${collapsed ? 'opacity-0 w-0 ml-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto group-hover/sidebar:ml-3' : 'opacity-100'}
           `}>
             <span className="text-lg font-bold text-slate-900 tracking-tight flex-1 truncate whitespace-nowrap">
-              GymFlow
+              GymDesk
             </span>
             {/* Arrow — only visible when expanded, click to collapse */}
             <button
@@ -124,7 +124,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
               <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
                 <DumbbellIcon className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-base font-bold text-slate-900">GymFlow</span>
+              <span className="text-base font-bold text-slate-900">GymDesk</span>
             </div>
             <div className="hidden md:block" />
             <AccountMenu />

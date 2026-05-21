@@ -53,12 +53,14 @@ export function isValidPhone(phone: string): boolean {
 }
 
 export function buildWhatsAppLink(phone: string, memberName: string, endDate: string): string {
-  const message = encodeURIComponent(
-    `Hi ${memberName}! 🏋️ Your gym membership expires on ${formatDate(endDate)}. Please renew to continue your fitness journey. Contact us to renew.`
-  )
+  const message = `Hi ${memberName}! 🏋️ Your gym membership expires on ${formatDate(endDate)}. Please renew to continue your fitness journey. Contact us to renew.`
+  return buildCustomWhatsAppLink(phone, message)
+}
+
+export function buildCustomWhatsAppLink(phone: string, message: string): string {
   const cleanPhone = phone.replace(/\D/g, '')
   const withCountryCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`
-  return `https://wa.me/${withCountryCode}?text=${message}`
+  return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`
 }
 
 export const PLAN_LABELS: Record<Plan, string> = {

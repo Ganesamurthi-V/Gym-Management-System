@@ -1,4 +1,4 @@
-# GymFlow — Gym Management SaaS
+# GymDesk — Gym Management SaaS
 
 > Know exactly who paid, who didn't, and who's about to expire — without using notebooks.
 
@@ -6,7 +6,7 @@
 
 ## What's Inside
 
-GymFlow is a full-stack gym management SaaS built for small to mid-size gyms in Tamil Nadu and Puducherry, India.
+GymDesk is a full-stack gym management SaaS built for small to mid-size gyms in Tamil Nadu and Puducherry, India.
 
 **Core modules:**
 - **Onboarding Wizard** — 6-step first-login setup (gym details, plans, metrics, operations, marketing, AI personalization)
@@ -25,7 +25,7 @@ GymFlow is a full-stack gym management SaaS built for small to mid-size gyms in 
 ## Project Structure
 
 ```
-gymflow/
+GymDesk/
 ├── app/
 │   ├── auth/login/           # Login page (no sidebar)
 │   ├── onboarding/           # First-login wizard (no sidebar)
@@ -119,7 +119,7 @@ WHERE onboarding_completed IS NULL OR onboarding_completed = FALSE;
 ### Step 4: Local Development
 
 ```bash
-cd gymflow
+cd GymDesk
 npm install
 cp .env.example .env.local
 # Fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY

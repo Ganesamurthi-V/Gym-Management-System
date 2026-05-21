@@ -19,6 +19,7 @@ import {
 import { runImportPipeline } from "@/lib/import/pipeline";
 import { useLenisScroll } from "@/lib/hooks/useLenisScroll";
 import { ArrowRight } from "lucide-react";
+import WizardHeader from "@/components/import/WizardHeader";
 
 export interface ImportedRow {
   name: string;
@@ -42,6 +43,7 @@ export interface ImportedRow {
   _id_conflict?: boolean;
   _id_missing?: boolean;
   _rawPlan?: string;
+  _original_area?: string;
 }
 
 const EXPECTED_COLUMNS = [
@@ -344,7 +346,7 @@ function levenshtein(a: string, b: string): number {
   );
   for (let i = 1; i <= m; i++)
     for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
   return dp[m][n];
 }
 
@@ -421,14 +423,12 @@ const STAGES = [
 ];
 
 export default function ImportPage() {
-  const [rows, setRows] = useState<ImportedRow[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<Record<string, string>>({});
   const [parsing, setParsing] = useState(false);
   const [parseStage, setParseStage] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const [unmappedPlans, setUnmappedPlans] = useState<string[]>([]);
   const [planMapping, setPlanMapping] = useState<Record<string, string>>({});
@@ -445,11 +445,16 @@ export default function ImportPage() {
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [tempFile, setTempFile] = useState<File | null>(null);
 
-  // Use Lenis smooth scroll on the preview box container
-  useLenisScroll(tableScrollRef, [rows]);
-
   const supabase = createClient();
   const router = useRouter();
+
+  function proceedWithRows(pipelineRows: ImportedRow[], hasIdCol: boolean) {
+    sessionStorage.setItem("import_rows", JSON.stringify(pipelineRows));
+    sessionStorage.setItem("import_rows_original", JSON.stringify(pipelineRows.map(r => ({ ...r }))));
+    sessionStorage.setItem("import_has_id_col", hasIdCol ? "1" : "0");
+    const needsReview = pipelineRows.some(r => r.area && ((r._area_confidence ?? 1) < 0.90 || r._area_matched_by === "unresolved"));
+    router.push(needsReview ? "/import/review" : "/import/edit");
+  }
 
   async function applyPlanMappingAndProceed() {
     if (!tempImportState) return;
@@ -471,13 +476,10 @@ export default function ImportPage() {
       onStage: stage => { if (stage === "areas") setParseStage(4); if (stage === "ids") setParseStage(5); },
     });
 
-    setRows(pipelineRows);
-    setDetectedColumns(tempImportState.detectedColumns);
-    setFileName(tempImportState.fileName);
-    setParseStage(5);
-    setParsing(false);
     setUnmappedPlans([]);
     setTempImportState(null);
+    setParsing(false);
+    proceedWithRows(pipelineRows, !!tempImportState.detectedColumns.member_number);
   }
 
   async function processFile(file: File, userMapping?: Record<string, string>) {
@@ -523,25 +525,25 @@ export default function ImportPage() {
     let headerRowIndex = 1;
     let maxDetectedFields = 0;
     let bestHeaders: string[] = [];
-    
+
     const scanLimit = Math.min(ws.rowCount, 50);
     for (let i = 1; i <= scanLimit; i++) {
       const row = ws.getRow(i);
       const rowHeaders: string[] = [];
       row.eachCell({ includeEmpty: true }, (cell: any) => rowHeaders.push(cellStr(cell.value)));
-      
+
       let detectedCount = 0;
       rowHeaders.forEach(h => {
         if (detectField(h)) detectedCount++;
       });
-      
+
       if (detectedCount > maxDetectedFields) {
         maxDetectedFields = detectedCount;
         headerRowIndex = i;
         bestHeaders = rowHeaders;
       }
     }
-    
+
     if (maxDetectedFields < 2) {
       headerRowIndex = 1;
       bestHeaders = [];
@@ -551,7 +553,7 @@ export default function ImportPage() {
     const headers = bestHeaders;
     let colMap: Record<string, number> = {};
     const summaryMapping: Record<string, string> = {};
-    
+
     if (userMapping) {
       for (const [header, field] of Object.entries(userMapping)) {
         if (field && field !== "ignore") {
@@ -563,7 +565,7 @@ export default function ImportPage() {
       setDetectedColumns(summaryMapping);
     } else {
       colMap = buildColumnMap(headers);
-      
+
       // Get samples from the row after the header
       const sampleRow = ws.getRow(headerRowIndex + 1);
       const samples: Record<string, string> = {};
@@ -578,7 +580,7 @@ export default function ImportPage() {
         const header = headers[idx - 1];
         if (header) initialMapping[header] = field;
       }
-      
+
       setColumnMapping(initialMapping);
       setFileHeaders(headers);
       setTempFile(file);
@@ -593,19 +595,19 @@ export default function ImportPage() {
     const unrecognizedSet = new Set<string>();
     ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
       if (rowIndex <= headerRowIndex) return;
-      const name         = getCol(row, colMap, "name");
-      const rawPhone     = getCol(row, colMap, "phone");
-      const phone        = rawPhone.replace(/\D/g, "").slice(-10);
-      const rawPlan      = getCol(row, colMap, "plan");
-      const plan         = normalizePlan(rawPlan || "monthly");
-      const rawDate      = getCol(row, colMap, "start_date");
-      const rawAmount    = getCol(row, colMap, "amount");
+      const name = getCol(row, colMap, "name");
+      const rawPhone = getCol(row, colMap, "phone");
+      const phone = rawPhone.replace(/\D/g, "").slice(-10);
+      const rawPlan = getCol(row, colMap, "plan");
+      const plan = normalizePlan(rawPlan || "monthly");
+      const rawDate = getCol(row, colMap, "start_date");
+      const rawAmount = getCol(row, colMap, "amount");
       const parsedAmount = parseInt(rawAmount.replace(/[^\d]/g, ""));
-      const amount       = (!rawAmount || isNaN(parsedAmount) || parsedAmount === 0) ? "0" : String(parsedAmount);
+      const amount = (!rawAmount || isNaN(parsedAmount) || parsedAmount === 0) ? "0" : String(parsedAmount);
       const payment_mode = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
-      const gender       = normalizeGender(getCol(row, colMap, "gender"));
-      const age          = normalizeAge(getCol(row, colMap, "age"));
-      const rawArea      = getCol(row, colMap, "area");
+      const gender = normalizeGender(getCol(row, colMap, "gender"));
+      const age = normalizeAge(getCol(row, colMap, "age"));
+      const rawArea = getCol(row, colMap, "area");
       const rawMemberNum = getCol(row, colMap, "member_number");
       const { number: member_number, original: legacy_member_id } = normalizeMemberNumber(rawMemberNum);
 
@@ -677,9 +679,8 @@ export default function ImportPage() {
       onStage: stage => { if (stage === "areas") setParseStage(4); if (stage === "ids") setParseStage(5); },
     });
 
-    setRows(pipelineRows);
-    setParseStage(5);
     setParsing(false);
+    proceedWithRows(pipelineRows, !!summaryMapping.member_number);
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -694,16 +695,7 @@ export default function ImportPage() {
     if (file) processFile(file);
   }
 
-  function handleProceedToEdit() {
-    sessionStorage.setItem("import_rows", JSON.stringify(rows));
-    sessionStorage.setItem("import_rows_original", JSON.stringify(rows.map(r => ({ ...r }))));
-    sessionStorage.setItem("import_has_id_col", detectedColumns.member_number ? "1" : "0");
-    const needsReview = rows.some(r => r.area && ((r._area_confidence ?? 1) < 0.90 || r._area_matched_by === "unresolved"));
-    router.push(needsReview ? "/import/review" : "/import/edit");
-  }
-
   function resetUpload() {
-    setRows([]);
     setDetectedColumns({});
     setFileName("");
     setParseStage(0);
@@ -713,51 +705,48 @@ export default function ImportPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  const validRows = rows.filter(r => r._status === "ok");
-  const errorRows = rows.filter(r => r._status !== "ok");
-  const areaRows  = rows.filter(r => r.area && (r._area_confidence ?? 1) < 0.90);
-  const autoIdRows = validRows.filter(r => r._id_auto);
-
   // ── PARSING STATE ─────────────────────────────────────────────────────────
   if (parsing) {
     return (
-      <div className="max-w-lg mx-auto mt-16 space-y-6">
-        <div className="text-center">
-          <div className="relative w-20 h-20 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-brand-100" />
-            <div className="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin" />
-            <FileSpreadsheet className="absolute inset-0 m-auto w-8 h-8 text-brand-500" />
+      <div className="max-w-2xl mx-auto mt-12 space-y-6">
+        <div className="card p-8 border border-slate-100 bg-white shadow-xl rounded-3xl space-y-6">
+          <div className="text-center">
+            <div className="relative w-20 h-20 mx-auto mb-4">
+              <div className="absolute inset-0 rounded-full border-4 border-brand-100" />
+              <div className="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin" />
+              <FileSpreadsheet className="absolute inset-0 m-auto w-8 h-8 text-brand-500" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900">Processing your file</h2>
+            <p className="text-sm text-slate-400 mt-1">{fileName}</p>
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Processing your file</h2>
-          <p className="text-sm text-slate-400 mt-1">{fileName}</p>
-        </div>
 
-        <div className="card p-6 space-y-3">
-          {STAGES.map(stage => {
-            const done    = parseStage > stage.id;
-            const active  = parseStage === stage.id;
-            const pending = parseStage < stage.id;
-            return (
-              <div key={stage.id} className={`flex items-center gap-4 p-3 rounded-xl transition-all ${active ? "bg-brand-50 border border-brand-200" : done ? "opacity-60" : "opacity-30"}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${done ? "bg-emerald-100" : active ? "bg-brand-100" : "bg-slate-100"}`}>
-                  {done ? <Check className="w-4 h-4 text-emerald-600" /> : active ? <div className="w-3 h-3 rounded-full bg-brand-500 animate-pulse" /> : <span className="text-slate-400 text-xs">{stage.id}</span>}
+          <div className="space-y-3">
+            {STAGES.map(stage => {
+              const done = parseStage > stage.id;
+              const active = parseStage === stage.id;
+              const pending = parseStage < stage.id;
+              return (
+                <div key={stage.id} className={`flex items-center gap-4 p-3.5 rounded-xl transition-all ${active ? "bg-brand-50 border border-brand-200" : done ? "opacity-60" : "opacity-30"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${done ? "bg-emerald-100" : active ? "bg-brand-100" : "bg-slate-100"}`}>
+                    {done ? <Check className="w-4 h-4 text-emerald-600" /> : active ? <div className="w-3 h-3 rounded-full bg-brand-500 animate-pulse" /> : <span className="text-slate-400 text-xs">{stage.id}</span>}
+                  </div>
+                  <span className={`text-sm font-semibold ${active ? "text-brand-700" : done ? "text-slate-500" : "text-slate-400"}`}>
+                    {stage.emoji} {stage.label}
+                    {active && (stage as any).note && (
+                      <span className="ml-2 text-xs font-normal text-brand-500 opacity-80">
+                        ({(stage as any).note})
+                      </span>
+                    )}
+                  </span>
+                  {active && <div className="ml-auto flex gap-1">{[0, 1, 2].map(i => <div key={i} className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce-dot" style={{ animationDelay: `${i * 0.2}s` }} />)}</div>}
                 </div>
-                <span className={`text-sm font-semibold ${active ? "text-brand-700" : done ? "text-slate-500" : "text-slate-400"}`}>
-                  {stage.emoji} {stage.label}
-                  {active && (stage as any).note && (
-                    <span className="ml-2 text-xs font-normal text-brand-500 opacity-80">
-                      ({(stage as any).note})
-                    </span>
-                  )}
-                </span>
-                {active && <div className="ml-auto flex gap-1">{[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce-dot" style={{ animationDelay: `${i * 0.2}s` }} />)}</div>}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full animate-progress-bar" />
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full animate-progress-bar" />
+          </div>
         </div>
       </div>
     );
@@ -766,42 +755,48 @@ export default function ImportPage() {
   // ── COLUMN MAPPING ────────────────────────────────────────────────────────
   if (showMapping && tempFile) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <WizardHeader currentStep={2} />
+
+        <Link href="/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
+          <ArrowLeft className="w-4 h-4" /> Back to Members
+        </Link>
+
+        <div className="text-center bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+          <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <Shuffle className="w-8 h-8 text-brand-500" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Map Columns</h2>
-          <p className="text-sm text-slate-500 mt-2">
-            We've auto-detected columns. Verify and map any leftover columns.
+          <h2 className="text-2xl font-bold text-slate-900">Map Columns</h2>
+          <p className="text-sm text-slate-500 mt-1 max-w-lg mx-auto">
+            We've auto-detected columns from your sheet. Review the mappings below and configure any unmatched columns before proceeding.
           </p>
         </div>
 
-        <div className="card p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {fileHeaders.map((header) => {
             const sample = fileSamples[header];
             const mappedField = columnMapping[header];
             const isMapped = mappedField && mappedField !== "ignore";
-            
+
             return (
-              <div key={header} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-xl transition-all ${isMapped ? "bg-brand-50/50 border-brand-200" : "bg-slate-50 border-slate-200"}`}>
+              <div key={header} className={`flex items-center justify-between gap-4 p-4 border rounded-2xl transition-all bg-white shadow-xs ${isMapped ? "border-brand-200 bg-brand-50/10" : "border-slate-200 bg-slate-50/40"}`}>
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                  <span className="text-sm font-bold text-slate-700 truncate">
+                  <span className="text-sm font-bold text-slate-800 truncate">
                     {header}
                   </span>
                   {sample && (
-                    <span className="text-xs text-slate-400 truncate">
+                    <span className="text-xs text-slate-400 truncate font-mono">
                       Sample: {sample}
                     </span>
                   )}
                 </div>
-                
-                <div className="flex items-center gap-3">
+
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-slate-400 font-bold hidden sm:inline">→</span>
                   <select
                     value={columnMapping[header] || ""}
                     onChange={(e) => setColumnMapping({ ...columnMapping, [header]: e.target.value })}
-                    className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-semibold w-full sm:w-auto min-w-[200px]"
+                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-bold min-w-[160px]"
                   >
                     <option value="">Don't import this field</option>
                     <optgroup label="Required Fields">
@@ -831,26 +826,28 @@ export default function ImportPage() {
           })}
         </div>
 
-        <button
-          onClick={() => {
-            const mappedDbFields = Object.values(columnMapping);
-            const missingRequired = EXPECTED_COLUMNS.filter(c => c.required && !mappedDbFields.includes(c.key));
-            
-            if (missingRequired.length > 0) {
-              alert(`Please map all required fields: ${missingRequired.map(c => c.label).join(", ")}`);
-              return;
-            }
-            
-            setShowMapping(false);
-            processFile(tempFile, columnMapping);
-          }}
-          className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full"
-        >
-          <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
-            Process File <ArrowRight className="w-4 h-4" />
-          </span>
-          <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-        </button>
+        <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-xs">
+          <button
+            onClick={() => {
+              const mappedDbFields = Object.values(columnMapping);
+              const missingRequired = EXPECTED_COLUMNS.filter(c => c.required && !mappedDbFields.includes(c.key));
+
+              if (missingRequired.length > 0) {
+                alert(`Please map all required fields: ${missingRequired.map(c => c.label).join(", ")}`);
+                return;
+              }
+
+              setShowMapping(false);
+              processFile(tempFile, columnMapping);
+            }}
+            className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
+          >
+            <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
+              Process File & Start Imports <ArrowRight className="w-4 h-4" />
+            </span>
+            <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+          </button>
+        </div>
       </div>
     );
   }
@@ -858,238 +855,117 @@ export default function ImportPage() {
   // ── UNMAPPED PLANS MAPPING ────────────────────────────────────────────────
   if (unmappedPlans.length > 0) {
     return (
-      <div className="max-w-xl mx-auto space-y-6">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Shuffle className="w-8 h-8 text-brand-500" />
+      <section className="max-w-7xl mx-auto space-y-6">
+        <WizardHeader currentStep={3} />
+        <Link href="/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors w-fit">
+          <ArrowLeft className="w-4 h-4" /> Back to Members
+        </Link>
+        <div className="text-center bg-white/30 backdrop-blur-lg border border-slate-200 rounded-2xl p-6 shadow-xl">
+          <div className="w-16 h-16 bg-royal-50 border border-royal-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Shuffle className="w-8 h-8 text-royal-500" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Map Unrecognized Memberships</h2>
-          <p className="text-sm text-slate-500 mt-2">
-            We detected plans in your Excel file that don't match our database plans. Map them to correct durations.
+          <h2 className="text-2xl font-bold text-slate-900">Map Unrecognized Memberships</h2>
+          <p className="text-sm text-slate-500 mt-1 max-w-lg mx-auto">
+            We detected plans in your Excel file that don't match our database plans. Map them to correct durations below.
           </p>
         </div>
-
-        <div className="card p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {unmappedPlans.map((rawPlan) => (
-            <div key={rawPlan} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-sm font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm text-center sm:text-left w-full sm:w-auto">
+            <div key={rawPlan} className="flex items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+              <span className="text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shadow-inner truncate max-w-[200px]">
                 {rawPlan}
               </span>
-              <span className="text-slate-400 font-bold hidden sm:inline">→</span>
-              <select
-                value={planMapping[rawPlan] || "monthly"}
-                onChange={(e) => setPlanMapping({ ...planMapping, [rawPlan]: e.target.value })}
-                className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-semibold w-full sm:w-auto"
-              >
-                <option value="monthly">Monthly (1 Month)</option>
-                <option value="quarterly">Quarterly (3 Months)</option>
-                <option value="annual">Annual (1 Year)</option>
-              </select>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={applyPlanMappingAndProceed}
-          className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full"
-        >
-          <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
-            Confirm & Proceed <ArrowRight className="w-4 h-4" />
-          </span>
-          <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-        </button>
-      </div>
-    );
-  }
-
-  // ── AFTER UPLOAD ──────────────────────────────────────────────────────────
-  if (rows.length > 0) {
-    return (
-      <div className="max-w-5xl mx-auto space-y-4 pb-6">
-
-        {/* ── Top bar ── */}
-        <div className="flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
-              <ArrowLeft className="w-4 h-4" />Members
-            </Link>
-            <span className="text-slate-300">/</span>
-            <h1 className="text-xl font-bold text-slate-900">Import Members</h1>
-          </div>
-          <button onClick={resetUpload} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded-xl px-3 py-1.5 hover:bg-slate-50 transition-all">
-            <RefreshCw className="w-3.5 h-3.5" />Upload different file
-          </button>
-        </div>
-
-        {/* ── File banner ── */}
-        <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
-          <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-emerald-800 truncate">{fileName}</p>
-            <p className="text-xs text-emerald-600">{rows.length} rows detected</p>
-          </div>
-          <span className="text-xs font-bold bg-emerald-600 text-white px-2.5 py-1 rounded-full">Processed</span>
-        </div>
-
-        {/* ── Stats row ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Ready",          value: validRows.filter(r => !r._error).length, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
-            { label: "ID Auto-assigned", value: autoIdRows.length,                    color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-200"   },
-            { label: "Will be skipped",  value: errorRows.length,                     color: "text-red-600",     bg: "bg-red-50",     border: "border-red-200"     },
-            { label: "Areas need review",value: areaRows.length,                      color: "text-orange-600",  bg: "bg-orange-50",  border: "border-orange-200"  },
-          ].map(s => (
-            <div key={s.label} className={`card p-4 text-center border ${s.border} ${s.bg}`}>
-              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-slate-500 mt-0.5 leading-tight">{s.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Detected columns ── */}
-        <div className="card p-3">
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(FIELD_LABELS).map(([field, label]) => (
-              <div key={field} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${detectedColumns[field] ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-400 border-slate-200"}`}>
-                {detectedColumns[field] ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                {label}
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-bold hidden sm:inline">→</span>
+                <select
+                  value={planMapping[rawPlan] || "monthly"}
+                  onChange={(e) => setPlanMapping({ ...planMapping, [rawPlan]: e.target.value })}
+                  className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-bold min-w-[180px]"
+                >
+                  <option value="monthly">Monthly (1 Month)</option>
+                  <option value="quarterly">Quarterly (3 Months)</option>
+                  <option value="annual">Annual (1 Year)</option>
+                </select>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
-        {/* ── Preview table — fixed height, independently scrollable ── */}
-        <div className="card">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-2xl">
-            <p className="text-sm font-bold text-slate-700">Preview — {rows.length} rows</p>
-            <p className="text-xs text-slate-400">Scroll to see all</p>
-          </div>
-          {/* Scrollable container — data-lenis-prevent tells root Lenis to hand off wheel events here */}
-          <div
-            ref={tableScrollRef}
-            data-lenis-prevent
-            className="overflow-y-auto overflow-x-auto no-scrollbar rounded-b-2xl"
-            style={{ maxHeight: 'min(380px, 55vh)', WebkitOverflowScrolling: 'touch' }}
+        <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-xs">
+          <button
+            onClick={applyPlanMappingAndProceed}
+            className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
           >
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-100 border-b border-slate-200">
-                  {["", "#", "Name", "Phone", "Plan", "Age", "Area ✦", "Amount"].map(h => (
-                    <th key={h} className="text-left px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((row, i) => (
-                  <tr key={i} className={row._status !== "ok" ? "bg-red-50/60" : row._error ? "bg-amber-50/60" : "hover:bg-slate-50"}>
-                    <td className="px-4 py-2.5">
-                      {row._status !== "ok" ? <AlertTriangle className="w-4 h-4 text-red-500" /> : row._error ? <AlertTriangle className="w-4 h-4 text-amber-500" /> : <Check className="w-4 h-4 text-emerald-500" />}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-400 font-mono text-xs whitespace-nowrap">{row.member_number ? `GF${row.member_number.padStart(4, '0')}` : "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <p className="font-medium text-slate-900 whitespace-nowrap">{row.name || <span className="text-slate-400">(no name)</span>}</p>
-                      {row._error && <p className={`text-xs mt-0.5 ${row._status !== "ok" ? "text-red-500" : "text-amber-600"}`}>{row._error}</p>}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{row.phone || "—"}</td>
-                    <td className="px-4 py-2.5 text-slate-500 capitalize whitespace-nowrap">{row.plan}</td>
-                    <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{row.age || "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        {row.area ? (
-                          <>
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${(row._area_confidence ?? 0) >= 0.90 ? "bg-emerald-500" : (row._area_confidence ?? 0) >= 0.70 ? "bg-amber-400" : row._area_matched_by === "unresolved" ? "bg-red-400" : "bg-slate-300"}`} />
-                            <span className="text-slate-500 text-xs whitespace-nowrap">{row.area}</span>
-                          </>
-                        ) : <span className="text-slate-300">—</span>}
-                    </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">₹{row.amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* ── Continue button ── */}
-        {validRows.length > 0 && (
-          <button onClick={handleProceedToEdit} className="btn-primary group relative overflow-hidden">
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              <Zap className="w-4 h-4" />
-              {areaRows.length > 0 ? `Review ${areaRows.length} Areas & Continue →` : `Edit & Review ${validRows.length} Members →`}
+            <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
+              Confirm & Proceed <ArrowRight className="w-4 h-4" />
             </span>
             <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
           </button>
-        )}
-      </div>
+        </div>
+      </section>
     );
   }
 
   // ── UPLOAD STATE (default) ────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
-          <ArrowLeft className="w-4 h-4" />Members
-        </Link>
-        <span className="text-slate-300">/</span>
-        <h1 className="text-xl font-bold text-slate-900">Import Members</h1>
-      </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Wizard Header */}
+      <WizardHeader currentStep={1} />
 
-      {/* Mode selector */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="card p-4 border-2 border-brand-400 bg-brand-50/40">
-          <div className="flex items-center gap-2 mb-1">
-            <Upload className="w-4 h-4 text-brand-600" />
-            <span className="text-sm font-bold text-brand-700">Auto Import</span>
-            <span className="text-xs bg-brand-500 text-white px-2 py-0.5 rounded-full font-semibold">Active</span>
-          </div>
-          <p className="text-xs text-slate-500">Columns are auto-detected using smart fuzzy matching</p>
+      {/* Back link */}
+      <Link href="/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
+        <ArrowLeft className="w-4 h-4" /> Back to Members
+      </Link>
+
+      {/* Info Banner Container mirroring image */}
+      <div className="bg-brand-50/40 border border-brand-100/80 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2.5 text-brand-800">
+          <Upload className="w-5 h-5" />
+          <h3 className="text-sm font-extrabold tracking-tight">Upload Your Members File</h3>
         </div>
-        <Link href="/import/manual" className="card p-4 hover:border-slate-300 hover:bg-slate-50 transition-all">
-          <div className="flex items-center gap-2 mb-1">
-            <Shuffle className="w-4 h-4 text-slate-500" />
-            <span className="text-sm font-bold text-slate-700">Manual Mapping</span>
-          </div>
-          <p className="text-xs text-slate-500">Drag and drop to manually map columns to fields</p>
-        </Link>
+        <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+          We support CSV and Excel files. Your data is processed securely and never leaves your browser until you confirm the import.
+        </p>
+        <div className="pt-2 border-t border-brand-100/50">
+          <p className="text-xs font-bold text-brand-900 mb-2">Your file should include:</p>
+          <ul className="space-y-1.5 text-xs text-slate-600 font-semibold">
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-brand-500 rounded-full" />
+              <span><strong className="text-brand-700">Required:</strong> Name, Phone, Plan Name, Start Date</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-brand-500 rounded-full" />
+              <span><strong className="text-slate-700">Optional:</strong> Email, DOB, Gender, Address, Emergency Contact, Fees, etc.</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-brand-500 rounded-full" />
+              <span><strong className="text-slate-700">Format:</strong> First row should contain column headers</span>
+            </li>
+          </ul>
+        </div>
       </div>
 
-      {/* Drop zone */}
+      {/* Drag & Drop Upload Zone */}
       <label
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`flex flex-col items-center gap-4 py-16 px-8 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
-          isDragging ? "border-brand-500 bg-brand-50 scale-[1.01]" : "border-slate-200 hover:border-brand-400 hover:bg-brand-50/30"
+        className={`flex flex-col items-center justify-center gap-6 py-20 px-8 border-2 border-dashed rounded-3xl cursor-pointer transition-all bg-white min-h-[380px] shadow-sm ${
+          isDragging ? "border-brand-500 bg-brand-50/30 scale-[1.01] shadow-lg shadow-brand-500/5" : "border-slate-200 hover:border-brand-400 hover:bg-brand-50/5"
         }`}
       >
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${isDragging ? "bg-brand-100" : "bg-slate-100"}`}>
-          <FileSpreadsheet className={`w-8 h-8 transition-colors ${isDragging ? "text-brand-600" : "text-slate-400"}`} />
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-md ${isDragging ? "bg-brand-100 text-brand-600 shadow-brand-200 animate-pulse" : "bg-brand-500 text-white shadow-brand-500/20 shadow-lg"}`}>
+          <Upload className="w-6 h-6" />
         </div>
-        <div className="text-center">
-          <p className="text-lg font-bold text-slate-800">{isDragging ? "Drop it here!" : "Drop your file here"}</p>
-          <p className="text-sm text-slate-400 mt-1">or <span className="text-brand-600 font-semibold">click to browse</span></p>
-          <p className="text-xs text-slate-400 mt-2">CSV, XLS, XLSX — up to 10MB — up to 50,000 rows</p>
+        <div className="text-center space-y-1.5">
+          <p className="text-lg font-extrabold text-slate-800 tracking-tight">{isDragging ? "Drop the file here!" : "Drag & Drop your file here"}</p>
+          <p className="text-xs text-slate-400 font-semibold">or <span className="text-brand-600 font-bold hover:underline">click to browse computer</span></p>
+        </div>
+        <div className="border-t border-slate-100 pt-4 w-full max-w-xs text-center">
+          <p className="text-[11px] text-slate-400 font-semibold">Supports CSV, XLS, XLSX formats &bull; Up to 10MB</p>
         </div>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
       </label>
-
-      {/* What we detect */}
-      <div className="card p-5">
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Fields we auto-detect</p>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(FIELD_LABELS).map(([, label]) => (
-            <span key={label} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-              {label}
-            </span>
-          ))}
-        </div>
-        <p className="text-xs text-slate-400 mt-3">Any header name works — we match using smart fuzzy detection with 40+ aliases per field.</p>
-      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ interface AttendanceMember {
   id: string
   name: string
   phone: string
+  member_number: number
   present: boolean
 }
 
@@ -23,6 +24,7 @@ interface Props {
 export function AttendanceClient({ members: initialMembers, gymId, today, totalPresent: initialPresent }: Props) {
   const [members, setMembers] = useState(initialMembers)
   const [search, setSearch] = useState('')
+  const [idSearch, setIdSearch] = useState('')
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
   const supabase = createClient()
@@ -45,9 +47,14 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
     setLoadingIds(prev => { const s = new Set(prev); s.delete(memberId); return s })
   }
 
-  const filtered = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
-  )
+  const filtered = members.filter(m => {
+    if (idSearch && !String(m.member_number).includes(idSearch.trim())) return false
+    if (search) {
+      const q = search.toLowerCase()
+      if (!m.name.toLowerCase().includes(q) && !m.phone.includes(q)) return false
+    }
+    return true
+  })
 
   return (
     <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
@@ -80,12 +87,21 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input type="search" placeholder="Search member..."
-          value={search} onChange={(e) => setSearch(e.target.value)}
-          className="input-field pl-9"
-        />
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="search" placeholder="Search member by name or phone..."
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            className="input-field pl-9"
+          />
+        </div>
+        <div className="relative sm:w-40">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">#</span>
+          <input type="search" placeholder="Member ID"
+            value={idSearch} onChange={(e) => setIdSearch(e.target.value)}
+            className="input-field pl-7"
+          />
+        </div>
       </div>
 
       {/* Members grid — 1 col mobile, 2 col tablet, 3 col desktop */}
@@ -106,7 +122,10 @@ export function AttendanceClient({ members: initialMembers, gymId, today, totalP
                 : <Circle className="w-6 h-6 text-slate-200 flex-shrink-0" />
               }
               <div className="flex-1 min-w-0">
-                <p className={cn('font-semibold truncate text-sm', member.present ? 'text-emerald-800' : 'text-slate-900')}>{member.name}</p>
+                <div className="flex items-center justify-between gap-1.5">
+                  <p className={cn('font-semibold truncate text-sm', member.present ? 'text-emerald-800' : 'text-slate-900')}>{member.name}</p>
+                  <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">#{member.member_number}</span>
+                </div>
                 <p className={cn('text-xs mt-0.5', member.present ? 'text-emerald-600 font-medium' : 'text-slate-400')}>
                   {member.present ? '✓ Present' : 'Tap to mark'}
                 </p>

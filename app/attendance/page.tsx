@@ -25,6 +25,7 @@ export default async function AttendancePage() {
       id,
       name,
       phone,
+      member_number,
       memberships(
         end_date
       )
@@ -49,7 +50,14 @@ export default async function AttendancePage() {
       ''
     )
     const status = latestEndDate ? getMemberStatus(latestEndDate) : 'expired'
-    return { id: m.id, name: m.name, phone: m.phone, present: presentSet.has(m.id), status }
+    return {
+      id: m.id,
+      name: m.name,
+      phone: m.phone,
+      member_number: m.member_number,
+      present: presentSet.has(m.id),
+      status
+    }
   }).filter(m => m.status !== 'expired')
 
   return (

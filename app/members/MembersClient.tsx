@@ -239,40 +239,47 @@ export function MembersClient({ members, gymId }: Props) {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
-          <div className="w-9 h-9 bg-brand-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Users className="w-4 h-4 text-brand-600" />
+        {/* Total Members */}
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#3B82F6]" style={{ backgroundColor: '#EFF6FF' }}>
+          <div className="w-9 h-9 bg-[#DBEAFE] rounded-xl flex items-center justify-center flex-shrink-0">
+            <Users className="w-4 h-4 text-[#2563EB]" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Total Members</p>
-            <p className="text-lg font-bold text-slate-900">{counts.all}</p>
+            <p className="text-xs text-[#475569] font-semibold">Total Members</p>
+            <p className="text-lg font-bold text-[#1D4ED8]">{counts.all}</p>
           </div>
         </div>
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
-          <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Check className="w-4 h-4 text-emerald-600" />
+
+        {/* Active Members */}
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#22C55E]" style={{ backgroundColor: '#F0FDF4' }}>
+          <div className="w-9 h-9 bg-[#DCFCE7] rounded-xl flex items-center justify-center flex-shrink-0">
+            <Check className="w-4 h-4 text-[#16A34A]" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Active</p>
-            <p className="text-lg font-bold text-emerald-600">{counts.active}</p>
+            <p className="text-xs text-[#475569] font-semibold">Active</p>
+            <p className="text-lg font-bold text-[#15803D]">{counts.active}</p>
           </div>
         </div>
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
-          <div className="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <X className="w-4 h-4 text-red-600" />
+
+        {/* Expired Members */}
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#EF4444]" style={{ backgroundColor: '#FEF2F2' }}>
+          <div className="w-9 h-9 bg-[#FEE2E2] rounded-xl flex items-center justify-center flex-shrink-0">
+            <X className="w-4 h-4 text-[#DC2626]" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Expired</p>
-            <p className="text-lg font-bold text-red-600">{counts.expired}</p>
+            <p className="text-xs text-[#475569] font-semibold">Expired</p>
+            <p className="text-lg font-bold text-[#B91C1C]">{counts.expired}</p>
           </div>
         </div>
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow">
-          <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
+
+        {/* Overdue Dues */}
+        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#F97316]" style={{ backgroundColor: '#FFF7ED' }}>
+          <div className="w-9 h-9 bg-[#FFEDD5] rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-4 h-4 text-[#EA580C]" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Overdue Dues</p>
-            <p className="text-lg font-bold text-amber-600">{counts.overdue}</p>
+            <p className="text-xs text-[#475569] font-semibold">Overdue Dues</p>
+            <p className="text-lg font-bold text-[#C2410C]">{counts.overdue}</p>
           </div>
         </div>
       </div>

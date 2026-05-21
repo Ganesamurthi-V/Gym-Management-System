@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, Fragment, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import WizardHeader from "@/components/import/WizardHeader";
 import {
   ArrowLeft, Check, AlertTriangle, MapPin, Search,
   Cpu, Zap, RefreshCw, Save, ChevronDown, ChevronUp,
@@ -287,6 +288,7 @@ export default function ImportReviewPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
+      <WizardHeader currentStep={4} />
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
@@ -294,7 +296,7 @@ export default function ImportReviewPage() {
         </Link>
         <span className="text-slate-300">/</span>
         <h1 className="text-xl font-bold text-slate-900">Review Areas</h1>
-        <span className="text-xs text-slate-400">Step 2 of 3</span>
+        <span className="text-xs text-slate-400">Step 4 of 8</span>
         {/* Save & Continue button duplicated at top for quick access */}
         <div className="ml-auto flex items-center gap-3">
           {saveMsg && (

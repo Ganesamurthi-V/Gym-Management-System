@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dumbbell, Building2, CreditCard, BarChart2, Settings, Megaphone, Sparkles,
   ChevronRight, ChevronLeft, Check, Plus, Trash2, X, Clock, Users, TrendingUp, Zap
 } from 'lucide-react'
+import usePlacesAutocomplete from 'use-places-autocomplete'
+import { useLenisScroll } from '@/lib/hooks/useLenisScroll'
 
 // --- Types --------------------------------------------------------------------
 
@@ -45,6 +47,9 @@ interface OperationsData {
   attendanceMethod: string
   existingSoftware: string
   wantsToImportData: boolean
+  hasSplitShift?: boolean
+  openTime2?: string
+  closeTime2?: string
 }
 
 interface MarketingData {
@@ -73,7 +78,7 @@ interface OnboardingData {
 
 // --- Constants ----------------------------------------------------------------
 
-const STORAGE_KEY = 'gymflow_onboarding'
+const STORAGE_KEY = 'GymDesk_onboarding'
 
 const DEFAULT_PLANS: MembershipPlan[] = [
   { planName: 'Monthly', duration: 'monthly', price: 1500, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
@@ -102,11 +107,14 @@ const DEFAULT_DATA: OnboardingData = {
   },
   operations: {
     openTime: '06:00',
-    closeTime: '22:00',
+    closeTime: '12:00',
     workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     attendanceMethod: 'Manual',
     existingSoftware: '',
     wantsToImportData: false,
+    hasSplitShift: false,
+    openTime2: '16:00',
+    closeTime2: '21:00',
   },
   marketing: {
     leadSources: [],
@@ -157,6 +165,9 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useLenisScroll(scrollRef, [currentStep])
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -304,177 +315,226 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col overflow-hidden">
-      {/* -- Header -- */}
-      <div className="bg-gradient-to-r from-brand-500 to-brand-600 px-4 pt-safe-top flex-shrink-0">
-        <div className="max-w-2xl mx-auto">
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col md:flex-row overflow-hidden">
+      {/* -- Left Sidebar (Desktop Only) -- */}
+      <div className="hidden md:flex md:w-80 lg:w-96 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex-col justify-between p-6 border-r border-slate-800 flex-shrink-0">
+        <div className="space-y-8">
           {/* Logo row */}
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
-                <Dumbbell className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-white font-bold text-lg">GymFlow</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-brand-500/20 rounded-xl flex items-center justify-center border border-brand-500/30">
+              <Dumbbell className="w-5 h-5 text-brand-400" />
             </div>
-            <span className="text-brand-100 text-sm font-medium">
-              Step {currentStep + 1} of 6
-            </span>
+            <span className="text-white font-bold text-xl tracking-tight">GymDesk</span>
           </div>
 
-          {/* Progress bar */}
-          <div className="pb-4">
-            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-
-            {/* Step dots */}
-            <div className="flex justify-between mt-3 px-0.5">
+          {/* Stepper container */}
+          <div className="space-y-6">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Onboarding Progress</h3>
+            <div className="space-y-4">
               {STEPS.map((s, i) => {
                 const Icon = s.icon
                 const done = i < currentStep
                 const active = i === currentStep
                 return (
-                  <div key={i} className="flex flex-col items-center gap-1">
+                  <button
+                    key={i}
+                    onClick={() => i <= currentStep && navigate(i)}
+                    disabled={i > currentStep}
+                    className={`w-full flex items-center gap-3.5 text-left p-2.5 rounded-xl transition-all ${
+                      active
+                        ? 'bg-white/10 text-white border border-white/10 shadow-xs'
+                        : done
+                        ? 'text-emerald-400 hover:bg-white/5 cursor-pointer'
+                        : 'text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
                     <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                         done
-                          ? 'bg-white'
+                          ? 'bg-emerald-500/20 border border-emerald-500/30'
                           : active
-                          ? 'bg-white/30 ring-2 ring-white'
-                          : 'bg-white/10'
+                          ? 'bg-brand-500 text-white shadow-xs shadow-brand-500/30'
+                          : 'bg-slate-800 text-slate-600'
                       }`}
                     >
                       {done ? (
-                        <Check className="w-3.5 h-3.5 text-brand-600" />
+                        <Check className="w-4 h-4 text-emerald-400" />
                       ) : (
-                        <Icon className={`w-3.5 h-3.5 ${active ? 'text-white' : 'text-white/50'}`} />
+                        <Icon className="w-4 h-4" />
                       )}
                     </div>
-                    <span className={`text-[10px] font-medium hidden sm:block ${active ? 'text-white' : 'text-white/50'}`}>
-                      {s.title.split(' ')[0]}
-                    </span>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-xs font-bold ${active ? 'text-white' : done ? 'text-slate-300' : 'text-slate-500'}`}>
+                        {s.title}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">{s.subtitle}</p>
+                    </div>
+                  </button>
                 )
               })}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* -- Step content -- */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-6">
-          {/* Step header */}
-          <div
-            className={`mb-6 transition-all duration-200 ${
-              animating
-                ? direction === 'forward'
-                  ? 'opacity-0 translate-x-4'
-                  : 'opacity-0 -translate-x-4'
-                : 'opacity-100 translate-x-0'
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center">
-                <StepIcon className="w-5 h-5 text-brand-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">{step.title}</h1>
-                <p className="text-sm text-slate-500">{step.subtitle}</p>
-              </div>
-              {!step.required && (
-                <span className="ml-auto text-xs bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-medium">
-                  Optional
-                </span>
-              )}
-            </div>
+        {/* Tip panel / Footer */}
+        <div className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl">
+          <div className="flex items-center gap-2 mb-2 text-brand-400">
+            <Sparkles className="w-4 h-4 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-wider">Quick Setup Tip</span>
           </div>
-
-          {/* Step form */}
-          <div
-            className={`transition-all duration-200 ${
-              animating
-                ? direction === 'forward'
-                  ? 'opacity-0 translate-x-4'
-                  : 'opacity-0 -translate-x-4'
-                : 'opacity-100 translate-x-0'
-            }`}
-          >
-            {currentStep === 0 && (
-              <StepGymDetails data={data.gymDetails} onChange={updateGymDetails} />
-            )}
-            {currentStep === 1 && (
-              <StepMembershipPlans plans={data.plans} onUpdate={updatePlan} onAdd={addPlan} onRemove={removePlan} />
-            )}
-            {currentStep === 2 && (
-              <StepBusinessMetrics data={data.metrics} onChange={updateMetrics} />
-            )}
-            {currentStep === 3 && (
-              <StepOperations data={data.operations} onChange={updateOperations} />
-            )}
-            {currentStep === 4 && (
-              <StepMarketing data={data.marketing} onChange={updateMarketing} />
-            )}
-            {currentStep === 5 && (
-              <StepAIPersonalization data={data.aiPersonalization} onChange={updateAI} />
-            )}
-          </div>
-
-          {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2">
-              <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              {error}
-            </div>
-          )}
+          <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
+            {currentStep === 0 && "Fill in your basic gym info. This helps us customize default membership packages and tax records."}
+            {currentStep === 1 && "Define plans you sell to members. You can customize discounts, admission/joining charges, and freeze options."}
+            {currentStep === 2 && "Enter your current monthly indicators to initialize your operational dashboard metrics and forecasts."}
+            {currentStep === 3 && "Configure daily operating times. This controls automated booking schedules and check-in window logic."}
+            {currentStep === 4 && "Configure lead generation fields. These details initialize automated WhatsApp & payment reminder schedules."}
+            {currentStep === 5 && "Identify key optimization issues to let our AI personalize your dashboard action list recommendations."}
+          </p>
         </div>
       </div>
 
-      {/* -- Navigation -- */}
-      <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 py-4 pb-safe-bottom">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          {currentStep > 0 ? (
-            <button onClick={handleBack} className="btn-secondary w-auto px-5">
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </button>
-          ) : (
-            <div className="w-auto px-5" />
-          )}
+      {/* -- Right Workspace -- */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* -- Mobile Header (Hidden on Desktop) -- */}
+        <div className="md:hidden bg-gradient-to-r from-brand-500 to-brand-600 px-4 pt-safe-top flex-shrink-0">
+          <div className="max-w-2xl mx-auto">
+            {/* Logo row */}
+            <div className="flex items-center justify-between h-14">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Dumbbell className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-white font-bold text-lg">GymDesk</span>
+              </div>
+              <span className="text-brand-100 text-sm font-medium">
+                Step {currentStep + 1} of 6
+              </span>
+            </div>
 
-          <div className="flex-1 flex gap-3">
-            {!step.required && currentStep < 5 && (
-              <button onClick={handleSkip} className="btn-secondary">
-                Skip
-              </button>
+            {/* Progress bar */}
+            <div className="pb-4">
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* -- Content Workspace -- */}
+        <div ref={scrollRef} className="flex-1 overflow-hidden bg-slate-50/50">
+          <div className="max-w-3xl mx-auto px-4 py-8 lg:py-12">
+            {/* Step header */}
+            <div
+              className={`mb-6 transition-all duration-200 ${
+                animating
+                  ? direction === 'forward'
+                    ? 'opacity-0 translate-x-4'
+                    : 'opacity-0 -translate-x-4'
+                  : 'opacity-100 translate-x-0'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center">
+                  <StepIcon className="w-5 h-5 text-brand-600" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-900">{step.title}</h1>
+                  <p className="text-sm text-slate-500">{step.subtitle}</p>
+                </div>
+                {!step.required && (
+                  <span className="ml-auto text-xs bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-medium">
+                    Optional
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Step form */}
+            <div
+              className={`transition-all duration-200 ${
+                animating
+                  ? direction === 'forward'
+                    ? 'opacity-0 translate-x-4'
+                    : 'opacity-0 -translate-x-4'
+                  : 'opacity-100 translate-x-0'
+              }`}
+            >
+              {currentStep === 0 && (
+                <StepGymDetails data={data.gymDetails} onChange={updateGymDetails} />
+              )}
+              {currentStep === 1 && (
+                <StepMembershipPlans plans={data.plans} onUpdate={updatePlan} onAdd={addPlan} onRemove={removePlan} />
+              )}
+              {currentStep === 2 && (
+                <StepBusinessMetrics data={data.metrics} onChange={updateMetrics} />
+              )}
+              {currentStep === 3 && (
+                <StepOperations data={data.operations} onChange={updateOperations} />
+              )}
+              {currentStep === 4 && (
+                <StepMarketing data={data.marketing} onChange={updateMarketing} />
+              )}
+              {currentStep === 5 && (
+                <StepAIPersonalization data={data.aiPersonalization} onChange={updateAI} />
+              )}
+            </div>
+
+            {error && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2">
+                <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                {error}
+              </div>
             )}
+          </div>
+        </div>
 
-            {currentStep < 5 ? (
-              <button onClick={handleNext} className="btn-primary">
-                Next
-                <ChevronRight className="w-4 h-4" />
+        {/* -- Navigation -- */}
+        <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 py-4 pb-safe-bottom">
+          <div className="max-w-3xl mx-auto flex items-center gap-3">
+            {currentStep > 0 ? (
+              <button onClick={handleBack} className="btn-secondary w-auto px-5">
+                <ChevronLeft className="w-4 h-4" />
+                Back
               </button>
             ) : (
-              <button
-                onClick={handleComplete}
-                disabled={submitting}
-                className="btn-primary"
-              >
-                {submitting ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4" />
-                    Complete Setup
-                  </>
-                )}
-              </button>
+              <div className="w-auto px-5" />
             )}
+
+            <div className="flex-1 flex gap-3">
+              {!step.required && currentStep < 5 && (
+                <button onClick={handleSkip} className="btn-secondary">
+                  Skip
+                </button>
+              )}
+
+              {currentStep < 5 ? (
+                <button onClick={handleNext} className="btn-primary">
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleComplete}
+                  disabled={submitting}
+                  className="btn-primary"
+                >
+                  {submitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      Complete Setup
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -542,12 +602,9 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">City</label>
-            <input
-              type="text"
+            <CityAutocomplete
               value={data.city}
-              onChange={e => onChange({ city: e.target.value })}
-              className="input-field"
-              placeholder="e.g. Chennai"
+              onChange={(val) => onChange({ city: val })}
             />
           </div>
           <div>
@@ -580,6 +637,90 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
           />
         </div>
       </div>
+    </div>
+  )
+}
+
+function CityAutocomplete({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    if ((window as any).google?.maps?.places) {
+      setIsLoaded(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}&libraries=places`
+    script.async = true
+    script.defer = true
+    script.onload = () => setIsLoaded(true)
+    document.head.appendChild(script)
+  }, [])
+
+  if (!isLoaded) {
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="input-field"
+        placeholder="e.g. Chennai"
+      />
+    )
+  }
+
+  return <CityAutocompleteInner value={value} onChange={onChange} />
+}
+
+function CityAutocompleteInner({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const {
+    ready,
+    value: inputValue,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: {
+      types: ['(cities)'],
+    },
+    defaultValue: value,
+    debounce: 300,
+  })
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value)
+    onChange(e.target.value)
+  }
+
+  const handleSelect = (description: string) => () => {
+    setValue(description, false)
+    clearSuggestions()
+    onChange(description)
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={inputValue}
+        onChange={handleInput}
+        disabled={!ready}
+        className="input-field"
+        placeholder="e.g. Chennai"
+      />
+      {status === 'OK' && (
+        <ul className="absolute z-10 w-full bg-white mt-1 rounded-xl shadow-lg border border-slate-200 overflow-hidden max-h-60 overflow-y-auto">
+          {data.map(({ place_id, description }) => (
+            <li
+              key={place_id}
+              onClick={handleSelect(description)}
+              className="px-4 py-2 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer transition-colors"
+            >
+              {description}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -766,31 +907,105 @@ function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p
   return (
     <div className="space-y-4">
       <div className="card p-4 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
-              <Clock className="w-4 h-4 text-brand-500" />
-              Opening Time
-            </label>
-            <input
-              type="time"
-              value={data.openTime}
-              onChange={e => onChange({ openTime: e.target.value })}
-              className="input-field"
-            />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between py-1 border-b border-slate-100 pb-3">
+            <div>
+              <p className="text-sm font-medium text-slate-700">Split Timings / Mid-day Break</p>
+              <p className="text-xs text-slate-500">Open morning & evening, closed in-between</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange({ hasSplitShift: !data.hasSplitShift })}
+              className={`relative w-11 h-6 rounded-full transition-colors ${
+                data.hasSplitShift ? 'bg-brand-500' : 'bg-slate-200'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  data.hasSplitShift ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
-          <div>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
-              <Clock className="w-4 h-4 text-slate-400" />
-              Closing Time
-            </label>
-            <input
-              type="time"
-              value={data.closeTime}
-              onChange={e => onChange({ closeTime: e.target.value })}
-              className="input-field"
-            />
-          </div>
+
+          {!data.hasSplitShift ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
+                  <Clock className="w-4 h-4 text-brand-500" />
+                  Opening Time
+                </label>
+                <input
+                  type="time"
+                  value={data.openTime}
+                  onChange={e => onChange({ openTime: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  Closing Time
+                </label>
+                <input
+                  type="time"
+                  value={data.closeTime}
+                  onChange={e => onChange({ closeTime: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 space-y-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Shift 1 (Morning)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Open</label>
+                    <input
+                      type="time"
+                      value={data.openTime}
+                      onChange={e => onChange({ openTime: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Close</label>
+                    <input
+                      type="time"
+                      value={data.closeTime}
+                      onChange={e => onChange({ closeTime: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 space-y-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Shift 2 (Evening)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Open</label>
+                    <input
+                      type="time"
+                      value={data.openTime2 || '16:00'}
+                      onChange={e => onChange({ openTime2: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Close</label>
+                    <input
+                      type="time"
+                      value={data.closeTime2 || '21:00'}
+                      onChange={e => onChange({ closeTime2: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
@@ -960,7 +1175,7 @@ function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData
         <div className="flex items-start gap-3 p-3 bg-brand-50 rounded-xl border border-brand-100">
           <Sparkles className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-brand-700">
-            Help us personalize your GymFlow experience. We&apos;ll tailor insights and recommendations based on your goals.
+            Help us personalize your GymDesk experience. We&apos;ll tailor insights and recommendations based on your goals.
           </p>
         </div>
 

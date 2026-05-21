@@ -9,6 +9,7 @@ import { calcEndDate } from "@/lib/utils";
 import { searchLocalities } from "@/lib/geo/matchArea";
 import type { ImportedRow } from "../page";
 import { useLenisScroll } from "@/lib/hooks/useLenisScroll";
+import WizardHeader from "@/components/import/WizardHeader";
 
 type Step = "edit" | "preview" | "done";
 interface DoneResult { success: number; skipped: number }
@@ -49,9 +50,9 @@ export default function ImportEditPage() {
   // Track sidebar collapsed state for the fixed scrollbar left offset
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   useEffect(() => {
-    setSidebarCollapsed(localStorage.getItem('gymflow_sidebar_collapsed') === 'true');
+    setSidebarCollapsed(localStorage.getItem('GymDesk_sidebar_collapsed') === 'true');
     // Listen for storage changes (sidebar toggle)
-    const onStorage = () => setSidebarCollapsed(localStorage.getItem('gymflow_sidebar_collapsed') === 'true');
+    const onStorage = () => setSidebarCollapsed(localStorage.getItem('GymDesk_sidebar_collapsed') === 'true');
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
@@ -299,6 +300,31 @@ export default function ImportEditPage() {
       const { error: msErr } = await supabase.from("memberships").insert(membershipsToInsert);
       if (msErr) throw new Error(msErr.message);
 
+      // Auto-learn resolved localities
+      try {
+        const aliasesToSave = new Map<string, string>();
+        toInsert.forEach(row => {
+          // If the area was modified from its original raw value, remember it
+          if (row._original_area && row.area && row._original_area !== row.area) {
+            aliasesToSave.set(row._original_area, row.area);
+          }
+        });
+
+        for (const [raw_input, canonical_name] of aliasesToSave.entries()) {
+          await fetch("/api/geo/save-alias", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              raw_input,
+              canonical_name,
+              gym_id: gym.id
+            })
+          }).catch(() => {});
+        }
+      } catch (e) {
+        console.error("Failed to auto-learn aliases", e);
+      }
+
       sessionStorage.removeItem("import_rows");
       sessionStorage.removeItem("import_rows_original");
       setDoneResult({ success: toInsert.length, skipped });
@@ -312,24 +338,26 @@ export default function ImportEditPage() {
 
   if (step === "done") {
     return (
-      <div className="max-w-xl mx-auto">
-        <div className="card p-10 text-center animate-pop-in">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-100">
-            <Check className="w-8 h-8 text-emerald-600" />
+      <div className="min-h-[70vh] flex items-center justify-center px-4">
+        <div className="card p-10 text-center animate-pop-in max-w-md w-full border border-slate-100 shadow-2xl rounded-3xl bg-white/80 backdrop-blur-md">
+          <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10">
+            <Check className="w-10 h-10 text-emerald-600 stroke-[3]" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-1">Import Complete! 🎉</h2>
-          <p className="text-slate-500 mt-2">
-            <span className="text-emerald-600 font-bold text-lg">{doneResult.success}</span>
-            <span className="text-slate-400"> members imported successfully</span>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Import Complete! 🎉</h2>
+          <p className="text-slate-500 text-sm font-semibold leading-relaxed">
+            <span className="text-emerald-600 font-extrabold text-xl">{doneResult.success}</span>
+            <span className="text-slate-600"> members imported successfully</span>
             {doneResult.skipped > 0 && (
-              <><br /><span className="text-red-400 text-sm">{doneResult.skipped} skipped</span></>
+              <><br /><span className="text-rose-500 font-bold text-xs mt-1 inline-block">{doneResult.skipped} rows skipped due to errors</span></>
             )}
           </p>
-          <div className="mt-4 mx-auto w-48 h-1.5 bg-emerald-100 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full animate-fill-bar" />
+          <div className="mt-6 mx-auto w-56 h-2 bg-emerald-100/50 rounded-full overflow-hidden border border-emerald-100">
+            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full animate-fill-bar" />
           </div>
-          <div className="mt-6">
-            <Link href="/members" className="btn-primary">View Members →</Link>
+          <div className="mt-8">
+            <Link href="/members" className="btn-primary inline-flex items-center justify-center gap-2 px-8 py-3.5 shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30">
+              View Members →
+            </Link>
           </div>
         </div>
       </div>
@@ -339,6 +367,7 @@ export default function ImportEditPage() {
   if (step === "preview") {
     return (
       <div className="max-w-7xl mx-auto space-y-5">
+        <WizardHeader currentStep={6} />
         <div className="flex items-center gap-3">
           <button onClick={() => setStep("edit")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Back to Edit
@@ -365,6 +394,9 @@ export default function ImportEditPage() {
         <div className="card">
           <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100 rounded-t-2xl">
             Members to be imported ({validRows.length})
+            <span className="text-slate-400 font-normal ml-1">
+              {editedCount === 0 && validRows.length > 10 ? "— Showing first 10 rows" : editedCount > 0 ? `— Showing ${editedCount} edited row${editedCount > 1 ? 's' : ''}` : ""}
+            </span>
           </p>
           {/* data-lenis-prevent tells root Lenis to hand off wheel events to this container */}
           <div
@@ -382,7 +414,7 @@ export default function ImportEditPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {validRows.map((row) => {
+                {(editedCount > 0 ? validRows.filter(isRowChanged) : validRows.slice(0, 10)).map((row) => {
                   const anyChanged = isRowChanged(row);
                   return (
                     <tr key={row._rowId} className={anyChanged ? "bg-emerald-50/40" : "hover:bg-slate-50"}>
@@ -458,6 +490,7 @@ export default function ImportEditPage() {
 
   return (
     <div className="space-y-4 pb-6 max-w-[1600px] mx-auto">
+      <WizardHeader currentStep={5} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {hasReviewState ? (

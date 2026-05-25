@@ -649,6 +649,18 @@ function CityAutocomplete({ value, onChange }: { value: string; onChange: (val: 
       setIsLoaded(true)
       return
     }
+    
+    // Check if script is already injected by another component
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const checkInterval = setInterval(() => {
+        if ((window as any).google?.maps?.places) {
+          setIsLoaded(true)
+          clearInterval(checkInterval)
+        }
+      }, 100)
+      return () => clearInterval(checkInterval)
+    }
+
     const script = document.createElement('script')
     script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}&libraries=places`
     script.async = true

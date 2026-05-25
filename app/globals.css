@@ -152,4 +152,9 @@
   .glass {
     @apply bg-white/80 backdrop-blur-md border border-white/20;
   }
+
+  @keyframes float-star {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-8px) rotate(15deg); }
+  }
 }

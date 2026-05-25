@@ -80,6 +80,17 @@ export function ReportsClient({
 
   useEffect(() => {
     setIsMounted(true)
+    
+    // Mark task as complete when genuinely used
+    try {
+      const saved = localStorage.getItem('gymdesk_getting_started')
+      const parsed = new Set(saved ? JSON.parse(saved) : [])
+      if (!parsed.has('check_reports')) {
+        parsed.add('check_reports')
+        localStorage.setItem('gymdesk_getting_started', JSON.stringify([...parsed]))
+        window.dispatchEvent(new Event('storage'))
+      }
+    } catch {}
   }, [])
 
   const today = format(new Date(), 'yyyy-MM-dd')

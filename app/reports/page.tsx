@@ -203,6 +203,7 @@ export default async function ReportsPage() {
       totalDuesAmount={totalDuesAmount}
       expiringMembers={expiringMembers}
       attendanceTodayCount={attendanceTodayCount}
+      gymId={gym.id}
     />
   )
 }

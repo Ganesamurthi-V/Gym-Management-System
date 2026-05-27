@@ -25,8 +25,7 @@ interface Task {
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'gymdesk_getting_started'
-const DISMISSED_KEY = 'gymdesk_getting_started_dismissed'
+// (Keys are now generated dynamically per gym)
 
 const TASKS: Task[] = [
   {
@@ -103,9 +102,11 @@ const CONFETTI_COLORS = [
   '#fbbf24', '#34d399', '#f472b6', '#818cf8',
 ]
 
+let particleIdCounter = 0;
+
 function createParticles(count: number): Particle[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i,
+  return Array.from({ length: count }, () => ({
+    id: particleIdCounter++,
     x: 50 + (Math.random() - 0.5) * 20,
     y: 50 + (Math.random() - 0.5) * 10,
     size: Math.random() * 8 + 4,
@@ -313,8 +314,11 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
-export function GettingStartedChecklist({ stats, onDismiss }: { stats?: DashboardStats; onDismiss?: () => void }) {
+export function GettingStartedChecklist({ stats, gymId, onDismiss }: { stats?: DashboardStats; gymId: string; onDismiss?: () => void }) {
   const router = useRouter()
+  const storageKey = `gymdesk_getting_started_${gymId}`
+  const dismissedKey = `gymdesk_getting_started_dismissed_${gymId}`
+  
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set())
   const [showCelebration, setShowCelebration] = useState(false)
   const [dismissed, setDismissed] = useState(false)
@@ -337,7 +341,7 @@ export function GettingStartedChecklist({ stats, onDismiss }: { stats?: Dashboar
   useEffect(() => {
     const loadState = () => {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY)
+        const saved = localStorage.getItem(storageKey)
         let parsed = new Set<string>()
         if (saved) {
           parsed = new Set(JSON.parse(saved))
@@ -346,7 +350,7 @@ export function GettingStartedChecklist({ stats, onDismiss }: { stats?: Dashboar
         autoCompleted.forEach(id => parsed.add(id))
         setCompletedTasks(parsed)
         
-        const isDismissed = localStorage.getItem(DISMISSED_KEY)
+        const isDismissed = localStorage.getItem(dismissedKey)
         if (isDismissed === 'true') {
           setDismissed(true)
         }
@@ -363,26 +367,18 @@ export function GettingStartedChecklist({ stats, onDismiss }: { stats?: Dashboar
     return () => window.removeEventListener('storage', loadState)
   }, [autoCompleted])
 
-  // Save to localStorage whenever tasks change
-  useEffect(() => {
-    if (!mounted) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...completedTasks]))
-    } catch {
-      // ignore
-    }
-  }, [completedTasks, mounted])
+  // removed automatic localStorage sync on every completedTasks change to prevent race conditions
 
   // Trigger celebration when all tasks are complete
   useEffect(() => {
     if (completedTasks.size === TASKS.length && !dismissed) {
-      const hasShown = localStorage.getItem('gymdesk_celebrated')
+      const hasShown = localStorage.getItem(`gymdesk_celebrated_${gymId}`)
       if (!hasShown) {
         setTimeout(() => setShowCelebration(true), 800)
-        localStorage.setItem('gymdesk_celebrated', 'true')
+        localStorage.setItem(`gymdesk_celebrated_${gymId}`, 'true')
       }
     }
-  }, [completedTasks.size, dismissed])
+  }, [completedTasks.size, dismissed, gymId])
 
   const toggleTask = useCallback((taskId: string) => {
     // Prevent manual toggle for tasks that are auto-detected from backend
@@ -405,17 +401,24 @@ export function GettingStartedChecklist({ stats, onDismiss }: { stats?: Dashboar
           setTimeout(() => setShowCelebration(true), 800)
         }
       }
+      
+      // Save directly when toggled to avoid race conditions
+      try {
+        localStorage.setItem(storageKey, JSON.stringify([...next]))
+        window.dispatchEvent(new Event('storage'))
+      } catch {}
+      
       return next
     })
-  }, [autoCompleted])
+  }, [autoCompleted, storageKey])
 
   const handleDismiss = useCallback(() => {
     setDismissed(true)
     try {
-      localStorage.setItem(DISMISSED_KEY, 'true')
+      localStorage.setItem(dismissedKey, 'true')
     } catch { /* ignore */ }
     if (onDismiss) onDismiss()
-  }, [onDismiss])
+  }, [onDismiss, dismissedKey])
 
   const handleCloseCelebration = useCallback(() => {
     setShowCelebration(false)

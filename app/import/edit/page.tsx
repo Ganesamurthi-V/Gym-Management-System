@@ -27,7 +27,7 @@ export default function ImportEditPage() {
   const [originalRows, setOriginalRows] = useState<ImportedRow[]>([]);
   const [dbNums, setDbNums] = useState<Set<number>>(new Set());
   const [hasIdCol, setHasIdCol] = useState(false);
-  const [step, setStep] = useState<Step>("edit");
+  const [step, setStep] = useState<Step>("preview"); // temporarily bypassed edit
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -369,10 +369,10 @@ export default function ImportEditPage() {
       <div className="max-w-7xl mx-auto space-y-5">
         <WizardHeader currentStep={6} />
         <div className="flex items-center gap-3">
-          <button onClick={() => setStep("edit")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          {/* <button onClick={() => setStep("edit")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Back to Edit
           </button>
-          <span className="text-slate-300">/</span>
+          <span className="text-slate-300">/</span> */}
           <h1 className="text-xl font-bold text-slate-900">Review Before Importing</h1>
         </div>
 
@@ -459,13 +459,13 @@ export default function ImportEditPage() {
         {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
 
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => setStep("edit")}
+          {/* <button onClick={() => setStep("edit")}
             className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 font-semibold text-sm rounded-2xl hover:bg-slate-200 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />Back to Edit
-          </button>
+          </button> */}
           <button onClick={handleSave} disabled={!confirmed || loading}
-            className="relative flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold text-sm rounded-2xl shadow-md shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40 overflow-hidden group"
+            className="col-span-2 relative flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold text-sm rounded-2xl shadow-md shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40 overflow-hidden group"
           >
             {loading ? (
               <>

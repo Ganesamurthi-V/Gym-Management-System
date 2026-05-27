@@ -372,6 +372,17 @@ export function MembersClient({ members, gymId }: Props) {
                   isValidPhone(member.phone) ? (
                     <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
                       target="_blank" rel="noopener noreferrer"
+                      onClick={() => {
+                        try {
+                          const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                          const parsed = new Set(saved ? JSON.parse(saved) : [])
+                          if (!parsed.has('send_reminder')) {
+                            parsed.add('send_reminder')
+                            localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                            window.dispatchEvent(new Event('storage'))
+                          }
+                        } catch {}
+                      }}
                       className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center"
                       title="Send WhatsApp reminder"
                     >
@@ -457,6 +468,17 @@ export function MembersClient({ members, gymId }: Props) {
                         isValidPhone(member.phone) ? (
                           <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
                             target="_blank" rel="noopener noreferrer"
+                            onClick={() => {
+                              try {
+                                const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                                const parsed = new Set(saved ? JSON.parse(saved) : [])
+                                if (!parsed.has('send_reminder')) {
+                                  parsed.add('send_reminder')
+                                  localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                                  window.dispatchEvent(new Event('storage'))
+                                }
+                              } catch {}
+                            }}
                             className="flex items-center gap-1.5 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors"
                             title="Send WhatsApp reminder"
                           >

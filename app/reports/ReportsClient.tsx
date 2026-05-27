@@ -61,6 +61,7 @@ interface Props {
   totalDuesAmount: number
   expiringMembers: ExpiringMember[]
   attendanceTodayCount: number
+  gymId: string
 }
 
 type TabType = 'overview' | 'revenue' | 'attendance' | 'marketing'
@@ -71,7 +72,7 @@ export function ReportsClient({
   newMembersByMonth, churnCount, attendanceByDay, topAreas, gymName,
   gymCity, gymGST, gymPhone,
   membersWithDues, totalDuesAmount,
-  expiringMembers, attendanceTodayCount
+  expiringMembers, attendanceTodayCount, gymId
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [isMounted, setIsMounted] = useState(false)
@@ -83,15 +84,15 @@ export function ReportsClient({
     
     // Mark task as complete when genuinely used
     try {
-      const saved = localStorage.getItem('gymdesk_getting_started')
+      const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
       const parsed = new Set(saved ? JSON.parse(saved) : [])
       if (!parsed.has('check_reports')) {
         parsed.add('check_reports')
-        localStorage.setItem('gymdesk_getting_started', JSON.stringify([...parsed]))
+        localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
         window.dispatchEvent(new Event('storage'))
       }
     } catch {}
-  }, [])
+  }, [gymId])
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
@@ -338,6 +339,17 @@ export function ReportsClient({
     }
     const link = buildCustomWhatsAppLink(phone, msg)
     window.open(link, '_blank')
+
+    // Mark task as complete
+    try {
+      const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+      const parsed = new Set(saved ? JSON.parse(saved) : [])
+      if (!parsed.has('send_reminder')) {
+        parsed.add('send_reminder')
+        localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+        window.dispatchEvent(new Event('storage'))
+      }
+    } catch {}
   }
 
   const triggerBulkReminders = () => {

@@ -27,10 +27,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isDismissed = localStorage.getItem('gymdesk_getting_started_dismissed') === 'true'
+      const isDismissed = localStorage.getItem(`gymdesk_getting_started_dismissed_${gymId}`) === 'true'
       setChecklistDismissed(isDismissed)
     }
-  }, [])
+  }, [gymId])
   
   const router = useRouter()
   const supabase = createClient()
@@ -42,10 +42,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
     // Mark task as complete when genuinely used
     try {
-      const saved = localStorage.getItem('gymdesk_getting_started')
+      const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
       const parsed = new Set(saved ? JSON.parse(saved) : [])
       parsed.add('send_reminder')
-      localStorage.setItem('gymdesk_getting_started', JSON.stringify([...parsed]))
+      localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
       // Dispatch storage event to update checklist across components
       window.dispatchEvent(new Event('storage'))
     } catch {}
@@ -108,7 +108,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-stretch">
         {/* Getting Started Checklist for new users or Expiring Members if dismissed */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
-          <GettingStartedChecklist stats={stats} onDismiss={() => setChecklistDismissed(true)} />
+          <GettingStartedChecklist stats={stats} gymId={gymId} onDismiss={() => setChecklistDismissed(true)} />
           
           {checklistDismissed && (
             <motion.div
@@ -123,6 +123,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
                 handleBulkRemind={handleBulkRemind} 
                 sendingBulk={sendingBulk} 
                 bulkSent={bulkSent} 
+                gymId={gymId}
               />
             </motion.div>
           )}
@@ -170,6 +171,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               handleBulkRemind={handleBulkRemind} 
               sendingBulk={sendingBulk} 
               bulkSent={bulkSent} 
+              gymId={gymId}
             />
           </motion.div>
         )}
@@ -178,7 +180,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   )
 }
 
-function ExpiringContent({ expiringMembers, handleBulkRemind, sendingBulk, bulkSent }: { expiringMembers: MemberWithStatus[], handleBulkRemind: () => void, sendingBulk: boolean, bulkSent: boolean }) {
+function ExpiringContent({ expiringMembers, handleBulkRemind, sendingBulk, bulkSent, gymId }: { expiringMembers: MemberWithStatus[], handleBulkRemind: () => void, sendingBulk: boolean, bulkSent: boolean, gymId: string }) {
   return (
     <>
       <div className="flex items-center justify-between px-4 md:px-5 py-3.5 border-b border-slate-100">
@@ -210,7 +212,7 @@ function ExpiringContent({ expiringMembers, handleBulkRemind, sendingBulk, bulkS
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
-            {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} />)}
+            {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} gymId={gymId} />)}
           </div>
         )}
     </>
@@ -243,7 +245,7 @@ function StatCardCurrency({ icon, label, value, bg, href, danger }: { icon: Reac
   return content
 }
 
-function ExpiringMemberRow({ member }: { member: MemberWithStatus }) {
+function ExpiringMemberRow({ member, gymId }: { member: MemberWithStatus, gymId: string }) {
   const daysLeft = member.days_remaining
   return (
     <div className="flex items-center gap-3 px-4 md:px-5 py-3 hover:bg-slate-50 transition-colors">
@@ -263,10 +265,10 @@ function ExpiringMemberRow({ member }: { member: MemberWithStatus }) {
             target="_blank" rel="noopener noreferrer"
             onClick={() => {
               try {
-                const saved = localStorage.getItem('gymdesk_getting_started')
+                const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
                 const parsed = new Set(saved ? JSON.parse(saved) : [])
                 parsed.add('send_reminder')
-                localStorage.setItem('gymdesk_getting_started', JSON.stringify([...parsed]))
+                localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
                 window.dispatchEvent(new Event('storage'))
               } catch {}
             }}

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, Menu } from 'lucide-react'
@@ -11,6 +12,8 @@ const NAV_ITEMS = [
   { label: 'Payments',   href: '/payments',     icon: RupeeIcon },
   { label: 'Dues',       href: '/dues',         icon: AlertIcon },
   { label: 'Attendance', href: '/attendance',   icon: CalendarIcon },
+  { label: 'Inventory',  href: '/inventory',    icon: BoxIcon },
+  { label: 'Programs',   href: '/programs/new', icon: ActivityIcon },
   { label: 'Reports',    href: '/reports',      icon: ChartIcon },
 ] as const
 
@@ -68,37 +71,18 @@ export function MobileNav() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const current = NAV_ITEMS.find(n => isActive(n.href))
 
-  return (
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const mobileNavContent = open ? (
     <>
-      {/* Bottom bar: current page + hamburger */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 flex items-center justify-between px-5 h-16">
-        <div className="flex items-center gap-2.5">
-          {current && (
-            <>
-              <current.icon className="w-4 h-4 text-brand-600" />
-              <span className="text-sm font-bold text-slate-800">{current.label}</span>
-            </>
-          )}
-        </div>
-        <button
-          onClick={() => setOpen(true)}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/40 z-50 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      {/* Slide-up drawer */}
-      <div className={`md:hidden fixed bottom-0 inset-x-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+      <div
+        className="md:hidden fixed inset-0 bg-slate-900/40 z-[9998] backdrop-blur-sm"
+        onClick={() => setOpen(false)}
+      />
+      <div className={`md:hidden fixed bottom-0 inset-x-0 z-[9999] bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
         open ? 'translate-y-0' : 'translate-y-full'
       }`}>
         <div className="flex justify-center pt-3 pb-1">
@@ -149,6 +133,30 @@ export function MobileNav() {
           </Link>
         </div>
       </div>
+    </>
+  ) : null
+
+  return (
+    <>
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 flex items-center justify-between px-5 h-16">
+        <div className="flex items-center gap-2.5">
+          {current && (
+            <>
+              <current.icon className="w-4 h-4 text-brand-600" />
+              <span className="text-sm font-bold text-slate-800">{current.label}</span>
+            </>
+          )}
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 transition-colors"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      </div>
+
+      {mounted && typeof document !== 'undefined' && createPortal(mobileNavContent, document.body)}
     </>
   )
 }
@@ -207,6 +215,22 @@ function AlertIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
       <circle cx="8" cy="8" r="6.5" />
       <path d="M8 5v3.5M8 10.5v.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+function BoxIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M8 2L2 5l6 3 6-3-6-3z" strokeLinejoin="round" />
+      <path d="M2 5v6l6 3 6-3V5M8 8v6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function ActivityIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 8h-3l-2.5 5.5L4 2 2.5 8H1" />
     </svg>
   )
 }

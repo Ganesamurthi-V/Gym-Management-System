@@ -27,7 +27,7 @@ export default function ImportEditPage() {
   const [originalRows, setOriginalRows] = useState<ImportedRow[]>([]);
   const [dbNums, setDbNums] = useState<Set<number>>(new Set());
   const [hasIdCol, setHasIdCol] = useState(false);
-  const [step, setStep] = useState<Step>("preview"); // temporarily bypassed edit
+  const [step, setStep] = useState<Step>("edit");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -162,7 +162,7 @@ export default function ImportEditPage() {
   }
 
   function updateRow(idx: number, field: keyof ImportedRow, value: string) {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value, _status: undefined, _error: undefined } : r));
   }
 
   function validateId(idx: number, value: string) {
@@ -201,11 +201,15 @@ export default function ImportEditPage() {
   const skippedRows = rows.filter(r => r._status === "error" || r._status === "duplicate");
   const editedCount = rows.reduce((count, row) => count + (isRowChanged(row) ? 1 : 0), 0);
 
-  const filtered = rows.map((r, i) => ({ ...r, _idx: i })).filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.phone.includes(search) ||
-    r.member_number.includes(search)
-  );
+  const filtered = rows.map((r, i) => ({ ...r, _idx: i })).filter(r => {
+    const orig = originalRows.find(o => o._rowId === r._rowId);
+    const originallySkipped = orig && (orig._status === "error" || orig._status === "duplicate");
+    if (!originallySkipped) return false;
+    
+    return r.name.toLowerCase().includes(search.toLowerCase()) ||
+           r.phone.includes(search) ||
+           r.member_number.includes(search);
+  });
 
   const hi = (row: ImportedRow, field: keyof ImportedRow) =>
     isCellChanged(row, field)
@@ -224,12 +228,11 @@ export default function ImportEditPage() {
   }
 
   function handlePreview() {
-    if (missingIdCount > 0) { setError(`${missingIdCount} member${missingIdCount !== 1 ? 's are' : ' is'} missing a Member ID — fill them in before importing`); return; }
-    // Clear review state cache — user is committing to import
-    sessionStorage.removeItem("import_review_state");
+    if (missingIdCount > 0) { setError(`${missingIdCount} member${missingIdCount !== 1 ? 's are' : ' is'} missing a Member ID — fix them before importing`); return; }
+    if (conflictCount > 0) { setError(`${conflictCount} member${conflictCount !== 1 ? 's have' : ' has'} a conflicting Member ID — fix them before importing`); return; }
     setError("");
-    setConfirmed(false);
-    setStep("preview");
+    setConfirmed(true);
+    handleSave();
   }
 
   async function handleSave() {
@@ -364,133 +367,14 @@ export default function ImportEditPage() {
     );
   }
 
-  if (step === "preview") {
-    return (
-      <div className="max-w-7xl mx-auto space-y-5">
-        <WizardHeader currentStep={6} />
-        <div className="flex items-center gap-3">
-          {/* <button onClick={() => setStep("edit")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
-            <ArrowLeft className="w-4 h-4" />Back to Edit
-          </button>
-          <span className="text-slate-300">/</span> */}
-          <h1 className="text-xl font-bold text-slate-900">Review Before Importing</h1>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-600">{validRows.length}</p>
-            <p className="text-sm text-slate-500 mt-0.5">Will be imported</p>
-          </div>
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-brand-600">{editedCount}</p>
-            <p className="text-sm text-slate-500 mt-0.5">Edited by you</p>
-          </div>
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-red-500">{skippedRows.length}</p>
-            <p className="text-sm text-slate-500 mt-0.5">Will be skipped</p>
-          </div>
-        </div>
-
-        <div className="card">
-          <p className="px-5 py-3.5 text-sm font-bold text-slate-700 border-b border-slate-100 rounded-t-2xl">
-            Members to be imported ({validRows.length})
-            <span className="text-slate-400 font-normal ml-1">
-              {editedCount === 0 && validRows.length > 10 ? "— Showing first 10 rows" : editedCount > 0 ? `— Showing ${editedCount} edited row${editedCount > 1 ? 's' : ''}` : ""}
-            </span>
-          </p>
-          {/* data-lenis-prevent tells root Lenis to hand off wheel events to this container */}
-          <div
-            ref={previewScrollRef}
-            data-lenis-prevent
-            className="overflow-y-auto overflow-x-auto no-scrollbar"
-            style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}
-          >
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  {["#", "Name", "Phone", "Plan", "Start Date", "Amount", "Mode", "Gender", "Age", "Area"].map(h => (
-                    <th key={h} className="text-left px-4 py-2.5 text-xs font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {(editedCount > 0 ? validRows.filter(isRowChanged) : validRows.slice(0, 10)).map((row) => {
-                  const anyChanged = isRowChanged(row);
-                  return (
-                    <tr key={row._rowId} className={anyChanged ? "bg-emerald-50/40" : "hover:bg-slate-50"}>
-                      <td className="px-4 py-2.5 font-mono text-xs"><span className={hi(row, "member_number")}>{row.member_number ? `GF${row.member_number.padStart(4, '0')}` : "—"}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(row, "name")}>{row.name}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(row, "phone")}>{row.phone}</span></td>
-                      <td className="px-4 py-2.5 capitalize"><span className={hi(row, "plan")}>{row.plan}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(row, "start_date")}>{row.start_date}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(row, "amount")}>₹{row.amount}</span></td>
-                      <td className="px-4 py-2.5 uppercase"><span className={hi(row, "payment_mode")}>{row.payment_mode}</span></td>
-                      <td className="px-4 py-2.5 capitalize"><span className={hi(row, "gender")}>{row.gender || "—"}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(row, "age")}>{row.age || "—"}</span></td>
-                      <td className="px-4 py-2.5"><span className={hi(row, "area")}>{row.area || "—"}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span>
-            <span className="text-xs text-slate-400">Green highlight = value edited by you</span>
-          </div>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-blue-800">Please review carefully before importing</p>
-            <p className="text-xs text-blue-700 mt-1">Once you confirm and click Import, the data will be saved to the server.</p>
-          </div>
-        </div>
-
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)}
-            className="w-4 h-4 rounded accent-brand-600" />
-          <span className="text-sm text-slate-700 font-medium">
-            I have reviewed all {validRows.length} members and confirm the data is correct
-          </span>
-        </label>
-
-        {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
-
-        <div className="grid grid-cols-2 gap-3">
-          {/* <button onClick={() => setStep("edit")}
-            className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 font-semibold text-sm rounded-2xl hover:bg-slate-200 transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />Back to Edit
-          </button> */}
-          <button onClick={handleSave} disabled={!confirmed || loading}
-            className="col-span-2 relative flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold text-sm rounded-2xl shadow-md shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40 overflow-hidden group"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Importing {validRows.length} members...</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                <span>Import {validRows.length} Members</span>
-                <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Removed read-only preview step to combine Edit & Preview
 
   // ── Edit ──────────────────────────────────────────────────────────────────
   const cls = "px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-slate-50 disabled:text-slate-400";
 
   return (
     <div className="space-y-4 pb-6 max-w-[1600px] mx-auto">
-      <WizardHeader currentStep={5} />
+      <WizardHeader currentStep={6} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {hasReviewState ? (
@@ -503,7 +387,7 @@ export default function ImportEditPage() {
             </Link>
           )}
           <span className="text-slate-300">/</span>
-          <h1 className="text-xl font-bold text-slate-900">Edit Before Importing</h1>
+          <h1 className="text-xl font-bold text-slate-900">Preview</h1>
         </div>
         <div className="flex items-center gap-2">
           {selected.size > 0 && (
@@ -519,10 +403,11 @@ export default function ImportEditPage() {
               {editedCount} edited
             </span>
           )}
-          <button onClick={handlePreview} disabled={conflictCount > 0 || missingIdCount > 0}
+          <button onClick={() => { setConfirmed(true); handleSave(); }} disabled={conflictCount > 0 || missingIdCount > 0 || loading}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all disabled:opacity-40"
           >
-            <Check className="w-4 h-4" />Review & Import
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {loading ? 'Importing...' : 'Import Now'}
           </button>
         </div>
       </div>
@@ -563,10 +448,12 @@ export default function ImportEditPage() {
         );
       })()}
 
-      <div className="relative w-full sm:max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input type="search" placeholder="Search..." value={search}
-          onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="search" placeholder="Search skipped members..." value={search}
+            onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
+        </div>
       </div>
 
       <div
@@ -578,8 +465,8 @@ export default function ImportEditPage() {
 
       <div className="card overflow-hidden w-full max-w-full">
         <div ref={scrollRef} className="overflow-x-auto" data-lenis-prevent>
-          <div ref={tableInnerRef} className="pr-6 min-w-max">
-          <table className="text-sm">
+          <div ref={tableInnerRef} className="min-w-full w-max">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="px-3 py-3 w-8">
@@ -628,7 +515,6 @@ export default function ImportEditPage() {
                         <input
                           type="text"
                           value={row.member_number ? `GF${row.member_number.padStart(4, '0')}` : ''}
-                          disabled={isSkipped}
                           onChange={e => {
                             // Accept "GF0001" or plain "1" — strip prefix and store integer string
                             const raw = e.target.value.trim().toUpperCase();
@@ -655,7 +541,7 @@ export default function ImportEditPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <input type="text" value={row.name} disabled={isSkipped}
+                      <input type="text" value={row.name}
                         onChange={e => updateRow(idx, "name", e.target.value)}
                         className={`w-36 ${cls}`} />
                       {row._error && <p className="text-[10px] text-amber-600 mt-0.5">{row._error}</p>}
@@ -664,12 +550,12 @@ export default function ImportEditPage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <input type="tel" value={row.phone} disabled={isSkipped} maxLength={10}
+                      <input type="tel" value={row.phone} maxLength={10}
                         onChange={e => updateRow(idx, "phone", e.target.value)}
                         className={`w-28 ${cls}`} />
                     </td>
                     <td className="px-3 py-2">
-                      <select value={row.plan} disabled={isSkipped}
+                      <select value={row.plan}
                         onChange={e => updateRow(idx, "plan", e.target.value)}
                         className={cls}>
                         <option value="monthly">Monthly</option>
@@ -678,17 +564,17 @@ export default function ImportEditPage() {
                       </select>
                     </td>
                     <td className="px-3 py-2">
-                      <input type="date" value={row.start_date} disabled={isSkipped}
+                      <input type="date" value={row.start_date}
                         onChange={e => updateRow(idx, "start_date", e.target.value)}
                         className={`w-36 ${cls}`} />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={row.amount} disabled={isSkipped}
+                      <input type="number" value={row.amount}
                         onChange={e => updateRow(idx, "amount", e.target.value)}
                         className={`w-20 ${cls}`} />
                     </td>
                     <td className="px-3 py-2">
-                      <select value={row.payment_mode} disabled={isSkipped}
+                      <select value={row.payment_mode}
                         onChange={e => updateRow(idx, "payment_mode", e.target.value)}
                         className={cls}>
                         <option value="cash">Cash</option>
@@ -697,7 +583,7 @@ export default function ImportEditPage() {
                       </select>
                     </td>
                     <td className="px-3 py-2">
-                      <select value={row.gender} disabled={isSkipped}
+                      <select value={row.gender}
                         onChange={e => updateRow(idx, "gender", e.target.value)}
                         className={cls}>
                         <option value="">—</option>
@@ -707,7 +593,7 @@ export default function ImportEditPage() {
                       </select>
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={row.age} disabled={isSkipped} min="1" max="120"
+                      <input type="number" value={row.age} min="1" max="120"
                         onChange={e => updateRow(idx, "age", e.target.value)}
                         className={`w-14 ${cls}`} placeholder="—" />
                     </td>
@@ -719,7 +605,7 @@ export default function ImportEditPage() {
                             (row._area_confidence ?? 1) >= 0.70 ? 'bg-amber-400' : 'bg-red-400'
                           }`} title={`${((row._area_confidence ?? 1) * 100).toFixed(0)}% confidence (${row._area_matched_by ?? 'unknown'})`} />
                         )}
-                        <input type="text" value={row.area} disabled={isSkipped}
+                        <input type="text" value={row.area}
                           onChange={e => {
                             updateRow(idx, "area", e.target.value);
                             setActiveAreaIdx(idx);
@@ -750,6 +636,21 @@ export default function ImportEditPage() {
                   </tr>
                 );
               })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={12} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-sm shadow-emerald-500/10">
+                        <Check className="w-7 h-7 text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-base font-bold text-slate-900">No skipped rows!</p>
+                        <p className="text-sm text-slate-500 mt-0.5">All your members are valid and ready to be imported.</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
           </div>

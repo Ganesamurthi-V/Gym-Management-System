@@ -24,14 +24,18 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [checklistDismissed, setChecklistDismissed] = useState(false)
-  
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const checkDismissed = () => {
       const isDismissed = localStorage.getItem(`gymdesk_getting_started_dismissed_${gymId}`) === 'true'
       setChecklistDismissed(isDismissed)
     }
+    
+    checkDismissed()
+    window.addEventListener('storage', checkDismissed)
+    return () => window.removeEventListener('storage', checkDismissed)
   }, [gymId])
-  
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -48,7 +52,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
       // Dispatch storage event to update checklist across components
       window.dispatchEvent(new Event('storage'))
-    } catch {}
+    } catch { }
 
     expiringMembers.forEach((member, i) => {
       if (!member.latest_membership) return
@@ -108,8 +112,8 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-stretch">
         {/* Getting Started Checklist for new users or Expiring Members if dismissed */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
-          <GettingStartedChecklist stats={stats} gymId={gymId} onDismiss={() => setChecklistDismissed(true)} />
-          
+          <GettingStartedChecklist stats={stats} gymId={gymId} />
+
           {checklistDismissed && (
             <motion.div
               className="card flex-1"
@@ -117,11 +121,11 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
             >
-              <ExpiringContent 
-                expiringMembers={expiringMembers} 
-                handleBulkRemind={handleBulkRemind} 
-                sendingBulk={sendingBulk} 
-                bulkSent={bulkSent} 
+              <ExpiringContent
+                expiringMembers={expiringMembers}
+                handleBulkRemind={handleBulkRemind}
+                sendingBulk={sendingBulk}
+                bulkSent={bulkSent}
                 gymId={gymId}
               />
             </motion.div>
@@ -135,25 +139,25 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             Quick Actions
           </p>
           <div className="flex flex-col gap-3 flex-1 justify-center">
-          <Link href="/members/new" className="flex items-center gap-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-            Add New Member
-          </Link>
-          <Link href="/attendance" className="flex items-center gap-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><CalendarCheck className="w-5 h-5" /></div>
-            Mark Attendance
-          </Link>
-          {/* Feature 3: Daily Collection PDF */}
-          <button onClick={handleDailyPDF} disabled={generatingPDF}
-            className="w-full flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
-          >
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-5 h-5" /></div>
-            {generatingPDF ? 'Generating...' : "Today's Collection PDF"}
-          </button>
-          <Link href="/dues" className="flex items-center gap-3 bg-white text-red-600 rounded-xl p-3.5 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
-            <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5" /></div>
-            View Fee Dues {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">{formatCurrency(stats.total_dues)}</span>}
-          </Link>
+            <Link href="/members/new" className="flex items-center gap-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-5 h-5" /></div>
+              Add New Member
+            </Link>
+            <Link href="/attendance" className="flex items-center gap-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><CalendarCheck className="w-5 h-5" /></div>
+              Mark Attendance
+            </Link>
+            {/* Feature 3: Daily Collection PDF */}
+            <button onClick={handleDailyPDF} disabled={generatingPDF}
+              className="w-full flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
+            >
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-5 h-5" /></div>
+              {generatingPDF ? 'Generating...' : "Today's Collection PDF"}
+            </button>
+            <Link href="/dues" className="flex items-center gap-3 bg-white text-red-600 rounded-xl p-3.5 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
+              <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5" /></div>
+              View Fee Dues {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">{formatCurrency(stats.total_dues)}</span>}
+            </Link>
           </div>
         </div>
       </div>
@@ -161,15 +165,15 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       {/* Expiring This Week - Only show at bottom if checklist is not dismissed */}
       <AnimatePresence>
         {!checklistDismissed && (
-          <motion.div 
+          <motion.div
             className="card"
             exit={{ opacity: 0, y: -20, scale: 0.98, transition: { duration: 0.2 } }}
           >
-            <ExpiringContent 
-              expiringMembers={expiringMembers} 
-              handleBulkRemind={handleBulkRemind} 
-              sendingBulk={sendingBulk} 
-              bulkSent={bulkSent} 
+            <ExpiringContent
+              expiringMembers={expiringMembers}
+              handleBulkRemind={handleBulkRemind}
+              sendingBulk={sendingBulk}
+              bulkSent={bulkSent}
               gymId={gymId}
             />
           </motion.div>
@@ -183,37 +187,36 @@ function ExpiringContent({ expiringMembers, handleBulkRemind, sendingBulk, bulkS
   return (
     <>
       <div className="flex items-center justify-between px-4 md:px-5 py-3.5 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-500" />
-            <h2 className="font-bold text-slate-900 text-sm md:text-base">Expiring This Week</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Feature 1: Bulk WhatsApp Remind */}
-            {expiringMembers.length > 0 && (
-              <button onClick={handleBulkRemind} disabled={sendingBulk || bulkSent}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                  bulkSent
-                    ? 'bg-slate-100 text-slate-400'
-                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                }`}
-              >
-                <Send className="w-3.5 h-3.5" />
-                {bulkSent ? 'Sent!' : sendingBulk ? 'Sending...' : `Remind All (${expiringMembers.length})`}
-              </button>
-            )}
-            <Link href="/members?filter=expiring" className="text-brand-600 text-sm font-semibold">See all</Link>
-          </div>
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-amber-500" />
+          <h2 className="font-bold text-slate-900 text-sm md:text-base">Expiring This Week</h2>
         </div>
-        {expiringMembers.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-2xl mb-1">🎉</p>
-            <p className="text-slate-400 text-sm">No members expiring this week</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-50">
-            {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} gymId={gymId} />)}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Feature 1: Bulk WhatsApp Remind */}
+          {expiringMembers.length > 0 && (
+            <button onClick={handleBulkRemind} disabled={sendingBulk || bulkSent}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${bulkSent
+                  ? 'bg-slate-100 text-slate-400'
+                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                }`}
+            >
+              <Send className="w-3.5 h-3.5" />
+              {bulkSent ? 'Sent!' : sendingBulk ? 'Sending...' : `Remind All (${expiringMembers.length})`}
+            </button>
+          )}
+          <Link href="/members?filter=expiring" className="text-brand-600 text-sm font-semibold">See all</Link>
+        </div>
+      </div>
+      {expiringMembers.length === 0 ? (
+        <div className="p-8 text-center">
+          <p className="text-2xl mb-1">🎉</p>
+          <p className="text-slate-400 text-sm">No members expiring this week</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-50">
+          {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} gymId={gymId} />)}
+        </div>
+      )}
     </>
   )
 }
@@ -269,7 +272,7 @@ function ExpiringMemberRow({ member, gymId }: { member: MemberWithStatus, gymId:
                 parsed.add('send_reminder')
                 localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
                 window.dispatchEvent(new Event('storage'))
-              } catch {}
+              } catch { }
             }}
             className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors whitespace-nowrap"
           >

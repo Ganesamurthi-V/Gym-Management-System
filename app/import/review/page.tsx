@@ -24,7 +24,7 @@ interface ReviewRow extends ImportedRow {
   ai_reasoning?: string;
 }
 
-type FilterMode = "all" | "low" | "unresolved" | "done";
+type FilterMode = "pending" | "low" | "unresolved" | "done";
 
 const confidenceColor = (c: number, method?: string) => {
   if (method === "unresolved" || c === 0) return "bg-red-500";
@@ -57,7 +57,7 @@ export default function ImportReviewPage() {
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [gymId, setGymId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterMode>("all");
+  const [filter, setFilter] = useState<FilterMode>("pending");
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
   const [saving, setSaving] = useState(false);
@@ -119,6 +119,7 @@ export default function ImportReviewPage() {
   const filtered = useMemo(() => {
     return rows
       .filter(r => {
+        if (filter === "pending") return !r._review_done;
         if (filter === "low") return (r._area_confidence ?? 0) < 0.90 && r._area_matched_by !== "unresolved";
         if (filter === "unresolved") return r._area_matched_by === "unresolved" || (r._area_confidence ?? 0) === 0;
         if (filter === "done") return r._review_done;
@@ -366,13 +367,13 @@ export default function ImportReviewPage() {
         </div>
 
         <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl p-1">
-          {(["all", "low", "unresolved", "done"] as FilterMode[]).map(f => (
+          {(["pending", "low", "unresolved", "done"] as FilterMode[]).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
                 filter === f ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              {f === "low" ? "Low confidence" : f === "done" ? "Reviewed" : f}
+              {f === "pending" ? "All Pending" : f === "low" ? "Low confidence" : f === "done" ? "Reviewed" : f}
               {f === "unresolved" && stats.unresolved > 0 && (
                 <span className="ml-1.5 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">{stats.unresolved}</span>
               )}

@@ -15,7 +15,4 @@ node_modules/
 dist/
 *.generated.py
 
-# only index src/, ignore everything else
-*
-!src/
-!src/**
+# Removing the block that ignores everything except src/ since this project uses app/ structure

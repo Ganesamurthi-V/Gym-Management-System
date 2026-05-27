@@ -188,15 +188,13 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center transition-all duration-300 ${
-        show ? 'opacity-100' : 'opacity-0'
-      }`}
+      className={`fixed inset-0 z-[100] flex items-center justify-center transition-all duration-300 ${show ? 'opacity-100' : 'opacity-0'
+        }`}
       onClick={handleClose}
     >
       {/* Backdrop */}
-      <div className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ${
-        show ? 'opacity-100' : 'opacity-0'
-      }`} />
+      <div className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'
+        }`} />
 
       {/* Confetti Layer */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -221,11 +219,10 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
 
       {/* Modal Card */}
       <div
-        className={`relative bg-white rounded-3xl shadow-2xl p-8 md:p-10 max-w-md mx-4 text-center transition-all duration-500 ${
-          show
+        className={`relative bg-white rounded-3xl shadow-2xl p-8 md:p-10 max-w-md mx-4 text-center transition-all duration-500 ${show
             ? 'scale-100 opacity-100 translate-y-0'
             : 'scale-75 opacity-0 translate-y-8'
-        }`}
+          }`}
         onClick={e => e.stopPropagation()}
         style={{
           boxShadow: show
@@ -244,20 +241,17 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
         {/* Animated Trophy Icon */}
         <div className="relative mx-auto mb-6">
           {/* Glow rings */}
-          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ${
-            show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
-          }`}>
+          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ${show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+            }`}>
             <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-200/30 to-yellow-200/30 animate-pulse" />
           </div>
-          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 delay-200 ${
-            show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
-          }`}>
+          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 delay-200 ${show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+            }`}>
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-300/40 to-yellow-300/40 animate-pulse" style={{ animationDelay: '0.3s' }} />
           </div>
           {/* Trophy */}
-          <div className={`relative w-20 h-20 mx-auto bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl flex items-center justify-center transition-all duration-700 delay-300 ${
-            show ? 'scale-100 rotate-0' : 'scale-0 rotate-45'
-          }`}
+          <div className={`relative w-20 h-20 mx-auto bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl flex items-center justify-center transition-all duration-700 delay-300 ${show ? 'scale-100 rotate-0' : 'scale-0 rotate-45'
+            }`}
             style={{
               boxShadow: '0 8px 32px rgba(245,158,11,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
             }}
@@ -265,21 +259,17 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
             <Trophy className="w-10 h-10 text-white drop-shadow-sm" />
           </div>
           {/* Floating stars */}
-          <Star className={`absolute -top-2 -right-2 w-6 h-6 text-amber-400 transition-all duration-500 delay-700 ${
-            show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
-          }`} style={{ animation: show ? 'float-star 2s ease-in-out infinite' : 'none' }} />
-          <Sparkles className={`absolute -bottom-1 -left-3 w-5 h-5 text-violet-400 transition-all duration-500 delay-900 ${
-            show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
-          }`} style={{ animation: show ? 'float-star 2.5s ease-in-out infinite reverse' : 'none' }} />
-          <PartyPopper className={`absolute top-0 -left-4 w-5 h-5 text-pink-400 transition-all duration-500 delay-[1100ms] ${
-            show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
-          }`} style={{ animation: show ? 'float-star 3s ease-in-out infinite' : 'none' }} />
+          <Star className={`absolute -top-2 -right-2 w-6 h-6 text-amber-400 transition-all duration-500 delay-700 ${show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+            }`} style={{ animation: show ? 'float-star 2s ease-in-out infinite' : 'none' }} />
+          <Sparkles className={`absolute -bottom-1 -left-3 w-5 h-5 text-violet-400 transition-all duration-500 delay-900 ${show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+            }`} style={{ animation: show ? 'float-star 2.5s ease-in-out infinite reverse' : 'none' }} />
+          <PartyPopper className={`absolute top-0 -left-4 w-5 h-5 text-pink-400 transition-all duration-500 delay-[1100ms] ${show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+            }`} style={{ animation: show ? 'float-star 3s ease-in-out infinite' : 'none' }} />
         </div>
 
         {/* Text Content */}
-        <div className={`transition-all duration-500 delay-500 ${
-          show ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-        }`}>
+        <div className={`transition-all duration-500 delay-500 ${show ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}>
           <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">
             You&apos;re a Pro! 🎉
           </h2>
@@ -290,9 +280,8 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Achievement Badge */}
-        <div className={`inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/60 rounded-full px-5 py-2.5 mb-6 transition-all duration-500 delay-700 ${
-          show ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
-        }`}>
+        <div className={`inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/60 rounded-full px-5 py-2.5 mb-6 transition-all duration-500 delay-700 ${show ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
+          }`}>
           <div className="w-6 h-6 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full flex items-center justify-center">
             <Check className="w-3.5 h-3.5 text-white" />
           </div>
@@ -300,9 +289,8 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* CTA Button */}
-        <div className={`transition-all duration-500 delay-[900ms] ${
-          show ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-        }`}>
+        <div className={`transition-all duration-500 delay-[900ms] ${show ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}>
           <button
             onClick={handleClose}
             className="w-full py-3.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-bold rounded-xl shadow-lg shadow-brand-200/50 hover:shadow-xl hover:shadow-brand-300/50 active:scale-[0.98] transition-all text-sm"
@@ -318,18 +306,18 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
-export function GettingStartedChecklist({ stats, gymId, onDismiss }: { stats?: DashboardStats; gymId: string; onDismiss?: () => void }) {
+export function GettingStartedChecklist({ stats, gymId }: { stats?: DashboardStats; gymId: string }) {
   const router = useRouter()
   const storageKey = `gymdesk_getting_started_${gymId}`
   const dismissedKey = `gymdesk_getting_started_dismissed_${gymId}`
-  
+
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set())
   const [showCelebration, setShowCelebration] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [justCompleted, setJustCompleted] = useState<string | null>(null)
   const [notification, setNotification] = useState<string | null>(null)
-  
+
   // Backend auto-detection flags
   const autoCompleted = useMemo(() => {
     const set = new Set<string>()
@@ -353,7 +341,7 @@ export function GettingStartedChecklist({ stats, gymId, onDismiss }: { stats?: D
         // Merge auto-detected tasks from backend
         autoCompleted.forEach(id => parsed.add(id))
         setCompletedTasks(parsed)
-        
+
         const isDismissed = localStorage.getItem(dismissedKey)
         if (isDismissed === 'true') {
           setDismissed(true)
@@ -405,13 +393,13 @@ export function GettingStartedChecklist({ stats, gymId, onDismiss }: { stats?: D
           setTimeout(() => setShowCelebration(true), 800)
         }
       }
-      
+
       // Save directly when toggled to avoid race conditions
       try {
         localStorage.setItem(storageKey, JSON.stringify([...next]))
         window.dispatchEvent(new Event('storage'))
-      } catch {}
-      
+      } catch { }
+
       return next
     })
   }, [autoCompleted, storageKey])
@@ -420,9 +408,9 @@ export function GettingStartedChecklist({ stats, gymId, onDismiss }: { stats?: D
     setDismissed(true)
     try {
       localStorage.setItem(dismissedKey, 'true')
+      window.dispatchEvent(new Event('storage'))
     } catch { /* ignore */ }
-    if (onDismiss) onDismiss()
-  }, [onDismiss, dismissedKey])
+  }, [dismissedKey])
 
   const handleCloseCelebration = useCallback(() => {
     setShowCelebration(false)
@@ -491,20 +479,18 @@ export function GettingStartedChecklist({ stats, gymId, onDismiss }: { stats?: D
             return (
               <div
                 key={task.id}
-                className={`group flex items-center gap-3 px-4 md:px-5 py-3.5 transition-all duration-300 hover:bg-slate-50/80 ${
-                  isJustCompleted ? 'bg-emerald-50/50' : ''
-                }`}
+                className={`group flex items-center gap-3 px-4 md:px-5 py-3.5 transition-all duration-300 hover:bg-slate-50/80 ${isJustCompleted ? 'bg-emerald-50/50' : ''
+                  }`}
                 style={{
                   animationDelay: `${index * 80}ms`,
                 }}
               >
                 {/* Checkbox */}
                 <div
-                  className={`relative w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                    isCompleted
+                  className={`relative w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${isCompleted
                       ? 'bg-emerald-500 border-emerald-500 scale-100'
                       : 'border-slate-300'
-                  } ${isJustCompleted ? 'animate-pop-in' : ''}`}
+                    } ${isJustCompleted ? 'animate-pop-in' : ''}`}
                 >
                   {isCompleted && (
                     <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
@@ -513,16 +499,14 @@ export function GettingStartedChecklist({ stats, gymId, onDismiss }: { stats?: D
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold transition-all duration-300 ${
-                    isCompleted
+                  <p className={`text-sm font-semibold transition-all duration-300 ${isCompleted
                       ? 'text-slate-400 line-through'
                       : 'text-slate-800'
-                  }`}>
+                    }`}>
                     {task.title}
                   </p>
-                  <p className={`text-xs mt-0.5 transition-all duration-300 ${
-                    isCompleted ? 'text-slate-300' : 'text-slate-400'
-                  }`}>
+                  <p className={`text-xs mt-0.5 transition-all duration-300 ${isCompleted ? 'text-slate-300' : 'text-slate-400'
+                    }`}>
                     {task.description}
                   </p>
                 </div>

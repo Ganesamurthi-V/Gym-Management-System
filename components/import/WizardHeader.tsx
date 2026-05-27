@@ -2,7 +2,7 @@ import React from "react";
 import { Upload, MapPin, Shuffle, ShieldAlert, Eye, Rocket, CheckCircle2, Map } from "lucide-react";
 
 interface WizardHeaderProps {
-  currentStep: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  currentStep: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 export default function WizardHeader({ currentStep }: WizardHeaderProps) {
@@ -11,10 +11,8 @@ export default function WizardHeader({ currentStep }: WizardHeaderProps) {
     { id: 2, label: "Map Fields", desc: "Match your columns", icon: MapPin },
     { id: 3, label: "Map Plans", desc: "Link membership plans", icon: Shuffle },
     { id: 4, label: "Review Areas", desc: "Resolve locations", icon: Map },
-    { id: 5, label: "Validate", desc: "Check & fix data", icon: ShieldAlert },
-    { id: 6, label: "Preview", desc: "Review before import", icon: Eye },
-    { id: 7, label: "Import", desc: "Processing members", icon: Rocket },
-    { id: 8, label: "Complete", desc: "View results", icon: CheckCircle2 },
+    { id: 5, label: "Preview", desc: "Review before import", icon: Eye },
+    { id: 6, label: "Complete", desc: "View results", icon: CheckCircle2 },
   ];
 
   return (
@@ -31,7 +29,7 @@ export default function WizardHeader({ currentStep }: WizardHeaderProps) {
       </div>
 
       {/* Horizontal Steps */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 relative">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 relative">
         {steps.map((s, index) => {
           const Icon = s.icon;
           const isActive = currentStep === s.id;

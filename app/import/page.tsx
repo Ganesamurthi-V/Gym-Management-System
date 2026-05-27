@@ -745,7 +745,10 @@ export default function ImportPage() {
           </div>
 
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full animate-progress-bar" />
+            <div 
+              className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full transition-all duration-700 ease-out" 
+              style={{ width: `${Math.max(15, (parseStage / STAGES.length) * 100)}%` }}
+            />
           </div>
         </div>
       </div>

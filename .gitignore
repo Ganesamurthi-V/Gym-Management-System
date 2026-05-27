@@ -7,3 +7,15 @@ package-lock.json
 geo_normalization.sql
 supabase-geo-intelligence-migrations.sql
 GEO_INTELLIGENCE_MIGRATIONS.sql
+.vscode
+git_command.txt
+add_legacy_member_id.sq
+# .graphifyignore
+node_modules/
+dist/
+*.generated.py
+
+# only index src/, ignore everything else
+*
+!src/
+!src/**

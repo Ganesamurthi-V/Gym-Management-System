@@ -9,13 +9,31 @@ export default async function ReportsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
+  // Select only the base columns that are guaranteed to exist.
+  // Optional profile columns (city, gst_number, phone) are fetched separately
+  // so a missing migration doesn't silently return null and blank the page.
   const { data: gym } = await supabase
     .from('gyms')
     .select('id, name')
     .eq('owner_id', user.id)
     .single()
 
-  if (!gym) return null
+  if (!gym) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+        <p className="text-2xl font-bold text-slate-300">No gym found</p>
+        <p className="text-sm text-slate-400">Set up your gym profile first to see reports.</p>
+      </div>
+    )
+  }
+
+  // Fetch optional profile columns separately — gracefully ignore if missing
+  const { data: gymProfile } = await supabase
+    .from('gyms')
+    .select('city, gst_number, phone')
+    .eq('id', gym.id)
+    .single()
+    .then(r => r.error ? { data: null } : r)
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
@@ -47,10 +65,11 @@ export default async function ReportsPage() {
     supabase
       .from('memberships')
       .select('member_id, end_date, plan')
-      .eq('gym_id', gym.id),
+      .eq('gym_id', gym.id)
+      .order('end_date', { ascending: false }),
     supabase
       .from('members')
-      .select('id, gender, age, area, created_at')
+      .select('id, name, phone, gender, age, area, pending_amount, created_at')
       .eq('gym_id', gym.id),
     supabase
       .from('attendance')
@@ -136,8 +155,32 @@ export default async function ReportsPage() {
   }
   const topAreas = Object.entries(areaCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
+    .slice(0, 10) // Show more areas for better distribution view
     .map(([area, count]) => ({ area, count }))
+
+  // Dues calculation
+  const membersWithDues = members
+    .filter(m => m.pending_amount > 0)
+    .map(m => ({
+      name: m.name,
+      phone: m.phone,
+      amount: m.pending_amount
+    }))
+  const totalDuesAmount = membersWithDues.reduce((sum, m) => sum + m.amount, 0)
+
+  // Expiring memberships
+  const expiringMembers = members.map(m => {
+    const endDate = latestByMember.get(m.id)
+    return {
+      name: m.name,
+      phone: m.phone,
+      endDate: endDate || null,
+      plan: planByMember.get(m.id) || 'None'
+    }
+  }).filter(m => m.endDate)
+    .sort((a, b) => (a.endDate || '').localeCompare(b.endDate || ''))
+
+  const attendanceTodayCount = (attendanceData.data ?? []).filter(a => a.date === today).length
 
   return (
     <ReportsClient
@@ -153,6 +196,14 @@ export default async function ReportsPage() {
       attendanceByDay={attendanceByDay}
       topAreas={topAreas}
       gymName={gym.name}
+      gymCity={gymProfile?.city ?? null}
+      gymGST={gymProfile?.gst_number ?? null}
+      gymPhone={gymProfile?.phone ?? null}
+      membersWithDues={membersWithDues}
+      totalDuesAmount={totalDuesAmount}
+      expiringMembers={expiringMembers}
+      attendanceTodayCount={attendanceTodayCount}
+      gymId={gym.id}
     />
   )
 }

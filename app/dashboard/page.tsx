@@ -56,7 +56,7 @@ export default async function DashboardPage() {
   if (!gym) {
     return (
       <div className="card p-6 text-center">
-        <p className="text-gray-500">No gym found. Please contact support.</p>
+        <p className="text-slate-500">No gym found. Please contact support.</p>
       </div>
     )
   }

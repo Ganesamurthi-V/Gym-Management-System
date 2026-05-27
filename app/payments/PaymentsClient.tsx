@@ -138,11 +138,11 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Payments</h1>
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Payments</h1>
         <button onClick={exportExcel}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
           <Download className="w-4 h-4" />Export
         </button>
       </div>
@@ -183,11 +183,11 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
               {localPending.map(m => (
                 <div key={m.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5 border border-amber-100">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-slate-900">
                       {m.name}
-                      <span className="ml-2 text-xs text-gray-400 font-mono">#{m.member_number}</span>
+                      <span className="ml-2 text-xs text-slate-400 font-mono">#{m.member_number}</span>
                     </p>
-                    <p className="text-xs text-gray-400">{m.phone}</p>
+                    <p className="text-xs text-slate-400">{m.phone}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-bold text-red-600">{formatCurrency(m.pending_amount)}</span>
@@ -208,7 +208,7 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
           {(['today', 'week', 'month', 'all', 'custom'] as Period[]).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                period === p ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-500'
+                period === p ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-500'
               }`}>
               {p === 'all' ? 'All Time' : p === 'custom' ? 'Custom' : p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
@@ -218,7 +218,7 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
           {(['all', 'cash', 'upi', 'card'] as ModeFilter[]).map(m => (
             <button key={m} onClick={() => setMode(m)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                modeFilter === m ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-500'
+                modeFilter === m ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-500'
               }`}>
               {m === 'all' ? 'All Modes' : m.toUpperCase()}
             </button>
@@ -229,30 +229,30 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
       {period === 'custom' && (
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">From</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">From</label>
             <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
               className="input-field w-40" />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">To</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">To</label>
             <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
               className="input-field w-40" />
           </div>
           {customFrom && customTo && (
-            <span className="text-xs text-gray-400 font-medium">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-slate-400 font-medium">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
           )}
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="Search by name or phone..."
             value={search} onChange={e => setSearch(e.target.value)}
             className="input-field pl-9" />
         </div>
-        <div className="relative w-36">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">#</span>
+        <div className="relative sm:w-40">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">#</span>
           <input type="search" placeholder="Member ID"
             value={idSearch} onChange={e => setIdSearch(e.target.value)}
             className="input-field pl-7" />
@@ -262,7 +262,7 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {filtered.length === 0 ? (
-          <div className="card p-10 text-center text-gray-400 text-sm">No payments found</div>
+          <div className="card p-10 text-center text-slate-400 text-sm">No payments found</div>
         ) : filtered.map(payment => {
           const mode = payment.payment_mode as 'cash' | 'upi' | 'card'
           const { bg, text, border, icon } = modeConfig[mode]
@@ -271,11 +271,11 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
             <div key={payment.id} className="card p-4 flex items-center gap-3">
               <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center flex-shrink-0`}>{icon}</div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 text-sm">{payment.member?.name ?? 'Unknown'}</p>
-                <p className="text-xs text-gray-400 mt-0.5 capitalize">{payment.plan} · {formatDate(payment.start_date)}</p>
+                <p className="font-bold text-slate-900 text-sm">{payment.member?.name ?? 'Unknown'}</p>
+                <p className="text-xs text-slate-400 mt-0.5 capitalize">{payment.plan} · {formatDate(payment.start_date)}</p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="font-bold text-gray-900">{formatCurrency(total)}</p>
+                <p className="font-bold text-slate-900">{formatCurrency(total)}</p>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mt-0.5 inline-block ${bg} ${text} ${border}`}>
                   {mode.toUpperCase()}
                 </span>
@@ -287,43 +287,44 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
 
       {/* Desktop table */}
       <div className="hidden md:block card overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
           <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">#</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Member</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Plan</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Period</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Mode</th>
-              <th className="text-right px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</th>
+            <tr className="border-b border-slate-100 bg-slate-50">
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Period</th>
+              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
+              <th className="text-right px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-slate-50">
             {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-5 py-12 text-center text-gray-400">No payments found</td></tr>
+              <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-400">No payments found</td></tr>
             ) : filtered.map(payment => {
               const mode = payment.payment_mode as 'cash' | 'upi' | 'card'
               const { bg, text, border, icon } = modeConfig[mode]
               const admFee = payment.admission_fee ?? 0
               const total  = payment.amount + admFee
               return (
-                <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-xs text-gray-400">#{payment.member?.member_number}</td>
+                <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-5 py-3.5 font-mono text-xs text-slate-400">#{payment.member?.member_number}</td>
                   <td className="px-5 py-3.5">
-                    <p className="font-semibold text-gray-900">{payment.member?.name ?? 'Unknown'}</p>
-                    <p className="text-xs text-gray-400">{payment.member?.phone}</p>
+                    <p className="font-semibold text-slate-900">{payment.member?.name ?? 'Unknown'}</p>
+                    <p className="text-xs text-slate-400">{payment.member?.phone}</p>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500 capitalize">{payment.plan}</td>
-                  <td className="px-5 py-3.5 text-gray-500 text-xs">{formatDate(payment.start_date)} – {formatDate(payment.end_date)}</td>
+                  <td className="px-5 py-3.5 text-slate-500 capitalize">{payment.plan}</td>
+                  <td className="px-5 py-3.5 text-slate-500 text-xs">{formatDate(payment.start_date)} – {formatDate(payment.end_date)}</td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${bg} ${text} ${border}`}>
                       {icon}{mode.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <p className="font-bold text-gray-900">{formatCurrency(total)}</p>
+                    <p className="font-bold text-slate-900">{formatCurrency(total)}</p>
                     {admFee > 0 && (
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-slate-400 mt-0.5">
                         {formatCurrency(payment.amount)} + {formatCurrency(admFee)} adm
                       </p>
                     )}
@@ -332,7 +333,8 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
               )
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   )

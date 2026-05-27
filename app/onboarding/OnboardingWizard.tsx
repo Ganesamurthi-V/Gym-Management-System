@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import usePlacesAutocomplete from 'use-places-autocomplete'
 import { useLenisScroll } from '@/lib/hooks/useLenisScroll'
+import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 
 // --- Types --------------------------------------------------------------------
 
@@ -289,7 +290,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
       }
       localStorage.removeItem(STORAGE_KEY)
       setSuccess(true)
-      setTimeout(() => router.push('/dashboard'), 1800)
+      setTimeout(() => router.push('/dashboard'), 2800)
     } catch {
       setError('Network error. Please check your connection and try again.')
       setSubmitting(false)
@@ -302,15 +303,17 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
 
   if (success) {
     return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
-        <div className="text-center animate-pop-in">
-          <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-12 h-12 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-2">You&apos;re all set!</h2>
-          <p className="text-brand-100 text-lg">Taking you to your dashboard...</p>
-        </div>
-      </div>
+      <WelcomeTransition
+        title={
+          <>
+            Welcome to<br />
+            <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-cyan-400 bg-clip-text text-transparent">
+              GymDesk
+            </span>
+          </>
+        }
+        subtitle="Setup complete! Taking you to your new dashboard..."
+      />
     )
   }
 

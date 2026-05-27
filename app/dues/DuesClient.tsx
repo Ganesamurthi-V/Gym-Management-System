@@ -62,14 +62,14 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-4 md:space-y-5 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Fee Dues</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Fee Dues</h1>
         <div className="card px-4 py-2.5 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-red-500" />
           <div>
-            <p className="text-xs text-gray-400">Total Pending</p>
+            <p className="text-xs text-slate-400">Total Pending</p>
             <p className="text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
           </div>
         </div>
@@ -78,12 +78,12 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
       {members.length === 0 ? (
         <div className="card p-12 text-center">
           <p className="text-3xl mb-2">🎉</p>
-          <p className="text-gray-500 font-medium">No pending dues!</p>
-          <p className="text-gray-400 text-sm mt-1">All members are up to date</p>
+          <p className="text-slate-500 font-medium">No pending dues!</p>
+          <p className="text-slate-400 text-sm mt-1">All members are up to date</p>
         </div>
       ) : (
         <div className="card overflow-hidden">
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-slate-50">
             {members.map(member => (
               <div key={member.id} className="p-4">
                 <div className="flex items-center gap-3">
@@ -94,14 +94,14 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-900 text-sm">{member.name}</p>
-                      <span className="text-xs text-gray-400">#{member.member_number}</span>
+                      <p className="font-bold text-slate-900 text-sm">{member.name}</p>
+                      <span className="text-xs text-slate-400">#{member.member_number}</span>
                     </div>
-                    <p className="text-xs text-gray-400">{member.phone}</p>
+                    <p className="text-xs text-slate-400">{member.phone}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="font-bold text-red-600">{formatCurrency(member.pending_amount)}</p>
-                    <p className="text-xs text-gray-400">pending</p>
+                    <p className="text-xs text-slate-400">pending</p>
                   </div>
                   <div className="flex items-center gap-1.5 ml-2">
                     <a href={buildDueWhatsApp(member.phone, member.name, member.pending_amount)}
@@ -138,7 +138,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
                     >
                       <Check className="w-4 h-4" /> Collect
                     </button>
-                    <button onClick={() => setPaying(null)} className="text-sm text-gray-400 hover:text-gray-600">Cancel</button>
+                    <button onClick={() => setPaying(null)} className="text-sm text-slate-400 hover:text-slate-600">Cancel</button>
                   </div>
                 )}
               </div>

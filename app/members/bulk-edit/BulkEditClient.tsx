@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Check, AlertTriangle, Edit2, Search, Trash2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { searchLocalities, matchAreaBatch } from '@/lib/geo/matchArea'
+import { formatMemberId } from '@/types'
 
 interface MemberRow {
   id: string
@@ -41,7 +42,7 @@ interface Props {
   gymId: string
 }
 
-const cls = 'px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white'
+const cls = 'px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white'
 
 export function EditMembersClient({ members, gymId }: Props) {
   const router = useRouter()
@@ -57,6 +58,20 @@ export function EditMembersClient({ members, gymId }: Props) {
   const [areaMeta, setAreaMeta] = useState<Record<string, AreaMeta>>({})
   const blurTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const searchTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  // Wheel isolation for all data-scroll-box elements
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      const box = (e.target as HTMLElement).closest('[data-scroll-box]') as HTMLElement | null
+      if (!box) return
+      const { scrollTop, scrollHeight, clientHeight } = box
+      const atTop    = scrollTop <= 0 && e.deltaY < 0
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0
+      if (!atTop && !atBottom) e.preventDefault()
+    }
+    document.addEventListener('wheel', onWheel, { passive: false })
+    return () => document.removeEventListener('wheel', onWheel)
+  }, [])
 
   // Normalize all existing area values on mount
   useEffect(() => {
@@ -199,11 +214,11 @@ export function EditMembersClient({ members, gymId }: Props) {
     return (
       <div className="max-w-3xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => setStep('edit')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+          <button onClick={() => setStep('edit')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Back to Edit
           </button>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Review All Changes</h1>
+          <span className="text-slate-300">/</span>
+          <h1 className="text-xl font-bold text-slate-900">Review All Changes</h1>
         </div>
 
         <div className="card px-5 py-4 flex items-center gap-3">
@@ -211,20 +226,20 @@ export function EditMembersClient({ members, gymId }: Props) {
             <Edit2 className="w-4 h-4 text-brand-600" />
           </div>
           <div>
-            <p className="font-bold text-gray-900">{changes.length} member{changes.length !== 1 ? 's' : ''} will be updated</p>
-            <p className="text-xs text-gray-400">{members.length - changes.length} members unchanged</p>
+            <p className="font-bold text-slate-900">{changes.length} member{changes.length !== 1 ? 's' : ''} will be updated</p>
+            <p className="text-xs text-slate-400">{members.length - changes.length} members unchanged</p>
           </div>
         </div>
 
-        <div className="card overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Changes Summary</p>
+        <div className="card">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Changes Summary</p>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-slate-50 overflow-y-auto rounded-b-2xl" data-lenis-prevent style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}>
             {changes.map(({ original, edited }) => {
               const diffs: { label: string; from: string; to: string }[] = []
               if (parseInt(edited.member_number) !== original.member_number)
-                diffs.push({ label: 'ID', from: `#${original.member_number}`, to: `#${edited.member_number}` })
+                diffs.push({ label: 'ID', from: formatMemberId(original.member_number), to: formatMemberId(parseInt(edited.member_number)) })
               if (edited.name !== original.name)
                 diffs.push({ label: 'Name', from: original.name, to: edited.name })
               if (edited.phone !== original.phone)
@@ -239,13 +254,13 @@ export function EditMembersClient({ members, gymId }: Props) {
                 diffs.push({ label: 'Due', from: `₹${original.pending_amount ?? 0}`, to: `₹${edited.pending_amount}` })
               return (
                 <div key={original.id} className="px-5 py-4">
-                  <p className="text-sm font-bold text-gray-900 mb-2">#{original.member_number} — {original.name}</p>
+                  <p className="text-sm font-bold text-slate-900 mb-2">{formatMemberId(original.member_number)} — {original.name}</p>
                   <div className="space-y-1.5 pl-3 border-l-2 border-brand-200">
                     {diffs.map(d => (
                       <div key={d.label} className="flex items-center gap-2 text-xs">
-                        <span className="w-14 font-bold text-gray-400 uppercase">{d.label}</span>
+                        <span className="w-14 font-bold text-slate-400 uppercase">{d.label}</span>
                         <span className="text-red-500 line-through">{d.from}</span>
-                        <span className="text-gray-400">→</span>
+                        <span className="text-slate-400">→</span>
                         <span className="text-emerald-600 font-semibold">{d.to}</span>
                       </div>
                     ))}
@@ -267,7 +282,7 @@ export function EditMembersClient({ members, gymId }: Props) {
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)}
             className="w-4 h-4 rounded accent-brand-600" />
-          <span className="text-sm text-gray-700 font-medium">
+          <span className="text-sm text-slate-700 font-medium">
             I have reviewed all {changes.length} changes and confirm they are correct
           </span>
         </label>
@@ -276,7 +291,7 @@ export function EditMembersClient({ members, gymId }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setStep('edit')}
-            className="flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-700 font-semibold text-sm rounded-2xl hover:bg-gray-200 transition-all"
+            className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 font-semibold text-sm rounded-2xl hover:bg-slate-200 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />Back to Edit
           </button>
@@ -293,14 +308,14 @@ export function EditMembersClient({ members, gymId }: Props) {
 
   // ── Edit Table ────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/members" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+          <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Members
           </Link>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Edit Members</h1>
+          <span className="text-slate-300">/</span>
+          <h1 className="text-xl font-bold text-slate-900">Edit Members</h1>
         </div>
         <div className="flex items-center gap-2">
           {changes.length > 0 && (
@@ -340,8 +355,8 @@ export function EditMembersClient({ members, gymId }: Props) {
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <p className="font-bold text-gray-900">Delete {selected.size} member{selected.size !== 1 ? 's' : ''}?</p>
-                <p className="text-xs text-gray-500 mt-0.5">This will also delete all their payments and attendance.</p>
+                <p className="font-bold text-slate-900">Delete {selected.size} member{selected.size !== 1 ? 's' : ''}?</p>
+                <p className="text-xs text-slate-500 mt-0.5">This will also delete all their payments and attendance.</p>
               </div>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
@@ -351,7 +366,7 @@ export function EditMembersClient({ members, gymId }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="py-2.5 bg-gray-100 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-200 transition-all"
+                className="py-2.5 bg-slate-100 text-slate-700 font-semibold text-sm rounded-xl hover:bg-slate-200 transition-all"
               >
                 Cancel
               </button>
@@ -367,8 +382,8 @@ export function EditMembersClient({ members, gymId }: Props) {
         </div>
       )}
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="relative w-full sm:max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input type="search" placeholder="Search members..."
           value={search} onChange={e => setSearch(e.target.value)}
           className="input-field pl-9"
@@ -397,7 +412,7 @@ export function EditMembersClient({ members, gymId }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
+              <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="px-4 py-3 w-10">
                   <input type="checkbox"
                     checked={filtered.length > 0 && selected.size === filtered.length}
@@ -405,16 +420,16 @@ export function EditMembersClient({ members, gymId }: Props) {
                     className="w-4 h-4 rounded accent-red-500 cursor-pointer"
                   />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">ID</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Phone</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Gender</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide w-20">Age</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide min-w-[180px]">Area ✦</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wide">Pending Due (₹)</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide w-20">ID</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Name</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Gender</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide w-20">Age</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide min-w-[180px]">Area ✦</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Pending Due (₹)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-50">
               {filtered.map(m => {
                 const e = edits[m.id]
                 const changed =
@@ -426,7 +441,7 @@ export function EditMembersClient({ members, gymId }: Props) {
                   parseInt(e.pending_amount) !== (m.pending_amount ?? 0)
 
                 return (
-                  <tr key={m.id} className={selected.has(m.id) ? 'bg-red-50' : changed ? 'bg-brand-50/40' : 'hover:bg-gray-50'}>
+                  <tr key={m.id} className={selected.has(m.id) ? 'bg-red-50' : changed ? 'bg-brand-50/40' : 'hover:bg-slate-50'}>
                     <td className="px-4 py-2">
                       <input type="checkbox"
                         checked={selected.has(m.id)}
@@ -435,9 +450,15 @@ export function EditMembersClient({ members, gymId }: Props) {
                       />
                     </td>
                     <td className="px-4 py-2">
-                      <input type="number" min="1" value={e.member_number}
-                        onChange={ev => updateField(m.id, 'member_number', ev.target.value)}
-                        className={`w-20 ${cls}`} />
+                      <input type="text" value={e.member_number ? `GF${e.member_number.padStart(4, '0')}` : ''}
+                        onChange={ev => {
+                          const raw = ev.target.value.trim().toUpperCase()
+                          const digits = raw.startsWith('GF') ? raw.slice(2) : raw
+                          const num = parseInt(digits, 10)
+                          updateField(m.id, 'member_number', isNaN(num) ? '' : String(num))
+                        }}
+                        placeholder="GF0001"
+                        className={`w-24 ${cls}`} />
                     </td>
                     <td className="px-4 py-2">
                       <input type="text" value={e.name}
@@ -483,17 +504,17 @@ export function EditMembersClient({ members, gymId }: Props) {
                           className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
                       </div>
                       {activeAreaId === m.id && (areaSuggestions[m.id] ?? []).length > 0 && (
-                        <ul className="absolute z-30 left-4 right-4 bg-white border border-gray-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5">
+                        <ul className="absolute z-30 left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5" data-scroll-box>
                           {(areaSuggestions[m.id] ?? []).slice(0, 6).map(a => (
                             <li key={a.id} onMouseDown={() => {
                               updateField(m.id, 'area', a.name)
                               setAreaMeta(prev => ({ ...prev, [m.id]: { confidence: 1.0, matched_by: 'manual' } }))
                               setActiveAreaId(null)
                             }}
-                              className="px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer"
+                              className="px-3 py-2 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 cursor-pointer"
                             >
                               {a.name}
-                              {a.district && <span className="text-xs text-gray-400 ml-1">{a.district}</span>}
+                              {a.district && <span className="text-xs text-slate-400 ml-1">{a.district}</span>}
                             </li>
                           ))}
                         </ul>

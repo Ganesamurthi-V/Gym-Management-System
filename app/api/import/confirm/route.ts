@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
         gym_id,
         owner_id: user.id,
         age: parseInt(r.age),
-        member_number: parseInt(r.member_number)
+        member_number: parseInt(r.member_number),
+        legacy_member_id: r.legacy_member_id || null,
       })))
       .select('id')
 

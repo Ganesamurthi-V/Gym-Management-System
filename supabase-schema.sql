@@ -189,6 +189,11 @@ CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_n
 -- [Migration 5] Add age to members
 ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age < 120);
 
+-- [Migration 7] Add profile info to gyms
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS gst_number TEXT;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS phone TEXT;
+
 
 -- ================================================
 -- GEO NORMALIZATION ENGINE (Migration 6)
@@ -196,7 +201,8 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age 
 -- ================================================
 
 -- Enable pg_trgm for fast fuzzy text search
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- Install in extensions schema to avoid extension_in_public warning
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
 
 -- geo_localities: canonical place database
 CREATE TABLE IF NOT EXISTS geo_localities (
@@ -220,7 +226,7 @@ CREATE TABLE IF NOT EXISTS geo_localities (
 CREATE INDEX IF NOT EXISTS idx_geo_localities_name_norm ON geo_localities(name_normalized);
 CREATE INDEX IF NOT EXISTS idx_geo_localities_state ON geo_localities(state);
 CREATE INDEX IF NOT EXISTS idx_geo_localities_district ON geo_localities(district);
-CREATE INDEX IF NOT EXISTS idx_geo_localities_trgm ON geo_localities USING gin(name_normalized gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_geo_localities_trgm ON geo_localities USING gin(name_normalized extensions.gin_trgm_ops);
 
 -- geo_aliases: alternate spellings → canonical locality
 CREATE TABLE IF NOT EXISTS geo_aliases (
@@ -351,6 +357,7 @@ RETURNS TABLE(
   trgm_score FLOAT
 )
 LANGUAGE sql STABLE
+SET search_path = public, extensions
 AS $$
   SELECT
     id, name, name_normalized, name_phonetic, district, state,
@@ -375,6 +382,7 @@ RETURNS TABLE(
   state TEXT
 )
 LANGUAGE sql STABLE
+SET search_path = public, extensions
 AS $$
   SELECT id, name, district, state
   FROM geo_localities
@@ -388,3 +396,113 @@ AS $$
     similarity(name_normalized, query_text) DESC
   LIMIT result_limit;
 $$;
+
+-- ── Security hardening ────────────────────────────────────────────────────
+-- Revoke EXECUTE on rls_auto_enable from anon and authenticated roles
+-- Fixes: anon_security_definer_function_executable warning
+REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon, authenticated;
+
+-- Create the gym plan prices table
+CREATE TABLE IF NOT EXISTS gym_plan_prices (
+  gym_id    UUID PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
+  monthly   INTEGER NOT NULL DEFAULT 1500,
+  quarterly INTEGER NOT NULL DEFAULT 4000,
+  annual    INTEGER NOT NULL DEFAULT 10000,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS: only the gym owner can read their own prices
+ALTER TABLE gym_plan_prices ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Owner can read own plan prices"
+  ON gym_plan_prices FOR SELECT
+  USING (
+    gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid())
+  );
+
+
+-- ================================================
+-- [Migration 8] Onboarding system
+-- ================================================
+
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS onboarding_data JSONB;
+
+-- Update existing gyms to mark onboarding as completed (they were created before this feature)
+UPDATE gyms SET onboarding_completed = TRUE WHERE onboarding_completed IS NULL OR onboarding_completed = FALSE;
+
+-- RLS already covers gyms table
+
+-- Allow gym owners to update onboarding_data and onboarding_completed on their own gym
+-- (covered by the existing "Users can update their own gym" policy)
+
+-- ================================================
+-- [Migration 9] Joining fees per plan in gym_plan_prices
+-- ================================================
+
+ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_monthly   INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_quarterly  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_annual     INTEGER NOT NULL DEFAULT 0;
+
+-- Allow owners to write their own plan prices
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can upsert own plan prices'
+  ) THEN
+    CREATE POLICY "Owner can upsert own plan prices"
+      ON gym_plan_prices FOR INSERT
+      WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can update own plan prices'
+  ) THEN
+    CREATE POLICY "Owner can update own plan prices"
+      ON gym_plan_prices FOR UPDATE
+      USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  END IF;
+END $$;
+
+-- ================================================
+-- [Migration 10] Google Places hybrid geo metadata
+-- Stores supplementary Google data alongside existing canonical area columns.
+-- The canonical area columns (area, _area_confidence, etc.) remain unchanged.
+-- ================================================
+
+-- Add Google Places metadata columns to members table
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_place_id       TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_formatted_addr TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_locality_raw   TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_city_raw       TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_state_raw      TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_postal_code    TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_latitude       NUMERIC(10, 7);
+ALTER TABLE members ADD COLUMN IF NOT EXISTS google_longitude      NUMERIC(10, 7);
+
+-- Index for place_id lookups (deduplication, analytics)
+CREATE INDEX IF NOT EXISTS idx_members_google_place_id ON members(google_place_id) WHERE google_place_id IS NOT NULL;
+
+-- NOTE: google_place_id is supplementary metadata only.
+-- The canonical area is still stored in members.area (free text, normalized by GymDesk pipeline).
+-- Do NOT use google_place_id as a foreign key or canonical identifier.
+
+-- Migration: Add legacy_member_id column to members table
+-- Run this in your Supabase SQL editor or via the Supabase CLI.
+--
+-- Purpose:
+--   When importing members from external systems (e.g. old gym software),
+--   the original ID (e.g. "C1006", "MEM-042") is preserved here.
+--   The new canonical ID format is GF-prefixed: GF0001, GF0042, etc.,
+--   derived from the integer member_number column.
+
+ALTER TABLE members
+  ADD COLUMN IF NOT EXISTS legacy_member_id TEXT DEFAULT NULL;
+
+COMMENT ON COLUMN members.legacy_member_id IS
+  'Original member ID from an external/legacy system, preserved during import. '
+  'The canonical GymDesk ID is derived from member_number as GF + zero-padded 4 digits.';

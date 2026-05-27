@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { X, Menu } from 'lucide-react'
 
 const NAV_ITEMS = [
   { label: 'Dashboard',  href: '/dashboard',   icon: SquaresIcon },
@@ -12,42 +14,151 @@ const NAV_ITEMS = [
   { label: 'Reports',    href: '/reports',      icon: ChartIcon },
 ] as const
 
-export default function NavClient() {
+// ── Desktop sidebar nav ───────────────────────────────────────────────────────
+export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname()
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
-    <>
-      {/* Desktop Sidebar nav links */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ label, href, icon: Icon }) => (
-          <Link key={href} href={href}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-              isActive(href) ? 'bg-brand-50 text-brand-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-            }`}
+    <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+      {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+        const active = isActive(href)
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={e => e.stopPropagation()}
+            title={collapsed ? label : undefined}
+            className={`
+              flex items-center rounded-xl text-sm font-medium transition-all group
+              ${collapsed ? 'justify-center px-0 py-3 mx-1 group-hover/sidebar:justify-start group-hover/sidebar:gap-3 group-hover/sidebar:px-3 group-hover/sidebar:py-2.5 group-hover/sidebar:mx-0' : 'gap-3 px-3 py-2.5'}
+              ${active
+                ? 'bg-brand-50 text-brand-700'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
+            `}
           >
-            <Icon className={`w-4 h-4 flex-shrink-0 ${isActive(href) ? 'text-brand-600' : 'group-hover:text-brand-600'}`} />
-            {label}
-          </Link>
-        ))}
-      </nav>
+            {/* Icon — always visible */}
+            <Icon className={`w-4 h-4 flex-shrink-0 transition-colors ${
+              active ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500'
+            }`} />
 
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 flex">
-        {NAV_ITEMS.slice(0, 6).map(({ label, href, icon: Icon }) => (
-          <Link key={href} href={href}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold transition-colors ${
-              isActive(href) ? 'text-brand-600' : 'text-gray-400'
-            }`}
-          >
-            <Icon className="w-5 h-5" />
-            {label}
+            {/* Label — fades out when collapsed */}
+            <span className={`
+              whitespace-nowrap overflow-hidden transition-all duration-200
+              ${collapsed ? 'w-0 opacity-0 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100 group-hover/sidebar:flex-1' : 'flex-1 opacity-100'}
+            `}>
+              {label}
+            </span>
+
+            {/* Active dot — only when expanded */}
+            {active && !collapsed && (
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />
+            )}
           </Link>
-        ))}
-      </nav>
+        )
+      })}
+    </nav>
+  )
+}
+
+// ── Mobile hamburger + slide-up drawer ───────────────────────────────────────
+export function MobileNav() {
+  const [open, setOpen] = useState(false)
+  const pathname = usePathname()
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+  const current = NAV_ITEMS.find(n => isActive(n.href))
+
+  return (
+    <>
+      {/* Bottom bar: current page + hamburger */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 flex items-center justify-between px-5 h-16">
+        <div className="flex items-center gap-2.5">
+          {current && (
+            <>
+              <current.icon className="w-4 h-4 text-brand-600" />
+              <span className="text-sm font-bold text-slate-800">{current.label}</span>
+            </>
+          )}
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 transition-colors"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 z-50 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {/* Slide-up drawer */}
+      <div className={`md:hidden fixed bottom-0 inset-x-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+        open ? 'translate-y-0' : 'translate-y-full'
+      }`}>
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-slate-200 rounded-full" />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+          <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Menu</span>
+          <button
+            onClick={() => setOpen(false)}
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <nav className="px-3 py-3 space-y-1">
+          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+            const active = isActive(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all ${
+                  active ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  active ? 'bg-brand-100' : 'bg-slate-100'
+                }`}>
+                  <Icon className={`w-4 h-4 ${active ? 'text-brand-600' : 'text-slate-500'}`} />
+                </div>
+                <span>{label}</span>
+                {active && <span className="ml-auto w-2 h-2 rounded-full bg-brand-500" />}
+              </Link>
+            )
+          })}
+        </nav>
+        <div className="px-4 pb-6 pt-2">
+          <Link
+            href="/members/new"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-2xl shadow-sm active:scale-[0.98] transition-all"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+            </svg>
+            Add Member
+          </Link>
+        </div>
+      </div>
     </>
   )
 }
+
+// ── Default export ────────────────────────────────────────────────────────────
+export default function NavClient({ collapsed = false }: { collapsed?: boolean }) {
+  return <DesktopNav collapsed={collapsed} />
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 function SquaresIcon({ className }: { className?: string }) {
   return (

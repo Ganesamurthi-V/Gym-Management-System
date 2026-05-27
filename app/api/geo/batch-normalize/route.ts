@@ -5,7 +5,7 @@ import { scoreAgainstList } from '@/lib/geo/fuzzyMatch'
 import { ALIAS_MAP } from '@/lib/geo/aliases'
 import { CONFIDENCE } from '@/lib/geo/types'
 import { detectDatasetCluster, clusterBoost } from '@/lib/geo/clustering'
-import { geminiInferLocation } from '@/lib/geo/aiInference'
+import { groqInferLocation} from '@/lib/geo/aiInference'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, DatasetCluster, AIInferenceResult } from '@/lib/geo/types'
@@ -189,17 +189,17 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Phase 2: Gemini AI fallback (SERIAL with 4s gap)
-    const geminiApiKey = process.env.GEMINI_API_KEY ?? ''
+    // Phase 2: Groq AI fallback (SERIAL with 2s gap — 30 RPM limit)
+    const groqApiKey = process.env.GROQ_API_KEY ?? ''
     const needsAI = inputs.map((inp, i) => ({ ...inp, i })).filter(({ i }) => phase1Results[i] === null)
     const finalResults: NormalizationResult[] = [...phase1Results] as NormalizationResult[]
 
-    if (needsAI.length > 0 && geminiApiKey) {
+    if (needsAI.length > 0 && groqApiKey) {
       for (let index = 0; index < needsAI.length; index++) {
         const { raw_input, i } = needsAI[index]
         const key = raw_input.toLowerCase().trim()
 
-        // 1. Memory check (already handled by geminiInferLocation but we'll be careful here)
+        // 1. Memory check (already handled by groqInferLocation but we'll be careful here)
         // 2. DB Cache check
         const { data: dbCached } = await supabase
           .from('geo_ai_cache')
@@ -218,11 +218,11 @@ export async function POST(req: NextRequest) {
             reasoning: dbCached.reasoning
           }
         } else {
-          // 3. Gemini check (only if cache misses)
-          if (index > 0) await new Promise(r => setTimeout(r, 4000)) // 4s gap for 15 RPM
+          // 3. Groq check (only if cache misses)
+          if (index > 0) await new Promise(r => setTimeout(r, 2000)) // 2s gap for 30 RPM
 
           try {
-            aiResult = await withTimeout(geminiInferLocation(raw_input, geminiApiKey, {
+            aiResult = await withTimeout(groqInferLocation(raw_input, groqApiKey, {
               top_district: cluster.top_district,
               top_state: cluster.top_state,
             }), 5000)
@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
               }, { onConflict: 'raw_input_normalized' })
             }
           } catch (e) {
-            console.warn(`[Batch] Gemini timeout for ${raw_input}`)
+            console.warn(`[Batch] Groq timeout for ${raw_input}`)
             aiResult = null
           }
         }

@@ -341,7 +341,9 @@ export default function ImportEditPage() {
 
   if (step === "done") {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <div className="space-y-4 pb-6 max-w-[1600px] mx-auto">
+        <WizardHeader currentStep={6} />
+        <div className="min-h-[60vh] flex items-center justify-center px-4">
         <div className="card p-10 text-center animate-pop-in max-w-md w-full border border-slate-100 shadow-2xl rounded-3xl bg-white/80 backdrop-blur-md">
           <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10">
             <Check className="w-10 h-10 text-emerald-600 stroke-[3]" />
@@ -364,6 +366,7 @@ export default function ImportEditPage() {
           </div>
         </div>
       </div>
+      </div>
     );
   }
 
@@ -374,7 +377,7 @@ export default function ImportEditPage() {
 
   return (
     <div className="space-y-4 pb-6 max-w-[1600px] mx-auto">
-      <WizardHeader currentStep={6} />
+      <WizardHeader currentStep={5} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {hasReviewState ? (

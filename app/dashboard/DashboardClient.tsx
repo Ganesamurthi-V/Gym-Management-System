@@ -112,11 +112,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           
           {checklistDismissed && (
             <motion.div
-              layoutId="expiring-section"
               className="card flex-1"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
             >
               <ExpiringContent 
                 expiringMembers={expiringMembers} 
@@ -163,8 +162,8 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       <AnimatePresence>
         {!checklistDismissed && (
           <motion.div 
-            layoutId="expiring-section" 
             className="card"
+            exit={{ opacity: 0, y: -20, scale: 0.98, transition: { duration: 0.2 } }}
           >
             <ExpiringContent 
               expiringMembers={expiringMembers} 

@@ -3,6 +3,7 @@
 import type { DashboardStats } from '@/types'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -183,7 +184,9 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
     setTimeout(onClose, 300)
   }
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       className={`fixed inset-0 z-[100] flex items-center justify-center transition-all duration-300 ${
         show ? 'opacity-100' : 'opacity-0'
@@ -308,7 +311,8 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

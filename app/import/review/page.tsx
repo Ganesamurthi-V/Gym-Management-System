@@ -297,7 +297,7 @@ export default function ImportReviewPage() {
         </Link>
         <span className="text-slate-300">/</span>
         <h1 className="text-xl font-bold text-slate-900">Review Areas</h1>
-        <span className="text-xs text-slate-400">Step 4 of 8</span>
+        <span className="text-xs text-slate-400">Step 4 of 6</span>
         {/* Save & Continue button duplicated at top for quick access */}
         <div className="ml-auto flex items-center gap-3">
           {saveMsg && (
@@ -330,56 +330,8 @@ export default function ImportReviewPage() {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-        {[
-          { label: "Total", value: stats.total, cls: "text-slate-900" },
-          { label: "Auto-accepted", value: stats.autoAccepted, cls: "text-emerald-600" },
-          { label: "Needs review", value: stats.needsReview, cls: "text-amber-500" },
-          { label: "Unresolved", value: stats.unresolved, cls: "text-red-500" },
-          { label: "Reviewed", value: stats.done, cls: "text-blue-500" },
-        ].map(s => (
-          <div key={s.label} className="card p-4 text-center">
-            <p className={`text-2xl font-bold ${s.cls}`}>{s.value}</p>
-            <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Progress bar */}
-      <div className="card px-5 py-3 flex items-center gap-4">
-        <p className="text-xs font-semibold text-slate-500 whitespace-nowrap">Review progress</p>
-        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500"
-            style={{ width: `${stats.total > 0 ? (stats.done / stats.total) * 100 : 0}%` }}
-          />
-        </div>
-        <p className="text-xs font-bold text-slate-600 whitespace-nowrap">{stats.done}/{stats.total}</p>
-      </div>
-
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="search" placeholder="Search name or area…" value={search}
-            onChange={e => setSearch(e.target.value)} className="input-field pl-9 w-full" />
-        </div>
-
-        <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl p-1">
-          {(["pending", "low", "unresolved", "done"] as FilterMode[]).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
-                filter === f ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {f === "pending" ? "All Pending" : f === "low" ? "Low confidence" : f === "done" ? "Reviewed" : f}
-              {f === "unresolved" && stats.unresolved > 0 && (
-                <span className="ml-1.5 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">{stats.unresolved}</span>
-              )}
-            </button>
-          ))}
-        </div>
 
         <button onClick={handleAcceptAll} disabled={acceptingAll || stats.done === stats.total}
           className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"

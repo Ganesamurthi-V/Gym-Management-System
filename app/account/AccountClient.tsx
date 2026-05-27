@@ -242,7 +242,7 @@ export function AccountClient({
   const deleteGymReady  = deleteConfirmText === gymName
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
 
       {/* ── Toast notification ── */}
       <div className={`fixed bottom-6 right-6 z-[70] transition-all duration-300 ${

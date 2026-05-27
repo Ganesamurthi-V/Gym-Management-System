@@ -9,4 +9,4 @@ supabase-geo-intelligence-migrations.sql
 GEO_INTELLIGENCE_MIGRATIONS.sql
 .vscode
 git_command.txt
-add_legacy_member_id.sql
+add_legacy_member_id.sq

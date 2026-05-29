@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { normalizeInput } from '@/lib/geo/normalizer'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
+export const dynamic = 'force-dynamic'
+
 function mapSupabaseError(error: { code: string; message: string }) {
   if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
   if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }

@@ -104,7 +104,9 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
                           <Package className="w-5 h-5 text-slate-400 group-hover:text-brand-500 transition-colors" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{item.product_name}</p>
+                          <Link href={`/inventory/${item.id}`} className="font-bold text-slate-900 hover:text-brand-600 transition-colors block">
+                            {item.product_name}
+                          </Link>
                           <p className="text-xs font-semibold text-slate-500 mt-0.5">{item.variant_name}</p>
                         </div>
                       </div>

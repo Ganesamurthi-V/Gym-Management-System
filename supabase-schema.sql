@@ -561,3 +561,61 @@ CREATE POLICY "Gym owners can delete inventory"
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid())
   );
+
+-- ================================================
+-- FUNCTIONS
+-- ================================================
+
+CREATE OR REPLACE FUNCTION increment_inventory_stock(p_inventory_id UUID, amount INTEGER)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE inventory
+  SET initial_stock = GREATEST(0, initial_stock + amount),
+      updated_at = NOW()
+  WHERE id = p_inventory_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ================================================
+-- INVENTORY SALES (Revenue Tracking)
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS inventory_sales (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  inventory_id UUID REFERENCES inventory(id) ON DELETE SET NULL,
+  product_name TEXT NOT NULL,
+  variant_name TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price NUMERIC NOT NULL,
+  total_price NUMERIC NOT NULL,
+  payment_mode TEXT NOT NULL DEFAULT 'cash' CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  sold_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_gym_id ON inventory_sales(gym_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_inventory_id ON inventory_sales(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_sold_at ON inventory_sales(gym_id, sold_at DESC);
+
+-- ROW LEVEL SECURITY (RLS)
+ALTER TABLE inventory_sales ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Gym owners can view their inventory sales"
+  ON inventory_sales FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can insert inventory sales"
+  ON inventory_sales FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can delete inventory sales"
+  ON inventory_sales FOR DELETE
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
+  );

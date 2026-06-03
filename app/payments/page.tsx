@@ -21,6 +21,13 @@ export default async function PaymentsPage() {
     .eq('gym_id', gym.id)
     .order('created_at', { ascending: false })
 
+  // Inventory sales
+  const { data: productSales } = await supabase
+    .from('inventory_sales')
+    .select('*')
+    .eq('gym_id', gym.id)
+    .order('sold_at', { ascending: false })
+
   // Members with pending dues
   const { data: pendingMembers } = await supabase
     .from('members')
@@ -32,6 +39,7 @@ export default async function PaymentsPage() {
   return (
     <PaymentsClient
       payments={payments ?? []}
+      productSales={productSales ?? []}
       pendingMembers={pendingMembers ?? []}
       gymId={gym.id}
       gymName={gym.name}

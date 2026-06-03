@@ -104,7 +104,9 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
                           <Package className="w-5 h-5 text-slate-400 group-hover:text-brand-500 transition-colors" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{item.product_name}</p>
+                          <Link href={`/inventory/${item.id}`} className="font-bold text-slate-900 hover:text-brand-600 transition-colors block">
+                            {item.product_name}
+                          </Link>
                           <p className="text-xs font-semibold text-slate-500 mt-0.5">{item.variant_name}</p>
                         </div>
                       </div>
@@ -114,11 +116,13 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
                     <td className="px-5 py-4 text-sm font-bold text-slate-900 text-right">₹{item.selling_price}</td>
                     <td className="px-5 py-4 text-right">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] uppercase tracking-wide font-bold ${
-                        item.initial_stock <= (item.low_stock_threshold || 5) 
-                          ? 'bg-red-50 text-red-600 border border-red-100' 
+                        item.initial_stock === 0
+                          ? 'bg-red-50 text-red-600 border border-red-100'
+                          : item.initial_stock <= (item.low_stock_threshold || 5) 
+                          ? 'bg-amber-50 text-amber-600 border border-amber-100' 
                           : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                       }`}>
-                        {item.initial_stock} in stock
+                        {item.initial_stock === 0 ? 'Out of Stock' : `${item.initial_stock} in stock`}
                       </span>
                     </td>
                   </tr>

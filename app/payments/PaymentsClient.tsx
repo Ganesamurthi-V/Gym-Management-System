@@ -20,6 +20,17 @@ interface Payment {
   member?: { id: string; name: string; phone: string; member_number: number }
 }
 
+interface ProductSale {
+  id: string
+  product_name: string
+  variant_name: string
+  quantity: number
+  unit_price: number
+  total_price: number
+  payment_mode: string
+  sold_at: string
+}
+
 interface PendingMember {
   id: string
   name: string
@@ -30,6 +41,7 @@ interface PendingMember {
 
 interface Props {
   payments: Payment[]
+  productSales?: ProductSale[]
   pendingMembers: PendingMember[]
   gymId: string
   gymName: string
@@ -46,7 +58,7 @@ function getPeriodRange(period: Period): { start: Date; end: Date } | null {
   return null
 }
 
-export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Props) {
+export function PaymentsClient({ payments, productSales = [], pendingMembers, gymId, gymName }: Props) {
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
   const [search, setSearch]   = useState('')
@@ -58,29 +70,66 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
   const supabase = createClient()
 
+  const allTransactions = useMemo(() => {
+    const m = payments.map(p => ({
+      id: p.id,
+      type: 'membership' as const,
+      timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
+      amount: p.amount + (p.admission_fee ?? 0),
+      mode: p.payment_mode,
+      title: p.member?.name ?? 'Unknown',
+      subtitle: p.member?.phone ?? '',
+      col3: p.plan,
+      col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
+      feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm` : undefined,
+      member_number: p.member?.member_number
+    }))
+
+    const s = productSales.map(ps => ({
+      id: ps.id,
+      type: 'inventory' as const,
+      timestamp: ps.sold_at,
+      amount: Number(ps.total_price),
+      mode: ps.payment_mode,
+      title: 'Inventory Sale',
+      subtitle: 'Walk-in / Direct',
+      col3: ps.product_name,
+      col4: `${ps.variant_name} (x${ps.quantity})`,
+      feeBreakdown: undefined,
+      member_number: undefined
+    }))
+
+    return [...m, ...s].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [payments, productSales])
+
   const filtered = useMemo(() => {
     const range = period === 'custom' && customFrom && customTo
       ? { start: startOfDay(parseISO(customFrom)), end: endOfDay(parseISO(customTo)) }
       : getPeriodRange(period)
-    return payments.filter(p => {
-      if (range && !isWithinInterval(parseISO(p.start_date), range)) return false
-      if (modeFilter !== 'all' && p.payment_mode !== modeFilter) return false
-      if (idSearch && !String(p.member?.member_number).includes(idSearch.trim())) return false
+    return allTransactions.filter(p => {
+      if (range && !isWithinInterval(parseISO(p.timestamp), range)) return false
+      if (modeFilter !== 'all' && p.mode !== modeFilter) return false
+      
+      if (idSearch) {
+        if (p.type !== 'membership' || !String(p.member_number).includes(idSearch.trim())) return false
+      }
+      
       if (search) {
         const q = search.toLowerCase()
         if (
-          !p.member?.name.toLowerCase().includes(q) &&
-          !p.member?.phone.includes(q)
+          !p.title.toLowerCase().includes(q) &&
+          !p.subtitle.toLowerCase().includes(q) &&
+          !p.col3.toLowerCase().includes(q)
         ) return false
       }
       return true
     })
-  }, [payments, period, modeFilter, search, idSearch, customFrom, customTo])
+  }, [allTransactions, period, modeFilter, search, idSearch, customFrom, customTo])
 
-  const totalCollected = filtered.reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
-  const cashTotal  = filtered.filter(p => p.payment_mode === 'cash').reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
-  const upiTotal   = filtered.filter(p => p.payment_mode === 'upi').reduce((s, p)  => s + p.amount + (p.admission_fee ?? 0), 0)
-  const cardTotal  = filtered.filter(p => p.payment_mode === 'card').reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
+  const totalCollected = filtered.reduce((s, p) => s + p.amount, 0)
+  const cashTotal  = filtered.filter(p => p.mode === 'cash').reduce((s, p) => s + p.amount, 0)
+  const upiTotal   = filtered.filter(p => p.mode === 'upi').reduce((s, p)  => s + p.amount, 0)
+  const cardTotal  = filtered.filter(p => p.mode === 'card').reduce((s, p) => s + p.amount, 0)
   const totalPending = localPending.reduce((s, m) => s + m.pending_amount, 0)
 
   const modeConfig = {
@@ -115,16 +164,16 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
     ws.getRow(1).font = { bold: true }
     filtered.forEach(p => {
       ws.addRow({
-        num:   p.member?.member_number ?? '',
-        name:  p.member?.name ?? '',
-        phone: p.member?.phone ?? '',
-        plan:  p.plan,
-        start: p.start_date,
-        end:   p.end_date,
-        mode:  p.payment_mode.toUpperCase(),
+        num:   p.member_number ?? '-',
+        name:  p.title,
+        phone: p.subtitle,
+        plan:  p.col3,
+        start: p.type === 'membership' ? p.col4.split(' – ')[0] : p.timestamp,
+        end:   p.type === 'membership' ? p.col4.split(' – ')[1] : '-',
+        mode:  p.mode.toUpperCase(),
         fee:   p.amount,
-        adm:   p.admission_fee ?? 0,
-        total: p.amount + (p.admission_fee ?? 0),
+        adm:   0,
+        total: p.amount,
       })
     })
     const buf = await wb.xlsx.writeBuffer()
@@ -262,20 +311,19 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {filtered.length === 0 ? (
-          <div className="card p-10 text-center text-slate-400 text-sm">No payments found</div>
+          <div className="card p-10 text-center text-slate-400 text-sm">No transactions found</div>
         ) : filtered.map(payment => {
-          const mode = payment.payment_mode as 'cash' | 'upi' | 'card'
+          const mode = payment.mode as 'cash' | 'upi' | 'card'
           const { bg, text, border, icon } = modeConfig[mode]
-          const total = payment.amount + (payment.admission_fee ?? 0)
           return (
             <div key={payment.id} className="card p-4 flex items-center gap-3">
               <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center flex-shrink-0`}>{icon}</div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900 text-sm">{payment.member?.name ?? 'Unknown'}</p>
-                <p className="text-xs text-slate-400 mt-0.5 capitalize">{payment.plan} · {formatDate(payment.start_date)}</p>
+                <p className="font-bold text-slate-900 text-sm">{payment.title}</p>
+                <p className="text-xs text-slate-400 mt-0.5 capitalize">{payment.col3} · {formatDate(payment.timestamp)}</p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="font-bold text-slate-900">{formatCurrency(total)}</p>
+                <p className="font-bold text-slate-900">{formatCurrency(payment.amount)}</p>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mt-0.5 inline-block ${bg} ${text} ${border}`}>
                   {mode.toUpperCase()}
                 </span>
@@ -301,31 +349,35 @@ export function PaymentsClient({ payments, pendingMembers, gymId, gymName }: Pro
           </thead>
           <tbody className="divide-y divide-slate-50">
             {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-400">No payments found</td></tr>
+              <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-400">No transactions found</td></tr>
             ) : filtered.map(payment => {
-              const mode = payment.payment_mode as 'cash' | 'upi' | 'card'
+              const mode = payment.mode as 'cash' | 'upi' | 'card'
               const { bg, text, border, icon } = modeConfig[mode]
-              const admFee = payment.admission_fee ?? 0
-              const total  = payment.amount + admFee
               return (
                 <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-xs text-slate-400">#{payment.member?.member_number}</td>
-                  <td className="px-5 py-3.5">
-                    <p className="font-semibold text-slate-900">{payment.member?.name ?? 'Unknown'}</p>
-                    <p className="text-xs text-slate-400">{payment.member?.phone}</p>
+                  <td className="px-5 py-3.5 font-mono text-xs text-slate-400">
+                    {payment.member_number ? `#${payment.member_number}` : '-'}
                   </td>
-                  <td className="px-5 py-3.5 text-slate-500 capitalize">{payment.plan}</td>
-                  <td className="px-5 py-3.5 text-slate-500 text-xs">{formatDate(payment.start_date)} – {formatDate(payment.end_date)}</td>
+                  <td className="px-5 py-3.5">
+                    <p className="font-semibold text-slate-900">{payment.title}</p>
+                    <p className="text-xs text-slate-400">{payment.subtitle}</p>
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-500 capitalize">
+                    {payment.col3}
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-500 text-xs">
+                    {payment.col4}
+                  </td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${bg} ${text} ${border}`}>
                       {icon}{mode.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <p className="font-bold text-slate-900">{formatCurrency(total)}</p>
-                    {admFee > 0 && (
+                    <p className="font-bold text-slate-900">{formatCurrency(payment.amount)}</p>
+                    {payment.feeBreakdown && (
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {formatCurrency(payment.amount)} + {formatCurrency(admFee)} adm
+                        {payment.feeBreakdown}
                       </p>
                     )}
                   </td>

@@ -576,51 +576,46 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-
 -- ================================================
--- INVENTORY UNITS (Serialized Tracking)
+-- INVENTORY SALES (Revenue Tracking)
 -- ================================================
 
-CREATE TABLE IF NOT EXISTS inventory_units (
+CREATE TABLE IF NOT EXISTS inventory_sales (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  inventory_id UUID NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
-  barcode TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'sold', 'expired', 'lost')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(gym_id, barcode)
+  inventory_id UUID REFERENCES inventory(id) ON DELETE SET NULL,
+  product_name TEXT NOT NULL,
+  variant_name TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price NUMERIC NOT NULL,
+  total_price NUMERIC NOT NULL,
+  payment_mode TEXT NOT NULL DEFAULT 'cash' CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  sold_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_units_gym_id ON inventory_units(gym_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_units_inventory_id ON inventory_units(inventory_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_units_barcode ON inventory_units(gym_id, barcode);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_gym_id ON inventory_sales(gym_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_inventory_id ON inventory_sales(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_sold_at ON inventory_sales(gym_id, sold_at DESC);
 
 -- ROW LEVEL SECURITY (RLS)
-ALTER TABLE inventory_units ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_sales ENABLE ROW LEVEL SECURITY;
 
--- INVENTORY_UNITS policies
-CREATE POLICY "Gym owners can view their inventory units"
-  ON inventory_units FOR SELECT
+CREATE POLICY "Gym owners can view their inventory sales"
+  ON inventory_sales FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
   );
 
-CREATE POLICY "Gym owners can insert inventory units"
-  ON inventory_units FOR INSERT
+CREATE POLICY "Gym owners can insert inventory sales"
+  ON inventory_sales FOR INSERT
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
   );
 
-CREATE POLICY "Gym owners can update inventory units"
-  ON inventory_units FOR UPDATE
+CREATE POLICY "Gym owners can delete inventory sales"
+  ON inventory_sales FOR DELETE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can delete inventory units"
-  ON inventory_units FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
   );

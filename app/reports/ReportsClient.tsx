@@ -41,6 +41,21 @@ interface ExpiringMember {
   plan: string
 }
 
+interface InventorySaleMonthly {
+  label: string
+  total: number
+  quantity: number
+}
+
+interface RecentSale {
+  product_name: string
+  variant_name: string
+  quantity: number
+  total_price: number
+  payment_mode: string
+  sold_at: string
+}
+
 interface Props {
   months: MonthData[]
   expiredCount: number
@@ -62,9 +77,11 @@ interface Props {
   expiringMembers: ExpiringMember[]
   attendanceTodayCount: number
   gymId: string
+  inventorySales: InventorySaleMonthly[]
+  recentInventorySales: RecentSale[]
 }
 
-type TabType = 'overview' | 'revenue' | 'attendance' | 'marketing'
+type TabType = 'overview' | 'revenue' | 'attendance' | 'marketing' | 'inventory'
 
 export function ReportsClient({
   months, expiredCount, activeCount, totalMembers,
@@ -72,7 +89,8 @@ export function ReportsClient({
   newMembersByMonth, churnCount, attendanceByDay, topAreas, gymName,
   gymCity, gymGST, gymPhone,
   membersWithDues, totalDuesAmount,
-  expiringMembers, attendanceTodayCount, gymId
+  expiringMembers, attendanceTodayCount, gymId,
+  inventorySales, recentInventorySales
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [isMounted, setIsMounted] = useState(false)
@@ -1179,6 +1197,116 @@ export function ReportsClient({
                     >
                       <Send className="w-4 h-4" /> Trigger Bulk Dues Reminders
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'inventory' && (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="card p-6 lg:col-span-2 bg-white border border-[#E2E8F0]/70 rounded-2xl flex flex-col justify-between hover:shadow-xs transition-all duration-350">
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="font-extrabold text-[#0F172A] flex items-center gap-1.5 tracking-tight">
+                          <BarChart2 className="w-5 h-5 text-brand-500" />
+                          Inventory Sales Trend
+                        </h3>
+                        <p className="text-xs text-[#64748B] font-semibold mt-0.5">Historical revenue from product sales</p>
+                      </div>
+                    </div>
+
+                    {isMounted ? (
+                      <motion.div
+                        className="h-64 mt-6"
+                        initial={{ opacity: 0, y: 15 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      >
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={[...inventorySales].reverse()}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorInvRev" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.25}/>
+                                <stop offset="95%" stopColor="#10B981" stopOpacity={0.01}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F8FAFC" />
+                            <XAxis dataKey="label" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} dy={8} />
+                            <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} dx={-8} />
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div className="bg-[#0F172A] border border-slate-800 px-3.5 py-2.5 rounded-xl shadow-lg text-white text-xs space-y-1.5">
+                                      <p className="font-bold text-slate-400">{payload[0].payload.label}</p>
+                                      <p className="font-black text-sm text-emerald-400">
+                                        ₹{Number(payload[0].value).toLocaleString('en-IN')}
+                                      </p>
+                                      <p className="font-semibold text-slate-300">
+                                        {payload[0].payload.quantity} units sold
+                                      </p>
+                                    </div>
+                                  )
+                                }
+                                return null
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="total"
+                              stroke="#10B981"
+                              strokeWidth={3}
+                              fill="url(#colorInvRev)"
+                              activeDot={{ r: 6, fill: '#10B981', stroke: '#fff', strokeWidth: 2 }}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </motion.div>
+                    ) : (
+                      <div className="h-64 flex items-center justify-center bg-slate-50/50 rounded-xl mt-6 border border-slate-100 border-dashed">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin"/> Loading Chart...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="card p-6 bg-white border border-[#E2E8F0]/70 rounded-2xl flex flex-col hover:shadow-xs transition-all duration-350">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-extrabold text-[#0F172A] flex items-center gap-1.5 tracking-tight">
+                      <Clock className="w-5 h-5 text-emerald-500" />
+                      Recent Sales
+                    </h3>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                    {recentInventorySales.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-xs text-slate-400 font-semibold">No recent sales</p>
+                      </div>
+                    ) : (
+                      recentInventorySales.map((sale, i) => (
+                        <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between hover:border-emerald-200 transition-colors">
+                          <div className="min-w-0 flex-1 mr-3">
+                            <p className="text-xs font-bold text-slate-900 truncate">{sale.product_name}</p>
+                            <div className="flex flex-col gap-0.5 mt-0.5">
+                              <p className="text-[10px] text-slate-500 truncate">{sale.variant_name}</p>
+                              <p className="text-[9px] text-slate-400 font-semibold">{format(new Date(sale.sold_at), 'MMM d, h:mm a')}</p>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-black text-emerald-600">₹{sale.total_price.toLocaleString('en-IN')}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">Qty: {sale.quantity}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>

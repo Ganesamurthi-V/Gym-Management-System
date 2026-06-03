@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
-import { Plus, ScanBarcode, Box, CheckCircle2, ShieldAlert, ShoppingCart, Loader2 } from 'lucide-react'
-import BarcodeScannerModal from '@/components/inventory/BarcodeScannerModal'
+import { Plus, Box, CheckCircle2, ShieldAlert, ShoppingCart, Loader2, Hash } from 'lucide-react'
 
 interface InventoryUnit {
   id: string
@@ -22,7 +21,8 @@ interface Props {
 
 export default function InventoryUnitsManager({ productId, initialUnits, gymId }: Props) {
   const [units, setUnits] = useState<InventoryUnit[]>(initialUnits)
-  const [scannerMode, setScannerMode] = useState<'add' | 'sell' | null>(null)
+  const [actionMode, setActionMode] = useState<'add' | 'sell' | null>(null)
+  const [barcodeInput, setBarcodeInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -30,9 +30,12 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
   const supabase = createClient()
   const router = useRouter()
 
-  const handleScan = async (barcode: string) => {
-    const currentMode = scannerMode
-    setScannerMode(null) // Turn off camera immediately
+  const handleSubmitBarcode = async () => {
+    const barcode = barcodeInput.trim()
+    if (!barcode) return
+    const currentMode = actionMode
+    setActionMode(null)
+    setBarcodeInput('')
     
     setLoading(true)
     setError('')
@@ -123,7 +126,7 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
       <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
-            <ScanBarcode className="w-4 h-4" />
+            <Hash className="w-4 h-4" />
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Serialized Units</h2>
@@ -132,14 +135,14 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
         </div>
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => setScannerMode('sell')}
+            onClick={() => setActionMode('sell')}
             className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200"
           >
             <ShoppingCart className="w-3.5 h-3.5" />
             Sell Item
           </button>
           <button 
-            onClick={() => setScannerMode('add')}
+            onClick={() => setActionMode('add')}
             className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -172,11 +175,11 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
         {!loading && units.length === 0 && (
           <div className="text-center py-10 px-4">
             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
-              <ScanBarcode className="w-8 h-8 text-slate-300" />
+              <Hash className="w-8 h-8 text-slate-300" />
             </div>
             <h3 className="text-sm font-bold text-slate-900 mb-1">No serialized units</h3>
             <p className="text-xs text-slate-500 max-w-[250px] mx-auto">
-              Scan individual barcodes to track each physical item of this product separately.
+              Enter individual barcodes to track each physical item of this product separately.
             </p>
           </div>
         )}
@@ -202,7 +205,7 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                       unit.status === 'available' ? 'bg-slate-100 text-slate-600' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      <ScanBarcode className="w-4 h-4" />
+                      <Hash className="w-4 h-4" />
                     </div>
                     <div className="truncate">
                       <p className={`text-sm font-mono font-bold truncate ${unit.status === 'sold' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
@@ -229,13 +232,39 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
         )}
       </div>
 
-      {scannerMode && (
-        <BarcodeScannerModal 
-          onScan={(barcode) => {
-            handleScan(barcode)
-          }}
-          onClose={() => setScannerMode(null)}
-        />
+      {actionMode && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+            <h3 className="font-bold text-slate-900">
+              {actionMode === 'add' ? 'Add Unit Barcode' : 'Sell Unit by Barcode'}
+            </h3>
+            <input
+              type="text"
+              value={barcodeInput}
+              onChange={e => setBarcodeInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmitBarcode()}
+              className="input-field font-mono text-sm"
+              placeholder="Enter barcode..."
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setActionMode(null); setBarcodeInput('') }}
+                className="btn-secondary py-1.5 px-4 text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitBarcode}
+                className="btn-primary py-1.5 px-4 text-xs"
+              >
+                {actionMode === 'add' ? 'Add' : 'Sell'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

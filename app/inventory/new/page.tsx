@@ -3,36 +3,72 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Box, Tag, Image as ImageIcon, Package, Info, ImagePlus, ShieldAlert, BadgeIndianRupee, ScanBarcode } from 'lucide-react'
+import { ArrowLeft, Box, Tag, Image as ImageIcon, Package, Info, ImagePlus, ShieldAlert, BadgeIndianRupee, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import BarcodeScannerModal from '@/components/inventory/BarcodeScannerModal'
+
+interface VariantForm {
+  variantName: string
+  sku: string
+  costPrice: string
+  sellingPrice: string
+  memberPrice: string
+  initialStock: string
+  lowStockThreshold: string
+}
 
 export default function NewInventoryPage() {
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isScannerOpen, setIsScannerOpen] = useState(false)
 
-  // Form State
-  const [form, setForm] = useState({
+  // Shared Product State
+  const [productDetails, setProductDetails] = useState({
     productName: '',
     brand: '',
     category: '',
-    sku: '',
     description: '',
-    
+  })
+
+  // Variants State
+  const [variants, setVariants] = useState<VariantForm[]>([{
     variantName: '',
+    sku: '',
     costPrice: '',
     sellingPrice: '',
     memberPrice: '',
-    
     initialStock: '',
     lowStockThreshold: ''
-  })
+  }])
 
-  function update(field: string, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }))
+  function updateProduct(field: string, value: string) {
+    setProductDetails(prev => ({ ...prev, [field]: value }))
+  }
+
+  function updateVariant(index: number, field: keyof VariantForm, value: string) {
+    setVariants(prev => {
+      const newVariants = [...prev]
+      newVariants[index] = { ...newVariants[index], [field]: value }
+      return newVariants
+    })
+  }
+
+  function addVariant() {
+    setVariants(prev => [...prev, {
+      variantName: '',
+      sku: '',
+      costPrice: '',
+      sellingPrice: '',
+      memberPrice: '',
+      initialStock: '',
+      lowStockThreshold: ''
+    }])
+  }
+
+  function removeVariant(index: number) {
+    if (variants.length > 1) {
+      setVariants(prev => prev.filter((_, i) => i !== index))
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,22 +83,24 @@ export default function NewInventoryPage() {
       const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
       if (!gym) throw new Error('Gym not found')
 
+      const rowsToInsert = variants.map(v => ({
+        gym_id: gym.id,
+        product_name: productDetails.productName,
+        brand: productDetails.brand || null,
+        category: productDetails.category || null,
+        description: productDetails.description || null,
+        variant_name: v.variantName,
+        sku: v.sku || null,
+        cost_price: parseFloat(v.costPrice),
+        selling_price: parseFloat(v.sellingPrice),
+        member_price: v.memberPrice ? parseFloat(v.memberPrice) : null,
+        initial_stock: parseInt(v.initialStock, 10),
+        low_stock_threshold: v.lowStockThreshold ? parseInt(v.lowStockThreshold, 10) : null
+      }))
+
       const { error: insertError } = await supabase
         .from('inventory')
-        .insert({
-          gym_id: gym.id,
-          product_name: form.productName,
-          brand: form.brand || null,
-          category: form.category || null,
-          sku: form.sku || null,
-          description: form.description || null,
-          variant_name: form.variantName,
-          cost_price: parseFloat(form.costPrice),
-          selling_price: parseFloat(form.sellingPrice),
-          member_price: form.memberPrice ? parseFloat(form.memberPrice) : null,
-          initial_stock: parseInt(form.initialStock, 10),
-          low_stock_threshold: form.lowStockThreshold ? parseInt(form.lowStockThreshold, 10) : null
-        })
+        .insert(rowsToInsert)
 
       if (insertError) throw insertError
 
@@ -75,15 +113,15 @@ export default function NewInventoryPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/dashboard" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
+        <Link href="/inventory" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">Add New Product</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Add a new item to your inventory</p>
+          <p className="text-sm text-slate-400 mt-0.5">Create a product and its variants</p>
         </div>
       </div>
 
@@ -94,7 +132,7 @@ export default function NewInventoryPage() {
           </div>
         )}
 
-        {/* 1. Product Details */}
+        {/* 1. Shared Product Details */}
         <div className="card overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
@@ -110,10 +148,10 @@ export default function NewInventoryPage() {
               </label>
               <input 
                 type="text" 
-                value={form.productName} 
-                onChange={e => update('productName', e.target.value)}
+                value={productDetails.productName} 
+                onChange={e => updateProduct('productName', e.target.value)}
                 className="input-field" 
-                placeholder="e.g., Whey Protein, Creatine" 
+                placeholder="e.g., Nakpro Whey, ON Creatine" 
                 required 
                 autoFocus 
               />
@@ -124,8 +162,8 @@ export default function NewInventoryPage() {
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Brand</label>
                 <input 
                   type="text" 
-                  value={form.brand} 
-                  onChange={e => update('brand', e.target.value)}
+                  value={productDetails.brand} 
+                  onChange={e => updateProduct('brand', e.target.value)}
                   className="input-field" 
                   placeholder="e.g., Optimum Nutrition, MuscleBlaze" 
                 />
@@ -133,8 +171,8 @@ export default function NewInventoryPage() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Category</label>
                 <select 
-                  value={form.category} 
-                  onChange={e => update('category', e.target.value)}
+                  value={productDetails.category} 
+                  onChange={e => updateProduct('category', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Select category...</option>
@@ -148,206 +186,182 @@ export default function NewInventoryPage() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">SKU / Product Code</label>
-                <button 
-                  type="button" 
-                  onClick={() => setIsScannerOpen(true)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-2 py-1 rounded-lg transition-colors uppercase tracking-wider"
-                >
-                  <ScanBarcode className="w-3.5 h-3.5" />
-                  Scan
-                </button>
-              </div>
-              <input 
-                type="text" 
-                value={form.sku} 
-                onChange={e => update('sku', e.target.value.toUpperCase())}
-                className="input-field font-mono text-sm" 
-                placeholder="e.g., WP-2KG-CHOC or scan barcode" 
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Description</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Description (Shared)</label>
               <textarea 
-                value={form.description} 
-                onChange={e => update('description', e.target.value)}
+                value={productDetails.description} 
+                onChange={e => updateProduct('description', e.target.value)}
                 className="input-field resize-none h-24" 
-                placeholder="Product description..." 
+                placeholder="Product description that applies to all variants..." 
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Product Images</label>
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-brand-300 transition-colors cursor-pointer group">
-                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
-                  <ImagePlus className="w-6 h-6 text-slate-400 group-hover:text-brand-500" />
-                </div>
-                <p className="text-sm font-bold text-brand-600">Click to upload product images</p>
-                <p className="text-xs text-slate-400 mt-1">PNG, JPG, WEBP up to 2MB • 0/1 images</p>
-                
-                <div className="mt-4 pt-4 border-t border-slate-100 w-full">
-                  <p className="text-xs text-slate-500">No images uploaded yet. Add product images to help customers identify products.</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* 2. Variant & Pricing */}
-        <div className="card overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-              <BadgeIndianRupee className="w-4 h-4" />
-            </div>
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Variant & Pricing</h2>
+        {/* 2. Variants List */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">Variants</h2>
+            <button
+              type="button"
+              onClick={addVariant}
+              className="btn-secondary py-1.5 px-3 text-sm flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" /> Add Variant
+            </button>
           </div>
 
-          <div className="p-5 space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                Variant Name <span className="text-red-500">*</span>
-              </label>
-              <input 
-                type="text" 
-                value={form.variantName} 
-                onChange={e => update('variantName', e.target.value)}
-                className="input-field" 
-                placeholder="e.g., 2kg Chocolate, 500g Vanilla" 
-                required 
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                  Cost Price <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
-                  <input 
-                    type="number" 
-                    value={form.costPrice} 
-                    onChange={e => update('costPrice', e.target.value)}
-                    className="input-field pl-8" 
-                    placeholder="0.00" 
-                    min="0"
-                    step="0.01"
-                    required 
-                  />
+          {variants.map((variant, index) => (
+            <div key={index} className="card overflow-hidden border-brand-100">
+              <div className="px-5 py-3 border-b border-brand-100 bg-brand-50/50 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs">
+                    {index + 1}
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800">Variant Details</h3>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">Purchase price</p>
+                {variants.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeVariant(index)}
+                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                  Selling Price <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
-                  <input 
-                    type="number" 
-                    value={form.sellingPrice} 
-                    onChange={e => update('sellingPrice', e.target.value)}
-                    className="input-field pl-8" 
-                    placeholder="0.00" 
-                    min="0"
-                    step="0.01"
-                    required 
-                  />
+              <div className="p-5 space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                      Variant Name <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      value={variant.variantName} 
+                      onChange={e => updateVariant(index, 'variantName', e.target.value)}
+                      className="input-field" 
+                      placeholder="e.g., 2kg Chocolate, XL Black" 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                      SKU / Product Code
+                    </label>
+                    <input 
+                      type="text" 
+                      value={variant.sku} 
+                      onChange={e => updateVariant(index, 'sku', e.target.value.toUpperCase())}
+                      className="input-field font-mono text-sm" 
+                      placeholder="e.g., WP-2KG-CHOC" 
+                    />
+                  </div>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">Retail price</p>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                  Member Price
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
-                  <input 
-                    type="number" 
-                    value={form.memberPrice} 
-                    onChange={e => update('memberPrice', e.target.value)}
-                    className="input-field pl-8" 
-                    placeholder="0.00" 
-                    min="0"
-                    step="0.01"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                      Cost Price <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
+                      <input 
+                        type="number" 
+                        value={variant.costPrice} 
+                        onChange={e => updateVariant(index, 'costPrice', e.target.value)}
+                        className="input-field pl-8" 
+                        placeholder="0.00" 
+                        min="0"
+                        step="0.01"
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                      Selling Price <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
+                      <input 
+                        type="number" 
+                        value={variant.sellingPrice} 
+                        onChange={e => updateVariant(index, 'sellingPrice', e.target.value)}
+                        className="input-field pl-8" 
+                        placeholder="0.00" 
+                        min="0"
+                        step="0.01"
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                      Member Price
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
+                      <input 
+                        type="number" 
+                        value={variant.memberPrice} 
+                        onChange={e => updateVariant(index, 'memberPrice', e.target.value)}
+                        className="input-field pl-8" 
+                        placeholder="0.00" 
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">Discounted price for members</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-5 border-t border-slate-100">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                      Initial Stock <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="number" 
+                      value={variant.initialStock} 
+                      onChange={e => updateVariant(index, 'initialStock', e.target.value)}
+                      className="input-field" 
+                      placeholder="0" 
+                      min="0"
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                      Low Stock Threshold
+                    </label>
+                    <input 
+                      type="number" 
+                      value={variant.lowStockThreshold} 
+                      onChange={e => updateVariant(index, 'lowStockThreshold', e.target.value)}
+                      className="input-field" 
+                      placeholder="5" 
+                      min="0"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* 3. Stock Information */}
-        <div className="card overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
-              <Box className="w-4 h-4" />
-            </div>
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Stock Information</h2>
-          </div>
-
-          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                Initial Stock Quantity <span className="text-red-500">*</span>
-              </label>
-              <input 
-                type="number" 
-                value={form.initialStock} 
-                onChange={e => update('initialStock', e.target.value)}
-                className="input-field" 
-                placeholder="0" 
-                min="0"
-                required 
-              />
-              <p className="text-[10px] text-slate-400 mt-1">Number of units currently available</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                Low Stock Alert Threshold
-              </label>
-              <div className="relative">
-                <ShieldAlert className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="number" 
-                  value={form.lowStockThreshold} 
-                  onChange={e => update('lowStockThreshold', e.target.value)}
-                  className="input-field pl-9" 
-                  placeholder="5" 
-                  min="0"
-                />
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1">Notify when stock drops below this</p>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-          <Link href="/dashboard" className="btn-secondary px-6">
+          <Link href="/inventory" className="btn-secondary px-6">
             Cancel
           </Link>
           <button type="submit" disabled={loading} className="btn-primary px-8">
-            {loading ? 'Saving...' : 'Save Product'}
+            {loading ? 'Saving...' : 'Save Product & Variants'}
           </button>
         </div>
       </form>
-
-      {isScannerOpen && (
-        <BarcodeScannerModal 
-          onScan={(decodedText) => {
-            update('sku', decodedText.toUpperCase())
-            setIsScannerOpen(false)
-          }}
-          onClose={() => setIsScannerOpen(false)}
-        />
-      )}
     </div>
   )
 }

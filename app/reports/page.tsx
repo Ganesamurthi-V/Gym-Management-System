@@ -51,6 +51,7 @@ export default async function ReportsPage() {
     allMemberships,
     allMembers,
     attendanceData,
+    inventorySalesResults,
   ] = await Promise.all([
     Promise.all(
       monthRanges.map(({ start, end }) =>
@@ -76,6 +77,16 @@ export default async function ReportsPage() {
       .select('date')
       .eq('gym_id', gym.id)
       .gte('date', format(subMonths(new Date(), 3), 'yyyy-MM-dd')),
+    Promise.all(
+      monthRanges.map(({ start, end }) =>
+        supabase
+          .from('inventory_sales')
+          .select('total_price, quantity, product_name, variant_name, payment_mode, sold_at')
+          .eq('gym_id', gym.id)
+          .gte('sold_at', start)
+          .lte('sold_at', end + 'T23:59:59')
+      )
+    ),
   ])
 
   // Monthly revenue
@@ -91,6 +102,21 @@ export default async function ReportsPage() {
       newMembers: new Set(data.map(m => m.member_id)).size,
     }
   })
+
+  // Inventory sales monthly
+  const inventorySales = monthRanges.map(({ label }, i) => {
+    const data = inventorySalesResults[i].data ?? []
+    return {
+      label,
+      total: data.reduce((s, sale) => s + Number(sale.total_price), 0),
+      quantity: data.reduce((s, sale) => s + sale.quantity, 0),
+    }
+  })
+
+  const recentInventorySales = inventorySalesResults
+    .flatMap(r => r.data ?? [])
+    .sort((a, b) => new Date(b.sold_at).getTime() - new Date(a.sold_at).getTime())
+    .slice(0, 20)
 
   // Member status
   const latestByMember = new Map<string, string>()
@@ -204,6 +230,8 @@ export default async function ReportsPage() {
       expiringMembers={expiringMembers}
       attendanceTodayCount={attendanceTodayCount}
       gymId={gym.id}
+      inventorySales={inventorySales}
+      recentInventorySales={recentInventorySales}
     />
   )
 }

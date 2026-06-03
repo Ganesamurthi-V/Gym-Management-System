@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * POST /api/account/delete-data
  * Deletes all member-related data for the gym but keeps the gym row and auth user.

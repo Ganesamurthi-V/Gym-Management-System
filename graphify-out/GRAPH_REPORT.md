@@ -1,16 +1,16 @@
 # Graph Report - gymflow  (2026-05-29)
 
 ## Corpus Check
-- 115 files · ~81,999 words
+- 115 files · ~81,986 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 668 nodes · 1055 edges · 65 communities (59 shown, 6 thin omitted)
+- 669 nodes · 1056 edges · 65 communities (59 shown, 6 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 3 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1e1b541c`
+- Built from commit: `6961ea2a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,49 +82,49 @@
 - `POST()` --calls--> `checkRateLimit()`  [EXTRACTED]
   app/api/geo/batch-normalize/route.ts → lib/rateLimit.ts
 - `POST()` --calls--> `detectDatasetCluster()`  [EXTRACTED]
-  app/api/geo/batch-normalize/route.ts → lib/geo/clustering.ts
+  app/api/geo/cluster-detect/route.ts → lib/geo/clustering.ts
 - `POST()` --calls--> `checkRateLimit()`  [EXTRACTED]
   app/api/geo/normalize/route.ts → lib/rateLimit.ts
-- `POST()` --calls--> `normalizeInput()`  [EXTRACTED]
-  app/api/geo/save-alias/route.ts → lib/geo/normalizer.ts
+- `POST()` --calls--> `checkRateLimit()`  [EXTRACTED]
+  app/api/geo/save-alias/route.ts → lib/rateLimit.ts
 
 ## Communities (65 total, 6 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.06
-Nodes (39): NotFound(), mapSupabaseError(), POST(), POST(), MembershipPlan, POST(), mapSupabaseError(), POST() (+31 more)
+Nodes (26): mapSupabaseError(), POST(), POST(), MembershipPlan, POST(), mapSupabaseError(), POST(), deletions (+18 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.09
-Nodes (40): applyWeightedScore(), buildUnresolved(), mapSupabaseError(), POST(), AI_CACHE, callGroq(), groqInferBatch(), groqInferLocation() (+32 more)
+Nodes (42): applyWeightedScore(), buildUnresolved(), mapSupabaseError(), POST(), AI_CACHE, callGroq(), groqInferBatch(), groqInferLocation() (+34 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.07
-Nodes (35): DoneResult, EDIT_FIELDS, ImportEditPage(), Step, matchAreaBatch(), searchLocalities(), useLenisScroll(), cellStr() (+27 more)
+Cohesion: 0.08
+Nodes (29): matchAreaBatch(), cellStr(), excelSerialToDate(), isRecognizedPlan(), normalizeAge(), normalizeDate(), normalizeGender(), normalizeMemberNumber() (+21 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.05
-Nodes (41): dependencies, clsx, date-fns, exceljs, framer-motion, @googlemaps/js-api-loader, html5-qrcode, jspdf (+33 more)
+Nodes (42): dependencies, clsx, date-fns, exceljs, framer-motion, @googlemaps/js-api-loader, html5-qrcode, jspdf (+34 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.06
-Nodes (16): AIPersonalizationData, BusinessMetricsData, DEFAULT_DATA, DEFAULT_PLANS, GymDetailsData, LEAD_SOURCES, MarketingData, MembershipPlan (+8 more)
+Cohesion: 0.05
+Nodes (28): AreaMeta, EditedRow, EditMembersClient(), MemberRow, Props, Step, DoneResult, EDIT_FIELDS (+20 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.08
 Nodes (7): metadata, sora, viewport, MobileNav(), NAV_ITEMS, SHELL_EXCLUDED, SmoothScrollProvider()
 
 ### Community 6 - "Community 6"
-Cohesion: 0.17
-Nodes (15): MemberDetailClient(), buildCustomWhatsAppLink(), buildWhatsAppLink(), cn(), formatDate(), PAYMENT_MODE_LABELS, PLAN_LABELS, FilterType (+7 more)
+Cohesion: 0.25
+Nodes (8): buildCustomWhatsAppLink(), cn(), ExpiringMember, MemberDue, MonthData, Props, ReportsClient(), TabType
 
 ### Community 7 - "Community 7"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+11 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.14
-Nodes (18): INDIA_CITIES, loc(), norm(), phonetic(), PONDICHERRY_LOCALITIES, PUDUCHERRY_CITIES, SEED_LOCALITIES, SeedLocality (+10 more)
+Cohesion: 0.13
+Nodes (19): INDIA_CITIES, loc(), norm(), phonetic(), PONDICHERRY_LOCALITIES, PUDUCHERRY_CITIES, SEED_LOCALITIES, SEED_LOCALITIES_DEDUPED (+11 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.11
@@ -135,8 +135,8 @@ Cohesion: 0.24
 Nodes (13): AddressComponent, extractCity(), extractCountry(), extractGoogleAddress(), extractLocality(), extractPostalCode(), extractState(), getComponent() (+5 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.14
-Nodes (12): DashboardClient(), StatCardCurrency(), DueMember, DuesClient(), Props, formatCurrency(), ModeFilter, Payment (+4 more)
+Cohesion: 0.16
+Nodes (11): StatCardCurrency(), DueMember, DuesClient(), Props, formatCurrency(), ModeFilter, Payment, PaymentsClient() (+3 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.12
@@ -203,8 +203,8 @@ Cohesion: 0.33
 Nodes (6): 🟠 Agent 9 — DEVOPS & INFRASTRUCTURE ENGINEER, How You Communicate, Identity, Improvement Areas You Own, Your Constraints & Rules, Your Expertise
 
 ### Community 31 - "Community 31"
-Cohesion: 0.25
-Nodes (6): AreaMeta, EditedRow, EditMembersClient(), MemberRow, Props, Step
+Cohesion: 0.43
+Nodes (4): FilterType, MembersClient(), Props, MemberWithStatus
 
 ### Community 32 - "Community 32"
 Cohesion: 0.40
@@ -243,40 +243,40 @@ Cohesion: 0.29
 Nodes (3): BarcodeScannerModalProps, InventoryUnit, Props
 
 ### Community 61 - "Community 61"
-Cohesion: 0.22
-Nodes (13): EditMemberClient(), Props, Step, Props, Attendance, formatMemberId(), Gym, Member (+5 more)
+Cohesion: 0.16
+Nodes (16): NotFound(), EditMemberClient(), Props, Step, EditMemberPage(), Props, InventoryItemPage(), Attendance (+8 more)
 
 ### Community 62 - "Community 62"
-Cohesion: 0.17
-Nodes (9): ExpiringMemberRow(), Props, CONFETTI_COLORS, GettingStartedChecklist(), Particle, Task, TASKS, isValidPhone() (+1 more)
+Cohesion: 0.16
+Nodes (13): ExpiringMemberRow(), Props, CONFETTI_COLORS, GettingStartedChecklist(), Particle, Task, TASKS, MemberDetailClient() (+5 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.27
-Nodes (4): AttendanceClient(), AttendanceMember, Props, createClient()
+Cohesion: 0.19
+Nodes (6): AttendanceClient(), AttendanceMember, Props, PlanPrices, Step, createClient()
 
 ### Community 64 - "Community 64"
-Cohesion: 0.33
-Nodes (5): calcEndDate(), getPlanDuration(), NewMemberPage(), PlanPrices, Step
+Cohesion: 0.28
+Nodes (10): DashboardClient(), DashboardPage(), getDashboardData(), MemberDetailPage(), calcEndDate(), getDaysRemaining(), getMemberStatus(), getPlanDuration() (+2 more)
 
 ## Knowledge Gaps
-- **279 isolated node(s):** `PROTECTED_PREFIXES`, `config`, `nextConfig`, `name`, `version` (+274 more)
+- **280 isolated node(s):** `PROTECTED_PREFIXES`, `config`, `nextConfig`, `name`, `version` (+275 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `createClient()` connect `Community 0` to `Community 1`, `Community 4`, `Community 6`, `Community 11`, `Community 20`, `Community 61`, `Community 31`?**
+- **Why does `createClient()` connect `Community 0` to `Community 64`, `Community 1`, `Community 20`, `Community 61`, `Community 31`?**
   _High betweenness centrality (0.061) - this node is a cross-community bridge._
-- **Why does `createClient()` connect `Community 63` to `Community 64`, `Community 2`, `Community 4`, `Community 6`, `Community 11`, `Community 20`, `Community 60`, `Community 61`, `Community 62`, `Community 31`?**
+- **Why does `createClient()` connect `Community 63` to `Community 2`, `Community 4`, `Community 11`, `Community 20`, `Community 60`, `Community 61`, `Community 62`, `Community 31`?**
   _High betweenness centrality (0.055) - this node is a cross-community bridge._
-- **Why does `searchLocalities()` connect `Community 2` to `Community 8`, `Community 1`, `Community 31`?**
+- **Why does `searchLocalities()` connect `Community 4` to `Community 8`, `Community 1`, `Community 2`?**
   _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **What connects `PROTECTED_PREFIXES`, `config`, `nextConfig` to the rest of the system?**
-  _279 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _280 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.05621621621621622 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06298076923076923 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.09351432880844646 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09084556254367575 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.06547619047619048 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07560975609756097 - nodes in this community are weakly interconnected._

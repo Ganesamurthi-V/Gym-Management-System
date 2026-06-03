@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Camera } from 'lucide-react'
-import { BrowserMultiFormatReader, NotFoundException, DecodeHintType, BarcodeFormat } from '@zxing/library'
+import { readBarcodesFromImageData } from 'zxing-wasm/reader'
 
 interface BarcodeScannerModalProps {
   onScan: (decodedText: string) => void
@@ -12,115 +12,114 @@ interface BarcodeScannerModalProps {
 
 export default function BarcodeScannerModal({ onScan, onClose }: BarcodeScannerModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDetecting, setIsDetecting] = useState(false)
   const isDetectingRef = useRef(false)
 
   useEffect(() => {
     let isMounted = true;
-    const videoElement = videoRef.current; // Capture ref for reliable cleanup
-    
-    // Add hints to improve accuracy but include QR code for testing
-    const hints = new Map();
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.CODE_128,
-      BarcodeFormat.CODE_39,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-      BarcodeFormat.QR_CODE,
-      BarcodeFormat.DATA_MATRIX
-    ]);
-    // Removed TRY_HARDER because it can cause severe lag on some devices
+    const videoElement = videoRef.current;
     
     let lastScan = '';
     let scanCount = 0;
-    const codeReader = new BrowserMultiFormatReader(hints);
+    let scanTimeout: NodeJS.Timeout | null = null;
+    let rafId: number;
 
-    const requestCameraPermission = async () => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        throw new Error("SECURE_CONTEXT_REQUIRED");
-      }
+    const startCamera = async () => {
       try {
-        if (navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          stream.getTracks().forEach(track => track.stop());
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setError("Camera access requires HTTPS or localhost.");
+          return;
         }
-      } catch (err) {
-        console.warn("Permission request error:", err);
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+
+        if (videoElement) {
+          videoElement.srcObject = stream;
+          videoElement.setAttribute('playsinline', 'true');
+          videoElement.play();
+          rafId = requestAnimationFrame(tick);
+        }
+      } catch (err: any) {
+        console.error("Camera error:", err);
+        setError("Failed to access camera. Please allow camera permissions.");
       }
-      return codeReader.listVideoInputDevices();
     };
 
-    requestCameraPermission().then((videoInputDevices) => {
+    const tick = async () => {
       if (!isMounted) return;
       
-      if (videoInputDevices.length === 0) {
-        setError("No camera found on this device.");
-        return;
+      const canvasElement = canvasRef.current;
+      if (videoElement && videoElement.readyState === videoElement.HAVE_ENOUGH_DATA && canvasElement) {
+        const width = videoElement.videoWidth;
+        const height = videoElement.videoHeight;
+        canvasElement.width = width;
+        canvasElement.height = height;
+        const ctx = canvasElement.getContext('2d');
+        
+        if (ctx) {
+          ctx.drawImage(videoElement, 0, 0, width, height);
+          const imageData = ctx.getImageData(0, 0, width, height);
+          
+          try {
+            const results = await readBarcodesFromImageData(imageData, {
+              tryHarder: true,
+              formats: ["EAN13", "EAN8", "Code128", "Code39", "UPCA", "UPCE", "QRCode", "DataMatrix"],
+            });
+            
+            if (results && results.length > 0) {
+              if (!isDetectingRef.current) {
+                isDetectingRef.current = true;
+                setIsDetecting(true);
+              }
+              
+              const text = results[0].text;
+              if (text === lastScan) {
+                scanCount++;
+                if (scanCount >= 2) {
+                  isMounted = false; // Prevent further triggers immediately
+                  onScan(text);
+                  return;
+                }
+              } else {
+                lastScan = text;
+                scanCount = 1;
+              }
+              
+              // Clear previous timeout and set a new one to reset detecting state if lost
+              if (scanTimeout) clearTimeout(scanTimeout);
+              scanTimeout = setTimeout(() => {
+                if (isMounted) {
+                  isDetectingRef.current = false;
+                  setIsDetecting(false);
+                }
+              }, 500);
+            }
+          } catch (err) {
+            // readBarcodesFromImageData throws if it fails to load wasm or decode, 
+            // but we ignore decode errors to keep polling.
+          }
+        }
       }
       
-      let selectedDeviceId = videoInputDevices[0].deviceId;
-      // Try to prioritize the back/environment camera
-      const backCamera = videoInputDevices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'));
-      if (backCamera) {
-        selectedDeviceId = backCamera.deviceId;
+      if (isMounted) {
+        rafId = requestAnimationFrame(tick);
       }
+    };
 
-      if (videoElement) {
-        codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
-          if (result && isMounted) {
-            if (!isDetectingRef.current) {
-              isDetectingRef.current = true;
-              setIsDetecting(true);
-            }
-            const text = result.getText();
-            if (text === lastScan) {
-              scanCount++;
-              if (scanCount >= 2) {
-                isMounted = false; // Prevent further triggers immediately
-                onScan(text);
-              }
-            } else {
-              lastScan = text;
-              scanCount = 1;
-            }
-          }
-          if (err) {
-            if (err instanceof NotFoundException) {
-              if (isDetectingRef.current) {
-                isDetectingRef.current = false;
-                setIsDetecting(false);
-              }
-            } else {
-              console.error(err);
-            }
-          }
-        }).catch((err: any) => {
-          console.error("Camera start error:", err);
-          setError("Failed to access camera. Please allow camera permissions in your browser settings.");
-        });
-      }
-    }).catch((err: any) => {
-      console.error("List devices error:", err);
-      if (err.message === "SECURE_CONTEXT_REQUIRED") {
-        setError("Camera access requires HTTPS or localhost.");
-      } else {
-        setError("Failed to access camera. Please allow camera permissions in your browser settings.");
-      }
-    });
+    startCamera();
 
     return () => {
       isMounted = false;
-      codeReader.reset();
+      if (rafId) cancelAnimationFrame(rafId);
+      if (scanTimeout) clearTimeout(scanTimeout);
       
-      // Ensure camera light turns off by stopping tracks manually using the captured element
       if (videoElement && videoElement.srcObject) {
         const stream = videoElement.srcObject as MediaStream;
-        stream.getTracks().forEach(track => {
-          track.stop();
-        });
+        stream.getTracks().forEach(track => track.stop());
         videoElement.srcObject = null;
       }
     }
@@ -144,7 +143,8 @@ export default function BarcodeScannerModal({ onScan, onClose }: BarcodeScannerM
         
         <div className="p-4 flex-1 flex flex-col items-center justify-center min-h-[300px] bg-slate-50 relative">
           <div className="w-full max-w-[300px] rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-black min-h-[250px] flex items-center justify-center relative">
-            <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" />
+            <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted />
+            <canvas ref={canvasRef} className="hidden" />
             
             {/* Overlay framing lines */}
             <div className="absolute inset-0 pointer-events-none z-10 flex flex-col items-center justify-center">
@@ -182,7 +182,6 @@ export default function BarcodeScannerModal({ onScan, onClose }: BarcodeScannerM
     </div>
   )
 
-  // Only render on client to avoid hydration mismatch
   if (typeof document === 'undefined') return null
 
   return createPortal(modalContent, document.body)

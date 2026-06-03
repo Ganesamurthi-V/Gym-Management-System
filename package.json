@@ -29,7 +29,8 @@
     "react-dom": "^18",
     "recharts": "^3.8.1",
     "tailwind-merge": "^2.6.1",
-    "use-places-autocomplete": "^4.0.1"
+    "use-places-autocomplete": "^4.0.1",
+    "zxing-wasm": "^3.0.3"
   },
   "devDependencies": {
     "@types/node": "^20",

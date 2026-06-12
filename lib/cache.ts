@@ -106,9 +106,23 @@ export async function cacheWrapper<T>(
   return freshData
 }
 
+let globalCacheStats = {
+  hits: 0,
+  misses: 0,
+  total: 0
+}
+
 // Internal metric logger
 function logCacheMetric(type: 'HIT' | 'MISS', key: string, durationMs: number) {
-  // In a real production setup, this would write to Datadog/Axiom.
-  // For Vercel, we can just use console log which goes to the function logs.
-  console.log(`[Cache ${type}] ${key} - ${durationMs}ms`)
+  globalCacheStats.total++
+  if (type === 'HIT') {
+    globalCacheStats.hits++
+  } else {
+    globalCacheStats.misses++
+  }
+
+  const hitRate = Math.round((globalCacheStats.hits / globalCacheStats.total) * 100)
+
+  console.log(`[CACHE][Event] ${type}: ${key} - ${durationMs}ms`)
+  console.log(`[CACHE] Hits: ${globalCacheStats.hits} | Misses: ${globalCacheStats.misses} | Hit Rate: ${hitRate}%`)
 }

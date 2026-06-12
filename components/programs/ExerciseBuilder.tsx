@@ -1,15 +1,171 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Search, Trash2, Copy, GripVertical, Settings2, PlayCircle, ChevronDown, Check, Video, X, Dumbbell } from 'lucide-react'
 
 // --- Mock Data ---
 const EXERCISE_LIBRARY = [
+  // Chest
   { name: 'Barbell Bench Press', type: 'Strength', target: 'Chest', equipment: 'Barbell' },
-  { name: 'Incline Dumbbell Press', type: 'Strength', target: 'Chest', equipment: 'Dumbbells' },
-  { name: 'Cable Flyes', type: 'Strength', target: 'Chest', equipment: 'Cables' },
-  { name: 'Barbell Squat', type: 'Strength', target: 'Legs', equipment: 'Barbell' },
-  { name: 'Romanian Deadlift', type: 'Strength', target: 'Hamstrings', equipment: 'Barbell' },
+  { name: 'Incline Dumbbell Bench Press', type: 'Strength', target: 'Chest', equipment: 'Dumbbells' },
+  { name: 'Pec Deck', type: 'Strength', target: 'Chest', equipment: 'Machine' },
+  { name: 'Cable Crossover', type: 'Strength', target: 'Chest', equipment: 'Cables' },
+  { name: 'Incline Barbell Bench Press', type: 'Strength', target: 'Chest', equipment: 'Barbell' },
+  { name: 'Dumbbell Bench Press', type: 'Strength', target: 'Chest', equipment: 'Dumbbells' },
+  { name: 'Dumbbell Fly', type: 'Strength', target: 'Chest', equipment: 'Dumbbells' },
+  { name: 'Incline Dumbbell Fly', type: 'Strength', target: 'Chest', equipment: 'Dumbbells' },
+  { name: 'Chest Press Machine', type: 'Strength', target: 'Chest', equipment: 'Machine' },
+  { name: 'Barbell Declined Bench Press', type: 'Strength', target: 'Chest', equipment: 'Barbell' },
+  { name: 'Dumbbell Declined Bench Press', type: 'Strength', target: 'Chest', equipment: 'Dumbbells' },
+  { name: 'Push Ups', type: 'Strength', target: 'Chest', equipment: 'Bodyweight' },
+
+  // Triceps
+  { name: 'Lying Triceps Extension', type: 'Strength', target: 'Triceps', equipment: 'Barbell' },
+  { name: 'Triceps Pressdown', type: 'Strength', target: 'Triceps', equipment: 'Cables' },
+  { name: 'Cable Rope Pushdown', type: 'Strength', target: 'Triceps', equipment: 'Cables' },
+  { name: 'Dumbbell Overhead Triceps Extension', type: 'Strength', target: 'Triceps', equipment: 'Dumbbells' },
+  { name: 'Close Grip Bench Press', type: 'Strength', target: 'Triceps', equipment: 'Barbell' },
+  { name: 'Kickback', type: 'Strength', target: 'Triceps', equipment: 'Dumbbells' },
+  { name: 'Reverse Grip Cable Triceps Extension with Barbell', type: 'Strength', target: 'Triceps', equipment: 'Cables' },
+  { name: 'Single-Arm Cable Triceps Extension', type: 'Strength', target: 'Triceps', equipment: 'Cables' },
+  { name: 'Single-Arm Cable Triceps Extension with Supinated Grip', type: 'Strength', target: 'Triceps', equipment: 'Cables' },
+  { name: 'Lying Dumbbell Triceps Extension', type: 'Strength', target: 'Triceps', equipment: 'Dumbbells' },
+  { name: 'Seated Barbell French Press', type: 'Strength', target: 'Triceps', equipment: 'Barbell' },
+  { name: 'Bench Dips', type: 'Strength', target: 'Triceps', equipment: 'Bodyweight' },
+  { name: 'Parallel Dip Bar', type: 'Strength', target: 'Triceps', equipment: 'Bodyweight' },
+
+  // Calves
+  { name: 'Seated Calf Raise', type: 'Strength', target: 'Calves', equipment: 'Machine' },
+  { name: 'Standing Calf Raise', type: 'Strength', target: 'Calves', equipment: 'Machine' },
+
+  // Back
+  { name: 'Dumbbell Bent-Over Row (Single Arm)', type: 'Strength', target: 'Back', equipment: 'Dumbbells' },
+  { name: 'Wide-Grip Pulldown', type: 'Strength', target: 'Back', equipment: 'Cables' },
+  { name: 'Seated Cable Row', type: 'Strength', target: 'Back', equipment: 'Cables' },
+  { name: 'Close-Grip Pulldown', type: 'Strength', target: 'Back', equipment: 'Cables' },
+  { name: 'Barbell Row', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Behind-Neck Pulldown', type: 'Strength', target: 'Back', equipment: 'Cables' },
+  { name: 'Reverse-Grip Pulldown', type: 'Strength', target: 'Back', equipment: 'Cables' },
+  { name: 'Rope Pulldown', type: 'Strength', target: 'Back', equipment: 'Cables' },
+  { name: 'T-Bar Rows', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Barbell Bent Over Rows Supinated Grip', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Pull Up', type: 'Strength', target: 'Back', equipment: 'Bodyweight' },
+  { name: 'Behind the Neck Pull Up', type: 'Strength', target: 'Back', equipment: 'Bodyweight' },
+  { name: 'Pull Up with a Supinated Grip', type: 'Strength', target: 'Back', equipment: 'Bodyweight' },
+  { name: 'Straight Arm Lat Pulldown', type: 'Strength', target: 'Back', equipment: 'Cables' },
+  { name: 'Dumbbell Bent Over Rows', type: 'Strength', target: 'Back', equipment: 'Dumbbells' },
+  { name: 'Dumbbell Pullover', type: 'Strength', target: 'Back', equipment: 'Dumbbells' },
+  { name: 'Barbell Pullover', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Barbell Deadlift', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Barbell Sumo Deadlift', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Trap Bar Deadlift', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Dumbbell Deadlift', type: 'Strength', target: 'Back', equipment: 'Dumbbells' },
+  { name: 'Barbell Shrug', type: 'Strength', target: 'Back', equipment: 'Barbell' },
+  { name: 'Dumbbell Shrugs', type: 'Strength', target: 'Back', equipment: 'Dumbbells' },
+
+  // Biceps
+  { name: 'Barbell Curl', type: 'Strength', target: 'Biceps', equipment: 'Barbell' },
+  { name: 'Alternating Dumbbell Curl', type: 'Strength', target: 'Biceps', equipment: 'Dumbbells' },
+  { name: 'Rope Cable Curl', type: 'Strength', target: 'Biceps', equipment: 'Cables' },
+  { name: 'EZ Barbell Curl', type: 'Strength', target: 'Biceps', equipment: 'Barbell' },
+  { name: 'EZ Barbell Preacher Curl', type: 'Strength', target: 'Biceps', equipment: 'Barbell' },
+  { name: 'Hammer Curl', type: 'Strength', target: 'Biceps', equipment: 'Dumbbells' },
+  { name: 'Incline Dumbbell Curl', type: 'Strength', target: 'Biceps', equipment: 'Dumbbells' },
+  { name: 'Dumbbell Concentration Curl', type: 'Strength', target: 'Biceps', equipment: 'Dumbbells' },
+  { name: 'Single-Arm Low Pulley Cable Curl', type: 'Strength', target: 'Biceps', equipment: 'Cables' },
+  { name: 'Straight Bar Low Pulley Cable Curl', type: 'Strength', target: 'Biceps', equipment: 'Cables' },
+  { name: 'Standing High Pulley Cable Curl', type: 'Strength', target: 'Biceps', equipment: 'Cables' },
+  { name: 'Seated Barbell Wrist Curl', type: 'Strength', target: 'Biceps', equipment: 'Barbell' },
+  { name: 'Seated Barbell Wrist Extension', type: 'Strength', target: 'Biceps', equipment: 'Barbell' },
+  { name: 'Reverse Barbell Curl', type: 'Strength', target: 'Biceps', equipment: 'Barbell' },
+
+  // Abdominals
+  { name: 'Crunch', type: 'Strength', target: 'Abdominals', equipment: 'Bodyweight' },
+  { name: 'Oblique Crunch', type: 'Strength', target: 'Abdominals', equipment: 'Bodyweight' },
+  { name: 'Crunch Machine', type: 'Strength', target: 'Abdominals', equipment: 'Machine' },
+  { name: 'Rope Ab Pulldown', type: 'Strength', target: 'Abdominals', equipment: 'Cables' },
+  { name: 'Plank', type: 'Strength', target: 'Abdominals', equipment: 'Bodyweight' },
+  { name: 'Hanging Leg Raise', type: 'Strength', target: 'Abdominals', equipment: 'Bodyweight' },
+  { name: 'Bent Knee Reverse Crunch', type: 'Strength', target: 'Abdominals', equipment: 'Bodyweight' },
+  { name: 'Long Arm Crunch', type: 'Strength', target: 'Abdominals', equipment: 'Bodyweight' },
+  { name: 'Plank Get Ups', type: 'Strength', target: 'Abdominals', equipment: 'Bodyweight' },
+
+  // Shoulders
+  { name: 'Dumbbell Shoulder Press', type: 'Strength', target: 'Shoulders', equipment: 'Dumbbells' },
+  { name: 'Dumbbell Lateral Raise', type: 'Strength', target: 'Shoulders', equipment: 'Dumbbells' },
+  { name: 'Dumbbell Front Raise', type: 'Strength', target: 'Shoulders', equipment: 'Dumbbells' },
+  { name: 'High Cable Rear Delt Fly', type: 'Strength', target: 'Shoulders', equipment: 'Cables' },
+  { name: 'Smith Machine Shoulder Press', type: 'Strength', target: 'Shoulders', equipment: 'Machine' },
+  { name: 'Barbell Upright Row', type: 'Strength', target: 'Shoulders', equipment: 'Barbell' },
+  { name: 'Bent-Over Lateral Raise', type: 'Strength', target: 'Shoulders', equipment: 'Dumbbells' },
+  { name: 'Cable One-Arm Lateral Raise', type: 'Strength', target: 'Shoulders', equipment: 'Cables' },
+  { name: 'Dumbbell Push Press', type: 'Strength', target: 'Shoulders', equipment: 'Dumbbells' },
+  { name: 'Barbell Push Press', type: 'Strength', target: 'Shoulders', equipment: 'Barbell' },
+  { name: 'Single-Arm Cable Front Raise', type: 'Strength', target: 'Shoulders', equipment: 'Cables' },
+  { name: 'Barbell Front Raise', type: 'Strength', target: 'Shoulders', equipment: 'Barbell' },
+  { name: 'Seated Barbell Shoulder Press', type: 'Strength', target: 'Shoulders', equipment: 'Barbell' },
+  { name: 'Seated Behind the Neck Barbell Shoulder Press', type: 'Strength', target: 'Shoulders', equipment: 'Barbell' },
+  { name: 'Standing Barbell Shoulder Press', type: 'Strength', target: 'Shoulders', equipment: 'Barbell' },
+  { name: 'Standing Behind the Neck Barbell Shoulder Press', type: 'Strength', target: 'Shoulders', equipment: 'Barbell' },
+  { name: 'Alternate Dumbbell Front Raise Neutral Grip', type: 'Strength', target: 'Shoulders', equipment: 'Dumbbells' },
+  { name: 'One-Arm Low-Pulley Front Raise Neutral Grip', type: 'Strength', target: 'Shoulders', equipment: 'Cables' },
+  { name: 'Two-Handed Dumbbell Front Raise', type: 'Strength', target: 'Shoulders', equipment: 'Dumbbells' },
+
+  // Legs
+  { name: 'Squat', type: 'Strength', target: 'Legs', equipment: 'Barbell' },
+  { name: 'Leg Press', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Leg Extension', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Lunge', type: 'Strength', target: 'Legs', equipment: 'Dumbbells' },
+  { name: 'Lying Leg Curl', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Hack Squat', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Seated Leg Curl', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Single Leg Extension', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Front Squat', type: 'Strength', target: 'Legs', equipment: 'Barbell' },
+  { name: 'Dumbbell Stiff-Leg Deadlift', type: 'Strength', target: 'Legs', equipment: 'Dumbbells' },
+  { name: 'Barbell Stiff-Leg Deadlift', type: 'Strength', target: 'Legs', equipment: 'Barbell' },
+  { name: 'Dumbbell Goblet Squat', type: 'Strength', target: 'Legs', equipment: 'Dumbbells' },
+  { name: 'Knee Tuck Jumps', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Burpees', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Bodyweight Squat', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: '1.5 Rep Bodyweight Squats', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Medicine Ball Squat', type: 'Strength', target: 'Legs', equipment: 'Medicine Ball' },
+  { name: 'Barbell Bulgarian Split Squat', type: 'Strength', target: 'Legs', equipment: 'Barbell' },
+  { name: 'Bodyweight Bulgarian Split Squat', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Mini-Band Air Squat', type: 'Strength', target: 'Legs', equipment: 'Band' },
+  { name: 'Jump Squat', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Wall Sit', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Medicine Ball Deadlift', type: 'Strength', target: 'Legs', equipment: 'Medicine Ball' },
+  { name: 'Single Leg Bodyweight Deadlift', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Kettlebell Sumo Deadlift', type: 'Strength', target: 'Legs', equipment: 'Kettlebell' },
+  { name: 'Good Morning', type: 'Strength', target: 'Legs', equipment: 'Barbell' },
+  { name: 'Bodyweight Glute Bridge', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Single Leg Glute Bridge', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Banded Glute Bridge', type: 'Strength', target: 'Legs', equipment: 'Band' },
+  { name: 'Duck Walk', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Bird Dog', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Groiners', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Fire Hydrants', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Smith Machine Hip Thrust', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Barbell Hip Thrust', type: 'Strength', target: 'Legs', equipment: 'Barbell' },
+  { name: 'Band Seated Hip Abduction', type: 'Strength', target: 'Legs', equipment: 'Band' },
+  { name: 'Seated Hip Abduction Machine', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Standing Cable Abduction', type: 'Strength', target: 'Legs', equipment: 'Cables' },
+  { name: 'Bodyweight Frog Pump', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Smith Machine Frog Pump', type: 'Strength', target: 'Legs', equipment: 'Machine' },
+  { name: 'Banded Clams', type: 'Strength', target: 'Legs', equipment: 'Band' },
+  { name: 'Side Lying Leg Raise', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Glute Ham Raise', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Dumbbell Step Up', type: 'Strength', target: 'Legs', equipment: 'Dumbbells' },
+  { name: 'Lateral Mini-Band Walk', type: 'Strength', target: 'Legs', equipment: 'Band' },
+  { name: 'Standing Knee Raise', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Kettlebell Swings', type: 'Strength', target: 'Legs', equipment: 'Kettlebell' },
+  { name: 'Standing Cable Kickback', type: 'Strength', target: 'Legs', equipment: 'Cables' },
+  { name: 'Donkey Kicks', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Side Lying Hip Raise', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+  { name: 'Squat Sit to Reach', type: 'Strength', target: 'Legs', equipment: 'Bodyweight' },
+
+  // Cardio / Mobility Extras
   { name: 'Treadmill Sprint', type: 'Cardio', target: 'Full Body', equipment: 'Treadmill' },
   { name: '90/90 Stretch', type: 'Mobility', target: 'Hips', equipment: 'Bodyweight' }
 ]
@@ -25,26 +181,65 @@ export interface ExerciseInstance {
 }
 
 interface Props {
+  programId?: string;
   programData: any;
+  initialSchedule?: Record<string, ExerciseInstance[]>;
   onBack: () => void;
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-export default function ExerciseBuilder({ programData, onBack }: Props) {
+export default function ExerciseBuilder({ programId, programData, initialSchedule, onBack }: Props) {
+  const router = useRouter()
   const [activeDay, setActiveDay] = useState('Mon')
   const [activeWeek, setActiveWeek] = useState(1)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
   
   // State: day -> array of exercises
-  const [exercises, setExercises] = useState<Record<string, ExerciseInstance[]>>({
-    Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: []
-  })
+  const [exercises, setExercises] = useState<Record<string, ExerciseInstance[]>>(
+    initialSchedule || {
+      Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: []
+    }
+  )
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
 
   const durationWeeks = parseInt(programData.duration) || 4
+
+  const handleSave = async (isDraft: boolean) => {
+    try {
+      if (isDraft) setIsSavingDraft(true)
+      else setIsPublishing(true)
+
+      const payload = {
+        id: programId,
+        ...programData,
+        schedule: exercises,
+        isDraft
+      }
+
+      const res = await fetch('/api/programs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save program')
+
+      alert(`Program successfully ${isDraft ? 'saved as draft' : 'published'}!`)
+      router.push('/programs')
+      router.refresh()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setIsSavingDraft(false)
+      setIsPublishing(false)
+    }
+  }
 
   // --- Handlers ---
   const addExercise = (template: typeof EXERCISE_LIBRARY[0]) => {
@@ -68,7 +263,7 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
   }
 
   const createEmptySet = (type: string) => {
-    if (type === 'Strength') return { reps: '8-10', weight: '', rpe: '@8', rest: '90s', tempo: '2010' }
+    if (type === 'Strength') return { exerciseName: '', reps: '8-10', weight: '', rpe: '@8', rest: '90s', tempo: '2010' }
     if (type === 'Cardio') return { duration: '15m', intensity: 'Zone 2', distance: '' }
     if (type === 'Mobility') return { holdTime: '60s', rounds: '2' }
     return {}
@@ -133,6 +328,7 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
   // --- HTML5 Drag & Drop ---
   const dragItem = useRef<number | null>(null)
   const dragOverItem = useRef<number | null>(null)
+  const [dragEnabledId, setDragEnabledId] = useState<string | null>(null)
 
   const handleSort = () => {
     if (dragItem.current === null || dragOverItem.current === null) return
@@ -146,10 +342,10 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto h-full min-h-[500px]">
+    <div className="flex-1 w-full flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto min-h-[500px]">
       
       {/* Left Main Builder */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         
         {/* Top Header & Day Tabs */}
         <div className="border-b border-slate-100 bg-slate-50/50">
@@ -194,7 +390,10 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
         </div>
 
         {/* Builder Canvas */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+        <div 
+          data-lenis-prevent
+          className="flex-1 min-h-0 overflow-y-auto p-6 bg-slate-50/30"
+        >
           
           <div className="max-w-3xl mx-auto space-y-4">
             
@@ -223,17 +422,24 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
               return (
                 <div 
                   key={ex.id}
-                  draggable
+                  draggable={dragEnabledId === ex.id}
                   onDragStart={(e) => (dragItem.current = index)}
                   onDragEnter={(e) => (dragOverItem.current = index)}
-                  onDragEnd={handleSort}
+                  onDragEnd={() => {
+                    handleSort()
+                    setDragEnabledId(null)
+                  }}
                   onDragOver={(e) => e.preventDefault()}
                   className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group/card transition-all hover:border-slate-300"
                 >
                   {/* Card Header */}
                   <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div className="flex items-center gap-3">
-                      <div className="cursor-grab active:cursor-grabbing p-1.5 -ml-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+                      <div 
+                        onMouseDown={() => setDragEnabledId(ex.id)}
+                        onMouseUp={() => setDragEnabledId(null)}
+                        className="cursor-grab active:cursor-grabbing p-1.5 -ml-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+                      >
                         <GripVertical className="w-5 h-5" />
                       </div>
                       <div>
@@ -288,6 +494,7 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
                           <div className="w-8 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase text-center">Set</div>
                           {ex.type === 'Strength' && (
                             <>
+                              <div className="flex-[2] text-[10px] font-bold text-slate-400 uppercase">Exercise</div>
                               <div className="flex-1 text-[10px] font-bold text-slate-400 uppercase">Reps</div>
                               <div className="flex-1 text-[10px] font-bold text-slate-400 uppercase">Weight</div>
                               <div className="flex-1 text-[10px] font-bold text-slate-400 uppercase hidden sm:block">Rest</div>
@@ -318,6 +525,7 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
                             
                             {ex.type === 'Strength' && (
                               <>
+                                <input value={set.exerciseName || ''} onChange={e => updateSet(ex.id, setIdx, 'exerciseName', e.target.value)} className="flex-[2] h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder={ex.name} title="Override exercise name for supersets/circuits" />
                                 <input value={set.reps || ''} onChange={e => updateSet(ex.id, setIdx, 'reps', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="10" />
                                 <input value={set.weight || ''} onChange={e => updateSet(ex.id, setIdx, 'weight', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="kg/lb" />
                                 <input value={set.rest || ''} onChange={e => updateSet(ex.id, setIdx, 'rest', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none hidden sm:block" placeholder="90s" />
@@ -359,24 +567,29 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
 
             {/* Smart Search Autocomplete */}
             {(showSearch || exercises[activeDay].length > 0) && (
-              <div className="relative mt-8 group/search">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
-                  <Search className="w-4 h-4 text-slate-400" />
+              <div className="mt-8 group/search">
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                    <Search className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <input 
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      if (!showSearch) setShowSearch(true)
+                    }}
+                    onFocus={() => setShowSearch(true)}
+                    className="w-full h-14 pl-14 pr-4 bg-white border border-slate-200 rounded-2xl shadow-sm text-sm font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all placeholder:text-slate-400 placeholder:font-semibold"
+                    placeholder="Search exercise library..."
+                  />
                 </div>
-                <input 
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    if (!showSearch) setShowSearch(true)
-                  }}
-                  onFocus={() => setShowSearch(true)}
-                  className="w-full h-14 pl-14 pr-4 bg-white border border-slate-200 rounded-2xl shadow-sm text-sm font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all placeholder:text-slate-400 placeholder:font-semibold"
-                  placeholder="Search exercise library..."
-                />
                 
                 {showSearch && searchQuery && (
-                  <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden max-h-[300px] overflow-y-auto">
+                  <div 
+                    data-lenis-prevent
+                    className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden max-h-[300px] overflow-y-auto"
+                  >
                     {EXERCISE_LIBRARY.filter(ex => ex.name.toLowerCase().includes(searchQuery.toLowerCase())).map((ex, i) => (
                       <button
                         key={i}
@@ -412,14 +625,17 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
       </div>
 
       {/* Right Sidebar */}
-      <div className="w-full lg:w-80 flex flex-col justify-between">
-        <div className="card border-slate-200 overflow-hidden bg-white shadow-sm flex flex-col h-full rounded-3xl">
+      <div className="w-full lg:w-80 flex flex-col justify-between min-h-0">
+        <div className="card border-slate-200 overflow-hidden bg-white shadow-sm flex flex-col h-full rounded-3xl min-h-0">
           <div className="p-5 border-b border-slate-100 bg-slate-50/50">
             <h3 className="font-bold text-slate-900">{programData.name || "Untitled"}</h3>
             <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">{programData.duration} Weeks Plan</p>
           </div>
           
-          <div className="p-5 overflow-y-auto flex-1">
+          <div 
+            data-lenis-prevent
+            className="p-5 overflow-y-auto flex-1 min-h-0"
+          >
             <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Live Program Structure</h4>
             
             <div className="space-y-4">
@@ -448,10 +664,28 @@ export default function ExerciseBuilder({ programData, onBack }: Props) {
           </div>
           
           <div className="p-5 border-t border-slate-100 bg-slate-50/50 space-y-3">
-            <button className="btn-primary w-full shadow-md shadow-brand-500/20">Publish Plan</button>
+            <button 
+              onClick={() => handleSave(false)}
+              disabled={isPublishing || isSavingDraft}
+              className="btn-primary w-full shadow-md shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isPublishing ? 'Publishing...' : 'Publish Plan'}
+            </button>
             <div className="flex gap-2">
-              <button onClick={onBack} className="flex-1 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors">Back</button>
-              <button className="flex-1 py-2.5 text-sm font-bold text-brand-600 bg-brand-50 rounded-xl hover:bg-brand-100 transition-colors">Save Draft</button>
+              <button 
+                onClick={onBack} 
+                disabled={isPublishing || isSavingDraft}
+                className="flex-1 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button 
+                onClick={() => handleSave(true)}
+                disabled={isPublishing || isSavingDraft}
+                className="flex-1 py-2.5 text-sm font-bold text-brand-600 bg-brand-50 rounded-xl hover:bg-brand-100 transition-colors disabled:opacity-50"
+              >
+                {isSavingDraft ? 'Saving...' : 'Save Draft'}
+              </button>
             </div>
           </div>
         </div>

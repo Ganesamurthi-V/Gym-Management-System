@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { label: 'Dues',       href: '/dues',         icon: AlertIcon },
   { label: 'Attendance', href: '/attendance',   icon: CalendarIcon },
   { label: 'Inventory',  href: '/inventory',    icon: BoxIcon },
-  { label: 'Programs',   href: '/programs/new', icon: ActivityIcon },
+  { label: 'Programs',   href: '/programs', icon: ActivityIcon },
   { label: 'Reports',    href: '/reports',      icon: ChartIcon },
 ] as const
 

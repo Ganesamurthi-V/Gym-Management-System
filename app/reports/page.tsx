@@ -10,13 +10,11 @@ async function getReportsData(gymId: string, perf: PerformanceMetrics) {
   const supabase = await createClient()
   const today = format(new Date(), 'yyyy-MM-dd')
   
-  perf.start('Data')
   // New Architecture: 1 Supabase RPC -> Redis Cache
   const { data: rpcData, error: rpcError } = await supabase.rpc('get_gym_reports', { 
     p_gym_id: gymId, 
     p_today: today 
   })
-  perf.end('Data')
 
   if (rpcError || !rpcData) {
     console.error('get_gym_reports RPC failed:', rpcError)
@@ -65,10 +63,8 @@ export default async function ReportsPage() {
     .single()
     .then(r => r.error ? { data: null } : r)
 
-  perf.start('Cache')
   const cacheKey = `gym:${gym.id}:reports`
-  const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, perf))
-  perf.end('Cache')
+  const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, perf), perf)
   
   perf.logPayloadSize('Data', reportsData)
   

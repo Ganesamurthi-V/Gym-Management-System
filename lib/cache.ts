@@ -76,6 +76,8 @@ export async function invalidatePattern(pattern: string): Promise<void> {
   }
 }
 
+import type { PerformanceMetrics } from '@/lib/performance'
+
 /**
  * A higher-order wrapper that abstracts the cache lookup and miss logic.
  * Guarantees that the app never crashes if Redis goes down.
@@ -83,26 +85,36 @@ export async function invalidatePattern(pattern: string): Promise<void> {
 export async function cacheWrapper<T>(
   key: string,
   ttlSeconds: number,
-  fetchFn: () => Promise<T>
+  fetchFn: () => Promise<T>,
+  perf?: PerformanceMetrics
 ): Promise<T> {
+  if (perf) perf.start('CacheWrapper Total')
+  
+  if (perf) perf.start('Redis GET')
   const startTime = Date.now()
   const cachedData = await getCache<T>(key)
+  if (perf) perf.end('Redis GET')
 
   if (cachedData !== null) {
-    // Fire-and-forget metrics logging
+    if (perf) perf.end('CacheWrapper Total')
     logCacheMetric('HIT', key, Date.now() - startTime)
     return cachedData
   }
 
   // Cache Miss: Execute the database query
-  const dbStartTime = Date.now()
+  if (perf) perf.start('FetchFn')
   const freshData = await fetchFn()
-  const dbDuration = Date.now() - dbStartTime
+  if (perf) perf.end('FetchFn')
 
-  // Store in cache (fire-and-forget to not block response)
-  void setCache(key, freshData, ttlSeconds)
+  // Store in cache
+  if (perf) perf.start('Redis SET')
+  await setCache(key, freshData, ttlSeconds)
+  if (perf) perf.end('Redis SET')
   
-  logCacheMetric('MISS', key, dbDuration)
+  if (perf) perf.end('CacheWrapper Total')
+  
+  // Backwards compatibility for global stats
+  logCacheMetric('MISS', key, Date.now() - startTime)
   return freshData
 }
 

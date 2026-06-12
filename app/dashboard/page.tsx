@@ -12,12 +12,10 @@ async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
   const cacheKey = `gym:${gymId}:dashboard:${today}`
 
   return cacheWrapper(cacheKey, 60, async () => {
-    perf.start('RPC')
     const supabase = await createClient()
 
     // Try RPC first (Phase 4 optimization)
     const { data: rpcData, error: rpcError } = await supabase.rpc('get_gym_dashboard', { p_gym_id: gymId, p_today: today })
-    perf.end('RPC')
     
     if (!rpcError && rpcData) {
       console.log('Dashboard RPC success')
@@ -62,7 +60,7 @@ async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
       },
       expiringMembers: expiringThisWeek.sort((a, b) => a.days_remaining - b.days_remaining),
     }
-  })
+  }, perf)
 }
 
 export default async function DashboardPage() {
@@ -85,9 +83,7 @@ export default async function DashboardPage() {
     )
   }
 
-  perf.start('Cache')
   const { stats, expiringMembers } = await getDashboardData(gym.id, perf)
-  perf.end('Cache')
 
   perf.logPayloadSize('Data', { stats, expiringMembers })
   

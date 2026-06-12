@@ -68,6 +68,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
   const [showPending, setShowPending] = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
+  const [activeTab, setActiveTab]     = useState<'membership' | 'inventory'>('membership')
   const supabase = createClient()
 
   const allTransactions = useMemo(() => {
@@ -76,6 +77,8 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
       type: 'membership' as const,
       timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
       amount: p.amount + (p.admission_fee ?? 0),
+      base_amount: p.amount,
+      admission_fee: p.admission_fee ?? 0,
       mode: p.payment_mode,
       title: p.member?.name ?? 'Unknown',
       subtitle: p.member?.phone ?? '',
@@ -90,6 +93,8 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
       type: 'inventory' as const,
       timestamp: ps.sold_at,
       amount: Number(ps.total_price),
+      base_amount: Number(ps.total_price),
+      admission_fee: 0,
       mode: ps.payment_mode,
       title: 'Inventory Sale',
       subtitle: 'Walk-in / Direct',
@@ -132,6 +137,10 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
   const cardTotal  = filtered.filter(p => p.mode === 'card').reduce((s, p) => s + p.amount, 0)
   const totalPending = localPending.reduce((s, m) => s + m.pending_amount, 0)
 
+  const membershipTransactions = filtered.filter(p => p.type === 'membership')
+  const inventoryTransactions = filtered.filter(p => p.type === 'inventory')
+  const displayTransactions = activeTab === 'membership' ? membershipTransactions : inventoryTransactions
+
   const modeConfig = {
     cash: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <Banknote className="w-4 h-4 text-emerald-600" /> },
     upi:  { bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200',    icon: <Smartphone className="w-4 h-4 text-blue-600" /> },
@@ -148,34 +157,59 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
   async function exportExcel() {
     const ExcelJS = (await import('exceljs')).default
     const wb = new ExcelJS.Workbook()
-    const ws = wb.addWorksheet('Payments')
-    ws.columns = [
-      { header: 'Member #',       key: 'num',   width: 10 },
-      { header: 'Name',           key: 'name',  width: 22 },
-      { header: 'Phone',          key: 'phone', width: 14 },
-      { header: 'Plan',           key: 'plan',  width: 12 },
-      { header: 'Start',          key: 'start', width: 14 },
-      { header: 'End',            key: 'end',   width: 14 },
-      { header: 'Mode',           key: 'mode',  width: 10 },
-      { header: 'Membership Fee', key: 'fee',   width: 16 },
-      { header: 'Admission Fee',  key: 'adm',   width: 16 },
-      { header: 'Total',          key: 'total', width: 12 },
-    ]
-    ws.getRow(1).font = { bold: true }
-    filtered.forEach(p => {
-      ws.addRow({
-        num:   p.member_number ?? '-',
-        name:  p.title,
-        phone: p.subtitle,
-        plan:  p.col3,
-        start: p.type === 'membership' ? p.col4.split(' – ')[0] : p.timestamp,
-        end:   p.type === 'membership' ? p.col4.split(' – ')[1] : '-',
-        mode:  p.mode.toUpperCase(),
-        fee:   p.amount,
-        adm:   0,
-        total: p.amount,
+
+    if (membershipTransactions.length > 0) {
+      const wsMembers = wb.addWorksheet('Membership Payments')
+      wsMembers.columns = [
+        { header: 'Member #',       key: 'num',   width: 10 },
+        { header: 'Name',           key: 'name',  width: 22 },
+        { header: 'Phone',          key: 'phone', width: 14 },
+        { header: 'Plan',           key: 'plan',  width: 12 },
+        { header: 'Start',          key: 'start', width: 14 },
+        { header: 'End',            key: 'end',   width: 14 },
+        { header: 'Mode',           key: 'mode',  width: 10 },
+        { header: 'Membership Fee', key: 'fee',   width: 16 },
+        { header: 'Admission Fee',  key: 'adm',   width: 16 },
+        { header: 'Total',          key: 'total', width: 12 },
+      ]
+      wsMembers.getRow(1).font = { bold: true }
+      membershipTransactions.forEach(p => {
+        wsMembers.addRow({
+          num:   p.member_number ?? '-',
+          name:  p.title,
+          phone: p.subtitle,
+          plan:  p.col3,
+          start: p.col4.split(' – ')[0] || '-',
+          end:   p.col4.split(' – ')[1] || '-',
+          mode:  p.mode.toUpperCase(),
+          fee:   p.base_amount,
+          adm:   p.admission_fee,
+          total: p.amount,
+        })
       })
-    })
+    }
+
+    if (inventoryTransactions.length > 0 || membershipTransactions.length === 0) {
+      const wsInv = wb.addWorksheet(membershipTransactions.length === 0 && inventoryTransactions.length === 0 ? 'Payments' : 'Inventory Payments')
+      wsInv.columns = [
+        { header: 'Date',     key: 'date',  width: 20 },
+        { header: 'Product',  key: 'prod',  width: 22 },
+        { header: 'Variant',  key: 'var',   width: 20 },
+        { header: 'Mode',     key: 'mode',  width: 10 },
+        { header: 'Total',    key: 'total', width: 12 },
+      ]
+      wsInv.getRow(1).font = { bold: true }
+      inventoryTransactions.forEach(p => {
+        wsInv.addRow({
+          date:  formatDate(p.timestamp),
+          prod:  p.col3,
+          var:   p.col4,
+          mode:  p.mode.toUpperCase(),
+          total: p.amount,
+        })
+      })
+    }
+
     const buf = await wb.xlsx.writeBuffer()
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
@@ -204,12 +238,20 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
             : period === 'custom' && customFrom && customTo ? `${customFrom} → ${customTo}`
             : 'All Time Collection'}
         </p>
-        <p className="text-3xl font-bold text-white">{formatCurrency(totalCollected)}</p>
-        <div className="flex flex-wrap gap-4 mt-3">
-          <span className="text-white/70 text-xs">Cash <span className="text-white font-bold">{formatCurrency(cashTotal)}</span></span>
-          <span className="text-white/70 text-xs">UPI <span className="text-white font-bold">{formatCurrency(upiTotal)}</span></span>
-          <span className="text-white/70 text-xs">Card <span className="text-white font-bold">{formatCurrency(cardTotal)}</span></span>
-          <span className="text-white/70 text-xs">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</span>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <p className="text-3xl font-bold text-white">{formatCurrency(totalCollected)}</p>
+            <div className="flex flex-wrap gap-4 mt-3">
+              <span className="text-white/70 text-xs">Cash <span className="text-white font-bold">{formatCurrency(cashTotal)}</span></span>
+              <span className="text-white/70 text-xs">UPI <span className="text-white font-bold">{formatCurrency(upiTotal)}</span></span>
+              <span className="text-white/70 text-xs">Card <span className="text-white font-bold">{formatCurrency(cardTotal)}</span></span>
+              <span className="text-white/70 text-xs">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          <div className="flex sm:flex-col gap-4 sm:gap-1 text-sm bg-black/10 px-4 py-2.5 rounded-lg border border-white/10">
+            <p className="text-white/90">Memberships: <span className="font-bold text-white">{formatCurrency(membershipTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
+            <p className="text-white/90">Inventory: <span className="font-bold text-white">{formatCurrency(inventoryTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
+          </div>
         </div>
       </div>
 
@@ -288,31 +330,48 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
               className="input-field w-40" />
           </div>
           {customFrom && customTo && (
-            <span className="text-xs text-slate-400 font-medium">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-slate-400 font-medium">{displayTransactions.length} result{displayTransactions.length !== 1 ? 's' : ''}</span>
           )}
         </div>
       )}
 
+      <div className="flex border-b border-slate-200 mt-2">
+        <button onClick={() => setActiveTab('membership')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'membership' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}>
+          Memberships ({membershipTransactions.length})
+        </button>
+        <button onClick={() => setActiveTab('inventory')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'inventory' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}>
+          Inventory ({inventoryTransactions.length})
+        </button>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="search" placeholder="Search by name or phone..."
+          <input type="search" placeholder={activeTab === 'membership' ? "Search by name or phone..." : "Search product..."}
             value={search} onChange={e => setSearch(e.target.value)}
             className="input-field pl-9" />
         </div>
-        <div className="relative sm:w-40">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">#</span>
-          <input type="search" placeholder="Member ID"
-            value={idSearch} onChange={e => setIdSearch(e.target.value)}
-            className="input-field pl-7" />
-        </div>
+        {activeTab === 'membership' && (
+          <div className="relative sm:w-40">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">#</span>
+            <input type="search" placeholder="Member ID"
+              value={idSearch} onChange={e => setIdSearch(e.target.value)}
+              className="input-field pl-7" />
+          </div>
+        )}
       </div>
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
-        {filtered.length === 0 ? (
+        {displayTransactions.length === 0 ? (
           <div className="card p-10 text-center text-slate-400 text-sm">No transactions found</div>
-        ) : filtered.map(payment => {
+        ) : displayTransactions.map(payment => {
           const mode = payment.mode as 'cash' | 'upi' | 'card'
           const { bg, text, border, icon } = modeConfig[mode]
           return (
@@ -339,35 +398,61 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Period</th>
+              {activeTab === 'membership' ? (
+                <>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Period</th>
+                </>
+              ) : (
+                <>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Product</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Variant</th>
+                </>
+              )}
               <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
               <th className="text-right px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-400">No transactions found</td></tr>
-            ) : filtered.map(payment => {
+            {displayTransactions.length === 0 ? (
+              <tr><td colSpan={activeTab === 'membership' ? 6 : 5} className="px-5 py-12 text-center text-slate-400">No transactions found</td></tr>
+            ) : displayTransactions.map(payment => {
               const mode = payment.mode as 'cash' | 'upi' | 'card'
               const { bg, text, border, icon } = modeConfig[mode]
               return (
                 <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-xs text-slate-400">
-                    {payment.member_number ? `#${payment.member_number}` : '-'}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <p className="font-semibold text-slate-900">{payment.title}</p>
-                    <p className="text-xs text-slate-400">{payment.subtitle}</p>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-500 capitalize">
-                    {payment.col3}
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-500 text-xs">
-                    {payment.col4}
-                  </td>
+                  {activeTab === 'membership' ? (
+                    <>
+                      <td className="px-5 py-3.5 font-mono text-xs text-slate-400">
+                        {payment.member_number ? `#${payment.member_number}` : '-'}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <p className="font-semibold text-slate-900">{payment.title}</p>
+                        <p className="text-xs text-slate-400">{payment.subtitle}</p>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500 capitalize">
+                        {payment.col3}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500 text-xs">
+                        {payment.col4}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-5 py-3.5 text-slate-500 text-xs">
+                        {formatDate(payment.timestamp)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <p className="font-semibold text-slate-900">{payment.col3}</p>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500">
+                        {payment.col4}
+                      </td>
+                    </>
+                  )}
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${bg} ${text} ${border}`}>
                       {icon}{mode.toUpperCase()}

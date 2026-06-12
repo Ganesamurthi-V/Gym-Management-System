@@ -2,18 +2,21 @@ import { createClient } from '@/lib/supabase/server'
 import { ReportsClient } from './ReportsClient'
 import { format } from 'date-fns'
 import { cacheWrapper } from '@/lib/cache'
+import { PerformanceMetrics } from '@/lib/performance'
 
 export const revalidate = 300
 
-async function getReportsData(gymId: string) {
+async function getReportsData(gymId: string, perf: PerformanceMetrics) {
   const supabase = await createClient()
   const today = format(new Date(), 'yyyy-MM-dd')
   
+  perf.start('Data')
   // New Architecture: 1 Supabase RPC -> Redis Cache
   const { data: rpcData, error: rpcError } = await supabase.rpc('get_gym_reports', { 
     p_gym_id: gymId, 
     p_today: today 
   })
+  perf.end('Data')
 
   if (rpcError || !rpcData) {
     console.error('get_gym_reports RPC failed:', rpcError)
@@ -30,8 +33,14 @@ async function getReportsData(gymId: string) {
 }
 
 export default async function ReportsPage() {
+  const perf = new PerformanceMetrics('Reports')
+  perf.start('Total')
+  perf.start('Auth')
+  
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  perf.end('Auth')
+  
   if (!user) return null
 
   const { data: gym } = await supabase
@@ -56,8 +65,15 @@ export default async function ReportsPage() {
     .single()
     .then(r => r.error ? { data: null } : r)
 
+  perf.start('Cache')
   const cacheKey = `gym:${gym.id}:reports`
-  const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id))
+  const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, perf))
+  perf.end('Cache')
+  
+  perf.logPayloadSize('Data', reportsData)
+  
+  perf.end('Total')
+  perf.logTotal()
 
   return (
     <ReportsClient

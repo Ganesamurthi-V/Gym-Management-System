@@ -3,18 +3,21 @@ import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import { DashboardClient } from './DashboardClient'
 import type { MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
+import { PerformanceMetrics } from '@/lib/performance'
 
 import { cacheWrapper } from '@/lib/cache'
 
-async function getDashboardData(gymId: string) {
+async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
   const today = format(new Date(), 'yyyy-MM-dd')
   const cacheKey = `gym:${gymId}:dashboard:${today}`
 
   return cacheWrapper(cacheKey, 60, async () => {
+    perf.start('RPC')
     const supabase = await createClient()
 
     // Try RPC first (Phase 4 optimization)
     const { data: rpcData, error: rpcError } = await supabase.rpc('get_gym_dashboard', { p_gym_id: gymId, p_today: today })
+    perf.end('RPC')
     
     if (!rpcError && rpcData) {
       console.log('Dashboard RPC success')
@@ -63,8 +66,14 @@ async function getDashboardData(gymId: string) {
 }
 
 export default async function DashboardPage() {
+  const perf = new PerformanceMetrics('Dashboard')
+  perf.start('Total')
+  perf.start('Auth')
+  
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  perf.end('Auth')
+  
   if (!user) return null
 
   const { data: gym } = await supabase.from('gyms').select('id, name').eq('owner_id', user.id).single()
@@ -76,7 +85,14 @@ export default async function DashboardPage() {
     )
   }
 
-  const { stats, expiringMembers } = await getDashboardData(gym.id)
+  perf.start('Cache')
+  const { stats, expiringMembers } = await getDashboardData(gym.id, perf)
+  perf.end('Cache')
+
+  perf.logPayloadSize('Data', { stats, expiringMembers })
+  
+  perf.end('Total')
+  perf.logTotal()
 
   return (
     <DashboardClient gymName={gym.name} stats={stats} expiringMembers={expiringMembers} gymId={gym.id} />

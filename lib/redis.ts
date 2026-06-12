@@ -22,6 +22,8 @@ export function getRedisClient(): Redis | null {
     redisClient = new Redis({
       url,
       token,
+      // Disable Next.js aggressive fetch caching for Upstash REST calls
+      cache: 'no-store',
       // Retry up to 3 times on network failure with exponential backoff
       retry: {
         retries: 3,

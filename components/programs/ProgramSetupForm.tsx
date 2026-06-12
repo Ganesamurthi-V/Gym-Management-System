@@ -39,7 +39,7 @@ export default function ProgramSetupForm({ data, updateData, onNext }: Props) {
   })
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
+    <div className="flex-1 w-full flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
       {/* Main Form Area */}
       <div className="flex-1 space-y-8">
         

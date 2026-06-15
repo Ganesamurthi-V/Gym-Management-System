@@ -3,11 +3,12 @@ import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import { DashboardClient } from './DashboardClient'
 import type { MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
-import { PerformanceMetrics } from '@/lib/performance'
+
 
 import { cacheWrapper } from '@/lib/cache'
+import { RequestLogger } from '@/lib/logger'
 
-async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
+async function getDashboardData(gymId: string, logger: RequestLogger) {
   const today = format(new Date(), 'yyyy-MM-dd')
   const cacheKey = `gym:${gymId}:dashboard:${today}`
 
@@ -15,15 +16,17 @@ async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
     const supabase = await createClient()
 
     // Try RPC first (Phase 4 optimization)
+    logger.start('RPC get_gym_dashboard')
     const { data: rpcData, error: rpcError } = await supabase.rpc('get_gym_dashboard', { p_gym_id: gymId, p_today: today })
+    logger.end('RPC get_gym_dashboard')
     
     if (!rpcError && rpcData) {
-      console.log('Dashboard RPC success')
       return rpcData as { stats: any, expiringMembers: any[] }
     }
 
     // Fallback to JS aggregation if RPC is not yet created in the DB
     console.warn('Fallback to JS aggregation for Dashboard. Please run the dashboard RPC migration.')
+    logger.start('Fallback Aggregation queries')
     const [membershipsRes, attendanceRes, todayPaymentsRes, duesRes] = await Promise.all([
       supabase
         .from('memberships')
@@ -34,8 +37,10 @@ async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
       supabase.from('memberships').select('amount, admission_fee').eq('gym_id', gymId).eq('start_date', today),
       supabase.from('members').select('pending_amount').eq('gym_id', gymId),
     ])
+    logger.end('Fallback Aggregation queries')
 
-    const memberMap = new Map<string, MemberWithStatus>()
+    logger.start('Fallback JS aggregation logic')
+    const memberMap = new Map<string, any>()
     for (const m of membershipsRes.data ?? []) {
       if (!m.member || memberMap.has(m.member_id)) continue
       const status = getMemberStatus(m.end_date)
@@ -43,12 +48,13 @@ async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
       memberMap.set(m.member_id, { ...(m.member as any), latest_membership: m as any, status, days_remaining: daysRemaining })
     }
 
-    const allMembers = Array.from(memberMap.values())
+    const allMembers = Array.from(memberMap.values()) as any[]
     const expiringThisWeek = allMembers.filter(m => m.status === 'expiring')
 
     const todayCollection = (todayPaymentsRes.data ?? []).reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
     const totalDues = (duesRes.data ?? []).reduce((s, m) => s + (m.pending_amount ?? 0), 0)
 
+    logger.end('Fallback JS aggregation logic')
     return {
       stats: {
         total_active: allMembers.filter(m => m.status === 'active' || m.status === 'expiring').length,
@@ -60,20 +66,16 @@ async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
       },
       expiringMembers: expiringThisWeek.sort((a, b) => a.days_remaining - b.days_remaining),
     }
-  }, perf)
+  }, logger)
 }
 
 export default async function DashboardPage() {
-  console.error("[TRACE] DASHBOARD_PAGE_EXECUTED")
-  const perf = new PerformanceMetrics('Dashboard')
-  perf.start('Total')
-  perf.start('Auth')
+  const logger = new RequestLogger('DASHBOARD')
   
+  logger.start('AUTH')
   const supabase = await createClient()
-  console.error("[TRACE] DASHBOARD_BEFORE_AUTH")
   const { data: { user } } = await supabase.auth.getUser()
-  console.error("[TRACE] DASHBOARD_AFTER_AUTH")
-  perf.end('Auth')
+  logger.end('AUTH')
   
   if (!user) return null
 
@@ -86,16 +88,10 @@ export default async function DashboardPage() {
     )
   }
 
-  console.error("[TRACE] DASHBOARD_BEFORE_CACHE")
-  const { stats, expiringMembers } = await getDashboardData(gym.id, perf)
-  console.error("[TRACE] DASHBOARD_AFTER_CACHE")
-
-  perf.logPayloadSize('Data', { stats, expiringMembers })
+  const { stats, expiringMembers } = await getDashboardData(gym.id, logger)
   
-  perf.end('Total')
-  perf.logTotal()
+  logger.summary()
 
-  console.error("[TRACE] DASHBOARD_BEFORE_RETURN")
   return (
     <DashboardClient gymName={gym.name} stats={stats} expiringMembers={expiringMembers} gymId={gym.id} />
   )

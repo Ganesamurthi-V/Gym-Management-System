@@ -2,45 +2,54 @@ import { createClient } from '@/lib/supabase/server'
 import { ReportsClient } from './ReportsClient'
 import { format } from 'date-fns'
 import { cacheWrapper } from '@/lib/cache'
-import { PerformanceMetrics } from '@/lib/performance'
+import { RequestLogger } from '@/lib/logger'
 
 export const revalidate = 300
 
-async function getReportsData(gymId: string, perf: PerformanceMetrics) {
-  const supabase = await createClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
-  
-  // New Architecture: 1 Supabase RPC -> Redis Cache
-  const { data: rpcData, error: rpcError } = await supabase.rpc('get_gym_reports', { 
-    p_gym_id: gymId, 
-    p_today: today 
-  })
+async function getReportsData(gymId: string, logger: RequestLogger) {
+  logger.step('ENTER getReportsData')
+  try {
+    const supabase = await createClient()
+    const today = format(new Date(), 'yyyy-MM-dd')
+    
+    logger.start('QUERY get_gym_reports')
+    // New Architecture: 1 Supabase RPC -> Redis Cache
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_gym_reports', { 
+      p_gym_id: gymId, 
+      p_today: today 
+    })
+    logger.end('QUERY get_gym_reports')
 
-  if (rpcError || !rpcData) {
-    console.error('get_gym_reports RPC failed:', rpcError)
-    throw new Error('Failed to fetch reports from database. Have you run the RPC migration?')
-  }
+    if (rpcError || !rpcData) {
+      console.error('get_gym_reports RPC failed:', rpcError)
+      throw new Error('Failed to fetch reports from database. Have you run the RPC migration?')
+    }
 
-  // Calculate total members from active + expired (matches original logic)
-  const totalMembers = (rpcData.activeCount ?? 0) + (rpcData.expiredCount ?? 0)
+    logger.start('AGGREGATION')
+    // Calculate total members from active + expired (matches original logic)
+    const totalMembers = (rpcData.activeCount ?? 0) + (rpcData.expiredCount ?? 0)
+    logger.end('AGGREGATION')
 
-  return {
-    ...rpcData,
-    totalMembers
+    logger.step('BEFORE RETURN')
+    const result = {
+      ...rpcData,
+      totalMembers
+    }
+    logger.step('RETURN OBJECT CREATED')
+    return result
+  } catch (error: any) {
+    logger.error('ERROR', error)
+    throw error
   }
 }
 
 export default async function ReportsPage() {
-  console.error("[TRACE] REPORTS_PAGE_EXECUTED")
-  const perf = new PerformanceMetrics('Reports')
-  perf.start('Total')
-  perf.start('Auth')
+  const logger = new RequestLogger('REPORTS')
   
+  logger.start('AUTH')
   const supabase = await createClient()
-  console.error("[TRACE] REPORTS_BEFORE_AUTH")
   const { data: { user } } = await supabase.auth.getUser()
-  console.error("[TRACE] REPORTS_AFTER_AUTH")
-  perf.end('Auth')
+  logger.end('AUTH')
   
   if (!user) return null
 
@@ -66,17 +75,11 @@ export default async function ReportsPage() {
     .single()
     .then(r => r.error ? { data: null } : r)
 
-  console.error("[TRACE] REPORTS_BEFORE_CACHE")
   const cacheKey = `gym:${gym.id}:reports`
-  const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, perf), perf)
-  console.error("[TRACE] REPORTS_AFTER_CACHE")
+  const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, logger), logger)
   
-  perf.logPayloadSize('Data', reportsData)
-  
-  perf.end('Total')
-  perf.logTotal()
+  logger.summary()
 
-  console.error("[TRACE] REPORTS_BEFORE_RETURN")
   return (
     <ReportsClient
       {...reportsData}

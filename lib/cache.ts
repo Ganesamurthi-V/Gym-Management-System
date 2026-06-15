@@ -76,7 +76,7 @@ export async function invalidatePattern(pattern: string): Promise<void> {
   }
 }
 
-import type { PerformanceMetrics } from '@/lib/performance'
+import type { RequestLogger } from '@/lib/logger'
 
 /**
  * A higher-order wrapper that abstracts the cache lookup and miss logic.
@@ -86,36 +86,44 @@ export async function cacheWrapper<T>(
   key: string,
   ttlSeconds: number,
   fetchFn: () => Promise<T>,
-  perf?: PerformanceMetrics
+  logger?: RequestLogger
 ): Promise<T> {
-  if (perf) perf.start('CacheWrapper Total')
+  if (logger) logger.step('CACHE ENTER')
   
-  if (perf) perf.start('Redis GET')
-  const startTime = Date.now()
-  const cachedData = await getCache<T>(key)
-  if (perf) perf.end('Redis GET')
+  try {
+    if (logger) logger.start('REDIS GET')
+    const startTime = Date.now()
+    const cachedData = await getCache<T>(key)
+    if (logger) logger.end('REDIS GET')
 
-  if (cachedData !== null) {
-    if (perf) perf.end('CacheWrapper Total')
-    logCacheMetric('HIT', key, Date.now() - startTime)
-    return cachedData
+    if (cachedData !== null) {
+      if (logger) logger.step('CACHE HIT')
+      if (logger) logger.step('RETURNING CACHED DATA')
+      logCacheMetric('HIT', key, Date.now() - startTime)
+      return cachedData
+    }
+
+    if (logger) logger.step('CACHE MISS')
+
+    // Cache Miss: Execute the database query
+    if (logger) logger.start('FETCHFN')
+    const freshData = await fetchFn()
+    if (logger) logger.end('FETCHFN')
+
+    // Store in cache
+    if (logger) logger.start('REDIS SET')
+    await setCache(key, freshData, ttlSeconds)
+    if (logger) logger.end('REDIS SET')
+    
+    if (logger) logger.step('RETURNING FRESH DATA')
+    
+    // Backwards compatibility for global stats
+    logCacheMetric('MISS', key, Date.now() - startTime)
+    return freshData
+  } catch (error: any) {
+    if (logger) logger.error('ERROR', error)
+    throw error
   }
-
-  // Cache Miss: Execute the database query
-  if (perf) perf.start('FetchFn')
-  const freshData = await fetchFn()
-  if (perf) perf.end('FetchFn')
-
-  // Store in cache
-  if (perf) perf.start('Redis SET')
-  await setCache(key, freshData, ttlSeconds)
-  if (perf) perf.end('Redis SET')
-  
-  if (perf) perf.end('CacheWrapper Total')
-  
-  // Backwards compatibility for global stats
-  logCacheMetric('MISS', key, Date.now() - startTime)
-  return freshData
 }
 
 let globalCacheStats = {

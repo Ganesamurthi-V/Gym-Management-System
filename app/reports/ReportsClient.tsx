@@ -92,6 +92,7 @@ export function ReportsClient({
   expiringMembers, attendanceTodayCount, gymId,
   inventorySales, recentInventorySales
 }: Props) {
+  console.log("[CLIENT] REPORTS_CLIENT_RENDERED")
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [isMounted, setIsMounted] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)

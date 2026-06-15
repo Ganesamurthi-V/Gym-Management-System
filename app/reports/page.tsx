@@ -86,6 +86,7 @@ export default async function ReportsPage() {
     const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, logger), logger)
     logger.end('CACHE')
     
+    logger.setPayload(reportsData)
     logger.summary()
 
     return (

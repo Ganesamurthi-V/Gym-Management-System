@@ -104,13 +104,14 @@ export default async function DashboardPage() {
     }
 
     logger.start('CACHE')
-    const { stats, expiringMembers } = await getDashboardData(gym.id, logger)
+    const dashboardData = await getDashboardData(gym.id, logger)
     logger.end('CACHE')
     
+    logger.setPayload(dashboardData)
     logger.summary()
 
     return (
-      <DashboardClient gymName={gym.name} stats={stats} expiringMembers={expiringMembers} gymId={gym.id} />
+      <DashboardClient gymName={gym.name} stats={dashboardData.stats} expiringMembers={dashboardData.expiringMembers} gymId={gym.id} />
     )
   } catch (error: any) {
     logger.error('ERROR', error)

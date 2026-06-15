@@ -64,12 +64,15 @@ async function getDashboardData(gymId: string, perf: PerformanceMetrics) {
 }
 
 export default async function DashboardPage() {
+  console.error("[TRACE] DASHBOARD_PAGE_EXECUTED")
   const perf = new PerformanceMetrics('Dashboard')
   perf.start('Total')
   perf.start('Auth')
   
   const supabase = await createClient()
+  console.error("[TRACE] DASHBOARD_BEFORE_AUTH")
   const { data: { user } } = await supabase.auth.getUser()
+  console.error("[TRACE] DASHBOARD_AFTER_AUTH")
   perf.end('Auth')
   
   if (!user) return null
@@ -83,13 +86,16 @@ export default async function DashboardPage() {
     )
   }
 
+  console.error("[TRACE] DASHBOARD_BEFORE_CACHE")
   const { stats, expiringMembers } = await getDashboardData(gym.id, perf)
+  console.error("[TRACE] DASHBOARD_AFTER_CACHE")
 
   perf.logPayloadSize('Data', { stats, expiringMembers })
   
   perf.end('Total')
   perf.logTotal()
 
+  console.error("[TRACE] DASHBOARD_BEFORE_RETURN")
   return (
     <DashboardClient gymName={gym.name} stats={stats} expiringMembers={expiringMembers} gymId={gym.id} />
   )

@@ -31,12 +31,15 @@ async function getReportsData(gymId: string, perf: PerformanceMetrics) {
 }
 
 export default async function ReportsPage() {
+  console.error("[TRACE] REPORTS_PAGE_EXECUTED")
   const perf = new PerformanceMetrics('Reports')
   perf.start('Total')
   perf.start('Auth')
   
   const supabase = await createClient()
+  console.error("[TRACE] REPORTS_BEFORE_AUTH")
   const { data: { user } } = await supabase.auth.getUser()
+  console.error("[TRACE] REPORTS_AFTER_AUTH")
   perf.end('Auth')
   
   if (!user) return null
@@ -63,14 +66,17 @@ export default async function ReportsPage() {
     .single()
     .then(r => r.error ? { data: null } : r)
 
+  console.error("[TRACE] REPORTS_BEFORE_CACHE")
   const cacheKey = `gym:${gym.id}:reports`
   const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, perf), perf)
+  console.error("[TRACE] REPORTS_AFTER_CACHE")
   
   perf.logPayloadSize('Data', reportsData)
   
   perf.end('Total')
   perf.logTotal()
 
+  console.error("[TRACE] REPORTS_BEFORE_RETURN")
   return (
     <ReportsClient
       {...reportsData}

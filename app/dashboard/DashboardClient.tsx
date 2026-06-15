@@ -20,6 +20,7 @@ interface Props {
 }
 
 export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Props) {
+  console.log("[CLIENT] DASHBOARD_CLIENT_RENDERED")
   const [sendingBulk, setSendingBulk] = useState(false)
   const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)

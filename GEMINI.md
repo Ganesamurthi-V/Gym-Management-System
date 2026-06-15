@@ -49,6 +49,11 @@ GymDesk is a full-stack gym management SaaS built for small to mid-size gyms in 
 - Use the `ssr` package for authentication and session management.
 - Always use the helper functions in `lib/supabase/` to instantiate clients.
 
+### Observability
+- Use `RequestLogger` from `lib/logger.ts` for structured APM-style tracing of API routes and Server Components.
+- Use `logger.start()`, `logger.end()`, and `logger.step()` to trace execution times. Use `logger.error()` for exception handling.
+- The logger automatically uses `console.error` to bypass Vercel logging filters ensuring consistent log delivery.
+
 ---
 
 ## 🔄 Workflows

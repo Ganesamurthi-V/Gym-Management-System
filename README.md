@@ -40,6 +40,7 @@
 | **Bulk Import** | 5-stage pipeline: Parse → Area Normalize → Area Review → Edit → Confirm. Supports `.csv` and `.xlsx`. Smart column detection with 40+ aliases per field. |
 | **Geo Intelligence Engine** | 11-step area normalization pipeline with AI fallback (Gemini 2.0 Flash). 1200+ static aliases. Client-side seed data fallback. |
 | **Account Settings** | Edit gym name, gym info (type, city, phone, address, opening year, branches), change password. Toast notifications. Danger zone. |
+| **Observability** | Request-scoped APM-style logger (`RequestLogger`) for granular performance tracing and cache debugging in Vercel. |
 
 ---
 
@@ -498,6 +499,7 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 | Mobile-scrollable import/bulk-edit previews | ✅ |
 | Rate limiting on geo API routes | ✅ |
 | Server-side rate limiter (per-user, per-route) | ✅ |
+| Structured APM-style request logging | ✅ |
 
 ---
 

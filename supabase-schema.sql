@@ -319,7 +319,7 @@ CREATE POLICY "Gym owners can manage their own gym aliases"
   ON geo_gym_aliases FOR ALL
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = geo_gym_aliases.gym_id AND owner_id = auth.uid())
-    AND (created_by = auth.uid() OR created_by IS NULL)
+    AND created_by = auth.uid()
   );
 
 CREATE POLICY "Gym owners can view their normalization logs"
@@ -329,7 +329,6 @@ CREATE POLICY "Gym owners can view their normalization logs"
 CREATE POLICY "Gym owners can insert normalization logs"
   ON geo_normalization_log FOR INSERT
   WITH CHECK (
-    gym_id IS NULL OR
     EXISTS (SELECT 1 FROM gyms WHERE id = geo_normalization_log.gym_id AND owner_id = auth.uid())
   );
 
@@ -339,7 +338,8 @@ CREATE POLICY "Gym owners can view their review queue"
 
 CREATE POLICY "Gym owners can manage their review queue"
   ON geo_review_queue FOR ALL
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()));
 
 -- ── Helper functions (called by API routes via supabase.rpc) ─────────────────
 
@@ -569,7 +569,14 @@ CREATE POLICY "Gym owners can delete inventory"
 
 CREATE OR REPLACE FUNCTION increment_inventory_stock(p_inventory_id UUID, amount INTEGER)
 RETURNS VOID AS $$
+DECLARE
+  v_gym_id UUID;
 BEGIN
+  SELECT gym_id INTO v_gym_id FROM inventory WHERE id = p_inventory_id;
+  IF NOT EXISTS (SELECT 1 FROM gyms WHERE id = v_gym_id AND owner_id = auth.uid()) THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
+
   UPDATE inventory
   SET initial_stock = GREATEST(0, initial_stock + amount),
       updated_at = NOW()

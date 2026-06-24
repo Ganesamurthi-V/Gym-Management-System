@@ -7,7 +7,7 @@ function mapSupabaseError(error: { code: string; message: string }) {
   if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
   if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
   if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
+  return { status: 500, code: 'DATABASE_ERROR', message: 'A database error occurred' }
 }
 
 export async function POST(req: NextRequest) {
@@ -22,10 +22,13 @@ export async function POST(req: NextRequest) {
 
     const { member_id, date, status } = body
 
+    const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
     const { data, error } = await supabase
       .from('attendance')
       .upsert(
-        { member_id, date, status, gym_id: body.gym_id },
+        { member_id, date, status, gym_id: gym.id },
         { onConflict: 'member_id,date' }
       )
       .select('id')

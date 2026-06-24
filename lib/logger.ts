@@ -64,7 +64,8 @@ export class RequestLogger {
       timestamp: new Date().toISOString()
     }
 
-    console.log(JSON.stringify(log))
+    // Log summary as error to bypass Next.js removeConsole filter
+    console.error(JSON.stringify(log))
   }
 
   error(message: string, error: any) {
@@ -73,7 +74,7 @@ export class RequestLogger {
       page: this.context,
       level: 'ERROR',
       message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: process.env.NODE_ENV === 'production' ? undefined : (error instanceof Error ? error.stack : undefined),
       timestamp: new Date().toISOString()
     }))
   }

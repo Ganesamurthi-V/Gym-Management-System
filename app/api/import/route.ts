@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
 
     // Rate limit import attempts
-    const { allowed } = checkRateLimit(user.id, '/api/import', 5) // 5 imports per minute
+    const { allowed } = await checkRateLimit(user.id, '/api/import', 5) // 5 imports per minute
     if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
 
     let body

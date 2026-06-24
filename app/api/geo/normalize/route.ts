@@ -31,7 +31,7 @@ function mapSupabaseError(error: { code: string; message: string }) {
   if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
   if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
   if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
+  return { status: 500, code: 'DATABASE_ERROR', message: 'A database error occurred' }
 }
 
 export async function POST(req: NextRequest) {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/normalize', ROUTE_LIMITS.NORMALIZE)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/normalize', ROUTE_LIMITS.NORMALIZE)
     if (!allowed) {
       return NextResponse.json({
         success: false,

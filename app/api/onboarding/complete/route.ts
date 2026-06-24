@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/onboarding/complete', ROUTE_LIMITS.DEFAULT)
+    const { allowed } = await checkRateLimit(user.id, '/api/onboarding/complete', ROUTE_LIMITS.DEFAULT)
     if (!allowed) {
       return NextResponse.json(
         { success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } },

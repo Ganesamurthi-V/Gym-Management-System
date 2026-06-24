@@ -40,6 +40,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Insufficient stock. Available: ${product.initial_stock}` }, { status: 400 })
     }
 
+    if (customUnitPrice !== undefined && customUnitPrice !== null) {
+      const price = Number(customUnitPrice)
+      if (isNaN(price) || price < 0) {
+        return NextResponse.json({ error: 'unitPrice must be >= 0' }, { status: 400 })
+      }
+    }
+
     const finalUnitPrice = customUnitPrice !== undefined && customUnitPrice !== null 
       ? Number(customUnitPrice) 
       : Number(product.selling_price)

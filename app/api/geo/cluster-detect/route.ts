@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/cluster-detect', ROUTE_LIMITS.DEFAULT)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/cluster-detect', ROUTE_LIMITS.DEFAULT)
     if (!allowed) {
       return NextResponse.json({
         success: false,

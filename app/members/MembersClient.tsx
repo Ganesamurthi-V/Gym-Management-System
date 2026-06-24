@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
@@ -16,6 +18,7 @@ interface Props {
 type FilterType = 'all' | 'active' | 'expiring' | 'expired'
 
 export function MembersClient({ members, gymId }: Props) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [idSearch, setIdSearch] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
@@ -69,7 +72,8 @@ export function MembersClient({ members, gymId }: Props) {
     }
 
     setFixing(false)
-    window.location.reload()
+    toast.success('Duplicate IDs fixed successfully!')
+    router.refresh()
   }
 
   const uniquePlans = Array.from(new Set(members.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]

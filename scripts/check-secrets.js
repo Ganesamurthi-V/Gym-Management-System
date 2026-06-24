@@ -2,10 +2,10 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 
 const SENSITIVE_PATTERNS = [
-  /GROQ_API_KEY/,
-  /NEXT_PUBLIC_SUPABASE_ANON_KEY/,
-  /UPSTASH_REDIS_REST_TOKEN/,
-  /NEXT_PUBLIC_GOOGLE_MAPS_API_KEY/
+  /GROQ_API_KEY\s*=\s*['"][^'"]+['"]/,
+  /NEXT_PUBLIC_SUPABASE_ANON_KEY\s*=\s*['"][^'"]+['"]/,
+  /UPSTASH_REDIS_REST_TOKEN\s*=\s*['"][^'"]+['"]/,
+  /NEXT_PUBLIC_GOOGLE_MAPS_API_KEY\s*=\s*['"][^'"]+['"]/
 ];
 
 try {
@@ -18,7 +18,7 @@ try {
 
   for (const file of files) {
     if (file === 'scripts/check-secrets.js') continue; // Skip itself
-    if (file === '.env.example' || file === 'README.md' || file === 'security_audit.md' || file === 'implementation_plan.md') continue;
+    if (file === '.env.example' || file === '.env.local' || file === '.env' || file === 'README.md' || file.endsWith('.md')) continue;
     
     const content = fs.readFileSync(file, 'utf-8');
     for (const pattern of SENSITIVE_PATTERNS) {

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Sora } from 'next/font/google'
 import AppShell from '@/components/layout/AppShell'
 import './globals.css'
+import { Toaster } from 'react-hot-toast'
 
 const sora = Sora({ subsets: ['latin'], variable: '--font-sora' })
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SmoothScrollProvider>
           <AppShell>{children}</AppShell>
         </SmoothScrollProvider>
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       </body>
     </html>
   )

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 import Link from 'next/link'
-import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar } from 'lucide-react'
+import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
@@ -16,10 +18,15 @@ interface Props {
 type FilterType = 'all' | 'active' | 'expiring' | 'expired'
 
 export function MembersClient({ members, gymId }: Props) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [idSearch, setIdSearch] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
   const [showAdvFilterModal, setShowAdvFilterModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportFrom, setExportFrom] = useState('')
+  const [exportTo, setExportTo] = useState('')
+  const [exportStatus, setExportStatus] = useState<FilterType | 'all'>('all')
   const [advFilters, setAdvFilters] = useState({
     quick: null as string | null,
     status: [] as string[],
@@ -69,7 +76,8 @@ export function MembersClient({ members, gymId }: Props) {
     }
 
     setFixing(false)
-    window.location.reload()
+    toast.success('Duplicate IDs fixed successfully!')
+    router.refresh()
   }
 
   const uniquePlans = Array.from(new Set(members.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]
@@ -203,6 +211,74 @@ export function MembersClient({ members, gymId }: Props) {
     expired:  'bg-red-400',
   }
 
+  async function exportExcel() {
+    let toExport = filtered
+
+    if (exportStatus !== 'all') {
+      toExport = toExport.filter(m => m.status === exportStatus)
+    }
+
+    if (exportFrom && exportTo) {
+      const fromD = new Date(exportFrom)
+      const toD = new Date(exportTo)
+      toExport = toExport.filter(m => {
+        if (!m.join_date) return false
+        const [y, mo, d] = m.join_date.split('-').map(Number)
+        const jd = new Date(y, mo - 1, d)
+        return jd >= fromD && jd <= toD
+      })
+    }
+
+    const ExcelJS = (await import('exceljs')).default
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Members')
+
+    ws.columns = [
+      { header: 'Member ID',      key: 'num',      width: 15 },
+      { header: 'Name',           key: 'name',     width: 25 },
+      { header: 'Phone',          key: 'phone',    width: 15 },
+      { header: 'Status',         key: 'status',   width: 15 },
+      { header: 'Gender',         key: 'gender',   width: 10 },
+      { header: 'Age',            key: 'age',      width: 8 },
+      { header: 'Area',           key: 'area',     width: 20 },
+      { header: 'Pending Dues',   key: 'dues',     width: 15 },
+      { header: 'Latest Plan',    key: 'plan',     width: 15 },
+      { header: 'Join Date',      key: 'joined',   width: 15 },
+      { header: 'Plan Starts On', key: 'start',    width: 15 },
+      { header: 'Plan Ends On',   key: 'end',      width: 15 },
+      { header: 'Legacy ID',      key: 'legacy',   width: 15 },
+    ]
+    
+    ws.getRow(1).font = { bold: true }
+    
+    toExport.forEach(m => {
+      ws.addRow({
+        num:    m.member_number ? formatMemberId(m.member_number) : '-',
+        name:   m.name,
+        phone:  m.phone,
+        status: m.status.toUpperCase(),
+        gender: m.gender ? m.gender.charAt(0).toUpperCase() + m.gender.slice(1) : '-',
+        age:    m.age || '-',
+        area:   m.area || '-',
+        dues:   m.pending_amount || 0,
+        plan:   m.latest_membership ? m.latest_membership.plan : '-',
+        joined: formatDate(m.created_at),
+        start:  m.latest_membership ? formatDate(m.latest_membership.start_date) : '-',
+        end:    m.latest_membership ? formatDate(m.latest_membership.end_date) : '-',
+        legacy: m.legacy_member_id || '-',
+      })
+    })
+
+    const buf = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `members-${formatDate(new Date().toISOString())}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
       {/* Page header */}
@@ -220,6 +296,10 @@ export function MembersClient({ members, gymId }: Props) {
                 !
               </span>
             )}
+          </button>
+          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
           </button>
           <Link href="/import" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Upload className="w-4 h-4" />
@@ -702,6 +782,50 @@ export function MembersClient({ members, gymId }: Props) {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-pop-in">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-800">Export Members</h3>
+              <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="p-5 space-y-5">
+              <p className="text-sm text-slate-500">Choose a custom joined date range or member status. Leave blank to export all {filtered.length} currently filtered members.</p>
+              
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">Member Status</label>
+                <select 
+                  value={exportStatus} 
+                  onChange={e => setExportStatus(e.target.value as FilterType | 'all')}
+                  className="input-field w-full bg-slate-50"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active Only</option>
+                  <option value="expiring">Expiring Soon</option>
+                  <option value="expired">Expired Only</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">Joined From Date</label>
+                  <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)} className="input-field w-full bg-slate-50" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">Joined To Date</label>
+                  <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)} className="input-field w-full bg-slate-50" />
+                </div>
+              </div>
+            </div>
+            <div className="p-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+              <button onClick={() => setShowExportModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Cancel</button>
+              <button onClick={() => { setShowExportModal(false); exportExcel(); }} className="px-4 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors flex items-center gap-2"><Download className="w-4 h-4"/> Download Excel</button>
             </div>
           </div>
         </div>

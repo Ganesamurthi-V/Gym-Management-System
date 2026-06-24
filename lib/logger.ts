@@ -64,8 +64,12 @@ export class RequestLogger {
       timestamp: new Date().toISOString()
     }
 
-    // Log summary as error to bypass Next.js removeConsole filter
-    console.error(JSON.stringify(log))
+    // Log summary as error to bypass Vercel filters in production, use log in dev
+    if (process.env.NODE_ENV === 'production') {
+      console.error(JSON.stringify(log))
+    } else {
+      console.log(JSON.stringify(log))
+    }
   }
 
   error(message: string, error: any) {

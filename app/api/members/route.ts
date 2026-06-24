@@ -76,8 +76,7 @@ export async function POST(req: NextRequest) {
         age,
         gender: body.gender,
         member_number,
-        gym_id: gym.id,
-        owner_id: user.id
+        gym_id: gym.id
       })
       .select('id, name, phone, member_number')
       .single()

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from('attendance')
       .upsert(
-        { member_id, date, status, gym_id: gym.id },
+        { member_id, date, gym_id: gym.id },
         { onConflict: 'member_id,date' }
       )
       .select('id')

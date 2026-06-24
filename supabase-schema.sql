@@ -62,6 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_memberships_gym_id ON memberships(gym_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_member_id ON memberships(member_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_end_date ON memberships(end_date);
 CREATE INDEX IF NOT EXISTS idx_memberships_start_date ON memberships(gym_id, start_date);
+CREATE INDEX IF NOT EXISTS idx_memberships_member_created ON memberships(member_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
@@ -186,6 +187,7 @@ ALTER TABLE memberships ADD COLUMN IF NOT EXISTS admission_fee INTEGER NOT NULL 
 -- [Migration 4] Add performance indexes
 CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
 CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_number);
+CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at DESC);
 
 -- [Migration 5] Add age to members
 ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age < 120);
@@ -624,9 +626,11 @@ CREATE POLICY "Gym owners can insert inventory sales"
 
 CREATE POLICY "Gym owners can delete inventory sales"
   ON inventory_sales FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update inventory sales"
+  ON inventory_sales FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
 
 -- ================================================
 -- WORKOUT PROGRAMS

@@ -152,7 +152,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-brand-400 to-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
               <Dumbbell className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-black text-white tracking-tight">GymDesk</span>
+            <span className="text-lg font-black text-white tracking-tight">gymflow</span>
           </div>
         </div>
 
@@ -166,7 +166,7 @@ export default function LoginPage() {
             <h1 className="text-4xl xl:text-5xl font-black text-white leading-[1.1] tracking-tight">
               Welcome to<br />
               <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-cyan-400 bg-clip-text text-transparent">
-                GymDesk
+                gymflow
               </span>
             </h1>
             <p className="text-base text-white/40 max-w-md leading-relaxed font-medium">
@@ -184,14 +184,14 @@ export default function LoginPage() {
             />
             <FeatureCard
               icon={<TrendingUp className="w-4.5 h-4.5 text-emerald-300" />}
-              title="Revenue Analytics"
-              description="Real-time collection reports and growth tracking"
+              title="Smart Dashboard"
+              description="Get insights into your gym's performance at a glance"
               delay={600}
             />
             <FeatureCard
-              icon={<Zap className="w-4.5 h-4.5 text-amber-300" />}
-              title="WhatsApp Reminders"
-              description="Automated renewal and due reminders via WhatsApp"
+              icon={<Shield className="w-4.5 h-4.5 text-amber-300" />}
+              title="Fast & Secure"
+              description="Your data is completely secure and accessible anywhere"
               delay={800}
             />
           </div>
@@ -208,13 +208,9 @@ export default function LoginPage() {
               <Zap className="w-3 h-3 text-brand-300" />
               <span className="text-[11px] font-bold text-brand-300 tracking-wide">Setup in 2 Minutes</span>
             </div>
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-amber-500/10 border border-amber-400/15">
-              <Shield className="w-3 h-3 text-amber-300" />
-              <span className="text-[11px] font-bold text-amber-300 tracking-wide">No Credit Card Needed</span>
-            </div>
           </div>
           <p className="text-[11px] text-white/20 font-medium">
-            © {new Date().getFullYear()} GymDesk. Built for gym owners, by fitness enthusiasts.
+            © {new Date().getFullYear()} gymflow. Built for gym owners, by fitness enthusiasts.
           </p>
         </div>
       </div>
@@ -226,7 +222,7 @@ export default function LoginPage() {
           <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center">
             <Dumbbell className="w-4.5 h-4.5 text-white" />
           </div>
-          <span className="text-lg font-black text-slate-900 tracking-tight">GymDesk</span>
+          <span className="text-lg font-black text-slate-900 tracking-tight">gymflow</span>
         </div>
 
         {/* Form container — centered */}
@@ -322,7 +318,7 @@ export default function LoginPage() {
             <div className="text-center space-y-4">
               <p className="text-sm text-slate-400 font-medium">
                 Don&apos;t have an account?{' '}
-                <a href="mailto:support@gymdesk.in" className="text-brand-600 font-bold hover:text-brand-700 transition-colors">
+                <a href="mailto:support@gymflow.in" className="text-brand-600 font-bold hover:text-brand-700 transition-colors">
                   Contact Admin
                 </a>
               </p>

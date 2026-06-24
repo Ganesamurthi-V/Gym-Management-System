@@ -1,7 +1,7 @@
 /**
  * services/location/normalizeGooglePlace.ts
  * ──────────────────────────────────────────
- * Bridges Google Places selection → existing GymDesk normalizer pipeline.
+ * Bridges Google Places selection → existing gymflow normalizer pipeline.
  *
  * IMPORTANT: This does NOT replace the normalizer. It feeds the locality
  * extracted from Google into the existing /api/geo/normalize endpoint,
@@ -13,7 +13,7 @@ import type { GoogleAddressComponents } from '@/utils/location/extractGoogleAddr
 export interface NormalizedPlaceResult {
   // From Google (supplementary metadata only)
   google: GoogleAddressComponents
-  // From GymDesk normalizer (canonical source of truth)
+  // From gymflow normalizer (canonical source of truth)
   canonical_area: string
   canonical_area_id: string | null
   confidence_score: number
@@ -23,7 +23,7 @@ export interface NormalizedPlaceResult {
 
 /**
  * Takes a Google-extracted address and runs it through the existing
- * GymDesk area normalization pipeline.
+ * gymflow area normalization pipeline.
  *
  * @param google - Structured address from extractGoogleAddress()
  * @param gymId  - Optional gym ID for gym-specific alias lookup

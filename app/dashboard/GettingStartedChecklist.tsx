@@ -308,8 +308,8 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
 
 export function GettingStartedChecklist({ stats, gymId }: { stats?: DashboardStats; gymId: string }) {
   const router = useRouter()
-  const storageKey = `gymdesk_getting_started_${gymId}`
-  const dismissedKey = `gymdesk_getting_started_dismissed_${gymId}`
+  const storageKey = `gymflow_getting_started_${gymId}`
+  const dismissedKey = `gymflow_getting_started_dismissed_${gymId}`
 
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set())
   const [showCelebration, setShowCelebration] = useState(false)
@@ -364,10 +364,10 @@ export function GettingStartedChecklist({ stats, gymId }: { stats?: DashboardSta
   // Trigger celebration when all tasks are complete
   useEffect(() => {
     if (completedTasks.size === TASKS.length && !dismissed) {
-      const hasShown = localStorage.getItem(`gymdesk_celebrated_${gymId}`)
+      const hasShown = localStorage.getItem(`gymflow_celebrated_${gymId}`)
       if (!hasShown) {
         setTimeout(() => setShowCelebration(true), 800)
-        localStorage.setItem(`gymdesk_celebrated_${gymId}`, 'true')
+        localStorage.setItem(`gymflow_celebrated_${gymId}`, 'true')
       }
     }
   }, [completedTasks.size, dismissed, gymId])

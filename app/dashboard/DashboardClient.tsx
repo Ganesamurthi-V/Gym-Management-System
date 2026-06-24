@@ -34,7 +34,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
   useEffect(() => {
     const checkDismissed = () => {
-      const isDismissed = localStorage.getItem(`gymdesk_getting_started_dismissed_${gymId}`) === 'true'
+      const isDismissed = localStorage.getItem(`gymflow_getting_started_dismissed_${gymId}`) === 'true'
       setChecklistDismissed(isDismissed)
     }
     
@@ -82,10 +82,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
     // Mark task as complete when genuinely used
     try {
-      const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+      const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
       const parsed = new Set(saved ? JSON.parse(saved) : [])
       parsed.add('send_reminder')
-      localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+      localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
       // Dispatch storage event to update checklist across components
       window.dispatchEvent(new Event('storage'))
     } catch { }
@@ -335,10 +335,10 @@ function ExpiringMemberRow({ member, gymId }: { member: MemberWithStatus, gymId:
             target="_blank" rel="noopener noreferrer"
             onClick={() => {
               try {
-                const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
                 const parsed = new Set(saved ? JSON.parse(saved) : [])
                 parsed.add('send_reminder')
-                localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
                 window.dispatchEvent(new Event('storage'))
               } catch { }
             }}

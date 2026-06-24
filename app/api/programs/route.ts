@@ -1,11 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { allowed } = await checkRateLimit(user.id, '/api/programs', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
 
     const { data: gym } = await supabase
       .from('gyms')
@@ -53,13 +57,13 @@ export async function POST(req: NextRequest) {
 
     if (result.error) {
       console.error('Error saving program:', result.error)
-      return NextResponse.json({ error: result.error.message }, { status: 500 })
+      return NextResponse.json({ error: 'A database error occurred' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, program: result.data })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Internal API error:', err)
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -72,6 +76,9 @@ export async function DELETE(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { allowed } = await checkRateLimit(user.id, '/api/programs', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
 
     const { data: gym } = await supabase
       .from('gyms')
@@ -88,11 +95,11 @@ export async function DELETE(req: NextRequest) {
       .eq('gym_id', gym.id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'A database error occurred' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

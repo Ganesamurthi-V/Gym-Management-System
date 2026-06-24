@@ -8,7 +8,7 @@ import { groqInferLocation } from '@/lib/geo/aiInference'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, AIInferenceResult } from '@/lib/geo/types'
-
+import { mapSupabaseError } from '@/lib/utils/errorMapper'
 function sanitize(s: string): string {
   return s.replace(/\0/g, '').slice(0, 500)
 }
@@ -26,13 +26,6 @@ function buildUnresolved(raw: string): NormalizationResult {
   }
 }
 
-function mapSupabaseError(error: { code: string; message: string }) {
-  if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
-  if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
-  if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
-  if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
-}
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
@@ -47,7 +40,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/normalize', ROUTE_LIMITS.NORMALIZE)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/normalize', ROUTE_LIMITS.NORMALIZE)
     if (!allowed) {
       return NextResponse.json({
         success: false,
@@ -58,7 +51,7 @@ export async function POST(req: NextRequest) {
     let body
     try {
       body = await req.json()
-    } catch (e) {
+    } catch {
       return NextResponse.json({
         success: false,
         error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' }
@@ -90,7 +83,7 @@ export async function POST(req: NextRequest) {
 
       if (locError && locError.code !== 'PGRST116') {
         const mapped = mapSupabaseError(locError)
-        return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+      return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
       }
 
       const result: NormalizationResult = {
@@ -319,15 +312,16 @@ export async function POST(req: NextRequest) {
       meta: { duration_ms: Date.now() - startTime }
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
     return NextResponse.json({
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+      error: { code: 'INTERNAL_ERROR', message }
     }, { status: 500 })
   }
 }
 
-async function logNormalization(supabase: any, result: NormalizationResult, gymId?: string) {
+async function logNormalization(supabase: import('@supabase/supabase-js').SupabaseClient, result: NormalizationResult, gymId?: string) {
   try {
     await supabase.from('geo_normalization_log').insert({
       gym_id: gymId ?? null,
@@ -342,7 +336,7 @@ async function logNormalization(supabase: any, result: NormalizationResult, gymI
   } catch { /* fire-and-forget */ }
 }
 
-async function addToQueue(supabase: any, result: NormalizationResult, gymId: string | undefined, scored: any[]) {
+async function addToQueue(supabase: import('@supabase/supabase-js').SupabaseClient, result: NormalizationResult, gymId: string | undefined, scored: Array<{name: string, score: number, matched_by: string}>) {
   try {
     await supabase.from('geo_review_queue').insert({
       gym_id: gymId ?? null,

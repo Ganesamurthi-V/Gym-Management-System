@@ -4,14 +4,8 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
-function mapSupabaseError(error: { code: string; message: string }) {
-  if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
-  if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
-  if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
-  if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
-}
-
+import { getGymForUser } from '@/lib/supabase/queries'
+import { mapSupabaseError } from '@/lib/utils/errorMapper'
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,6 +16,9 @@ export async function GET(
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
+
+    const { allowed } = await checkRateLimit(user.id, '/api/members/[id]', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
 
     const { data, error } = await supabase
       .from('members')
@@ -35,8 +32,9 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
   }
 }
 
@@ -51,10 +49,19 @@ export async function PATCH(
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
 
+    const { allowed } = await checkRateLimit(user.id, '/api/members/[id]', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
+
+    const gym = await getGymForUser(supabase, user.id)
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
+    const { data: memberCheck } = await supabase.from('members').select('gym_id').eq('id', id).single()
+    if (!memberCheck || memberCheck.gym_id !== gym.id) return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
+
     let body
     try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
 
-    const updates: any = {}
+    const updates: Record<string, string | number> = {}
     if (body.name !== undefined) updates.name = body.name
     if (body.phone !== undefined) updates.phone = body.phone
     if (body.age !== undefined) {
@@ -81,7 +88,8 @@ export async function PATCH(
     }
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
   }
 }

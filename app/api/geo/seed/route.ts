@@ -16,12 +16,19 @@ export async function POST() {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/seed', ROUTE_LIMITS.DEFAULT)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/seed', ROUTE_LIMITS.DEFAULT)
     if (!allowed) {
       return NextResponse.json({
         success: false,
         error: { code: 'RATE_LIMITED', message: 'Too many requests' }
       }, { status: 429 })
+    }
+
+    if (user.email !== process.env.ADMIN_EMAIL) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin access required' }
+      }, { status: 403 })
     }
 
     // Check if already seeded using count-only query
@@ -89,10 +96,10 @@ export async function POST() {
       meta: { duration_ms: Date.now() - startTime }
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json({
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+      error: { code: 'INTERNAL_ERROR', message: (err instanceof Error ? err.message : String(err)) || 'An unexpected error occurred' }
     }, { status: 500 })
   }
 }

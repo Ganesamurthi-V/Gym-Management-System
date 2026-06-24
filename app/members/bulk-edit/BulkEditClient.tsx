@@ -117,12 +117,9 @@ export function EditMembersClient({ members, gymId }: Props) {
     setDeleting(true)
     setError('')
     try {
-      for (const id of Array.from(selected)) {
-        const { error: e1 } = await supabase.from('attendance').delete().eq('member_id', id)
-        if (e1) throw e1
-        const { error: e2 } = await supabase.from('memberships').delete().eq('member_id', id)
-        if (e2) throw e2
-        const { error: e3 } = await supabase.from('members').delete().eq('id', id)
+      const ids = Array.from(selected)
+      if (ids.length > 0) {
+        const { error: e3 } = await supabase.from('members').delete().in('id', ids)
         if (e3) throw e3
       }
       router.push('/members')

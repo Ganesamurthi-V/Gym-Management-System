@@ -64,7 +64,12 @@ export class RequestLogger {
       timestamp: new Date().toISOString()
     }
 
-    console.log(JSON.stringify(log))
+    // Log summary as error to bypass Vercel filters in production, use log in dev
+    if (process.env.NODE_ENV === 'production') {
+      console.error(JSON.stringify(log))
+    } else {
+      console.log(JSON.stringify(log))
+    }
   }
 
   error(message: string, error: any) {
@@ -73,7 +78,7 @@ export class RequestLogger {
       page: this.context,
       level: 'ERROR',
       message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: process.env.NODE_ENV === 'production' ? undefined : (error instanceof Error ? error.stack : undefined),
       timestamp: new Date().toISOString()
     }))
   }

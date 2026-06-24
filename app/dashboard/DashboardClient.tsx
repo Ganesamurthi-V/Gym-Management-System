@@ -25,6 +25,12 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [checklistDismissed, setChecklistDismissed] = useState(false)
+  const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
+  const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
+  const [fetchingMonth, setFetchingMonth] = useState(false)
+  
+  const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     const checkDismissed = () => {
@@ -37,8 +43,37 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
     return () => window.removeEventListener('storage', checkDismissed)
   }, [gymId])
 
-  const router = useRouter()
-  const supabase = createClient()
+  useEffect(() => {
+    if (expiringFilter === 'month' && monthMembers === null && !fetchingMonth) {
+      setFetchingMonth(true)
+      const fetchMonth = async () => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd')
+        const { data: membershipsData } = await supabase
+          .from('memberships')
+          .select('member_id, end_date, member:members(id, name, phone, member_number)')
+          .eq('gym_id', gymId)
+          .order('created_at', { ascending: false })
+          
+        const memberMap = new Map<string, any>()
+        for (const m of membershipsData ?? []) {
+          if (!m.member || memberMap.has(m.member_id)) continue
+          const daysRemaining = Math.ceil((new Date(m.end_date).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24))
+          memberMap.set(m.member_id, { ...(m.member as any), latest_membership: m, days_remaining: daysRemaining })
+        }
+        
+        const currentMonth = todayStr.slice(0, 7) // e.g. "2026-06"
+        const monthExpiring = Array.from(memberMap.values()).filter(m => {
+          if (!m.latest_membership) return false
+          const endStr = m.latest_membership.end_date // "2026-06-25"
+          return endStr.startsWith(currentMonth)
+        })
+        
+        setMonthMembers(monthExpiring.sort((a, b) => a.days_remaining - b.days_remaining))
+        setFetchingMonth(false)
+      }
+      fetchMonth()
+    }
+  }, [expiringFilter, gymId, monthMembers, fetchingMonth, supabase])
 
   // Feature 1: Bulk WhatsApp Reminders
   function handleBulkRemind() {
@@ -123,11 +158,14 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
             >
               <ExpiringContent
-                expiringMembers={expiringMembers}
+                expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
                 handleBulkRemind={handleBulkRemind}
                 sendingBulk={sendingBulk}
                 bulkSent={bulkSent}
                 gymId={gymId}
+                expiringFilter={expiringFilter}
+                setExpiringFilter={setExpiringFilter}
+                fetchingMonth={fetchingMonth}
               />
             </motion.div>
           )}
@@ -171,11 +209,14 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             exit={{ opacity: 0, y: -20, scale: 0.98, transition: { duration: 0.2 } }}
           >
             <ExpiringContent
-              expiringMembers={expiringMembers}
+              expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
               handleBulkRemind={handleBulkRemind}
               sendingBulk={sendingBulk}
               bulkSent={bulkSent}
               gymId={gymId}
+              expiringFilter={expiringFilter}
+              setExpiringFilter={setExpiringFilter}
+              fetchingMonth={fetchingMonth}
             />
           </motion.div>
         )}
@@ -184,13 +225,39 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   )
 }
 
-function ExpiringContent({ expiringMembers, handleBulkRemind, sendingBulk, bulkSent, gymId }: { expiringMembers: MemberWithStatus[], handleBulkRemind: () => void, sendingBulk: boolean, bulkSent: boolean, gymId: string }) {
+function ExpiringContent({ 
+  expiringMembers, 
+  handleBulkRemind, 
+  sendingBulk, 
+  bulkSent, 
+  gymId,
+  expiringFilter,
+  setExpiringFilter,
+  fetchingMonth
+}: { 
+  expiringMembers: MemberWithStatus[], 
+  handleBulkRemind: () => void, 
+  sendingBulk: boolean, 
+  bulkSent: boolean, 
+  gymId: string,
+  expiringFilter: 'week' | 'month',
+  setExpiringFilter: (f: 'week' | 'month') => void,
+  fetchingMonth: boolean
+}) {
   return (
     <>
       <div className="flex items-center justify-between px-4 md:px-5 py-3.5 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-500" />
-          <h2 className="font-bold text-slate-900 text-sm md:text-base">Expiring This Week</h2>
+          <select
+            value={expiringFilter}
+            onChange={(e) => setExpiringFilter(e.target.value as 'week' | 'month')}
+            className="font-bold text-slate-900 text-sm md:text-base bg-transparent outline-none cursor-pointer hover:bg-slate-50 py-1 pr-1 rounded"
+          >
+            <option value="week">Expiring This Week</option>
+            <option value="month">Expiring This Month</option>
+          </select>
+          {fetchingMonth && <span className="text-xs text-slate-400 animate-pulse ml-2">Loading...</span>}
         </div>
         <div className="flex items-center gap-2">
           {/* Feature 1: Bulk WhatsApp Remind */}
@@ -211,7 +278,7 @@ function ExpiringContent({ expiringMembers, handleBulkRemind, sendingBulk, bulkS
       {expiringMembers.length === 0 ? (
         <div className="p-8 text-center">
           <p className="text-2xl mb-1">🎉</p>
-          <p className="text-slate-400 text-sm">No members expiring this week</p>
+          <p className="text-slate-400 text-sm">No members expiring this {expiringFilter}</p>
         </div>
       ) : (
         <div className="divide-y divide-slate-50">

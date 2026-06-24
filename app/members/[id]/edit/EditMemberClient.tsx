@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'react-hot-toast'
 import { ArrowLeft, Check, Edit2, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Member } from '@/types'
@@ -95,6 +96,7 @@ export function EditMemberClient({ member }: Props) {
         })
         .eq('id', member.id)
       if (err) throw err
+      toast.success('Member details updated successfully!')
       router.push(`/members/${member.id}`)
       router.refresh()
     } catch (err: any) {

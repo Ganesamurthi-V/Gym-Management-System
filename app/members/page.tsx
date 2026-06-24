@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
@@ -75,5 +76,9 @@ export default async function MembersPage() {
     return order[a.status] - order[b.status]
   })
 
-  return <MembersClient members={result} gymId={gym.id} />
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
+      <MembersClient members={result} gymId={gym.id} />
+    </Suspense>
+  )
 }

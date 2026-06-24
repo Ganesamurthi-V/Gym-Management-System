@@ -9,10 +9,11 @@ import type { Plan, PaymentMode } from '@/types'
 import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { toast } from 'react-hot-toast'
 import GooglePlacesAutocomplete from '@/components/location/GooglePlacesAutocomplete'
 import type { NormalizedPlaceResult } from '@/services/location/normalizeGooglePlace'
 
-type Step = 'form' | 'preview'
+type Step = 'personal' | 'membership' | 'preview'
 
 // Plan prices fetched from gym_plan_prices table (set during onboarding)
 interface PlanPrices {
@@ -28,7 +29,7 @@ export default function NewMemberPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [step, setStep] = useState<Step>('form')
+  const [step, setStep] = useState<Step>('personal')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [googleMeta, setGoogleMeta] = useState<NormalizedPlaceResult | null>(null)
@@ -139,10 +140,18 @@ export default function NewMemberPage() {
     })
   }
 
-  function handlePreview(e: React.FormEvent) {
+  function handleNextStep(e: React.FormEvent) {
     e.preventDefault()
     if (!form.member_number) { setError('Member ID is required'); return }
-    if (numError) return
+    if (numError || checkingNum) return
+    if (!form.name.trim()) { setError('Full Name is required'); return }
+    setError('')
+    setStep('membership')
+  }
+
+  function handlePreview(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.amount) { setError('Membership Fee is required'); return }
     setError('')
     setStep('preview')
   }
@@ -215,11 +224,12 @@ export default function NewMemberPage() {
 
       if (membershipError) throw membershipError
 
+      toast.success('Member added successfully!')
       router.push('/members')
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Something went wrong')
-      setStep('form')
+      setStep('personal')
       setLoading(false)
     }
   }
@@ -238,9 +248,9 @@ export default function NewMemberPage() {
   // ── Preview Card ──────────────────────────────────────────────────────────
   if (step === 'preview') {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="w-full">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setStep('form')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          <button onClick={() => setStep('personal')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Edit
           </button>
@@ -310,7 +320,7 @@ export default function NewMemberPage() {
             <X className="w-4 h-4" />
             Decline
           </Link>
-          <button onClick={() => setStep('form')}
+          <button onClick={() => setStep('personal')}
             className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 font-semibold text-sm rounded-2xl hover:bg-slate-200 transition-all"
           >
             <Edit2 className="w-4 h-4" />
@@ -329,218 +339,251 @@ export default function NewMemberPage() {
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          Members
-        </Link>
-        <span className="text-slate-300">/</span>
-        <h1 className="text-xl font-bold text-slate-900">Add Member</h1>
+    <div className="max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Members
+          </Link>
+          <span className="text-slate-300">/</span>
+          <h1 className="text-xl font-bold text-slate-900">Add Member</h1>
+        </div>
+
+        {/* Progress Dots */}
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${step === 'personal' ? 'bg-brand-500 w-4' : 'bg-brand-500'} transition-all`} />
+          <div className={`w-2 h-2 rounded-full ${step === 'membership' ? 'bg-brand-500 w-4' : 'bg-slate-200'} transition-all`} />
+        </div>
       </div>
 
-      <div className="card p-4 md:p-6">
-        <form onSubmit={handlePreview} className="space-y-5">
-          {error && (
-            <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm font-medium">{error}</div>
-          )}
+      <div className="card p-6 md:p-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-medium">{error}</div>
+        )}
 
-          {/* Member ID */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-              Member ID <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <input type="text" value={form.member_number ? `GF${form.member_number.padStart(4, '0')}` : ''}
-                onChange={(e) => {
-                  const raw = e.target.value.trim().toUpperCase()
-                  const digits = raw.startsWith('GF') ? raw.slice(2) : raw
-                  const num = parseInt(digits, 10)
-                  update('member_number', isNaN(num) ? '' : String(num))
-                }}
-                className={`input-field w-36 ${numError ? 'border-red-400 focus:ring-red-400' : ''}`}
-                placeholder={nextMemberNumber ? formatMemberId(nextMemberNumber) : 'GF0001'} required />
-              {nextMemberNumber && (
-                <span className="text-xs text-slate-400">
-                  Suggested: <button type="button" onClick={() => update('member_number', String(nextMemberNumber))}
-                    className="text-brand-600 font-semibold hover:underline">{formatMemberId(nextMemberNumber)}</button>
-                </span>
-              )}
-            </div>
-            {checkingNum && <p className="text-xs text-slate-400 mt-1.5">Checking...</p>}
-            {numError && <p className="text-xs text-red-500 mt-1.5 font-medium">⚠ {numError}</p>}
-            {!numError && !checkingNum && form.member_number && (
-              <p className="text-xs text-emerald-600 mt-1.5 font-medium">✓ Available</p>
-            )}
-          </div>
+        {/* ── Step 1: Personal Details ── */}
+        {step === 'personal' && (
+          <form onSubmit={handleNextStep} className="space-y-6">
+            <h2 className="text-lg font-bold text-slate-800 border-b pb-2 mb-6">Personal Details</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Member ID */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                  Member ID <span className="text-red-500">*</span>
+                </label>
+                <div className="flex flex-col gap-1.5">
+                  <input type="text" value={form.member_number ? `GF${form.member_number.padStart(4, '0')}` : ''}
+                    onChange={(e) => {
+                      const raw = e.target.value.trim().toUpperCase()
+                      const digits = raw.startsWith('GF') ? raw.slice(2) : raw
+                      const num = parseInt(digits, 10)
+                      update('member_number', isNaN(num) ? '' : String(num))
+                    }}
+                    className={`input-field w-full ${numError ? 'border-red-400 focus:ring-red-400' : ''}`}
+                    placeholder={nextMemberNumber ? formatMemberId(nextMemberNumber) : 'GF0001'} required />
+                  <div className="flex items-center justify-between text-xs">
+                    {nextMemberNumber && (
+                      <span className="text-slate-400">
+                        Sugg: <button type="button" onClick={() => update('member_number', String(nextMemberNumber))}
+                          className="text-brand-600 font-semibold hover:underline">{formatMemberId(nextMemberNumber)}</button>
+                      </span>
+                    )}
+                    {checkingNum && <span className="text-slate-400">Checking...</span>}
+                    {numError && <span className="text-red-500 font-medium">⚠ {numError}</span>}
+                    {!numError && !checkingNum && form.member_number && (
+                      <span className="text-emerald-600 font-medium">✓ Available</span>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-          {/* Name */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Full Name *</label>
-            <input type="text" value={form.name} onChange={(e) => update('name', e.target.value)}
-              className="input-field" placeholder="Rahul Sharma" required autoFocus />
-          </div>
+              {/* Phone */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Phone Number</label>
+                <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)}
+                  className="input-field" placeholder="9876543210" maxLength={10} />
+                {form.phone && !isValidPhone(form.phone) && (
+                  <p className="text-xs text-amber-600 font-medium mt-1.5 leading-tight">⚠️ Invalid number</p>
+                )}
+              </div>
 
-          {/* Gender + Age */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Gender</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['male', 'female', 'other'] as const).map((g) => (
-                  <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
-                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                      form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
-                    }`}
-                  >
-                    {g === 'male' ? 'M' : g === 'female' ? 'F' : 'O'}
-                  </button>
-                ))}
+              {/* Name */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Full Name *</label>
+                <input type="text" value={form.name} onChange={(e) => update('name', e.target.value)}
+                  className="input-field" placeholder="Rahul Sharma" required autoFocus />
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Gender</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['male', 'female', 'other'] as const).map((g) => (
+                    <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
+                      className={`py-2.5 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
+                        form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                      }`}
+                    >
+                      {g === 'male' ? 'Male' : g === 'female' ? 'Female' : 'Other'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Age */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Age</label>
+                <input type="number" value={form.age} onChange={(e) => update('age', e.target.value)}
+                  className="input-field" placeholder="25" min="1" max="120" />
+              </div>
+
+              {/* Area */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Area / Locality</label>
+                <GooglePlacesAutocomplete
+                  value={form.area}
+                  gymId={gymId ?? undefined}
+                  onChange={(val, normalized) => {
+                    update('area', val)
+                    if (normalized) setGoogleMeta(normalized)
+                  }}
+                  onClear={() => { update('area', ''); setGoogleMeta(null) }}
+                />
+                {form.area && googleMeta && (
+                  <p className="text-xs text-emerald-600 font-medium mt-1.5 flex items-center gap-1">
+                    <Check className="w-4 h-4" />
+                    {googleMeta.confidence_score >= 0.9
+                      ? `Matched: ${googleMeta.canonical_area}`
+                      : `Suggested: ${googleMeta.canonical_area}`}
+                  </p>
+                )}
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Age</label>
-              <input type="number" value={form.age} onChange={(e) => update('age', e.target.value)}
-                className="input-field" placeholder="25" min="1" max="120" />
+
+            <div className="pt-6">
+              <button type="submit" disabled={!!numError || checkingNum || !form.member_number} className="btn-primary w-full py-3.5 text-base shadow-lg shadow-brand-500/20 disabled:opacity-50 disabled:shadow-none">
+                Next: Membership Details →
+              </button>
             </div>
-          </div>
+          </form>
+        )}
 
-          {/* Phone */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Phone Number</label>
-            <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)}
-              className="input-field" placeholder="9876543210" maxLength={10} />
-            {form.phone && !isValidPhone(form.phone)
-              ? <p className="text-xs text-amber-600 font-medium mt-1.5">⚠️ Invalid phone number — WhatsApp reminders won't work for this member</p>
-              : <p className="text-xs text-slate-400 mt-1.5">10-digit mobile number</p>
-            }
-          </div>
-
-          {/* Area */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Area / Locality</label>
-            <GooglePlacesAutocomplete
-              value={form.area}
-              gymId={gymId ?? undefined}
-              onChange={(val, normalized) => {
-                update('area', val)
-                if (normalized) setGoogleMeta(normalized)
-              }}
-              onClear={() => { update('area', ''); setGoogleMeta(null) }}
-            />
-            {form.area && googleMeta && (
-              <p className="text-xs text-emerald-600 font-medium mt-1.5 flex items-center gap-1">
-                <Check className="w-3 h-3" />
-                {googleMeta.confidence_score >= 0.9
-                  ? `Matched: ${googleMeta.canonical_area}`
-                  : `Suggested: ${googleMeta.canonical_area} — review recommended`}
-              </p>
-            )}
-          </div>
-
-          {/* Plan */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Plan *</label>
-            <div className="grid grid-cols-4 gap-2">
-              {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => {
-                const priceHint = planPrices && plan !== 'custom'
-                  ? { monthly: planPrices.monthly, quarterly: planPrices.quarterly, annual: planPrices.annual }[plan]
-                  : null
-                return (
-                  <button key={plan} type="button" onClick={() => selectPlan(plan)}
-                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                      form.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
-                    }`}
-                  >
-                    <span className="block">{plan === 'monthly' ? '1 Month' : plan === 'quarterly' ? '3 Months' : plan === 'annual' ? '1 Year' : 'Custom'}</span>
-                    {priceHint ? <span className="block text-[10px] font-normal mt-0.5 opacity-70">₹{priceHint.toLocaleString('en-IN')}</span> : null}
-                  </button>
-                )
-              })}
-            </div>
-            {form.plan === 'custom' && (
-              <div className="mt-2 flex items-center gap-2">
-                <input type="number" min="1" max="24" value={form.custom_months}
-                  onChange={(e) => update('custom_months', e.target.value)}
-                  className="input-field w-28" placeholder="e.g. 2" required />
-                <span className="text-sm text-slate-500 font-medium">months</span>
+        {/* ── Step 2: Membership Details ── */}
+        {step === 'membership' && (
+          <form onSubmit={handlePreview} className="space-y-6">
+            <h2 className="text-lg font-bold text-slate-800 border-b pb-2 mb-6">Membership Details</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Plan */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Plan *</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => {
+                    const priceHint = planPrices && plan !== 'custom'
+                      ? { monthly: planPrices.monthly, quarterly: planPrices.quarterly, annual: planPrices.annual }[plan]
+                      : null
+                    return (
+                      <button key={plan} type="button" onClick={() => selectPlan(plan)}
+                        className={`py-2.5 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
+                          form.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                        }`}
+                      >
+                        <span className="block">{plan === 'monthly' ? '1 Month' : plan === 'quarterly' ? '3 Months' : plan === 'annual' ? '1 Year' : 'Custom'}</span>
+                        {priceHint ? <span className="block text-[10px] font-normal mt-0.5 opacity-70">₹{priceHint.toLocaleString('en-IN')}</span> : null}
+                      </button>
+                    )
+                  })}
+                </div>
+                {form.plan === 'custom' && (
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <input type="number" min="1" max="24" value={form.custom_months}
+                      onChange={(e) => update('custom_months', e.target.value)}
+                      className="input-field w-32" placeholder="e.g. 2" required />
+                    <span className="text-sm text-slate-500 font-medium">months</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Start Date */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Start Date *</label>
-            <input type="date" value={form.start_date} onChange={(e) => update('start_date', e.target.value)}
-              className="input-field" required />
-            {endDate && <p className="text-xs text-brand-600 font-semibold mt-1.5">✓ Expires on: {endDate}</p>}
-          </div>
-
-          {/* Fees */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                Admission Fee (₹) <span className="text-slate-400 font-normal">optional</span>
-              </label>
-              <input type="number" value={form.admission_fee} onChange={(e) => update('admission_fee', e.target.value)}
-                className="input-field" placeholder="500" min="0" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Membership Fee (₹) *</label>
-              <input type="number" value={form.amount} onChange={(e) => update('amount', e.target.value)}
-                className="input-field" placeholder="1500" required min="0" />
-            </div>
-          </div>
-
-          {(admissionFee > 0 || membershipFee > 0) && (
-            <div className="bg-brand-50 rounded-xl px-4 py-3 space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-brand-600">Membership Fee</span>
-                <span className="font-semibold text-brand-700">₹{membershipFee.toLocaleString('en-IN')}</span>
+              {/* Start Date */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Start Date *</label>
+                <input type="date" value={form.start_date} onChange={(e) => update('start_date', e.target.value)}
+                  className="input-field" required />
+                {endDate && <p className="text-xs text-brand-600 font-semibold mt-1.5">✓ Exp: {endDate}</p>}
               </div>
-              {admissionFee > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-brand-600">Admission Fee</span>
-                  <span className="font-semibold text-brand-700">₹{admissionFee.toLocaleString('en-IN')}</span>
+              
+              {/* Payment Mode */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Payment Mode *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['cash', 'upi', 'card'] as PaymentMode[]).map((mode) => (
+                    <button key={mode} type="button" onClick={() => update('payment_mode', mode)}
+                      className={`py-2 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
+                        form.payment_mode === mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                      }`}
+                    >
+                      {mode.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fees Row */}
+              <div className="md:col-span-2 grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    Adm Fee <span className="text-slate-400 font-normal">opt</span>
+                  </label>
+                  <input type="number" value={form.admission_fee} onChange={(e) => update('admission_fee', e.target.value)}
+                    className="input-field" placeholder="500" min="0" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Mem Fee *</label>
+                  <input type="number" value={form.amount} onChange={(e) => update('amount', e.target.value)}
+                    className="input-field" placeholder="1500" required min="0" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    Pending <span className="text-slate-400 font-normal">opt</span>
+                  </label>
+                  <input type="number" value={form.pending_amount} onChange={(e) => update('pending_amount', e.target.value)}
+                    className="input-field" placeholder="0" min="0" />
+                </div>
+              </div>
+
+              {/* Payment Summary */}
+              {(admissionFee > 0 || membershipFee > 0) && (
+                <div className="md:col-span-2 bg-brand-50 rounded-xl px-5 py-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-brand-600">Membership Fee</span>
+                    <span className="font-semibold text-brand-700">₹{membershipFee.toLocaleString('en-IN')}</span>
+                  </div>
+                  {admissionFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-brand-600">Admission Fee</span>
+                      <span className="font-semibold text-brand-700">₹{admissionFee.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-base border-t border-brand-200 pt-2 mt-2">
+                    <span className="font-bold text-brand-700">Total Collected</span>
+                    <span className="font-bold text-brand-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
               )}
-              <div className="flex justify-between text-sm border-t border-brand-200 pt-1.5">
-                <span className="font-bold text-brand-700">Total Collected</span>
-                <span className="text-base font-bold text-brand-700">₹{totalAmount.toLocaleString('en-IN')}</span>
-              </div>
             </div>
-          )}
 
-          {/* Payment Mode */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Payment Mode *</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['cash', 'upi', 'card'] as PaymentMode[]).map((mode) => (
-                <button key={mode} type="button" onClick={() => update('payment_mode', mode)}
-                  className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                    form.payment_mode === mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
-                  }`}
-                >
-                  {mode.toUpperCase()}
-                </button>
-              ))}
+            <div className="pt-6 flex gap-3">
+              <button type="button" onClick={() => setStep('personal')} className="px-6 py-3.5 rounded-xl border-2 border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                ← Back
+              </button>
+              <button type="submit" className="btn-primary flex-1 py-3.5 text-base shadow-lg shadow-brand-500/20">
+                Review & Confirm →
+              </button>
             </div>
-          </div>
-
-          {/* Pending Due */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-              Pending Due (₹) <span className="text-slate-400 font-normal normal-case">optional</span>
-            </label>
-            <input type="number" value={form.pending_amount} onChange={(e) => update('pending_amount', e.target.value)}
-              className="input-field" placeholder="0" min="0" />
-          </div>
-
-          <div className="pt-2">
-            <button type="submit" disabled={!!numError || checkingNum || !form.member_number} className="btn-primary disabled:opacity-50">
-              Review & Confirm →
-            </button>
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   )

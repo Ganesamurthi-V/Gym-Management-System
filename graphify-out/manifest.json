@@ -1,7 +1,7 @@
 {
   "C:\\Gym Management system\\gymflow\\middleware.ts": {
-    "mtime": 1778411651.8083503,
-    "ast_hash": "ae868739fe02c5f378c4e9a0d27848cb",
+    "mtime": 1781518862.6016932,
+    "ast_hash": "00107f75d42ccafced5663784e705643",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\next-env.d.ts": {
@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\package.json": {
-    "mtime": 1780503348.0711699,
-    "ast_hash": "5b01cdbbdb2a07b3d2c73847d24ed782",
+    "mtime": 1781285370.3123188,
+    "ast_hash": "87dc79a344679f0effd8959e70d46074",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\postcss.config.js": {
@@ -25,7 +25,7 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\supabase-schema.sql": {
-    "mtime": 1781262343.0339034,
+    "mtime": 1781285370.313319,
     "ast_hash": "ebce03ac1ae298937d22355e5f0d2b67",
     "semantic_hash": ""
   },
@@ -65,17 +65,17 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\account\\page.tsx": {
-    "mtime": 1780056796.804813,
+    "mtime": 1781285370.2795494,
     "ast_hash": "d4abf94e971a112b3a38f6efa68d0135",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\account\\delete-data\\route.ts": {
-    "mtime": 1780056873.8588088,
+    "mtime": 1781285370.2800744,
     "ast_hash": "b7131eea8ccb9fc0fb732875c324ea55",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\account\\delete-gym\\route.ts": {
-    "mtime": 1780056802.377657,
+    "mtime": 1781285370.2811306,
     "ast_hash": "09acb8623c6eb48c6f47b053a516cb11",
     "semantic_hash": ""
   },
@@ -105,7 +105,7 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\geo\\search\\route.ts": {
-    "mtime": 1780056798.9701638,
+    "mtime": 1781285370.2816496,
     "ast_hash": "f9f3bc38ab20c55886c86e27e00b5253",
     "semantic_hash": ""
   },
@@ -125,12 +125,12 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\members\\route.ts": {
-    "mtime": 1780056515.8518345,
+    "mtime": 1781285370.284755,
     "ast_hash": "0af89bfdee77c60265770fef98b5da67",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\members\\[id]\\route.ts": {
-    "mtime": 1780056513.829147,
+    "mtime": 1781285370.284242,
     "ast_hash": "1460dc73283b1ebb60465ebe5d9dc0f4",
     "semantic_hash": ""
   },
@@ -165,8 +165,8 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\dashboard\\DashboardClient.tsx": {
-    "mtime": 1779909624.7179153,
-    "ast_hash": "ee80b42b3c98f12d7136957a86ccf71f",
+    "mtime": 1781518919.92135,
+    "ast_hash": "609b61bf92e4ae6e4139de94def600a9",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\dashboard\\GettingStartedChecklist.tsx": {
@@ -185,8 +185,8 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\dashboard\\page.tsx": {
-    "mtime": 1778708098.4259574,
-    "ast_hash": "da232fe6e25dbd72c3c6c6a8fa7dbbf8",
+    "mtime": 1781519976.3953903,
+    "ast_hash": "58f906152a53ba106a24ac7851f1484d",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\dues\\DuesClient.tsx": {
@@ -305,12 +305,12 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\payments\\page.tsx": {
-    "mtime": 1780506263.6845598,
-    "ast_hash": "ca8e0c7f236959315344954cf09288c0",
+    "mtime": 1781285370.289266,
+    "ast_hash": "cf23b2a4acbde7fdb8868ba864b00935",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\payments\\PaymentsClient.tsx": {
-    "mtime": 1781259839.2367136,
+    "mtime": 1781285370.2877603,
     "ast_hash": "777dda7e1ee31ad50918780dac47e7f1",
     "semantic_hash": ""
   },
@@ -325,13 +325,13 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\reports\\page.tsx": {
-    "mtime": 1780504236.8205383,
-    "ast_hash": "93ae4268d3b155042f621a53109781c4",
+    "mtime": 1781519614.4159982,
+    "ast_hash": "5c6ba41e2c1f2c0b460c3a10a421ae35",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\reports\\ReportsClient.tsx": {
-    "mtime": 1780504323.5150409,
-    "ast_hash": "ca30be0e1b5c5718524ea51d3ce71706",
+    "mtime": 1781518936.7194893,
+    "ast_hash": "a8a0b361ae7ac00ca9a9c6d518589be8",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\import\\WizardHeader.tsx": {
@@ -355,8 +355,8 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\layout\\NavClient.tsx": {
-    "mtime": 1779913524.6045783,
-    "ast_hash": "a091085e06d28e81e283b2ee6b121636",
+    "mtime": 1781285370.2932897,
+    "ast_hash": "bc9901ee5d4cc53eec647517bcc91038",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\layout\\ShellGuard.tsx": {
@@ -485,8 +485,8 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\AGENT.md": {
-    "mtime": 1779864536.6710396,
-    "ast_hash": "c9e52e86d90de2a8cba1864a78657ab6",
+    "mtime": 1781520243.9764235,
+    "ast_hash": "5b3179206a635ed7a6160fe9d19a6a76",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\GEMINI.md": {
@@ -500,22 +500,22 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\inventory\\page.tsx": {
-    "mtime": 1780504124.6422825,
+    "mtime": 1781285370.2867582,
     "ast_hash": "e30a766123d198b0314965ce162a7cd5",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\inventory\\new\\page.tsx": {
-    "mtime": 1780505761.7020533,
-    "ast_hash": "722899d022d657b33f829129be7158a2",
+    "mtime": 1781285370.2867582,
+    "ast_hash": "4b735cc79b5100b4375acb0b5b8b9a37",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\inventory\\[id]\\page.tsx": {
-    "mtime": 1780505802.2709455,
-    "ast_hash": "8a1f0d593e9bfa43789fd0b803585bbc",
+    "mtime": 1781285370.2857583,
+    "ast_hash": "0f6437c4a2e1da58175e7807e00118e3",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\programs\\new\\page.tsx": {
-    "mtime": 1781261305.6267898,
+    "mtime": 1781285370.290271,
     "ast_hash": "5c1a66a8c8a74d4fef2e6111840f35af",
     "semantic_hash": ""
   },
@@ -525,17 +525,17 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\inventory\\InventoryUnitsManager.tsx": {
-    "mtime": 1780503328.6810036,
-    "ast_hash": "0c35f2d434852fd4fd7f45bd4742bf75",
+    "mtime": 1781285370.2932897,
+    "ast_hash": "90477c6fe86bcb6780fd38b0ceeb62ff",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\programs\\ExerciseBuilder.tsx": {
-    "mtime": 1781262901.6031768,
+    "mtime": 1781285370.295806,
     "ast_hash": "911f956a7af7e6e50202e675f5434250",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\programs\\ProgramSetupForm.tsx": {
-    "mtime": 1781261325.0457613,
+    "mtime": 1781285370.2968054,
     "ast_hash": "631258cc83c60bb104502bb522cdcf2f",
     "semantic_hash": ""
   },
@@ -545,8 +545,8 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\supabase\\migrations\\add_inventory_units_table.sql": {
-    "mtime": 1780053697.394096,
-    "ast_hash": "e2998191beadb154075de14c134281fe",
+    "mtime": 1781285370.3153195,
+    "ast_hash": "673fc1c91f3050b61b46b2f37bf7f1e4",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\rules.md": {
@@ -565,58 +565,93 @@
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\not-found.tsx": {
-    "mtime": 1780056999.0247133,
-    "ast_hash": "d4e2f6ff999578231ddd0f6f21fb60f2",
+    "mtime": 1781285370.2877603,
+    "ast_hash": "f2440d9b8879881d18502b23010e1641",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\inventory\\delete\\route.ts": {
-    "mtime": 1780504001.5749292,
-    "ast_hash": "9714590664d305d3a1bf0f254b1bf918",
+    "mtime": 1781285370.2826877,
+    "ast_hash": "a59041c10108abbf216596502cc13423",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\inventory\\sales\\[id]\\route.ts": {
-    "mtime": 1780505198.0820575,
-    "ast_hash": "6469396dcc2030e81fe68f71acc23d4d",
+    "mtime": 1781285370.2832139,
+    "ast_hash": "9805b5bebef0a2b2d6eed1d38663e068",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\inventory\\sell\\route.ts": {
-    "mtime": 1780504642.2623796,
-    "ast_hash": "d9d7f73a0104012b2edc0756e2f75324",
+    "mtime": 1781285370.2837243,
+    "ast_hash": "f4de9527770dc88295d6ec8213cd70b8",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\inventory\\InventoryDetailClient.tsx": {
-    "mtime": 1780505879.3101237,
-    "ast_hash": "723efc41ab6095de87537a8dca74abfb",
+    "mtime": 1781285370.2932897,
+    "ast_hash": "0fa6fee093a0f5a5b94a73922f36e00a",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\api\\programs\\route.ts": {
-    "mtime": 1781262850.3051293,
-    "ast_hash": "8a0c593af7ed58445b2a3f1d0d168f84",
+    "mtime": 1781285370.284755,
+    "ast_hash": "5e6edcdd821404c8ae580ab1a11e4219",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\supabase\\migrations\\add_workout_programs.sql": {
-    "mtime": 1781262330.509823,
-    "ast_hash": "a8ef1babd1d5174c5737e666beed4aa7",
+    "mtime": 1781285370.3153195,
+    "ast_hash": "c839a48bf423eee14e23bcc65e68b932",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\programs\\page.tsx": {
-    "mtime": 1781262963.9691896,
-    "ast_hash": "c6167592652b0455b6eb2f0a40b37018",
+    "mtime": 1781285370.291271,
+    "ast_hash": "d13ad84618a87b855432a6b2aff2047c",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\programs\\[id]\\EditProgramClient.tsx": {
-    "mtime": 1781262866.2801607,
-    "ast_hash": "b5c7a912416713a80defe95363ad64a9",
+    "mtime": 1781285370.289266,
+    "ast_hash": "d48ffbb1527124d3db8c28b42f085ed9",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\app\\programs\\[id]\\page.tsx": {
-    "mtime": 1781262919.2969584,
-    "ast_hash": "6face88fd04a1a39efc2a0d467690686",
+    "mtime": 1781285370.290271,
+    "ast_hash": "ece09abf0e6bb7c5d856c3bf51579cdb",
     "semantic_hash": ""
   },
   "C:\\Gym Management system\\gymflow\\components\\programs\\ProgramsList.tsx": {
-    "mtime": 1781262943.1704,
-    "ast_hash": "2a512fafc99433843a5ffde394c1449b",
+    "mtime": 1781285370.2978058,
+    "ast_hash": "1b629a94074f566d2a9b98fded1285ea",
+    "semantic_hash": ""
+  },
+  "C:\\Gym Management system\\gymflow\\app\\loading.tsx": {
+    "mtime": 1781285370.2877603,
+    "ast_hash": "18274750e37e0f0a061b277291619323",
+    "semantic_hash": ""
+  },
+  "C:\\Gym Management system\\gymflow\\lib\\cache.ts": {
+    "mtime": 1781519613.075796,
+    "ast_hash": "e76a681a01f6a855202f4122f61883e5",
+    "semantic_hash": ""
+  },
+  "C:\\Gym Management system\\gymflow\\lib\\logger.ts": {
+    "mtime": 1781519685.8199904,
+    "ast_hash": "2ffa2f1b235bd319dafabf788ddad8be",
+    "semantic_hash": ""
+  },
+  "C:\\Gym Management system\\gymflow\\lib\\performance.ts": {
+    "mtime": 1781285370.308318,
+    "ast_hash": "1ea19ce2b86b87b9d0f591062b348821",
+    "semantic_hash": ""
+  },
+  "C:\\Gym Management system\\gymflow\\lib\\redis.ts": {
+    "mtime": 1781288061.798962,
+    "ast_hash": "fe1b8372055ca2d8cf179b8d80ac3a38",
+    "semantic_hash": ""
+  },
+  "C:\\Gym Management system\\gymflow\\supabase\\migrations\\20260612_dashboard_rpc.sql": {
+    "mtime": 1781285370.314319,
+    "ast_hash": "8a8f005101a40bf2360714a2d7bba9e2",
+    "semantic_hash": ""
+  },
+  "C:\\Gym Management system\\gymflow\\supabase\\migrations\\20260612_reports_rpc.sql": {
+    "mtime": 1781285370.314319,
+    "ast_hash": "12087e6198d2913de3b6f4faf907471b",
     "semantic_hash": ""
   }
 }

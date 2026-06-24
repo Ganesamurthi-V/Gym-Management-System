@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'react-hot-toast'
 import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
@@ -61,6 +62,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       })
       if (err) throw err
       setShowRenewForm(false)
+      toast.success('Membership renewed successfully!')
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to renew')
@@ -78,10 +80,11 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       if (e2) throw e2
       const { error: e3 } = await supabase.from('members').delete().eq('id', member.id)
       if (e3) throw e3
+      toast.success('Member deleted successfully')
       router.push('/members')
       router.refresh()
     } catch (err: any) {
-      alert('Failed to delete member: ' + (err.message || 'Unknown error'))
+      toast.error('Failed to delete member: ' + (err.message || 'Unknown error'))
     }
   }
 

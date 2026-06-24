@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download } from 'lucide-react'
@@ -18,10 +18,32 @@ interface Props {
 type FilterType = 'all' | 'active' | 'expiring' | 'expired'
 
 export function MembersClient({ members, gymId }: Props) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
+      <MembersContent members={members} gymId={gymId} />
+    </Suspense>
+  )
+}
+
+function MembersContent({ members, gymId }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [search, setSearch] = useState('')
   const [idSearch, setIdSearch] = useState('')
-  const [filter, setFilter] = useState<FilterType>('all')
+  
+  // Read initial filter from URL if present
+  const urlFilter = searchParams.get('filter') as FilterType | null
+  const validFilters: FilterType[] = ['all', 'active', 'expiring', 'expired']
+  const [filter, setFilter] = useState<FilterType>(
+    urlFilter && validFilters.includes(urlFilter) ? urlFilter : 'all'
+  )
+
+  useEffect(() => {
+    if (urlFilter && validFilters.includes(urlFilter)) {
+      setFilter(urlFilter)
+    }
+  }, [urlFilter])
+  
   const [showAdvFilterModal, setShowAdvFilterModal] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportFrom, setExportFrom] = useState('')
@@ -243,6 +265,7 @@ export function MembersClient({ members, gymId }: Props) {
       { header: 'Area',           key: 'area',     width: 20 },
       { header: 'Pending Dues',   key: 'dues',     width: 15 },
       { header: 'Latest Plan',    key: 'plan',     width: 15 },
+      { header: 'Category',       key: 'category', width: 15 },
       { header: 'Join Date',      key: 'joined',   width: 15 },
       { header: 'Plan Starts On', key: 'start',    width: 15 },
       { header: 'Plan Ends On',   key: 'end',      width: 15 },
@@ -262,6 +285,7 @@ export function MembersClient({ members, gymId }: Props) {
         area:   m.area || '-',
         dues:   m.pending_amount || 0,
         plan:   m.latest_membership ? m.latest_membership.plan : '-',
+        category: m.latest_membership ? (m.latest_membership.category === 'both' || !m.latest_membership.category ? 'Strength + Cardio' : m.latest_membership.category.charAt(0).toUpperCase() + m.latest_membership.category.slice(1)) : '-',
         joined: formatDate(m.created_at),
         start:  m.latest_membership ? formatDate(m.latest_membership.start_date) : '-',
         end:    m.latest_membership ? formatDate(m.latest_membership.end_date) : '-',
@@ -529,7 +553,18 @@ export function MembersClient({ members, gymId }: Props) {
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-slate-500">{member.phone}</td>
-                  <td className="px-5 py-3.5 text-slate-500 capitalize">{member.latest_membership?.plan ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-slate-500">
+                    {member.latest_membership ? (
+                      <div className="flex flex-col">
+                        <span className="capitalize text-slate-900 font-medium">{member.latest_membership.plan}</span>
+                        <span className="text-xs text-slate-400">
+                          {member.latest_membership.category === 'both' || !member.latest_membership.category 
+                            ? 'Strength + Cardio' 
+                            : member.latest_membership.category.charAt(0).toUpperCase() + member.latest_membership.category.slice(1)}
+                        </span>
+                      </div>
+                    ) : '—'}
+                  </td>
                   <td className="px-5 py-3.5 text-slate-500">
                     {member.latest_membership ? (
                       <span>{formatDate(member.latest_membership.end_date)}

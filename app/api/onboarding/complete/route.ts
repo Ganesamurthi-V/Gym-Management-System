@@ -4,6 +4,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 interface MembershipPlan {
   planName: string
+  category: 'strength' | 'cardio' | 'both'
   duration: 'monthly' | 'quarterly' | 'annual' | 'custom'
   price: number
   joiningFee: number

@@ -25,6 +25,7 @@ export interface ImportedRow {
   name: string;
   phone: string;
   plan: string;
+  category?: string;
   start_date: string;
   amount: string;
   payment_mode: string;
@@ -51,6 +52,7 @@ const EXPECTED_COLUMNS = [
   { key: "phone", label: "Phone", required: true },
   { key: "member_number", label: "Member #", required: false },
   { key: "plan", label: "Plan", required: false },
+  { key: "category", label: "Category", required: false },
   { key: "start_date", label: "Start Date", required: false },
   { key: "amount", label: "Amount", required: false },
   { key: "payment_mode", label: "Payment Mode", required: false },
@@ -176,14 +178,18 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     "duration", "period", "tenure",
     "planperiod", "plan period", "plan_period",
     "membershiptier", "membership tier", "tier",
-    // Category/Type
-    "type", "category", "membershipcategory",
+    // Type
     "pricingplan", "pricing plan", "pricing_plan",
     // Indian gym exports
     "gymplan", "gym plan", "gym_plan",
     "gympackage", "gym package", "gym_package",
     "scheme", "schemename", "scheme name",
     "batch", "batchname", "batch name",
+  ],
+
+  category: [
+    "category", "plancategory", "plan category", "plan_category",
+    "membershipcategory", "membership category", "type"
   ],
 
   start_date: [
@@ -409,7 +415,7 @@ function getCol(row: any, colMap: Record<string, number>, field: string): string
 function excelSerialToDate(serial: number): string { return sharedExcelSerialToDate(serial); }
 
 const FIELD_LABELS: Record<string, string> = {
-  member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan",
+  member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan", category: "Category",
   start_date: "Start Date", amount: "Amount", payment_mode: "Payment Mode",
   gender: "Gender", age: "Age", area: "Area",
 };
@@ -600,6 +606,9 @@ export default function ImportPage() {
       const phone = rawPhone.replace(/\D/g, "").slice(-10);
       const rawPlan = getCol(row, colMap, "plan");
       const plan = normalizePlan(rawPlan || "monthly");
+      const rawCategory = getCol(row, colMap, "category");
+      let category = rawCategory.toLowerCase().trim();
+      if (!['strength', 'cardio', 'both'].includes(category)) category = 'both';
       const rawDate = getCol(row, colMap, "start_date");
       const rawAmount = getCol(row, colMap, "amount");
       const parsedAmount = parseInt(rawAmount.replace(/[^\d]/g, ""));
@@ -641,6 +650,7 @@ export default function ImportPage() {
         name,
         phone,
         plan,
+        category,
         _rawPlan: rawPlan ? rawPlan.trim() : undefined,
         start_date,
         amount,

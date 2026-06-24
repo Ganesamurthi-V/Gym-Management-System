@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast'
 const sora = Sora({ subsets: ['latin'], variable: '--font-sora' })
 
 export const metadata: Metadata = {
-  title: 'GymDesk — Gym Management',
+  title: 'gymflow — Gym Management',
   description: 'A powerful, intelligent management system for modern fitness centers in Tamil Nadu and Puducherry.',
   icons: { icon: '/favicon.ico' },
 }

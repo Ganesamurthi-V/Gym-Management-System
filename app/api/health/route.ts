@@ -55,11 +55,11 @@ export async function GET() {
         timestamp: new Date().toISOString()
       }, { status: 503 })
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Fatal health check error:', err)
     return NextResponse.json({ 
       status: 'unhealthy',
-      error: err.message,
+      error: (err instanceof Error ? err.message : String(err)),
       timestamp: new Date().toISOString()
     }, { status: 500 })
   }

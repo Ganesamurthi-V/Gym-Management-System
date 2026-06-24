@@ -32,7 +32,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    let body: any
+    let body: {
+      gymId?: string
+      gymName?: string
+      gymType?: string
+      branchCount?: number
+      address?: string
+      openingYear?: number
+      phone?: string
+      city?: string
+      plans?: any
+      metrics?: any
+      operations?: any
+      marketing?: any
+      aiPersonalization?: any
+    }
     try { body = await req.json() } catch {
       return NextResponse.json(
         { success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } },
@@ -126,9 +140,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: err.message } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: (err instanceof Error ? err.message : String(err)) } },
       { status: 500 }
     )
   }

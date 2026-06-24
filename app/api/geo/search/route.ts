@@ -5,13 +5,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
-function mapSupabaseError(error: { code: string; message: string }) {
-  if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
-  if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
-  if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
-  if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
-}
+import { mapSupabaseError } from '@/lib/utils/errorMapper'
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now()
@@ -67,10 +61,11 @@ export async function GET(req: NextRequest) {
       meta: { duration_ms: Date.now() - startTime }
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
     return NextResponse.json({
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+      error: { code: 'INTERNAL_ERROR', message }
     }, { status: 500 })
   }
 }

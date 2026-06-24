@@ -9,6 +9,7 @@ import { groqInferLocation} from '@/lib/geo/aiInference'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, DatasetCluster, AIInferenceResult } from '@/lib/geo/types'
+import { mapSupabaseError } from '@/lib/utils/errorMapper'
 
 const BATCH_LIMIT = 200
 
@@ -37,13 +38,6 @@ function applyWeightedScore(
   return Math.min(base + clusterBoost(candidate, cluster), 1.0)
 }
 
-function mapSupabaseError(error: { code: string; message: string }) {
-  if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
-  if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
-  if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
-  if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
-}
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
@@ -69,7 +63,7 @@ export async function POST(req: NextRequest) {
     let body
     try {
       body = await req.json()
-    } catch (e) {
+    } catch {
       return NextResponse.json({
         success: false,
         error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' }
@@ -103,8 +97,8 @@ export async function POST(req: NextRequest) {
     }
 
     const localities = localitiesRes.data ?? []
-    const dbAliasMap = new Map((aliasesRes.data ?? []).map((a: any) => [a.alias_normalized, a.geo_localities]))
-    const gymLearnedAliasMap = new Map((gymAliasesRes.data ?? []).map((row: any) => [row.alias_normalized, row.canonical_name]))
+    const dbAliasMap = new Map((aliasesRes.data ?? []).map((a: { alias_normalized: string, geo_localities: unknown }) => [a.alias_normalized, a.geo_localities]))
+    const gymLearnedAliasMap = new Map((gymAliasesRes.data ?? []).map((row: { alias_normalized: string, canonical_name: string }) => [row.alias_normalized, row.canonical_name]))
 
     // Phase 1: local/DB matches
     const phase1Results: (NormalizationResult | null)[] = inputs.map(({ raw_input }) => {
@@ -150,7 +144,7 @@ export async function POST(req: NextRequest) {
       }
 
       // DB alias table
-      const dbAlias = dbAliasMap.get(normalized) as any
+      const dbAlias = dbAliasMap.get(normalized) as { id: string, name: string, district: string, state: string } | undefined
       if (dbAlias) {
         return {
           raw_input: rawInput, normalized_value: dbAlias.name, canonical_locality_id: dbAlias.id,
@@ -239,7 +233,7 @@ export async function POST(req: NextRequest) {
                 cluster_district: cluster.top_district,
               }, { onConflict: 'raw_input_normalized' })
             }
-          } catch (e) {
+          } catch {
             console.warn(`[Batch] Groq timeout for ${raw_input}`)
             aiResult = null
           }
@@ -303,10 +297,11 @@ export async function POST(req: NextRequest) {
       meta: { duration_ms: Date.now() - startTime }
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
     return NextResponse.json({
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+      error: { code: 'INTERNAL_ERROR', message }
     }, { status: 500 })
   }
 }

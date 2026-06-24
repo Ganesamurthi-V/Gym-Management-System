@@ -50,9 +50,9 @@ export default function ImportEditPage() {
   // Track sidebar collapsed state for the fixed scrollbar left offset
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   useEffect(() => {
-    setSidebarCollapsed(localStorage.getItem('GymDesk_sidebar_collapsed') === 'true');
+    setSidebarCollapsed(localStorage.getItem('gymflow_sidebar_collapsed') === 'true');
     // Listen for storage changes (sidebar toggle)
-    const onStorage = () => setSidebarCollapsed(localStorage.getItem('GymDesk_sidebar_collapsed') === 'true');
+    const onStorage = () => setSidebarCollapsed(localStorage.getItem('gymflow_sidebar_collapsed') === 'true');
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);

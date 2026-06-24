@@ -60,6 +60,9 @@ export async function POST(req: NextRequest) {
     const amount = parseInt(body.amount)
     if (isNaN(amount) || amount < 0) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Amount must be a non-negative integer' } }, { status: 400 })
 
+    const paymentMode = body.payment_mode
+    if (!['cash', 'upi', 'card'].includes(paymentMode)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid payment mode' } }, { status: 400 })
+
     const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
@@ -72,6 +75,7 @@ export async function POST(req: NextRequest) {
         amount,
         start_date: body.start_date,
         end_date: body.end_date,
+        payment_mode: paymentMode,
       })
       .select('id, member_id, plan, amount')
       .single()

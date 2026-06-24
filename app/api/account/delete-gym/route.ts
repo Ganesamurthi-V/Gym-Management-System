@@ -38,13 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Gym not found or access denied' } }, { status: 403 })
     }
 
-    // Delete in dependency order
-    await supabase.from('attendance').delete().eq('gym_id', gym_id)
-    await supabase.from('memberships').delete().eq('gym_id', gym_id)
-    await supabase.from('members').delete().eq('gym_id', gym_id)
-    await supabase.from('area_aliases').delete().eq('gym_id', gym_id)
-
-    // Delete the gym row
+    // Delete the gym row. ON DELETE CASCADE will handle all related tables (members, attendance, etc.)
     const { error: gymDeleteError } = await supabase.from('gyms').delete().eq('id', gym_id)
     if (gymDeleteError) {
       return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: gymDeleteError.message } }, { status: 500 })

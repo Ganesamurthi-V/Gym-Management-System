@@ -81,13 +81,23 @@ export default function ImportEditPage() {
     const origStored = sessionStorage.getItem("import_rows_original");
     setOriginalRows(origStored ? JSON.parse(origStored) : parsed.map(r => ({ ...r })));
     setHasIdCol(sessionStorage.getItem("import_has_id_col") === "1");
-    // Load DB nums for live uniqueness validation
+    // Load DB nums for live uniqueness validation, but ONLY for numbers present in the file
     async function loadDbNums() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: gym } = await supabase.from("gyms").select("id").eq("owner_id", user.id).single();
       if (!gym) return;
-      const { data } = await supabase.from("members").select("member_number").eq("gym_id", gym.id) as { data: { member_number: number }[] | null };
+      
+      const fileNums = parsed.map(r => parseInt(r.member_number)).filter(n => !isNaN(n));
+      if (fileNums.length === 0) return;
+
+      // Chunk the IN query if there are thousands of rows, but typically CSVs are < 1000
+      const { data } = await supabase
+        .from("members")
+        .select("member_number")
+        .eq("gym_id", gym.id)
+        .in("member_number", fileNums) as { data: { member_number: number }[] | null };
+        
       setDbNums(new Set((data ?? []).map(m => m.member_number)));
     }
     loadDbNums();

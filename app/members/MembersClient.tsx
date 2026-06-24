@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense, useEffect } from 'react'
+import { useState, Suspense, useEffect, useDeferredValue } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
@@ -10,26 +10,31 @@ import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
 
+import { loadMoreMembersAction, exportMembersToExcelAction } from './actions'
+
 interface Props {
   members: MemberWithStatus[]
   gymId: string
+  totalCount: number
 }
 
 type FilterType = 'all' | 'active' | 'expiring' | 'expired'
 
-export function MembersClient({ members, gymId }: Props) {
+export function MembersClient({ members, gymId, totalCount }: Props) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
-      <MembersContent members={members} gymId={gymId} />
+      <MembersContent members={members} gymId={gymId} totalCount={totalCount} />
     </Suspense>
   )
 }
 
-function MembersContent({ members, gymId }: Props) {
+function MembersContent({ members, gymId, totalCount }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [search, setSearch] = useState('')
   const [idSearch, setIdSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
+  const deferredIdSearch = useDeferredValue(idSearch)
   
   // Read initial filter from URL if present
   const urlFilter = searchParams.get('filter') as FilterType | null
@@ -60,9 +65,14 @@ function MembersContent({ members, gymId }: Props) {
   })
   const [fixing, setFixing] = useState(false)
   const supabase = createClient()
+  
+  // Load More state
+  const [membersList, setMembersList] = useState(members)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const hasMore = membersList.length < totalCount
 
   // Detect duplicate member_numbers
-  const numCount = members.reduce((acc, m) => {
+  const numCount = membersList.reduce((acc, m) => {
     if (m.member_number != null) acc[m.member_number] = (acc[m.member_number] ?? 0) + 1
     return acc
   }, {} as Record<number, number>)
@@ -102,12 +112,28 @@ function MembersContent({ members, gymId }: Props) {
     router.refresh()
   }
 
-  const uniquePlans = Array.from(new Set(members.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const res = await loadMoreMembersAction(gymId, membersList.length, 200)
+      if (res.success && res.data) {
+        setMembersList(prev => [...prev, ...res.data!])
+      } else {
+        toast.error(res.error || 'Failed to load more members')
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
-  const filtered = members
+  const uniquePlans = Array.from(new Set(membersList.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]
+
+  const filtered = membersList
     .filter((m) => {
-      const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
-      const matchesId = idSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(idSearch.toLowerCase()))
+      const matchesSearch = m.name.toLowerCase().includes(deferredSearch.toLowerCase()) || m.phone.includes(deferredSearch)
+      const matchesId = deferredIdSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(deferredIdSearch.toLowerCase()))
       const matchesFilter = filter === 'all' || m.status === filter
       
       let matchesAdv = true
@@ -202,16 +228,16 @@ function MembersContent({ members, gymId }: Props) {
       return matchesSearch && matchesId && matchesFilter && matchesAdv
     })
     .sort((a, b) => {
-      if (idSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
+      if (deferredIdSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
       return 0
     })
 
   const counts = {
-    all:      members.length,
-    active:   members.filter(m => m.status === 'active').length,
-    expiring: members.filter(m => m.status === 'expiring').length,
-    expired:  members.filter(m => m.status === 'expired').length,
-    overdue:  members.filter(m => (m.pending_amount ?? 0) > 0).length,
+    all:      membersList.length,
+    active:   membersList.filter(m => m.status === 'active').length,
+    expiring: membersList.filter(m => m.status === 'expiring').length,
+    expired:  membersList.filter(m => m.status === 'expired').length,
+    overdue:  membersList.filter(m => (m.pending_amount ?? 0) > 0).length,
   }
 
   const filterConfig: { key: FilterType; label: string; activeClass: string }[] = [
@@ -233,74 +259,34 @@ function MembersContent({ members, gymId }: Props) {
     expired:  'bg-red-400',
   }
 
+  const [exporting, setExporting] = useState(false)
   async function exportExcel() {
-    let toExport = filtered
-
-    if (exportStatus !== 'all') {
-      toExport = toExport.filter(m => m.status === exportStatus)
+    setExporting(true)
+    const tid = toast.loading("Generating Excel in the cloud...")
+    try {
+      const res = await exportMembersToExcelAction(gymId, exportStatus, exportFrom, exportTo)
+      if (!res.success) throw new Error(res.error || "Export failed")
+      
+      const binaryString = window.atob(res.fileBase64!)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+      const blob = new Blob([bytes.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `gymflow-members-${formatDate(new Date().toISOString())}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      toast.success(`Exported ${res.count} members successfully!`, { id: tid })
+      setShowExportModal(false)
+    } catch (err: any) {
+      toast.error(err.message, { id: tid })
+    } finally {
+      setExporting(false)
     }
-
-    if (exportFrom && exportTo) {
-      const fromD = new Date(exportFrom)
-      const toD = new Date(exportTo)
-      toExport = toExport.filter(m => {
-        if (!m.join_date) return false
-        const [y, mo, d] = m.join_date.split('-').map(Number)
-        const jd = new Date(y, mo - 1, d)
-        return jd >= fromD && jd <= toD
-      })
-    }
-
-    const ExcelJS = (await import('exceljs')).default
-    const wb = new ExcelJS.Workbook()
-    const ws = wb.addWorksheet('Members')
-
-    ws.columns = [
-      { header: 'Member ID',      key: 'num',      width: 15 },
-      { header: 'Name',           key: 'name',     width: 25 },
-      { header: 'Phone',          key: 'phone',    width: 15 },
-      { header: 'Status',         key: 'status',   width: 15 },
-      { header: 'Gender',         key: 'gender',   width: 10 },
-      { header: 'Age',            key: 'age',      width: 8 },
-      { header: 'Area',           key: 'area',     width: 20 },
-      { header: 'Pending Dues',   key: 'dues',     width: 15 },
-      { header: 'Latest Plan',    key: 'plan',     width: 15 },
-      { header: 'Category',       key: 'category', width: 15 },
-      { header: 'Join Date',      key: 'joined',   width: 15 },
-      { header: 'Plan Starts On', key: 'start',    width: 15 },
-      { header: 'Plan Ends On',   key: 'end',      width: 15 },
-      { header: 'Legacy ID',      key: 'legacy',   width: 15 },
-    ]
-    
-    ws.getRow(1).font = { bold: true }
-    
-    toExport.forEach(m => {
-      ws.addRow({
-        num:    m.member_number ? formatMemberId(m.member_number) : '-',
-        name:   m.name,
-        phone:  m.phone,
-        status: m.status.toUpperCase(),
-        gender: m.gender ? m.gender.charAt(0).toUpperCase() + m.gender.slice(1) : '-',
-        age:    m.age || '-',
-        area:   m.area || '-',
-        dues:   m.pending_amount || 0,
-        plan:   m.latest_membership ? m.latest_membership.plan : '-',
-        category: m.latest_membership ? (m.latest_membership.category === 'both' || !m.latest_membership.category ? 'Strength + Cardio' : m.latest_membership.category.charAt(0).toUpperCase() + m.latest_membership.category.slice(1)) : '-',
-        joined: formatDate(m.created_at),
-        start:  m.latest_membership ? formatDate(m.latest_membership.start_date) : '-',
-        end:    m.latest_membership ? formatDate(m.latest_membership.end_date) : '-',
-        legacy: m.legacy_member_id || '-',
-      })
-    })
-
-    const buf = await wb.xlsx.writeBuffer()
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `members-${formatDate(new Date().toISOString())}.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   return (
@@ -350,7 +336,9 @@ function MembersContent({ members, gymId }: Props) {
           </div>
           <div>
             <p className="text-xs text-[#475569] font-semibold">Total Members</p>
-            <p className="text-lg font-bold text-[#1D4ED8]">{counts.all}</p>
+            <p className="text-lg font-bold text-[#1D4ED8]">
+              {membersList.length} <span className="text-xs font-normal text-slate-400">/ {totalCount}</span>
+            </p>
           </div>
         </div>
 
@@ -618,6 +606,19 @@ function MembersContent({ members, gymId }: Props) {
           </table>
         </div>
       </div>
+
+      {/* Load More Button */}
+      {hasMore && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {loadingMore ? 'Loading...' : `Load Next 200 (Showing ${membersList.length} of ${totalCount})`}
+          </button>
+        </div>
+      )}
 
       {/* Advanced Filter Modal */}
       {showAdvFilterModal && (

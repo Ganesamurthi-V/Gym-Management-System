@@ -36,7 +36,6 @@ const limiters = {
   [ROUTE_LIMITS.BATCH_NORMALIZE]: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(ROUTE_LIMITS.BATCH_NORMALIZE, '1 m') }),
   [ROUTE_LIMITS.SAVE_ALIAS]: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(ROUTE_LIMITS.SAVE_ALIAS, '1 m') }),
   [ROUTE_LIMITS.DEFAULT]: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(ROUTE_LIMITS.DEFAULT, '1 m') }),
-  5: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '1 m') }),
 }
 
 export async function checkRateLimit(userId: string, route: string, rpm: number): Promise<{ allowed: boolean; resetAt: number }> {

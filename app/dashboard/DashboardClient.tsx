@@ -8,7 +8,7 @@ import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, 
 import { GettingStartedChecklist } from './GettingStartedChecklist'
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
-import { generateDailyCollectionPDF } from '@/lib/pdf'
+import { generateDailyReportPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
 
@@ -99,26 +99,49 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
     setTimeout(() => { setSendingBulk(false) }, expiringMembers.length * 600 + 500)
   }
 
-  // Feature 3: Daily Collection PDF
+  // Feature 3: Daily Report PDF
   async function handleDailyPDF() {
     setGeneratingPDF(true)
     const today = format(new Date(), 'yyyy-MM-dd')
-    const { data } = await supabase
-      .from('memberships')
-      .select('amount, admission_fee, payment_mode, plan, member:members(name, member_number)')
-      .eq('gym_id', gymId)
-      .eq('start_date', today)
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const endOfToday = new Date()
+    endOfToday.setHours(23, 59, 59, 999)
 
-    const payments = (data ?? []).map((p: any) => ({
+    const [membershipsRes, newMembersRes] = await Promise.all([
+      supabase
+        .from('memberships')
+        .select('amount, admission_fee, payment_mode, plan, category, member:members(name, member_number)')
+        .eq('gym_id', gymId)
+        .gte('created_at', startOfToday.toISOString())
+        .lte('created_at', endOfToday.toISOString()),
+      supabase
+        .from('members')
+        .select('name, member_number, phone, area, gender')
+        .eq('gym_id', gymId)
+        .gte('created_at', startOfToday.toISOString())
+        .lte('created_at', endOfToday.toISOString())
+    ])
+
+    const payments = (membershipsRes.data ?? []).map((p: any) => ({
       memberName: p.member?.name ?? 'Unknown',
       memberNumber: p.member?.member_number ?? 0,
       plan: p.plan,
+      category: p.category,
       amount: p.amount,
       admission_fee: p.admission_fee ?? 0,
       payment_mode: p.payment_mode,
     }))
 
-    generateDailyCollectionPDF({ gymName, date: today, payments })
+    const newMembers = (newMembersRes.data ?? []).map((m: any) => ({
+      name: m.name,
+      memberNumber: m.member_number,
+      phone: m.phone,
+      area: m.area || '-',
+      gender: m.gender || '-'
+    }))
+
+    generateDailyReportPDF({ gymName, date: today, payments, newMembers })
     setGeneratingPDF(false)
   }
 
@@ -191,7 +214,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               className="w-full flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
             >
               <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-5 h-5" /></div>
-              {generatingPDF ? 'Generating...' : "Today's Collection PDF"}
+              {generatingPDF ? 'Generating...' : "Daily Report PDF"}
             </button>
             <Link href="/dues" className="flex items-center gap-3 bg-white text-red-600 rounded-xl p-3.5 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
               <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5" /></div>
@@ -260,18 +283,7 @@ function ExpiringContent({
           {fetchingMonth && <span className="text-xs text-slate-400 animate-pulse ml-2">Loading...</span>}
         </div>
         <div className="flex items-center gap-2">
-          {/* Feature 1: Bulk WhatsApp Remind */}
-          {expiringMembers.length > 0 && (
-            <button onClick={handleBulkRemind} disabled={sendingBulk || bulkSent}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${bulkSent
-                  ? 'bg-slate-100 text-slate-400'
-                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                }`}
-            >
-              <Send className="w-3.5 h-3.5" />
-              {bulkSent ? 'Sent!' : sendingBulk ? 'Sending...' : `Remind All (${expiringMembers.length})`}
-            </button>
-          )}
+          {/* Bulk WhatsApp Remind removed per user request */}
           <Link href="/members?filter=expiring" className="text-brand-600 text-sm font-semibold">See all</Link>
         </div>
       </div>

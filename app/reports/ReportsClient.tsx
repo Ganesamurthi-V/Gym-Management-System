@@ -14,8 +14,6 @@ import {
 } from 'recharts'
 import { formatCurrency, formatDate, buildCustomWhatsAppLink, cn } from '@/lib/utils'
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 // Types matched with app/reports/page.tsx
 interface MonthData {
@@ -379,9 +377,11 @@ export function ReportsClient({
   }
 
   // Premium PDF report generation
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     setIsGeneratingPDF(true)
     try {
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
       const doc = new jsPDF()
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(22)

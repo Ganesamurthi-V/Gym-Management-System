@@ -43,6 +43,7 @@ export interface Membership {
   member_id: string
   gym_id: string
   plan: Plan
+  category?: 'strength' | 'cardio' | 'both'
   start_date: string
   end_date: string
   amount: number

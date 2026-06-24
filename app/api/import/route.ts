@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
 
     // Rate limit import attempts
-    const { allowed } = checkRateLimit(user.id, '/api/import', 5) // 5 imports per minute
+    const { allowed } = await checkRateLimit(user.id, '/api/import', 5) // 5 imports per minute
     if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
 
     let body
@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
       data: { message: 'Import started', row_count: body.rows?.length ?? 0 },
       meta: { duration_ms: Date.now() - startTime }
     })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
   }
 }

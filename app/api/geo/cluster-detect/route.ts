@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/cluster-detect', ROUTE_LIMITS.DEFAULT)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/cluster-detect', ROUTE_LIMITS.DEFAULT)
     if (!allowed) {
       return NextResponse.json({
         success: false,
@@ -48,10 +48,10 @@ export async function POST(req: NextRequest) {
       meta: { duration_ms: Date.now() - startTime }
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json({
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: err.message || 'An unexpected error occurred' }
+      error: { code: 'INTERNAL_ERROR', message: (err instanceof Error ? err.message : String(err)) || 'An unexpected error occurred' }
     }, { status: 500 })
   }
 }

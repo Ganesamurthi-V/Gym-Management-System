@@ -33,7 +33,7 @@ export function FitnessLoader() {
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <h3 className="text-xl font-bold text-slate-800 tracking-tight">GymDesk</h3>
+        <h3 className="text-xl font-bold text-slate-800 tracking-tight">gymflow</h3>
         <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest animate-pulse">
           {loadingText}
         </p>

@@ -454,11 +454,11 @@ export function MembersClient({ members, gymId }: Props) {
                       target="_blank" rel="noopener noreferrer"
                       onClick={() => {
                         try {
-                          const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                          const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
                           const parsed = new Set(saved ? JSON.parse(saved) : [])
                           if (!parsed.has('send_reminder')) {
                             parsed.add('send_reminder')
-                            localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                            localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
                             window.dispatchEvent(new Event('storage'))
                           }
                         } catch {}
@@ -550,11 +550,11 @@ export function MembersClient({ members, gymId }: Props) {
                             target="_blank" rel="noopener noreferrer"
                             onClick={() => {
                               try {
-                                const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                                const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
                                 const parsed = new Set(saved ? JSON.parse(saved) : [])
                                 if (!parsed.has('send_reminder')) {
                                   parsed.add('send_reminder')
-                                  localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                                  localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
                                   window.dispatchEvent(new Event('storage'))
                                 }
                               } catch {}

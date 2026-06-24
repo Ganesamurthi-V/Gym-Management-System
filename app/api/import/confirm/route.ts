@@ -7,7 +7,7 @@ function mapSupabaseError(error: { code: string; message: string }) {
   if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
   if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
   if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
+  return { status: 500, code: 'DATABASE_ERROR', message: 'A database error occurred' }
 }
 
 export async function POST(req: NextRequest) {
@@ -26,16 +26,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Rows are required' } }, { status: 400 })
     }
 
+    const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
     // Batch insert members
     const { data, error } = await supabase
       .from('members')
       .insert(rows.map((r: any) => ({
-        ...r,
-        gym_id,
+        gym_id: gym.id,
         owner_id: user.id,
-        age: parseInt(r.age),
+        name: String(r.name ?? '').trim().slice(0, 255),
+        phone: String(r.phone ?? '').replace(/\\D/g, '').slice(0, 15),
+        age: parseInt(r.age) || null,
+        gender: ['male', 'female', 'other'].includes(r.gender) ? r.gender : null,
+        area: r.area ? String(r.area).slice(0, 100) : null,
         member_number: parseInt(r.member_number),
-        legacy_member_id: r.legacy_member_id || null,
+        legacy_member_id: r.legacy_member_id ? String(r.legacy_member_id).slice(0, 50) : null,
       })))
       .select('id')
 

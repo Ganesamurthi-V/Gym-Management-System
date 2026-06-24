@@ -200,6 +200,17 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
     }
   }, [data])
 
+  // Clear on unmount if not successfully completed
+  useEffect(() => {
+    return () => {
+      if (!submitting && !success) {
+        // Optional: you can choose to remove it here, or let the user resume.
+        // For security as requested, removing it to avoid lingering data.
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    }
+  }, [submitting, success])
+
   const updateGymDetails = useCallback((patch: Partial<GymDetailsData>) => {
     setData(prev => ({ ...prev, gymDetails: { ...prev.gymDetails, ...patch } }))
   }, [])

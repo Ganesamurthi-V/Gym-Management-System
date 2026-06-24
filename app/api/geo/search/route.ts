@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/search', ROUTE_LIMITS.DEFAULT)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/search', ROUTE_LIMITS.DEFAULT)
     if (!allowed) {
       return NextResponse.json({
         success: false,

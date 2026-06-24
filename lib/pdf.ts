@@ -56,12 +56,12 @@ export function generateDailyReportPDF(data: DailyReportData) {
       <td class="text-gray-500 font-medium">#${p.memberNumber}</td>
       <td class="font-semibold text-gray-900">${escapeHtml(p.memberName)}</td>
       <td>
-        <div class="capitalize text-gray-900 font-medium">${p.plan}</div>
-        <div class="text-[10px] text-gray-500 mt-0.5">${formatCategory(p.category)}</div>
+        <div class="capitalize text-gray-900 font-medium">${escapeHtml(p.plan)}</div>
+        <div class="text-[10px] text-gray-500 mt-0.5">${escapeHtml(formatCategory(p.category))}</div>
       </td>
       <td>
         <span class="badge ${p.payment_mode === 'upi' ? 'badge-blue' : p.payment_mode === 'cash' ? 'badge-green' : 'badge-purple'}">
-          ${p.payment_mode.toUpperCase()}
+          ${escapeHtml(p.payment_mode.toUpperCase())}
         </span>
       </td>
       <td class="text-right text-gray-600">${fmt(p.amount)}</td>

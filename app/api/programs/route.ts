@@ -53,13 +53,13 @@ export async function POST(req: NextRequest) {
 
     if (result.error) {
       console.error('Error saving program:', result.error)
-      return NextResponse.json({ error: result.error.message }, { status: 500 })
+      return NextResponse.json({ error: 'A database error occurred' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, program: result.data })
   } catch (err: any) {
     console.error('Internal API error:', err)
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -88,11 +88,11 @@ export async function DELETE(req: NextRequest) {
       .eq('gym_id', gym.id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'A database error occurred' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

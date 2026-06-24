@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/batch-normalize', ROUTE_LIMITS.BATCH_NORMALIZE)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/batch-normalize', ROUTE_LIMITS.BATCH_NORMALIZE)
     if (!allowed) {
       return NextResponse.json({
         success: false,

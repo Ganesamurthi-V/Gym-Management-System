@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { allowed } = checkRateLimit(user.id, '/api/geo/save-alias', ROUTE_LIMITS.SAVE_ALIAS)
+    const { allowed } = await checkRateLimit(user.id, '/api/geo/save-alias', ROUTE_LIMITS.SAVE_ALIAS)
     if (!allowed) {
       return NextResponse.json({
         success: false,

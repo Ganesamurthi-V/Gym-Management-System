@@ -7,7 +7,7 @@ function mapSupabaseError(error: { code: string; message: string }) {
   if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
   if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
   if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: error.message }
+  return { status: 500, code: 'DATABASE_ERROR', message: 'A database error occurred' }
 }
 
 export async function GET(req: NextRequest) {
@@ -18,16 +18,17 @@ export async function GET(req: NextRequest) {
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
 
     const { searchParams } = req.nextUrl
-    const gymId = searchParams.get('gym_id')
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
+
+    const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
     const query = supabase
       .from('memberships')
       .select('id, member_id, plan, amount, start_date, end_date, created_at, members(name)')
       .order('created_at', { ascending: false })
       .limit(limit)
-
-    if (gymId) query.eq('gym_id', gymId)
+      .eq('gym_id', gym.id)
 
     const { data, error } = await query
 
@@ -57,13 +58,16 @@ export async function POST(req: NextRequest) {
     try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
 
     const amount = parseInt(body.amount)
-    if (isNaN(amount)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Amount must be an integer' } }, { status: 400 })
+    if (isNaN(amount) || amount < 0) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Amount must be a non-negative integer' } }, { status: 400 })
+
+    const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
     const { data, error } = await supabase
       .from('memberships')
       .insert({
         member_id: body.member_id,
-        gym_id: body.gym_id,
+        gym_id: gym.id,
         plan: body.plan,
         amount,
         start_date: body.start_date,

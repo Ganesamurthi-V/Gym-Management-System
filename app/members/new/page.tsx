@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash } from 'lucide-react'
+import { ArrowLeft, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { calcEndDate, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import type { Plan, PaymentMode } from '@/types'
@@ -15,14 +15,12 @@ import type { NormalizedPlaceResult } from '@/services/location/normalizeGoogleP
 
 type Step = 'personal' | 'membership' | 'preview'
 
-// Plan prices fetched from gym_plan_prices table (set during onboarding)
-interface PlanPrices {
-  monthly: number
-  quarterly: number
-  annual: number
-  joining_fee_monthly: number
-  joining_fee_quarterly: number
-  joining_fee_annual: number
+interface MembershipPlan {
+  planName: string
+  category: 'strength' | 'cardio' | 'both'
+  duration: 'monthly' | 'quarterly' | 'annual' | 'custom'
+  price: number
+  joiningFee: number
 }
 
 export default function NewMemberPage() {
@@ -37,7 +35,11 @@ export default function NewMemberPage() {
   const [numError, setNumError] = useState('')
   const [checkingNum, setCheckingNum] = useState(false)
   const [gymId, setGymId] = useState<string | null>(null)
-  const [planPrices, setPlanPrices] = useState<PlanPrices | null>(null)
+  const [gymPlans, setGymPlans] = useState<MembershipPlan[]>([])
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [newPlan, setNewPlan] = useState<MembershipPlan>({
+    planName: 'Custom', category: 'both', duration: 'monthly', price: 1500, joiningFee: 0
+  })
 
   const [form, setForm] = useState({
     name: '',
@@ -47,6 +49,7 @@ export default function NewMemberPage() {
     area: '',
     member_number: '',
     plan: 'monthly' as Plan,
+    category: 'both' as 'strength' | 'cardio' | 'both',
     custom_months: '',
     start_date: format(new Date(), 'yyyy-MM-dd'),
     admission_fee: '',
@@ -59,7 +62,7 @@ export default function NewMemberPage() {
     async function fetchInitialData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+      const { data: gym } = await supabase.from('gyms').select('id, onboarding_data').eq('owner_id', user.id).single()
       if (!gym) return
       setGymId(gym.id)
 
@@ -74,27 +77,18 @@ export default function NewMemberPage() {
       setNextMemberNumber(last + 1)
       setForm(prev => ({ ...prev, member_number: String(last + 1) }))
 
-      // Fetch plan prices set during onboarding
-      const { data: prices } = await supabase
-        .from('gym_plan_prices')
-        .select('monthly, quarterly, annual, joining_fee_monthly, joining_fee_quarterly, joining_fee_annual')
-        .eq('gym_id', gym.id)
-        .single()
+      // Fetch plans from onboarding_data
+      const plans = (gym.onboarding_data as any)?.plans || []
+      setGymPlans(plans)
 
-      if (prices) {
-        setPlanPrices({
-          monthly:              prices.monthly              ?? 0,
-          quarterly:            prices.quarterly            ?? 0,
-          annual:               prices.annual               ?? 0,
-          joining_fee_monthly:  prices.joining_fee_monthly  ?? 0,
-          joining_fee_quarterly:prices.joining_fee_quarterly ?? 0,
-          joining_fee_annual:   prices.joining_fee_annual   ?? 0,
-        })
-        // Pre-fill for the default plan (monthly)
+      const defaultPlan = plans.find((p: MembershipPlan) => p.duration === 'monthly' && p.category === 'both') 
+                       || plans.find((p: MembershipPlan) => p.duration === 'monthly')
+      if (defaultPlan) {
         setForm(prev => ({
           ...prev,
-          amount:        prices.monthly              ? String(prices.monthly)             : prev.amount,
-          admission_fee: prices.joining_fee_monthly  ? String(prices.joining_fee_monthly) : prev.admission_fee,
+          amount: String(defaultPlan.price),
+          admission_fee: String(defaultPlan.joiningFee),
+          category: defaultPlan.category || 'both',
         }))
       }
     }
@@ -115,29 +109,22 @@ export default function NewMemberPage() {
   }, [form.member_number, gymId])
 
   function update(field: string, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }))
+    setForm(prev => {
+      const next = { ...prev, [field]: value }
+      if (field === 'plan' || field === 'category') {
+        const matched = gymPlans.find(p => p.duration === next.plan && (p.category || 'both') === next.category)
+        if (matched) {
+          next.amount = String(matched.price)
+          next.admission_fee = String(matched.joiningFee)
+        }
+      }
+      return next
+    })
   }
 
   // When plan changes, auto-fill price and joining fee from onboarding config
   function selectPlan(plan: Plan) {
-    setForm(prev => {
-      const next = { ...prev, plan }
-      if (planPrices && plan !== 'custom') {
-        const priceMap: Record<string, number> = {
-          monthly:   planPrices.monthly,
-          quarterly: planPrices.quarterly,
-          annual:    planPrices.annual,
-        }
-        const joiningMap: Record<string, number> = {
-          monthly:   planPrices.joining_fee_monthly,
-          quarterly: planPrices.joining_fee_quarterly,
-          annual:    planPrices.joining_fee_annual,
-        }
-        next.amount        = priceMap[plan]   ? String(priceMap[plan])   : prev.amount
-        next.admission_fee = joiningMap[plan] ? String(joiningMap[plan]) : prev.admission_fee
-      }
-      return next
-    })
+    update('plan', plan)
   }
 
   function handleNextStep(e: React.FormEvent) {
@@ -215,6 +202,7 @@ export default function NewMemberPage() {
           member_id: member.id,
           gym_id: gym.id,
           plan: form.plan === 'custom' ? 'monthly' : form.plan,
+          category: form.category,
           start_date: form.start_date,
           end_date,
           amount: parseInt(form.amount, 10) || 0,
@@ -231,6 +219,35 @@ export default function NewMemberPage() {
       setError(err.message || 'Something went wrong')
       setStep('personal')
       setLoading(false)
+    }
+  }
+
+  async function handleSaveNewPlan(e: React.FormEvent) {
+    e.preventDefault()
+    if (!gymId) return
+    const updatedPlans = [...gymPlans, newPlan]
+    
+    // Update local state
+    setGymPlans(updatedPlans)
+    
+    // Auto-select the newly added plan
+    setForm(prev => ({
+      ...prev,
+      plan: newPlan.duration as Plan,
+      category: newPlan.category,
+      amount: String(newPlan.price),
+      admission_fee: String(newPlan.joiningFee)
+    }))
+
+    setShowPlanModal(false)
+    toast.success('Plan added successfully!')
+
+    // Update database
+    const { data: gym } = await supabase.from('gyms').select('onboarding_data').eq('id', gymId).single()
+    if (gym) {
+      const currentData = gym.onboarding_data as any || {}
+      currentData.plans = updatedPlans
+      await supabase.from('gyms').update({ onboarding_data: currentData }).eq('id', gymId)
     }
   }
 
@@ -283,6 +300,7 @@ export default function NewMemberPage() {
             {form.age && <DetailRow icon={<User className="w-4 h-4 text-slate-400" />} label="Age" value={`${form.age} yrs`} />}
             {form.area && <DetailRow icon={<MapPin className="w-4 h-4 text-slate-400" />} label="Area" value={form.area} />}
             <DetailRow icon={<Calendar className="w-4 h-4 text-slate-400" />} label="Plan" value={planLabel} />
+            <DetailRow icon={<Calendar className="w-4 h-4 text-slate-400" />} label="Category" value={form.category === 'both' ? 'Strength + Cardio' : form.category.charAt(0).toUpperCase() + form.category.slice(1)} />
             <DetailRow icon={<Calendar className="w-4 h-4 text-slate-400" />} label="Start Date" value={formatDate(form.start_date)} />
             {endDate && <DetailRow icon={<Calendar className="w-4 h-4 text-slate-400" />} label="Expires On" value={formatDate(endDate)} />}
             <DetailRow icon={<CreditCard className="w-4 h-4 text-slate-400" />} label="Payment Mode" value={form.payment_mode.toUpperCase()} />
@@ -478,12 +496,16 @@ export default function NewMemberPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Plan */}
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Plan *</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Plan *</label>
+                  <button type="button" onClick={() => setShowPlanModal(true)} className="text-xs font-bold text-brand-600 flex items-center gap-1 hover:text-brand-700">
+                    <Plus className="w-3 h-3" /> Add Plan
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => {
-                    const priceHint = planPrices && plan !== 'custom'
-                      ? { monthly: planPrices.monthly, quarterly: planPrices.quarterly, annual: planPrices.annual }[plan]
-                      : null
+                    const matchedPlan = gymPlans.find(p => p.duration === plan && (p.category || 'both') === form.category)
+                    const priceHint = matchedPlan ? matchedPlan.price : null
                     return (
                       <button key={plan} type="button" onClick={() => selectPlan(plan)}
                         className={`py-2.5 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
@@ -504,6 +526,22 @@ export default function NewMemberPage() {
                     <span className="text-sm text-slate-500 font-medium">months</span>
                   </div>
                 )}
+              </div>
+
+              {/* Category */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Category *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['strength', 'cardio', 'both'] as const).map((cat) => (
+                    <button key={cat} type="button" onClick={() => update('category', cat)}
+                      className={`py-2 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
+                        form.category === cat ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                      }`}
+                    >
+                      {cat === 'both' ? 'Strength + Cardio' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Start Date */}
@@ -585,6 +623,52 @@ export default function NewMemberPage() {
           </form>
         )}
       </div>
+
+      {/* Add Plan Modal */}
+      {showPlanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800">Add New Plan</h3>
+              <button onClick={() => setShowPlanModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveNewPlan} className="p-6 space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Category</label>
+                <select value={newPlan.category} onChange={e => setNewPlan(p => ({ ...p, category: e.target.value as any }))} className="input-field py-3">
+                  <option value="both">Strength + Cardio</option>
+                  <option value="strength">Strength</option>
+                  <option value="cardio">Cardio</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Duration</label>
+                <select value={newPlan.duration} onChange={e => setNewPlan(p => ({ ...p, duration: e.target.value as any, planName: e.target.value === 'monthly' ? 'Monthly' : e.target.value === 'quarterly' ? 'Quarterly' : 'Annual' }))} className="input-field py-3">
+                  <option value="monthly">1 Month (Monthly)</option>
+                  <option value="quarterly">3 Months (Quarterly)</option>
+                  <option value="annual">1 Year (Annual)</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Membership Fee (₹)</label>
+                  <input type="number" value={newPlan.price === 0 ? '' : newPlan.price} onChange={e => setNewPlan(p => ({ ...p, price: Number(e.target.value) }))} className="input-field py-3" required min="1" placeholder="e.g. 1500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Admission Fee (₹)</label>
+                  <input type="number" value={newPlan.joiningFee === 0 ? '' : newPlan.joiningFee} onChange={e => setNewPlan(p => ({ ...p, joiningFee: Number(e.target.value) }))} className="input-field py-3" min="0" placeholder="e.g. 500" />
+                </div>
+              </div>
+              <div className="pt-2">
+                <button type="submit" className="btn-primary w-full py-3.5 shadow-md shadow-brand-500/20">Save Plan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS memberships (
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   plan TEXT NOT NULL CHECK (plan IN ('monthly', 'quarterly', 'annual')),
+  category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both',
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   amount INTEGER NOT NULL DEFAULT 0,
@@ -674,3 +675,8 @@ CREATE POLICY "Gym owners can delete programs"
     EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
   );
 
+-- ================================================
+-- [Migration 11] Add Category to Memberships
+-- ================================================
+
+ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both';

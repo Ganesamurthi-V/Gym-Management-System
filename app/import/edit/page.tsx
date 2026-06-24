@@ -15,7 +15,7 @@ type Step = "edit" | "preview" | "done";
 interface DoneResult { success: number; skipped: number }
 
 const EDIT_FIELDS: (keyof ImportedRow)[] = [
-  "member_number", "name", "phone", "plan", "start_date",
+  "member_number", "name", "phone", "plan", "category", "start_date",
   "amount", "payment_mode", "gender", "age", "area",
 ];
 
@@ -201,10 +201,14 @@ export default function ImportEditPage() {
   const skippedRows = rows.filter(r => r._status === "error" || r._status === "duplicate");
   const editedCount = rows.reduce((count, row) => count + (isRowChanged(row) ? 1 : 0), 0);
 
+  const anyOriginallySkipped = originalRows.some(o => o._status === "error" || o._status === "duplicate");
+
   const filtered = rows.map((r, i) => ({ ...r, _idx: i })).filter(r => {
-    const orig = originalRows.find(o => o._rowId === r._rowId);
-    const originallySkipped = orig && (orig._status === "error" || orig._status === "duplicate");
-    if (!originallySkipped) return false;
+    if (anyOriginallySkipped) {
+      const orig = originalRows.find(o => o._rowId === r._rowId);
+      const originallySkipped = orig && (orig._status === "error" || orig._status === "duplicate");
+      if (!originallySkipped) return false;
+    }
     
     return r.name.toLowerCase().includes(search.toLowerCase()) ||
            r.phone.includes(search) ||
@@ -236,7 +240,6 @@ export default function ImportEditPage() {
   }
 
   async function handleSave() {
-    if (!confirmed) return;
     setLoading(true);
     setError("");
 
@@ -293,7 +296,7 @@ export default function ImportEditPage() {
         if (!memberId) return null;
         const end_date = calcEndDate(row.start_date, row.plan as any);
         return {
-          member_id: memberId, gym_id: gym.id, plan: row.plan,
+          member_id: memberId, gym_id: gym.id, plan: row.plan, category: row.category || 'both',
           start_date: row.start_date, end_date,
           amount: parseInt(row.amount) || 0, payment_mode: row.payment_mode,
           created_at: row.start_date + "T00:00:00Z",
@@ -451,7 +454,7 @@ export default function ImportEditPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="search" placeholder="Search skipped members..." value={search}
+          <input type="search" placeholder={anyOriginallySkipped ? "Search skipped members..." : "Search members..."} value={search}
             onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
         </div>
       </div>
@@ -481,6 +484,7 @@ export default function ImportEditPage() {
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Name</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Category</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Start Date</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
@@ -564,6 +568,15 @@ export default function ImportEditPage() {
                       </select>
                     </td>
                     <td className="px-3 py-2">
+                      <select value={row.category || 'both'}
+                        onChange={e => updateRow(idx, "category", e.target.value)}
+                        className={cls}>
+                        <option value="both">Strength + Cardio</option>
+                        <option value="strength">Strength</option>
+                        <option value="cardio">Cardio</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
                       <input type="date" value={row.start_date}
                         onChange={e => updateRow(idx, "start_date", e.target.value)}
                         className={`w-36 ${cls}`} />
@@ -640,13 +653,27 @@ export default function ImportEditPage() {
                 <tr>
                   <td colSpan={12} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-sm shadow-emerald-500/10">
-                        <Check className="w-7 h-7 text-emerald-500" />
-                      </div>
-                      <div>
-                        <p className="text-base font-bold text-slate-900">No skipped rows!</p>
-                        <p className="text-sm text-slate-500 mt-0.5">All your members are valid and ready to be imported.</p>
-                      </div>
+                      {search ? (
+                        <>
+                          <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100">
+                            <Search className="w-6 h-6 text-slate-400" />
+                          </div>
+                          <div>
+                            <p className="text-base font-bold text-slate-900">No matches found</p>
+                            <p className="text-sm text-slate-500 mt-0.5">Try a different search term.</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-sm shadow-emerald-500/10">
+                            <Check className="w-7 h-7 text-emerald-500" />
+                          </div>
+                          <div>
+                            <p className="text-base font-bold text-slate-900">No skipped rows!</p>
+                            <p className="text-sm text-slate-500 mt-0.5">All your members are valid and ready to be imported.</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -14,6 +14,7 @@ import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 
 interface MembershipPlan {
   planName: string
+  category: 'strength' | 'cardio' | 'both'
   duration: 'monthly' | 'quarterly' | 'annual' | 'custom'
   price: number
   joiningFee: number
@@ -82,9 +83,9 @@ interface OnboardingData {
 const STORAGE_KEY = 'gymflow_onboarding'
 
 const DEFAULT_PLANS: MembershipPlan[] = [
-  { planName: 'Monthly', duration: 'monthly', price: 1500, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
-  { planName: 'Quarterly', duration: 'quarterly', price: 4000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
-  { planName: 'Annual', duration: 'annual', price: 10000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
+  { planName: 'Monthly', category: 'both', duration: 'monthly', price: 1500, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
+  { planName: 'Quarterly', category: 'both', duration: 'quarterly', price: 4000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
+  { planName: 'Annual', category: 'both', duration: 'annual', price: 10000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
 ]
 
 const DEFAULT_DATA: OnboardingData = {
@@ -230,7 +231,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   const addPlan = useCallback(() => {
     setData(prev => ({
       ...prev,
-      plans: [...prev.plans, { planName: '', duration: 'monthly', price: 0, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false }],
+      plans: [...prev.plans, { planName: '', category: 'both', duration: 'monthly', price: 0, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false }],
     }))
   }, [])
 
@@ -769,7 +770,7 @@ function StepMembershipPlans({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Plan Name</label>
               <input
@@ -779,6 +780,18 @@ function StepMembershipPlans({
                 className="input-field"
                 placeholder="e.g. Monthly"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
+              <select
+                value={plan.category || 'both'}
+                onChange={e => onUpdate(i, { category: e.target.value as MembershipPlan['category'] })}
+                className="input-field"
+              >
+                <option value="both">Strength + Cardio</option>
+                <option value="strength">Strength</option>
+                <option value="cardio">Cardio</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Duration</label>

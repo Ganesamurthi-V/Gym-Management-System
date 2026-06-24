@@ -14,6 +14,7 @@
 | **Language** | TypeScript 5 (strict mode) |
 | **Styling** | Tailwind CSS 3, Sora font (Google Fonts), Lenis smooth scroll |
 | **Backend** | Supabase (PostgreSQL 15, Auth, Row Level Security) |
+| **Caching** | Upstash Redis (Serverless HTTP/REST caching) |
 | **AI** | Google Gemini 2.0 Flash (area inference fallback) |
 | **Animations** | Framer Motion, CSS keyframe animations |
 | **Charts** | Recharts 3, custom Tailwind bar charts |
@@ -40,7 +41,7 @@
 | **Bulk Import** | 5-stage pipeline: Parse → Area Normalize → Area Review → Edit → Confirm. Supports `.csv` and `.xlsx`. Smart column detection with 40+ aliases per field. |
 | **Geo Intelligence Engine** | 11-step area normalization pipeline with AI fallback (Gemini 2.0 Flash). 1200+ static aliases. Client-side seed data fallback. |
 | **Account Settings** | Edit gym name, gym info (type, city, phone, address, opening year, branches), change password. Toast notifications. Danger zone. |
-| **Observability** | Request-scoped APM-style logger (`RequestLogger`) for granular performance tracing and cache debugging in Vercel. |
+| **Observability & Caching** | Request-scoped APM-style logger (`RequestLogger`) for granular performance tracing. Upstash Redis caching for heavy reports (1 RPC -> Cache architecture). |
 
 ---
 
@@ -197,6 +198,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # Required for AI area inference (falls back to fuzzy matching without it)
 GEMINI_API_KEY=your_gemini_api_key          # Server-only — NEVER use NEXT_PUBLIC_
+
+# Optional Caching (Gracefully degrades to no-cache if missing)
+UPSTASH_REDIS_REST_URL=your_upstash_redis_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token
 
 # Optional
 NEXT_PUBLIC_APP_URL=your_vercel_deployment_link
@@ -448,6 +453,7 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 - **Member IDs**: `GF`-prefixed zero-padded 4 digits (e.g. `GF0042`)
 
 ### Performance Optimizations (`next.config.js`)
+- **Redis Caching**: Heavy report queries consolidated into a single Supabase RPC and cached in Upstash Redis.
 - ExcelJS kept server-side only via `serverExternalPackages`
 - Tree-shaking for lucide-react and date-fns via `optimizePackageImports`
 - Aggressive chunk splitting: Supabase and date-fns in separate bundles
@@ -486,6 +492,7 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 | AI area inference (Gemini 2.0 Flash) | ✅ |
 | Area review page with delete selected | ✅ |
 | Google Places hybrid geo metadata | ✅ |
+| Upstash Redis caching for heavy reports | ✅ |
 | Monthly revenue reports with Recharts | ✅ |
 | Plan distribution, gender/age breakdown charts | ✅ |
 | Scroll-reveal chart animations (Framer Motion) | ✅ |

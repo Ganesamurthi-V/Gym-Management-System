@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, program: result.data })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Internal API error:', err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
@@ -99,7 +99,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

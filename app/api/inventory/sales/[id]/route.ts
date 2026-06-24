@@ -52,7 +52,7 @@ export async function DELETE(req: Request, props: { params: Promise<{ id: string
 
     return NextResponse.json({ success: true, restoredQuantity: sale.quantity })
 
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) }, { status: 500 })
   }
 }

@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       sale: { product_name: product.product_name, quantity, total_price: totalPrice },
       remaining_stock: product.initial_stock - quantity,
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) || 'Internal error' }, { status: 500 })
   }
 }

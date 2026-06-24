@@ -2,13 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
-function mapSupabaseError(error: { code: string; message: string }) {
-  if (error.code === 'PGRST116') return { status: 404, code: 'NOT_FOUND', message: 'Resource not found' }
-  if (error.code === '23505') return { status: 409, code: 'CONFLICT', message: 'Record already exists' }
-  if (error.code === '23503') return { status: 400, code: 'FOREIGN_KEY_VIOLATION', message: 'Invalid reference' }
-  if (error.code === '42501') return { status: 403, code: 'FORBIDDEN', message: 'Unauthorized' }
-  return { status: 500, code: 'DATABASE_ERROR', message: 'A database error occurred' }
-}
+import { getGymForUser } from '@/lib/supabase/queries'
+import { mapSupabaseError } from '@/lib/utils/errorMapper'
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now()
@@ -20,7 +15,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
 
-    const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+    const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
     const query = supabase
@@ -42,8 +37,9 @@ export async function GET(req: NextRequest) {
       data,
       meta: { duration_ms: Date.now() - startTime, has_more: (data?.length ?? 0) >= limit }
     })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
   }
 }
 
@@ -63,7 +59,7 @@ export async function POST(req: NextRequest) {
     const paymentMode = body.payment_mode
     if (!['cash', 'upi', 'card'].includes(paymentMode)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid payment mode' } }, { status: 400 })
 
-    const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+    const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
     const { data, error } = await supabase
@@ -86,7 +82,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
   }
 }

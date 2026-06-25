@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { invalidatePattern } from '@/lib/cache'
 
 // POST /api/support — send a message to a gym owner
 export async function POST(req: NextRequest) {
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Invalidate cache for this gym's messages
+  await invalidatePattern(`gym:${gym_id}:admin_messages`)
 
   return NextResponse.json({ ok: true, message: data })
 }

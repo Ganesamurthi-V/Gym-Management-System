@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, Dumbbell, CalendarCheck, TrendingUp, FileText, IndianRupee, Send } from 'lucide-react'
+import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, Dumbbell, CalendarCheck, TrendingUp, FileText, IndianRupee, Send, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyReportPDF } from '@/lib/pdf'
@@ -26,7 +26,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
   const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
   const [fetchingMonth, setFetchingMonth] = useState(false)
-  
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -40,21 +40,21 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           .select('member_id, end_date, member:members(id, name, phone, member_number)')
           .eq('gym_id', gymId)
           .order('created_at', { ascending: false })
-          
+
         const memberMap = new Map<string, any>()
         for (const m of membershipsData ?? []) {
           if (!m.member || memberMap.has(m.member_id)) continue
           const daysRemaining = Math.ceil((new Date(m.end_date).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24))
           memberMap.set(m.member_id, { ...(m.member as any), latest_membership: m, days_remaining: daysRemaining })
         }
-        
+
         const currentMonth = todayStr.slice(0, 7) // e.g. "2026-06"
         const monthExpiring = Array.from(memberMap.values()).filter(m => {
           if (!m.latest_membership) return false
           const endStr = m.latest_membership.end_date // "2026-06-25"
           return endStr.startsWith(currentMonth)
         })
-        
+
         setMonthMembers(monthExpiring.sort((a, b) => a.days_remaining - b.days_remaining))
         setFetchingMonth(false)
       }
@@ -123,7 +123,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-slide-up max-w-7xl mx-auto">
+    <div className="flex flex-col gap-4 md:gap-6 animate-slide-up max-w-7xl mx-auto lg:h-[calc(100vh-120px)]">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
@@ -145,10 +145,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
         <StatCardCurrency icon={<AlertTriangle className="w-4 h-4 text-red-500" />} label="Total Dues" value={stats.total_dues} bg="bg-red-50" href="/dues" danger />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-stretch">
-        <div className="flex-1 w-full min-w-0 flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-stretch flex-1 min-h-0">
+        <div className="flex-1 w-full min-w-0 flex flex-col min-h-0">
           <motion.div
-            className="card flex-1"
+            className="card flex-1 flex flex-col min-h-0"
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
@@ -181,6 +181,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><CalendarCheck className="w-5 h-5" /></div>
               Mark Attendance
             </Link>
+            <Link href="/members/attendance" className="flex items-center gap-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-indigo-200 active:scale-95 transition-all">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><ClipboardList className="w-5 h-5" /></div>
+              Attendance Log
+            </Link>
             {/* Feature 3: Daily Collection PDF */}
             <button onClick={handleDailyPDF} disabled={generatingPDF}
               className="w-full flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
@@ -200,20 +204,20 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   )
 }
 
-function ExpiringContent({ 
-  expiringMembers, 
-  handleBulkRemind, 
-  sendingBulk, 
-  bulkSent, 
+function ExpiringContent({
+  expiringMembers,
+  handleBulkRemind,
+  sendingBulk,
+  bulkSent,
   gymId,
   expiringFilter,
   setExpiringFilter,
   fetchingMonth
-}: { 
-  expiringMembers: MemberWithStatus[], 
-  handleBulkRemind: () => void, 
-  sendingBulk: boolean, 
-  bulkSent: boolean, 
+}: {
+  expiringMembers: MemberWithStatus[],
+  handleBulkRemind: () => void,
+  sendingBulk: boolean,
+  bulkSent: boolean,
   gymId: string,
   expiringFilter: 'week' | 'month',
   setExpiringFilter: (f: 'week' | 'month') => void,
@@ -245,8 +249,10 @@ function ExpiringContent({
           <p className="text-slate-400 text-sm">No members expiring this {expiringFilter}</p>
         </div>
       ) : (
-        <div className="divide-y divide-slate-50">
-          {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} gymId={gymId} />)}
+        <div className="flex-1 relative min-h-[200px]">
+          <div data-lenis-prevent="true" className="absolute inset-0 overflow-y-auto divide-y divide-slate-50 overscroll-contain">
+            {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} gymId={gymId} />)}
+          </div>
         </div>
       )}
     </>

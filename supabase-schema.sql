@@ -146,6 +146,12 @@ CREATE POLICY "Gym owners can view attendance"
     EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
   );
 
+CREATE POLICY "Gym owners can update attendance"
+  ON attendance FOR UPDATE
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
+  );
+
 CREATE POLICY "Gym owners can insert attendance"
   ON attendance FOR INSERT
   WITH CHECK (

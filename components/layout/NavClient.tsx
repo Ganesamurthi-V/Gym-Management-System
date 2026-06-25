@@ -6,7 +6,14 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, Menu } from 'lucide-react'
 
-const NAV_ITEMS = [
+type NavItem = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  comingSoon?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',  href: '/dashboard',   icon: SquaresIcon },
   { label: 'Members',    href: '/members',      icon: UsersIcon },
   { label: 'Payments',   href: '/payments',     icon: RupeeIcon },
@@ -15,7 +22,7 @@ const NAV_ITEMS = [
   { label: 'Inventory',  href: '/inventory',    icon: BoxIcon },
   { label: 'Programs',   href: '#', icon: ActivityIcon, comingSoon: true },
   { label: 'Reports',    href: '#',      icon: ChartIcon, comingSoon: true },
-] as const
+]
 
 // ── Desktop sidebar nav ───────────────────────────────────────────────────────
 export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {

@@ -10,7 +10,6 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, DatasetCluster, AIInferenceResult } from '@/lib/geo/types'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
-import { cacheWrapper } from '@/lib/cache'
 
 const BATCH_LIMIT = 200
 
@@ -84,29 +83,22 @@ export async function POST(req: NextRequest) {
     const rawValues = inputs.map(i => i.raw_input)
     const cluster = detectDatasetCluster(rawValues)
 
+    // Load localities + DB aliases once (Independent queries parallelized)
     const gymId = inputs.find(i => i.gym_id)?.gym_id
-
-    // Load localities + DB aliases using Redis Cache (Parallelized)
-    const [localities, dbAliasMapList, gymLearnedAliasMapList] = await Promise.all([
-      cacheWrapper('geo:localities:active', 3600, async () => {
-        const { data, error } = await supabase.from('geo_localities').select('id, name, name_normalized, name_phonetic, district, state').eq('is_active', true).limit(3000)
-        if (error) throw error
-        return data ?? []
-      }),
-      cacheWrapper('geo:aliases:global', 3600, async () => {
-        const { data, error } = await supabase.from('geo_aliases').select('alias_normalized, locality_id, geo_localities(id, name, district, state)')
-        if (error) throw error
-        return data ?? []
-      }),
-      gymId ? cacheWrapper(`geo:gym_aliases:${gymId}`, 3600, async () => {
-        const { data, error } = await supabase.from('geo_gym_aliases').select('alias_normalized, canonical_name').eq('gym_id', gymId)
-        if (error) throw error
-        return data ?? []
-      }) : Promise.resolve([])
+    const [localitiesRes, aliasesRes, gymAliasesRes] = await Promise.all([
+      supabase.from('geo_localities').select('id, name, name_normalized, name_phonetic, district, state').eq('is_active', true).limit(3000),
+      supabase.from('geo_aliases').select('alias_normalized, locality_id, geo_localities(id, name, district, state)'),
+      gymId ? supabase.from('geo_gym_aliases').select('alias_normalized, canonical_name').eq('gym_id', gymId) : Promise.resolve({ data: null, error: null })
     ])
 
-    const dbAliasMap = new Map((dbAliasMapList).map((a: any) => [a.alias_normalized, a.geo_localities]))
-    const gymLearnedAliasMap = new Map((gymLearnedAliasMapList).map((row: any) => [row.alias_normalized, row.canonical_name]))
+    if (localitiesRes.error) {
+      const mapped = mapSupabaseError(localitiesRes.error)
+      return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
+    }
+
+    const localities = localitiesRes.data ?? []
+    const dbAliasMap = new Map((aliasesRes.data ?? []).map((a: { alias_normalized: string, geo_localities: unknown }) => [a.alias_normalized, a.geo_localities]))
+    const gymLearnedAliasMap = new Map((gymAliasesRes.data ?? []).map((row: { alias_normalized: string, canonical_name: string }) => [row.alias_normalized, row.canonical_name]))
 
     // Phase 1: local/DB matches
     const phase1Results: (NormalizationResult | null)[] = inputs.map(({ raw_input }) => {

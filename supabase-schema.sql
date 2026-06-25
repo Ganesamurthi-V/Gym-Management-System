@@ -49,9 +49,10 @@ CREATE TABLE IF NOT EXISTS attendance (
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
+  session TEXT CHECK (session IN ('morning', 'evening')) DEFAULT 'morning',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   check_out_time TIMESTAMPTZ,
-  UNIQUE(member_id, date)
+  UNIQUE(member_id, date, session)
 );
 
 

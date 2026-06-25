@@ -14,6 +14,7 @@ import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 
 interface MembershipPlan {
   planName: string
+  category: 'strength' | 'cardio' | 'both'
   duration: 'monthly' | 'quarterly' | 'annual' | 'custom'
   price: number
   joiningFee: number
@@ -79,12 +80,12 @@ interface OnboardingData {
 
 // --- Constants ----------------------------------------------------------------
 
-const STORAGE_KEY = 'GymDesk_onboarding'
+const STORAGE_KEY = 'gymflow_onboarding'
 
 const DEFAULT_PLANS: MembershipPlan[] = [
-  { planName: 'Monthly', duration: 'monthly', price: 1500, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
-  { planName: 'Quarterly', duration: 'quarterly', price: 4000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
-  { planName: 'Annual', duration: 'annual', price: 10000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
+  { planName: 'Monthly', category: 'both', duration: 'monthly', price: 1500, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
+  { planName: 'Quarterly', category: 'both', duration: 'quarterly', price: 4000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
+  { planName: 'Annual', category: 'both', duration: 'annual', price: 10000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
 ]
 
 const DEFAULT_DATA: OnboardingData = {
@@ -199,6 +200,17 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
     }
   }, [data])
 
+  // Clear on unmount if not successfully completed
+  useEffect(() => {
+    return () => {
+      if (!submitting && !success) {
+        // Optional: you can choose to remove it here, or let the user resume.
+        // For security as requested, removing it to avoid lingering data.
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    }
+  }, [submitting, success])
+
   const updateGymDetails = useCallback((patch: Partial<GymDetailsData>) => {
     setData(prev => ({ ...prev, gymDetails: { ...prev.gymDetails, ...patch } }))
   }, [])
@@ -230,7 +242,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   const addPlan = useCallback(() => {
     setData(prev => ({
       ...prev,
-      plans: [...prev.plans, { planName: '', duration: 'monthly', price: 0, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false }],
+      plans: [...prev.plans, { planName: '', category: 'both', duration: 'monthly', price: 0, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false }],
     }))
   }, [])
 
@@ -308,7 +320,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
           <>
             Welcome to<br />
             <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-cyan-400 bg-clip-text text-transparent">
-              GymDesk
+              gymflow
             </span>
           </>
         }
@@ -327,7 +339,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
             <div className="w-9 h-9 bg-brand-500/20 rounded-xl flex items-center justify-center border border-brand-500/30">
               <Dumbbell className="w-5 h-5 text-brand-400" />
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">GymDesk</span>
+            <span className="text-white font-bold text-xl tracking-tight">gymflow</span>
           </div>
 
           {/* Stepper container */}
@@ -407,7 +419,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
                   <Dumbbell className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-white font-bold text-lg">GymDesk</span>
+                <span className="text-white font-bold text-lg">gymflow</span>
               </div>
               <span className="text-brand-100 text-sm font-medium">
                 Step {currentStep + 1} of 6
@@ -769,7 +781,7 @@ function StepMembershipPlans({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Plan Name</label>
               <input
@@ -779,6 +791,18 @@ function StepMembershipPlans({
                 className="input-field"
                 placeholder="e.g. Monthly"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
+              <select
+                value={plan.category || 'both'}
+                onChange={e => onUpdate(i, { category: e.target.value as MembershipPlan['category'] })}
+                className="input-field"
+              >
+                <option value="both">Strength + Cardio</option>
+                <option value="strength">Strength</option>
+                <option value="cardio">Cardio</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Duration</label>
@@ -1190,7 +1214,7 @@ function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData
         <div className="flex items-start gap-3 p-3 bg-brand-50 rounded-xl border border-brand-100">
           <Sparkles className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-brand-700">
-            Help us personalize your GymDesk experience. We&apos;ll tailor insights and recommendations based on your goals.
+            Help us personalize your gymflow experience. We&apos;ll tailor insights and recommendations based on your goals.
           </p>
         </div>
 

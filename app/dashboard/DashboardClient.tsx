@@ -8,7 +8,7 @@ import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, 
 import { GettingStartedChecklist } from './GettingStartedChecklist'
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
-import { generateDailyCollectionPDF } from '@/lib/pdf'
+import { generateDailyReportPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
 
@@ -25,10 +25,16 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [checklistDismissed, setChecklistDismissed] = useState(false)
+  const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
+  const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
+  const [fetchingMonth, setFetchingMonth] = useState(false)
+  
+  const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     const checkDismissed = () => {
-      const isDismissed = localStorage.getItem(`gymdesk_getting_started_dismissed_${gymId}`) === 'true'
+      const isDismissed = localStorage.getItem(`gymflow_getting_started_dismissed_${gymId}`) === 'true'
       setChecklistDismissed(isDismissed)
     }
     
@@ -37,8 +43,37 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
     return () => window.removeEventListener('storage', checkDismissed)
   }, [gymId])
 
-  const router = useRouter()
-  const supabase = createClient()
+  useEffect(() => {
+    if (expiringFilter === 'month' && monthMembers === null && !fetchingMonth) {
+      setFetchingMonth(true)
+      const fetchMonth = async () => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd')
+        const { data: membershipsData } = await supabase
+          .from('memberships')
+          .select('member_id, end_date, member:members(id, name, phone, member_number)')
+          .eq('gym_id', gymId)
+          .order('created_at', { ascending: false })
+          
+        const memberMap = new Map<string, any>()
+        for (const m of membershipsData ?? []) {
+          if (!m.member || memberMap.has(m.member_id)) continue
+          const daysRemaining = Math.ceil((new Date(m.end_date).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24))
+          memberMap.set(m.member_id, { ...(m.member as any), latest_membership: m, days_remaining: daysRemaining })
+        }
+        
+        const currentMonth = todayStr.slice(0, 7) // e.g. "2026-06"
+        const monthExpiring = Array.from(memberMap.values()).filter(m => {
+          if (!m.latest_membership) return false
+          const endStr = m.latest_membership.end_date // "2026-06-25"
+          return endStr.startsWith(currentMonth)
+        })
+        
+        setMonthMembers(monthExpiring.sort((a, b) => a.days_remaining - b.days_remaining))
+        setFetchingMonth(false)
+      }
+      fetchMonth()
+    }
+  }, [expiringFilter, gymId, monthMembers, fetchingMonth, supabase])
 
   // Feature 1: Bulk WhatsApp Reminders
   function handleBulkRemind() {
@@ -47,10 +82,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
     // Mark task as complete when genuinely used
     try {
-      const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+      const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
       const parsed = new Set(saved ? JSON.parse(saved) : [])
       parsed.add('send_reminder')
-      localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+      localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
       // Dispatch storage event to update checklist across components
       window.dispatchEvent(new Event('storage'))
     } catch { }
@@ -64,26 +99,49 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
     setTimeout(() => { setSendingBulk(false) }, expiringMembers.length * 600 + 500)
   }
 
-  // Feature 3: Daily Collection PDF
+  // Feature 3: Daily Report PDF
   async function handleDailyPDF() {
     setGeneratingPDF(true)
     const today = format(new Date(), 'yyyy-MM-dd')
-    const { data } = await supabase
-      .from('memberships')
-      .select('amount, admission_fee, payment_mode, plan, member:members(name, member_number)')
-      .eq('gym_id', gymId)
-      .eq('start_date', today)
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const endOfToday = new Date()
+    endOfToday.setHours(23, 59, 59, 999)
 
-    const payments = (data ?? []).map((p: any) => ({
+    const [membershipsRes, newMembersRes] = await Promise.all([
+      supabase
+        .from('memberships')
+        .select('amount, admission_fee, payment_mode, plan, category, member:members(name, member_number)')
+        .eq('gym_id', gymId)
+        .gte('created_at', startOfToday.toISOString())
+        .lte('created_at', endOfToday.toISOString()),
+      supabase
+        .from('members')
+        .select('name, member_number, phone, area, gender')
+        .eq('gym_id', gymId)
+        .gte('created_at', startOfToday.toISOString())
+        .lte('created_at', endOfToday.toISOString())
+    ])
+
+    const payments = (membershipsRes.data ?? []).map((p: any) => ({
       memberName: p.member?.name ?? 'Unknown',
       memberNumber: p.member?.member_number ?? 0,
       plan: p.plan,
+      category: p.category,
       amount: p.amount,
       admission_fee: p.admission_fee ?? 0,
       payment_mode: p.payment_mode,
     }))
 
-    generateDailyCollectionPDF({ gymName, date: today, payments })
+    const newMembers = (newMembersRes.data ?? []).map((m: any) => ({
+      name: m.name,
+      memberNumber: m.member_number,
+      phone: m.phone,
+      area: m.area || '-',
+      gender: m.gender || '-'
+    }))
+
+    generateDailyReportPDF({ gymName, date: today, payments, newMembers })
     setGeneratingPDF(false)
   }
 
@@ -123,11 +181,14 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
             >
               <ExpiringContent
-                expiringMembers={expiringMembers}
+                expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
                 handleBulkRemind={handleBulkRemind}
                 sendingBulk={sendingBulk}
                 bulkSent={bulkSent}
                 gymId={gymId}
+                expiringFilter={expiringFilter}
+                setExpiringFilter={setExpiringFilter}
+                fetchingMonth={fetchingMonth}
               />
             </motion.div>
           )}
@@ -153,7 +214,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               className="w-full flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
             >
               <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-5 h-5" /></div>
-              {generatingPDF ? 'Generating...' : "Today's Collection PDF"}
+              {generatingPDF ? 'Generating...' : "Daily Report PDF"}
             </button>
             <Link href="/dues" className="flex items-center gap-3 bg-white text-red-600 rounded-xl p-3.5 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
               <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5" /></div>
@@ -171,11 +232,14 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             exit={{ opacity: 0, y: -20, scale: 0.98, transition: { duration: 0.2 } }}
           >
             <ExpiringContent
-              expiringMembers={expiringMembers}
+              expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
               handleBulkRemind={handleBulkRemind}
               sendingBulk={sendingBulk}
               bulkSent={bulkSent}
               gymId={gymId}
+              expiringFilter={expiringFilter}
+              setExpiringFilter={setExpiringFilter}
+              fetchingMonth={fetchingMonth}
             />
           </motion.div>
         )}
@@ -184,34 +248,49 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   )
 }
 
-function ExpiringContent({ expiringMembers, handleBulkRemind, sendingBulk, bulkSent, gymId }: { expiringMembers: MemberWithStatus[], handleBulkRemind: () => void, sendingBulk: boolean, bulkSent: boolean, gymId: string }) {
+function ExpiringContent({ 
+  expiringMembers, 
+  handleBulkRemind, 
+  sendingBulk, 
+  bulkSent, 
+  gymId,
+  expiringFilter,
+  setExpiringFilter,
+  fetchingMonth
+}: { 
+  expiringMembers: MemberWithStatus[], 
+  handleBulkRemind: () => void, 
+  sendingBulk: boolean, 
+  bulkSent: boolean, 
+  gymId: string,
+  expiringFilter: 'week' | 'month',
+  setExpiringFilter: (f: 'week' | 'month') => void,
+  fetchingMonth: boolean
+}) {
   return (
     <>
       <div className="flex items-center justify-between px-4 md:px-5 py-3.5 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-500" />
-          <h2 className="font-bold text-slate-900 text-sm md:text-base">Expiring This Week</h2>
+          <select
+            value={expiringFilter}
+            onChange={(e) => setExpiringFilter(e.target.value as 'week' | 'month')}
+            className="font-bold text-slate-900 text-sm md:text-base bg-transparent outline-none cursor-pointer hover:bg-slate-50 py-1 pr-1 rounded"
+          >
+            <option value="week">Expiring This Week</option>
+            <option value="month">Expiring This Month</option>
+          </select>
+          {fetchingMonth && <span className="text-xs text-slate-400 animate-pulse ml-2">Loading...</span>}
         </div>
         <div className="flex items-center gap-2">
-          {/* Feature 1: Bulk WhatsApp Remind */}
-          {expiringMembers.length > 0 && (
-            <button onClick={handleBulkRemind} disabled={sendingBulk || bulkSent}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${bulkSent
-                  ? 'bg-slate-100 text-slate-400'
-                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                }`}
-            >
-              <Send className="w-3.5 h-3.5" />
-              {bulkSent ? 'Sent!' : sendingBulk ? 'Sending...' : `Remind All (${expiringMembers.length})`}
-            </button>
-          )}
+          {/* Bulk WhatsApp Remind removed per user request */}
           <Link href="/members?filter=expiring" className="text-brand-600 text-sm font-semibold">See all</Link>
         </div>
       </div>
       {expiringMembers.length === 0 ? (
         <div className="p-8 text-center">
           <p className="text-2xl mb-1">🎉</p>
-          <p className="text-slate-400 text-sm">No members expiring this week</p>
+          <p className="text-slate-400 text-sm">No members expiring this {expiringFilter}</p>
         </div>
       ) : (
         <div className="divide-y divide-slate-50">
@@ -268,10 +347,10 @@ function ExpiringMemberRow({ member, gymId }: { member: MemberWithStatus, gymId:
             target="_blank" rel="noopener noreferrer"
             onClick={() => {
               try {
-                const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
                 const parsed = new Set(saved ? JSON.parse(saved) : [])
                 parsed.add('send_reminder')
-                localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
                 window.dispatchEvent(new Event('storage'))
               } catch { }
             }}

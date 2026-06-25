@@ -6,7 +6,7 @@
  * Hybrid area input:
  *   1. User types → Google Places suggestions appear
  *   2. User selects → locality extracted from Google response
- *   3. Locality sent to existing GymDesk normalizer pipeline
+ *   3. Locality sent to existing gymflow normalizer pipeline
  *   4. Canonical area returned and stored
  *
  * RULES:
@@ -234,7 +234,7 @@ export default function GooglePlacesAutocomplete({
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
 
     if (!apiReady || apiError) {
-      // Fallback: use existing searchLocalities from GymDesk
+      // Fallback: use existing searchLocalities from gymflow
       return
     }
 
@@ -277,7 +277,7 @@ export default function GooglePlacesAutocomplete({
           // Extract structured address
           const googleAddr = extractGoogleAddress(place)
 
-          // Run through existing GymDesk normalizer pipeline
+          // Run through existing gymflow normalizer pipeline
           const normalized = await normalizeGooglePlace(googleAddr, gymId)
 
           // Update input to show canonical area
@@ -408,7 +408,7 @@ export default function GooglePlacesAutocomplete({
             <p className="text-[10px] text-slate-400 flex items-center gap-1">
               <span>Powered by</span>
               <span className="font-semibold text-slate-500">Google</span>
-              <span>· normalized by GymDesk</span>
+              <span>· normalized by gymflow</span>
             </p>
           </li>
           </div> {/* end Lenis content wrapper */}

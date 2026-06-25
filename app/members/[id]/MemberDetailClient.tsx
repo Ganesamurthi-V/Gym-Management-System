@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'react-hot-toast'
 import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
@@ -61,6 +62,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       })
       if (err) throw err
       setShowRenewForm(false)
+      toast.success('Membership renewed successfully!')
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to renew')
@@ -78,10 +80,11 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       if (e2) throw e2
       const { error: e3 } = await supabase.from('members').delete().eq('id', member.id)
       if (e3) throw e3
+      toast.success('Member deleted successfully')
       router.push('/members')
       router.refresh()
     } catch (err: any) {
-      alert('Failed to delete member: ' + (err.message || 'Unknown error'))
+      toast.error('Failed to delete member: ' + (err.message || 'Unknown error'))
     }
   }
 
@@ -133,6 +136,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           {latestMembership && (
             <>
               <InfoTile label="Plan" value={latestMembership.plan.charAt(0).toUpperCase() + latestMembership.plan.slice(1)} />
+              <InfoTile label="Category" value={latestMembership.category === 'both' || !latestMembership.category ? 'Strength + Cardio' : latestMembership.category.charAt(0).toUpperCase() + latestMembership.category.slice(1)} />
               <InfoTile label="Start Date" value={formatDate(latestMembership.start_date)} />
               <InfoTile label="Expires" value={formatDate(latestMembership.end_date)} />
               <InfoTile
@@ -252,7 +256,10 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
                   <p className="text-xs text-slate-400 mt-0.5">{m.payment_mode.toUpperCase()} · {formatDate(m.start_date)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-slate-700 capitalize">{m.plan}</p>
+                  <p className="text-sm font-semibold text-slate-700 capitalize">
+                    {m.plan}
+                    <span className="text-slate-400 font-normal ml-1">· {m.category === 'both' || !m.category ? 'Strength + Cardio' : m.category.charAt(0).toUpperCase() + m.category.slice(1)}</span>
+                  </p>
                   <p className="text-xs text-slate-400">until {formatDate(m.end_date)}</p>
                 </div>
               </div>

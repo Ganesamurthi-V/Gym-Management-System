@@ -95,4 +95,4 @@ BEGIN
     'expiringMembers', v_expiring_members
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = '';

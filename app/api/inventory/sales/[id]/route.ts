@@ -42,25 +42,17 @@ export async function DELETE(req: Request, props: { params: Promise<{ id: string
       return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
 
-    // Restore stock if the product still exists
+    // Restore stock atomically to prevent race conditions
     if (sale.inventory_id) {
-      const { data: product } = await supabase
-        .from('inventory')
-        .select('initial_stock')
-        .eq('id', sale.inventory_id)
-        .single()
-
-      if (product) {
-        await supabase
-          .from('inventory')
-          .update({ initial_stock: product.initial_stock + sale.quantity })
-          .eq('id', sale.inventory_id)
-      }
+      await supabase.rpc('increment_inventory_stock', {
+        p_inventory_id: sale.inventory_id,
+        amount: sale.quantity
+      })
     }
 
     return NextResponse.json({ success: true, restoredQuantity: sale.quantity })
 
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) }, { status: 500 })
   }
 }

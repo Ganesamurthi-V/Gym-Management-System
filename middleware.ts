@@ -6,9 +6,7 @@ const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance'
 const AUTH_PREFIX = '/auth'
 
 export async function middleware(request: NextRequest) {
-  console.error("[TRACE] MIDDLEWARE_EXECUTED")
   const { pathname } = request.nextUrl
-  console.error("[TRACE] PATH:", pathname)
 
   // Skip auth check for paths that don't need it
   const needsCheck =
@@ -39,12 +37,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (user) {
-    console.error("[TRACE] AUTHENTICATED")
-  }
-
   if (!user && !pathname.startsWith(AUTH_PREFIX)) {
-    console.error("[TRACE] REDIRECT_TO_LOGIN")
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)

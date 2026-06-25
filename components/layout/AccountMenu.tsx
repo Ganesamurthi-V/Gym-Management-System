@@ -9,6 +9,7 @@ import { LogOut, User, Settings, Lock, Bell, ChevronRight } from 'lucide-react'
 export default function AccountMenu() {
   const [isOpen, setIsOpen] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
+  const [gymId, setGymId] = useState<string | null>(null)
   const [gymName, setGymName] = useState<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -24,6 +25,7 @@ export default function AccountMenu() {
         .eq('owner_id', userId)
         .single()
       setGymName(gym?.name ?? null)
+      setGymId(gym?.id ?? null)
 
       if (gym?.id) {
         const { count } = await supabase
@@ -48,6 +50,7 @@ export default function AccountMenu() {
         } else {
           setEmail(null)
           setGymName(null)
+          setGymId(null)
           setUnreadCount(0)
         }
       }
@@ -55,6 +58,34 @@ export default function AccountMenu() {
 
     return () => subscription.unsubscribe()
   }, [supabase])
+
+  // Realtime subscription for unread count
+  useEffect(() => {
+    if (!gymId) return
+
+    const channel = supabase
+      .channel('realtime_account_menu_messages')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
+        () => setUnreadCount(prev => prev + 1)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
+        (payload: any) => {
+          // If message was marked as read, decrement count
+          if (payload.old.read_at === null && payload.new.read_at !== null) {
+            setUnreadCount(prev => Math.max(0, prev - 1))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [gymId, supabase])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -148,7 +179,7 @@ export default function AccountMenu() {
                     <Bell className="w-4 h-4" />
                     {unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center">
-                        <span className="text-[8px] font-bold text-white leading-none">{unreadCount}</span>
+                        <span className="text-[8px] font-bold text-white leading-none">{unreadCount > 99 ? '99+' : unreadCount}</span>
                       </span>
                     )}
                   </div>

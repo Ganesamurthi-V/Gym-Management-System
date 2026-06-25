@@ -6,6 +6,8 @@ import {
   LayoutDashboard, Building2, ScrollText, Bug,
   HeadphonesIcon, LogOut, Shield, ChevronRight
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -18,6 +20,51 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [openTicketsCount, setOpenTicketsCount] = useState(0)
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseAnonKey) return
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+    // Initial fetch
+    supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open')
+      .then(({ count }) => setOpenTicketsCount(count ?? 0))
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('realtime_admin_sidebar_tickets')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'support_tickets' },
+        (payload: any) => {
+          if (payload.new.status === 'open') {
+            setOpenTicketsCount(prev => prev + 1)
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'support_tickets' },
+        (payload: any) => {
+          if (payload.old.status === 'open' && payload.new.status !== 'open') {
+            setOpenTicketsCount(prev => Math.max(0, prev - 1))
+          } else if (payload.old.status !== 'open' && payload.new.status === 'open') {
+            setOpenTicketsCount(prev => prev + 1)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   async function handleLogout() {
     await fetch('/api/auth', { method: 'DELETE' })
@@ -52,8 +99,13 @@ export default function Sidebar() {
               }`}
             >
               <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
-              {label}
-              {active && <ChevronRight className="w-3 h-3 ml-auto text-indigo-400" />}
+              <span className="flex-1">{label}</span>
+              {href === '/support' && openTicketsCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-bold">
+                  {openTicketsCount > 99 ? '99+' : openTicketsCount}
+                </span>
+              )}
+              {active && href !== '/support' && <ChevronRight className="w-3 h-3 ml-auto text-indigo-400" />}
             </Link>
           )
         })}

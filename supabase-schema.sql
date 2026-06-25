@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  check_out_time TIMESTAMPTZ,
   UNIQUE(member_id, date)
 );
 
@@ -584,7 +585,7 @@ BEGIN
       updated_at = NOW()
   WHERE id = p_inventory_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ================================================
 -- INVENTORY SALES (Revenue Tracking)
@@ -691,3 +692,10 @@ CREATE POLICY "Gym owners can delete programs"
 -- ================================================
 
 ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both';
+
+
+-- ================================================
+-- [Migration 14] Add check_out_time to Attendance
+-- ================================================
+
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS check_out_time TIMESTAMPTZ;

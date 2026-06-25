@@ -60,6 +60,7 @@ export interface Attendance {
   gym_id: string
   date: string
   created_at: string
+  check_out_time?: string | null
   member?: Member
 }
 

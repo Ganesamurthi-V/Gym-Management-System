@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { invalidatePattern } from '@/lib/cache'
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,8 +40,6 @@ export async function POST(req: NextRequest) {
 
     if (insertError) throw insertError
 
-    // Invalidate the cache for this gym's tickets
-    await invalidatePattern(`gym:${gym.id}:support_tickets`)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

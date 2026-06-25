@@ -66,7 +66,9 @@ CREATE TABLE IF NOT EXISTS admin_messages (
   sent_by TEXT NOT NULL DEFAULT 'super_admin',
   type TEXT NOT NULL DEFAULT 'info' CHECK (type IN ('info', 'warning', 'error', 'success')),
   read_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  is_cleared_by_owner BOOLEAN DEFAULT false,
+  is_cleared_by_admin BOOLEAN DEFAULT false
 );
 
 -- INDEXES (for performance)
@@ -778,7 +780,9 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   type TEXT NOT NULL CHECK (type IN ('query', 'issue', 'bug', 'high_priority')),
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  resolved_at TIMESTAMPTZ
+  resolved_at TIMESTAMPTZ,
+  is_cleared_by_owner BOOLEAN DEFAULT false,
+  is_cleared_by_admin BOOLEAN DEFAULT false
 );
 
 -- Indexes

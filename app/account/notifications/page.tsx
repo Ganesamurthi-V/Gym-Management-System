@@ -56,6 +56,7 @@ export default async function NotificationsPage() {
         .from('admin_messages')
         .select('*')
         .eq('gym_id', gym.id)
+        .eq('is_cleared_by_owner', false)
         .order('created_at', { ascending: false })
       return data || []
     },
@@ -70,6 +71,7 @@ export default async function NotificationsPage() {
         .from('support_tickets')
         .select('*')
         .eq('gym_id', gym.id)
+        .eq('is_cleared_by_owner', false)
         .order('created_at', { ascending: false })
       return data || []
     },

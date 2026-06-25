@@ -59,25 +59,24 @@ export default function AccountMenu() {
     return () => subscription.unsubscribe()
   }, [supabase])
 
-  // Realtime subscription for unread count
+  // Realtime subscription for unread count via Broadcast (Bypasses missing publication issues)
   useEffect(() => {
     if (!gymId) return
 
     const channel = supabase
-      .channel('realtime_account_menu_messages')
+      .channel(`gym_support_${gymId}`)
       .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
-        () => setUnreadCount(prev => prev + 1)
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
-        (payload: any) => {
-          // If message was marked as read, decrement count
-          if (payload.old.read_at === null && payload.new.read_at !== null) {
-            setUnreadCount(prev => Math.max(0, prev - 1))
-          }
+        'broadcast',
+        { event: 'refetch_support' },
+        async () => {
+          // Re-fetch unread count when an admin message is received or ticket updated
+          const { count } = await supabase
+            .from('admin_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('gym_id', gymId)
+            .is('read_at', null)
+            
+          setUnreadCount(count ?? 0)
         }
       )
       .subscribe()

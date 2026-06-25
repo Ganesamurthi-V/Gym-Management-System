@@ -34,6 +34,23 @@ export default function SupportTicketModal({ isOpen, onClose }: { isOpen: boolea
       setMessage('')
       setType('query')
       onClose()
+      
+      // Broadcast to admin
+      import('@/lib/supabase/client').then(({ createClient }) => {
+        const supabase = createClient()
+        const channel = supabase.channel('admin_support_channel')
+        channel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({
+              type: 'broadcast',
+              event: 'refetch_tickets',
+              payload: { timestamp: Date.now() }
+            })
+            supabase.removeChannel(channel)
+          }
+        })
+      })
+
       router.refresh()
     } catch (e: any) {
       toast.error(e.message || 'Failed to submit ticket')

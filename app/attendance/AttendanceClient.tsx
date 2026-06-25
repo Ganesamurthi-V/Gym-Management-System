@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Sun, Moon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -33,14 +33,21 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<MessageState>({ type: null, text: '' })
   const [totalPresent, setTotalPresent] = useState(initialPresent)
+  const [sessionType, setSessionType] = useState<'morning' | 'evening'>('morning')
   const inputRef = useRef<HTMLInputElement>(null)
   
   const supabase = createClient()
   const displayDate = format(new Date(today), 'EEEE, dd MMM yyyy')
 
-  // Auto focus input on mount
+  // Auto focus input on mount, and set session based on time
   useEffect(() => {
     inputRef.current?.focus()
+    const hour = new Date().getHours()
+    if (hour >= 14) {
+      setSessionType('evening')
+    } else {
+      setSessionType('morning')
+    }
   }, [])
 
   // Auto clear message after 4 seconds
@@ -98,13 +105,14 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
         expiryDate: expiryText
       }
 
-      // 2. Check today's attendance
+      // 2. Check today's attendance for the specific session
       const { data: attData, error: attError } = await supabase
         .from('attendance')
         .select('id, created_at, check_out_time')
         .eq('gym_id', gymId)
         .eq('member_id', memberData.id)
         .eq('date', today)
+        .eq('session', sessionType)
         .maybeSingle()
 
       if (!attData) {
@@ -116,6 +124,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
             gym_id: gymId,
             member_id: memberData.id,
             date: today,
+            session: sessionType,
             created_at: now.toISOString()
           })
 
@@ -195,6 +204,39 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
   return (
     <div className="relative w-full h-[85vh] flex flex-col items-center justify-center p-4 md:p-8 animate-slide-up overflow-hidden rounded-3xl">
+      
+      {/* Session Toggle */}
+      <div className="absolute top-6 right-6 md:top-8 md:right-8 z-20">
+        <div className="bg-white/80 backdrop-blur-md rounded-full p-1 shadow-md border border-slate-200 flex items-center">
+          <button
+            type="button"
+            onClick={() => { setSessionType('morning'); inputRef.current?.focus() }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all",
+              sessionType === 'morning' 
+                ? "bg-brand-50 text-brand-700 shadow-sm" 
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            <Sun className="w-4 h-4" />
+            <span className="hidden sm:inline">Morning</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSessionType('evening'); inputRef.current?.focus() }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all",
+              sessionType === 'evening' 
+                ? "bg-brand-50 text-brand-700 shadow-sm" 
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            <Moon className="w-4 h-4" />
+            <span className="hidden sm:inline">Evening</span>
+          </button>
+        </div>
+      </div>
+
       <div className="w-full max-w-5xl flex flex-col items-center z-10">
         
         <div className="text-center mb-10 md:mb-12">
@@ -246,61 +288,73 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
       </div>
 
-      {/* Success / Error Overlay */}
+      {/* Success / Error Overlay Modal */}
       <div className={cn(
-        "absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center transition-all duration-300 backdrop-blur-md rounded-3xl",
-        message.type === 'success' ? 'bg-emerald-500/95 text-white opacity-100 visible' :
-        message.type === 'error' ? 'bg-red-500/95 text-white opacity-100 visible' :
-        message.type === 'info' ? 'bg-amber-500/95 text-white opacity-100 visible' :
-        'opacity-0 invisible pointer-events-none'
+        "absolute inset-0 z-50 flex flex-col items-center justify-center p-4 text-center transition-all duration-300 rounded-3xl",
+        message.type !== null ? 'bg-slate-900/40 backdrop-blur-md opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
       )}>
-        {message.type === 'success' && <CheckCircle2 className="w-20 h-20 md:w-24 md:h-24 mb-6 md:mb-8 animate-bounce drop-shadow-lg" />}
-        {message.type === 'error' && <XCircle className="w-20 h-20 md:w-24 md:h-24 mb-6 md:mb-8 drop-shadow-lg" />}
-        {message.type === 'info' && <CheckCircle2 className="w-20 h-20 md:w-24 md:h-24 mb-6 md:mb-8 drop-shadow-lg" />}
         
-        <h2 className="text-3xl md:text-5xl font-black leading-tight drop-shadow-md mb-8 max-w-4xl">
-          {message.text}
-        </h2>
+        {/* Modal Card */}
+        <div className={cn(
+          "bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-6 md:p-8 flex flex-col items-center border border-slate-100 transform transition-all duration-300",
+          message.type !== null ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'
+        )}>
+          
+          {/* Icon */}
+          <div className={cn(
+            "w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-inner",
+            message.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
+            message.type === 'error'   ? 'bg-red-100 text-red-600' :
+            'bg-amber-100 text-amber-600'
+          )}>
+            {message.type === 'success' && <CheckCircle2 className="w-10 h-10 animate-bounce" />}
+            {message.type === 'error'   && <XCircle className="w-10 h-10" />}
+            {message.type === 'info'    && <CheckCircle2 className="w-10 h-10" />}
+          </div>
+          
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight tracking-tight mb-6">
+            {message.text}
+          </h2>
 
-        {message.attendanceInfo && (
-           <div className="bg-white text-slate-800 rounded-3xl p-5 mb-6 shadow-2xl w-full max-w-md ring-4 ring-white/20">
-             {message.attendanceInfo.duration ? (
-               <div className="text-center">
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Workout Duration</p>
-                 <p className="text-3xl font-black text-emerald-600 my-1">{message.attendanceInfo.duration}</p>
-                 <p className="text-xs font-semibold text-slate-500 mt-2">
-                   <span className="bg-slate-100 px-2 py-1 rounded-md">In: {message.attendanceInfo.checkInTime}</span> 
-                   <span className="mx-2 text-slate-300">&bull;</span> 
-                   <span className="bg-slate-100 px-2 py-1 rounded-md">Out: {message.attendanceInfo.checkOutTime}</span>
-                 </p>
-               </div>
-             ) : (
-               <div className="text-center">
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Check-in Time</p>
-                 <p className="text-3xl font-black text-emerald-600 my-1">{message.attendanceInfo.checkInTime}</p>
-               </div>
-             )}
-           </div>
-        )}
+          {message.attendanceInfo && (
+             <div className="w-full bg-slate-50 rounded-2xl p-5 mb-4 border border-slate-100">
+               {message.attendanceInfo.duration ? (
+                 <div className="text-center">
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Workout Duration</p>
+                   <p className="text-3xl font-black text-brand-600">{message.attendanceInfo.duration}</p>
+                   <div className="flex items-center justify-center gap-3 mt-3 text-xs font-semibold text-slate-500">
+                     <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">In: {message.attendanceInfo.checkInTime}</span> 
+                     <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">Out: {message.attendanceInfo.checkOutTime}</span>
+                   </div>
+                 </div>
+               ) : (
+                 <div className="text-center">
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Check-in Time</p>
+                   <p className="text-3xl font-black text-brand-600">{message.attendanceInfo.checkInTime}</p>
+                 </div>
+               )}
+             </div>
+          )}
 
-        {message.memberInfo && (
-          <div className="bg-white/20 backdrop-blur-lg rounded-3xl p-6 w-full max-w-lg text-left border border-white/20 shadow-xl">
-            <div className="grid grid-cols-2 gap-4 md:gap-6">
-              <div className="col-span-2 md:col-span-1">
-                <p className="text-[10px] md:text-xs uppercase text-white/80 font-bold tracking-widest mb-1">Name</p>
-                <p className="font-bold text-xl md:text-2xl leading-tight truncate drop-shadow-sm">{message.memberInfo.name}</p>
-              </div>
-              <div className="col-span-2 md:col-span-1">
-                <p className="text-[10px] md:text-xs uppercase text-white/80 font-bold tracking-widest mb-1">ID</p>
-                <p className="font-bold text-xl md:text-2xl leading-tight drop-shadow-sm">{message.memberInfo.memberId}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-[10px] md:text-xs uppercase text-white/80 font-bold tracking-widest mb-1">Plan Expires</p>
-                <p className="font-bold text-xl md:text-2xl leading-tight drop-shadow-sm">{message.memberInfo.expiryDate}</p>
+          {message.memberInfo && (
+            <div className="w-full bg-slate-50 rounded-2xl p-5 text-left border border-slate-100">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest mb-0.5">Member Name</p>
+                  <p className="font-bold text-slate-900 text-lg">{message.memberInfo.name}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest mb-0.5">ID</p>
+                  <p className="font-bold text-slate-900">{message.memberInfo.memberId}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest mb-0.5">Plan Expires</p>
+                  <p className="font-bold text-slate-900">{message.memberInfo.expiryDate}</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

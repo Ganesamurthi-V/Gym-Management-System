@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
-import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2 } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2, Sun, Moon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
 import type { Member, Membership, Attendance, MemberStatus, Plan, PaymentMode } from '@/types'
@@ -284,6 +284,11 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-emerald-400 rounded-full" />
                   <span className="text-sm text-slate-700 font-bold">{formatDate(a.date)}</span>
+                  {(a as any).session === 'evening' ? (
+                    <span className="text-[10px] bg-slate-100 text-slate-500 font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1"><Moon className="w-3 h-3" /> Evening</span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-50 text-amber-600 font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1"><Sun className="w-3 h-3" /> Morning</span>
+                  )}
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">

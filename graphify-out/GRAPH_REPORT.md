@@ -1,16 +1,16 @@
-# Graph Report - gymflow  (2026-06-24)
+# Graph Report - gymflow  (2026-06-26)
 
 ## Corpus Check
-- 150 files · ~95,068 words
+- 220 files · ~112,536 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 745 nodes · 1170 edges · 76 communities (66 shown, 10 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 4 edges (avg confidence: 0.8)
+- 984 nodes · 1605 edges · 90 communities (78 shown, 12 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 5 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a0ce799e`
+- Built from commit: `e9aa07a5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -65,67 +65,63 @@
 - [[_COMMUNITY_Community 65|Community 65]]
 - [[_COMMUNITY_Community 66|Community 66]]
 - [[_COMMUNITY_Community 67|Community 67]]
-- [[_COMMUNITY_Community 68|Community 68]]
 - [[_COMMUNITY_Community 69|Community 69]]
-- [[_COMMUNITY_Community 70|Community 70]]
-- [[_COMMUNITY_Community 71|Community 71]]
 - [[_COMMUNITY_Community 72|Community 72]]
-- [[_COMMUNITY_Community 73|Community 73]]
 - [[_COMMUNITY_Community 74|Community 74]]
 - [[_COMMUNITY_Community 75|Community 75]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `createClient()` - 40 edges
-2. `checkRateLimit()` - 25 edges
-3. `createClient()` - 19 edges
-4. `GymDesk — Gym Management SaaS` - 17 edges
-5. `compilerOptions` - 16 edges
-6. `ROUTE_LIMITS` - 14 edges
-7. `normalizeInput()` - 14 edges
-8. `POST()` - 13 edges
-9. `GymDesk — AI Agent Roster` - 13 edges
-10. `formatDate()` - 12 edges
+1. `createClient()` - 52 edges
+2. `checkRateLimit()` - 28 edges
+3. `mapSupabaseError()` - 23 edges
+4. `createClient()` - 21 edges
+5. `compilerOptions` - 17 edges
+6. `GymFlow — Gym Management SaaS` - 17 edges
+7. `GymDesk — Gym Management SaaS` - 17 edges
+8. `compilerOptions` - 16 edges
+9. `verifyRequestAuth()` - 16 edges
+10. `RequestLogger` - 16 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `GymDetailPage()` --calls--> `NotFound()`  [INFERRED]
+  gymflow-admin/app/gyms/[gymId]/page.tsx → app/not-found.tsx
+- `getReportsData()` --calls--> `createClient()`  [EXTRACTED]
+  app/_reports_archived/page.tsx → lib/supabase/server.ts
+- `getReportsData()` --calls--> `createClient()`  [EXTRACTED]
+  app/reports/page.tsx → lib/supabase/server.ts
 - `AccountClient()` --calls--> `formatDate()`  [EXTRACTED]
   app/account/AccountClient.tsx → lib/utils.ts
 - `POST()` --calls--> `checkRateLimit()`  [EXTRACTED]
   app/api/geo/batch-normalize/route.ts → lib/rateLimit.ts
-- `POST()` --calls--> `checkRateLimit()`  [EXTRACTED]
-  app/api/geo/cluster-detect/route.ts → lib/rateLimit.ts
-- `POST()` --calls--> `checkRateLimit()`  [EXTRACTED]
-  app/api/geo/normalize/route.ts → lib/rateLimit.ts
-- `POST()` --calls--> `normalizeInput()`  [EXTRACTED]
-  app/api/geo/save-alias/route.ts → lib/geo/normalizer.ts
 
-## Communities (76 total, 10 thin omitted)
+## Communities (90 total, 12 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.05
-Nodes (34): mapSupabaseError(), POST(), MembershipPlan, POST(), mapSupabaseError(), POST(), deletions, SEED_LOCALITIES_DEDUPED (+26 more)
+Cohesion: 0.07
+Nodes (37): mapSupabaseError(), POST(), POST(), MembershipPlan, POST(), mapSupabaseError(), POST(), deletions (+29 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.10
-Nodes (40): applyWeightedScore(), buildUnresolved(), mapSupabaseError(), POST(), POST(), AI_CACHE, callGroq(), groqInferBatch() (+32 more)
+Nodes (39): applyWeightedScore(), buildUnresolved(), mapSupabaseError(), POST(), AI_CACHE, callGroq(), groqInferBatch(), groqInferLocation() (+31 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.11
-Nodes (26): matchAreaBatch(), cellStr(), excelSerialToDate(), isRecognizedPlan(), normalizeAge(), normalizeDate(), normalizeGender(), normalizeMemberNumber() (+18 more)
+Cohesion: 0.05
+Nodes (41): AreaMeta, EditedRow, EditMembersClient(), MemberRow, Props, Step, DoneResult, EDIT_FIELDS (+33 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.04
-Nodes (47): dependencies, clsx, date-fns, exceljs, framer-motion, @googlemaps/js-api-loader, html5-qrcode, jspdf (+39 more)
+Nodes (48): dependencies, clsx, date-fns, exceljs, framer-motion, @googlemaps/js-api-loader, html5-qrcode, jspdf (+40 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.06
-Nodes (18): ImportEditPage(), useLenisScroll(), AIPersonalizationData, BusinessMetricsData, DEFAULT_DATA, DEFAULT_PLANS, GymDetailsData, LEAD_SOURCES (+10 more)
+Nodes (16): AIPersonalizationData, BusinessMetricsData, DEFAULT_DATA, DEFAULT_PLANS, GymDetailsData, LEAD_SOURCES, MarketingData, MembershipPlan (+8 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.08
-Nodes (7): metadata, sora, viewport, MobileNav(), NAV_ITEMS, SHELL_EXCLUDED, SmoothScrollProvider()
+Cohesion: 0.07
+Nodes (9): metadata, sora, metadata, viewport, MobileNav(), NAV_ITEMS, NavItem, SHELL_EXCLUDED (+1 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.24
+Cohesion: 0.22
 Nodes (13): EditMemberClient(), Props, Step, Props, Attendance, formatMemberId(), Gym, Member (+5 more)
 
 ### Community 7 - "Community 7"
@@ -133,12 +129,12 @@ Cohesion: 0.10
 Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+11 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.14
-Nodes (18): INDIA_CITIES, loc(), norm(), phonetic(), PONDICHERRY_LOCALITIES, PUDUCHERRY_CITIES, SEED_LOCALITIES, SeedLocality (+10 more)
+Cohesion: 0.13
+Nodes (19): INDIA_CITIES, loc(), norm(), phonetic(), PONDICHERRY_LOCALITIES, PUDUCHERRY_CITIES, SEED_LOCALITIES, SEED_LOCALITIES_DEDUPED (+11 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.10
-Nodes (19): 1. Database Migrations, 1. Multi-Gym Isolation (RLS), 2. Geo Normalization, 2. Shared Logic (the `lib/` directory), 3. Bulk Import, 3. Component Organization, 🤖 AI Integration, 🏗️ Architectural Patterns (+11 more)
+Cohesion: 0.13
+Nodes (20): 1. Database Migrations, 1. Multi-Gym Isolation (RLS), 2. Geo Normalization, 2. Shared Logic (the `lib/` directory), 3. Bulk Import, 3. Component Organization, 🤖 AI Integration, 🏗️ Architectural Patterns (+12 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.24
@@ -149,12 +145,12 @@ Cohesion: 0.20
 Nodes (7): ModeFilter, Payment, PaymentsClient(), PendingMember, Period, ProductSale, Props
 
 ### Community 12 - "Community 12"
-Cohesion: 0.12
-Nodes (16): 1. Row Level Security (RLS) is Law, 1. The Geo Intelligence Engine (`lib/geo/`), 2. Bulk Import Pipeline (`lib/import/`), 2. Multi-Tenant Data Isolation, 3. Client & Server Components, 3. Onboarding Wizard (`app/onboarding/`), 4. Dashboard & Reports (`app/dashboard/`, `app/reports/`), 4. UI/UX & Design System (+8 more)
+Cohesion: 0.16
+Nodes (17): 1. Row Level Security (RLS) is Law, 1. The Geo Intelligence Engine (`lib/geo/`), 2. Bulk Import Pipeline (`lib/import/`), 2. Multi-Tenant Data Isolation, 3. Client & Server Components, 3. Onboarding Wizard (`app/onboarding/`), 4. Dashboard & Reports (`app/dashboard/`, `app/reports/`), 4. UI/UX & Design System (+9 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.14
-Nodes (13): API Routes, code:block1 (gymflow/), code:bash (# Required), code:bash (# Option A: CLI), Core Modules, Deployment to Vercel, Environment Variables, Features (+5 more)
+Cohesion: 0.05
+Nodes (50): API Routes, Authentication & Routing, Bulk Import Pipeline, code:block1 (gymflow/), code:bash (# Required), code:sql (UPDATE gyms SET onboarding_completed = TRUE), code:bash (cd gymflow), code:block5 (POST /api/geo/seed) (+42 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.16
@@ -165,8 +161,8 @@ Cohesion: 0.20
 Nodes (10): 🔷 Agent 8 — FEATURE EXPANSION STRATEGIST, Exploratory, Feature Backlog You Maintain, High Priority, How You Communicate, Identity, Medium Priority, Recently Shipped ✅ (+2 more)
 
 ### Community 18 - "Community 18"
-Cohesion: 0.22
-Nodes (9): code:sql (UPDATE gyms SET onboarding_completed = TRUE), code:bash (cd gymflow), code:block5 (POST /api/geo/seed), Setup Instructions, Step 1: Create Supabase Project, Step 2: Run Database Schema, Step 3: Create a Gym Owner User, Step 4: Local Development (+1 more)
+Cohesion: 0.08
+Nodes (25): dependencies, jose, lucide-react, next, react, react-dom, react-hot-toast, @supabase/supabase-js (+17 more)
 
 ### Community 20 - "Community 20"
 Cohesion: 0.25
@@ -213,104 +209,80 @@ Cohesion: 0.33
 Nodes (6): 🟠 Agent 9 — DEVOPS & INFRASTRUCTURE ENGINEER, How You Communicate, Identity, Improvement Areas You Own, Your Constraints & Rules, Your Expertise
 
 ### Community 32 - "Community 32"
-Cohesion: 0.40
-Nodes (5): Core Tables, Database Schema, Geo Tables, Key Constraints, Migrations (all in `supabase-schema.sql`)
+Cohesion: 0.18
+Nodes (13): resolveErrorAction(), ErrorsPage(), DashboardPage(), getSentryEvents(), getSentryIssue(), getSentryIssues(), getSentryStats(), projectBase() (+5 more)
 
 ### Community 33 - "Community 33"
-Cohesion: 0.40
-Nodes (5): Color Palette (Tailwind tokens), Component Classes (defined in `globals.css`), Custom Animations, Design System, Typography
+Cohesion: 0.10
+Nodes (20): compilerOptions, allowJs, baseUrl, esModuleInterop, incremental, isolatedModules, jsx, lib (+12 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.40
-Nodes (5): Confidence Thresholds, Geo Intelligence Engine, Normalization Pipeline (11 steps, priority order), Phonetic Key Rules, `searchLocalities()`
-
-### Community 35 - "Community 35"
-Cohesion: 0.40
-Nodes (5): Key Patterns & Conventions, Naming Conventions, Performance Optimizations (`next.config.js`), TypeScript Types (`types/index.ts`), Utility Functions (`lib/utils.ts`)
+Cohesion: 0.38
+Nodes (8): DashboardPage(), DashboardPage(), getDashboardData(), MemberDetailPage(), getDaysRemaining(), getMemberStatus(), getMembersData(), MembersPage()
 
 ### Community 36 - "Community 36"
 Cohesion: 0.40
 Nodes (4): [2023-10-27] Reports Page Redesign & PDF Hardening, Learning, Security Fix, Sentinel Journal 🛡️
 
-### Community 37 - "Community 37"
-Cohesion: 0.40
-Nodes (3): InventoryProduct, InventorySale, Props
-
-### Community 39 - "Community 39"
-Cohesion: 0.50
-Nodes (4): Authentication & Routing, Layout Guards, Login Page, Middleware (`middleware.ts`)
-
 ### Community 41 - "Community 41"
-Cohesion: 0.67
-Nodes (3): Bulk Import Pipeline, Pipeline Stages (in `lib/import/pipeline.ts`), Supported Import Fields
+Cohesion: 0.50
+Nodes (3): content, files, fs
+
+### Community 49 - "Community 49"
+Cohesion: 0.50
+Nodes (3): nextConfig, securityHeaders, { withSentryConfig }
 
 ### Community 60 - "Community 60"
-Cohesion: 0.29
-Nodes (3): BarcodeScannerModalProps, InventoryUnit, Props
+Cohesion: 0.10
+Nodes (16): getCachedInventory(), getCachedInventoryItem(), getCachedInventorySales(), getCachedInventorySiblings(), InventoryItemPage(), invalidateInventoryCache(), invalidateInventoryItemCache(), BarcodeScannerModalProps (+8 more)
 
 ### Community 62 - "Community 62"
 Cohesion: 0.17
 Nodes (10): DashboardClient(), Props, StatCardCurrency(), CONFETTI_COLORS, GettingStartedChecklist(), Particle, Task, TASKS (+2 more)
 
 ### Community 64 - "Community 64"
-Cohesion: 0.16
-Nodes (12): DashboardPage(), getDashboardData(), cacheWrapper(), deleteCache(), getCache(), globalCacheStats, invalidatePattern(), logCacheMetric() (+4 more)
-
-### Community 65 - "Community 65"
-Cohesion: 0.25
-Nodes (6): AreaMeta, EditedRow, EditMembersClient(), MemberRow, Props, Step
+Cohesion: 0.05
+Nodes (30): fetchAttendanceLogsAction(), AttendanceLog, AttendanceLogClient(), Props, AttendanceLogPage(), getAttendanceLogs(), cacheWrapper(), deleteCache() (+22 more)
 
 ### Community 66 - "Community 66"
-Cohesion: 0.24
-Nodes (8): DueMember, DuesClient(), Props, MemberDetailPage(), getDaysRemaining(), getMemberStatus(), PAYMENT_MODE_LABELS, PLAN_LABELS
+Cohesion: 0.15
+Nodes (8): AttendanceClient(), AttendanceMember, MessageState, Props, DueMember, DuesClient(), Props, createClient()
 
 ### Community 67 - "Community 67"
-Cohesion: 0.23
-Nodes (11): ExpiringMemberRow(), MemberDetailClient(), buildWhatsAppLink(), calcEndDate(), formatDate(), getPlanDuration(), isValidPhone(), MembershipPlan (+3 more)
-
-### Community 68 - "Community 68"
-Cohesion: 0.40
-Nodes (3): AttendanceClient(), AttendanceMember, Props
+Cohesion: 0.21
+Nodes (14): ExpiringMemberRow(), MemberDetailClient(), buildCustomWhatsAppLink(), buildWhatsAppLink(), calcEndDate(), formatDate(), getPlanDuration(), isValidPhone() (+6 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.31
-Nodes (7): cn(), FilterType, MembersClient(), MembersContent(), Props, ReportsClient(), MemberWithStatus
-
-### Community 70 - "Community 70"
-Cohesion: 0.22
-Nodes (8): buildCustomWhatsAppLink(), ExpiringMember, InventorySaleMonthly, MemberDue, MonthData, Props, RecentSale, TabType
-
-### Community 71 - "Community 71"
-Cohesion: 0.25
-Nodes (5): DoneResult, EDIT_FIELDS, Step, searchLocalities(), WizardHeaderProps
+Cohesion: 0.15
+Nodes (16): cn(), exportMembersToExcelAction(), loadMoreMembersAction(), FilterType, MembersClient(), MembersContent(), Props, ExpiringMember (+8 more)
 
 ### Community 72 - "Community 72"
 Cohesion: 0.32
 Nodes (6): DailyReportData, escapeHtml(), generateDailyCollectionPDF(), generateDailyReportPDF(), NewMemberRow, PaymentRow
 
 ### Community 74 - "Community 74"
-Cohesion: 0.33
-Nodes (4): NotFound(), EditMemberPage(), EditProgramPage(), InventoryItemPage()
+Cohesion: 0.07
+Nodes (26): NotFound(), POST(), EditMemberPage(), POST(), metadata, RootLayout(), redis, config (+18 more)
 
 ## Knowledge Gaps
-- **303 isolated node(s):** `PROTECTED_PREFIXES`, `config`, `securityHeaders`, `nextConfig`, `name` (+298 more)
+- **359 isolated node(s):** `PROTECTED_PREFIXES`, `config`, `securityHeaders`, `nextConfig`, `{ withSentryConfig }` (+354 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **10 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `createClient()` connect `Community 0` to `Community 64`, `Community 1`, `Community 66`, `Community 65`, `Community 68`, `Community 69`, `Community 4`, `Community 74`, `Community 11`, `Community 20`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
-- **Why does `createClient()` connect `Community 63` to `Community 65`, `Community 66`, `Community 2`, `Community 4`, `Community 68`, `Community 69`, `Community 71`, `Community 67`, `Community 73`, `Community 6`, `Community 11`, `Community 37`, `Community 20`, `Community 60`, `Community 62`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
-- **Why does `searchLocalities()` connect `Community 71` to `Community 65`, `Community 73`, `Community 1`, `Community 8`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
+- **Why does `createClient()` connect `Community 0` to `Community 64`, `Community 1`, `Community 66`, `Community 34`, `Community 2`, `Community 69`, `Community 6`, `Community 4`, `Community 11`, `Community 20`, `Community 60`?**
+  _High betweenness centrality (0.081) - this node is a cross-community bridge._
+- **Why does `invalidatePattern()` connect `Community 64` to `Community 74`?**
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Why does `createClient()` connect `Community 66` to `Community 64`, `Community 2`, `Community 67`, `Community 4`, `Community 69`, `Community 6`, `Community 5`, `Community 11`, `Community 20`, `Community 60`, `Community 62`?**
+  _High betweenness centrality (0.043) - this node is a cross-community bridge._
 - **What connects `PROTECTED_PREFIXES`, `config`, `securityHeaders` to the rest of the system?**
-  _303 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _359 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.051929824561403506 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0656010656010656 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.09502262443438914 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09959183673469388 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.10752688172043011 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05323653962492438 - nodes in this community are weakly interconnected._

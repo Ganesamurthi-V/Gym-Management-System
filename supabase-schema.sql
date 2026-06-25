@@ -531,7 +531,7 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS google_longitude      NUMERIC(10, 7
 CREATE INDEX IF NOT EXISTS idx_members_google_place_id ON members(google_place_id) WHERE google_place_id IS NOT NULL;
 
 -- NOTE: google_place_id is supplementary metadata only.
--- The canonical area is still stored in members.area (free text, normalized by GymDesk pipeline).
+-- The canonical area is still stored in members.area (free text, normalized by GymFlow pipeline).
 -- Do NOT use google_place_id as a foreign key or canonical identifier.
 
 -- Migration: Add legacy_member_id column to members table
@@ -548,7 +548,7 @@ ALTER TABLE members
 
 COMMENT ON COLUMN members.legacy_member_id IS
   'Original member ID from an external/legacy system, preserved during import. '
-  'The canonical GymDesk ID is derived from member_number as GF + zero-padded 4 digits.';
+  'The canonical GymFlow ID is derived from member_number as GF + zero-padded 4 digits.';
 
 -- ================================================
 -- INVENTORY

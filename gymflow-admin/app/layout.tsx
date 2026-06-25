@@ -5,8 +5,8 @@ import { getAdminSession } from '@/lib/auth'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
-  title: 'GymDesk Admin',
-  description: 'Super Admin Panel — GymDesk',
+  title: 'GymFlow Admin',
+  description: 'Super Admin Panel — GymFlow',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

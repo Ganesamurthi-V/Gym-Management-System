@@ -1,9 +1,9 @@
-# GymDesk - Project Instructions & Conventions
+# GymFlow - Project Instructions & Conventions
 
-This document outlines the architectural patterns, coding standards, and development workflows for the GymDesk project. Adhere to these guidelines to ensure consistency and maintainability.
+This document outlines the architectural patterns, coding standards, and development workflows for the GymFlow project. Adhere to these guidelines to ensure consistency and maintainability.
 
 ## 🚀 Overview
-GymDesk is a full-stack gym management SaaS built for small to mid-size gyms in Tamil Nadu and Puducherry, India.
+GymFlow is a full-stack gym management SaaS built for small to mid-size gyms in Tamil Nadu and Puducherry, India.
 
 - **Frontend:** Next.js 15 (App Router)
 - **Backend:** Supabase (PostgreSQL, Auth, RLS)

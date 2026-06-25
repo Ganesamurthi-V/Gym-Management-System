@@ -13,8 +13,8 @@ const NAV_ITEMS = [
   { label: 'Dues',       href: '/dues',         icon: AlertIcon },
   { label: 'Attendance', href: '/attendance',   icon: CalendarIcon },
   { label: 'Inventory',  href: '/inventory',    icon: BoxIcon },
-  { label: 'Programs',   href: '/programs', icon: ActivityIcon },
-  { label: 'Reports',    href: '/reports',      icon: ChartIcon },
+  { label: 'Programs',   href: '#', icon: ActivityIcon, comingSoon: true },
+  { label: 'Reports',    href: '#',      icon: ChartIcon, comingSoon: true },
 ] as const
 
 // ── Desktop sidebar nav ───────────────────────────────────────────────────────
@@ -24,13 +24,16 @@ export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {
 
   return (
     <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
-      {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-        const active = isActive(href)
+      {NAV_ITEMS.map(({ label, href, icon: Icon, comingSoon }) => {
+        const active = isActive(href) && !comingSoon
         return (
           <Link
-            key={href}
+            key={label}
             href={href}
-            onClick={e => e.stopPropagation()}
+            onClick={e => {
+              e.stopPropagation()
+              if (comingSoon) e.preventDefault()
+            }}
             title={collapsed ? label : undefined}
             className={`
               flex items-center rounded-xl text-sm font-medium transition-all group
@@ -47,10 +50,15 @@ export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {
 
             {/* Label — fades out when collapsed */}
             <span className={`
-              whitespace-nowrap overflow-hidden transition-all duration-200
+              whitespace-nowrap overflow-hidden transition-all duration-200 flex items-center gap-2
               ${collapsed ? 'w-0 opacity-0 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100 group-hover/sidebar:flex-1' : 'flex-1 opacity-100'}
             `}>
               {label}
+              {comingSoon && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 uppercase tracking-wider border border-amber-200/50 ${collapsed ? 'hidden group-hover/sidebar:inline-block' : 'inline-block'}`}>
+                  Soon
+                </span>
+              )}
             </span>
 
             {/* Active dot — only when expanded */}
@@ -98,13 +106,19 @@ export function MobileNav() {
           </button>
         </div>
         <nav className="px-3 py-3 space-y-1">
-          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-            const active = isActive(href)
+          {NAV_ITEMS.map(({ label, href, icon: Icon, comingSoon }) => {
+            const active = isActive(href) && !comingSoon
             return (
               <Link
-                key={href}
+                key={label}
                 href={href}
-                onClick={() => setOpen(false)}
+                onClick={(e) => {
+                  if (comingSoon) {
+                    e.preventDefault()
+                  } else {
+                    setOpen(false)
+                  }
+                }}
                 className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all ${
                   active ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'
                 }`}
@@ -115,7 +129,12 @@ export function MobileNav() {
                   <Icon className={`w-4 h-4 ${active ? 'text-brand-600' : 'text-slate-500'}`} />
                 </div>
                 <span>{label}</span>
-                {active && <span className="ml-auto w-2 h-2 rounded-full bg-brand-500" />}
+                {comingSoon && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 uppercase tracking-wider border border-amber-200/50">
+                    Soon
+                  </span>
+                )}
+                {active && !comingSoon && <span className="ml-auto w-2 h-2 rounded-full bg-brand-500" />}
               </Link>
             )
           })}

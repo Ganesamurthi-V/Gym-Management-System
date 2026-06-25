@@ -21,6 +21,11 @@ type MessageState = {
     memberId: string
     expiryDate: string
   }
+  attendanceInfo?: {
+    checkInTime: string
+    checkOutTime?: string
+    duration?: string
+  }
 }
 
 export function AttendanceClient({ gymId, gymName, today, totalPresent: initialPresent }: Props) {
@@ -96,7 +101,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
       // 2. Check today's attendance
       const { data: attData, error: attError } = await supabase
         .from('attendance')
-        .select('id, check_out_time')
+        .select('id, created_at, check_out_time')
         .eq('gym_id', gymId)
         .eq('member_id', memberData.id)
         .eq('date', today)
@@ -104,33 +109,78 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
       if (!attData) {
         // Check In
+        const now = new Date()
         const { error: insertError } = await supabase
           .from('attendance')
           .insert({
             gym_id: gymId,
             member_id: memberData.id,
-            date: today
+            date: today,
+            created_at: now.toISOString()
           })
 
         if (insertError) throw insertError
         
         setTotalPresent(p => p + 1)
-        setMessage({ type: 'success', text: `Checked IN successfully.`, memberInfo })
+        setMessage({ 
+          type: 'success', 
+          text: `Checked IN successfully.`, 
+          memberInfo,
+          attendanceInfo: { checkInTime: format(now, 'hh:mm a') }
+        })
       } else {
         // Record exists
+        const checkInDate = new Date(attData.created_at)
+
         if (!attData.check_out_time) {
           // Check Out
+          const now = new Date()
           const { error: updateError } = await supabase
             .from('attendance')
-            .update({ check_out_time: new Date().toISOString() })
+            .update({ check_out_time: now.toISOString() })
             .eq('id', attData.id)
 
           if (updateError) throw updateError
           
-          setMessage({ type: 'success', text: `Checked OUT successfully.`, memberInfo })
+          const diffMs = now.getTime() - checkInDate.getTime()
+          const diffMins = Math.floor(diffMs / 60000)
+          const hrs = Math.floor(diffMins / 60)
+          const mins = diffMins % 60
+          let durationStr = ''
+          if (hrs > 0) durationStr += `${hrs}hr `
+          durationStr += `${mins}min`
+
+          setMessage({ 
+            type: 'success', 
+            text: `Checked OUT successfully.`, 
+            memberInfo,
+            attendanceInfo: {
+              checkInTime: format(checkInDate, 'hh:mm a'),
+              checkOutTime: format(now, 'hh:mm a'),
+              duration: durationStr.trim()
+            }
+          })
         } else {
           // Already checked out
-          setMessage({ type: 'info', text: `Already checked out today.`, memberInfo })
+          const checkOutDate = new Date(attData.check_out_time)
+          const diffMs = checkOutDate.getTime() - checkInDate.getTime()
+          const diffMins = Math.floor(diffMs / 60000)
+          const hrs = Math.floor(diffMins / 60)
+          const mins = diffMins % 60
+          let durationStr = ''
+          if (hrs > 0) durationStr += `${hrs}hr `
+          durationStr += `${mins}min`
+
+          setMessage({ 
+            type: 'info', 
+            text: `Already checked out today.`, 
+            memberInfo,
+            attendanceInfo: {
+              checkInTime: format(checkInDate, 'hh:mm a'),
+              checkOutTime: format(checkOutDate, 'hh:mm a'),
+              duration: durationStr.trim()
+            }
+          })
         }
       }
     } catch (err: any) {
@@ -147,16 +197,16 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
     <div className="relative w-full h-[85vh] flex flex-col items-center justify-center p-4 md:p-8 animate-slide-up overflow-hidden rounded-3xl">
       <div className="w-full max-w-5xl flex flex-col items-center z-10">
         
-        <div className="text-center mb-10 md:mb-16">
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight mb-3">
+        <div className="text-center mb-10 md:mb-12">
+          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-2">
             {gymName}
           </h1>
-          <p className="text-lg md:text-xl text-slate-500 font-bold tracking-widest uppercase">Self-Service Attendance</p>
+          <p className="text-base md:text-lg text-slate-500 font-bold tracking-widest uppercase">Self-Service Attendance</p>
           <p className="text-sm text-slate-400 mt-2">{displayDate}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="w-full flex flex-col items-center">
-          <div className="w-full max-w-3xl space-y-6">
+          <div className="w-full max-w-2xl space-y-4">
             <label htmlFor="memberId" className="block text-sm md:text-base font-bold text-slate-400 text-center uppercase tracking-widest">
               Enter your Member ID
             </label>
@@ -171,14 +221,14 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
               value={memberId}
               onChange={(e) => setMemberId(e.target.value)}
               placeholder="1042"
-              className="w-full text-center text-7xl md:text-9xl font-black text-brand-600 bg-transparent border-b-4 border-slate-200 py-6 focus:border-brand-500 transition-colors outline-none placeholder:text-slate-200 placeholder:font-bold"
+              className="w-full text-center text-5xl md:text-6xl font-black text-brand-600 bg-transparent border-b-2 border-slate-200 py-4 focus:border-brand-500 transition-colors outline-none placeholder:text-slate-200 placeholder:font-bold"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading || !memberId.trim()}
-            className="w-full max-w-sm mt-12 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-5 md:py-6 font-bold text-xl md:text-2xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20"
+            className="w-full max-w-sm mt-10 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-4 md:py-5 font-bold text-lg md:text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20"
           >
             {isLoading ? (
               <Loader2 className="w-8 h-8 animate-spin" />
@@ -204,28 +254,49 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
         message.type === 'info' ? 'bg-amber-500/95 text-white opacity-100 visible' :
         'opacity-0 invisible pointer-events-none'
       )}>
-        {message.type === 'success' && <CheckCircle2 className="w-24 h-24 md:w-32 md:h-32 mb-6 md:mb-8 animate-bounce drop-shadow-lg" />}
-        {message.type === 'error' && <XCircle className="w-24 h-24 md:w-32 md:h-32 mb-6 md:mb-8 drop-shadow-lg" />}
-        {message.type === 'info' && <CheckCircle2 className="w-24 h-24 md:w-32 md:h-32 mb-6 md:mb-8 drop-shadow-lg" />}
+        {message.type === 'success' && <CheckCircle2 className="w-20 h-20 md:w-24 md:h-24 mb-6 md:mb-8 animate-bounce drop-shadow-lg" />}
+        {message.type === 'error' && <XCircle className="w-20 h-20 md:w-24 md:h-24 mb-6 md:mb-8 drop-shadow-lg" />}
+        {message.type === 'info' && <CheckCircle2 className="w-20 h-20 md:w-24 md:h-24 mb-6 md:mb-8 drop-shadow-lg" />}
         
-        <h2 className="text-4xl md:text-6xl font-black leading-tight drop-shadow-md mb-8 md:mb-12 max-w-4xl">
+        <h2 className="text-3xl md:text-5xl font-black leading-tight drop-shadow-md mb-8 max-w-4xl">
           {message.text}
         </h2>
 
+        {message.attendanceInfo && (
+           <div className="bg-white text-slate-800 rounded-3xl p-5 mb-6 shadow-2xl w-full max-w-md ring-4 ring-white/20">
+             {message.attendanceInfo.duration ? (
+               <div className="text-center">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Workout Duration</p>
+                 <p className="text-3xl font-black text-emerald-600 my-1">{message.attendanceInfo.duration}</p>
+                 <p className="text-xs font-semibold text-slate-500 mt-2">
+                   <span className="bg-slate-100 px-2 py-1 rounded-md">In: {message.attendanceInfo.checkInTime}</span> 
+                   <span className="mx-2 text-slate-300">&bull;</span> 
+                   <span className="bg-slate-100 px-2 py-1 rounded-md">Out: {message.attendanceInfo.checkOutTime}</span>
+                 </p>
+               </div>
+             ) : (
+               <div className="text-center">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Check-in Time</p>
+                 <p className="text-3xl font-black text-emerald-600 my-1">{message.attendanceInfo.checkInTime}</p>
+               </div>
+             )}
+           </div>
+        )}
+
         {message.memberInfo && (
-          <div className="bg-white/20 backdrop-blur-lg rounded-3xl p-6 md:p-10 w-full max-w-2xl text-left border border-white/20 shadow-2xl">
-            <div className="grid grid-cols-2 gap-6 md:gap-8">
+          <div className="bg-white/20 backdrop-blur-lg rounded-3xl p-6 w-full max-w-lg text-left border border-white/20 shadow-xl">
+            <div className="grid grid-cols-2 gap-4 md:gap-6">
               <div className="col-span-2 md:col-span-1">
-                <p className="text-xs md:text-sm uppercase text-white/80 font-bold tracking-widest mb-1">Name</p>
-                <p className="font-bold text-2xl md:text-3xl leading-tight truncate drop-shadow-sm">{message.memberInfo.name}</p>
+                <p className="text-[10px] md:text-xs uppercase text-white/80 font-bold tracking-widest mb-1">Name</p>
+                <p className="font-bold text-xl md:text-2xl leading-tight truncate drop-shadow-sm">{message.memberInfo.name}</p>
               </div>
               <div className="col-span-2 md:col-span-1">
-                <p className="text-xs md:text-sm uppercase text-white/80 font-bold tracking-widest mb-1">ID</p>
-                <p className="font-bold text-2xl md:text-3xl leading-tight drop-shadow-sm">{message.memberInfo.memberId}</p>
+                <p className="text-[10px] md:text-xs uppercase text-white/80 font-bold tracking-widest mb-1">ID</p>
+                <p className="font-bold text-xl md:text-2xl leading-tight drop-shadow-sm">{message.memberInfo.memberId}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-xs md:text-sm uppercase text-white/80 font-bold tracking-widest mb-1">Plan Expires</p>
-                <p className="font-bold text-2xl md:text-3xl leading-tight drop-shadow-sm">{message.memberInfo.expiryDate}</p>
+                <p className="text-[10px] md:text-xs uppercase text-white/80 font-bold tracking-widest mb-1">Plan Expires</p>
+                <p className="font-bold text-xl md:text-2xl leading-tight drop-shadow-sm">{message.memberInfo.expiryDate}</p>
               </div>
             </div>
           </div>

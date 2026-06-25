@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
+import { createClient } from '@/lib/supabase/client'
 
 const SHELL_EXCLUDED = ['/auth/', '/onboarding']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
@@ -32,7 +33,26 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
     setMounted(true)
-  }, [])
+
+    if (isShellless) return
+
+    const supabase = createClient()
+    
+    const checkAuth = async () => {
+      const { error } = await supabase.auth.getUser()
+      if (error) {
+        // User is invalid or banned, force logout
+        await supabase.auth.signOut()
+        window.location.href = '/auth/login'
+      }
+    }
+
+    // Check immediately and on window focus
+    checkAuth()
+    window.addEventListener('focus', checkAuth)
+    
+    return () => window.removeEventListener('focus', checkAuth)
+  }, [isShellless])
 
   function toggle() {
     setCollapsed(prev => {

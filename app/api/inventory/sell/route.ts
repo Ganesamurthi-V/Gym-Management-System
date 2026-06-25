@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/inventory/actions'
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,6 +84,8 @@ export async function POST(req: NextRequest) {
     if (stockError) {
       return NextResponse.json({ error: stockError.message }, { status: 500 })
     }
+
+    await invalidateInventoryItemCache(gym.id, inventoryId)
 
     return NextResponse.json({
       success: true,

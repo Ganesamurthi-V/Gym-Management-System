@@ -43,7 +43,7 @@ export interface SentryEvent {
 
 export async function getSentryIssues(query = '', limit = 50): Promise<SentryIssue[]> {
   const url = `${projectBase()}/issues/?limit=${limit}&query=${encodeURIComponent(query)}&sort=date`
-  const res = await fetch(url, { headers: sentryHeaders(), next: { revalidate: 60 } })
+  const res = await fetch(url, { headers: sentryHeaders(), cache: 'no-store' })
   if (!res.ok) throw new Error(`Sentry API error: ${res.status}`)
   return res.json()
 }
@@ -51,14 +51,14 @@ export async function getSentryIssues(query = '', limit = 50): Promise<SentryIss
 export async function getSentryIssue(issueId: string): Promise<SentryIssue> {
   const org = process.env.SENTRY_ORG
   const url = `${SENTRY_BASE}/organizations/${org}/issues/${issueId}/`
-  const res = await fetch(url, { headers: sentryHeaders(), next: { revalidate: 30 } })
+  const res = await fetch(url, { headers: sentryHeaders(), cache: 'no-store' })
   if (!res.ok) throw new Error(`Sentry API error: ${res.status}`)
   return res.json()
 }
 
 export async function getSentryEvents(limit = 100): Promise<SentryEvent[]> {
   const url = `${projectBase()}/events/?limit=${limit}&full=true`
-  const res = await fetch(url, { headers: sentryHeaders(), next: { revalidate: 30 } })
+  const res = await fetch(url, { headers: sentryHeaders(), cache: 'no-store' })
   if (!res.ok) throw new Error(`Sentry API error: ${res.status}`)
   return res.json()
 }

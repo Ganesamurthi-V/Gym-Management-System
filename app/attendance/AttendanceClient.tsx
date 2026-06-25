@@ -16,6 +16,11 @@ interface Props {
 type MessageState = {
   type: 'success' | 'error' | 'info' | null
   text: string
+  memberInfo?: {
+    name: string
+    memberId: string
+    expiryDate: string
+  }
 }
 
 export function AttendanceClient({ gymId, gymName, today, totalPresent: initialPresent }: Props) {
@@ -62,7 +67,12 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
       // 1. Find member
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('id, name')
+        .select(`
+          id, 
+          name,
+          member_number,
+          memberships(end_date)
+        `)
         .eq('gym_id', gymId)
         .eq('member_number', numId)
         .single()
@@ -70,6 +80,17 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
       if (memberError || !memberData) {
         setMessage({ type: 'error', text: 'Member ID not found. Please try again.' })
         return
+      }
+
+      const memberships = memberData.memberships as { end_date: string }[] ?? []
+      const latestEndDate = memberships.reduce((max, ms) => ms.end_date > max ? ms.end_date : max, '')
+      const expiryText = latestEndDate ? format(new Date(latestEndDate), 'dd MMM yyyy') : 'No active plan'
+      const formattedId = `GF${String(memberData.member_number).padStart(4, '0')}`
+
+      const memberInfo = {
+        name: memberData.name,
+        memberId: formattedId,
+        expiryDate: expiryText
       }
 
       // 2. Check today's attendance
@@ -94,7 +115,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
         if (insertError) throw insertError
         
         setTotalPresent(p => p + 1)
-        setMessage({ type: 'success', text: `Welcome, ${memberData.name}! Checked IN successfully.` })
+        setMessage({ type: 'success', text: `Checked IN successfully.`, memberInfo })
       } else {
         // Record exists
         if (!attData.check_out_time) {
@@ -106,10 +127,10 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
           if (updateError) throw updateError
           
-          setMessage({ type: 'success', text: `Goodbye, ${memberData.name}! Checked OUT successfully.` })
+          setMessage({ type: 'success', text: `Checked OUT successfully.`, memberInfo })
         } else {
           // Already checked out
-          setMessage({ type: 'info', text: `${memberData.name}, you have already checked out today.` })
+          setMessage({ type: 'info', text: `Already checked out today.`, memberInfo })
         }
       }
     } catch (err: any) {
@@ -144,7 +165,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
               <input
                 ref={inputRef}
                 id="memberId"
-                type="number"
+                type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="off"
@@ -152,7 +173,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
                 value={memberId}
                 onChange={(e) => setMemberId(e.target.value)}
                 placeholder="e.g. 1042"
-                className="w-full text-center text-5xl md:text-6xl font-black text-brand-600 bg-slate-50/50 border-2 border-slate-200 rounded-3xl py-8 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/20 transition-all outline-none placeholder:text-slate-200 placeholder:font-bold"
+                className="w-full text-center text-4xl font-black text-brand-600 bg-slate-50 border-2 border-slate-200 rounded-2xl py-5 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/20 transition-all outline-none placeholder:text-slate-300 placeholder:font-normal"
               />
             </div>
 
@@ -171,19 +192,38 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
           {/* Success / Error Overlay */}
           <div className={cn(
-            "absolute inset-0 z-20 flex flex-col items-center justify-center p-8 text-center transition-all duration-300",
+            "absolute inset-0 z-20 flex flex-col items-center justify-center p-6 md:p-8 text-center transition-all duration-300",
             message.type === 'success' ? 'bg-gradient-to-br from-emerald-400 to-emerald-500 text-white opacity-100 visible' :
             message.type === 'error' ? 'bg-gradient-to-br from-red-400 to-red-500 text-white opacity-100 visible' :
             message.type === 'info' ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-white opacity-100 visible' :
             'opacity-0 invisible pointer-events-none'
           )}>
-            {message.type === 'success' && <CheckCircle2 className="w-24 h-24 mb-6 animate-bounce drop-shadow-md" />}
-            {message.type === 'error' && <XCircle className="w-24 h-24 mb-6 drop-shadow-md" />}
-            {message.type === 'info' && <CheckCircle2 className="w-24 h-24 mb-6 drop-shadow-md" />}
+            {message.type === 'success' && <CheckCircle2 className="w-16 h-16 mb-4 animate-bounce drop-shadow-md" />}
+            {message.type === 'error' && <XCircle className="w-16 h-16 mb-4 drop-shadow-md" />}
+            {message.type === 'info' && <CheckCircle2 className="w-16 h-16 mb-4 drop-shadow-md" />}
             
-            <h2 className="text-3xl md:text-4xl font-black leading-tight drop-shadow-sm">
+            <h2 className="text-2xl md:text-3xl font-black leading-tight drop-shadow-sm mb-6">
               {message.text}
             </h2>
+
+            {message.memberInfo && (
+              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 w-full text-left">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 md:col-span-1">
+                    <p className="text-[10px] uppercase text-white/70 font-bold tracking-wider">Name</p>
+                    <p className="font-semibold text-lg leading-tight truncate">{message.memberInfo.name}</p>
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <p className="text-[10px] uppercase text-white/70 font-bold tracking-wider">ID</p>
+                    <p className="font-semibold text-lg leading-tight">{message.memberInfo.memberId}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] uppercase text-white/70 font-bold tracking-wider">Plan Expires</p>
+                    <p className="font-semibold text-lg leading-tight">{message.memberInfo.expiryDate}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

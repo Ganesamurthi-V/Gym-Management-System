@@ -319,6 +319,10 @@ function MembersContent({ members, gymId, totalCount }: Props) {
             <Edit2 className="w-4 h-4" />
             <span className="hidden sm:inline">Edit Members</span>
           </Link>
+          <Link href="/members/attendance" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+            <Calendar className="w-4 h-4" />
+            <span className="hidden sm:inline">Attendance Log</span>
+          </Link>
           <Link href="/members/new" className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Add Member</span>

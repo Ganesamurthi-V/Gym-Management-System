@@ -1,25 +1,59 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense, useEffect, useDeferredValue } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 import Link from 'next/link'
-import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar } from 'lucide-react'
+import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
 
+import { loadMoreMembersAction, exportMembersToExcelAction } from './actions'
+
 interface Props {
   members: MemberWithStatus[]
   gymId: string
+  totalCount: number
 }
 
 type FilterType = 'all' | 'active' | 'expiring' | 'expired'
 
-export function MembersClient({ members, gymId }: Props) {
+export function MembersClient({ members, gymId, totalCount }: Props) {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
+      <MembersContent members={members} gymId={gymId} totalCount={totalCount} />
+    </Suspense>
+  )
+}
+
+function MembersContent({ members, gymId, totalCount }: Props) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [search, setSearch] = useState('')
   const [idSearch, setIdSearch] = useState('')
-  const [filter, setFilter] = useState<FilterType>('all')
+  const deferredSearch = useDeferredValue(search)
+  const deferredIdSearch = useDeferredValue(idSearch)
+  
+  // Read initial filter from URL if present
+  const urlFilter = searchParams.get('filter') as FilterType | null
+  const validFilters: FilterType[] = ['all', 'active', 'expiring', 'expired']
+  const [filter, setFilter] = useState<FilterType>(
+    urlFilter && validFilters.includes(urlFilter) ? urlFilter : 'all'
+  )
+
+  useEffect(() => {
+    if (urlFilter && validFilters.includes(urlFilter)) {
+      setFilter(urlFilter)
+    }
+  }, [urlFilter])
+  
   const [showAdvFilterModal, setShowAdvFilterModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportFrom, setExportFrom] = useState('')
+  const [exportTo, setExportTo] = useState('')
+  const [exportStatus, setExportStatus] = useState<FilterType | 'all'>('all')
   const [advFilters, setAdvFilters] = useState({
     quick: null as string | null,
     status: [] as string[],
@@ -31,9 +65,14 @@ export function MembersClient({ members, gymId }: Props) {
   })
   const [fixing, setFixing] = useState(false)
   const supabase = createClient()
+  
+  // Load More state
+  const [membersList, setMembersList] = useState(members)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const hasMore = membersList.length < totalCount
 
   // Detect duplicate member_numbers
-  const numCount = members.reduce((acc, m) => {
+  const numCount = membersList.reduce((acc, m) => {
     if (m.member_number != null) acc[m.member_number] = (acc[m.member_number] ?? 0) + 1
     return acc
   }, {} as Record<number, number>)
@@ -69,15 +108,32 @@ export function MembersClient({ members, gymId }: Props) {
     }
 
     setFixing(false)
-    window.location.reload()
+    toast.success('Duplicate IDs fixed successfully!')
+    router.refresh()
   }
 
-  const uniquePlans = Array.from(new Set(members.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const res = await loadMoreMembersAction(gymId, membersList.length, 200)
+      if (res.success && res.data) {
+        setMembersList(prev => [...prev, ...res.data!])
+      } else {
+        toast.error(res.error || 'Failed to load more members')
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
-  const filtered = members
+  const uniquePlans = Array.from(new Set(membersList.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]
+
+  const filtered = membersList
     .filter((m) => {
-      const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search)
-      const matchesId = idSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(idSearch.toLowerCase()))
+      const matchesSearch = m.name.toLowerCase().includes(deferredSearch.toLowerCase()) || m.phone.includes(deferredSearch)
+      const matchesId = deferredIdSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(deferredIdSearch.toLowerCase()))
       const matchesFilter = filter === 'all' || m.status === filter
       
       let matchesAdv = true
@@ -172,16 +228,16 @@ export function MembersClient({ members, gymId }: Props) {
       return matchesSearch && matchesId && matchesFilter && matchesAdv
     })
     .sort((a, b) => {
-      if (idSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
+      if (deferredIdSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
       return 0
     })
 
   const counts = {
-    all:      members.length,
-    active:   members.filter(m => m.status === 'active').length,
-    expiring: members.filter(m => m.status === 'expiring').length,
-    expired:  members.filter(m => m.status === 'expired').length,
-    overdue:  members.filter(m => (m.pending_amount ?? 0) > 0).length,
+    all:      membersList.length,
+    active:   membersList.filter(m => m.status === 'active').length,
+    expiring: membersList.filter(m => m.status === 'expiring').length,
+    expired:  membersList.filter(m => m.status === 'expired').length,
+    overdue:  membersList.filter(m => (m.pending_amount ?? 0) > 0).length,
   }
 
   const filterConfig: { key: FilterType; label: string; activeClass: string }[] = [
@@ -203,6 +259,36 @@ export function MembersClient({ members, gymId }: Props) {
     expired:  'bg-red-400',
   }
 
+  const [exporting, setExporting] = useState(false)
+  async function exportExcel() {
+    setExporting(true)
+    const tid = toast.loading("Generating Excel in the cloud...")
+    try {
+      const res = await exportMembersToExcelAction(gymId, exportStatus, exportFrom, exportTo)
+      if (!res.success) throw new Error(res.error || "Export failed")
+      
+      const binaryString = window.atob(res.fileBase64!)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+      const blob = new Blob([bytes.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `gymflow-members-${formatDate(new Date().toISOString())}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      toast.success(`Exported ${res.count} members successfully!`, { id: tid })
+      setShowExportModal(false)
+    } catch (err: any) {
+      toast.error(err.message, { id: tid })
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
       {/* Page header */}
@@ -220,6 +306,10 @@ export function MembersClient({ members, gymId }: Props) {
                 !
               </span>
             )}
+          </button>
+          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
           </button>
           <Link href="/import" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Upload className="w-4 h-4" />
@@ -246,7 +336,9 @@ export function MembersClient({ members, gymId }: Props) {
           </div>
           <div>
             <p className="text-xs text-[#475569] font-semibold">Total Members</p>
-            <p className="text-lg font-bold text-[#1D4ED8]">{counts.all}</p>
+            <p className="text-lg font-bold text-[#1D4ED8]">
+              {membersList.length} <span className="text-xs font-normal text-slate-400">/ {totalCount}</span>
+            </p>
           </div>
         </div>
 
@@ -374,11 +466,11 @@ export function MembersClient({ members, gymId }: Props) {
                       target="_blank" rel="noopener noreferrer"
                       onClick={() => {
                         try {
-                          const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                          const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
                           const parsed = new Set(saved ? JSON.parse(saved) : [])
                           if (!parsed.has('send_reminder')) {
                             parsed.add('send_reminder')
-                            localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                            localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
                             window.dispatchEvent(new Event('storage'))
                           }
                         } catch {}
@@ -449,7 +541,18 @@ export function MembersClient({ members, gymId }: Props) {
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-slate-500">{member.phone}</td>
-                  <td className="px-5 py-3.5 text-slate-500 capitalize">{member.latest_membership?.plan ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-slate-500">
+                    {member.latest_membership ? (
+                      <div className="flex flex-col">
+                        <span className="capitalize text-slate-900 font-medium">{member.latest_membership.plan}</span>
+                        <span className="text-xs text-slate-400">
+                          {member.latest_membership.category === 'both' || !member.latest_membership.category 
+                            ? 'Strength + Cardio' 
+                            : member.latest_membership.category.charAt(0).toUpperCase() + member.latest_membership.category.slice(1)}
+                        </span>
+                      </div>
+                    ) : '—'}
+                  </td>
                   <td className="px-5 py-3.5 text-slate-500">
                     {member.latest_membership ? (
                       <span>{formatDate(member.latest_membership.end_date)}
@@ -470,11 +573,11 @@ export function MembersClient({ members, gymId }: Props) {
                             target="_blank" rel="noopener noreferrer"
                             onClick={() => {
                               try {
-                                const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+                                const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
                                 const parsed = new Set(saved ? JSON.parse(saved) : [])
                                 if (!parsed.has('send_reminder')) {
                                   parsed.add('send_reminder')
-                                  localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+                                  localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
                                   window.dispatchEvent(new Event('storage'))
                                 }
                               } catch {}
@@ -503,6 +606,19 @@ export function MembersClient({ members, gymId }: Props) {
           </table>
         </div>
       </div>
+
+      {/* Load More Button */}
+      {hasMore && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {loadingMore ? 'Loading...' : `Load Next 200 (Showing ${membersList.length} of ${totalCount})`}
+          </button>
+        </div>
+      )}
 
       {/* Advanced Filter Modal */}
       {showAdvFilterModal && (
@@ -702,6 +818,50 @@ export function MembersClient({ members, gymId }: Props) {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-pop-in">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-800">Export Members</h3>
+              <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="p-5 space-y-5">
+              <p className="text-sm text-slate-500">Choose a custom joined date range or member status. Leave blank to export all {filtered.length} currently filtered members.</p>
+              
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">Member Status</label>
+                <select 
+                  value={exportStatus} 
+                  onChange={e => setExportStatus(e.target.value as FilterType | 'all')}
+                  className="input-field w-full bg-slate-50"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active Only</option>
+                  <option value="expiring">Expiring Soon</option>
+                  <option value="expired">Expired Only</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">Joined From Date</label>
+                  <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)} className="input-field w-full bg-slate-50" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">Joined To Date</label>
+                  <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)} className="input-field w-full bg-slate-50" />
+                </div>
+              </div>
+            </div>
+            <div className="p-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+              <button onClick={() => setShowExportModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Cancel</button>
+              <button onClick={() => { setShowExportModal(false); exportExcel(); }} className="px-4 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors flex items-center gap-2"><Download className="w-4 h-4"/> Download Excel</button>
             </div>
           </div>
         </div>

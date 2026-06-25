@@ -108,16 +108,32 @@ export async function runImportPipeline(
   // ── Stage 4 & 5 & 6: ID assignment + phone dedup ─────────────────────────
   onStage?.("ids");
 
-  // Fetch existing DB state
-  const [existingMembersRes, existingNumsRes] = gym
-    ? await Promise.all([
-        supabase.from("members").select("phone").eq("gym_id", gym.id) as unknown as Promise<{ data: { phone: string }[] | null }>,
-        supabase.from("members").select("member_number").eq("gym_id", gym.id) as unknown as Promise<{ data: { member_number: number }[] | null }>,
-      ])
-    : [{ data: null }, { data: null }];
+  // Fetch existing DB state, avoiding memory exhaustion at scale
+  let existingPhones: string[] = [];
+  let existingNums: number[] = [];
+  let maxNum = 0;
 
-  const dbPhones = new Set((existingMembersRes.data ?? []).map(m => m.phone));
-  const dbNums   = new Set((existingNumsRes.data ?? []).map(m => m.member_number));
+  if (gym) {
+    const filePhones = Array.from(new Set(parsed.map(r => r.phone).filter(Boolean)));
+    const fileNums = Array.from(new Set(parsed.map(r => parseInt(r.member_number)).filter(n => !isNaN(n))));
+
+    const [phonesRes, numsRes, maxRes] = await Promise.all([
+      filePhones.length > 0 
+        ? supabase.from("members").select("phone").eq("gym_id", gym.id).in("phone", filePhones)
+        : Promise.resolve({ data: [] }),
+      fileNums.length > 0
+        ? supabase.from("members").select("member_number").eq("gym_id", gym.id).in("member_number", fileNums)
+        : Promise.resolve({ data: [] }),
+      supabase.from("members").select("member_number").eq("gym_id", gym.id).order("member_number", { ascending: false }).limit(1)
+    ]);
+
+    existingPhones = (phonesRes.data as any[] ?? []).map(m => m.phone);
+    existingNums = (numsRes.data as any[] ?? []).map(m => m.member_number);
+    maxNum = (maxRes.data as any[])?.[0]?.member_number ?? 0;
+  }
+
+  const dbPhones = new Set(existingPhones);
+  const dbNums = new Set(existingNums);
 
   // Phone dedup within file
   const phoneCount = new Map<string, number>();
@@ -133,10 +149,10 @@ export async function runImportPipeline(
 
   // ID assignment
   const assignedNums = new Set<string>();
+  let nextId = maxNum + 1;
   function nextAvailable(): string {
-    let n = 1;
-    while (dbNums.has(n) || assignedNums.has(String(n))) n++;
-    return String(n);
+    while (assignedNums.has(String(nextId))) nextId++;
+    return String(nextId++);
   }
 
   const seenNums = new Set<string>();

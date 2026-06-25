@@ -93,7 +93,7 @@ A 6-step setup flow for new gym owners covering:
 ## 🔄 Current Project Status (As of May 2026)
 
 - **Completed:** Auth, Onboarding, Dashboard, Member CRUD, Bulk Import Pipeline, Geo Intelligence Engine, Attendance, Reports, Account Settings.
-- **Recent Updates:** Integrated Lenis smooth scroll globally, refined the 6-step onboarding wizard, added Google Places metadata to members, implemented PDF daily collection reports.
+- **Recent Updates:** Integrated Lenis smooth scroll globally, refined the 6-step onboarding wizard, added Google Places metadata to members, implemented PDF daily collection reports, and added APM-style structured Request Logging (`lib/logger.ts`) for detailed performance tracing.
 - **Stable:** The core architecture is stable and production-ready.
 
 ## 📌 Agent Directives

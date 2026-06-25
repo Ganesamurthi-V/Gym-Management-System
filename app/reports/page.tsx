@@ -46,48 +46,61 @@ async function getReportsData(gymId: string, logger: RequestLogger) {
 export default async function ReportsPage() {
   const logger = new RequestLogger('REPORTS')
   
-  logger.start('AUTH')
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  logger.end('AUTH')
-  
-  if (!user) return null
+  try {
+    logger.start('AUTH')
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    logger.end('AUTH')
+    logger.step('AFTER AUTH')
+    
+    if (!user) return null
 
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id, name')
-    .eq('owner_id', user.id)
-    .single()
+    logger.start('QUERY gyms')
+    const { data: gym } = await supabase
+      .from('gyms')
+      .select('id, name')
+      .eq('owner_id', user.id)
+      .single()
+    logger.end('QUERY gyms')
 
-  if (!gym) {
+    if (!gym) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+          <p className="text-2xl font-bold text-slate-300">No gym found</p>
+          <p className="text-sm text-slate-400">Set up your gym profile first to see reports.</p>
+        </div>
+      )
+    }
+
+    logger.start('QUERY gymProfile')
+    const { data: gymProfile } = await supabase
+      .from('gyms')
+      .select('city, gst_number, phone')
+      .eq('id', gym.id)
+      .single()
+      .then(r => r.error ? { data: null } : r)
+    logger.end('QUERY gymProfile')
+
+    const cacheKey = `gym:${gym.id}:reports`
+    logger.start('CACHE')
+    const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, logger), logger)
+    logger.end('CACHE')
+    
+    logger.setPayload(reportsData)
+    logger.summary()
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
-        <p className="text-2xl font-bold text-slate-300">No gym found</p>
-        <p className="text-sm text-slate-400">Set up your gym profile first to see reports.</p>
-      </div>
+      <ReportsClient
+        {...reportsData}
+        gymName={gym.name}
+        gymCity={gymProfile?.city ?? null}
+        gymGST={gymProfile?.gst_number ?? null}
+        gymPhone={gymProfile?.phone ?? null}
+        gymId={gym.id}
+      />
     )
+  } catch (error: any) {
+    logger.error('ERROR', error)
+    throw error
   }
-
-  const { data: gymProfile } = await supabase
-    .from('gyms')
-    .select('city, gst_number, phone')
-    .eq('id', gym.id)
-    .single()
-    .then(r => r.error ? { data: null } : r)
-
-  const cacheKey = `gym:${gym.id}:reports`
-  const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, logger), logger)
-  
-  logger.summary()
-
-  return (
-    <ReportsClient
-      {...reportsData}
-      gymName={gym.name}
-      gymCity={gymProfile?.city ?? null}
-      gymGST={gymProfile?.gst_number ?? null}
-      gymPhone={gymProfile?.phone ?? null}
-      gymId={gym.id}
-    />
-  )
 }

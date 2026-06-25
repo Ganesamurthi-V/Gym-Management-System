@@ -2,11 +2,12 @@ import type { Metadata, Viewport } from 'next'
 import { Sora } from 'next/font/google'
 import AppShell from '@/components/layout/AppShell'
 import './globals.css'
+import { Toaster } from 'react-hot-toast'
 
 const sora = Sora({ subsets: ['latin'], variable: '--font-sora' })
 
 export const metadata: Metadata = {
-  title: 'GymDesk — Gym Management',
+  title: 'gymflow — Gym Management',
   description: 'A powerful, intelligent management system for modern fitness centers in Tamil Nadu and Puducherry.',
   icons: { icon: '/favicon.ico' },
 }
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SmoothScrollProvider>
           <AppShell>{children}</AppShell>
         </SmoothScrollProvider>
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       </body>
     </html>
   )

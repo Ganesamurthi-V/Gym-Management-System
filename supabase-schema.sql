@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS memberships (
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   plan TEXT NOT NULL CHECK (plan IN ('monthly', 'quarterly', 'annual')),
+  category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both',
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   amount INTEGER NOT NULL DEFAULT 0,
@@ -61,6 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_memberships_gym_id ON memberships(gym_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_member_id ON memberships(member_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_end_date ON memberships(end_date);
 CREATE INDEX IF NOT EXISTS idx_memberships_start_date ON memberships(gym_id, start_date);
+CREATE INDEX IF NOT EXISTS idx_memberships_member_created ON memberships(member_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
@@ -185,6 +187,7 @@ ALTER TABLE memberships ADD COLUMN IF NOT EXISTS admission_fee INTEGER NOT NULL 
 -- [Migration 4] Add performance indexes
 CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
 CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_number);
+CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at DESC);
 
 -- [Migration 5] Add age to members
 ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age < 120);
@@ -318,7 +321,7 @@ CREATE POLICY "Gym owners can manage their own gym aliases"
   ON geo_gym_aliases FOR ALL
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = geo_gym_aliases.gym_id AND owner_id = auth.uid())
-    AND (created_by = auth.uid() OR created_by IS NULL)
+    AND created_by = auth.uid()
   );
 
 CREATE POLICY "Gym owners can view their normalization logs"
@@ -328,7 +331,6 @@ CREATE POLICY "Gym owners can view their normalization logs"
 CREATE POLICY "Gym owners can insert normalization logs"
   ON geo_normalization_log FOR INSERT
   WITH CHECK (
-    gym_id IS NULL OR
     EXISTS (SELECT 1 FROM gyms WHERE id = geo_normalization_log.gym_id AND owner_id = auth.uid())
   );
 
@@ -338,7 +340,8 @@ CREATE POLICY "Gym owners can view their review queue"
 
 CREATE POLICY "Gym owners can manage their review queue"
   ON geo_review_queue FOR ALL
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()));
 
 -- ── Helper functions (called by API routes via supabase.rpc) ─────────────────
 
@@ -568,7 +571,14 @@ CREATE POLICY "Gym owners can delete inventory"
 
 CREATE OR REPLACE FUNCTION increment_inventory_stock(p_inventory_id UUID, amount INTEGER)
 RETURNS VOID AS $$
+DECLARE
+  v_gym_id UUID;
 BEGIN
+  SELECT gym_id INTO v_gym_id FROM inventory WHERE id = p_inventory_id;
+  IF NOT EXISTS (SELECT 1 FROM gyms WHERE id = v_gym_id AND owner_id = auth.uid()) THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
+
   UPDATE inventory
   SET initial_stock = GREATEST(0, initial_stock + amount),
       updated_at = NOW()
@@ -616,9 +626,11 @@ CREATE POLICY "Gym owners can insert inventory sales"
 
 CREATE POLICY "Gym owners can delete inventory sales"
   ON inventory_sales FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update inventory sales"
+  ON inventory_sales FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
 
 -- ================================================
 -- WORKOUT PROGRAMS
@@ -674,9 +686,14 @@ CREATE POLICY "Gym owners can delete programs"
     EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
   );
 
+-- ================================================
+-- [Migration 11] Add Category to Memberships
+-- ================================================
+
+ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both';
 
 -- ================================================
--- [Migration 11] Dashboard RPC
+-- [Migration 12] Dashboard RPC
 -- ================================================
 
 CREATE OR REPLACE FUNCTION get_gym_dashboard(p_gym_id UUID, p_today DATE)
@@ -777,7 +794,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ================================================
--- [Migration 12] Reports RPC
+-- [Migration 13] Reports RPC
 -- ================================================
 
 CREATE OR REPLACE FUNCTION get_gym_reports(p_gym_id UUID, p_today DATE)

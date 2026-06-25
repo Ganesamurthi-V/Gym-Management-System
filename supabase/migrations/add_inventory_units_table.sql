@@ -58,4 +58,4 @@ BEGIN
       updated_at = NOW()
   WHERE id = p_inventory_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = '';

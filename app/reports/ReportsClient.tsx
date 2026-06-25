@@ -14,8 +14,6 @@ import {
 } from 'recharts'
 import { formatCurrency, formatDate, buildCustomWhatsAppLink, cn } from '@/lib/utils'
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 // Types matched with app/reports/page.tsx
 interface MonthData {
@@ -103,11 +101,11 @@ export function ReportsClient({
     
     // Mark task as complete when genuinely used
     try {
-      const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+      const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
       const parsed = new Set(saved ? JSON.parse(saved) : [])
       if (!parsed.has('check_reports')) {
         parsed.add('check_reports')
-        localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+        localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
         window.dispatchEvent(new Event('storage'))
       }
     } catch {}
@@ -361,11 +359,11 @@ export function ReportsClient({
 
     // Mark task as complete
     try {
-      const saved = localStorage.getItem(`gymdesk_getting_started_${gymId}`)
+      const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
       const parsed = new Set(saved ? JSON.parse(saved) : [])
       if (!parsed.has('send_reminder')) {
         parsed.add('send_reminder')
-        localStorage.setItem(`gymdesk_getting_started_${gymId}`, JSON.stringify([...parsed]))
+        localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
         window.dispatchEvent(new Event('storage'))
       }
     } catch {}
@@ -379,9 +377,11 @@ export function ReportsClient({
   }
 
   // Premium PDF report generation
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     setIsGeneratingPDF(true)
     try {
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
       const doc = new jsPDF()
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(22)
@@ -399,7 +399,7 @@ export function ReportsClient({
         body: bodyData,
       })
 
-      doc.save(`GymDesk-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+      doc.save(`gymflow-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
     } catch (err) {
       console.error(err)
     } finally {

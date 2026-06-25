@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
@@ -21,14 +22,14 @@ export default async function MembersPage() {
   if (!gym) return null
 
   // Paginated fetch — only select columns needed for the list view
-  const { data: members } = await supabase
+  const { data: members, count } = await supabase
     .from('members')
     .select(`
-      id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at,
+      id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id,
       memberships(
-        id, plan, start_date, end_date, amount, payment_mode, created_at, member_id, gym_id
+        id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id
       )
-    `)
+    `, { count: 'exact' })
     .eq('gym_id', gym.id)
     .order('name')
     .limit(PAGE_SIZE)
@@ -69,11 +70,16 @@ export default async function MembersPage() {
       status,
       days_remaining,
       join_date,
+      legacy_member_id: m.legacy_member_id
     }
   }).sort((a, b) => {
     const order = { expiring: 0, active: 1, expired: 2 }
     return order[a.status] - order[b.status]
   })
 
-  return <MembersClient members={result} gymId={gym.id} />
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
+      <MembersClient members={result} gymId={gym.id} totalCount={count ?? 0} />
+    </Suspense>
+  )
 }

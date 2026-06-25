@@ -58,10 +58,19 @@
       "norm_label": "next.config.js"
     },
     {
+      "label": "securityHeaders",
+      "file_type": "code",
+      "source_file": "next.config.js",
+      "source_location": "L1",
+      "id": "gymflow_next_config_securityheaders",
+      "community": 49,
+      "norm_label": "securityheaders"
+    },
+    {
       "label": "nextConfig",
       "file_type": "code",
       "source_file": "next.config.js",
-      "source_location": "L2",
+      "source_location": "L25",
       "id": "gymflow_next_config_nextconfig",
       "community": 49,
       "norm_label": "nextconfig"
@@ -148,10 +157,19 @@
       "norm_label": "lint"
     },
     {
+      "label": "prepare",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L10",
+      "id": "gymflow_package_scripts_prepare",
+      "community": 3,
+      "norm_label": "prepare"
+    },
+    {
       "label": "dependencies",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L11",
+      "source_location": "L12",
       "id": "gymflow_package_dependencies",
       "community": 3,
       "norm_label": "dependencies"
@@ -160,7 +178,7 @@
       "label": "@googlemaps/js-api-loader",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L12",
+      "source_location": "L13",
       "id": "gymflow_package_dependencies_googlemaps_js_api_loader",
       "community": 3,
       "norm_label": "@googlemaps/js-api-loader"
@@ -169,7 +187,7 @@
       "label": "@studio-freight/react-lenis",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L13",
+      "source_location": "L14",
       "id": "gymflow_package_dependencies_studio_freight_react_lenis",
       "community": 3,
       "norm_label": "@studio-freight/react-lenis"
@@ -178,7 +196,7 @@
       "label": "@supabase/ssr",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L14",
+      "source_location": "L15",
       "id": "gymflow_package_dependencies_supabase_ssr",
       "community": 3,
       "norm_label": "@supabase/ssr"
@@ -187,16 +205,34 @@
       "label": "@supabase/supabase-js",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L15",
+      "source_location": "L16",
       "id": "gymflow_package_dependencies_supabase_supabase_js",
       "community": 3,
       "norm_label": "@supabase/supabase-js"
     },
     {
+      "label": "@upstash/ratelimit",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L17",
+      "id": "gymflow_package_dependencies_upstash_ratelimit",
+      "community": 3,
+      "norm_label": "@upstash/ratelimit"
+    },
+    {
+      "label": "@upstash/redis",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L18",
+      "id": "gymflow_package_dependencies_upstash_redis",
+      "community": 3,
+      "norm_label": "@upstash/redis"
+    },
+    {
       "label": "clsx",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L16",
+      "source_location": "L19",
       "id": "gymflow_package_dependencies_clsx",
       "community": 3,
       "norm_label": "clsx"
@@ -205,7 +241,7 @@
       "label": "date-fns",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L17",
+      "source_location": "L20",
       "id": "gymflow_package_dependencies_date_fns",
       "community": 3,
       "norm_label": "date-fns"
@@ -214,7 +250,7 @@
       "label": "exceljs",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L18",
+      "source_location": "L21",
       "id": "gymflow_package_dependencies_exceljs",
       "community": 3,
       "norm_label": "exceljs"
@@ -223,7 +259,7 @@
       "label": "framer-motion",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L19",
+      "source_location": "L22",
       "id": "gymflow_package_dependencies_framer_motion",
       "community": 3,
       "norm_label": "framer-motion"
@@ -232,7 +268,7 @@
       "label": "jspdf",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L20",
+      "source_location": "L23",
       "id": "gymflow_package_dependencies_jspdf",
       "community": 3,
       "norm_label": "jspdf"
@@ -241,7 +277,7 @@
       "label": "jspdf-autotable",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L21",
+      "source_location": "L24",
       "id": "gymflow_package_dependencies_jspdf_autotable",
       "community": 3,
       "norm_label": "jspdf-autotable"
@@ -250,7 +286,7 @@
       "label": "lenis",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L22",
+      "source_location": "L25",
       "id": "gymflow_package_dependencies_lenis",
       "community": 3,
       "norm_label": "lenis"
@@ -259,7 +295,7 @@
       "label": "lucide-react",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L23",
+      "source_location": "L26",
       "id": "gymflow_package_dependencies_lucide_react",
       "community": 3,
       "norm_label": "lucide-react"
@@ -268,7 +304,7 @@
       "label": "next",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L27",
       "id": "gymflow_package_dependencies_next",
       "community": 3,
       "norm_label": "next"
@@ -277,7 +313,7 @@
       "label": "react",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L25",
+      "source_location": "L28",
       "id": "gymflow_package_dependencies_react",
       "community": 3,
       "norm_label": "react"
@@ -286,16 +322,25 @@
       "label": "react-dom",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L29",
       "id": "gymflow_package_dependencies_react_dom",
       "community": 3,
       "norm_label": "react-dom"
     },
     {
+      "label": "react-hot-toast",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L30",
+      "id": "gymflow_package_dependencies_react_hot_toast",
+      "community": 3,
+      "norm_label": "react-hot-toast"
+    },
+    {
       "label": "recharts",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L27",
+      "source_location": "L31",
       "id": "gymflow_package_dependencies_recharts",
       "community": 3,
       "norm_label": "recharts"
@@ -304,7 +349,7 @@
       "label": "tailwind-merge",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L28",
+      "source_location": "L32",
       "id": "gymflow_package_dependencies_tailwind_merge",
       "community": 3,
       "norm_label": "tailwind-merge"
@@ -313,7 +358,7 @@
       "label": "use-places-autocomplete",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L29",
+      "source_location": "L33",
       "id": "gymflow_package_dependencies_use_places_autocomplete",
       "community": 3,
       "norm_label": "use-places-autocomplete"
@@ -322,7 +367,7 @@
       "label": "devDependencies",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L31",
+      "source_location": "L35",
       "id": "gymflow_package_devdependencies",
       "community": 3,
       "norm_label": "devdependencies"
@@ -331,7 +376,7 @@
       "label": "@types/node",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L32",
+      "source_location": "L36",
       "id": "gymflow_package_devdependencies_types_node",
       "community": 3,
       "norm_label": "@types/node"
@@ -340,7 +385,7 @@
       "label": "@types/react",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L33",
+      "source_location": "L37",
       "id": "gymflow_package_devdependencies_types_react",
       "community": 3,
       "norm_label": "@types/react"
@@ -349,7 +394,7 @@
       "label": "@types/react-dom",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L34",
+      "source_location": "L38",
       "id": "gymflow_package_devdependencies_types_react_dom",
       "community": 3,
       "norm_label": "@types/react-dom"
@@ -358,7 +403,7 @@
       "label": "@typescript-eslint/parser",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L35",
+      "source_location": "L39",
       "id": "gymflow_package_devdependencies_typescript_eslint_parser",
       "community": 3,
       "norm_label": "@typescript-eslint/parser"
@@ -367,7 +412,7 @@
       "label": "autoprefixer",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L36",
+      "source_location": "L40",
       "id": "gymflow_package_devdependencies_autoprefixer",
       "community": 3,
       "norm_label": "autoprefixer"
@@ -376,7 +421,7 @@
       "label": "eslint",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L37",
+      "source_location": "L41",
       "id": "gymflow_package_devdependencies_eslint",
       "community": 3,
       "norm_label": "eslint"
@@ -385,16 +430,25 @@
       "label": "eslint-config-next",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L38",
+      "source_location": "L42",
       "id": "gymflow_package_devdependencies_eslint_config_next",
       "community": 3,
       "norm_label": "eslint-config-next"
     },
     {
+      "label": "husky",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L43",
+      "id": "gymflow_package_devdependencies_husky",
+      "community": 3,
+      "norm_label": "husky"
+    },
+    {
       "label": "postcss",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L39",
+      "source_location": "L44",
       "id": "gymflow_package_devdependencies_postcss",
       "community": 3,
       "norm_label": "postcss"
@@ -403,7 +457,7 @@
       "label": "tailwindcss",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L40",
+      "source_location": "L45",
       "id": "gymflow_package_devdependencies_tailwindcss",
       "community": 3,
       "norm_label": "tailwindcss"
@@ -412,7 +466,7 @@
       "label": "typescript",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L41",
+      "source_location": "L46",
       "id": "gymflow_package_devdependencies_typescript",
       "community": 3,
       "norm_label": "typescript"
@@ -643,6 +697,32 @@
       "norm_label": "beforetool"
     },
     {
+      "label": "husky.sh",
+      "file_type": "code",
+      "source_file": ".husky/_/husky.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "id": "husky_husky_sh",
+      "community": 75,
+      "norm_label": "husky.sh"
+    },
+    {
+      "label": "husky.sh script",
+      "file_type": "code",
+      "source_file": ".husky/_/husky.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "id": "c_gym_management_system_gymflow_husky_husky_sh__entry",
+      "community": 75,
+      "norm_label": "husky.sh script"
+    },
+    {
       "label": "layout.tsx",
       "file_type": "code",
       "source_file": "app/layout.tsx",
@@ -655,7 +735,7 @@
       "label": "sora",
       "file_type": "code",
       "source_file": "app/layout.tsx",
-      "source_location": "L6",
+      "source_location": "L7",
       "id": "app_layout_sora",
       "community": 5,
       "norm_label": "sora"
@@ -664,7 +744,7 @@
       "label": "metadata",
       "file_type": "code",
       "source_file": "app/layout.tsx",
-      "source_location": "L8",
+      "source_location": "L9",
       "id": "app_layout_metadata",
       "community": 5,
       "norm_label": "metadata"
@@ -673,7 +753,7 @@
       "label": "viewport",
       "file_type": "code",
       "source_file": "app/layout.tsx",
-      "source_location": "L14",
+      "source_location": "L15",
       "id": "app_layout_viewport",
       "community": 5,
       "norm_label": "viewport"
@@ -682,10 +762,28 @@
       "label": "RootLayout()",
       "file_type": "code",
       "source_file": "app/layout.tsx",
-      "source_location": "L22",
+      "source_location": "L23",
       "id": "app_layout_rootlayout",
       "community": 5,
       "norm_label": "rootlayout()"
+    },
+    {
+      "label": "loading.tsx",
+      "file_type": "code",
+      "source_file": "app/loading.tsx",
+      "source_location": "L1",
+      "id": "app_loading_tsx",
+      "community": 61,
+      "norm_label": "loading.tsx"
+    },
+    {
+      "label": "GlobalLoading()",
+      "file_type": "code",
+      "source_file": "app/loading.tsx",
+      "source_location": "L3",
+      "id": "app_loading_globalloading",
+      "community": 61,
+      "norm_label": "globalloading()"
     },
     {
       "label": "not-found.tsx",
@@ -693,7 +791,7 @@
       "source_file": "app/not-found.tsx",
       "source_location": "L1",
       "id": "app_not_found_tsx",
-      "community": 31,
+      "community": 74,
       "norm_label": "not-found.tsx"
     },
     {
@@ -702,7 +800,7 @@
       "source_file": "app/not-found.tsx",
       "source_location": "L3",
       "id": "app_not_found_notfound",
-      "community": 31,
+      "community": 74,
       "norm_label": "notfound()"
     },
     {
@@ -945,7 +1043,7 @@
       "source_file": "app/api/geo/cluster-detect/route.ts",
       "source_location": "L1",
       "id": "app_api_geo_cluster_detect_route_ts",
-      "community": 0,
+      "community": 1,
       "norm_label": "route.ts"
     },
     {
@@ -954,7 +1052,7 @@
       "source_file": "app/api/geo/cluster-detect/route.ts",
       "source_location": "L6",
       "id": "cluster_detect_route_post",
-      "community": 0,
+      "community": 1,
       "norm_label": "post()"
     },
     {
@@ -1267,7 +1365,7 @@
       "label": "PATCH()",
       "file_type": "code",
       "source_file": "app/api/members/[id]/route.ts",
-      "source_location": "L43",
+      "source_location": "L46",
       "id": "id_route_patch",
       "community": 0,
       "norm_label": "patch()"
@@ -1294,7 +1392,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "app/api/onboarding/complete/route.ts",
-      "source_location": "L15",
+      "source_location": "L16",
       "id": "complete_route_post",
       "community": 0,
       "norm_label": "post()"
@@ -1330,7 +1428,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "app/api/payments/route.ts",
-      "source_location": "L49",
+      "source_location": "L50",
       "id": "payments_route_post",
       "community": 0,
       "norm_label": "post()"
@@ -1485,7 +1583,7 @@
       "source_file": "app/dashboard/DashboardClient.tsx",
       "source_location": "L1",
       "id": "app_dashboard_dashboardclient_tsx",
-      "community": 6,
+      "community": 62,
       "norm_label": "dashboardclient.tsx"
     },
     {
@@ -1494,7 +1592,7 @@
       "source_file": "app/dashboard/DashboardClient.tsx",
       "source_location": "L15",
       "id": "dashboard_dashboardclient_props",
-      "community": 6,
+      "community": 62,
       "norm_label": "props"
     },
     {
@@ -1503,43 +1601,43 @@
       "source_file": "app/dashboard/DashboardClient.tsx",
       "source_location": "L22",
       "id": "dashboard_dashboardclient_dashboardclient",
-      "community": 6,
+      "community": 62,
       "norm_label": "dashboardclient()"
     },
     {
       "label": "ExpiringContent()",
       "file_type": "code",
       "source_file": "app/dashboard/DashboardClient.tsx",
-      "source_location": "L186",
+      "source_location": "L251",
       "id": "dashboard_dashboardclient_expiringcontent",
-      "community": 6,
+      "community": 62,
       "norm_label": "expiringcontent()"
     },
     {
       "label": "StatCard()",
       "file_type": "code",
       "source_file": "app/dashboard/DashboardClient.tsx",
-      "source_location": "L224",
+      "source_location": "L304",
       "id": "dashboard_dashboardclient_statcard",
-      "community": 6,
+      "community": 62,
       "norm_label": "statcard()"
     },
     {
       "label": "StatCardCurrency()",
       "file_type": "code",
       "source_file": "app/dashboard/DashboardClient.tsx",
-      "source_location": "L236",
+      "source_location": "L316",
       "id": "dashboard_dashboardclient_statcardcurrency",
-      "community": 6,
+      "community": 62,
       "norm_label": "statcardcurrency()"
     },
     {
       "label": "ExpiringMemberRow()",
       "file_type": "code",
       "source_file": "app/dashboard/DashboardClient.tsx",
-      "source_location": "L250",
+      "source_location": "L330",
       "id": "dashboard_dashboardclient_expiringmemberrow",
-      "community": 66,
+      "community": 67,
       "norm_label": "expiringmemberrow()"
     },
     {
@@ -1548,7 +1646,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L1",
       "id": "app_dashboard_gettingstartedchecklist_tsx",
-      "community": 6,
+      "community": 62,
       "norm_label": "gettingstartedchecklist.tsx"
     },
     {
@@ -1557,7 +1655,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L16",
       "id": "dashboard_gettingstartedchecklist_task",
-      "community": 6,
+      "community": 62,
       "norm_label": "task"
     },
     {
@@ -1566,7 +1664,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L31",
       "id": "dashboard_gettingstartedchecklist_tasks",
-      "community": 6,
+      "community": 62,
       "norm_label": "tasks"
     },
     {
@@ -1575,7 +1673,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L86",
       "id": "dashboard_gettingstartedchecklist_particle",
-      "community": 6,
+      "community": 62,
       "norm_label": "particle"
     },
     {
@@ -1584,7 +1682,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L100",
       "id": "dashboard_gettingstartedchecklist_confetti_colors",
-      "community": 6,
+      "community": 62,
       "norm_label": "confetti_colors"
     },
     {
@@ -1593,7 +1691,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L108",
       "id": "dashboard_gettingstartedchecklist_createparticles",
-      "community": 6,
+      "community": 62,
       "norm_label": "createparticles()"
     },
     {
@@ -1602,7 +1700,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L126",
       "id": "dashboard_gettingstartedchecklist_celebrationmodal",
-      "community": 6,
+      "community": 62,
       "norm_label": "celebrationmodal()"
     },
     {
@@ -1611,7 +1709,7 @@
       "source_file": "app/dashboard/GettingStartedChecklist.tsx",
       "source_location": "L309",
       "id": "dashboard_gettingstartedchecklist_gettingstartedchecklist",
-      "community": 6,
+      "community": 62,
       "norm_label": "gettingstartedchecklist()"
     },
     {
@@ -1656,25 +1754,25 @@
       "source_file": "app/dashboard/page.tsx",
       "source_location": "L1",
       "id": "app_dashboard_page_tsx",
-      "community": 0,
+      "community": 64,
       "norm_label": "page.tsx"
     },
     {
       "label": "getDashboardData()",
       "file_type": "code",
       "source_file": "app/dashboard/page.tsx",
-      "source_location": "L7",
+      "source_location": "L11",
       "id": "dashboard_page_getdashboarddata",
-      "community": 0,
+      "community": 64,
       "norm_label": "getdashboarddata()"
     },
     {
       "label": "DashboardPage()",
       "file_type": "code",
       "source_file": "app/dashboard/page.tsx",
-      "source_location": "L50",
+      "source_location": "L82",
       "id": "dashboard_page_dashboardpage",
-      "community": 0,
+      "community": 64,
       "norm_label": "dashboardpage()"
     },
     {
@@ -1683,7 +1781,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L1",
       "id": "app_dues_duesclient_tsx",
-      "community": 69,
+      "community": 66,
       "norm_label": "duesclient.tsx"
     },
     {
@@ -1692,7 +1790,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L9",
       "id": "dues_duesclient_duemember",
-      "community": 69,
+      "community": 66,
       "norm_label": "duemember"
     },
     {
@@ -1701,7 +1799,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L18",
       "id": "dues_duesclient_props",
-      "community": 69,
+      "community": 66,
       "norm_label": "props"
     },
     {
@@ -1710,7 +1808,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L24",
       "id": "dues_duesclient_duesclient",
-      "community": 69,
+      "community": 66,
       "norm_label": "duesclient()"
     },
     {
@@ -1737,7 +1835,7 @@
       "source_file": "app/dues/page.tsx",
       "source_location": "L1",
       "id": "app_dues_page_tsx",
-      "community": 69,
+      "community": 66,
       "norm_label": "page.tsx"
     },
     {
@@ -1746,7 +1844,7 @@
       "source_file": "app/dues/page.tsx",
       "source_location": "L5",
       "id": "dues_page_duespage",
-      "community": 69,
+      "community": 66,
       "norm_label": "duespage()"
     },
     {
@@ -1789,7 +1887,7 @@
       "label": "EXPECTED_COLUMNS",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L49",
+      "source_location": "L50",
       "id": "import_page_expected_columns",
       "community": 2,
       "norm_label": "expected_columns"
@@ -1798,7 +1896,7 @@
       "label": "COLUMN_ALIASES",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L62",
+      "source_location": "L64",
       "id": "import_page_column_aliases",
       "community": 2,
       "norm_label": "column_aliases"
@@ -1807,7 +1905,7 @@
       "label": "norm()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L340",
+      "source_location": "L346",
       "id": "import_page_norm",
       "community": 2,
       "norm_label": "norm()"
@@ -1816,7 +1914,7 @@
       "label": "levenshtein()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L342",
+      "source_location": "L348",
       "id": "import_page_levenshtein",
       "community": 2,
       "norm_label": "levenshtein()"
@@ -1825,7 +1923,7 @@
       "label": "ALIAS_MAP",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L353",
+      "source_location": "L359",
       "id": "import_page_alias_map",
       "community": 2,
       "norm_label": "alias_map"
@@ -1834,7 +1932,7 @@
       "label": "detectField()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L358",
+      "source_location": "L364",
       "id": "import_page_detectfield",
       "community": 2,
       "norm_label": "detectfield()"
@@ -1843,7 +1941,7 @@
       "label": "buildColumnMap()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L392",
+      "source_location": "L398",
       "id": "import_page_buildcolumnmap",
       "community": 2,
       "norm_label": "buildcolumnmap()"
@@ -1852,7 +1950,7 @@
       "label": "cellStr()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L401",
+      "source_location": "L407",
       "id": "import_page_cellstr",
       "community": 2,
       "norm_label": "cellstr()"
@@ -1861,7 +1959,7 @@
       "label": "getCol()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L403",
+      "source_location": "L409",
       "id": "import_page_getcol",
       "community": 2,
       "norm_label": "getcol()"
@@ -1870,7 +1968,7 @@
       "label": "excelSerialToDate()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L409",
+      "source_location": "L415",
       "id": "import_page_excelserialtodate",
       "community": 2,
       "norm_label": "excelserialtodate()"
@@ -1879,7 +1977,7 @@
       "label": "FIELD_LABELS",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L411",
+      "source_location": "L417",
       "id": "import_page_field_labels",
       "community": 2,
       "norm_label": "field_labels"
@@ -1888,7 +1986,7 @@
       "label": "STAGES",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L417",
+      "source_location": "L423",
       "id": "import_page_stages",
       "community": 2,
       "norm_label": "stages"
@@ -1897,7 +1995,7 @@
       "label": "ImportPage()",
       "file_type": "code",
       "source_file": "app/import/page.tsx",
-      "source_location": "L425",
+      "source_location": "L431",
       "id": "import_page_importpage",
       "community": 2,
       "norm_label": "importpage()"
@@ -1908,7 +2006,7 @@
       "source_file": "app/import/edit/page.tsx",
       "source_location": "L1",
       "id": "app_import_edit_page_tsx",
-      "community": 2,
+      "community": 71,
       "norm_label": "page.tsx"
     },
     {
@@ -1917,7 +2015,7 @@
       "source_file": "app/import/edit/page.tsx",
       "source_location": "L14",
       "id": "edit_page_step",
-      "community": 2,
+      "community": 71,
       "norm_label": "step"
     },
     {
@@ -1926,7 +2024,7 @@
       "source_file": "app/import/edit/page.tsx",
       "source_location": "L15",
       "id": "edit_page_doneresult",
-      "community": 2,
+      "community": 71,
       "norm_label": "doneresult"
     },
     {
@@ -1935,7 +2033,7 @@
       "source_file": "app/import/edit/page.tsx",
       "source_location": "L17",
       "id": "edit_page_edit_fields",
-      "community": 2,
+      "community": 71,
       "norm_label": "edit_fields"
     },
     {
@@ -1944,7 +2042,7 @@
       "source_file": "app/import/edit/page.tsx",
       "source_location": "L22",
       "id": "edit_page_importeditpage",
-      "community": 2,
+      "community": 4,
       "norm_label": "importeditpage()"
     },
     {
@@ -1953,7 +2051,7 @@
       "source_file": "app/import/review/page.tsx",
       "source_location": "L1",
       "id": "app_import_review_page_tsx",
-      "community": 67,
+      "community": 73,
       "norm_label": "page.tsx"
     },
     {
@@ -1962,7 +2060,7 @@
       "source_file": "app/import/review/page.tsx",
       "source_location": "L17",
       "id": "review_page_reviewrow",
-      "community": 67,
+      "community": 73,
       "norm_label": "reviewrow"
     },
     {
@@ -1971,7 +2069,7 @@
       "source_file": "app/import/review/page.tsx",
       "source_location": "L27",
       "id": "review_page_filtermode",
-      "community": 67,
+      "community": 73,
       "norm_label": "filtermode"
     },
     {
@@ -1980,7 +2078,7 @@
       "source_file": "app/import/review/page.tsx",
       "source_location": "L29",
       "id": "review_page_confidencecolor",
-      "community": 67,
+      "community": 73,
       "norm_label": "confidencecolor()"
     },
     {
@@ -1989,7 +2087,7 @@
       "source_file": "app/import/review/page.tsx",
       "source_location": "L36",
       "id": "review_page_confidencelabel",
-      "community": 67,
+      "community": 73,
       "norm_label": "confidencelabel()"
     },
     {
@@ -1998,7 +2096,7 @@
       "source_file": "app/import/review/page.tsx",
       "source_location": "L43",
       "id": "review_page_methodicon",
-      "community": 67,
+      "community": 73,
       "norm_label": "methodicon()"
     },
     {
@@ -2007,7 +2105,7 @@
       "source_file": "app/import/review/page.tsx",
       "source_location": "L53",
       "id": "review_page_importreviewpage",
-      "community": 67,
+      "community": 73,
       "norm_label": "importreviewpage()"
     },
     {
@@ -2070,7 +2168,7 @@
       "source_file": "app/inventory/[id]/page.tsx",
       "source_location": "L7",
       "id": "id_page_inventoryitempage",
-      "community": 31,
+      "community": 74,
       "norm_label": "inventoryitempage()"
     },
     {
@@ -2115,35 +2213,44 @@
       "source_file": "app/members/MembersClient.tsx",
       "source_location": "L1",
       "id": "app_members_membersclient_tsx",
-      "community": 62,
+      "community": 69,
       "norm_label": "membersclient.tsx"
     },
     {
       "label": "Props",
       "file_type": "code",
       "source_file": "app/members/MembersClient.tsx",
-      "source_location": "L11",
+      "source_location": "L13",
       "id": "members_membersclient_props",
-      "community": 62,
+      "community": 69,
       "norm_label": "props"
     },
     {
       "label": "FilterType",
       "file_type": "code",
       "source_file": "app/members/MembersClient.tsx",
-      "source_location": "L16",
+      "source_location": "L18",
       "id": "members_membersclient_filtertype",
-      "community": 62,
+      "community": 69,
       "norm_label": "filtertype"
     },
     {
       "label": "MembersClient()",
       "file_type": "code",
       "source_file": "app/members/MembersClient.tsx",
-      "source_location": "L18",
+      "source_location": "L20",
       "id": "members_membersclient_membersclient",
-      "community": 62,
+      "community": 69,
       "norm_label": "membersclient()"
+    },
+    {
+      "label": "MembersContent()",
+      "file_type": "code",
+      "source_file": "app/members/MembersClient.tsx",
+      "source_location": "L28",
+      "id": "members_membersclient_memberscontent",
+      "community": 69,
+      "norm_label": "memberscontent()"
     },
     {
       "label": "page.tsx",
@@ -2151,16 +2258,16 @@
       "source_file": "app/members/page.tsx",
       "source_location": "L1",
       "id": "app_members_page_tsx",
-      "community": 62,
+      "community": 69,
       "norm_label": "page.tsx"
     },
     {
       "label": "MembersPage()",
       "file_type": "code",
       "source_file": "app/members/page.tsx",
-      "source_location": "L10",
+      "source_location": "L11",
       "id": "members_page_memberspage",
-      "community": 62,
+      "community": 69,
       "norm_label": "memberspage()"
     },
     {
@@ -2250,43 +2357,43 @@
       "source_file": "app/members/new/page.tsx",
       "source_location": "L1",
       "id": "app_members_new_page_tsx",
-      "community": 61,
+      "community": 67,
       "norm_label": "page.tsx"
     },
     {
       "label": "Step",
       "file_type": "code",
       "source_file": "app/members/new/page.tsx",
-      "source_location": "L15",
+      "source_location": "L16",
       "id": "new_page_step",
-      "community": 61,
+      "community": 67,
       "norm_label": "step"
     },
     {
-      "label": "PlanPrices",
+      "label": "MembershipPlan",
       "file_type": "code",
       "source_file": "app/members/new/page.tsx",
       "source_location": "L18",
-      "id": "new_page_planprices",
-      "community": 61,
-      "norm_label": "planprices"
+      "id": "new_page_membershipplan",
+      "community": 67,
+      "norm_label": "membershipplan"
     },
     {
       "label": "NewMemberPage()",
       "file_type": "code",
       "source_file": "app/members/new/page.tsx",
-      "source_location": "L27",
+      "source_location": "L26",
       "id": "new_page_newmemberpage",
-      "community": 61,
+      "community": 67,
       "norm_label": "newmemberpage()"
     },
     {
       "label": "DetailRow()",
       "file_type": "code",
       "source_file": "app/members/new/page.tsx",
-      "source_location": "L549",
+      "source_location": "L676",
       "id": "new_page_detailrow",
-      "community": 61,
+      "community": 67,
       "norm_label": "detailrow()"
     },
     {
@@ -2295,34 +2402,34 @@
       "source_file": "app/members/[id]/MemberDetailClient.tsx",
       "source_location": "L1",
       "id": "app_members_id_memberdetailclient_tsx",
-      "community": 61,
+      "community": 6,
       "norm_label": "memberdetailclient.tsx"
     },
     {
       "label": "Props",
       "file_type": "code",
       "source_file": "app/members/[id]/MemberDetailClient.tsx",
-      "source_location": "L13",
+      "source_location": "L14",
       "id": "id_memberdetailclient_props",
-      "community": 61,
+      "community": 6,
       "norm_label": "props"
     },
     {
       "label": "MemberDetailClient()",
       "file_type": "code",
       "source_file": "app/members/[id]/MemberDetailClient.tsx",
-      "source_location": "L21",
+      "source_location": "L22",
       "id": "id_memberdetailclient_memberdetailclient",
-      "community": 66,
+      "community": 67,
       "norm_label": "memberdetailclient()"
     },
     {
       "label": "InfoTile()",
       "file_type": "code",
       "source_file": "app/members/[id]/MemberDetailClient.tsx",
-      "source_location": "L288",
+      "source_location": "L295",
       "id": "id_memberdetailclient_infotile",
-      "community": 61,
+      "community": 6,
       "norm_label": "infotile()"
     },
     {
@@ -2331,7 +2438,7 @@
       "source_file": "app/members/[id]/page.tsx",
       "source_location": "L1",
       "id": "app_members_id_page_tsx",
-      "community": 62,
+      "community": 66,
       "norm_label": "page.tsx"
     },
     {
@@ -2340,7 +2447,7 @@
       "source_file": "app/members/[id]/page.tsx",
       "source_location": "L6",
       "id": "id_page_memberdetailpage",
-      "community": 62,
+      "community": 66,
       "norm_label": "memberdetailpage()"
     },
     {
@@ -2349,34 +2456,34 @@
       "source_file": "app/members/[id]/edit/EditMemberClient.tsx",
       "source_location": "L1",
       "id": "app_members_id_edit_editmemberclient_tsx",
-      "community": 61,
+      "community": 6,
       "norm_label": "editmemberclient.tsx"
     },
     {
       "label": "Step",
       "file_type": "code",
       "source_file": "app/members/[id]/edit/EditMemberClient.tsx",
-      "source_location": "L12",
+      "source_location": "L13",
       "id": "edit_editmemberclient_step",
-      "community": 61,
+      "community": 6,
       "norm_label": "step"
     },
     {
       "label": "Props",
       "file_type": "code",
       "source_file": "app/members/[id]/edit/EditMemberClient.tsx",
-      "source_location": "L14",
+      "source_location": "L15",
       "id": "edit_editmemberclient_props",
-      "community": 61,
+      "community": 6,
       "norm_label": "props"
     },
     {
       "label": "EditMemberClient()",
       "file_type": "code",
       "source_file": "app/members/[id]/edit/EditMemberClient.tsx",
-      "source_location": "L18",
+      "source_location": "L19",
       "id": "edit_editmemberclient_editmemberclient",
-      "community": 31,
+      "community": 6,
       "norm_label": "editmemberclient()"
     },
     {
@@ -2385,7 +2492,7 @@
       "source_file": "app/members/[id]/edit/page.tsx",
       "source_location": "L1",
       "id": "app_members_id_edit_page_tsx",
-      "community": 31,
+      "community": 74,
       "norm_label": "page.tsx"
     },
     {
@@ -2394,7 +2501,7 @@
       "source_file": "app/members/[id]/edit/page.tsx",
       "source_location": "L5",
       "id": "edit_page_editmemberpage",
-      "community": 31,
+      "community": 74,
       "norm_label": "editmemberpage()"
     },
     {
@@ -2437,7 +2544,7 @@
       "label": "GymDetailsData",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L25",
+      "source_location": "L26",
       "id": "onboarding_onboardingwizard_gymdetailsdata",
       "community": 4,
       "norm_label": "gymdetailsdata"
@@ -2446,7 +2553,7 @@
       "label": "BusinessMetricsData",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L35",
+      "source_location": "L36",
       "id": "onboarding_onboardingwizard_businessmetricsdata",
       "community": 4,
       "norm_label": "businessmetricsdata"
@@ -2455,7 +2562,7 @@
       "label": "OperationsData",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L44",
+      "source_location": "L45",
       "id": "onboarding_onboardingwizard_operationsdata",
       "community": 4,
       "norm_label": "operationsdata"
@@ -2464,7 +2571,7 @@
       "label": "MarketingData",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L56",
+      "source_location": "L57",
       "id": "onboarding_onboardingwizard_marketingdata",
       "community": 4,
       "norm_label": "marketingdata"
@@ -2473,7 +2580,7 @@
       "label": "AIPersonalizationData",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L65",
+      "source_location": "L66",
       "id": "onboarding_onboardingwizard_aipersonalizationdata",
       "community": 4,
       "norm_label": "aipersonalizationdata"
@@ -2482,7 +2589,7 @@
       "label": "OnboardingData",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L71",
+      "source_location": "L72",
       "id": "onboarding_onboardingwizard_onboardingdata",
       "community": 4,
       "norm_label": "onboardingdata"
@@ -2491,7 +2598,7 @@
       "label": "DEFAULT_PLANS",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L84",
+      "source_location": "L85",
       "id": "onboarding_onboardingwizard_default_plans",
       "community": 4,
       "norm_label": "default_plans"
@@ -2500,7 +2607,7 @@
       "label": "DEFAULT_DATA",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L90",
+      "source_location": "L91",
       "id": "onboarding_onboardingwizard_default_data",
       "community": 4,
       "norm_label": "default_data"
@@ -2509,7 +2616,7 @@
       "label": "STEPS",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L135",
+      "source_location": "L136",
       "id": "onboarding_onboardingwizard_steps",
       "community": 4,
       "norm_label": "steps"
@@ -2518,7 +2625,7 @@
       "label": "WORKING_DAYS",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L144",
+      "source_location": "L145",
       "id": "onboarding_onboardingwizard_working_days",
       "community": 4,
       "norm_label": "working_days"
@@ -2527,7 +2634,7 @@
       "label": "LEAD_SOURCES",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L145",
+      "source_location": "L146",
       "id": "onboarding_onboardingwizard_lead_sources",
       "community": 4,
       "norm_label": "lead_sources"
@@ -2536,7 +2643,7 @@
       "label": "OnboardingWizardProps",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L149",
+      "source_location": "L150",
       "id": "onboarding_onboardingwizard_onboardingwizardprops",
       "community": 4,
       "norm_label": "onboardingwizardprops"
@@ -2545,7 +2652,7 @@
       "label": "OnboardingWizard()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L156",
+      "source_location": "L157",
       "id": "onboarding_onboardingwizard_onboardingwizard",
       "community": 4,
       "norm_label": "onboardingwizard()"
@@ -2554,7 +2661,7 @@
       "label": "StepGymDetails()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L550",
+      "source_location": "L562",
       "id": "onboarding_onboardingwizard_stepgymdetails",
       "community": 4,
       "norm_label": "stepgymdetails()"
@@ -2563,7 +2670,7 @@
       "label": "CityAutocomplete()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L647",
+      "source_location": "L659",
       "id": "onboarding_onboardingwizard_cityautocomplete",
       "community": 4,
       "norm_label": "cityautocomplete()"
@@ -2572,7 +2679,7 @@
       "label": "CityAutocompleteInner()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L690",
+      "source_location": "L702",
       "id": "onboarding_onboardingwizard_cityautocompleteinner",
       "community": 4,
       "norm_label": "cityautocompleteinner()"
@@ -2581,7 +2688,7 @@
       "label": "StepMembershipPlans()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L745",
+      "source_location": "L757",
       "id": "onboarding_onboardingwizard_stepmembershipplans",
       "community": 4,
       "norm_label": "stepmembershipplans()"
@@ -2590,7 +2697,7 @@
       "label": "StepBusinessMetrics()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L873",
+      "source_location": "L897",
       "id": "onboarding_onboardingwizard_stepbusinessmetrics",
       "community": 4,
       "norm_label": "stepbusinessmetrics()"
@@ -2599,7 +2706,7 @@
       "label": "StepOperations()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L914",
+      "source_location": "L938",
       "id": "onboarding_onboardingwizard_stepoperations",
       "community": 4,
       "norm_label": "stepoperations()"
@@ -2608,7 +2715,7 @@
       "label": "StepMarketing()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L1096",
+      "source_location": "L1120",
       "id": "onboarding_onboardingwizard_stepmarketing",
       "community": 4,
       "norm_label": "stepmarketing()"
@@ -2617,7 +2724,7 @@
       "label": "StepAIPersonalization()",
       "file_type": "code",
       "source_file": "app/onboarding/OnboardingWizard.tsx",
-      "source_location": "L1186",
+      "source_location": "L1210",
       "id": "onboarding_onboardingwizard_stepaipersonalization",
       "community": 4,
       "norm_label": "stepaipersonalization()"
@@ -2853,7 +2960,7 @@
       "source_file": "app/programs/[id]/page.tsx",
       "source_location": "L7",
       "id": "id_page_editprogrampage",
-      "community": 31,
+      "community": 74,
       "norm_label": "editprogrampage()"
     },
     {
@@ -2898,14 +3005,23 @@
       "source_file": "app/reports/page.tsx",
       "source_location": "L1",
       "id": "app_reports_page_tsx",
-      "community": 64,
+      "community": 0,
       "norm_label": "page.tsx"
+    },
+    {
+      "label": "getReportsData()",
+      "file_type": "code",
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L9",
+      "id": "reports_page_getreportsdata",
+      "community": 0,
+      "norm_label": "getreportsdata()"
     },
     {
       "label": "ReportsPage()",
       "file_type": "code",
       "source_file": "app/reports/page.tsx",
-      "source_location": "L7",
+      "source_location": "L46",
       "id": "reports_page_reportspage",
       "community": 64,
       "norm_label": "reportspage()"
@@ -2916,7 +3032,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L1",
       "id": "app_reports_reportsclient_tsx",
-      "community": 64,
+      "community": 70,
       "norm_label": "reportsclient.tsx"
     },
     {
@@ -2925,7 +3041,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L21",
       "id": "reports_reportsclient_monthdata",
-      "community": 64,
+      "community": 70,
       "norm_label": "monthdata"
     },
     {
@@ -2934,7 +3050,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L31",
       "id": "reports_reportsclient_memberdue",
-      "community": 64,
+      "community": 70,
       "norm_label": "memberdue"
     },
     {
@@ -2943,7 +3059,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L37",
       "id": "reports_reportsclient_expiringmember",
-      "community": 64,
+      "community": 70,
       "norm_label": "expiringmember"
     },
     {
@@ -2952,7 +3068,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L44",
       "id": "reports_reportsclient_inventorysalemonthly",
-      "community": 64,
+      "community": 70,
       "norm_label": "inventorysalemonthly"
     },
     {
@@ -2961,7 +3077,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L50",
       "id": "reports_reportsclient_recentsale",
-      "community": 64,
+      "community": 70,
       "norm_label": "recentsale"
     },
     {
@@ -2970,7 +3086,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L59",
       "id": "reports_reportsclient_props",
-      "community": 64,
+      "community": 70,
       "norm_label": "props"
     },
     {
@@ -2979,7 +3095,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L84",
       "id": "reports_reportsclient_tabtype",
-      "community": 64,
+      "community": 70,
       "norm_label": "tabtype"
     },
     {
@@ -2988,7 +3104,7 @@
       "source_file": "app/reports/ReportsClient.tsx",
       "source_location": "L86",
       "id": "reports_reportsclient_reportsclient",
-      "community": 64,
+      "community": 69,
       "norm_label": "reportsclient()"
     },
     {
@@ -2997,7 +3113,7 @@
       "source_file": "components/import/WizardHeader.tsx",
       "source_location": "L1",
       "id": "components_import_wizardheader_tsx",
-      "community": 2,
+      "community": 71,
       "norm_label": "wizardheader.tsx"
     },
     {
@@ -3006,7 +3122,7 @@
       "source_file": "components/import/WizardHeader.tsx",
       "source_location": "L4",
       "id": "import_wizardheader_wizardheaderprops",
-      "community": 2,
+      "community": 71,
       "norm_label": "wizardheaderprops"
     },
     {
@@ -3015,7 +3131,7 @@
       "source_file": "components/import/WizardHeader.tsx",
       "source_location": "L8",
       "id": "import_wizardheader_wizardheader",
-      "community": 2,
+      "community": 71,
       "norm_label": "wizardheader()"
     },
     {
@@ -3447,7 +3563,7 @@
       "source_file": "components/programs/ProgramsList.tsx",
       "source_location": "L1",
       "id": "components_programs_programslist_tsx",
-      "community": 70,
+      "community": 0,
       "norm_label": "programslist.tsx"
     },
     {
@@ -3456,7 +3572,7 @@
       "source_file": "components/programs/ProgramsList.tsx",
       "source_location": "L7",
       "id": "programs_programslist_program",
-      "community": 70,
+      "community": 0,
       "norm_label": "program"
     },
     {
@@ -3465,7 +3581,7 @@
       "source_file": "components/programs/ProgramsList.tsx",
       "source_location": "L20",
       "id": "programs_programslist_props",
-      "community": 70,
+      "community": 0,
       "norm_label": "props"
     },
     {
@@ -3474,7 +3590,7 @@
       "source_file": "components/programs/ProgramsList.tsx",
       "source_location": "L24",
       "id": "programs_programslist_programslist",
-      "community": 70,
+      "community": 0,
       "norm_label": "programslist()"
     },
     {
@@ -3622,12 +3738,165 @@
       "norm_label": "matcharealegacy()"
     },
     {
+      "label": "cache.ts",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L1",
+      "id": "lib_cache_ts",
+      "community": 64,
+      "norm_label": "cache.ts"
+    },
+    {
+      "label": "getCache()",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L6",
+      "id": "lib_cache_getcache",
+      "community": 64,
+      "norm_label": "getcache()"
+    },
+    {
+      "label": "setCache()",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L30",
+      "id": "lib_cache_setcache",
+      "community": 64,
+      "norm_label": "setcache()"
+    },
+    {
+      "label": "deleteCache()",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L44",
+      "id": "lib_cache_deletecache",
+      "community": 64,
+      "norm_label": "deletecache()"
+    },
+    {
+      "label": "invalidatePattern()",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L59",
+      "id": "lib_cache_invalidatepattern",
+      "community": 64,
+      "norm_label": "invalidatepattern()"
+    },
+    {
+      "label": "cacheWrapper()",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L85",
+      "id": "lib_cache_cachewrapper",
+      "community": 64,
+      "norm_label": "cachewrapper()"
+    },
+    {
+      "label": "globalCacheStats",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L129",
+      "id": "lib_cache_globalcachestats",
+      "community": 64,
+      "norm_label": "globalcachestats"
+    },
+    {
+      "label": "logCacheMetric()",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L136",
+      "id": "lib_cache_logcachemetric",
+      "community": 64,
+      "norm_label": "logcachemetric()"
+    },
+    {
+      "label": "logger.ts",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L1",
+      "id": "lib_logger_ts",
+      "community": 64,
+      "norm_label": "logger.ts"
+    },
+    {
+      "label": "RequestLogger",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L3",
+      "id": "lib_logger_requestlogger",
+      "community": 64,
+      "norm_label": "requestlogger"
+    },
+    {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L13",
+      "id": "lib_logger_requestlogger_constructor",
+      "community": 64,
+      "norm_label": ".constructor()"
+    },
+    {
+      "label": ".start()",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L19",
+      "id": "lib_logger_requestlogger_start",
+      "community": 64,
+      "norm_label": ".start()"
+    },
+    {
+      "label": ".end()",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L23",
+      "id": "lib_logger_requestlogger_end",
+      "community": 64,
+      "norm_label": ".end()"
+    },
+    {
+      "label": ".step()",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L30",
+      "id": "lib_logger_requestlogger_step",
+      "community": 64,
+      "norm_label": ".step()"
+    },
+    {
+      "label": ".setPayload()",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L35",
+      "id": "lib_logger_requestlogger_setpayload",
+      "community": 64,
+      "norm_label": ".setpayload()"
+    },
+    {
+      "label": ".summary()",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L43",
+      "id": "lib_logger_requestlogger_summary",
+      "community": 64,
+      "norm_label": ".summary()"
+    },
+    {
+      "label": ".error()",
+      "file_type": "code",
+      "source_file": "lib/logger.ts",
+      "source_location": "L71",
+      "id": "lib_logger_requestlogger_error",
+      "community": 64,
+      "norm_label": ".error()"
+    },
+    {
       "label": "pdf.ts",
       "file_type": "code",
       "source_file": "lib/pdf.ts",
       "source_location": "L1",
       "id": "lib_pdf_ts",
-      "community": 6,
+      "community": 72,
       "norm_label": "pdf.ts"
     },
     {
@@ -3636,7 +3905,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L3",
       "id": "lib_pdf_escapehtml",
-      "community": 6,
+      "community": 72,
       "norm_label": "escapehtml()"
     },
     {
@@ -3645,26 +3914,125 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L12",
       "id": "lib_pdf_paymentrow",
-      "community": 6,
+      "community": 72,
       "norm_label": "paymentrow"
+    },
+    {
+      "label": "NewMemberRow",
+      "file_type": "code",
+      "source_file": "lib/pdf.ts",
+      "source_location": "L22",
+      "id": "lib_pdf_newmemberrow",
+      "community": 72,
+      "norm_label": "newmemberrow"
     },
     {
       "label": "DailyReportData",
       "file_type": "code",
       "source_file": "lib/pdf.ts",
-      "source_location": "L21",
+      "source_location": "L30",
       "id": "lib_pdf_dailyreportdata",
-      "community": 6,
+      "community": 72,
       "norm_label": "dailyreportdata"
     },
     {
-      "label": "generateDailyCollectionPDF()",
+      "label": "formatCategory()",
       "file_type": "code",
       "source_file": "lib/pdf.ts",
+      "source_location": "L37",
+      "id": "lib_pdf_formatcategory",
+      "community": 72,
+      "norm_label": "formatcategory()"
+    },
+    {
+      "label": "generateDailyReportPDF()",
+      "file_type": "code",
+      "source_file": "lib/pdf.ts",
+      "source_location": "L44",
+      "id": "lib_pdf_generatedailyreportpdf",
+      "community": 72,
+      "norm_label": "generatedailyreportpdf()"
+    },
+    {
+      "label": "performance.ts",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L1",
+      "id": "lib_performance_ts",
+      "community": 31,
+      "norm_label": "performance.ts"
+    },
+    {
+      "label": "PerformanceMetrics",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L1",
+      "id": "lib_performance_performancemetrics",
+      "community": 31,
+      "norm_label": "performancemetrics"
+    },
+    {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L6",
+      "id": "lib_performance_performancemetrics_constructor",
+      "community": 31,
+      "norm_label": ".constructor()"
+    },
+    {
+      "label": ".start()",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L10",
+      "id": "lib_performance_performancemetrics_start",
+      "community": 31,
+      "norm_label": ".start()"
+    },
+    {
+      "label": ".end()",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L14",
+      "id": "lib_performance_performancemetrics_end",
+      "community": 31,
+      "norm_label": ".end()"
+    },
+    {
+      "label": ".getMeasurements()",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L23",
+      "id": "lib_performance_performancemetrics_getmeasurements",
+      "community": 31,
+      "norm_label": ".getmeasurements()"
+    },
+    {
+      "label": ".getServerTimingHeader()",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
       "source_location": "L27",
-      "id": "lib_pdf_generatedailycollectionpdf",
-      "community": 6,
-      "norm_label": "generatedailycollectionpdf()"
+      "id": "lib_performance_performancemetrics_getservertimingheader",
+      "community": 31,
+      "norm_label": ".getservertimingheader()"
+    },
+    {
+      "label": ".logPayloadSize()",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L33",
+      "id": "lib_performance_performancemetrics_logpayloadsize",
+      "community": 31,
+      "norm_label": ".logpayloadsize()"
+    },
+    {
+      "label": ".logTotal()",
+      "file_type": "code",
+      "source_file": "lib/performance.ts",
+      "source_location": "L48",
+      "id": "lib_performance_performancemetrics_logtotal",
+      "community": 31,
+      "norm_label": ".logtotal()"
     },
     {
       "label": "rateLimit.ts",
@@ -3676,40 +4044,58 @@
       "norm_label": "ratelimit.ts"
     },
     {
-      "label": "RateLimitEntry",
+      "label": "redis",
       "file_type": "code",
       "source_file": "lib/rateLimit.ts",
-      "source_location": "L11",
-      "id": "lib_ratelimit_ratelimitentry",
+      "source_location": "L14",
+      "id": "lib_ratelimit_redis",
       "community": 0,
-      "norm_label": "ratelimitentry"
-    },
-    {
-      "label": "limits",
-      "file_type": "code",
-      "source_file": "lib/rateLimit.ts",
-      "source_location": "L16",
-      "id": "lib_ratelimit_limits",
-      "community": 0,
-      "norm_label": "limits"
-    },
-    {
-      "label": "checkRateLimit()",
-      "file_type": "code",
-      "source_file": "lib/rateLimit.ts",
-      "source_location": "L18",
-      "id": "lib_ratelimit_checkratelimit",
-      "community": 0,
-      "norm_label": "checkratelimit()"
+      "norm_label": "redis"
     },
     {
       "label": "ROUTE_LIMITS",
       "file_type": "code",
       "source_file": "lib/rateLimit.ts",
-      "source_location": "L37",
+      "source_location": "L19",
       "id": "lib_ratelimit_route_limits",
       "community": 0,
       "norm_label": "route_limits"
+    },
+    {
+      "label": "limiters",
+      "file_type": "code",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L34",
+      "id": "lib_ratelimit_limiters",
+      "community": 0,
+      "norm_label": "limiters"
+    },
+    {
+      "label": "checkRateLimit()",
+      "file_type": "code",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L42",
+      "id": "lib_ratelimit_checkratelimit",
+      "community": 0,
+      "norm_label": "checkratelimit()"
+    },
+    {
+      "label": "redis.ts",
+      "file_type": "code",
+      "source_file": "lib/redis.ts",
+      "source_location": "L1",
+      "id": "lib_redis_ts",
+      "community": 64,
+      "norm_label": "redis.ts"
+    },
+    {
+      "label": "getRedisClient()",
+      "file_type": "code",
+      "source_file": "lib/redis.ts",
+      "source_location": "L10",
+      "id": "lib_redis_getredisclient",
+      "community": 64,
+      "norm_label": "getredisclient()"
     },
     {
       "label": "timeout.ts",
@@ -3744,7 +4130,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L6",
       "id": "lib_utils_cn",
-      "community": 62,
+      "community": 69,
       "norm_label": "cn()"
     },
     {
@@ -3753,7 +4139,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L10",
       "id": "lib_utils_getplanduration",
-      "community": 66,
+      "community": 67,
       "norm_label": "getplanduration()"
     },
     {
@@ -3762,7 +4148,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L19",
       "id": "lib_utils_calcenddate",
-      "community": 66,
+      "community": 67,
       "norm_label": "calcenddate()"
     },
     {
@@ -3771,7 +4157,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L26",
       "id": "lib_utils_getmemberstatus",
-      "community": 62,
+      "community": 66,
       "norm_label": "getmemberstatus()"
     },
     {
@@ -3780,7 +4166,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L34",
       "id": "lib_utils_getdaysremaining",
-      "community": 62,
+      "community": 66,
       "norm_label": "getdaysremaining()"
     },
     {
@@ -3789,7 +4175,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L39",
       "id": "lib_utils_formatdate",
-      "community": 66,
+      "community": 67,
       "norm_label": "formatdate()"
     },
     {
@@ -3798,7 +4184,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L43",
       "id": "lib_utils_formatcurrency",
-      "community": 6,
+      "community": 62,
       "norm_label": "formatcurrency()"
     },
     {
@@ -3807,7 +4193,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L51",
       "id": "lib_utils_isvalidphone",
-      "community": 66,
+      "community": 67,
       "norm_label": "isvalidphone()"
     },
     {
@@ -3816,7 +4202,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L55",
       "id": "lib_utils_buildwhatsapplink",
-      "community": 66,
+      "community": 67,
       "norm_label": "buildwhatsapplink()"
     },
     {
@@ -3825,7 +4211,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L60",
       "id": "lib_utils_buildcustomwhatsapplink",
-      "community": 66,
+      "community": 70,
       "norm_label": "buildcustomwhatsapplink()"
     },
     {
@@ -3951,7 +4337,7 @@
       "source_file": "lib/geo/clustering.ts",
       "source_location": "L174",
       "id": "geo_clustering_detectdatasetcluster",
-      "community": 0,
+      "community": 1,
       "norm_label": "detectdatasetcluster()"
     },
     {
@@ -4068,7 +4454,7 @@
       "source_file": "lib/geo/matchArea.ts",
       "source_location": "L107",
       "id": "geo_matcharea_searchlocalities",
-      "community": 67,
+      "community": 71,
       "norm_label": "searchlocalities()"
     },
     {
@@ -4293,7 +4679,7 @@
       "source_file": "lib/hooks/useLenisScroll.ts",
       "source_location": "L1",
       "id": "lib_hooks_uselenisscroll_ts",
-      "community": 2,
+      "community": 4,
       "norm_label": "uselenisscroll.ts"
     },
     {
@@ -4302,7 +4688,7 @@
       "source_file": "lib/hooks/useLenisScroll.ts",
       "source_location": "L18",
       "id": "hooks_uselenisscroll_uselenisscroll",
-      "community": 2,
+      "community": 4,
       "norm_label": "uselenisscroll()"
     },
     {
@@ -4509,7 +4895,7 @@
       "source_file": "types/index.ts",
       "source_location": "L1",
       "id": "types_index_ts",
-      "community": 61,
+      "community": 6,
       "norm_label": "index.ts"
     },
     {
@@ -4518,7 +4904,7 @@
       "source_file": "types/index.ts",
       "source_location": "L1",
       "id": "types_index_plan",
-      "community": 61,
+      "community": 6,
       "norm_label": "plan"
     },
     {
@@ -4527,7 +4913,7 @@
       "source_file": "types/index.ts",
       "source_location": "L2",
       "id": "types_index_paymentmode",
-      "community": 61,
+      "community": 6,
       "norm_label": "paymentmode"
     },
     {
@@ -4536,7 +4922,7 @@
       "source_file": "types/index.ts",
       "source_location": "L3",
       "id": "types_index_memberstatus",
-      "community": 61,
+      "community": 6,
       "norm_label": "memberstatus"
     },
     {
@@ -4545,7 +4931,7 @@
       "source_file": "types/index.ts",
       "source_location": "L5",
       "id": "types_index_gym",
-      "community": 61,
+      "community": 6,
       "norm_label": "gym"
     },
     {
@@ -4554,7 +4940,7 @@
       "source_file": "types/index.ts",
       "source_location": "L12",
       "id": "types_index_member",
-      "community": 61,
+      "community": 6,
       "norm_label": "member"
     },
     {
@@ -4563,7 +4949,7 @@
       "source_file": "types/index.ts",
       "source_location": "L27",
       "id": "types_index_formatmemberid",
-      "community": 61,
+      "community": 6,
       "norm_label": "formatmemberid()"
     },
     {
@@ -4572,7 +4958,7 @@
       "source_file": "types/index.ts",
       "source_location": "L33",
       "id": "types_index_parsememberid",
-      "community": 61,
+      "community": 6,
       "norm_label": "parsememberid()"
     },
     {
@@ -4581,34 +4967,34 @@
       "source_file": "types/index.ts",
       "source_location": "L41",
       "id": "types_index_membership",
-      "community": 61,
+      "community": 6,
       "norm_label": "membership"
     },
     {
       "label": "Attendance",
       "file_type": "code",
       "source_file": "types/index.ts",
-      "source_location": "L56",
+      "source_location": "L57",
       "id": "types_index_attendance",
-      "community": 61,
+      "community": 6,
       "norm_label": "attendance"
     },
     {
       "label": "MemberWithStatus",
       "file_type": "code",
       "source_file": "types/index.ts",
-      "source_location": "L65",
+      "source_location": "L66",
       "id": "types_index_memberwithstatus",
-      "community": 62,
+      "community": 69,
       "norm_label": "memberwithstatus"
     },
     {
       "label": "DashboardStats",
       "file_type": "code",
       "source_file": "types/index.ts",
-      "source_location": "L72",
+      "source_location": "L73",
       "id": "types_index_dashboardstats",
-      "community": 6,
+      "community": 62,
       "norm_label": "dashboardstats"
     },
     {
@@ -4954,10 +5340,19 @@
       "norm_label": "supabase"
     },
     {
+      "label": "Observability",
+      "file_type": "document",
+      "source_file": "GEMINI.md",
+      "source_location": "L52",
+      "id": "gymflow_gemini_observability",
+      "community": 9,
+      "norm_label": "observability"
+    },
+    {
       "label": "\ud83d\udd04 Workflows",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L54",
+      "source_location": "L59",
       "id": "gymflow_gemini_workflows",
       "community": 9,
       "norm_label": "\ud83d\udd04 workflows"
@@ -4966,7 +5361,7 @@
       "label": "1. Database Migrations",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L56",
+      "source_location": "L61",
       "id": "gymflow_gemini_1_database_migrations",
       "community": 9,
       "norm_label": "1. database migrations"
@@ -4975,7 +5370,7 @@
       "label": "2. Geo Normalization",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L60",
+      "source_location": "L65",
       "id": "gymflow_gemini_2_geo_normalization",
       "community": 9,
       "norm_label": "2. geo normalization"
@@ -4984,7 +5379,7 @@
       "label": "3. Bulk Import",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L64",
+      "source_location": "L69",
       "id": "gymflow_gemini_3_bulk_import",
       "community": 9,
       "norm_label": "3. bulk import"
@@ -4993,7 +5388,7 @@
       "label": "\ud83d\udcf1 Mobile-First Design",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L70",
+      "source_location": "L75",
       "id": "gymflow_gemini_mobile_first_design",
       "community": 9,
       "norm_label": "\ud83d\udcf1 mobile-first design"
@@ -5002,7 +5397,7 @@
       "label": "\ud83e\udd16 AI Integration",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L77",
+      "source_location": "L82",
       "id": "gymflow_gemini_ai_integration",
       "community": 9,
       "norm_label": "\ud83e\udd16 ai integration"
@@ -5011,7 +5406,7 @@
       "label": "\ud83e\uddea Testing (Coming Soon)",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L86",
+      "source_location": "L91",
       "id": "gymflow_gemini_testing_coming_soon",
       "community": 9,
       "norm_label": "\ud83e\uddea testing (coming soon)"
@@ -5020,7 +5415,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "GEMINI.md",
-      "source_location": "L89",
+      "source_location": "L94",
       "id": "gymflow_gemini_graphify",
       "community": 9,
       "norm_label": "graphify"
@@ -5056,7 +5451,7 @@
       "label": "Core Modules",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L29",
+      "source_location": "L30",
       "id": "gymflow_readme_core_modules",
       "community": 13,
       "norm_label": "core modules"
@@ -5065,7 +5460,7 @@
       "label": "Project Structure",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L46",
+      "source_location": "L48",
       "id": "gymflow_readme_project_structure",
       "community": 13,
       "norm_label": "project structure"
@@ -5074,7 +5469,7 @@
       "label": "code:block1 (gymflow/)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L48",
+      "source_location": "L50",
       "id": "gymflow_readme_codeblock_1",
       "community": 13,
       "norm_label": "code:block1 (gymflow/)"
@@ -5083,7 +5478,7 @@
       "label": "Design System",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L153",
+      "source_location": "L155",
       "id": "gymflow_readme_design_system",
       "community": 33,
       "norm_label": "design system"
@@ -5092,7 +5487,7 @@
       "label": "Typography",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L155",
+      "source_location": "L157",
       "id": "gymflow_readme_typography",
       "community": 33,
       "norm_label": "typography"
@@ -5101,7 +5496,7 @@
       "label": "Color Palette (Tailwind tokens)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L159",
+      "source_location": "L161",
       "id": "gymflow_readme_color_palette_tailwind_tokens",
       "community": 33,
       "norm_label": "color palette (tailwind tokens)"
@@ -5110,7 +5505,7 @@
       "label": "Component Classes (defined in `globals.css`)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L171",
+      "source_location": "L173",
       "id": "gymflow_readme_component_classes_defined_in_globals_css",
       "community": 33,
       "norm_label": "component classes (defined in `globals.css`)"
@@ -5119,7 +5514,7 @@
       "label": "Custom Animations",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L185",
+      "source_location": "L187",
       "id": "gymflow_readme_custom_animations",
       "community": 33,
       "norm_label": "custom animations"
@@ -5128,7 +5523,7 @@
       "label": "Environment Variables",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L190",
+      "source_location": "L192",
       "id": "gymflow_readme_environment_variables",
       "community": 13,
       "norm_label": "environment variables"
@@ -5137,7 +5532,7 @@
       "label": "code:bash (# Required)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L192",
+      "source_location": "L194",
       "id": "gymflow_readme_codeblock_2",
       "community": 13,
       "norm_label": "code:bash (# required)"
@@ -5146,7 +5541,7 @@
       "label": "Setup Instructions",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L207",
+      "source_location": "L213",
       "id": "gymflow_readme_setup_instructions",
       "community": 18,
       "norm_label": "setup instructions"
@@ -5155,7 +5550,7 @@
       "label": "Step 1: Create Supabase Project",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L209",
+      "source_location": "L215",
       "id": "gymflow_readme_step_1_create_supabase_project",
       "community": 18,
       "norm_label": "step 1: create supabase project"
@@ -5164,7 +5559,7 @@
       "label": "Step 2: Run Database Schema",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L215",
+      "source_location": "L221",
       "id": "gymflow_readme_step_2_run_database_schema",
       "community": 18,
       "norm_label": "step 2: run database schema"
@@ -5173,7 +5568,7 @@
       "label": "Step 3: Create a Gym Owner User",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L223",
+      "source_location": "L229",
       "id": "gymflow_readme_step_3_create_a_gym_owner_user",
       "community": 18,
       "norm_label": "step 3: create a gym owner user"
@@ -5182,7 +5577,7 @@
       "label": "code:sql (UPDATE gyms SET onboarding_completed = TRUE)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L232",
+      "source_location": "L238",
       "id": "gymflow_readme_codeblock_3",
       "community": 18,
       "norm_label": "code:sql (update gyms set onboarding_completed = true)"
@@ -5191,7 +5586,7 @@
       "label": "Step 4: Local Development",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L237",
+      "source_location": "L243",
       "id": "gymflow_readme_step_4_local_development",
       "community": 18,
       "norm_label": "step 4: local development"
@@ -5200,7 +5595,7 @@
       "label": "code:bash (cd gymflow)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L239",
+      "source_location": "L245",
       "id": "gymflow_readme_codeblock_4",
       "community": 18,
       "norm_label": "code:bash (cd gymflow)"
@@ -5209,7 +5604,7 @@
       "label": "Step 5: Seed Geo Data (Optional)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L249",
+      "source_location": "L255",
       "id": "gymflow_readme_step_5_seed_geo_data_optional",
       "community": 18,
       "norm_label": "step 5: seed geo data (optional)"
@@ -5218,7 +5613,7 @@
       "label": "code:block5 (POST /api/geo/seed)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L252",
+      "source_location": "L258",
       "id": "gymflow_readme_codeblock_5",
       "community": 18,
       "norm_label": "code:block5 (post /api/geo/seed)"
@@ -5227,7 +5622,7 @@
       "label": "Deployment to Vercel",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L258",
+      "source_location": "L264",
       "id": "gymflow_readme_deployment_to_vercel",
       "community": 13,
       "norm_label": "deployment to vercel"
@@ -5236,7 +5631,7 @@
       "label": "code:bash (# Option A: CLI)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L260",
+      "source_location": "L266",
       "id": "gymflow_readme_codeblock_6",
       "community": 13,
       "norm_label": "code:bash (# option a: cli)"
@@ -5245,7 +5640,7 @@
       "label": "Database Schema",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L279",
+      "source_location": "L285",
       "id": "gymflow_readme_database_schema",
       "community": 32,
       "norm_label": "database schema"
@@ -5254,7 +5649,7 @@
       "label": "Core Tables",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L283",
+      "source_location": "L289",
       "id": "gymflow_readme_core_tables",
       "community": 32,
       "norm_label": "core tables"
@@ -5263,7 +5658,7 @@
       "label": "Geo Tables",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L293",
+      "source_location": "L299",
       "id": "gymflow_readme_geo_tables",
       "community": 32,
       "norm_label": "geo tables"
@@ -5272,7 +5667,7 @@
       "label": "Key Constraints",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L303",
+      "source_location": "L309",
       "id": "gymflow_readme_key_constraints",
       "community": 32,
       "norm_label": "key constraints"
@@ -5281,7 +5676,7 @@
       "label": "Migrations (all in `supabase-schema.sql`)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L309",
+      "source_location": "L315",
       "id": "gymflow_readme_migrations_all_in_supabase_schema_sql",
       "community": 32,
       "norm_label": "migrations (all in `supabase-schema.sql`)"
@@ -5290,7 +5685,7 @@
       "label": "Onboarding Flow",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L323",
+      "source_location": "L329",
       "id": "gymflow_readme_onboarding_flow",
       "community": 13,
       "norm_label": "onboarding flow"
@@ -5299,7 +5694,7 @@
       "label": "Bulk Import Pipeline",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L343",
+      "source_location": "L349",
       "id": "gymflow_readme_bulk_import_pipeline",
       "community": 41,
       "norm_label": "bulk import pipeline"
@@ -5308,7 +5703,7 @@
       "label": "Pipeline Stages (in `lib/import/pipeline.ts`)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L347",
+      "source_location": "L353",
       "id": "gymflow_readme_pipeline_stages_in_lib_import_pipeline_ts",
       "community": 41,
       "norm_label": "pipeline stages (in `lib/import/pipeline.ts`)"
@@ -5317,7 +5712,7 @@
       "label": "Supported Import Fields",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L355",
+      "source_location": "L361",
       "id": "gymflow_readme_supported_import_fields",
       "community": 41,
       "norm_label": "supported import fields"
@@ -5326,7 +5721,7 @@
       "label": "Geo Intelligence Engine",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L374",
+      "source_location": "L380",
       "id": "gymflow_readme_geo_intelligence_engine",
       "community": 34,
       "norm_label": "geo intelligence engine"
@@ -5335,7 +5730,7 @@
       "label": "Normalization Pipeline (11 steps, priority order)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L376",
+      "source_location": "L382",
       "id": "gymflow_readme_normalization_pipeline_11_steps_priority_order",
       "community": 34,
       "norm_label": "normalization pipeline (11 steps, priority order)"
@@ -5344,7 +5739,7 @@
       "label": "Confidence Thresholds",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L390",
+      "source_location": "L396",
       "id": "gymflow_readme_confidence_thresholds",
       "community": 34,
       "norm_label": "confidence thresholds"
@@ -5353,7 +5748,7 @@
       "label": "Phonetic Key Rules",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L398",
+      "source_location": "L404",
       "id": "gymflow_readme_phonetic_key_rules",
       "community": 34,
       "norm_label": "phonetic key rules"
@@ -5362,7 +5757,7 @@
       "label": "`searchLocalities()`",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L401",
+      "source_location": "L407",
       "id": "gymflow_readme_searchlocalities",
       "community": 34,
       "norm_label": "`searchlocalities()`"
@@ -5371,7 +5766,7 @@
       "label": "Authentication & Routing",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L406",
+      "source_location": "L412",
       "id": "gymflow_readme_authentication_routing",
       "community": 39,
       "norm_label": "authentication & routing"
@@ -5380,7 +5775,7 @@
       "label": "Middleware (`middleware.ts`)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L408",
+      "source_location": "L414",
       "id": "gymflow_readme_middleware_middleware_ts",
       "community": 39,
       "norm_label": "middleware (`middleware.ts`)"
@@ -5389,7 +5784,7 @@
       "label": "Layout Guards",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L414",
+      "source_location": "L420",
       "id": "gymflow_readme_layout_guards",
       "community": 39,
       "norm_label": "layout guards"
@@ -5398,7 +5793,7 @@
       "label": "Login Page",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L418",
+      "source_location": "L424",
       "id": "gymflow_readme_login_page",
       "community": 39,
       "norm_label": "login page"
@@ -5407,7 +5802,7 @@
       "label": "Key Patterns & Conventions",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L426",
+      "source_location": "L432",
       "id": "gymflow_readme_key_patterns_conventions",
       "community": 35,
       "norm_label": "key patterns & conventions"
@@ -5416,7 +5811,7 @@
       "label": "TypeScript Types (`types/index.ts`)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L428",
+      "source_location": "L434",
       "id": "gymflow_readme_typescript_types_types_index_ts",
       "community": 35,
       "norm_label": "typescript types (`types/index.ts`)"
@@ -5425,7 +5820,7 @@
       "label": "Utility Functions (`lib/utils.ts`)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L435",
+      "source_location": "L441",
       "id": "gymflow_readme_utility_functions_lib_utils_ts",
       "community": 35,
       "norm_label": "utility functions (`lib/utils.ts`)"
@@ -5434,7 +5829,7 @@
       "label": "Naming Conventions",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L443",
+      "source_location": "L449",
       "id": "gymflow_readme_naming_conventions",
       "community": 35,
       "norm_label": "naming conventions"
@@ -5443,7 +5838,7 @@
       "label": "Performance Optimizations (`next.config.js`)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L449",
+      "source_location": "L455",
       "id": "gymflow_readme_performance_optimizations_next_config_js",
       "community": 35,
       "norm_label": "performance optimizations (`next.config.js`)"
@@ -5452,7 +5847,7 @@
       "label": "Features",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L457",
+      "source_location": "L464",
       "id": "gymflow_readme_features",
       "community": 13,
       "norm_label": "features"
@@ -5461,7 +5856,7 @@
       "label": "API Routes",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L504",
+      "source_location": "L513",
       "id": "gymflow_readme_api_routes",
       "community": 13,
       "norm_label": "api routes"
@@ -5470,7 +5865,7 @@
       "label": "License",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L523",
+      "source_location": "L532",
       "id": "gymflow_readme_license",
       "community": 13,
       "norm_label": "license"
@@ -5528,6 +5923,42 @@
       "id": "geo_seed_data_seed_aliases",
       "community": 59,
       "norm_label": "seed_aliases"
+    },
+    {
+      "label": "PlanPrices",
+      "file_type": "code",
+      "source_file": "app/members/new/page.tsx",
+      "source_location": "L18",
+      "community": 67,
+      "norm_label": "planprices",
+      "id": "new_page_planprices"
+    },
+    {
+      "label": "generateDailyCollectionPDF()",
+      "file_type": "code",
+      "source_file": "lib/pdf.ts",
+      "source_location": "L27",
+      "community": 72,
+      "norm_label": "generatedailycollectionpdf()",
+      "id": "lib_pdf_generatedailycollectionpdf"
+    },
+    {
+      "label": "RateLimitEntry",
+      "file_type": "code",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L11",
+      "community": 0,
+      "norm_label": "ratelimitentry",
+      "id": "lib_ratelimit_ratelimitentry"
+    },
+    {
+      "label": "limits",
+      "file_type": "code",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L16",
+      "community": 0,
+      "norm_label": "limits",
+      "id": "lib_ratelimit_limits"
     },
     {
       "label": "@zxing/browser",
@@ -6321,6 +6752,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "next.config.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "next_config_js",
+      "target": "gymflow_next_config_securityheaders",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "next.config.js",
       "source_location": "L2",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -6431,6 +6872,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "package.json",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "gymflow_package_scripts",
+      "target": "gymflow_package_scripts_prepare",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
       "source_location": "L12",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -6466,6 +6917,26 @@
       "confidence_score": 1.0,
       "source": "gymflow_package_dependencies",
       "target": "gymflow_package_dependencies_supabase_supabase_js"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_package_dependencies",
+      "target": "gymflow_package_dependencies_upstash_ratelimit"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_package_dependencies",
+      "target": "gymflow_package_dependencies_upstash_redis"
     },
     {
       "relation": "contains",
@@ -6576,6 +7047,16 @@
       "confidence_score": 1.0,
       "source": "gymflow_package_dependencies",
       "target": "gymflow_package_dependencies_react_dom"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "gymflow_package_dependencies",
+      "target": "gymflow_package_dependencies_react_hot_toast",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6716,6 +7197,16 @@
       "confidence_score": 1.0,
       "source": "gymflow_package_devdependencies",
       "target": "gymflow_package_devdependencies_eslint_config_next"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "gymflow_package_devdependencies",
+      "target": "gymflow_package_devdependencies_husky",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6958,6 +7449,16 @@
       "target": "gemini_settings_hooks_beforetool"
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".husky/_/husky.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "husky_husky_sh",
+      "target": "c_gym_management_system_gymflow_husky_husky_sh__entry",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -7029,6 +7530,16 @@
       "confidence_score": 1.0,
       "source": "app_layout_tsx",
       "target": "app_layout_rootlayout"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/loading.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_loading_tsx",
+      "target": "app_loading_globalloading"
     },
     {
       "relation": "contains",
@@ -9263,6 +9774,28 @@
       "target": "id_route_mapsupabaseerror"
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/members/[id]/route.ts",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "id_route_get",
+      "target": "lib_ratelimit_checkratelimit"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/members/[id]/route.ts",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "id_route_patch",
+      "target": "lib_ratelimit_checkratelimit"
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -9493,9 +10026,9 @@
       "source_file": "app/api/programs/route.ts",
       "source_location": "L66",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_programs_route_ts",
-      "target": "programs_route_delete",
-      "confidence_score": 1.0
+      "target": "programs_route_delete"
     },
     {
       "relation": "imports_from",
@@ -9868,9 +10401,9 @@
       "source_file": "app/dashboard/DashboardClient.tsx",
       "source_location": "L11",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "app_dashboard_dashboardclient_tsx",
-      "target": "lib_pdf_generatedailycollectionpdf"
+      "target": "lib_pdf_generatedailyreportpdf",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -9975,6 +10508,17 @@
       "confidence_score": 1.0,
       "source": "app_dashboard_page_tsx",
       "target": "app_dashboard_dashboardclient_tsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/dashboard/DashboardClient.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_dashboard_dashboardclient_tsx",
+      "target": "lib_pdf_generatedailycollectionpdf"
     },
     {
       "relation": "references",
@@ -10265,6 +10809,50 @@
       "target": "types_index_memberwithstatus"
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/dashboard/page.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_dashboard_page_tsx",
+      "target": "lib_cache_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/dashboard/page.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_dashboard_page_tsx",
+      "target": "lib_cache_cachewrapper"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/dashboard/page.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_dashboard_page_tsx",
+      "target": "lib_logger_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/dashboard/page.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_dashboard_page_tsx",
+      "target": "lib_logger_requestlogger"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/dashboard/page.tsx",
@@ -10294,6 +10882,17 @@
       "confidence_score": 1.0,
       "source": "dashboard_page_dashboardpage",
       "target": "dashboard_page_getdashboarddata"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/dashboard/page.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboard_page_getdashboarddata",
+      "target": "lib_cache_cachewrapper"
     },
     {
       "relation": "calls",
@@ -11555,6 +12154,16 @@
       "target": "members_membersclient_membersclient"
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/members/MembersClient.tsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "app_members_membersclient_tsx",
+      "target": "members_membersclient_memberscontent",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -11596,6 +12205,17 @@
       "source_location": "L525",
       "weight": 1.0,
       "source": "members_membersclient_membersclient",
+      "target": "lib_utils_cn"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/members/MembersClient.tsx",
+      "source_location": "L662",
+      "weight": 1.0,
+      "source": "members_membersclient_memberscontent",
       "target": "lib_utils_cn"
     },
     {
@@ -12046,9 +12666,9 @@
       "source_file": "app/members/new/page.tsx",
       "source_location": "L18",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "app_members_new_page_tsx",
-      "target": "new_page_planprices"
+      "target": "new_page_membershipplan",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12069,6 +12689,16 @@
       "confidence_score": 1.0,
       "source": "app_members_new_page_tsx",
       "target": "new_page_detailrow"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/members/new/page.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_members_new_page_tsx",
+      "target": "new_page_planprices"
     },
     {
       "relation": "calls",
@@ -13299,9 +13929,9 @@
       "source_file": "app/programs/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_page_tsx",
-      "target": "lib_supabase_server_ts",
-      "confidence_score": 1.0
+      "target": "lib_supabase_server_ts"
     },
     {
       "relation": "imports",
@@ -13310,9 +13940,9 @@
       "source_file": "app/programs/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_page_tsx",
-      "target": "supabase_server_createclient",
-      "confidence_score": 1.0
+      "target": "supabase_server_createclient"
     },
     {
       "relation": "imports_from",
@@ -13321,9 +13951,9 @@
       "source_file": "app/programs/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_page_tsx",
-      "target": "components_programs_programslist_tsx",
-      "confidence_score": 1.0
+      "target": "components_programs_programslist_tsx"
     },
     {
       "relation": "contains",
@@ -13331,9 +13961,9 @@
       "source_file": "app/programs/page.tsx",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_page_tsx",
-      "target": "programs_page_programspage",
-      "confidence_score": 1.0
+      "target": "programs_page_programspage"
     },
     {
       "relation": "imports_from",
@@ -13385,9 +14015,9 @@
       "source_file": "app/programs/[id]/EditProgramClient.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_editprogramclient_tsx",
-      "target": "components_programs_programsetupform_tsx",
-      "confidence_score": 1.0
+      "target": "components_programs_programsetupform_tsx"
     },
     {
       "relation": "imports",
@@ -13396,9 +14026,9 @@
       "source_file": "app/programs/[id]/EditProgramClient.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_editprogramclient_tsx",
-      "target": "programs_programsetupform_programsetupdata",
-      "confidence_score": 1.0
+      "target": "programs_programsetupform_programsetupdata"
     },
     {
       "relation": "imports_from",
@@ -13407,9 +14037,9 @@
       "source_file": "app/programs/[id]/EditProgramClient.tsx",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_editprogramclient_tsx",
-      "target": "components_programs_exercisebuilder_tsx",
-      "confidence_score": 1.0
+      "target": "components_programs_exercisebuilder_tsx"
     },
     {
       "relation": "contains",
@@ -13417,9 +14047,9 @@
       "source_file": "app/programs/[id]/EditProgramClient.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_editprogramclient_tsx",
-      "target": "id_editprogramclient_props",
-      "confidence_score": 1.0
+      "target": "id_editprogramclient_props"
     },
     {
       "relation": "contains",
@@ -13427,9 +14057,9 @@
       "source_file": "app/programs/[id]/EditProgramClient.tsx",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_editprogramclient_tsx",
-      "target": "id_editprogramclient_editprogramclient",
-      "confidence_score": 1.0
+      "target": "id_editprogramclient_editprogramclient"
     },
     {
       "relation": "imports_from",
@@ -13438,9 +14068,9 @@
       "source_file": "app/programs/[id]/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_page_tsx",
-      "target": "app_programs_id_editprogramclient_tsx",
-      "confidence_score": 1.0
+      "target": "app_programs_id_editprogramclient_tsx"
     },
     {
       "relation": "imports_from",
@@ -13449,9 +14079,9 @@
       "source_file": "app/programs/[id]/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_page_tsx",
-      "target": "lib_supabase_server_ts",
-      "confidence_score": 1.0
+      "target": "lib_supabase_server_ts"
     },
     {
       "relation": "imports",
@@ -13460,9 +14090,9 @@
       "source_file": "app/programs/[id]/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_page_tsx",
-      "target": "supabase_server_createclient",
-      "confidence_score": 1.0
+      "target": "supabase_server_createclient"
     },
     {
       "relation": "contains",
@@ -13470,9 +14100,9 @@
       "source_file": "app/programs/[id]/page.tsx",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_programs_id_page_tsx",
-      "target": "id_page_editprogrampage",
-      "confidence_score": 1.0
+      "target": "id_page_editprogrampage"
     },
     {
       "relation": "contains",
@@ -13539,6 +14169,60 @@
       "target": "reports_reportsclient_reportsclient"
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_reports_page_tsx",
+      "target": "lib_cache_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_reports_page_tsx",
+      "target": "lib_cache_cachewrapper"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_reports_page_tsx",
+      "target": "lib_logger_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_reports_page_tsx",
+      "target": "lib_logger_requestlogger"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_reports_page_tsx",
+      "target": "reports_page_getreportsdata"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/reports/page.tsx",
@@ -13547,6 +14231,28 @@
       "confidence_score": 1.0,
       "source": "app_reports_page_tsx",
       "target": "reports_page_reportspage"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "reports_page_getreportsdata",
+      "target": "supabase_server_createclient"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/reports/page.tsx",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "reports_page_reportspage",
+      "target": "lib_cache_cachewrapper"
     },
     {
       "relation": "imports_from",
@@ -14267,9 +14973,9 @@
       "source_file": "components/programs/ProgramsList.tsx",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_programs_programslist_tsx",
-      "target": "programs_programslist_program",
-      "confidence_score": 1.0
+      "target": "programs_programslist_program"
     },
     {
       "relation": "contains",
@@ -14277,9 +14983,9 @@
       "source_file": "components/programs/ProgramsList.tsx",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_programs_programslist_tsx",
-      "target": "programs_programslist_props",
-      "confidence_score": 1.0
+      "target": "programs_programslist_props"
     },
     {
       "relation": "contains",
@@ -14287,9 +14993,9 @@
       "source_file": "components/programs/ProgramsList.tsx",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_programs_programslist_tsx",
-      "target": "programs_programslist_programslist",
-      "confidence_score": 1.0
+      "target": "programs_programslist_programslist"
     },
     {
       "relation": "contains",
@@ -14511,6 +15217,321 @@
       "target": "lib_areas_lcs"
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_redis_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_redis_getredisclient"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_cache_getcache"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L30",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_cache_setcache"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L44",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_cache_deletecache"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L59",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_cache_invalidatepattern"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L79",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_logger_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L79",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_logger_requestlogger"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L85",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_cache_cachewrapper"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L129",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_cache_globalcachestats"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L136",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_ts",
+      "target": "lib_cache_logcachemetric"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/cache.ts",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "lib_cache_getcache",
+      "target": "lib_redis_getredisclient"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L115",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_cachewrapper",
+      "target": "lib_cache_setcache"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/cache.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "lib_cache_setcache",
+      "target": "lib_redis_getredisclient"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/cache.ts",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "lib_cache_deletecache",
+      "target": "lib_redis_getredisclient"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/cache.ts",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "lib_cache_invalidatepattern",
+      "target": "lib_redis_getredisclient"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L102",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_cache_cachewrapper",
+      "target": "lib_cache_logcachemetric"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_ts",
+      "target": "lib_logger_requestlogger"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger",
+      "target": "lib_logger_requestlogger_constructor"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger",
+      "target": "lib_logger_requestlogger_start"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L22",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger",
+      "target": "lib_logger_requestlogger_end"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L33",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger",
+      "target": "lib_logger_requestlogger_step"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "lib_logger_requestlogger",
+      "target": "lib_logger_requestlogger_setpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L37",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger",
+      "target": "lib_logger_requestlogger_summary"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L46",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger",
+      "target": "lib_logger_requestlogger_error"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger_constructor",
+      "target": "lib_logger_requestlogger_error"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger_start",
+      "target": "lib_logger_requestlogger_error"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L25",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger_end",
+      "target": "lib_logger_requestlogger_error"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L34",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger_step",
+      "target": "lib_logger_requestlogger_error"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/logger.ts",
+      "source_location": "L39",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_logger_requestlogger_summary",
+      "target": "lib_logger_requestlogger_error"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/pdf.ts",
@@ -14534,11 +15555,41 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/pdf.ts",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "lib_pdf_ts",
+      "target": "lib_pdf_newmemberrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/pdf.ts",
       "source_location": "L21",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "lib_pdf_ts",
       "target": "lib_pdf_dailyreportdata"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/pdf.ts",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "lib_pdf_ts",
+      "target": "lib_pdf_formatcategory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/pdf.ts",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "lib_pdf_ts",
+      "target": "lib_pdf_generatedailyreportpdf",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -14555,11 +15606,153 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "lib/pdf.ts",
+      "source_location": "L146",
+      "weight": 1.0,
+      "source": "lib_pdf_generatedailyreportpdf",
+      "target": "lib_pdf_escapehtml",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/pdf.ts",
       "source_location": "L76",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "lib_pdf_generatedailycollectionpdf",
       "target": "lib_pdf_escapehtml"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_ts",
+      "target": "lib_performance_performancemetrics"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics",
+      "target": "lib_performance_performancemetrics_constructor"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics",
+      "target": "lib_performance_performancemetrics_start"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics",
+      "target": "lib_performance_performancemetrics_end"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L23",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics",
+      "target": "lib_performance_performancemetrics_getmeasurements"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L27",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics",
+      "target": "lib_performance_performancemetrics_getservertimingheader"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L33",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics",
+      "target": "lib_performance_performancemetrics_logpayloadsize"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L48",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics",
+      "target": "lib_performance_performancemetrics_logtotal"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/performance.ts",
+      "source_location": "L49",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_performance_performancemetrics_logtotal",
+      "target": "lib_performance_performancemetrics_getservertimingheader"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "lib_ratelimit_ts",
+      "target": "lib_ratelimit_redis",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L37",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_ratelimit_ts",
+      "target": "lib_ratelimit_route_limits"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "lib_ratelimit_ts",
+      "target": "lib_ratelimit_limiters",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/rateLimit.ts",
+      "source_location": "L18",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_ratelimit_ts",
+      "target": "lib_ratelimit_checkratelimit"
     },
     {
       "relation": "contains",
@@ -14584,22 +15777,12 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "lib/rateLimit.ts",
-      "source_location": "L18",
+      "source_file": "lib/redis.ts",
+      "source_location": "L10",
       "weight": 1.0,
       "confidence_score": 1.0,
-      "source": "lib_ratelimit_ts",
-      "target": "lib_ratelimit_checkratelimit"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "lib/rateLimit.ts",
-      "source_location": "L37",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "lib_ratelimit_ts",
-      "target": "lib_ratelimit_route_limits"
+      "source": "lib_redis_ts",
+      "target": "lib_redis_getredisclient"
     },
     {
       "relation": "contains",
@@ -16494,6 +17677,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "GEMINI.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "gymflow_gemini_coding_standards",
+      "target": "gymflow_gemini_observability",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "GEMINI.md",
       "source_location": "L55",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -17782,5 +18975,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ac8f6736b9c1a1a3bddd9c095679963782647f83"
+  "built_at_commit": "a0ce799e0f24f2e7c75fbfe36c5decc425e9856b"
 }

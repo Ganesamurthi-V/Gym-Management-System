@@ -10,6 +10,7 @@ export default function AccountMenu() {
   const [isOpen, setIsOpen] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
   const [gymName, setGymName] = useState<string | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -19,10 +20,19 @@ export default function AccountMenu() {
       setEmail(userEmail)
       const { data: gym } = await supabase
         .from('gyms')
-        .select('name')
+        .select('id, name')
         .eq('owner_id', userId)
         .single()
       setGymName(gym?.name ?? null)
+
+      if (gym?.id) {
+        const { count } = await supabase
+          .from('admin_messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('gym_id', gym.id)
+          .is('read_at', null)
+        setUnreadCount(count ?? 0)
+      }
     }
 
     // Initial load
@@ -38,6 +48,7 @@ export default function AccountMenu() {
         } else {
           setEmail(null)
           setGymName(null)
+          setUnreadCount(0)
         }
       }
     )
@@ -71,10 +82,13 @@ export default function AccountMenu() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center hover:ring-2 hover:ring-brand-300 transition-all"
+        className="relative w-8 h-8 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center hover:ring-2 hover:ring-brand-300 transition-all"
         title={gymName ?? email ?? ''}
       >
         <span className="text-brand-700 font-bold text-xs">{initials}</span>
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full" />
+        )}
       </button>
 
       {isOpen && (
@@ -126,17 +140,22 @@ export default function AccountMenu() {
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
-              <div className="w-full flex items-center justify-between p-3 rounded-xl opacity-60 cursor-not-allowed">
+              <Link href="/account/notifications" onClick={() => setIsOpen(false)}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
+                  <div className="relative w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
                     <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center">
+                        <span className="text-[8px] font-bold text-white leading-none">{unreadCount}</span>
+                      </span>
+                    )}
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-semibold text-slate-700">Notifications</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">Coming soon</span>
-                  </div>
+                  <span className="text-sm font-semibold text-slate-700">Contact & Support</span>
                 </div>
-              </div>
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
+              </Link>
             </div>
 
             <div className="p-2 border-t border-slate-50">

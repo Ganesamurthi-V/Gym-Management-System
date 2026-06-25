@@ -56,6 +56,18 @@ CREATE TABLE IF NOT EXISTS attendance (
 );
 
 
+-- Admin Messages table (Super admin support)
+CREATE TABLE IF NOT EXISTS admin_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  sent_by TEXT NOT NULL DEFAULT 'super_admin',
+  type TEXT NOT NULL DEFAULT 'info' CHECK (type IN ('info', 'warning', 'error', 'success')),
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- INDEXES (for performance)
 
 CREATE INDEX IF NOT EXISTS idx_members_gym_id ON members(gym_id);
@@ -69,12 +81,18 @@ CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
 
+CREATE INDEX IF NOT EXISTS idx_admin_messages_gym_id ON admin_messages(gym_id);
+CREATE INDEX IF NOT EXISTS idx_admin_messages_created_at ON admin_messages(created_at DESC);
+
 -- ROW LEVEL SECURITY (RLS)
 
 ALTER TABLE gyms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_messages ENABLE ROW LEVEL SECURITY;
 
 -- GYMS policies
 CREATE POLICY "Users can view their own gym"
@@ -132,8 +150,7 @@ CREATE POLICY "Gym owners can update memberships"
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
   );
-
-CREATE POLICY "Gym owners can delete memberships"
+CREATE POLICY "Gym owners can delete memberships"
   ON memberships FOR DELETE
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
@@ -164,6 +181,18 @@ CREATE POLICY "Gym owners can delete attendance"
     EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
   );
 
+-- ADMIN_MESSAGES policies
+CREATE POLICY "Gym owners can read their admin messages"
+  ON admin_messages FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can mark messages as read"
+  ON admin_messages FOR UPDATE
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+  );
 
 -- ================================================
 -- MIGRATIONS (run these if upgrading existing DB)

@@ -195,7 +195,7 @@ export default function SupportTabsClient({
                             day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit'
                           })}</span>
                           <span>•</span>
-                          <span>From: GymDesk Support</span>
+                          <span>From: GymFlow Support</span>
                         </div>
                       </div>
 

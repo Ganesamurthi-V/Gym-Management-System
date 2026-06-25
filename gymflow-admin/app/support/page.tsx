@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { HeadphonesIcon, Send, Loader2, CheckCircle2 } from 'lucide-react'
+import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@supabase/supabase-js'
 
@@ -33,6 +33,7 @@ export default function SupportPage() {
   // New state for tickets
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loadingTickets, setLoadingTickets] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
 
   // Resolve Ticket Modal State
   const [resolvingTicket, setResolvingTicket] = useState<Ticket | null>(null)
@@ -71,6 +72,21 @@ export default function SupportPage() {
       if (!res.ok) throw new Error(data?.error || 'Failed to send')
       
       toast.success('Message sent to gym owner successfully!')
+      
+      // Broadcast to gym owner
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      if (supabaseUrl && supabaseAnonKey) {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+        const channel = supabase.channel(`gym_support_${selectedGym}`)
+        channel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({ type: 'broadcast', event: 'refetch_support', payload: {} })
+            supabase.removeChannel(channel)
+          }
+        })
+      }
+
       setSubject('')
       setBody('')
       setSelectedGym('')
@@ -89,7 +105,7 @@ export default function SupportPage() {
     }
   }, [activeTab])
 
-  // Real-time subscription for support_tickets
+  // Real-time subscription via Broadcast (Bypasses RLS issues for anon admin)
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -98,15 +114,13 @@ export default function SupportPage() {
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
     const channel = supabase
-      .channel('realtime_support_tickets')
+      .channel('admin_support_channel')
       .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'support_tickets' },
+        'broadcast',
+        { event: 'refetch_tickets' },
         (payload: any) => {
-          // A new ticket was inserted! We should ideally fetch to get the gym's name relation,
-          // but calling fetchTickets() is the easiest way to ensure data consistency.
           toast('New support ticket received!', { icon: '🔔', style: { background: '#3b82f6', color: '#fff' } })
-          fetchTickets()
+          if (activeTab === 'tickets') fetchTickets()
         }
       )
       .subscribe()
@@ -114,7 +128,7 @@ export default function SupportPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [activeTab])
 
   async function fetchTickets() {
     setLoadingTickets(true)
@@ -154,6 +168,21 @@ export default function SupportPage() {
       })
       if (!res.ok) throw new Error('Failed to update')
       toast.success('Ticket resolved and message sent!')
+      
+      // Broadcast to gym owner
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      if (supabaseUrl && supabaseAnonKey) {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+        const channel = supabase.channel(`gym_support_${resolvingTicket.gym_id}`)
+        channel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({ type: 'broadcast', event: 'refetch_support', payload: {} })
+            supabase.removeChannel(channel)
+          }
+        })
+      }
+
       setResolvingTicket(null)
       fetchTickets()
     } catch (e) {
@@ -162,6 +191,34 @@ export default function SupportPage() {
       setResolving(false)
     }
   }
+
+  async function handleClear(ticketId?: string) {
+    if (isClearing) return
+    setIsClearing(true)
+
+    // Optimistic UI update
+    if (ticketId) {
+      setTickets(prev => prev.filter(t => t.id !== ticketId))
+    } else {
+      setTickets(prev => prev.filter(t => t.status !== 'resolved'))
+    }
+
+    try {
+      const res = await fetch('/api/support/tickets/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId, clearAll: !ticketId }),
+      })
+      if (!res.ok) throw new Error('Failed to clear tickets')
+    } catch (e: any) {
+      toast.error('Failed to clear tickets')
+      console.error(e)
+    } finally {
+      setIsClearing(false)
+    }
+  }
+
+  const hasResolvedTickets = tickets.some(t => t.status === 'resolved')
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -276,15 +333,27 @@ export default function SupportPage() {
       </form>
       ) : (
         <div className="space-y-4">
+          {hasResolvedTickets && (
+            <div className="flex justify-end">
+              <button 
+                onClick={() => handleClear()}
+                className="text-xs font-semibold text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-500/10"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear Resolved Tickets
+              </button>
+            </div>
+          )}
+
           {loadingTickets ? (
             <div className="p-8 flex justify-center"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
           ) : tickets.length === 0 ? (
             <div className="admin-card p-12 text-center text-slate-500">No support tickets found.</div>
           ) : (
             tickets.map(ticket => (
-              <div key={ticket.id} className="admin-card p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
+              <div key={ticket.id} className="admin-card p-5 group relative overflow-hidden">
+                <div className="flex items-start justify-between gap-4 relative z-10">
+                  <div className="flex-1 min-w-0 pr-8">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`px-2 py-0.5 text-xs font-bold rounded-md uppercase tracking-wider ${
                         ticket.type === 'high_priority' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
@@ -302,9 +371,9 @@ export default function SupportPage() {
                         {new Date(ticket.created_at).toLocaleString()}
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-1">{ticket.subject}</h3>
+                    <h3 className={`text-lg font-bold text-white mb-1 ${ticket.status === 'resolved' ? 'line-through opacity-50' : ''}`}>{ticket.subject}</h3>
                     <p className="text-sm font-medium text-slate-400 mb-3">From: {ticket.gyms?.name}</p>
-                    <div className="p-4 bg-[#0F172A] rounded-xl border border-[#1f2937] text-slate-300 text-sm whitespace-pre-wrap">
+                    <div className={`p-4 bg-[#0F172A] rounded-xl border border-[#1f2937] text-slate-300 text-sm whitespace-pre-wrap ${ticket.status === 'resolved' ? 'opacity-50' : ''}`}>
                       {ticket.message}
                     </div>
                   </div>
@@ -316,6 +385,16 @@ export default function SupportPage() {
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       Resolve
+                    </button>
+                  )}
+
+                  {ticket.status === 'resolved' && (
+                    <button 
+                      onClick={() => handleClear(ticket.id)}
+                      className="absolute top-0 right-0 p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Clear ticket"
+                    >
+                      <X className="w-5 h-5" />
                     </button>
                   )}
                 </div>
@@ -382,3 +461,4 @@ export default function SupportPage() {
     </div>
   )
 }
+

@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const { data: tickets, error } = await supabase
       .from('support_tickets')
       .select('*, gyms(name, owner_id)')
+      .eq('is_cleared_by_admin', false)
       .order('created_at', { ascending: false })
 
     if (error) throw error

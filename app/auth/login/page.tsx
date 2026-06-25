@@ -106,7 +106,14 @@ export default function LoginPage() {
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError('Invalid email or password')
+      // If login fails (e.g. because user is banned), check if their gym was deactivated
+      const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: email })
+      
+      if (isActive === false) {
+        setError('contact admin to active this account')
+      } else {
+        setError('Invalid email or password')
+      }
       setLoading(false)
       return
     }

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS gyms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -735,3 +736,32 @@ ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category I
 -- ================================================
 
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS check_out_time TIMESTAMPTZ;
+
+-- ================================================
+-- [Migration 15] Gym Deactivation
+-- ================================================
+
+-- Create an RPC function to safely check a gym's active status by email
+CREATE OR REPLACE FUNCTION check_gym_active(p_email TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_owner_id UUID;
+  v_is_active BOOLEAN;
+BEGIN
+  -- Find the user ID for this email from auth.users
+  SELECT id INTO v_owner_id FROM auth.users WHERE email = p_email LIMIT 1;
+  
+  IF v_owner_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Find the gym for this user
+  SELECT is_active INTO v_is_active FROM public.gyms WHERE owner_id = v_owner_id LIMIT 1;
+  
+  IF v_is_active IS NULL THEN
+    RETURN false;
+  END IF;
+  
+  RETURN v_is_active;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

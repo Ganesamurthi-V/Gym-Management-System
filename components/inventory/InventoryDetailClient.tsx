@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/inventory/actions'
 import { format } from 'date-fns'
 import {
   Package, Pencil, Trash2, ShoppingCart, X, Loader2,
@@ -143,6 +144,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
 
       setShowEditModal(false)
       setSuccess('Product updated successfully')
+      await invalidateInventoryItemCache(gymId, product.id)
       router.refresh()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
@@ -178,6 +180,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
       setShowSellModal(false)
       setSellQty('1')
       setSuccess(`Sold ${qty} unit${qty > 1 ? 's' : ''} — ₹${data.sale.total_price}`)
+      await invalidateInventoryItemCache(gymId, product.id)
       router.refresh()
       setTimeout(() => setSuccess(''), 4000)
     } catch (err: any) {
@@ -200,6 +203,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
+      await invalidateInventoryCache(gymId)
       router.push('/inventory')
       router.refresh()
     } catch (err: any) {
@@ -222,6 +226,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
       
       setSuccess(`Sale deleted and ${data.restoredQuantity} units restored to stock.`)
       setTimeout(() => setSuccess(''), 4000)
+      await invalidateInventoryItemCache(gymId, product.id)
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to delete sale')
@@ -258,6 +263,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
         variant_name: '', sku: '', cost_price: '', selling_price: '', member_price: '', initial_stock: '', low_stock_threshold: ''
       })
       setSuccess('Variant added successfully')
+      await invalidateInventoryCache(gymId)
       router.refresh()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {

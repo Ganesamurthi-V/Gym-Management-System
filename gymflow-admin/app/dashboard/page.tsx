@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { getSentryIssues } from '@/lib/sentry-api'
 import { Building2, Users, AlertTriangle, Bug, ShieldCheck, Activity } from 'lucide-react'
 import Link from 'next/link'
+import ResolveButton from '@/components/errors/ResolveButton'
 
 function StatCard({ icon, label, value, sub, color }: {
   icon: React.ReactNode, label: string, value: string | number, sub?: string, color: string
@@ -21,14 +22,7 @@ function StatCard({ icon, label, value, sub, color }: {
 export default async function DashboardPage() {
   const supabase = createAdminClient()
 
-  const [
-    { count: gymCount },
-    { count: memberCount },
-    { count: attendanceToday },
-    sentryErrors,
-    sentryWarnings,
-    recentMessages,
-  ] = await Promise.allSettled([
+  const results = await Promise.allSettled([
     supabase.from('gyms').select('*', { count: 'exact', head: true }),
     supabase.from('members').select('*', { count: 'exact', head: true }),
     supabase.from('attendance').select('*', { count: 'exact', head: true })
@@ -37,6 +31,13 @@ export default async function DashboardPage() {
     getSentryIssues('level:warning is:unresolved', 25),
     supabase.from('admin_messages').select('*, gym:gym_id(name)').order('created_at', { ascending: false }).limit(5),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : null))
+
+  const gymCount = (results[0] as any)?.count
+  const memberCount = (results[1] as any)?.count
+  const attendanceToday = (results[2] as any)?.count
+  const sentryErrors = results[3]
+  const sentryWarnings = results[4]
+  const recentMessages = results[5]
 
   const errors = Array.isArray(sentryErrors) ? sentryErrors : []
   const warnings = Array.isArray(sentryWarnings) ? sentryWarnings : []
@@ -84,12 +85,17 @@ export default async function DashboardPage() {
                 No open errors 🎉
               </div>
             ) : errors.slice(0, 5).map((e: any) => (
-              <div key={e.id} className="px-5 py-3 hover:bg-white/[0.02] transition-colors">
-                <p className="text-xs text-red-400 font-medium truncate">{e.title}</p>
-                <p className="text-xs text-slate-600 mt-0.5 truncate">{e.culprit}</p>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[10px] text-slate-600">{new Date(e.lastSeen).toLocaleString('en-IN')}</span>
-                  <span className="text-[10px] text-slate-600">{e.count} events</span>
+              <div key={e.id} className="px-5 py-3 hover:bg-white/[0.02] transition-colors flex justify-between items-start gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs text-red-400 font-medium truncate">{e.title}</p>
+                  <p className="text-xs text-slate-600 mt-0.5 truncate">{e.culprit}</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] text-slate-600">{new Date(e.lastSeen).toLocaleString('en-IN')}</span>
+                    <span className="text-[10px] text-slate-600">{e.count} events</span>
+                  </div>
+                </div>
+                <div className="flex-shrink-0 mt-1">
+                  <ResolveButton issueId={e.id} />
                 </div>
               </div>
             ))}

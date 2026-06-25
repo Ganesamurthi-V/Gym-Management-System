@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Box, Tag, Image as ImageIcon, Package, Info, ImagePlus, ShieldAlert, BadgeIndianRupee, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateInventoryCache } from '@/app/inventory/actions'
 
 interface VariantForm {
   variantName: string
@@ -103,6 +104,8 @@ export default function NewInventoryPage() {
         .insert(rowsToInsert)
 
       if (insertError) throw insertError
+
+      await invalidateInventoryCache(gym.id)
 
       router.push('/inventory')
       router.refresh()

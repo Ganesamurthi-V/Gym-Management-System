@@ -1,5 +1,6 @@
 import { getSentryIssues } from '@/lib/sentry-api'
 import { Bug, ExternalLink, CheckCircle } from 'lucide-react'
+import ResolveButton from '@/components/errors/ResolveButton'
 
 export default async function ErrorsPage() {
   const issues = await getSentryIssues('level:error is:unresolved', 50).catch(() => [])
@@ -47,6 +48,7 @@ export default async function ErrorsPage() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
+                      <ResolveButton issueId={issue.id} />
                       <a 
                         href={issue.permalink}
                         target="_blank"

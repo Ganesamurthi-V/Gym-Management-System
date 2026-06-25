@@ -59,7 +59,9 @@ export interface Attendance {
   member_id: string
   gym_id: string
   date: string
+  session: 'morning' | 'evening'
   created_at: string
+  check_out_time?: string | null
   member?: Member
 }
 

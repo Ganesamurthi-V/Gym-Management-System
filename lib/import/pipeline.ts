@@ -117,19 +117,16 @@ export async function runImportPipeline(
     const filePhones = Array.from(new Set(parsed.map(r => r.phone).filter(Boolean)));
     const fileNums = Array.from(new Set(parsed.map(r => parseInt(r.member_number)).filter(n => !isNaN(n))));
 
-    const [phonesRes, numsRes, maxRes] = await Promise.all([
+    const [phonesRes, numsRes] = await Promise.all([
       filePhones.length > 0 
         ? supabase.from("members").select("phone").eq("gym_id", gym.id).in("phone", filePhones)
         : Promise.resolve({ data: [] }),
-      fileNums.length > 0
-        ? supabase.from("members").select("member_number").eq("gym_id", gym.id).in("member_number", fileNums)
-        : Promise.resolve({ data: [] }),
-      supabase.from("members").select("member_number").eq("gym_id", gym.id).order("member_number", { ascending: false }).limit(1)
+      // Fetch all numbers to find the lowest available gap starting from 1
+      supabase.from("members").select("member_number").eq("gym_id", gym.id)
     ]);
 
     existingPhones = (phonesRes.data as any[] ?? []).map(m => m.phone);
     existingNums = (numsRes.data as any[] ?? []).map(m => m.member_number);
-    maxNum = (maxRes.data as any[])?.[0]?.member_number ?? 0;
   }
 
   const dbPhones = new Set(existingPhones);
@@ -147,11 +144,11 @@ export async function runImportPipeline(
     }
   });
 
-  // ID assignment
+  // ID assignment: always start checking from 1 to fill any gaps
   const assignedNums = new Set<string>();
-  let nextId = maxNum + 1;
+  let nextId = 1;
   function nextAvailable(): string {
-    while (assignedNums.has(String(nextId))) nextId++;
+    while (dbNums.has(nextId) || assignedNums.has(String(nextId))) nextId++;
     return String(nextId++);
   }
 

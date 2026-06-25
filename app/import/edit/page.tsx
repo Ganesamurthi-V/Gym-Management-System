@@ -262,10 +262,7 @@ export default function ImportEditPage() {
       const { data: existingNums } = await supabase
         .from("members").select("member_number").eq("gym_id", gym.id) as { data: { member_number: number }[] | null };
       const existingNumSet = new Set((existingNums ?? []).map(m => m.member_number));
-      const { data: maxData } = await supabase
-        .from("members").select("member_number").eq("gym_id", gym.id)
-        .order("member_number", { ascending: false }).limit(1) as { data: { member_number: number }[] | null };
-      let nextAvailable = (maxData?.[0]?.member_number ?? 0) + 1;
+      let nextAvailable = 1;
 
       const toInsert = validRows;
       const skipped = skippedRows.length;

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS gyms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -49,10 +50,24 @@ CREATE TABLE IF NOT EXISTS attendance (
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
+  session TEXT CHECK (session IN ('morning', 'evening')) DEFAULT 'morning',
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(member_id, date)
+  check_out_time TIMESTAMPTZ,
+  UNIQUE(member_id, date, session)
 );
 
+
+-- Admin Messages table (Super admin support)
+CREATE TABLE IF NOT EXISTS admin_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  sent_by TEXT NOT NULL DEFAULT 'super_admin',
+  type TEXT NOT NULL DEFAULT 'info' CHECK (type IN ('info', 'warning', 'error', 'success')),
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- INDEXES (for performance)
 
@@ -67,12 +82,18 @@ CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
 
+CREATE INDEX IF NOT EXISTS idx_admin_messages_gym_id ON admin_messages(gym_id);
+CREATE INDEX IF NOT EXISTS idx_admin_messages_created_at ON admin_messages(created_at DESC);
+
 -- ROW LEVEL SECURITY (RLS)
 
 ALTER TABLE gyms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_messages ENABLE ROW LEVEL SECURITY;
 
 -- GYMS policies
 CREATE POLICY "Users can view their own gym"
@@ -130,8 +151,7 @@ CREATE POLICY "Gym owners can update memberships"
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
   );
-
-CREATE POLICY "Gym owners can delete memberships"
+CREATE POLICY "Gym owners can delete memberships"
   ON memberships FOR DELETE
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
@@ -140,6 +160,12 @@ CREATE POLICY "Gym owners can delete memberships"
 -- ATTENDANCE policies
 CREATE POLICY "Gym owners can view attendance"
   ON attendance FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can update attendance"
+  ON attendance FOR UPDATE
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
   );
@@ -156,6 +182,18 @@ CREATE POLICY "Gym owners can delete attendance"
     EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
   );
 
+-- ADMIN_MESSAGES policies
+CREATE POLICY "Gym owners can read their admin messages"
+  ON admin_messages FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can mark messages as read"
+  ON admin_messages FOR UPDATE
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+  );
 
 -- ================================================
 -- MIGRATIONS (run these if upgrading existing DB)
@@ -584,8 +622,149 @@ BEGIN
       updated_at = NOW()
   WHERE id = p_inventory_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- ================================================
+-- INVENTORY SALES (Revenue Tracking)
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS inventory_sales (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  inventory_id UUID REFERENCES inventory(id) ON DELETE SET NULL,
+  product_name TEXT NOT NULL,
+  variant_name TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price NUMERIC NOT NULL,
+  total_price NUMERIC NOT NULL,
+  payment_mode TEXT NOT NULL DEFAULT 'cash' CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  sold_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_gym_id ON inventory_sales(gym_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_inventory_id ON inventory_sales(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_sold_at ON inventory_sales(gym_id, sold_at DESC);
+
+-- ROW LEVEL SECURITY (RLS)
+ALTER TABLE inventory_sales ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Gym owners can view their inventory sales"
+  ON inventory_sales FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can insert inventory sales"
+  ON inventory_sales FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can delete inventory sales"
+  ON inventory_sales FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update inventory sales"
+  ON inventory_sales FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+-- ================================================
+-- WORKOUT PROGRAMS
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS workout_programs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  summary TEXT,
+  notes TEXT,
+  duration INTEGER NOT NULL,
+  frequency INTEGER,
+  difficulty TEXT,
+  goal TEXT,
+  category TEXT,
+  equipment TEXT,
+  target_audience TEXT,
+  experience_level TEXT,
+  schedule JSONB NOT NULL,
+  is_draft BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workout_programs_gym_id ON workout_programs(gym_id);
+CREATE INDEX IF NOT EXISTS idx_workout_programs_created ON workout_programs(gym_id, created_at DESC);
+
+-- ROW LEVEL SECURITY (RLS)
+ALTER TABLE workout_programs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Gym owners can view their programs"
+  ON workout_programs FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can insert programs"
+  ON workout_programs FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can update programs"
+  ON workout_programs FOR UPDATE
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+  );
+
+CREATE POLICY "Gym owners can delete programs"
+  ON workout_programs FOR DELETE
+  USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+  );
+
+-- ================================================
+-- [Migration 11] Add Category to Memberships
+-- ================================================
+
+ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both';
+
+
+-- ================================================
+-- [Migration 14] Add check_out_time to Attendance
+-- ================================================
+
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS check_out_time TIMESTAMPTZ;
+
+-- ================================================
+-- [Migration 15] Gym Deactivation
+-- ================================================
+
+-- Create an RPC function to safely check a gym's active status by email
+CREATE OR REPLACE FUNCTION check_gym_active(p_email TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_owner_id UUID;
+  v_is_active BOOLEAN;
+BEGIN
+  -- Find the user ID for this email from auth.users
+  SELECT id INTO v_owner_id FROM auth.users WHERE email = p_email LIMIT 1;
+  
+  IF v_owner_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Find the gym for this user
+  SELECT is_active INTO v_is_active FROM public.gyms WHERE owner_id = v_owner_id LIMIT 1;
+  
+  IF v_is_active IS NULL THEN
+    RETURN false;
+  END IF;
+  
+  RETURN v_is_active;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ================================================
 -- INVENTORY SALES (Revenue Tracking)
 -- ================================================

@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import * as Sentry from '@sentry/nextjs'
 
 export class RequestLogger {
   private requestId: string
@@ -81,5 +82,19 @@ export class RequestLogger {
       stack: process.env.NODE_ENV === 'production' ? undefined : (error instanceof Error ? error.stack : undefined),
       timestamp: new Date().toISOString()
     }))
+
+    Sentry.withScope((scope) => {
+      scope.setTag("request_id", this.requestId);
+      scope.setTag("page", this.context);
+      scope.setExtra("context_message", message);
+      if (this.payloadBytes) scope.setExtra("payload_bytes", this.payloadBytes);
+      if (this.cacheHit !== null) scope.setTag("cache_hit", this.cacheHit);
+
+      if (error instanceof Error) {
+        Sentry.captureException(error);
+      } else {
+        Sentry.captureMessage(`[${this.context}] ${message}: ${String(error)}`, 'error');
+      }
+    });
   }
 }

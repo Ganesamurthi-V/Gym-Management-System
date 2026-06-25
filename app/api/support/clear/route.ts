@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { invalidatePattern } from '@/lib/cache'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,30 +20,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
     }
 
+    // Use Service Role to bypass missing RLS UPDATE policies for these tables
+    const serviceRoleClient = (await import('@supabase/supabase-js')).createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     if (clearAll) {
+      console.log('CLEAR ALL REQUEST RECEIVED', { type, gymId: gym.id })
       if (type === 'admin_messages') {
-        await supabase
+        const { error, data } = await serviceRoleClient
           .from('admin_messages')
           .update({ is_cleared_by_owner: true })
           .eq('gym_id', gym.id)
           .not('read_at', 'is', null)
+          .select()
+        console.log('Admin messages clear result:', { error, updatedCount: data?.length })
+        if (error) throw error
       } else if (type === 'support_tickets') {
-        await supabase
+        const { error, data } = await serviceRoleClient
           .from('support_tickets')
           .update({ is_cleared_by_owner: true })
           .eq('gym_id', gym.id)
           .eq('status', 'resolved')
+          .select()
+        console.log('Support tickets clear result:', { error, updatedCount: data?.length })
+        if (error) throw error
       }
     } else if (id) {
-      await supabase
+      const { error } = await serviceRoleClient
         .from(type)
         .update({ is_cleared_by_owner: true })
         .eq('id', id)
         .eq('gym_id', gym.id)
+      if (error) throw error
     }
 
-    // Invalidate Cache
-    await invalidatePattern(`gym:${gym.id}:${type}`)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

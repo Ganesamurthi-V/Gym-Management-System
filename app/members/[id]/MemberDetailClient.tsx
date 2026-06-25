@@ -280,9 +280,21 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
         ) : (
           <div className="divide-y divide-slate-50">
             {attendance.map((a) => (
-              <div key={a.id} className="px-4 py-3 flex items-center gap-3">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                <span className="text-sm text-slate-700 font-medium">{formatDate(a.date)}</span>
+              <div key={a.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+                  <span className="text-sm text-slate-700 font-bold">{formatDate(a.date)}</span>
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                    In: {format(new Date(a.created_at), 'hh:mm a')}
+                  </span>
+                  {a.check_out_time && (
+                    <span className="text-xs font-medium text-slate-500 mt-1">
+                      Out: {format(new Date(a.check_out_time), 'hh:mm a')}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

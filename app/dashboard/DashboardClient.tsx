@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, Dumbbell, CalendarCheck, TrendingUp, FileText, IndianRupee, Send } from 'lucide-react'
-import { GettingStartedChecklist } from './GettingStartedChecklist'
 import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyReportPDF } from '@/lib/pdf'
@@ -24,24 +23,12 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   const [sendingBulk, setSendingBulk] = useState(false)
   const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
-  const [checklistDismissed, setChecklistDismissed] = useState(false)
   const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
   const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
   const [fetchingMonth, setFetchingMonth] = useState(false)
   
   const router = useRouter()
   const supabase = createClient()
-
-  useEffect(() => {
-    const checkDismissed = () => {
-      const isDismissed = localStorage.getItem(`gymflow_getting_started_dismissed_${gymId}`) === 'true'
-      setChecklistDismissed(isDismissed)
-    }
-    
-    checkDismissed()
-    window.addEventListener('storage', checkDismissed)
-    return () => window.removeEventListener('storage', checkDismissed)
-  }, [gymId])
 
   useEffect(() => {
     if (expiringFilter === 'month' && monthMembers === null && !fetchingMonth) {
@@ -79,16 +66,6 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   function handleBulkRemind() {
     if (expiringMembers.length === 0) return
     setSendingBulk(true)
-
-    // Mark task as complete when genuinely used
-    try {
-      const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
-      const parsed = new Set(saved ? JSON.parse(saved) : [])
-      parsed.add('send_reminder')
-      localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
-      // Dispatch storage event to update checklist across components
-      window.dispatchEvent(new Event('storage'))
-    } catch { }
 
     expiringMembers.forEach((member, i) => {
       if (!member.latest_membership) return
@@ -169,29 +146,24 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-stretch">
-        {/* Getting Started Checklist for new users or Expiring Members if dismissed */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
-          <GettingStartedChecklist stats={stats} gymId={gymId} />
-
-          {checklistDismissed && (
-            <motion.div
-              className="card flex-1"
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
-            >
-              <ExpiringContent
-                expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
-                handleBulkRemind={handleBulkRemind}
-                sendingBulk={sendingBulk}
-                bulkSent={bulkSent}
-                gymId={gymId}
-                expiringFilter={expiringFilter}
-                setExpiringFilter={setExpiringFilter}
-                fetchingMonth={fetchingMonth}
-              />
-            </motion.div>
-          )}
+          <motion.div
+            className="card flex-1"
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
+          >
+            <ExpiringContent
+              expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
+              handleBulkRemind={handleBulkRemind}
+              sendingBulk={sendingBulk}
+              bulkSent={bulkSent}
+              gymId={gymId}
+              expiringFilter={expiringFilter}
+              setExpiringFilter={setExpiringFilter}
+              fetchingMonth={fetchingMonth}
+            />
+          </motion.div>
         </div>
 
         {/* Quick Actions */}
@@ -224,26 +196,6 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
         </div>
       </div>
 
-      {/* Expiring This Week - Only show at bottom if checklist is not dismissed */}
-      <AnimatePresence>
-        {!checklistDismissed && (
-          <motion.div
-            className="card"
-            exit={{ opacity: 0, y: -20, scale: 0.98, transition: { duration: 0.2 } }}
-          >
-            <ExpiringContent
-              expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
-              handleBulkRemind={handleBulkRemind}
-              sendingBulk={sendingBulk}
-              bulkSent={bulkSent}
-              gymId={gymId}
-              expiringFilter={expiringFilter}
-              setExpiringFilter={setExpiringFilter}
-              fetchingMonth={fetchingMonth}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
@@ -345,15 +297,6 @@ function ExpiringMemberRow({ member, gymId }: { member: MemberWithStatus, gymId:
         isValidPhone(member.phone) ? (
           <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
             target="_blank" rel="noopener noreferrer"
-            onClick={() => {
-              try {
-                const saved = localStorage.getItem(`gymflow_getting_started_${gymId}`)
-                const parsed = new Set(saved ? JSON.parse(saved) : [])
-                parsed.add('send_reminder')
-                localStorage.setItem(`gymflow_getting_started_${gymId}`, JSON.stringify([...parsed]))
-                window.dispatchEvent(new Event('storage'))
-              } catch { }
-            }}
             className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors whitespace-nowrap"
           >
             <MessageCircle className="w-3.5 h-3.5" />

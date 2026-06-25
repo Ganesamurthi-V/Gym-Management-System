@@ -7,12 +7,12 @@ import { useRouter } from 'next/navigation'
 
 export default function GymStatusToggle({ gymId, isActive, gymName }: { gymId: string, isActive: boolean, gymName: string }) {
   const [loading, setLoading] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const router = useRouter()
 
   async function handleToggle() {
     const action = isActive ? 'deactivate' : 'activate'
-    if (!confirm(`Are you sure you want to ${action} ${gymName}? This will immediately log the owner out of all active sessions.`)) return
-
+    setShowModal(false)
     setLoading(true)
     try {
       const res = await fetch(`/api/gyms/toggle-active`, {
@@ -50,7 +50,7 @@ export default function GymStatusToggle({ gymId, isActive, gymName }: { gymId: s
         </p>
         
         <button 
-          onClick={handleToggle}
+          onClick={() => setShowModal(true)}
           disabled={loading}
           className={`px-4 py-2 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${
             isActive 
@@ -63,6 +63,47 @@ export default function GymStatusToggle({ gymId, isActive, gymName }: { gymId: s
           {loading ? 'Processing...' : isActive ? 'Deactivate Gym' : 'Activate Gym'}
         </button>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0F172A] border border-[#1f2937] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                  {isActive ? <Ban className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                </div>
+                <h3 className="text-lg font-bold text-white">
+                  {isActive ? 'Deactivate Gym' : 'Activate Gym'}
+                </h3>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Are you sure you want to {isActive ? 'deactivate' : 'activate'} <strong className="text-white">{gymName}</strong>? 
+                {isActive && " This will immediately log the owner out of all active sessions and block them from logging in."}
+              </p>
+            </div>
+            
+            <div className="bg-slate-900/50 p-4 flex justify-end gap-3 border-t border-[#1f2937]">
+              <button 
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleToggle}
+                className={`px-4 py-2 text-sm font-bold rounded-lg flex items-center gap-2 transition-all ${
+                  isActive 
+                    ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' 
+                    : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
+                }`}
+              >
+                Yes, {isActive ? 'Deactivate' : 'Activate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

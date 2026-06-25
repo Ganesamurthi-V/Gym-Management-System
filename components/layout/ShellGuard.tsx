@@ -39,20 +39,35 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
     const supabase = createClient()
     
     const checkAuth = async () => {
-      const { error } = await supabase.auth.getUser()
-      if (error) {
-        // User is invalid or banned, force logout
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user) {
+        // User is invalid or logged out
         await supabase.auth.signOut()
         window.location.href = '/auth/login'
+        return
+      }
+
+      // Check real-time database status
+      if (user.email) {
+        const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: user.email })
+        if (isActive === false) {
+          await supabase.auth.signOut()
+          window.location.href = '/auth/login'
+        }
       }
     }
 
-    // Check immediately and on window focus
+    // Check immediately, on window focus, and every 30 seconds
     checkAuth()
     window.addEventListener('focus', checkAuth)
+    const interval = setInterval(checkAuth, 10000)
     
-    return () => window.removeEventListener('focus', checkAuth)
-  }, [isShellless])
+    return () => {
+      window.removeEventListener('focus', checkAuth)
+      clearInterval(interval)
+    }
+  }, [isShellless, pathname])
 
   function toggle() {
     setCollapsed(prev => {

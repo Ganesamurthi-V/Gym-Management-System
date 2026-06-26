@@ -11,11 +11,11 @@ export async function getCache<T>(key: string): Promise<T | null> {
     const data = await redis.get<T>(key)
 
     if (data !== null) {
-      console.log(`CACHE HIT: ${key}`)
+      if (process.env.NODE_ENV === 'development') console.log(`CACHE HIT: ${key}`)
       return data
     }
 
-    console.log(`CACHE MISS: ${key}`)
+    if (process.env.NODE_ENV === 'development') console.log(`CACHE MISS: ${key}`)
     return null
 
   } catch (error) {
@@ -126,23 +126,9 @@ export async function cacheWrapper<T>(
   }
 }
 
-let globalCacheStats = {
-  hits: 0,
-  misses: 0,
-  total: 0
-}
-
-// Internal metric logger
+// Internal metric logger — dev only, no global state (meaningless in serverless)
 function logCacheMetric(type: 'HIT' | 'MISS', key: string, durationMs: number) {
-  globalCacheStats.total++
-  if (type === 'HIT') {
-    globalCacheStats.hits++
-  } else {
-    globalCacheStats.misses++
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[CACHE][Event] ${type}: ${key} - ${durationMs}ms`)
   }
-
-  const hitRate = Math.round((globalCacheStats.hits / globalCacheStats.total) * 100)
-
-  console.log(`[CACHE][Event] ${type}: ${key} - ${durationMs}ms`)
-  console.log(`[CACHE] Hits: ${globalCacheStats.hits} | Misses: ${globalCacheStats.misses} | Hit Rate: ${hitRate}%`)
 }

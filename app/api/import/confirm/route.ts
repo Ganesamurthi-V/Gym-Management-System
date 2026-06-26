@@ -4,6 +4,12 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { format } from 'date-fns'
+
+const MAX_IMPORT_ROWS = 500
+
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
@@ -12,6 +18,11 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
 
+    const { allowed } = await checkRateLimit(user.id, '/api/import/confirm', 5)
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
+    }
+
     let body
     try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
 
@@ -19,6 +30,9 @@ export async function POST(req: NextRequest) {
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Rows are required' } }, { status: 400 })
+    }
+    if (rows.length > MAX_IMPORT_ROWS) {
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: `Maximum ${MAX_IMPORT_ROWS} rows per import` } }, { status: 400 })
     }
 
     const gym = await getGymForUser(supabase, user.id)
@@ -44,6 +58,9 @@ export async function POST(req: NextRequest) {
       const mapped = mapSupabaseError(error)
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
+
+    await deleteCache(cacheKeys.membersList(gym.id))
+    await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
 
     return NextResponse.json({
       success: true,

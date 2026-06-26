@@ -61,6 +61,10 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
         payment_mode: renewForm.payment_mode,
       })
       if (err) throw err
+
+      const { invalidateMembersCache } = await import('../actions')
+      await invalidateMembersCache(gym.id)
+
       setShowRenewForm(false)
       toast.success('Membership renewed successfully!')
       router.refresh()

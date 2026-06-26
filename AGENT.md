@@ -1,10 +1,10 @@
-# GymDesk — Agent Context & Rules
+# GymFlow — Agent Context & Rules
 
-This file is the **single source of truth** for all AI agents working on the GymDesk project. Read this completely before writing or modifying any code.
+This file is the **single source of truth** for all AI agents working on the GymFlow project. Read this completely before writing or modifying any code.
 
 ## 🚀 Project Overview
 
-GymDesk is a multi-tenant SaaS application designed specifically for small to mid-sized gyms in **Tamil Nadu and Puducherry, India**. It manages members, attendance, billing, and bulk imports.
+GymFlow is a multi-tenant SaaS application designed specifically for small to mid-sized gyms in **Tamil Nadu and Puducherry, India**. It manages members, attendance, billing, and bulk imports.
 
 **Core Philosophy:** "Know exactly who paid, who didn't, and who's about to expire — without using notebooks."
 
@@ -44,7 +44,7 @@ GymDesk is a multi-tenant SaaS application designed specifically for small to mi
 ## 🏗️ Core Modules & File Map
 
 ### 1. The Geo Intelligence Engine (`lib/geo/`)
-GymDesk has a proprietary, 11-step area normalization engine to handle the messy reality of Indian locality spellings.
+GymFlow has a proprietary, 11-step area normalization engine to handle the messy reality of Indian locality spellings.
 - **`matchArea.ts`:** The entry point. `matchArea()` and `matchAreaBatch()`.
 - **`fuzzyMatch.ts`:** Implements Levenshtein, Dice Coefficient, and LCS.
 - **`normalizer.ts`:** Text cleanup, abbreviation expansion, phonetic hashing.

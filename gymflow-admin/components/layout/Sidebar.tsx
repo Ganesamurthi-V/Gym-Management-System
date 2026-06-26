@@ -79,7 +79,7 @@ export default function Sidebar() {
           <Shield className="w-4 h-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold text-white leading-none">GymDesk</p>
+          <p className="text-sm font-bold text-white leading-none">GymFlow</p>
           <p className="text-[10px] text-indigo-400 font-medium uppercase tracking-widest mt-0.5">Super Admin</p>
         </div>
       </div>

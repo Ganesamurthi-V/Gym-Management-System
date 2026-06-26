@@ -51,7 +51,7 @@ export async function GET() {
       return NextResponse.json({ 
         status: 'unhealthy',
         database: 'error',
-        error: error,
+        error: error?.code ?? 'DB_ERROR',  // code only — never expose raw Supabase error objects
         timestamp: new Date().toISOString()
       }, { status: 503 })
     }

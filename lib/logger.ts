@@ -65,9 +65,9 @@ export class RequestLogger {
       timestamp: new Date().toISOString()
     }
 
-    // Log summary as error to bypass Vercel filters in production, use log in dev
+    // Use a structured prefix so this can be filtered/searched without polluting error-rate metrics
     if (process.env.NODE_ENV === 'production') {
-      console.error(JSON.stringify(log))
+      console.log(`[METRICS] ${JSON.stringify(log)}`)
     } else {
       console.log(JSON.stringify(log))
     }

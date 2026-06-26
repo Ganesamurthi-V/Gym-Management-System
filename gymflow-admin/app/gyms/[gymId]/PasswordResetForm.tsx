@@ -11,8 +11,8 @@ export default function PasswordResetForm({ userId }: { userId: string }) {
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
-    if (!password || password.length < 6) {
-      toast.error('Password must be at least 6 characters')
+    if (!password || password.length < 8) {
+      toast.error('Password must be at least 8 characters')
       return
     }
 
@@ -53,13 +53,13 @@ export default function PasswordResetForm({ userId }: { userId: string }) {
         </label>
         <div className="flex gap-3">
           <input
-            type="text"
+            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter new secure password"
             className="admin-input flex-1"
             required
-            minLength={6}
+            minLength={8}
           />
           <button 
             type="submit"

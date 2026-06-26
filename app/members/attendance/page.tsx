@@ -1,5 +1,6 @@
 import { Suspense } from 'react' // Force recompile
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser, getGym } from '@/lib/dal'
 import { AttendanceLogClient } from './AttendanceLogClient'
 import { RequestLogger } from '@/lib/logger'
 import { redirect } from 'next/navigation'
@@ -38,18 +39,13 @@ export default async function AttendanceLogPage() {
   
   try {
     logger.start('AUTH')
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getAuthUser()
     logger.end('AUTH')
     
-    if (!user) redirect('/login')
+    if (!user) redirect('/auth/login')
 
     logger.start('QUERY gyms')
-    const { data: gym } = await supabase
-      .from('gyms')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single()
+    const { gym } = await getGym(user.id)
     logger.end('QUERY gyms')
 
     if (!gym) redirect('/onboarding')

@@ -48,7 +48,7 @@ export default function AuthPage() {
           <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-500/30">
             <Shield className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">GymDesk Admin</h1>
+          <h1 className="text-2xl font-bold text-white">GymFlow Admin</h1>
           <p className="text-slate-500 text-sm mt-1">Super Admin Panel — Restricted Access</p>
         </div>
 

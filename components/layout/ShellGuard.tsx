@@ -22,19 +22,45 @@ function DumbbellIcon({ className }: { className?: string }) {
   )
 }
 
-export default function ShellGuard({ children }: { children: React.ReactNode }) {
+import type { User } from '@supabase/supabase-js'
+import type { getGym } from '@/lib/dal'
+
+type GymRow = Awaited<ReturnType<typeof getGym>>['gym']
+
+interface ShellGuardProps {
+  children: React.ReactNode
+  initialUser: User | null
+  initialGym: GymRow
+  initialIsActive: boolean
+  initialUnreadCount: number
+}
+
+export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount }: ShellGuardProps) {
   const pathname = usePathname()
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
   const [collapsed, setCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
 
+  // Effect 1: Mount-time setup — restore sidebar state
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
     setMounted(true)
+  }, [])
 
+  // Effect 2: Auth guard — set up focus listener and 10s interval.
+  // Does NOT include `pathname` so the interval is not reset on every navigation.
+  useEffect(() => {
     if (isShellless) return
+
+    if (!initialUser || !initialIsActive) {
+      const supabase = createClient()
+      supabase.auth.signOut().then(() => {
+        window.location.href = '/auth/login'
+      })
+      return
+    }
 
     const supabase = createClient()
     
@@ -58,8 +84,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
       }
     }
 
-    // Check immediately, on window focus, and every 30 seconds
-    checkAuth()
+    // Check on window focus, and every 10 seconds
     window.addEventListener('focus', checkAuth)
     const interval = setInterval(checkAuth, 10000)
     
@@ -67,7 +92,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
       window.removeEventListener('focus', checkAuth)
       clearInterval(interval)
     }
-  }, [isShellless, pathname])
+  }, [isShellless, initialUser, initialIsActive])
 
   function toggle() {
     setCollapsed(prev => {
@@ -162,7 +187,12 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
               <span className="text-base font-bold text-slate-900">gymflow</span>
             </div>
             <div className="hidden md:block" />
-            <AccountMenu />
+            <AccountMenu 
+              initialEmail={initialUser?.email} 
+              initialGymId={initialGym?.id}
+              initialGymName={initialGym?.name}
+              initialUnreadCount={initialUnreadCount} 
+            />
           </div>
         </header>
 

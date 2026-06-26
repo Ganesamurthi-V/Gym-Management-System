@@ -1,25 +1,22 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUser, getGym } from '@/lib/dal'
 import Link from 'next/link'
 import { Plus, Package } from 'lucide-react'
 import InventoryFilters from '@/components/inventory/InventoryFilters'
 import { getCachedInventory } from '@/lib/api/inventory'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function InventoryPage(props: { searchParams?: Promise<{ query?: string, category?: string }> }) {
   const searchParams = await props.searchParams;
   const query = searchParams?.query || '';
   const category = searchParams?.category || '';
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getAuthUser()
   if (!user) return null
 
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
-
+  const { gym } = await getGym(user.id)
   if (!gym) return null
+
+  const supabase = await createClient()
 
   let items: any[] = []
   try {

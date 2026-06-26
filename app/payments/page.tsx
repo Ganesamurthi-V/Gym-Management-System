@@ -32,7 +32,14 @@ export default async function PaymentsPage() {
       .gte('sold_at', twelveMonthsAgo)
       .order('sold_at', { ascending: false })
 
-    const [paymentsRes, productSalesRes, pendingMembersRes] = await Promise.all([
+    let duePaymentsQuery = supabase
+      .from('due_payments')
+      .select('*, member:members(id, name, phone, member_number)')
+      .eq('gym_id', gym.id)
+      .gte('created_at', twelveMonthsAgo)
+      .order('created_at', { ascending: false })
+
+    const [paymentsRes, productSalesRes, pendingMembersRes, duePaymentsRes] = await Promise.all([
       paymentsQuery,
       salesQuery,
       supabase
@@ -40,13 +47,15 @@ export default async function PaymentsPage() {
         .select('id, name, phone, member_number, pending_amount')
         .eq('gym_id', gym.id)
         .gt('pending_amount', 0)
-        .order('pending_amount', { ascending: false })
+        .order('pending_amount', { ascending: false }),
+      duePaymentsQuery
     ])
 
     return {
       payments: paymentsRes.data ?? [],
       productSales: productSalesRes.data ?? [],
-      pendingMembers: pendingMembersRes.data ?? []
+      pendingMembers: pendingMembersRes.data ?? [],
+      duePayments: duePaymentsRes.data ?? []
     }
   })
 
@@ -54,6 +63,7 @@ export default async function PaymentsPage() {
     <PaymentsClient
       payments={data.payments}
       productSales={data.productSales}
+      duePayments={data.duePayments}
       pendingMembers={data.pendingMembers}
       gymId={gym.id}
       gymName={gym.name}

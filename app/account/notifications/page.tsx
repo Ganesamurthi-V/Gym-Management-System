@@ -38,6 +38,10 @@ export default async function NotificationsPage() {
       .update({ read_at: new Date().toISOString() })
       .eq('gym_id', gym.id)
       .is('read_at', null)
+      
+    const { deleteCache } = await import('@/lib/cache')
+    await deleteCache(`unread_count:${gym.id}`)
+      
     logger.end('Update Read Status')
   }
 

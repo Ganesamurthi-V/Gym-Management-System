@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { invalidatePattern } from '@/lib/cache'
+
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +56,8 @@ export async function POST(req: NextRequest) {
       // admin.deleteUser requires service role key — silently skip if unavailable.
       // The auth user will be orphaned but all data is deleted.
     }
+
+    await invalidatePattern(`gym:${gym_id}:*`)
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {

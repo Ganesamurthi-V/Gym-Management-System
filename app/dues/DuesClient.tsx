@@ -25,6 +25,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   const [members, setMembers] = useState(initialMembers)
   const [paying, setPaying] = useState<string | null>(null)
   const [payAmount, setPayAmount] = useState('')
+  const [payMode, setPayMode] = useState<string>('cash')
   const router = useRouter()
   const supabase = createClient()
 
@@ -51,8 +52,21 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
     if (error) {
       alert('Failed to record payment. Please try again.')
     } else {
+      // Record the due payment
+      await supabase.from('due_payments').insert({
+        gym_id: gymId,
+        member_id: member.id,
+        amount: collect,
+        payment_mode: payMode
+      })
+
       const { invalidateMembersCache } = await import('../members/actions')
       await invalidateMembersCache(gymId)
+
+      // Also invalidate payments cache
+      const { deleteCache } = await import('@/lib/cache')
+      await deleteCache(`gym:${gymId}:payments_page:12mo`)
+      await deleteCache(`gym:${gymId}:payments_page:allTime`)
 
       setMembers(prev => prev
         .map(m => m.id === member.id ? { ...m, pending_amount: newPending } : m)
@@ -60,6 +74,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
       )
       setPaying(null)
       setPayAmount('')
+      setPayMode('cash')
       router.refresh()
     }
   }
@@ -135,6 +150,15 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
                       max={member.pending_amount}
                       autoFocus
                     />
+                    <select
+                      value={payMode}
+                      onChange={e => setPayMode(e.target.value)}
+                      className="input-field w-28 py-2"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                    </select>
                     <button
                       onClick={() => handleCollect(member)}
                       className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-lg hover:bg-emerald-600 transition-colors"

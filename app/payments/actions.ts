@@ -24,7 +24,7 @@ export async function getAllTimePayments(gymId: string) {
   const cacheKey = `gym:${gymId}:payments_page:allTime`
 
   return cacheWrapper(cacheKey, 300, async () => {
-    const [paymentsRes, productSalesRes] = await Promise.all([
+    const [paymentsRes, productSalesRes, duePaymentsRes] = await Promise.all([
       supabase
         .from('memberships')
         .select('*, member:members(id, name, phone, member_number)')
@@ -34,12 +34,18 @@ export async function getAllTimePayments(gymId: string) {
         .from('inventory_sales')
         .select('*')
         .eq('gym_id', gymId)
-        .order('sold_at', { ascending: false })
+        .order('sold_at', { ascending: false }),
+      supabase
+        .from('due_payments')
+        .select('*, member:members(id, name, phone, member_number)')
+        .eq('gym_id', gymId)
+        .order('created_at', { ascending: false })
     ])
 
     return {
       payments: paymentsRes.data ?? [],
-      productSales: productSalesRes.data ?? []
+      productSales: productSalesRes.data ?? [],
+      duePayments: duePaymentsRes.data ?? []
     }
   })
 }

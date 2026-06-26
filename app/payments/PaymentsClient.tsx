@@ -16,6 +16,17 @@ interface Payment {
   end_date: string
   amount: number
   admission_fee: number | null
+  due_amount: number | null
+  payment_mode: string
+  created_at: string
+  member?: { id: string; name: string; phone: string; member_number: number }
+}
+
+interface DuePayment {
+  id: string
+  member_id: string
+  gym_id: string
+  amount: number
   payment_mode: string
   created_at: string
   member?: { id: string; name: string; phone: string; member_number: number }
@@ -43,6 +54,7 @@ interface PendingMember {
 interface Props {
   payments: Payment[]
   productSales?: ProductSale[]
+  duePayments?: DuePayment[]
   pendingMembers: PendingMember[]
   gymId: string
   gymName: string
@@ -59,20 +71,21 @@ function getPeriodRange(period: Period): { start: Date; end: Date } | null {
   return null
 }
 
-function buildTransactions(mList: Payment[], sList: ProductSale[]) {
+function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePayment[]) {
   const m = mList.map(p => ({
     id: p.id,
     type: 'membership' as const,
     timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
-    amount: p.amount + (p.admission_fee ?? 0),
+    amount: p.amount + (p.admission_fee ?? 0) - (p.due_amount ?? 0),
     base_amount: p.amount,
     admission_fee: p.admission_fee ?? 0,
+    due_amount: p.due_amount ?? 0,
     mode: p.payment_mode,
     title: p.member?.name ?? 'Unknown',
     subtitle: p.member?.phone ?? '',
     col3: p.plan,
     col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
-    feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm` : undefined,
+    feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm${p.due_amount ? ` - ${formatCurrency(p.due_amount)} due` : ''}` : undefined,
     member_number: p.member?.member_number
   }))
 
@@ -92,10 +105,27 @@ function buildTransactions(mList: Payment[], sList: ProductSale[]) {
     member_number: undefined
   }))
 
-  return [...m, ...s].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  const d = dList.map(dp => ({
+    id: dp.id,
+    type: 'due' as const,
+    timestamp: dp.created_at,
+    amount: Number(dp.amount),
+    base_amount: Number(dp.amount),
+    admission_fee: 0,
+    due_amount: 0,
+    mode: dp.payment_mode,
+    title: dp.member?.name ?? 'Unknown',
+    subtitle: dp.member?.phone ?? '',
+    col3: 'Due Collection',
+    col4: '-',
+    feeBreakdown: undefined,
+    member_number: dp.member?.member_number
+  }))
+
+  return [...m, ...s, ...d].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 }
 
-export function PaymentsClient({ payments, productSales = [], pendingMembers, gymId, gymName }: Props) {
+export function PaymentsClient({ payments, productSales = [], duePayments = [], pendingMembers, gymId, gymName }: Props) {
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
   const [search, setSearch]   = useState('')
@@ -105,18 +135,20 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
   const [showPending, setShowPending] = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
-  const [activeTab, setActiveTab]     = useState<'membership' | 'inventory'>('membership')
+  const [activeTab, setActiveTab]     = useState<'membership' | 'inventory' | 'due'>('membership')
   const [fullPayments, setFullPayments] = useState<Payment[] | null>(null)
   const [fullSales, setFullSales] = useState<ProductSale[] | null>(null)
+  const [fullDuePayments, setFullDuePayments] = useState<DuePayment[] | null>(null)
   const [isLoadingAllTime, setIsLoadingAllTime] = useState(false)
   const supabase = createClient()
 
   const activePayments = fullPayments ?? payments
   const activeSales = fullSales ?? productSales
+  const activeDuePayments = fullDuePayments ?? duePayments
 
   const allTransactions = useMemo(() => {
-    return buildTransactions(activePayments, activeSales)
-  }, [activePayments, activeSales])
+    return buildTransactions(activePayments, activeSales, activeDuePayments)
+  }, [activePayments, activeSales, activeDuePayments])
 
   const filtered = useMemo(() => {
     const range = period === 'custom' && customFrom && customTo
@@ -150,7 +182,8 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
 
   const membershipTransactions = filtered.filter(p => p.type === 'membership')
   const inventoryTransactions = filtered.filter(p => p.type === 'inventory')
-  const displayTransactions = activeTab === 'membership' ? membershipTransactions : inventoryTransactions
+  const dueTransactions = filtered.filter(p => p.type === 'due')
+  const displayTransactions = activeTab === 'membership' ? membershipTransactions : activeTab === 'inventory' ? inventoryTransactions : dueTransactions
 
   const modeConfig = {
     cash: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <Banknote className="w-4 h-4 text-emerald-600" /> },
@@ -173,6 +206,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
         const data = await getAllTimePayments(gymId)
         setFullPayments(data.payments as any)
         setFullSales(data.productSales as any)
+        setFullDuePayments(data.duePayments as any)
       } finally {
         setIsLoadingAllTime(false)
       }
@@ -189,10 +223,12 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
         const data = await getAllTimePayments(gymId)
         setFullPayments(data.payments as any)
         setFullSales(data.productSales as any)
+        setFullDuePayments(data.duePayments as any)
         
-        const allT = buildTransactions(data.payments as any, data.productSales as any)
+        const allT = buildTransactions(data.payments as any, data.productSales as any, data.duePayments as any)
         currentM = allT.filter(t => t.type === 'membership')
         currentI = allT.filter(t => t.type === 'inventory')
+        // We can add due export later if needed
       } finally {
         setIsLoadingAllTime(false)
       }
@@ -290,6 +326,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           <div className="flex sm:flex-col gap-4 sm:gap-1 text-sm bg-black/10 px-4 py-2.5 rounded-lg border border-white/10">
             <p className="text-white/90">Memberships: <span className="font-bold text-white">{formatCurrency(membershipTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
             <p className="text-white/90">Inventory: <span className="font-bold text-white">{formatCurrency(inventoryTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
+            <p className="text-white/90">Dues Collected: <span className="font-bold text-white">{formatCurrency(dueTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
           </div>
         </div>
       </div>
@@ -387,16 +424,22 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           }`}>
           Inventory ({inventoryTransactions.length})
         </button>
+        <button onClick={() => setActiveTab('due')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'due' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}>
+          Dues ({dueTransactions.length})
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="search" placeholder={activeTab === 'membership' ? "Search by name or phone..." : "Search product..."}
+          <input type="search" placeholder={activeTab === 'membership' ? "Search by name or phone..." : activeTab === 'due' ? "Search dues..." : "Search product..."}
             value={search} onChange={e => setSearch(e.target.value)}
             className="input-field pl-9" />
         </div>
-        {activeTab === 'membership' && (
+        {(activeTab === 'membership' || activeTab === 'due') && (
           <div className="relative sm:w-40">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">#</span>
             <input type="search" placeholder="Member ID"

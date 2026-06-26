@@ -207,6 +207,7 @@ export default function NewMemberPage() {
           end_date,
           amount: parseInt(form.amount, 10) || 0,
           admission_fee: parseInt(form.admission_fee, 10) || 0,
+          due_amount: parseInt(form.pending_amount, 10) || 0,
           payment_mode: form.payment_mode,
         })
 

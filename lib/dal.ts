@@ -16,3 +16,19 @@ export const getGym = cache(async (userId: string) => {
     .single()
   return { gym, error }
 })
+
+export const getGymActiveStatus = cache(async (email: string) => {
+  const supabase = await createClient()
+  const { data: isActive, error } = await supabase.rpc('check_gym_active', { p_email: email })
+  return { isActive, error }
+})
+
+export const getUnreadAdminMessages = cache(async (gymId: string) => {
+  const supabase = await createClient()
+  const { count, error } = await supabase
+    .from('admin_messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('gym_id', gymId)
+    .is('read_at', null)
+  return { count, error }
+})

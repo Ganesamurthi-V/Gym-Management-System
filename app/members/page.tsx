@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser, getGym } from '@/lib/dal'
 import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
@@ -82,18 +83,13 @@ export default async function MembersPage() {
   
   try {
     logger.start('AUTH')
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getAuthUser()
     logger.end('AUTH')
     
     if (!user) return null
 
     logger.start('QUERY gyms')
-    const { data: gym } = await supabase
-      .from('gyms')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single()
+    const { gym } = await getGym(user.id)
     logger.end('QUERY gyms')
 
     if (!gym) return null

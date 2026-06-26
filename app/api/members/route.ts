@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
     const { allowed } = await checkRateLimit(user.id, '/api/members', ROUTE_LIMITS.DEFAULT)
     if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
 
+    const gym = await getGymForUser(supabase, user.id)
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
     const { searchParams } = req.nextUrl
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
     const offset = parseInt(searchParams.get('offset') ?? '0')
@@ -23,6 +26,7 @@ export async function GET(req: NextRequest) {
     const { data, error, count } = await supabase
       .from('members')
       .select('id, name, phone, age, gender, member_number, legacy_member_id, created_at', { count: 'exact' })
+      .eq('gym_id', gym.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

@@ -5,6 +5,7 @@ import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check 
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
+import { getAllTimePayments } from './actions'
 
 interface Payment {
   id: string
@@ -58,6 +59,42 @@ function getPeriodRange(period: Period): { start: Date; end: Date } | null {
   return null
 }
 
+function buildTransactions(mList: Payment[], sList: ProductSale[]) {
+  const m = mList.map(p => ({
+    id: p.id,
+    type: 'membership' as const,
+    timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
+    amount: p.amount + (p.admission_fee ?? 0),
+    base_amount: p.amount,
+    admission_fee: p.admission_fee ?? 0,
+    mode: p.payment_mode,
+    title: p.member?.name ?? 'Unknown',
+    subtitle: p.member?.phone ?? '',
+    col3: p.plan,
+    col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
+    feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm` : undefined,
+    member_number: p.member?.member_number
+  }))
+
+  const s = sList.map(ps => ({
+    id: ps.id,
+    type: 'inventory' as const,
+    timestamp: ps.sold_at,
+    amount: Number(ps.total_price),
+    base_amount: Number(ps.total_price),
+    admission_fee: 0,
+    mode: ps.payment_mode,
+    title: 'Inventory Sale',
+    subtitle: 'Walk-in / Direct',
+    col3: ps.product_name,
+    col4: `${ps.variant_name} (x${ps.quantity})`,
+    feeBreakdown: undefined,
+    member_number: undefined
+  }))
+
+  return [...m, ...s].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
 export function PaymentsClient({ payments, productSales = [], pendingMembers, gymId, gymName }: Props) {
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
@@ -69,43 +106,17 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
   const [markingId, setMarkingId]     = useState<string | null>(null)
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
   const [activeTab, setActiveTab]     = useState<'membership' | 'inventory'>('membership')
+  const [fullPayments, setFullPayments] = useState<Payment[] | null>(null)
+  const [fullSales, setFullSales] = useState<ProductSale[] | null>(null)
+  const [isLoadingAllTime, setIsLoadingAllTime] = useState(false)
   const supabase = createClient()
 
+  const activePayments = fullPayments ?? payments
+  const activeSales = fullSales ?? productSales
+
   const allTransactions = useMemo(() => {
-    const m = payments.map(p => ({
-      id: p.id,
-      type: 'membership' as const,
-      timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
-      amount: p.amount + (p.admission_fee ?? 0),
-      base_amount: p.amount,
-      admission_fee: p.admission_fee ?? 0,
-      mode: p.payment_mode,
-      title: p.member?.name ?? 'Unknown',
-      subtitle: p.member?.phone ?? '',
-      col3: p.plan,
-      col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
-      feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm` : undefined,
-      member_number: p.member?.member_number
-    }))
-
-    const s = productSales.map(ps => ({
-      id: ps.id,
-      type: 'inventory' as const,
-      timestamp: ps.sold_at,
-      amount: Number(ps.total_price),
-      base_amount: Number(ps.total_price),
-      admission_fee: 0,
-      mode: ps.payment_mode,
-      title: 'Inventory Sale',
-      subtitle: 'Walk-in / Direct',
-      col3: ps.product_name,
-      col4: `${ps.variant_name} (x${ps.quantity})`,
-      feeBreakdown: undefined,
-      member_number: undefined
-    }))
-
-    return [...m, ...s].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [payments, productSales])
+    return buildTransactions(activePayments, activeSales)
+  }, [activePayments, activeSales])
 
   const filtered = useMemo(() => {
     const range = period === 'custom' && customFrom && customTo
@@ -154,11 +165,43 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
     setMarkingId(null)
   }
 
+  async function handlePeriodChange(p: Period) {
+    setPeriod(p)
+    if (p === 'all' && !fullPayments) {
+      setIsLoadingAllTime(true)
+      try {
+        const data = await getAllTimePayments(gymId)
+        setFullPayments(data.payments as any)
+        setFullSales(data.productSales as any)
+      } finally {
+        setIsLoadingAllTime(false)
+      }
+    }
+  }
+
   async function exportExcel() {
+    let currentM = membershipTransactions
+    let currentI = inventoryTransactions
+
+    if (!fullPayments) {
+      setIsLoadingAllTime(true)
+      try {
+        const data = await getAllTimePayments(gymId)
+        setFullPayments(data.payments as any)
+        setFullSales(data.productSales as any)
+        
+        const allT = buildTransactions(data.payments as any, data.productSales as any)
+        currentM = allT.filter(t => t.type === 'membership')
+        currentI = allT.filter(t => t.type === 'inventory')
+      } finally {
+        setIsLoadingAllTime(false)
+      }
+    }
+
     const ExcelJS = (await import('exceljs')).default
     const wb = new ExcelJS.Workbook()
 
-    if (membershipTransactions.length > 0) {
+    if (currentM.length > 0) {
       const wsMembers = wb.addWorksheet('Membership Payments')
       wsMembers.columns = [
         { header: 'Member #',       key: 'num',   width: 10 },
@@ -171,7 +214,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
         { header: 'Total',          key: 'total', width: 12 },
       ]
       wsMembers.getRow(1).font = { bold: true }
-      membershipTransactions.forEach(p => {
+      currentM.forEach(p => {
         wsMembers.addRow({
           num:   p.member_number ?? '-',
           name:  p.title,
@@ -185,8 +228,8 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
       })
     }
 
-    if (inventoryTransactions.length > 0 || membershipTransactions.length === 0) {
-      const wsInv = wb.addWorksheet(membershipTransactions.length === 0 && inventoryTransactions.length === 0 ? 'Payments' : 'Inventory Payments')
+    if (currentI.length > 0 || currentM.length === 0) {
+      const wsInv = wb.addWorksheet(currentM.length === 0 && currentI.length === 0 ? 'Payments' : 'Inventory Payments')
       wsInv.columns = [
         { header: 'Date',     key: 'date',  width: 20 },
         { header: 'Product',  key: 'prod',  width: 22 },
@@ -195,7 +238,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
         { header: 'Total',    key: 'total', width: 12 },
       ]
       wsInv.getRow(1).font = { bold: true }
-      inventoryTransactions.forEach(p => {
+      currentI.forEach(p => {
         wsInv.addRow({
           date:  formatDate(p.timestamp),
           prod:  p.col3,
@@ -220,9 +263,9 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
     <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900">Payments</h1>
-        <button onClick={exportExcel}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
-          <Download className="w-4 h-4" />Export
+        <button onClick={exportExcel} disabled={isLoadingAllTime}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50">
+          <Download className="w-4 h-4" />{isLoadingAllTime ? 'Loading...' : 'Export'}
         </button>
       </div>
 
@@ -293,11 +336,11 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {(['today', 'week', 'month', 'all', 'custom'] as Period[]).map(p => (
-            <button key={p} onClick={() => setPeriod(p)}
-              className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+            <button key={p} onClick={() => handlePeriodChange(p)} disabled={isLoadingAllTime}
+              className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-50 ${
                 period === p ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-500'
               }`}>
-              {p === 'all' ? 'All Time' : p === 'custom' ? 'Custom' : p.charAt(0).toUpperCase() + p.slice(1)}
+              {p === 'all' && isLoadingAllTime && period !== 'all' ? 'Loading...' : p === 'all' ? 'All Time' : p === 'custom' ? 'Custom' : p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
           ))}
         </div>

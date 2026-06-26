@@ -128,7 +128,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
-            <Dumbbell className="w-4 h-4 text-brand-500" />
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
             <span className="text-sm text-slate-500 font-medium">{gymName}</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>

@@ -22,7 +22,15 @@ function DumbbellIcon({ className }: { className?: string }) {
   )
 }
 
-export default function ShellGuard({ children }: { children: React.ReactNode }) {
+interface ShellGuardProps {
+  children: React.ReactNode
+  initialUser: any
+  initialGym: any
+  initialIsActive: boolean
+  initialUnreadCount: number
+}
+
+export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount }: ShellGuardProps) {
   const pathname = usePathname()
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
@@ -35,6 +43,14 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
     setMounted(true)
 
     if (isShellless) return
+
+    if (!initialUser || !initialIsActive) {
+      const supabase = createClient()
+      supabase.auth.signOut().then(() => {
+        window.location.href = '/auth/login'
+      })
+      return
+    }
 
     const supabase = createClient()
     
@@ -58,8 +74,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
       }
     }
 
-    // Check immediately, on window focus, and every 30 seconds
-    checkAuth()
+    // Check on window focus, and every 10 seconds
     window.addEventListener('focus', checkAuth)
     const interval = setInterval(checkAuth, 10000)
     
@@ -67,7 +82,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
       window.removeEventListener('focus', checkAuth)
       clearInterval(interval)
     }
-  }, [isShellless, pathname])
+  }, [isShellless, pathname, initialUser, initialIsActive])
 
   function toggle() {
     setCollapsed(prev => {
@@ -162,7 +177,12 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
               <span className="text-base font-bold text-slate-900">gymflow</span>
             </div>
             <div className="hidden md:block" />
-            <AccountMenu />
+            <AccountMenu 
+              initialEmail={initialUser?.email} 
+              initialGymId={initialGym?.id}
+              initialGymName={initialGym?.name}
+              initialUnreadCount={initialUnreadCount} 
+            />
           </div>
         </header>
 

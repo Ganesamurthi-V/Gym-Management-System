@@ -260,8 +260,8 @@ export default function NewMemberPage() {
 
   const admissionFee = parseInt(form.admission_fee, 10) || 0
   const membershipFee = parseInt(form.amount, 10) || 0
-  const totalAmount = admissionFee + membershipFee
   const pendingAmount = parseInt(form.pending_amount, 10) || 0
+  const totalAmount = admissionFee + membershipFee - pendingAmount
 
   const planLabel = form.plan === 'monthly' ? '1 Month' : form.plan === 'quarterly' ? '3 Months' : form.plan === 'annual' ? '1 Year' : `${form.custom_months} Months (Custom)`
 

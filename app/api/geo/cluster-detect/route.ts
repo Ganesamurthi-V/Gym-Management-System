@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    const inputs: string[] = (body.inputs ?? []).filter(Boolean).slice(0, 5000)
+    const inputs: string[] = (body.inputs ?? []).filter(Boolean).slice(0, 500)
 
     const cluster = detectDatasetCluster(inputs)
 

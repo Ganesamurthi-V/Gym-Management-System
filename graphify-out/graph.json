@@ -926,7 +926,7 @@
       "source_file": "app/account/AccountClient.tsx",
       "source_location": "L1",
       "id": "app_account_accountclient_tsx",
-      "community": 20,
+      "community": 67,
       "norm_label": "accountclient.tsx"
     },
     {
@@ -935,7 +935,7 @@
       "source_file": "app/account/AccountClient.tsx",
       "source_location": "L14",
       "id": "account_accountclient_props",
-      "community": 20,
+      "community": 67,
       "norm_label": "props"
     },
     {
@@ -944,7 +944,7 @@
       "source_file": "app/account/AccountClient.tsx",
       "source_location": "L30",
       "id": "account_accountclient_modaltype",
-      "community": 20,
+      "community": 67,
       "norm_label": "modaltype"
     },
     {
@@ -953,7 +953,7 @@
       "source_file": "app/account/AccountClient.tsx",
       "source_location": "L32",
       "id": "account_accountclient_accountclient",
-      "community": 20,
+      "community": 67,
       "norm_label": "accountclient()"
     },
     {
@@ -962,7 +962,7 @@
       "source_file": "app/account/AccountClient.tsx",
       "source_location": "L798",
       "id": "account_accountclient_modal",
-      "community": 20,
+      "community": 67,
       "norm_label": "modal()"
     },
     {
@@ -971,7 +971,7 @@
       "source_file": "app/account/AccountClient.tsx",
       "source_location": "L824",
       "id": "account_accountclient_messagebanner",
-      "community": 20,
+      "community": 67,
       "norm_label": "messagebanner()"
     },
     {
@@ -980,7 +980,7 @@
       "source_file": "app/account/AccountClient.tsx",
       "source_location": "L840",
       "id": "account_accountclient_readonlyfield",
-      "community": 20,
+      "community": 67,
       "norm_label": "readonlyfield()"
     },
     {
@@ -989,7 +989,7 @@
       "source_file": "app/account/layout.tsx",
       "source_location": "L1",
       "id": "app_account_layout_tsx",
-      "community": 0,
+      "community": 64,
       "norm_label": "layout.tsx"
     },
     {
@@ -1007,7 +1007,7 @@
       "source_file": "app/account/page.tsx",
       "source_location": "L1",
       "id": "app_account_page_tsx",
-      "community": 20,
+      "community": 64,
       "norm_label": "page.tsx"
     },
     {
@@ -1043,7 +1043,7 @@
       "source_file": "app/admin/layout.tsx",
       "source_location": "L1",
       "id": "app_admin_layout_tsx",
-      "community": 0,
+      "community": 64,
       "norm_label": "layout.tsx"
     },
     {
@@ -1052,7 +1052,7 @@
       "source_file": "app/admin/layout.tsx",
       "source_location": "L6",
       "id": "admin_layout_adminlayout",
-      "community": 0,
+      "community": 64,
       "norm_label": "adminlayout()"
     },
     {
@@ -1079,7 +1079,7 @@
       "source_file": "app/api/account/delete-data/route.ts",
       "source_location": "L1",
       "id": "app_api_account_delete_data_route_ts",
-      "community": 0,
+      "community": 64,
       "norm_label": "route.ts"
     },
     {
@@ -1088,7 +1088,7 @@
       "source_file": "app/api/account/delete-data/route.ts",
       "source_location": "L11",
       "id": "delete_data_route_post",
-      "community": 0,
+      "community": 64,
       "norm_label": "post()"
     },
     {
@@ -1385,7 +1385,7 @@
       "source_file": "app/api/inventory/sales/[id]/route.ts",
       "source_location": "L1",
       "id": "app_api_inventory_sales_id_route_ts",
-      "community": 0,
+      "community": 64,
       "norm_label": "route.ts"
     },
     {
@@ -1394,7 +1394,7 @@
       "source_file": "app/api/inventory/sales/[id]/route.ts",
       "source_location": "L4",
       "id": "id_route_delete",
-      "community": 0,
+      "community": 64,
       "norm_label": "delete()"
     },
     {
@@ -1727,7 +1727,7 @@
       "source_file": "app/dashboard/DashboardClient.tsx",
       "source_location": "L21",
       "id": "dashboard_dashboardclient_dashboardclient",
-      "community": 64,
+      "community": 11,
       "norm_label": "dashboardclient()"
     },
     {
@@ -1754,7 +1754,7 @@
       "source_file": "app/dashboard/DashboardClient.tsx",
       "source_location": "L274",
       "id": "dashboard_dashboardclient_statcardcurrency",
-      "community": 62,
+      "community": 11,
       "norm_label": "statcardcurrency()"
     },
     {
@@ -1835,7 +1835,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L1",
       "id": "app_dues_duesclient_tsx",
-      "community": 11,
+      "community": 66,
       "norm_label": "duesclient.tsx"
     },
     {
@@ -1844,7 +1844,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L9",
       "id": "dues_duesclient_duemember",
-      "community": 11,
+      "community": 66,
       "norm_label": "duemember"
     },
     {
@@ -1853,7 +1853,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L18",
       "id": "dues_duesclient_props",
-      "community": 11,
+      "community": 66,
       "norm_label": "props"
     },
     {
@@ -1862,7 +1862,7 @@
       "source_file": "app/dues/DuesClient.tsx",
       "source_location": "L24",
       "id": "dues_duesclient_duesclient",
-      "community": 11,
+      "community": 66,
       "norm_label": "duesclient()"
     },
     {
@@ -2348,7 +2348,7 @@
       "source_file": "app/members/actions.ts",
       "source_location": "L201",
       "id": "members_actions_invalidatememberscache",
-      "community": 90,
+      "community": 0,
       "norm_label": "invalidatememberscache()"
     },
     {
@@ -2420,7 +2420,7 @@
       "source_file": "app/members/MembersClient.tsx",
       "source_location": "L23",
       "id": "members_membersclient_membersclient",
-      "community": 64,
+      "community": 90,
       "norm_label": "membersclient()"
     },
     {
@@ -2429,7 +2429,7 @@
       "source_file": "app/members/MembersClient.tsx",
       "source_location": "L31",
       "id": "members_membersclient_memberscontent",
-      "community": 90,
+      "community": 66,
       "norm_label": "memberscontent()"
     },
     {
@@ -2438,7 +2438,7 @@
       "source_file": "app/members/page.tsx",
       "source_location": "L1",
       "id": "app_members_page_tsx",
-      "community": 64,
+      "community": 90,
       "norm_label": "page.tsx"
     },
     {
@@ -2447,7 +2447,7 @@
       "source_file": "app/members/page.tsx",
       "source_location": "L14",
       "id": "members_page_getmembersdata",
-      "community": 64,
+      "community": 90,
       "norm_label": "getmembersdata()"
     },
     {
@@ -2456,7 +2456,7 @@
       "source_file": "app/members/page.tsx",
       "source_location": "L83",
       "id": "members_page_memberspage",
-      "community": 64,
+      "community": 90,
       "norm_label": "memberspage()"
     },
     {
@@ -2465,7 +2465,7 @@
       "source_file": "app/members/attendance/actions.ts",
       "source_location": "L1",
       "id": "app_members_attendance_actions_ts",
-      "community": 91,
+      "community": 64,
       "norm_label": "actions.ts"
     },
     {
@@ -2474,7 +2474,7 @@
       "source_file": "app/members/attendance/actions.ts",
       "source_location": "L6",
       "id": "attendance_actions_fetchattendancelogsaction",
-      "community": 91,
+      "community": 64,
       "norm_label": "fetchattendancelogsaction()"
     },
     {
@@ -2483,7 +2483,7 @@
       "source_file": "app/members/attendance/AttendanceLogClient.tsx",
       "source_location": "L1",
       "id": "app_members_attendance_attendancelogclient_tsx",
-      "community": 91,
+      "community": 64,
       "norm_label": "attendancelogclient.tsx"
     },
     {
@@ -2492,7 +2492,7 @@
       "source_file": "app/members/attendance/AttendanceLogClient.tsx",
       "source_location": "L12",
       "id": "attendance_attendancelogclient_attendancelog",
-      "community": 91,
+      "community": 64,
       "norm_label": "attendancelog"
     },
     {
@@ -2501,7 +2501,7 @@
       "source_file": "app/members/attendance/AttendanceLogClient.tsx",
       "source_location": "L28",
       "id": "attendance_attendancelogclient_props",
-      "community": 91,
+      "community": 64,
       "norm_label": "props"
     },
     {
@@ -2510,7 +2510,7 @@
       "source_file": "app/members/attendance/AttendanceLogClient.tsx",
       "source_location": "L33",
       "id": "attendance_attendancelogclient_calculateduration",
-      "community": 91,
+      "community": 64,
       "norm_label": "calculateduration()"
     },
     {
@@ -2519,7 +2519,7 @@
       "source_file": "app/members/attendance/AttendanceLogClient.tsx",
       "source_location": "L51",
       "id": "attendance_attendancelogclient_formattimeonly",
-      "community": 91,
+      "community": 64,
       "norm_label": "formattimeonly()"
     },
     {
@@ -2528,7 +2528,7 @@
       "source_file": "app/members/attendance/AttendanceLogClient.tsx",
       "source_location": "L61",
       "id": "attendance_attendancelogclient_attendancelogclient",
-      "community": 91,
+      "community": 64,
       "norm_label": "attendancelogclient()"
     },
     {
@@ -2645,7 +2645,7 @@
       "source_file": "app/members/bulk-edit/page.tsx",
       "source_location": "L1",
       "id": "app_members_bulk_edit_page_tsx",
-      "community": 2,
+      "community": 64,
       "norm_label": "page.tsx"
     },
     {
@@ -2690,7 +2690,7 @@
       "source_file": "app/members/new/page.tsx",
       "source_location": "L26",
       "id": "new_page_newmemberpage",
-      "community": 11,
+      "community": 67,
       "norm_label": "newmemberpage()"
     },
     {
@@ -2744,7 +2744,7 @@
       "source_file": "app/members/[id]/page.tsx",
       "source_location": "L1",
       "id": "app_members_id_page_tsx",
-      "community": 64,
+      "community": 90,
       "norm_label": "page.tsx"
     },
     {
@@ -2753,7 +2753,7 @@
       "source_file": "app/members/[id]/page.tsx",
       "source_location": "L6",
       "id": "id_page_memberdetailpage",
-      "community": 64,
+      "community": 90,
       "norm_label": "memberdetailpage()"
     },
     {
@@ -2807,7 +2807,7 @@
       "source_file": "app/members/[id]/edit/page.tsx",
       "source_location": "L5",
       "id": "edit_page_editmemberpage",
-      "community": 74,
+      "community": 6,
       "norm_label": "editmemberpage()"
     },
     {
@@ -3320,7 +3320,7 @@
       "source_file": "components/inventory/InventoryUnitsManager.tsx",
       "source_location": "L1",
       "id": "components_inventory_inventoryunitsmanager_tsx",
-      "community": 92,
+      "community": 60,
       "norm_label": "inventoryunitsmanager.tsx"
     },
     {
@@ -3329,7 +3329,7 @@
       "source_file": "components/inventory/InventoryUnitsManager.tsx",
       "source_location": "L9",
       "id": "inventory_inventoryunitsmanager_inventoryunit",
-      "community": 92,
+      "community": 60,
       "norm_label": "inventoryunit"
     },
     {
@@ -3338,7 +3338,7 @@
       "source_file": "components/inventory/InventoryUnitsManager.tsx",
       "source_location": "L16",
       "id": "inventory_inventoryunitsmanager_props",
-      "community": 92,
+      "community": 60,
       "norm_label": "props"
     },
     {
@@ -3347,7 +3347,7 @@
       "source_file": "components/inventory/InventoryUnitsManager.tsx",
       "source_location": "L22",
       "id": "inventory_inventoryunitsmanager_inventoryunitsmanager",
-      "community": 92,
+      "community": 60,
       "norm_label": "inventoryunitsmanager()"
     },
     {
@@ -3446,7 +3446,7 @@
       "source_file": "components/layout/NavClient.tsx",
       "source_location": "L83",
       "id": "layout_navclient_mobilenav",
-      "community": 93,
+      "community": 5,
       "norm_label": "mobilenav()"
     },
     {
@@ -3536,7 +3536,7 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L1",
       "id": "components_layout_shellguard_tsx",
-      "community": 93,
+      "community": 5,
       "norm_label": "shellguard.tsx"
     },
     {
@@ -3545,7 +3545,7 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L10",
       "id": "layout_shellguard_shell_excluded",
-      "community": 93,
+      "community": 5,
       "norm_label": "shell_excluded"
     },
     {
@@ -3554,7 +3554,7 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L13",
       "id": "layout_shellguard_dumbbellicon",
-      "community": 93,
+      "community": 5,
       "norm_label": "dumbbellicon()"
     },
     {
@@ -3563,7 +3563,7 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L28",
       "id": "layout_shellguard_gymrow",
-      "community": 93,
+      "community": 5,
       "norm_label": "gymrow"
     },
     {
@@ -3572,7 +3572,7 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L30",
       "id": "layout_shellguard_shellguardprops",
-      "community": 93,
+      "community": 5,
       "norm_label": "shellguardprops"
     },
     {
@@ -3581,7 +3581,7 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L38",
       "id": "layout_shellguard_shellguard",
-      "community": 93,
+      "community": 5,
       "norm_label": "shellguard()"
     },
     {
@@ -3770,7 +3770,7 @@
       "source_file": "components/support/SupportHeaderClient.tsx",
       "source_location": "L1",
       "id": "components_support_supportheaderclient_tsx",
-      "community": 64,
+      "community": 20,
       "norm_label": "supportheaderclient.tsx"
     },
     {
@@ -3779,7 +3779,7 @@
       "source_file": "components/support/SupportHeaderClient.tsx",
       "source_location": "L7",
       "id": "support_supportheaderclient_supportheaderclient",
-      "community": 64,
+      "community": 20,
       "norm_label": "supportheaderclient()"
     },
     {
@@ -3824,7 +3824,7 @@
       "source_file": "components/support/SupportTicketModal.tsx",
       "source_location": "L1",
       "id": "components_support_supportticketmodal_tsx",
-      "community": 64,
+      "community": 20,
       "norm_label": "supportticketmodal.tsx"
     },
     {
@@ -3833,7 +3833,7 @@
       "source_file": "components/support/SupportTicketModal.tsx",
       "source_location": "L8",
       "id": "support_supportticketmodal_supportticketmodal",
-      "community": 64,
+      "community": 20,
       "norm_label": "supportticketmodal()"
     },
     {
@@ -4461,7 +4461,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "gymflow-admin/app/api/auth/route.ts",
-      "source_location": "L5",
+      "source_location": "L6",
       "id": "auth_route_post",
       "community": 74,
       "norm_label": "post()"
@@ -4470,7 +4470,7 @@
       "label": "DELETE()",
       "file_type": "code",
       "source_file": "gymflow-admin/app/api/auth/route.ts",
-      "source_location": "L31",
+      "source_location": "L40",
       "id": "auth_route_delete",
       "community": 74,
       "norm_label": "delete()"
@@ -4481,16 +4481,16 @@
       "source_file": "gymflow-admin/app/api/check-db/route.ts",
       "source_location": "L1",
       "id": "gymflow_admin_app_api_check_db_route_ts",
-      "community": 84,
+      "community": 74,
       "norm_label": "route.ts"
     },
     {
       "label": "GET()",
       "file_type": "code",
       "source_file": "gymflow-admin/app/api/check-db/route.ts",
-      "source_location": "L4",
+      "source_location": "L6",
       "id": "check_db_route_get",
-      "community": 84,
+      "community": 74,
       "norm_label": "get()"
     },
     {
@@ -5084,7 +5084,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L1",
       "id": "lib_areas_ts",
-      "community": 8,
+      "community": 1,
       "norm_label": "areas.ts"
     },
     {
@@ -5093,7 +5093,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L7",
       "id": "lib_areas_areas",
-      "community": 8,
+      "community": 1,
       "norm_label": "areas"
     },
     {
@@ -5102,7 +5102,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L9",
       "id": "lib_areas_norm",
-      "community": 8,
+      "community": 1,
       "norm_label": "norm()"
     },
     {
@@ -5111,7 +5111,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L13",
       "id": "lib_areas_phonetic",
-      "community": 8,
+      "community": 1,
       "norm_label": "phonetic()"
     },
     {
@@ -5120,7 +5120,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L22",
       "id": "lib_areas_levenshtein",
-      "community": 8,
+      "community": 1,
       "norm_label": "levenshtein()"
     },
     {
@@ -5129,7 +5129,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L33",
       "id": "lib_areas_dicecoefficient",
-      "community": 8,
+      "community": 1,
       "norm_label": "dicecoefficient()"
     },
     {
@@ -5138,7 +5138,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L46",
       "id": "lib_areas_lcs",
-      "community": 8,
+      "community": 1,
       "norm_label": "lcs()"
     },
     {
@@ -5147,7 +5147,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L55",
       "id": "lib_areas_similarity",
-      "community": 8,
+      "community": 1,
       "norm_label": "similarity()"
     },
     {
@@ -5156,7 +5156,7 @@
       "source_file": "lib/areas.ts",
       "source_location": "L68",
       "id": "lib_areas_matcharealegacy",
-      "community": 8,
+      "community": 1,
       "norm_label": "matcharealegacy()"
     },
     {
@@ -5372,7 +5372,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L1",
       "id": "lib_pdf_ts",
-      "community": 62,
+      "community": 8,
       "norm_label": "pdf.ts"
     },
     {
@@ -5381,7 +5381,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L3",
       "id": "lib_pdf_escapehtml",
-      "community": 62,
+      "community": 8,
       "norm_label": "escapehtml()"
     },
     {
@@ -5390,7 +5390,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L12",
       "id": "lib_pdf_paymentrow",
-      "community": 62,
+      "community": 8,
       "norm_label": "paymentrow"
     },
     {
@@ -5399,7 +5399,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L22",
       "id": "lib_pdf_newmemberrow",
-      "community": 62,
+      "community": 8,
       "norm_label": "newmemberrow"
     },
     {
@@ -5408,7 +5408,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L30",
       "id": "lib_pdf_dailyreportdata",
-      "community": 62,
+      "community": 8,
       "norm_label": "dailyreportdata"
     },
     {
@@ -5417,7 +5417,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L37",
       "id": "lib_pdf_formatcategory",
-      "community": 62,
+      "community": 8,
       "norm_label": "formatcategory()"
     },
     {
@@ -5426,7 +5426,7 @@
       "source_file": "lib/pdf.ts",
       "source_location": "L44",
       "id": "lib_pdf_generatedailyreportpdf",
-      "community": 62,
+      "community": 8,
       "norm_label": "generatedailyreportpdf()"
     },
     {
@@ -5615,7 +5615,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L6",
       "id": "lib_utils_cn",
-      "community": 69,
+      "community": 66,
       "norm_label": "cn()"
     },
     {
@@ -5642,7 +5642,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L26",
       "id": "lib_utils_getmemberstatus",
-      "community": 64,
+      "community": 90,
       "norm_label": "getmemberstatus()"
     },
     {
@@ -5651,7 +5651,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L34",
       "id": "lib_utils_getdaysremaining",
-      "community": 64,
+      "community": 90,
       "norm_label": "getdaysremaining()"
     },
     {
@@ -5660,7 +5660,7 @@
       "source_file": "lib/utils.ts",
       "source_location": "L39",
       "id": "lib_utils_formatdate",
-      "community": 11,
+      "community": 67,
       "norm_label": "formatdate()"
     },
     {
@@ -5867,7 +5867,7 @@
       "source_file": "lib/geo/clustering.ts",
       "source_location": "L174",
       "id": "geo_clustering_detectdatasetcluster",
-      "community": 0,
+      "community": 1,
       "norm_label": "detectdatasetcluster()"
     },
     {
@@ -5948,7 +5948,7 @@
       "source_file": "lib/geo/matchArea.ts",
       "source_location": "L1",
       "id": "lib_geo_matcharea_ts",
-      "community": 2,
+      "community": 1,
       "norm_label": "matcharea.ts"
     },
     {
@@ -5957,7 +5957,7 @@
       "source_file": "lib/geo/matchArea.ts",
       "source_location": "L5",
       "id": "geo_matcharea_fallback",
-      "community": 2,
+      "community": 1,
       "norm_label": "fallback()"
     },
     {
@@ -5966,7 +5966,7 @@
       "source_file": "lib/geo/matchArea.ts",
       "source_location": "L19",
       "id": "geo_matcharea_matcharea",
-      "community": 2,
+      "community": 1,
       "norm_label": "matcharea()"
     },
     {
@@ -5984,7 +5984,7 @@
       "source_file": "lib/geo/matchArea.ts",
       "source_location": "L107",
       "id": "geo_matcharea_searchlocalities",
-      "community": 2,
+      "community": 1,
       "norm_label": "searchlocalities()"
     },
     {
@@ -6002,7 +6002,7 @@
       "source_file": "lib/geo/normalizer.ts",
       "source_location": "L2",
       "id": "geo_normalizer_normalizeinput",
-      "community": 0,
+      "community": 1,
       "norm_label": "normalizeinput()"
     },
     {
@@ -6038,7 +6038,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L1",
       "id": "lib_geo_seed_data_ts",
-      "community": 8,
+      "community": 1,
       "norm_label": "seed-data.ts"
     },
     {
@@ -6047,7 +6047,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L3",
       "id": "geo_seed_data_seedlocality",
-      "community": 8,
+      "community": 1,
       "norm_label": "seedlocality"
     },
     {
@@ -6056,7 +6056,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L13",
       "id": "geo_seed_data_norm",
-      "community": 8,
+      "community": 1,
       "norm_label": "norm()"
     },
     {
@@ -6065,7 +6065,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L17",
       "id": "geo_seed_data_phonetic",
-      "community": 8,
+      "community": 1,
       "norm_label": "phonetic()"
     },
     {
@@ -6074,7 +6074,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L30",
       "id": "geo_seed_data_loc",
-      "community": 8,
+      "community": 1,
       "norm_label": "loc()"
     },
     {
@@ -6083,7 +6083,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L42",
       "id": "geo_seed_data_pondicherry_localities",
-      "community": 8,
+      "community": 1,
       "norm_label": "pondicherry_localities"
     },
     {
@@ -6092,7 +6092,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L116",
       "id": "geo_seed_data_puducherry_cities",
-      "community": 8,
+      "community": 1,
       "norm_label": "puducherry_cities"
     },
     {
@@ -6101,7 +6101,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L126",
       "id": "geo_seed_data_tamil_nadu_cities",
-      "community": 8,
+      "community": 1,
       "norm_label": "tamil_nadu_cities"
     },
     {
@@ -6110,7 +6110,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L189",
       "id": "geo_seed_data_india_cities",
-      "community": 8,
+      "community": 1,
       "norm_label": "india_cities"
     },
     {
@@ -6119,7 +6119,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L399",
       "id": "geo_seed_data_seed_localities",
-      "community": 8,
+      "community": 1,
       "norm_label": "seed_localities"
     },
     {
@@ -6128,7 +6128,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L407",
       "id": "geo_seed_data_seen",
-      "community": 8,
+      "community": 1,
       "norm_label": "seen"
     },
     {
@@ -6137,7 +6137,7 @@
       "source_file": "lib/geo/seed-data.ts",
       "source_location": "L408",
       "id": "geo_seed_data_seed_localities_deduped",
-      "community": 8,
+      "community": 1,
       "norm_label": "seed_localities_deduped"
     },
     {
@@ -6416,7 +6416,7 @@
       "source_file": "lib/supabase/server.ts",
       "source_location": "L1",
       "id": "lib_supabase_server_ts",
-      "community": 0,
+      "community": 64,
       "norm_label": "server.ts"
     },
     {
@@ -6425,7 +6425,7 @@
       "source_file": "lib/supabase/server.ts",
       "source_location": "L4",
       "id": "supabase_server_createclient",
-      "community": 0,
+      "community": 64,
       "norm_label": "createclient()"
     },
     {
@@ -6848,7 +6848,7 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L84",
       "id": "reports_reportsclient_reportsclient",
-      "community": 69,
+      "community": 64,
       "norm_label": "reportsclient()"
     },
     {
@@ -7203,265 +7203,157 @@
       "norm_label": "outstanding issues.md"
     },
     {
-      "label": "GymFlow \u2014 Final Production-Readiness Audit",
+      "label": "GymFlow \u2014 Production Readiness Audit Report",
       "file_type": "document",
       "source_file": "outstanding issues.md",
       "source_location": "L1",
-      "id": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
+      "id": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
       "community": 34,
-      "norm_label": "gymflow \u2014 final production-readiness audit"
+      "norm_label": "gymflow \u2014 production readiness audit report"
     },
     {
       "label": "Executive Summary",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L8",
+      "source_location": "L9",
       "id": "gymflow_outstanding_issues_executive_summary",
       "community": 34,
       "norm_label": "executive summary"
     },
     {
-      "label": "Part 1 \u2014 Verification of Previously Identified Issues",
+      "label": "\u2705 Previously Reported Issues \u2014 All Confirmed Fixed",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L27",
-      "id": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues",
+      "source_location": "L17",
+      "id": "gymflow_outstanding_issues_previously_reported_issues_all_confirmed_fixed",
       "community": 34,
-      "norm_label": "part 1 \u2014 verification of previously identified issues"
+      "norm_label": "\u2705 previously reported issues \u2014 all confirmed fixed"
     },
     {
-      "label": "From the first remediation pass (audit \u2192 remediation \u2192 outstanding-issues.md)",
+      "label": "\ud83d\udd34 Critical \u2014 Must Fix Before Launch",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L29",
-      "id": "gymflow_outstanding_issues_from_the_first_remediation_pass_audit_remediation_outstanding_issues_md",
+      "source_location": "L39",
+      "id": "gymflow_outstanding_issues_critical_must_fix_before_launch",
       "community": 34,
-      "norm_label": "from the first remediation pass (audit \u2192 remediation \u2192 outstanding-issues.md)"
+      "norm_label": "\ud83d\udd34 critical \u2014 must fix before launch"
     },
     {
-      "label": "From the second pass (new-findings.md)",
+      "label": "Issue 1: `gymflow-admin` `/api/check-db` has no authentication",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L53",
-      "id": "gymflow_outstanding_issues_from_the_second_pass_new_findings_md",
+      "source_location": "L41",
+      "id": "gymflow_outstanding_issues_issue_1_gymflow_admin_api_check_db_has_no_authentication",
       "community": 34,
-      "norm_label": "from the second pass (new-findings.md)"
+      "norm_label": "issue 1: `gymflow-admin` `/api/check-db` has no authentication"
     },
     {
-      "label": "Part 2 \u2014 Regression Found",
+      "label": "code:typescript (// gymflow-admin/app/api/check-db/route.ts)",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L66",
-      "id": "gymflow_outstanding_issues_part_2_regression_found",
-      "community": 34,
-      "norm_label": "part 2 \u2014 regression found"
-    },
-    {
-      "label": "\ud83d\udfe0 R1 \u2014 `idx_gyms_id_owner` Covering Index Was Fully Removed, Not De-Duplicated",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L68",
-      "id": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated",
-      "community": 34,
-      "norm_label": "\ud83d\udfe0 r1 \u2014 `idx_gyms_id_owner` covering index was fully removed, not de-duplicated"
-    },
-    {
-      "label": "code:bash ($ grep -c \"idx_gyms_id_owner\" supabase-schema.sql)",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L74",
+      "source_location": "L51",
       "id": "gymflow_outstanding_issues_codeblock_1",
       "community": 34,
-      "norm_label": "code:bash ($ grep -c \"idx_gyms_id_owner\" supabase-schema.sql)"
+      "norm_label": "code:typescript (// gymflow-admin/app/api/check-db/route.ts)"
     },
     {
-      "label": "code:sql (EXISTS (SELECT 1 FROM gyms WHERE id = <table>.gym_id AND own)",
+      "label": "\ud83d\udfe0 Should Fix Before Launch",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L81",
+      "source_location": "L70",
+      "id": "gymflow_outstanding_issues_should_fix_before_launch",
+      "community": 34,
+      "norm_label": "\ud83d\udfe0 should fix before launch"
+    },
+    {
+      "label": "Issue 2: `gymflow-admin` login endpoint has no rate limiting (brute-forceable)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L72",
+      "id": "gymflow_outstanding_issues_issue_2_gymflow_admin_login_endpoint_has_no_rate_limiting_brute_forceable",
+      "community": 34,
+      "norm_label": "issue 2: `gymflow-admin` login endpoint has no rate limiting (brute-forceable)"
+    },
+    {
+      "label": "code:typescript (// gymflow-admin/app/api/auth/route.ts)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L84",
       "id": "gymflow_outstanding_issues_codeblock_2",
       "community": 34,
-      "norm_label": "code:sql (exists (select 1 from gyms where id = <table>.gym_id and own)"
+      "norm_label": "code:typescript (// gymflow-admin/app/api/auth/route.ts)"
     },
     {
-      "label": "code:sql (-- Covering index for the RLS subquery pattern used on every)",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L89",
-      "id": "gymflow_outstanding_issues_codeblock_3",
-      "community": 34,
-      "norm_label": "code:sql (-- covering index for the rls subquery pattern used on every)"
-    },
-    {
-      "label": "code:sql (SELECT indexname FROM pg_indexes WHERE tablename = 'gyms';)",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L96",
-      "id": "gymflow_outstanding_issues_codeblock_4",
-      "community": 34,
-      "norm_label": "code:sql (select indexname from pg_indexes where tablename = 'gyms';)"
-    },
-    {
-      "label": "Part 3 \u2014 New Issues Found in This Pass",
+      "label": "code:javascript (async headers() {)",
       "file_type": "document",
       "source_file": "outstanding issues.md",
       "source_location": "L102",
-      "id": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
+      "id": "gymflow_outstanding_issues_codeblock_3",
       "community": 34,
-      "norm_label": "part 3 \u2014 new issues found in this pass"
+      "norm_label": "code:javascript (async headers() {)"
     },
     {
-      "label": "\ud83d\udfe1 N1 \u2014 `members/attendance/page.tsx` Redirects to a Route That Doesn't Exist",
+      "label": "Issue 3: Password reset form sends password in plaintext `type=\"text\"` field",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L104",
-      "id": "gymflow_outstanding_issues_n1_members_attendance_page_tsx_redirects_to_a_route_that_doesn_t_exist",
+      "source_location": "L115",
+      "id": "gymflow_outstanding_issues_issue_3_password_reset_form_sends_password_in_plaintext_type_text_field",
       "community": 34,
-      "norm_label": "\ud83d\udfe1 n1 \u2014 `members/attendance/page.tsx` redirects to a route that doesn't exist"
+      "norm_label": "issue 3: password reset form sends password in plaintext `type=\"text\"` field"
     },
     {
-      "label": "code:ts (const { data: { user } } = await supabase.auth.getUser())",
+      "label": "code:tsx (// PasswordResetForm.tsx line 56)",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L108",
+      "source_location": "L123",
+      "id": "gymflow_outstanding_issues_codeblock_4",
+      "community": 34,
+      "norm_label": "code:tsx (// passwordresetform.tsx line 56)"
+    },
+    {
+      "label": "code:typescript (// gymflow-admin/app/api/gyms/reset-password/route.ts)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L135",
       "id": "gymflow_outstanding_issues_codeblock_5",
       "community": 34,
-      "norm_label": "code:ts (const { data: { user } } = await supabase.auth.getuser())"
+      "norm_label": "code:typescript (// gymflow-admin/app/api/gyms/reset-password/route.ts)"
     },
     {
-      "label": "code:ts (if (!user) redirect('/auth/login'))",
+      "label": "\ud83d\udfe1 Minor \u2014 Fix When Convenient",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L119",
-      "id": "gymflow_outstanding_issues_codeblock_6",
+      "source_location": "L144",
+      "id": "gymflow_outstanding_issues_minor_fix_when_convenient",
       "community": 34,
-      "norm_label": "code:ts (if (!user) redirect('/auth/login'))"
+      "norm_label": "\ud83d\udfe1 minor \u2014 fix when convenient"
     },
     {
-      "label": "\ud83d\udfe1 N2 \u2014 `members/attendance/page.tsx` Duplicates Auth Already Handled by the Layout, Bypassing the DAL",
+      "label": "Issue 4: Schema has duplicate `ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category`",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L125",
-      "id": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
+      "source_location": "L146",
+      "id": "gymflow_outstanding_issues_issue_4_schema_has_duplicate_alter_table_memberships_add_column_if_not_exists_category",
       "community": 34,
-      "norm_label": "\ud83d\udfe1 n2 \u2014 `members/attendance/page.tsx` duplicates auth already handled by the layout, bypassing the dal"
+      "norm_label": "issue 4: schema has duplicate `alter table memberships add column if not exists category`"
     },
     {
-      "label": "code:ts (// app/members/layout.tsx \u2014 already runs for every page unde)",
+      "label": "Additional Observations (Not Bugs)",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L131",
-      "id": "gymflow_outstanding_issues_codeblock_7",
+      "source_location": "L154",
+      "id": "gymflow_outstanding_issues_additional_observations_not_bugs",
       "community": 34,
-      "norm_label": "code:ts (// app/members/layout.tsx \u2014 already runs for every page unde)"
+      "norm_label": "additional observations (not bugs)"
     },
     {
-      "label": "code:ts (const supabase = await createClient())",
+      "label": "Final Checklist",
       "file_type": "document",
       "source_file": "outstanding issues.md",
-      "source_location": "L139",
-      "id": "gymflow_outstanding_issues_codeblock_8",
+      "source_location": "L164",
+      "id": "gymflow_outstanding_issues_final_checklist",
       "community": 34,
-      "norm_label": "code:ts (const supabase = await createclient())"
-    },
-    {
-      "label": "code:ts (import { getAuthUser, getGym } from '@/lib/dal')",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L158",
-      "id": "gymflow_outstanding_issues_codeblock_9",
-      "community": 34,
-      "norm_label": "code:ts (import { getauthuser, getgym } from '@/lib/dal')"
-    },
-    {
-      "label": "\ud83d\udfe1 N3 \u2014 `detectDatasetCluster` Has an O(districts) Fallback Scan Per Unmatched Input, Up to 5000 Inputs Per Request",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L184",
-      "id": "gymflow_outstanding_issues_n3_detectdatasetcluster_has_an_o_districts_fallback_scan_per_unmatched_input_up_to_5000_inputs_per_request",
-      "community": 34,
-      "norm_label": "\ud83d\udfe1 n3 \u2014 `detectdatasetcluster` has an o(districts) fallback scan per unmatched input, up to 5000 inputs per request"
-    },
-    {
-      "label": "code:ts (for (const [district, state] of Object.entries(DISTRICT_STAT)",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L190",
-      "id": "gymflow_outstanding_issues_codeblock_10",
-      "community": 34,
-      "norm_label": "code:ts (for (const [district, state] of object.entries(district_stat)"
-    },
-    {
-      "label": "\ud83d\udfe2 N4 \u2014 `RequestLogger.summary()` Logs at `error` Level on Every Successful Request in Production",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L211",
-      "id": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production",
-      "community": 34,
-      "norm_label": "\ud83d\udfe2 n4 \u2014 `requestlogger.summary()` logs at `error` level on every successful request in production"
-    },
-    {
-      "label": "code:ts (// Log summary as error to bypass Vercel filters in producti)",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L215",
-      "id": "gymflow_outstanding_issues_codeblock_11",
-      "community": 34,
-      "norm_label": "code:ts (// log summary as error to bypass vercel filters in producti)"
-    },
-    {
-      "label": "code:ts (// Use a structured prefix so this can be filtered/searched )",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L230",
-      "id": "gymflow_outstanding_issues_codeblock_12",
-      "community": 34,
-      "norm_label": "code:ts (// use a structured prefix so this can be filtered/searched )"
-    },
-    {
-      "label": "\ud83d\udfe2 N5 \u2014 `payments/layout.tsx` Is a No-Op Passthrough (Informational, Not a Vulnerability)",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L239",
-      "id": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability",
-      "community": 34,
-      "norm_label": "\ud83d\udfe2 n5 \u2014 `payments/layout.tsx` is a no-op passthrough (informational, not a vulnerability)"
-    },
-    {
-      "label": "code:ts (export default function PaymentsLayout({ children }: { child)",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L243",
-      "id": "gymflow_outstanding_issues_codeblock_13",
-      "community": 34,
-      "norm_label": "code:ts (export default function paymentslayout({ children }: { child)"
-    },
-    {
-      "label": "code:ts (import { redirect } from 'next/navigation')",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L253",
-      "id": "gymflow_outstanding_issues_codeblock_14",
-      "community": 34,
-      "norm_label": "code:ts (import { redirect } from 'next/navigation')"
-    },
-    {
-      "label": "Part 4 \u2014 Areas Reviewed With No Issues Found",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L266",
-      "id": "gymflow_outstanding_issues_part_4_areas_reviewed_with_no_issues_found",
-      "community": 34,
-      "norm_label": "part 4 \u2014 areas reviewed with no issues found"
-    },
-    {
-      "label": "Recommended Fix Order Before Next Deploy",
-      "file_type": "document",
-      "source_file": "outstanding issues.md",
-      "source_location": "L280",
-      "id": "gymflow_outstanding_issues_recommended_fix_order_before_next_deploy",
-      "community": 34,
-      "norm_label": "recommended fix order before next deploy"
+      "norm_label": "final checklist"
     },
     {
       "label": "README.md",
@@ -7968,6 +7860,213 @@
       "norm_label": "seed_aliases"
     },
     {
+      "label": "GymFlow \u2014 Final Production-Readiness Audit",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L1",
+      "community": 34,
+      "norm_label": "gymflow \u2014 final production-readiness audit",
+      "id": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit"
+    },
+    {
+      "label": "Part 1 \u2014 Verification of Previously Identified Issues",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L27",
+      "community": 34,
+      "norm_label": "part 1 \u2014 verification of previously identified issues",
+      "id": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues"
+    },
+    {
+      "label": "From the first remediation pass (audit \u2192 remediation \u2192 outstanding-issues.md)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L29",
+      "community": 34,
+      "norm_label": "from the first remediation pass (audit \u2192 remediation \u2192 outstanding-issues.md)",
+      "id": "gymflow_outstanding_issues_from_the_first_remediation_pass_audit_remediation_outstanding_issues_md"
+    },
+    {
+      "label": "From the second pass (new-findings.md)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L53",
+      "community": 34,
+      "norm_label": "from the second pass (new-findings.md)",
+      "id": "gymflow_outstanding_issues_from_the_second_pass_new_findings_md"
+    },
+    {
+      "label": "Part 2 \u2014 Regression Found",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L66",
+      "community": 34,
+      "norm_label": "part 2 \u2014 regression found",
+      "id": "gymflow_outstanding_issues_part_2_regression_found"
+    },
+    {
+      "label": "\ud83d\udfe0 R1 \u2014 `idx_gyms_id_owner` Covering Index Was Fully Removed, Not De-Duplicated",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L68",
+      "community": 34,
+      "norm_label": "\ud83d\udfe0 r1 \u2014 `idx_gyms_id_owner` covering index was fully removed, not de-duplicated",
+      "id": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated"
+    },
+    {
+      "label": "Part 3 \u2014 New Issues Found in This Pass",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L102",
+      "community": 34,
+      "norm_label": "part 3 \u2014 new issues found in this pass",
+      "id": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass"
+    },
+    {
+      "label": "\ud83d\udfe1 N1 \u2014 `members/attendance/page.tsx` Redirects to a Route That Doesn't Exist",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L104",
+      "community": 34,
+      "norm_label": "\ud83d\udfe1 n1 \u2014 `members/attendance/page.tsx` redirects to a route that doesn't exist",
+      "id": "gymflow_outstanding_issues_n1_members_attendance_page_tsx_redirects_to_a_route_that_doesn_t_exist"
+    },
+    {
+      "label": "code:ts (if (!user) redirect('/auth/login'))",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L119",
+      "community": 34,
+      "norm_label": "code:ts (if (!user) redirect('/auth/login'))",
+      "id": "gymflow_outstanding_issues_codeblock_6"
+    },
+    {
+      "label": "\ud83d\udfe1 N2 \u2014 `members/attendance/page.tsx` Duplicates Auth Already Handled by the Layout, Bypassing the DAL",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L125",
+      "community": 34,
+      "norm_label": "\ud83d\udfe1 n2 \u2014 `members/attendance/page.tsx` duplicates auth already handled by the layout, bypassing the dal",
+      "id": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal"
+    },
+    {
+      "label": "code:ts (// app/members/layout.tsx \u2014 already runs for every page unde)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L131",
+      "community": 34,
+      "norm_label": "code:ts (// app/members/layout.tsx \u2014 already runs for every page unde)",
+      "id": "gymflow_outstanding_issues_codeblock_7"
+    },
+    {
+      "label": "code:ts (const supabase = await createClient())",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L139",
+      "community": 34,
+      "norm_label": "code:ts (const supabase = await createclient())",
+      "id": "gymflow_outstanding_issues_codeblock_8"
+    },
+    {
+      "label": "code:ts (import { getAuthUser, getGym } from '@/lib/dal')",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L158",
+      "community": 34,
+      "norm_label": "code:ts (import { getauthuser, getgym } from '@/lib/dal')",
+      "id": "gymflow_outstanding_issues_codeblock_9"
+    },
+    {
+      "label": "\ud83d\udfe1 N3 \u2014 `detectDatasetCluster` Has an O(districts) Fallback Scan Per Unmatched Input, Up to 5000 Inputs Per Request",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L184",
+      "community": 34,
+      "norm_label": "\ud83d\udfe1 n3 \u2014 `detectdatasetcluster` has an o(districts) fallback scan per unmatched input, up to 5000 inputs per request",
+      "id": "gymflow_outstanding_issues_n3_detectdatasetcluster_has_an_o_districts_fallback_scan_per_unmatched_input_up_to_5000_inputs_per_request"
+    },
+    {
+      "label": "code:ts (for (const [district, state] of Object.entries(DISTRICT_STAT)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L190",
+      "community": 34,
+      "norm_label": "code:ts (for (const [district, state] of object.entries(district_stat)",
+      "id": "gymflow_outstanding_issues_codeblock_10"
+    },
+    {
+      "label": "\ud83d\udfe2 N4 \u2014 `RequestLogger.summary()` Logs at `error` Level on Every Successful Request in Production",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L211",
+      "community": 34,
+      "norm_label": "\ud83d\udfe2 n4 \u2014 `requestlogger.summary()` logs at `error` level on every successful request in production",
+      "id": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production"
+    },
+    {
+      "label": "code:ts (// Log summary as error to bypass Vercel filters in producti)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L215",
+      "community": 34,
+      "norm_label": "code:ts (// log summary as error to bypass vercel filters in producti)",
+      "id": "gymflow_outstanding_issues_codeblock_11"
+    },
+    {
+      "label": "code:ts (// Use a structured prefix so this can be filtered/searched )",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L230",
+      "community": 34,
+      "norm_label": "code:ts (// use a structured prefix so this can be filtered/searched )",
+      "id": "gymflow_outstanding_issues_codeblock_12"
+    },
+    {
+      "label": "\ud83d\udfe2 N5 \u2014 `payments/layout.tsx` Is a No-Op Passthrough (Informational, Not a Vulnerability)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L239",
+      "community": 34,
+      "norm_label": "\ud83d\udfe2 n5 \u2014 `payments/layout.tsx` is a no-op passthrough (informational, not a vulnerability)",
+      "id": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability"
+    },
+    {
+      "label": "code:ts (export default function PaymentsLayout({ children }: { child)",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L243",
+      "community": 34,
+      "norm_label": "code:ts (export default function paymentslayout({ children }: { child)",
+      "id": "gymflow_outstanding_issues_codeblock_13"
+    },
+    {
+      "label": "code:ts (import { redirect } from 'next/navigation')",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L253",
+      "community": 34,
+      "norm_label": "code:ts (import { redirect } from 'next/navigation')",
+      "id": "gymflow_outstanding_issues_codeblock_14"
+    },
+    {
+      "label": "Part 4 \u2014 Areas Reviewed With No Issues Found",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L266",
+      "community": 34,
+      "norm_label": "part 4 \u2014 areas reviewed with no issues found",
+      "id": "gymflow_outstanding_issues_part_4_areas_reviewed_with_no_issues_found"
+    },
+    {
+      "label": "Recommended Fix Order Before Next Deploy",
+      "file_type": "document",
+      "source_file": "outstanding issues.md",
+      "source_location": "L280",
+      "community": 34,
+      "norm_label": "recommended fix order before next deploy",
+      "id": "gymflow_outstanding_issues_recommended_fix_order_before_next_deploy"
+    },
+    {
       "label": "route.ts",
       "file_type": "code",
       "source_file": "app/api/check-columns/route.ts",
@@ -8044,7 +8143,7 @@
       "file_type": "code",
       "source_file": "app/_reports_archived/page.tsx",
       "source_location": "L1",
-      "community": 46,
+      "community": 64,
       "norm_label": "page.tsx",
       "id": "app_reports_archived_page_tsx"
     },
@@ -8053,7 +8152,7 @@
       "file_type": "code",
       "source_file": "app/_reports_archived/page.tsx",
       "source_location": "L9",
-      "community": 46,
+      "community": 64,
       "norm_label": "getreportsdata()",
       "id": "reports_archived_page_getreportsdata"
     },
@@ -8143,7 +8242,7 @@
       "file_type": "code",
       "source_file": "app/_reports_archived/ReportsClient.tsx",
       "source_location": "L84",
-      "community": 46,
+      "community": 64,
       "norm_label": "reportsclient()",
       "id": "reports_archived_reportsclient_reportsclient"
     },
@@ -8359,7 +8458,7 @@
       "file_type": "code",
       "source_file": "app/programs/page.tsx",
       "source_location": "L1",
-      "community": 0,
+      "community": 64,
       "norm_label": "page.tsx",
       "id": "app_programs_page_tsx"
     },
@@ -8368,7 +8467,7 @@
       "file_type": "code",
       "source_file": "app/programs/page.tsx",
       "source_location": "L6",
-      "community": 0,
+      "community": 64,
       "norm_label": "programspage()",
       "id": "programs_page_programspage"
     },
@@ -8422,7 +8521,7 @@
       "file_type": "code",
       "source_file": "app/programs/[id]/page.tsx",
       "source_location": "L1",
-      "community": 0,
+      "community": 64,
       "norm_label": "page.tsx",
       "id": "app_programs_id_page_tsx"
     },
@@ -8548,7 +8647,7 @@
       "file_type": "code",
       "source_file": "lib/pdf.ts",
       "source_location": "L27",
-      "community": 62,
+      "community": 8,
       "norm_label": "generatedailycollectionpdf()",
       "id": "lib_pdf_generatedailycollectionpdf"
     },
@@ -8611,7 +8710,7 @@
       "file_type": "code",
       "source_file": "components/inventory/BarcodeScannerModal.tsx",
       "source_location": "L1",
-      "community": 92,
+      "community": 60,
       "norm_label": "barcodescannermodal.tsx",
       "id": "components_inventory_barcodescannermodal_tsx"
     },
@@ -8620,7 +8719,7 @@
       "file_type": "code",
       "source_file": "components/inventory/BarcodeScannerModal.tsx",
       "source_location": "L8",
-      "community": 92,
+      "community": 60,
       "norm_label": "barcodescannermodalprops",
       "id": "inventory_barcodescannermodal_barcodescannermodalprops"
     },
@@ -8629,7 +8728,7 @@
       "file_type": "code",
       "source_file": "components/inventory/BarcodeScannerModal.tsx",
       "source_location": "L13",
-      "community": 92,
+      "community": 60,
       "norm_label": "barcodescannermodal()",
       "id": "inventory_barcodescannermodal_barcodescannermodal"
     },
@@ -8638,7 +8737,7 @@
       "file_type": "code",
       "source_file": "app/api/account/delete-data/route.ts",
       "source_location": "L40",
-      "community": 0,
+      "community": 64,
       "norm_label": "deletions",
       "id": "delete_data_route_deletions"
     },
@@ -10504,9 +10603,9 @@
       "source_file": "app/account/layout.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "account_layout_accountlayout",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "calls",
@@ -10558,9 +10657,9 @@
       "source_file": "app/account/page.tsx",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "account_page_accountpage",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "calls",
@@ -10667,9 +10766,9 @@
       "source_file": "app/account/notifications/page.tsx",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "notifications_page_notificationspage",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports_from",
@@ -10678,9 +10777,9 @@
       "source_file": "app/account/notifications/page.tsx",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "notifications_page_notificationspage",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "calls",
@@ -10850,9 +10949,9 @@
       "source_file": "app/api/account/delete-gym/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_account_delete_gym_route_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -10861,9 +10960,9 @@
       "source_file": "app/api/account/delete-gym/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_account_delete_gym_route_ts",
-      "target": "lib_cache_invalidatepattern",
-      "confidence_score": 1.0
+      "target": "lib_cache_invalidatepattern"
     },
     {
       "relation": "contains",
@@ -12697,9 +12796,9 @@
       "source_file": "app/api/import/confirm/route.ts",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_import_confirm_route_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -12708,9 +12807,9 @@
       "source_file": "app/api/import/confirm/route.ts",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_import_confirm_route_ts",
-      "target": "lib_cache_deletecache",
-      "confidence_score": 1.0
+      "target": "lib_cache_deletecache"
     },
     {
       "relation": "imports_from",
@@ -12719,9 +12818,9 @@
       "source_file": "app/api/import/confirm/route.ts",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_import_confirm_route_ts",
-      "target": "lib_cache_keys_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_ts"
     },
     {
       "relation": "imports",
@@ -12730,9 +12829,9 @@
       "source_file": "app/api/import/confirm/route.ts",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_import_confirm_route_ts",
-      "target": "lib_cache_keys_cachekeys",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_cachekeys"
     },
     {
       "relation": "contains",
@@ -12838,9 +12937,9 @@
       "source_file": "app/api/inventory/delete/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_inventory_delete_route_ts",
-      "target": "lib_ratelimit_ts",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_ts"
     },
     {
       "relation": "imports",
@@ -12849,9 +12948,9 @@
       "source_file": "app/api/inventory/delete/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_inventory_delete_route_ts",
-      "target": "lib_ratelimit_checkratelimit",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_checkratelimit"
     },
     {
       "relation": "imports",
@@ -12860,9 +12959,9 @@
       "source_file": "app/api/inventory/delete/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_inventory_delete_route_ts",
-      "target": "lib_ratelimit_route_limits",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_route_limits"
     },
     {
       "relation": "contains",
@@ -12979,9 +13078,9 @@
       "source_file": "app/api/inventory/sell/route.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_inventory_sell_route_ts",
-      "target": "lib_ratelimit_ts",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_ts"
     },
     {
       "relation": "imports",
@@ -12990,9 +13089,9 @@
       "source_file": "app/api/inventory/sell/route.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_inventory_sell_route_ts",
-      "target": "lib_ratelimit_checkratelimit",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_checkratelimit"
     },
     {
       "relation": "imports",
@@ -13001,9 +13100,9 @@
       "source_file": "app/api/inventory/sell/route.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_inventory_sell_route_ts",
-      "target": "lib_ratelimit_route_limits",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_route_limits"
     },
     {
       "relation": "contains",
@@ -13099,9 +13198,9 @@
       "source_file": "app/api/members/route.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_route_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -13110,9 +13209,9 @@
       "source_file": "app/api/members/route.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_route_ts",
-      "target": "lib_cache_deletecache",
-      "confidence_score": 1.0
+      "target": "lib_cache_deletecache"
     },
     {
       "relation": "imports_from",
@@ -13121,9 +13220,9 @@
       "source_file": "app/api/members/route.ts",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_route_ts",
-      "target": "lib_cache_keys_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_ts"
     },
     {
       "relation": "imports",
@@ -13132,9 +13231,9 @@
       "source_file": "app/api/members/route.ts",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_route_ts",
-      "target": "lib_cache_keys_cachekeys",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_cachekeys"
     },
     {
       "relation": "imports_from",
@@ -13404,9 +13503,9 @@
       "source_file": "app/api/members/[id]/route.ts",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_id_route_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -13415,9 +13514,9 @@
       "source_file": "app/api/members/[id]/route.ts",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_id_route_ts",
-      "target": "lib_cache_deletecache",
-      "confidence_score": 1.0
+      "target": "lib_cache_deletecache"
     },
     {
       "relation": "imports_from",
@@ -13426,9 +13525,9 @@
       "source_file": "app/api/members/[id]/route.ts",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_id_route_ts",
-      "target": "lib_cache_keys_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_ts"
     },
     {
       "relation": "imports",
@@ -13437,9 +13536,9 @@
       "source_file": "app/api/members/[id]/route.ts",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_members_id_route_ts",
-      "target": "lib_cache_keys_cachekeys",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_cachekeys"
     },
     {
       "relation": "contains",
@@ -13762,9 +13861,9 @@
       "source_file": "app/api/payments/route.ts",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_payments_route_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -13773,9 +13872,9 @@
       "source_file": "app/api/payments/route.ts",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_payments_route_ts",
-      "target": "lib_cache_deletecache",
-      "confidence_score": 1.0
+      "target": "lib_cache_deletecache"
     },
     {
       "relation": "imports_from",
@@ -13784,9 +13883,9 @@
       "source_file": "app/api/payments/route.ts",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_payments_route_ts",
-      "target": "lib_cache_keys_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_ts"
     },
     {
       "relation": "imports",
@@ -13795,9 +13894,9 @@
       "source_file": "app/api/payments/route.ts",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_payments_route_ts",
-      "target": "lib_cache_keys_cachekeys",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_cachekeys"
     },
     {
       "relation": "contains",
@@ -14032,9 +14131,9 @@
       "source_file": "app/api/support/clear/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_support_clear_route_ts",
-      "target": "lib_ratelimit_ts",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_ts"
     },
     {
       "relation": "imports",
@@ -14043,9 +14142,9 @@
       "source_file": "app/api/support/clear/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_support_clear_route_ts",
-      "target": "lib_ratelimit_checkratelimit",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_checkratelimit"
     },
     {
       "relation": "imports",
@@ -14054,9 +14153,9 @@
       "source_file": "app/api/support/clear/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_support_clear_route_ts",
-      "target": "lib_ratelimit_route_limits",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_route_limits"
     },
     {
       "relation": "contains",
@@ -14108,9 +14207,9 @@
       "source_file": "app/api/support/ticket/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_support_ticket_route_ts",
-      "target": "lib_ratelimit_ts",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_ts"
     },
     {
       "relation": "imports",
@@ -14119,9 +14218,9 @@
       "source_file": "app/api/support/ticket/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_support_ticket_route_ts",
-      "target": "lib_ratelimit_checkratelimit",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_checkratelimit"
     },
     {
       "relation": "imports",
@@ -14130,9 +14229,9 @@
       "source_file": "app/api/support/ticket/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_support_ticket_route_ts",
-      "target": "lib_ratelimit_route_limits",
-      "confidence_score": 1.0
+      "target": "lib_ratelimit_route_limits"
     },
     {
       "relation": "contains",
@@ -14311,9 +14410,9 @@
       "source_file": "app/attendance/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_attendance_page_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -14322,9 +14421,9 @@
       "source_file": "app/attendance/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_attendance_page_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -14333,9 +14432,9 @@
       "source_file": "app/attendance/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_attendance_page_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "contains",
@@ -14805,9 +14904,9 @@
       "source_file": "app/dashboard/layout.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dashboard_layout_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -14816,9 +14915,9 @@
       "source_file": "app/dashboard/layout.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dashboard_layout_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -14827,9 +14926,9 @@
       "source_file": "app/dashboard/layout.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dashboard_layout_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "contains",
@@ -14924,9 +15023,9 @@
       "source_file": "app/dashboard/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dashboard_page_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -14935,9 +15034,9 @@
       "source_file": "app/dashboard/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dashboard_page_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -14946,9 +15045,9 @@
       "source_file": "app/dashboard/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dashboard_page_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "imports_from",
@@ -15324,9 +15423,9 @@
       "source_file": "app/dues/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dues_page_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -15335,9 +15434,9 @@
       "source_file": "app/dues/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dues_page_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -15346,9 +15445,9 @@
       "source_file": "app/dues/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dues_page_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "imports_from",
@@ -16134,9 +16233,9 @@
       "source_file": "app/inventory/actions.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_inventory_actions_ts",
-      "target": "lib_supabase_server_ts",
-      "confidence_score": 1.0
+      "target": "lib_supabase_server_ts"
     },
     {
       "relation": "imports",
@@ -16145,9 +16244,9 @@
       "source_file": "app/inventory/actions.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_inventory_actions_ts",
-      "target": "supabase_server_createclient",
-      "confidence_score": 1.0
+      "target": "supabase_server_createclient"
     },
     {
       "relation": "contains",
@@ -16155,9 +16254,9 @@
       "source_file": "app/inventory/actions.ts",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_inventory_actions_ts",
-      "target": "inventory_actions_checkgymownership",
-      "confidence_score": 1.0
+      "target": "inventory_actions_checkgymownership"
     },
     {
       "relation": "contains",
@@ -16208,9 +16307,9 @@
       "source_file": "app/inventory/actions.ts",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "inventory_actions_invalidateinventorycache",
-      "target": "inventory_actions_checkgymownership",
-      "confidence_score": 1.0
+      "target": "inventory_actions_checkgymownership"
     },
     {
       "relation": "calls",
@@ -16219,9 +16318,9 @@
       "source_file": "app/inventory/actions.ts",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "inventory_actions_invalidateinventoryitemcache",
-      "target": "inventory_actions_checkgymownership",
-      "confidence_score": 1.0
+      "target": "inventory_actions_checkgymownership"
     },
     {
       "relation": "calls",
@@ -16230,9 +16329,9 @@
       "source_file": "app/inventory/actions.ts",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "inventory_actions_checkgymownership",
-      "target": "supabase_server_createclient",
-      "confidence_score": 1.0
+      "target": "supabase_server_createclient"
     },
     {
       "relation": "imports",
@@ -16284,9 +16383,9 @@
       "source_file": "app/inventory/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_inventory_page_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -16295,9 +16394,9 @@
       "source_file": "app/inventory/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_inventory_page_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -16306,9 +16405,9 @@
       "source_file": "app/inventory/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_inventory_page_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "imports_from",
@@ -16586,9 +16685,9 @@
       "source_file": "app/inventory/[id]/page.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "id_page_inventoryitempage",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "calls",
@@ -16740,9 +16839,9 @@
       "source_file": "app/members/actions.ts",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_actions_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -16751,9 +16850,9 @@
       "source_file": "app/members/actions.ts",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_actions_ts",
-      "target": "lib_cache_deletecache",
-      "confidence_score": 1.0
+      "target": "lib_cache_deletecache"
     },
     {
       "relation": "imports_from",
@@ -16762,9 +16861,9 @@
       "source_file": "app/members/actions.ts",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_actions_ts",
-      "target": "lib_cache_keys_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_ts"
     },
     {
       "relation": "imports",
@@ -16773,9 +16872,9 @@
       "source_file": "app/members/actions.ts",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_actions_ts",
-      "target": "lib_cache_keys_cachekeys",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_cachekeys"
     },
     {
       "relation": "contains",
@@ -16803,9 +16902,9 @@
       "source_file": "app/members/actions.ts",
       "source_location": "L201",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_actions_ts",
-      "target": "members_actions_invalidatememberscache",
-      "confidence_score": 1.0
+      "target": "members_actions_invalidatememberscache"
     },
     {
       "relation": "imports_from",
@@ -16858,9 +16957,9 @@
       "source_file": "app/members/layout.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_layout_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -16869,9 +16968,9 @@
       "source_file": "app/members/layout.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_layout_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "contains",
@@ -17160,9 +17259,9 @@
       "source_file": "app/members/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_page_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -17171,9 +17270,9 @@
       "source_file": "app/members/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_page_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -17182,9 +17281,9 @@
       "source_file": "app/members/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_page_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "imports_from",
@@ -17613,9 +17712,9 @@
       "source_file": "app/members/attendance/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_attendance_page_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -17624,9 +17723,9 @@
       "source_file": "app/members/attendance/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_attendance_page_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -17635,9 +17734,9 @@
       "source_file": "app/members/attendance/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_members_attendance_page_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "imports_from",
@@ -17923,9 +18022,9 @@
       "source_file": "app/members/bulk-edit/page.tsx",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bulk_edit_page_editmemberspage",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "calls",
@@ -19162,9 +19261,9 @@
       "source_file": "app/payments/actions.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_actions_ts",
-      "target": "lib_supabase_server_ts",
-      "confidence_score": 1.0
+      "target": "lib_supabase_server_ts"
     },
     {
       "relation": "imports",
@@ -19173,9 +19272,9 @@
       "source_file": "app/payments/actions.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_actions_ts",
-      "target": "supabase_server_createclient",
-      "confidence_score": 1.0
+      "target": "supabase_server_createclient"
     },
     {
       "relation": "imports_from",
@@ -19184,9 +19283,9 @@
       "source_file": "app/payments/actions.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_actions_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -19195,9 +19294,9 @@
       "source_file": "app/payments/actions.ts",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_actions_ts",
-      "target": "lib_cache_cachewrapper",
-      "confidence_score": 1.0
+      "target": "lib_cache_cachewrapper"
     },
     {
       "relation": "contains",
@@ -19205,9 +19304,9 @@
       "source_file": "app/payments/actions.ts",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_actions_ts",
-      "target": "payments_actions_getalltimepayments",
-      "confidence_score": 1.0
+      "target": "payments_actions_getalltimepayments"
     },
     {
       "relation": "imports_from",
@@ -19216,9 +19315,9 @@
       "source_file": "app/payments/PaymentsClient.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_paymentsclient_tsx",
-      "target": "app_payments_actions_ts",
-      "confidence_score": 1.0
+      "target": "app_payments_actions_ts"
     },
     {
       "relation": "imports",
@@ -19227,9 +19326,9 @@
       "source_file": "app/payments/PaymentsClient.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_paymentsclient_tsx",
-      "target": "payments_actions_getalltimepayments",
-      "confidence_score": 1.0
+      "target": "payments_actions_getalltimepayments"
     },
     {
       "relation": "calls",
@@ -19249,9 +19348,9 @@
       "source_file": "app/payments/layout.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_layout_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -19260,9 +19359,9 @@
       "source_file": "app/payments/layout.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_layout_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "contains",
@@ -19324,9 +19423,9 @@
       "source_file": "app/payments/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_page_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -19335,9 +19434,9 @@
       "source_file": "app/payments/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_page_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -19346,9 +19445,9 @@
       "source_file": "app/payments/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_page_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "imports_from",
@@ -19357,9 +19456,9 @@
       "source_file": "app/payments/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_page_tsx",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports",
@@ -19368,9 +19467,9 @@
       "source_file": "app/payments/page.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_page_tsx",
-      "target": "lib_cache_cachewrapper",
-      "confidence_score": 1.0
+      "target": "lib_cache_cachewrapper"
     },
     {
       "relation": "imports_from",
@@ -19508,9 +19607,9 @@
       "source_file": "app/payments/PaymentsClient.tsx",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_paymentsclient_tsx",
-      "target": "payments_paymentsclient_duepayment",
-      "confidence_score": 1.0
+      "target": "payments_paymentsclient_duepayment"
     },
     {
       "relation": "contains",
@@ -19578,9 +19677,9 @@
       "source_file": "app/payments/PaymentsClient.tsx",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_payments_paymentsclient_tsx",
-      "target": "payments_paymentsclient_buildtransactions",
-      "confidence_score": 1.0
+      "target": "payments_paymentsclient_buildtransactions"
     },
     {
       "relation": "contains",
@@ -19599,9 +19698,9 @@
       "source_file": "app/payments/PaymentsClient.tsx",
       "source_location": "L87",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "payments_paymentsclient_buildtransactions",
-      "target": "lib_utils_formatdate",
-      "confidence_score": 1.0
+      "target": "lib_utils_formatdate"
     },
     {
       "relation": "calls",
@@ -19610,9 +19709,9 @@
       "source_file": "app/payments/PaymentsClient.tsx",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "payments_paymentsclient_buildtransactions",
-      "target": "lib_utils_formatcurrency",
-      "confidence_score": 1.0
+      "target": "lib_utils_formatcurrency"
     },
     {
       "relation": "calls",
@@ -19808,9 +19907,9 @@
       "source_file": "components/layout/AccountMenu.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_accountmenu_tsx",
-      "target": "layout_accountmenu_accountmenuprops",
-      "confidence_score": 1.0
+      "target": "layout_accountmenu_accountmenuprops"
     },
     {
       "relation": "contains",
@@ -19851,9 +19950,9 @@
       "source_file": "components/layout/AppShell.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_appshell_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -19862,9 +19961,9 @@
       "source_file": "components/layout/AppShell.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_appshell_tsx",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "imports",
@@ -19873,9 +19972,9 @@
       "source_file": "components/layout/AppShell.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_appshell_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "imports",
@@ -19884,9 +19983,9 @@
       "source_file": "components/layout/AppShell.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_appshell_tsx",
-      "target": "lib_dal_getgymactivestatus",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgymactivestatus"
     },
     {
       "relation": "imports",
@@ -19895,9 +19994,9 @@
       "source_file": "components/layout/AppShell.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_appshell_tsx",
-      "target": "lib_dal_getunreadadminmessages",
-      "confidence_score": 1.0
+      "target": "lib_dal_getunreadadminmessages"
     },
     {
       "relation": "contains",
@@ -20154,9 +20253,9 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_shellguard_tsx",
-      "target": "lib_dal_ts",
-      "confidence_score": 1.0
+      "target": "lib_dal_ts"
     },
     {
       "relation": "imports",
@@ -20165,9 +20264,9 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_shellguard_tsx",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "contains",
@@ -20175,9 +20274,9 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_shellguard_tsx",
-      "target": "layout_shellguard_gymrow",
-      "confidence_score": 1.0
+      "target": "layout_shellguard_gymrow"
     },
     {
       "relation": "contains",
@@ -20185,9 +20284,9 @@
       "source_file": "components/layout/ShellGuard.tsx",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_layout_shellguard_tsx",
-      "target": "layout_shellguard_shellguardprops",
-      "confidence_score": 1.0
+      "target": "layout_shellguard_shellguardprops"
     },
     {
       "relation": "contains",
@@ -21245,6 +21344,17 @@
       "target": "lib_auth_createadminsession"
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "gymflow-admin/app/api/auth/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "gymflow_admin_app_api_auth_route_ts",
+      "target": "gymflow_admin_lib_redis_ts",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "gymflow-admin/app/api/auth/route.ts",
@@ -21276,6 +21386,28 @@
       "target": "lib_auth_createadminsession"
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "gymflow-admin/app/api/check-db/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "gymflow_admin_app_api_check_db_route_ts",
+      "target": "gymflow_admin_lib_auth_ts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "gymflow-admin/app/api/check-db/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "gymflow_admin_app_api_check_db_route_ts",
+      "target": "lib_auth_verifyrequestauth",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "gymflow-admin/app/api/check-db/route.ts",
@@ -21284,6 +21416,17 @@
       "confidence_score": 1.0,
       "source": "gymflow_admin_app_api_check_db_route_ts",
       "target": "check_db_route_get"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "gymflow-admin/app/api/check-db/route.ts",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "check_db_route_get",
+      "target": "lib_auth_verifyrequestauth"
     },
     {
       "relation": "imports_from",
@@ -22671,9 +22814,9 @@
       "source_file": "lib/cache-keys.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_cache_keys_ts",
-      "target": "lib_cache_keys_cachekeys",
-      "confidence_score": 1.0
+      "target": "lib_cache_keys_cachekeys"
     },
     {
       "relation": "imports_from",
@@ -22786,9 +22929,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports_from",
@@ -22797,9 +22940,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "lib_cache_ts",
-      "confidence_score": 1.0
+      "target": "lib_cache_ts"
     },
     {
       "relation": "imports_from",
@@ -22905,9 +23048,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "lib_cache_cachewrapper",
-      "confidence_score": 1.0
+      "target": "lib_cache_cachewrapper"
     },
     {
       "relation": "imports",
@@ -22916,9 +23059,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "lib_cache_cachewrapper",
-      "confidence_score": 1.0
+      "target": "lib_cache_cachewrapper"
     },
     {
       "relation": "calls",
@@ -22971,9 +23114,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "lib_supabase_server_ts",
-      "confidence_score": 1.0
+      "target": "lib_supabase_server_ts"
     },
     {
       "relation": "imports",
@@ -22982,9 +23125,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "supabase_server_createclient",
-      "confidence_score": 1.0
+      "target": "supabase_server_createclient"
     },
     {
       "relation": "contains",
@@ -22992,9 +23135,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "lib_dal_getauthuser",
-      "confidence_score": 1.0
+      "target": "lib_dal_getauthuser"
     },
     {
       "relation": "contains",
@@ -23002,9 +23145,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "lib_dal_getgym",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgym"
     },
     {
       "relation": "contains",
@@ -23012,9 +23155,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "lib_dal_getgymactivestatus",
-      "confidence_score": 1.0
+      "target": "lib_dal_getgymactivestatus"
     },
     {
       "relation": "contains",
@@ -23022,9 +23165,9 @@
       "source_file": "lib/dal.ts",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_dal_ts",
-      "target": "lib_dal_getunreadadminmessages",
-      "confidence_score": 1.0
+      "target": "lib_dal_getunreadadminmessages"
     },
     {
       "relation": "contains",
@@ -23043,9 +23186,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "lib_logger_ts",
-      "confidence_score": 1.0
+      "target": "lib_logger_ts"
     },
     {
       "relation": "imports_from",
@@ -23146,9 +23289,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "lib_logger_requestlogger",
-      "confidence_score": 1.0
+      "target": "lib_logger_requestlogger"
     },
     {
       "relation": "imports",
@@ -23681,9 +23824,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "lib_utils_ts",
-      "confidence_score": 1.0
+      "target": "lib_utils_ts"
     },
     {
       "relation": "imports_from",
@@ -23714,9 +23857,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "lib_utils_cn",
-      "confidence_score": 1.0
+      "target": "lib_utils_cn"
     },
     {
       "relation": "calls",
@@ -23791,9 +23934,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "lib_utils_formatdate",
-      "confidence_score": 1.0
+      "target": "lib_utils_formatdate"
     },
     {
       "relation": "imports",
@@ -23824,9 +23967,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "lib_utils_formatcurrency",
-      "confidence_score": 1.0
+      "target": "lib_utils_formatcurrency"
     },
     {
       "relation": "imports",
@@ -23868,9 +24011,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "lib_utils_buildcustomwhatsapplink",
-      "confidence_score": 1.0
+      "target": "lib_utils_buildcustomwhatsapplink"
     },
     {
       "relation": "imports",
@@ -25004,9 +25147,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "lib_supabase_server_ts",
-      "confidence_score": 1.0
+      "target": "lib_supabase_server_ts"
     },
     {
       "relation": "imports_from",
@@ -25059,9 +25202,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "supabase_server_createclient",
-      "confidence_score": 1.0
+      "target": "supabase_server_createclient"
     },
     {
       "relation": "calls",
@@ -25560,9 +25703,9 @@
       "source_file": "_archived/reports/layout.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_layout_tsx",
-      "target": "reports_layout_reportslayout",
-      "confidence_score": 1.0
+      "target": "reports_layout_reportslayout"
     },
     {
       "relation": "contains",
@@ -25580,9 +25723,9 @@
       "source_file": "_archived/reports/loading.tsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_loading_tsx",
-      "target": "reports_loading_loading",
-      "confidence_score": 1.0
+      "target": "reports_loading_loading"
     },
     {
       "relation": "contains",
@@ -25601,9 +25744,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "archived_reports_reportsclient_tsx",
-      "confidence_score": 1.0
+      "target": "archived_reports_reportsclient_tsx"
     },
     {
       "relation": "imports",
@@ -25612,9 +25755,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "reports_reportsclient_reportsclient",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_reportsclient"
     },
     {
       "relation": "contains",
@@ -25622,9 +25765,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "reports_page_getreportsdata",
-      "confidence_score": 1.0
+      "target": "reports_page_getreportsdata"
     },
     {
       "relation": "contains",
@@ -25632,9 +25775,9 @@
       "source_file": "_archived/reports/page.tsx",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_page_tsx",
-      "target": "reports_page_reportspage",
-      "confidence_score": 1.0
+      "target": "reports_page_reportspage"
     },
     {
       "relation": "contains",
@@ -25662,9 +25805,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_monthdata",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_monthdata"
     },
     {
       "relation": "contains",
@@ -25672,9 +25815,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_memberdue",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_memberdue"
     },
     {
       "relation": "contains",
@@ -25682,9 +25825,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_expiringmember",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_expiringmember"
     },
     {
       "relation": "contains",
@@ -25692,9 +25835,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_inventorysalemonthly",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_inventorysalemonthly"
     },
     {
       "relation": "contains",
@@ -25702,9 +25845,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_recentsale",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_recentsale"
     },
     {
       "relation": "contains",
@@ -25712,9 +25855,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_props",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_props"
     },
     {
       "relation": "contains",
@@ -25722,9 +25865,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L82",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_tabtype",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_tabtype"
     },
     {
       "relation": "contains",
@@ -25732,9 +25875,9 @@
       "source_file": "_archived/reports/ReportsClient.tsx",
       "source_location": "L84",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "archived_reports_reportsclient_tsx",
-      "target": "reports_reportsclient_reportsclient",
-      "confidence_score": 1.0
+      "target": "reports_reportsclient_reportsclient"
     },
     {
       "relation": "contains",
@@ -26364,7 +26507,87 @@
       "source_location": "L1",
       "weight": 1.0,
       "source": "outstanding_issues_md",
-      "target": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
+      "target": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "outstanding_issues_md",
+      "target": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "target": "gymflow_outstanding_issues_executive_summary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "target": "gymflow_outstanding_issues_previously_reported_issues_all_confirmed_fixed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "target": "gymflow_outstanding_issues_critical_must_fix_before_launch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "target": "gymflow_outstanding_issues_should_fix_before_launch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L144",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "target": "gymflow_outstanding_issues_minor_fix_when_convenient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L154",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "target": "gymflow_outstanding_issues_additional_observations_not_bugs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L164",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_production_readiness_audit_report",
+      "target": "gymflow_outstanding_issues_final_checklist",
       "confidence_score": 1.0
     },
     {
@@ -26373,88 +26596,28 @@
       "source_file": "outstanding issues.md",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
-      "target": "gymflow_outstanding_issues_executive_summary",
+      "target": "gymflow_outstanding_issues_executive_summary"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_critical_must_fix_before_launch",
+      "target": "gymflow_outstanding_issues_issue_1_gymflow_admin_api_check_db_has_no_authentication",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "outstanding issues.md",
-      "source_location": "L27",
+      "source_location": "L51",
       "weight": 1.0,
-      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
-      "target": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L66",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
-      "target": "gymflow_outstanding_issues_part_2_regression_found",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L102",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
-      "target": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L266",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
-      "target": "gymflow_outstanding_issues_part_4_areas_reviewed_with_no_issues_found",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L280",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
-      "target": "gymflow_outstanding_issues_recommended_fix_order_before_next_deploy",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L29",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues",
-      "target": "gymflow_outstanding_issues_from_the_first_remediation_pass_audit_remediation_outstanding_issues_md",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L53",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues",
-      "target": "gymflow_outstanding_issues_from_the_second_pass_new_findings_md",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L68",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_2_regression_found",
-      "target": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated",
+      "source": "gymflow_outstanding_issues_issue_1_gymflow_admin_api_check_db_has_no_authentication",
+      "target": "gymflow_outstanding_issues_codeblock_1",
       "confidence_score": 1.0
     },
     {
@@ -26463,8 +26626,48 @@
       "source_file": "outstanding issues.md",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated",
-      "target": "gymflow_outstanding_issues_codeblock_1",
+      "target": "gymflow_outstanding_issues_codeblock_1"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_should_fix_before_launch",
+      "target": "gymflow_outstanding_issues_issue_2_gymflow_admin_login_endpoint_has_no_rate_limiting_brute_forceable",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L115",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_should_fix_before_launch",
+      "target": "gymflow_outstanding_issues_issue_3_password_reset_form_sends_password_in_plaintext_type_text_field",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L84",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_issue_2_gymflow_admin_login_endpoint_has_no_rate_limiting_brute_forceable",
+      "target": "gymflow_outstanding_issues_codeblock_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_issue_2_gymflow_admin_login_endpoint_has_no_rate_limiting_brute_forceable",
+      "target": "gymflow_outstanding_issues_codeblock_3",
       "confidence_score": 1.0
     },
     {
@@ -26473,9 +26676,9 @@
       "source_file": "outstanding issues.md",
       "source_location": "L81",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated",
-      "target": "gymflow_outstanding_issues_codeblock_2",
-      "confidence_score": 1.0
+      "target": "gymflow_outstanding_issues_codeblock_2"
     },
     {
       "relation": "contains",
@@ -26483,8 +26686,28 @@
       "source_file": "outstanding issues.md",
       "source_location": "L89",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated",
-      "target": "gymflow_outstanding_issues_codeblock_3",
+      "target": "gymflow_outstanding_issues_codeblock_3"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_issue_3_password_reset_form_sends_password_in_plaintext_type_text_field",
+      "target": "gymflow_outstanding_issues_codeblock_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "gymflow_outstanding_issues_issue_3_password_reset_form_sends_password_in_plaintext_type_text_field",
+      "target": "gymflow_outstanding_issues_codeblock_5",
       "confidence_score": 1.0
     },
     {
@@ -26493,59 +26716,9 @@
       "source_file": "outstanding issues.md",
       "source_location": "L96",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated",
-      "target": "gymflow_outstanding_issues_codeblock_4",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L104",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
-      "target": "gymflow_outstanding_issues_n1_members_attendance_page_tsx_redirects_to_a_route_that_doesn_t_exist",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L125",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
-      "target": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L184",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
-      "target": "gymflow_outstanding_issues_n3_detectdatasetcluster_has_an_o_districts_fallback_scan_per_unmatched_input_up_to_5000_inputs_per_request",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L211",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
-      "target": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L239",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
-      "target": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability",
-      "confidence_score": 1.0
+      "target": "gymflow_outstanding_issues_codeblock_4"
     },
     {
       "relation": "contains",
@@ -26553,98 +26726,18 @@
       "source_file": "outstanding issues.md",
       "source_location": "L108",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gymflow_outstanding_issues_n1_members_attendance_page_tsx_redirects_to_a_route_that_doesn_t_exist",
-      "target": "gymflow_outstanding_issues_codeblock_5",
-      "confidence_score": 1.0
+      "target": "gymflow_outstanding_issues_codeblock_5"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "outstanding issues.md",
-      "source_location": "L119",
+      "source_location": "L146",
       "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n1_members_attendance_page_tsx_redirects_to_a_route_that_doesn_t_exist",
-      "target": "gymflow_outstanding_issues_codeblock_6",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L131",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
-      "target": "gymflow_outstanding_issues_codeblock_7",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L139",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
-      "target": "gymflow_outstanding_issues_codeblock_8",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L158",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
-      "target": "gymflow_outstanding_issues_codeblock_9",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L190",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n3_detectdatasetcluster_has_an_o_districts_fallback_scan_per_unmatched_input_up_to_5000_inputs_per_request",
-      "target": "gymflow_outstanding_issues_codeblock_10",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L215",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production",
-      "target": "gymflow_outstanding_issues_codeblock_11",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L230",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production",
-      "target": "gymflow_outstanding_issues_codeblock_12",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L243",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability",
-      "target": "gymflow_outstanding_issues_codeblock_13",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "outstanding issues.md",
-      "source_location": "L253",
-      "weight": 1.0,
-      "source": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability",
-      "target": "gymflow_outstanding_issues_codeblock_14",
+      "source": "gymflow_outstanding_issues_minor_fix_when_convenient",
+      "target": "gymflow_outstanding_issues_issue_4_schema_has_duplicate_alter_table_memberships_add_column_if_not_exists_category",
       "confidence_score": 1.0
     },
     {
@@ -27326,6 +27419,226 @@
       "confidence_score": 1.0,
       "source": "agents_workflows_graphify_md",
       "target": "workflows_graphify_workflow_graphify"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L27",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
+      "target": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L66",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
+      "target": "gymflow_outstanding_issues_part_2_regression_found"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L102",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
+      "target": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L266",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
+      "target": "gymflow_outstanding_issues_part_4_areas_reviewed_with_no_issues_found"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L280",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_gymflow_final_production_readiness_audit",
+      "target": "gymflow_outstanding_issues_recommended_fix_order_before_next_deploy"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues",
+      "target": "gymflow_outstanding_issues_from_the_first_remediation_pass_audit_remediation_outstanding_issues_md"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L53",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_1_verification_of_previously_identified_issues",
+      "target": "gymflow_outstanding_issues_from_the_second_pass_new_findings_md"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L68",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_2_regression_found",
+      "target": "gymflow_outstanding_issues_r1_idx_gyms_id_owner_covering_index_was_fully_removed_not_de_duplicated"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L104",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
+      "target": "gymflow_outstanding_issues_n1_members_attendance_page_tsx_redirects_to_a_route_that_doesn_t_exist"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L125",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
+      "target": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L184",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
+      "target": "gymflow_outstanding_issues_n3_detectdatasetcluster_has_an_o_districts_fallback_scan_per_unmatched_input_up_to_5000_inputs_per_request"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L211",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
+      "target": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L239",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_part_3_new_issues_found_in_this_pass",
+      "target": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L119",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n1_members_attendance_page_tsx_redirects_to_a_route_that_doesn_t_exist",
+      "target": "gymflow_outstanding_issues_codeblock_6"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L131",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
+      "target": "gymflow_outstanding_issues_codeblock_7"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L139",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
+      "target": "gymflow_outstanding_issues_codeblock_8"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L158",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n2_members_attendance_page_tsx_duplicates_auth_already_handled_by_the_layout_bypassing_the_dal",
+      "target": "gymflow_outstanding_issues_codeblock_9"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L190",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n3_detectdatasetcluster_has_an_o_districts_fallback_scan_per_unmatched_input_up_to_5000_inputs_per_request",
+      "target": "gymflow_outstanding_issues_codeblock_10"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L215",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production",
+      "target": "gymflow_outstanding_issues_codeblock_11"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L230",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n4_requestlogger_summary_logs_at_error_level_on_every_successful_request_in_production",
+      "target": "gymflow_outstanding_issues_codeblock_12"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L243",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability",
+      "target": "gymflow_outstanding_issues_codeblock_13"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "outstanding issues.md",
+      "source_location": "L253",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "gymflow_outstanding_issues_n5_payments_layout_tsx_is_a_no_op_passthrough_informational_not_a_vulnerability",
+      "target": "gymflow_outstanding_issues_codeblock_14"
     },
     {
       "relation": "contains",
@@ -28404,5 +28717,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "3b8004f59d4880fcfa716f3d6f370bca2e000e8d"
+  "built_at_commit": "b23dcc4d3d9c5773511404caa18cb5087fe6619f"
 }

@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
   try {
     const { userId, password } = await req.json()
     
-    if (!userId || !password) {
-      return NextResponse.json({ error: 'Missing userId or password' }, { status: 400 })
+    if (!userId || !password || password.length < 8) {
+      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
 
     const supabase = createAdminClient()

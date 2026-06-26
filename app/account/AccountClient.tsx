@@ -274,9 +274,7 @@ export function AccountClient({
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Gym Profile</p>
 
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Building2 className="w-7 h-7 text-white" />
-          </div>
+          <img src="/logo.png" alt="Logo" className="w-14 h-14 rounded-2xl object-contain flex-shrink-0 shadow-sm border border-slate-100" />
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-slate-900 truncate">{gymName}</h2>
             <div className="flex items-center gap-1.5 mt-1">

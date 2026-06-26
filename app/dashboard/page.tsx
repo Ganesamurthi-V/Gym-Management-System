@@ -13,7 +13,7 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
   const today = format(new Date(), 'yyyy-MM-dd')
   const cacheKey = `gym:${gymId}:dashboard:${today}`
 
-  return cacheWrapper(cacheKey, 60, async () => {
+  return cacheWrapper(cacheKey, 300, async () => {
     logger.step('ENTER getDashboardData')
     try {
       const supabase = await createClient()

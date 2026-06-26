@@ -11,7 +11,7 @@ export const getGym = cache(async (userId: string) => {
   const supabase = await createClient()
   const { data: gym, error } = await supabase
     .from('gyms')
-    .select('id, name, onboarding_completed, owner_id')
+    .select('id, name, onboarding_completed, owner_id, created_at, onboarding_data')
     .eq('owner_id', userId)
     .single()
   return { gym, error }

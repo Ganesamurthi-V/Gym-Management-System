@@ -1,12 +1,17 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Retrieves the Gym ID associated with the current user.
- * Assumes the user is the owner of the gym.
- * 
- * @param supabase The authenticated Supabase client
+ * Retrieves the gym associated with the current user.
+ *
+ * **For use in API Route Handlers only** — accepts an already-created Supabase client
+ * so no second client instantiation is needed within the same request.
+ *
+ * For Server Components and Server Actions, use `getGym()` from `lib/dal.ts` instead,
+ * which is memoised with React.cache() for deduplication within the same render.
+ *
+ * @param supabase The authenticated Supabase client (already created in the route handler)
  * @param userId The UUID of the authenticated user
- * @returns The gym ID or null if not found
+ * @returns The gym row (id, name) or null if not found
  */
 export async function getGymForUser(supabase: SupabaseClient, userId: string) {
   const { data: gym, error } = await supabase

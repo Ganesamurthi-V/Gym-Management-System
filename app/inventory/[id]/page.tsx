@@ -6,17 +6,11 @@ import { getCachedInventoryItem, getCachedInventorySales, getCachedInventorySibl
 export default async function InventoryItemPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const id = params.id;
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const { getAuthUser, getGym } = await import('@/lib/dal')
+  const { user } = await getAuthUser()
   if (!user) return null
 
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
-
+  const { gym } = await getGym(user.id)
   if (!gym) return null
 
   // Fetch product

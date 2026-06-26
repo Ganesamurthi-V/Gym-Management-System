@@ -26,16 +26,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
     }
 
-    // Use Service Role to bypass missing RLS UPDATE policies for these tables
-    const serviceRoleClient = (await import('@supabase/supabase-js')).createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
     if (clearAll) {
       console.log('CLEAR ALL REQUEST RECEIVED', { type, gymId: gym.id })
       if (type === 'admin_messages') {
-        const { error, data } = await serviceRoleClient
+        const { error, data } = await supabase
           .from('admin_messages')
           .update({ is_cleared_by_owner: true })
           .eq('gym_id', gym.id)
@@ -44,7 +38,7 @@ export async function POST(req: NextRequest) {
         console.log('Admin messages clear result:', { error, updatedCount: data?.length })
         if (error) throw error
       } else if (type === 'support_tickets') {
-        const { error, data } = await serviceRoleClient
+        const { error, data } = await supabase
           .from('support_tickets')
           .update({ is_cleared_by_owner: true })
           .eq('gym_id', gym.id)
@@ -54,7 +48,7 @@ export async function POST(req: NextRequest) {
         if (error) throw error
       }
     } else if (id) {
-      const { error } = await serviceRoleClient
+      const { error } = await supabase
         .from(type)
         .update({ is_cleared_by_owner: true })
         .eq('id', id)

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { invalidatePattern } from '@/lib/cache'
 
 export async function GET(req: NextRequest) {
   if (!(await verifyRequestAuth(req))) {
@@ -15,6 +14,7 @@ export async function GET(req: NextRequest) {
     const { data: tickets, error } = await supabase
       .from('support_tickets')
       .select('*, gyms(name, owner_id)')
+      .eq('is_cleared_by_admin', false)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -57,8 +57,6 @@ export async function PATCH(req: NextRequest) {
 
     if (error) throw error
     
-    // Invalidate the cache for this gym's tickets since status updated
-    await invalidatePattern(`gym:${ticket.gym_id}:support_tickets`)
 
     // If resolving and we have a reply message, send it to the gym
     if (status === 'resolved' && replySubject && replyMessage) {
@@ -73,8 +71,6 @@ export async function PATCH(req: NextRequest) {
         
       if (msgError) throw msgError
       
-      // Invalidate the cache for this gym's admin messages
-      await invalidatePattern(`gym:${ticket.gym_id}:admin_messages`)
     }
 
     return NextResponse.json({ success: true })

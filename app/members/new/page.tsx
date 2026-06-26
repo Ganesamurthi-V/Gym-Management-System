@@ -207,10 +207,14 @@ export default function NewMemberPage() {
           end_date,
           amount: parseInt(form.amount, 10) || 0,
           admission_fee: parseInt(form.admission_fee, 10) || 0,
+          due_amount: parseInt(form.pending_amount, 10) || 0,
           payment_mode: form.payment_mode,
         })
 
       if (membershipError) throw membershipError
+
+      const { invalidateMembersCache } = await import('../actions')
+      await invalidateMembersCache(gym.id)
 
       toast.success('Member added successfully!')
       router.push('/members')
@@ -257,8 +261,8 @@ export default function NewMemberPage() {
 
   const admissionFee = parseInt(form.admission_fee, 10) || 0
   const membershipFee = parseInt(form.amount, 10) || 0
-  const totalAmount = admissionFee + membershipFee
   const pendingAmount = parseInt(form.pending_amount, 10) || 0
+  const totalAmount = admissionFee + membershipFee - pendingAmount
 
   const planLabel = form.plan === 'monthly' ? '1 Month' : form.plan === 'quarterly' ? '3 Months' : form.plan === 'annual' ? '1 Year' : `${form.custom_months} Months (Custom)`
 

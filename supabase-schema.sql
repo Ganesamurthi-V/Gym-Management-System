@@ -32,6 +32,40 @@ CREATE TABLE IF NOT EXISTS members (
 -- Memberships table (one per payment/renewal)
 CREATE TABLE IF NOT EXISTS memberships (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ================================================
+-- TABLES
+-- ================================================
+
+-- Gyms table
+CREATE TABLE IF NOT EXISTS gyms (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Members table
+CREATE TABLE IF NOT EXISTS members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_number INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  gender TEXT CHECK (gender IN ('male', 'female', 'other')),
+  area TEXT,
+  pending_amount INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(gym_id, phone),
+  UNIQUE(gym_id, member_number)
+);
+
+-- Memberships table (one per payment/renewal)
+CREATE TABLE IF NOT EXISTS memberships (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   plan TEXT NOT NULL CHECK (plan IN ('monthly', 'quarterly', 'annual')),
@@ -40,6 +74,17 @@ CREATE TABLE IF NOT EXISTS memberships (
   end_date DATE NOT NULL,
   amount INTEGER NOT NULL DEFAULT 0,
   admission_fee INTEGER NOT NULL DEFAULT 0,
+  due_amount INTEGER NOT NULL DEFAULT 0,
+  payment_mode TEXT NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Due Payments table
+CREATE TABLE IF NOT EXISTS due_payments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
   payment_mode TEXT NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -66,10 +111,16 @@ CREATE TABLE IF NOT EXISTS admin_messages (
   sent_by TEXT NOT NULL DEFAULT 'super_admin',
   type TEXT NOT NULL DEFAULT 'info' CHECK (type IN ('info', 'warning', 'error', 'success')),
   read_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  is_cleared_by_owner BOOLEAN DEFAULT false,
+  is_cleared_by_admin BOOLEAN DEFAULT false
 );
 
 -- INDEXES (for performance)
+
+-- Covering index for the RLS subquery pattern used on every protected table:
+-- EXISTS (SELECT 1 FROM gyms WHERE id = table.gym_id AND owner_id = auth.uid())
+CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
 
 CREATE INDEX IF NOT EXISTS idx_members_gym_id ON members(gym_id);
 CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
@@ -82,23 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
 
-CREATE INDEX IF NOT EXISTS idx_admin_messages_gym_id ON admin_messages(gym_id);
-CREATE INDEX IF NOT EXISTS idx_admin_messages_created_at ON admin_messages(created_at DESC);
-
--- ROW LEVEL SECURITY (RLS)
-
-ALTER TABLE gyms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
-
-ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE admin_messages ENABLE ROW LEVEL SECURITY;
-
--- GYMS policies
-CREATE POLICY "Users can view their own gym"
-  ON gyms FOR SELECT
-  USING (owner_id = auth.uid());
+CREATE INDEX IF NOT EXISTS idx_due_payments_gym_id ON due_payments(gym_id);
 
 CREATE POLICY "Users can insert their own gym"
   ON gyms FOR INSERT
@@ -146,20 +181,6 @@ CREATE POLICY "Gym owners can insert memberships"
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
   );
 
-CREATE POLICY "Gym owners can update memberships"
-  ON memberships FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
-  );
-CREATE POLICY "Gym owners can delete memberships"
-  ON memberships FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
-  );
-
--- ATTENDANCE policies
-CREATE POLICY "Gym owners can view attendance"
-  ON attendance FOR SELECT
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
   );
@@ -352,8 +373,11 @@ CREATE POLICY "Authenticated users can read localities"
 CREATE POLICY "Authenticated users can read aliases"
   ON geo_aliases FOR SELECT USING (auth.uid() IS NOT NULL);
 
--- Hardened: Only service role or admins should modify global localities/aliases
--- For this SaaS, we restrict to SELECT for regular authenticated users.
+-- INSERT/UPDATE/DELETE on geo_localities and geo_aliases is intentionally blocked for regular users.
+-- In Postgres RLS, when ENABLE ROW LEVEL SECURITY is on and no matching policy exists for an
+-- operation, the default is DENY. There are intentionally no INSERT/UPDATE/DELETE policies here.
+-- Use the service role (admin client) for bulk seed operations only.
+-- Do NOT add a permissive mutation policy thinking you are filling a gap - this is by design.
 
 CREATE POLICY "Gym owners can manage their own gym aliases"
   ON geo_gym_aliases FOR ALL
@@ -529,7 +553,7 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS google_longitude      NUMERIC(10, 7
 CREATE INDEX IF NOT EXISTS idx_members_google_place_id ON members(google_place_id) WHERE google_place_id IS NOT NULL;
 
 -- NOTE: google_place_id is supplementary metadata only.
--- The canonical area is still stored in members.area (free text, normalized by GymDesk pipeline).
+-- The canonical area is still stored in members.area (free text, normalized by GymFlow pipeline).
 -- Do NOT use google_place_id as a foreign key or canonical identifier.
 
 -- Migration: Add legacy_member_id column to members table
@@ -546,7 +570,7 @@ ALTER TABLE members
 
 COMMENT ON COLUMN members.legacy_member_id IS
   'Original member ID from an external/legacy system, preserved during import. '
-  'The canonical GymDesk ID is derived from member_number as GF + zero-padded 4 digits.';
+  'The canonical GymFlow ID is derived from member_number as GF + zero-padded 4 digits.';
 
 -- ================================================
 -- INVENTORY
@@ -778,7 +802,9 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   type TEXT NOT NULL CHECK (type IN ('query', 'issue', 'bug', 'high_priority')),
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  resolved_at TIMESTAMPTZ
+  resolved_at TIMESTAMPTZ,
+  is_cleared_by_owner BOOLEAN DEFAULT false,
+  is_cleared_by_admin BOOLEAN DEFAULT false
 );
 
 -- Indexes
@@ -800,6 +826,11 @@ CREATE POLICY "Gym owners can insert support tickets"
   WITH CHECK (
     EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid())
   );
+
+CREATE POLICY "Gym owners can update their support tickets"
+  ON support_tickets FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
+
 
 -- ================================================
 -- [Migration 17] Enable Realtime for Support & Messages
@@ -825,111 +856,6 @@ BEGIN
   END IF;
 END $$;
 
--- ================================================
--- INVENTORY SALES (Revenue Tracking)
--- ================================================
-
-CREATE TABLE IF NOT EXISTS inventory_sales (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  inventory_id UUID REFERENCES inventory(id) ON DELETE SET NULL,
-  product_name TEXT NOT NULL,
-  variant_name TEXT NOT NULL,
-  quantity INTEGER NOT NULL DEFAULT 1,
-  unit_price NUMERIC NOT NULL,
-  total_price NUMERIC NOT NULL,
-  payment_mode TEXT NOT NULL DEFAULT 'cash' CHECK (payment_mode IN ('cash', 'upi', 'card')),
-  sold_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_sales_gym_id ON inventory_sales(gym_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_sales_inventory_id ON inventory_sales(inventory_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_sales_sold_at ON inventory_sales(gym_id, sold_at DESC);
-
--- ROW LEVEL SECURITY (RLS)
-ALTER TABLE inventory_sales ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Gym owners can view their inventory sales"
-  ON inventory_sales FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can insert inventory sales"
-  ON inventory_sales FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can delete inventory sales"
-  ON inventory_sales FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
-
-CREATE POLICY "Gym owners can update inventory sales"
-  ON inventory_sales FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
-
--- ================================================
--- WORKOUT PROGRAMS
--- ================================================
-
-CREATE TABLE IF NOT EXISTS workout_programs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  summary TEXT,
-  notes TEXT,
-  duration INTEGER NOT NULL,
-  frequency INTEGER,
-  difficulty TEXT,
-  goal TEXT,
-  category TEXT,
-  equipment TEXT,
-  target_audience TEXT,
-  experience_level TEXT,
-  schedule JSONB NOT NULL,
-  is_draft BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_workout_programs_gym_id ON workout_programs(gym_id);
-CREATE INDEX IF NOT EXISTS idx_workout_programs_created ON workout_programs(gym_id, created_at DESC);
-
--- ROW LEVEL SECURITY (RLS)
-ALTER TABLE workout_programs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Gym owners can view their programs"
-  ON workout_programs FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can insert programs"
-  ON workout_programs FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can update programs"
-  ON workout_programs FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can delete programs"
-  ON workout_programs FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
--- ================================================
--- [Migration 11] Add Category to Memberships
--- ================================================
-
-ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both';
 
 -- ================================================
 -- [Migration 12] Dashboard RPC

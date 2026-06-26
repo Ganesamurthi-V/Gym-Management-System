@@ -24,6 +24,14 @@ export async function POST() {
       }, { status: 429 })
     }
 
+    if (!process.env.ADMIN_EMAIL) {
+      console.error('[ADMIN GATE] ADMIN_EMAIL env var is not set — admin routes are inaccessible. Set it in your Vercel Environment Variables.')
+      return NextResponse.json({
+        success: false,
+        error: { code: 'SERVER_MISCONFIGURATION', message: 'Server is not configured correctly.' }
+      }, { status: 500 })
+    }
+
     if (user.email !== process.env.ADMIN_EMAIL) {
       return NextResponse.json({
         success: false,

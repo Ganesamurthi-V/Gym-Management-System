@@ -6,12 +6,20 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, User, Settings, Lock, Bell, ChevronRight } from 'lucide-react'
 
-export default function AccountMenu() {
+interface AccountMenuProps {
+  initialEmail?: string | null
+  initialGymId?: string | null
+  initialGymName?: string | null
+  initialUnreadCount?: number
+}
+
+export default function AccountMenu({ initialEmail, initialGymId, initialGymName, initialUnreadCount }: AccountMenuProps = {}) {
   const [isOpen, setIsOpen] = useState(false)
-  const [email, setEmail] = useState<string | null>(null)
-  const [gymId, setGymId] = useState<string | null>(null)
-  const [gymName, setGymName] = useState<string | null>(null)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [email, setEmail] = useState<string | null>(initialEmail ?? null)
+  const [gymId, setGymId] = useState<string | null>(initialGymId ?? null)
+  const [gymName, setGymName] = useState<string | null>(initialGymName ?? null)
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount ?? 0)
+  const currentUserId = useRef<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -37,17 +45,30 @@ export default function AccountMenu() {
       }
     }
 
-    // Initial load
-    supabase.auth.getUser().then(({ data: { user } }: { data: { user: { id: string; email?: string } | null } }) => {
-      if (user) fetchForUser(user.id, user.email ?? '')
-    })
-
     // Re-fetch whenever auth state changes (login / logout / account switch)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: string, session: { user: { id: string; email?: string } } | null) => {
         if (session?.user) {
-          fetchForUser(session.user.id, session.user.email ?? '')
+          if (currentUserId.current === session.user.id) return
+          currentUserId.current = session.user.id
+
+          // Use server-rendered props only when we have all of them AND the
+          // session belongs to the same user the server rendered for.
+          // If initialGymId or initialGymName is missing (e.g. mid-onboarding),
+          // fall through to fetchForUser so we don't silently show stale/empty state.
+          const isSameUser = session.user.email === initialEmail
+          const haveAllProps = initialGymId && initialGymName
+
+          if (isSameUser && haveAllProps) {
+            setEmail(initialEmail ?? null)
+            setGymId(initialGymId ?? null)
+            setGymName(initialGymName ?? null)
+            setUnreadCount(initialUnreadCount ?? 0)
+          } else {
+            fetchForUser(session.user.id, session.user.email ?? '')
+          }
         } else {
+          currentUserId.current = null
           setEmail(null)
           setGymName(null)
           setGymId(null)
@@ -57,27 +78,26 @@ export default function AccountMenu() {
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase, initialEmail, initialGymId, initialGymName, initialUnreadCount])
 
-  // Realtime subscription for unread count
+  // Realtime subscription for unread count via Broadcast (Bypasses missing publication issues)
   useEffect(() => {
     if (!gymId) return
 
     const channel = supabase
-      .channel('realtime_account_menu_messages')
+      .channel(`gym_support_${gymId}`)
       .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
-        () => setUnreadCount(prev => prev + 1)
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
-        (payload: any) => {
-          // If message was marked as read, decrement count
-          if (payload.old.read_at === null && payload.new.read_at !== null) {
-            setUnreadCount(prev => Math.max(0, prev - 1))
-          }
+        'broadcast',
+        { event: 'refetch_support' },
+        async () => {
+          // Re-fetch unread count when an admin message is received or ticket updated
+          const { count } = await supabase
+            .from('admin_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('gym_id', gymId)
+            .is('read_at', null)
+            
+          setUnreadCount(count ?? 0)
         }
       )
       .subscribe()

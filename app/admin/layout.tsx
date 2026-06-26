@@ -15,7 +15,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Set ADMIN_EMAIL in your Vercel Environment Variables.
   const adminEmail = process.env.ADMIN_EMAIL
 
-  if (!adminEmail || user.email !== adminEmail) {
+  if (!adminEmail) {
+    console.error('[ADMIN GATE] ADMIN_EMAIL env var is not set — admin layout is inaccessible. Set it in your Vercel Environment Variables.')
+    redirect('/auth/login')
+  }
+
+  if (user.email !== adminEmail) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-100">

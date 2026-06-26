@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { invalidatePattern } from '@/lib/cache'
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +9,11 @@ export async function POST(req: NextRequest) {
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { allowed } = await checkRateLimit(user.id, 'support_ticket', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     const { subject, message, type } = await req.json()
@@ -41,8 +46,6 @@ export async function POST(req: NextRequest) {
 
     if (insertError) throw insertError
 
-    // Invalidate the cache for this gym's tickets
-    await invalidatePattern(`gym:${gym.id}:support_tickets`)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

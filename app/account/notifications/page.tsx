@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import SupportHeaderClient from '@/components/support/SupportHeaderClient'
 import SupportTabsClient from '@/components/support/SupportTabsClient'
-import { cacheWrapper, invalidatePattern } from '@/lib/cache'
 import { RequestLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -10,19 +9,16 @@ export default async function NotificationsPage() {
   const logger = new RequestLogger('NotificationsPage')
   logger.start('Page Load')
 
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
+  const { getAuthUser, getGym } = await import('@/lib/dal')
+  const { user } = await getAuthUser()
   if (!user) return null
 
   // Get user's gym
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  const { gym } = await getGym(user.id)
 
   if (!gym) return <div className="p-8 text-center text-slate-500">No gym found</div>
+
+  const supabase = await createClient()
 
   logger.start('Check Unread')
   // Check if there are any unread messages before updating
@@ -42,39 +38,30 @@ export default async function NotificationsPage() {
       .update({ read_at: new Date().toISOString() })
       .eq('gym_id', gym.id)
       .is('read_at', null)
-    logger.end('Update Read Status')
       
-    // Invalidate cache since we modified data
-    await invalidatePattern(`gym:${gym.id}:admin_messages`)
+    const { deleteCache } = await import('@/lib/cache')
+    await deleteCache(`unread_count:${gym.id}`)
+      
+    logger.end('Update Read Status')
   }
 
-  const messages = await cacheWrapper(
-    `gym:${gym.id}:admin_messages`,
-    300, // 5 minutes cache
-    async () => {
-      const { data } = await supabase
-        .from('admin_messages')
-        .select('*')
-        .eq('gym_id', gym.id)
-        .order('created_at', { ascending: false })
-      return data || []
-    },
-    logger
-  )
+  const { data: adminData } = await supabase
+    .from('admin_messages')
+    .select('*')
+    .eq('gym_id', gym.id)
+    .eq('is_cleared_by_owner', false)
+    .order('created_at', { ascending: false })
+    
+  const messages = adminData || []
 
-  const tickets = await cacheWrapper(
-    `gym:${gym.id}:support_tickets`,
-    300, // 5 minutes cache
-    async () => {
-      const { data } = await supabase
-        .from('support_tickets')
-        .select('*')
-        .eq('gym_id', gym.id)
-        .order('created_at', { ascending: false })
-      return data || []
-    },
-    logger
-  )
+  const { data: ticketData } = await supabase
+    .from('support_tickets')
+    .select('*')
+    .eq('gym_id', gym.id)
+    .eq('is_cleared_by_owner', false)
+    .order('created_at', { ascending: false })
+    
+  const tickets = ticketData || []
 
   logger.end('Page Load')
   logger.summary()

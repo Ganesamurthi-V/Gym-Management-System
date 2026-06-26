@@ -16,14 +16,16 @@ export async function POST(req: NextRequest) {
     let body
     try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
 
-    // Logic for parsing/validating import rows would go here
-    // For now, return a success wrapper as this is an audit of the handler structure
-
+    // This route is a stub. The real import pipeline is at POST /api/import/confirm.
+    // Returning 501 here prevents callers from accidentally sending data to this endpoint
+    // and receiving a false success response while data is silently discarded.
     return NextResponse.json({
-      success: true,
-      data: { message: 'Import started', row_count: body.rows?.length ?? 0 },
-      meta: { duration_ms: Date.now() - startTime }
-    })
+      success: false,
+      error: {
+        code: 'NOT_IMPLEMENTED',
+        message: 'Use POST /api/import/confirm to submit import rows.'
+      }
+    }, { status: 501 })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'An unexpected error occurred'
     return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })

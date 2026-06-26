@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser, getGym } from '@/lib/dal'
 import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
@@ -13,7 +14,7 @@ const PAGE_SIZE = 200
 async function getMembersData(gymId: string, logger: RequestLogger) {
   const cacheKey = `gym:${gymId}:members_list`
 
-  return cacheWrapper(cacheKey, 60, async () => {
+  return cacheWrapper(cacheKey, 300, async () => {
     logger.step('ENTER getMembersData')
     const supabase = await createClient()
 
@@ -27,7 +28,7 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
         )
       `, { count: 'exact' })
       .eq('gym_id', gymId)
-      .order('name')
+      .order('created_at', { ascending: false })
       .limit(PAGE_SIZE)
     logger.end('FETCH_MEMBERS')
 
@@ -69,7 +70,9 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
       }
     }).sort((a, b) => {
       const order = { expiring: 0, active: 1, expired: 2 }
-      return order[a.status] - order[b.status]
+      const statusDiff = order[a.status] - order[b.status]
+      // Within each status group, sort alphabetically by name
+      return statusDiff !== 0 ? statusDiff : a.name.localeCompare(b.name)
     })
     logger.end('AGGREGATION')
 
@@ -82,18 +85,13 @@ export default async function MembersPage() {
   
   try {
     logger.start('AUTH')
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getAuthUser()
     logger.end('AUTH')
     
     if (!user) return null
 
     logger.start('QUERY gyms')
-    const { data: gym } = await supabase
-      .from('gyms')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single()
+    const { gym } = await getGym(user.id)
     logger.end('QUERY gyms')
 
     if (!gym) return null

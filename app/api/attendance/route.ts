@@ -12,6 +12,9 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
 
+    const { allowed } = await checkRateLimit(user.id, '/api/attendance', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
+
     let body
     try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
 
@@ -19,6 +22,12 @@ export async function POST(req: NextRequest) {
 
     const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
+    // Verify the member belongs to this gym before marking attendance
+    const { data: member } = await supabase.from('members').select('gym_id').eq('id', member_id).single()
+    if (!member || member.gym_id !== gym.id) {
+      return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
+    }
 
     const { data, error } = await supabase
       .from('attendance')

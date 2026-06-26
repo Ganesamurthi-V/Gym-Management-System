@@ -1,70 +1,323 @@
-# GymFlow — Outstanding Issues After Remediation
+# GymFlow — New Performance & Security Findings
 **Date:** June 26, 2026
 **Branch:** `speed`
-**Scope:** Issues remaining after cross-checking `audit_report.md` against `AUDIT_REMEDIATION.md` and the actual codebase
+**Scope:** Issues not covered in the original audit, remediation doc, or `outstanding issues.md`. All three previously-fixed issues were re-verified and remain correctly fixed.
 
 ---
 
 ## Summary
 
-Most of the remediation work checks out — the critical `getAllTimePayments` auth gate, DAL adoption, `ShellGuard` typing, cache logging cleanup, `ADMIN_EMAIL` guards, and the import stub are all correctly fixed exactly as documented.
+This pass went beyond the dashboard/members/payments pages already covered and looked at the global shell (runs on every navigation), middleware, the inventory module, CSP, and API routes not yet reviewed. Six new issues were found:
 
-However, two real problems were found that the remediation doc does not mention:
-
-1. A **performance regression** — the cache TTL was extended 5x, but two mutation paths still never invalidate the cache, so their staleness window grew from 60s to 300s.
-2. A **functional bug** — a database migration the remediation doc claims was applied was never actually written to the schema file, silently breaking a feature.
+| # | Issue | Severity | Type |
+|---|---|---|---|
+| 1 | `AppShell` re-fetches gym status & unread count on every navigation, uncached | 🟠 HIGH | Performance |
+| 2 | Inventory page cache returns a double-JSON-encoded string instead of data | 🔴 CRITICAL | Performance / Correctness |
+| 3 | CSP `connect-src` blocks Google Places API calls | 🟠 HIGH | Functional / Security-adjacent |
+| 4 | `/api/import/confirm` has no rate limit and no row cap | 🟠 HIGH | Security / Performance |
+| 5 | `/api/attendance` imports `checkRateLimit` but never calls it; no member-gym ownership check | 🟡 MEDIUM | Security |
+| 6 | Bulk import and gym deletion don't invalidate Redis cache | 🟡 MEDIUM | Performance |
 
 ---
 
-## 🔴 Issue 1 — Cache Invalidation Gaps Got Worse After the TTL Extension
+## 🔴 Issue 1 — Inventory Cache Returns a Double-Encoded String (Breaks the Page Silently)
 
 ### What's the problem?
 
-Fix 2.3 wired `deleteCache` calls into four mutation paths (new member via API, new member via form, membership renewal, marking a due paid). Fix 7.1 then extended the cache TTL on `members_list`, `dashboard`, and `payments_page` from 60 seconds to 300 seconds.
-
-These two fixes were correct *individually*, but together they expose a gap: **not every code path that mutates a member or payment was covered by fix 2.3.** The ones that were missed now show stale data for up to 5 minutes instead of 1 — a 5x regression in exactly the scenario the original audit (2.3) was trying to fix.
-
-**Affected files:**
-
-| File | What it does | Cache impact |
-|---|---|---|
-| `app/members/[id]/edit/EditMemberClient.tsx` | Edits a member's name, phone, age, gender, area directly via the Supabase client | `members_list` cache never invalidated |
-| `app/members/bulk-edit/BulkEditClient.tsx` | Bulk-edits name, phone, age, area, **and `pending_amount`** for multiple members | `members_list` cache never invalidated — `pending_amount` is shown on the members list, so this is visibly wrong, not just theoretical |
-| `app/api/members/[id]/route.ts` (`PATCH`) | API equivalent of the edit above (name, phone, age, member_number) | Same gap, server-side |
-| `app/api/payments/route.ts` (`POST`) | Inserts a new membership/payment record | `payments_page:12mo`, `payments_page:allTime`, and `dashboard` caches never invalidated |
-
-For comparison, here's the pattern that **does** work correctly (`app/api/members/route.ts`, `POST`):
+`lib/api/inventory.ts` calls `JSON.stringify()` manually before storing in Redis, then expects to get the original object/array back on a cache hit:
 
 ```ts
-await deleteCache(cacheKeys.membersList(gym.id))
-await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
+// lib/api/inventory.ts
+const cachedData = await redis.get(cacheKey)
+if (cachedData) {
+  return cachedData as any[]   // ← assumes this is already an array
+}
+// ...
+await redis.set(cacheKey, JSON.stringify(items), { ex: CACHE_EXPIRY })  // ← manually stringified
 ```
 
-None of the four files above do anything like this.
+This is inconsistent with every other cache usage in the codebase. `lib/cache.ts` (used by the dashboard, members, and payments pages) passes the raw object straight to `redis.set()`:
+
+```ts
+// lib/cache.ts — the correct pattern used everywhere else
+await redis.set(key, data, { ex: ttlSeconds })   // no manual stringify
+```
+
+The `@upstash/redis` client (`^1.38.0`) already serializes/deserializes JSON internally. Calling `JSON.stringify()` yourself before `redis.set()` means the value gets encoded twice — once by your code, once by the client. On `redis.get()`, the client only undoes one layer of encoding, so what comes back is the **JSON string itself**, not the parsed array.
 
 ### Why it matters
 
-- A gym owner edits a member's phone number → the members list still shows the old phone number for up to 5 minutes.
-- A gym owner bulk-edits pending dues → the members list shows the old `pending_amount` for up to 5 minutes, which is the exact bug 2.3 was supposed to close for the single-member case.
-- A payment is recorded through the API route → the payments page and dashboard's "today's collection" figure can be stale for up to 5 minutes.
+`app/inventory/page.tsx` calls `getCachedInventory(gym.id)` and immediately does:
+```ts
+items = allItems.filter(item => { ... })
+```
+
+On a cache **miss** (first visit, or after the 10-minute TTL expires), this works fine — `allItems` is a real array straight from Supabase. On a cache **hit** (every visit within 10 minutes of the last), `allItems` is a string, `.filter` throws a `TypeError`, the surrounding `try/catch` silently swallows it, and `items` falls back to `[]`.
+
+**Net effect: the inventory list appears empty to the gym owner for up to 10 minutes after the first load of any given session, even when the gym has stock.** This is the most severe issue in this pass — it's not a slowdown, it's a silent data-availability bug that looks like "we have no inventory."
+
+The same double-encoding bug exists in `getCachedInventoryItem` and `getCachedInventorySales`, which feed the inventory detail page (`app/inventory/[id]/page.tsx`). A cache hit there means `product.product_name` is accessed on a string, which would either throw (caught and shown as a 404 via `notFound()`) or return `undefined`, depending on exactly where the parsed value lands.
 
 ### Fix
 
-The cleanest fix is to route all of these through the `invalidateMembersCache` server action that already exists in `app/members/actions.ts` (it already clears members, dashboard, and both payments caches in one call):
+Remove the manual `JSON.stringify()` calls in `lib/api/inventory.ts` and let the Upstash client handle serialization, matching the pattern already used in `lib/cache.ts`:
 
-**`EditMemberClient.tsx`** — after the successful `.update()`:
 ```ts
-const { invalidateMembersCache } = await import('../../actions')
-await invalidateMembersCache(member.gym_id)
+export async function getCachedInventory(gymId: string) {
+  const cacheKey = `inventory:${gymId}`
+
+  const cachedData = await redis.get<any[]>(cacheKey)
+  if (cachedData) {
+    return cachedData
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('inventory')
+    .select('*')
+    .eq('gym_id', gymId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching inventory from Supabase:', error)
+    throw error
+  }
+
+  const items = data || []
+  await redis.set(cacheKey, items, { ex: CACHE_EXPIRY })   // no JSON.stringify
+  return items
+}
 ```
 
-**`BulkEditClient.tsx`** — after the loop of updates completes:
+Apply the same change to `getCachedInventoryItem` and `getCachedInventorySales` (remove `JSON.stringify(...)` from the `redis.set()` calls and remove the manual cast on `redis.get()`).
+
+**Verification after fixing:** load `/inventory`, wait, reload within 10 minutes (forces a cache hit), and confirm items still render. The original bug would only show up on the *second* load, not the first — that's likely why it slipped through manual testing.
+
+---
+
+## 🟠 Issue 2 — `AppShell` Hits the Database Twice on Every Page Navigation, With No Caching
+
+### What's the problem?
+
+`components/layout/AppShell.tsx` wraps the entire app (root layout) and runs on every full page load:
+
 ```ts
-const { invalidateMembersCache } = await import('../actions')
-await invalidateMembersCache(gymId)
+export default async function AppShell({ children }: { children: React.ReactNode }) {
+  const { user } = await getAuthUser()
+  // ...
+  const [gymResult, activeStatusResult] = await Promise.all([
+    getGym(user.id),
+    getGymActiveStatus(user.email ?? '')   // → RPC call: check_gym_active
+  ])
+  // ...
+  const { count } = await getUnreadAdminMessages(gym.id)  // → count query on admin_messages
+  // ...
+}
 ```
 
-**`app/api/members/[id]/route.ts` (`PATCH`)** — after the successful update, before returning:
+`getGymActiveStatus` and `getUnreadAdminMessages` (in `lib/dal.ts`) are wrapped in `React.cache()`, which only deduplicates calls **within a single request** — it provides zero caching across page navigations. Unlike the dashboard, members, and payments pages (which use `cacheWrapper` from `lib/cache.ts` with a 300-second Redis TTL), these two calls hit the database fresh on literally every page load, including simple navigations like clicking from Dashboard to Members.
+
+### Why it matters
+
+This is the single most frequently-executed piece of server code in the app — it runs before every page's own content loads, on every click. Two extra round trips (an RPC call plus a count query) on every navigation adds latency to every single page switch, which is broader in impact than any of the per-page caching already done, since it affects all pages, not just one.
+
+`check_gym_active` is unlikely to change more than once a day (it reflects subscription/account status), and the unread message count only needs to update within a few seconds of a real change — both are excellent candidates for the same Redis caching pattern already proven out elsewhere in the codebase.
+
+### Fix
+
+Wrap both in `cacheWrapper` with a short TTL (these need to feel fresh, so keep it tighter than the 300s page-level TTL — 30–60s is reasonable for unread count, longer for active status):
+
+```ts
+// lib/dal.ts
+import { cacheWrapper } from '@/lib/cache'
+
+export const getGymActiveStatus = cache(async (email: string) => {
+  return cacheWrapper(`active_status:${email}`, 120, async () => {
+    const supabase = await createClient()
+    const { data: isActive, error } = await supabase.rpc('check_gym_active', { p_email: email })
+    return { isActive, error }
+  })
+})
+
+export const getUnreadAdminMessages = cache(async (gymId: string) => {
+  return cacheWrapper(`unread_count:${gymId}`, 30, async () => {
+    const supabase = await createClient()
+    const { count, error } = await supabase
+      .from('admin_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('gym_id', gymId)
+      .is('read_at', null)
+    return { count, error }
+  })
+})
+```
+
+If you add this, also invalidate `unread_count:${gymId}` from wherever messages get marked as read (`app/account/notifications/page.tsx`) so the badge doesn't appear stuck for up to 30 seconds after clearing it.
+
+---
+
+## 🟠 Issue 3 — CSP `connect-src` Blocks Google Places Autocomplete Network Calls
+
+### What's the problem?
+
+`next.config.js` sets this CSP header:
+
+```js
+"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://content-crawdad-120459.upstash.io",
+```
+
+The Google Maps JavaScript SDK is loaded via a `<script>` tag (covered by `script-src`, which does allow `maps.googleapis.com`) in both `GooglePlacesAutocomplete.tsx` and `OnboardingWizard.tsx`. But once loaded, the SDK's `AutocompleteService.getPlacePredictions()` and `PlacesService.getDetails()` calls make their own `fetch`/`XHR` requests to Google's backend (`maps.googleapis.com` and related domains) — and those are governed by `connect-src`, not `script-src`. `maps.googleapis.com` is missing from `connect-src`.
+
+### Why it matters
+
+In browsers that strictly enforce CSP, every autocomplete keystroke and every place-detail lookup will be blocked by the browser itself, not by any application code. The component does have a fallback path (`apiError` state, manual text entry), but the CSP block doesn't set `apiError` — it just causes the underlying network call to silently fail, so the user sees a non-functional autocomplete dropdown that never shows suggestions, with no visible explanation. This affects both the member-creation flow (`GooglePlacesAutocomplete.tsx`) and onboarding (`OnboardingWizard.tsx`).
+
+### Fix
+
+Add the Google Maps API domains to `connect-src` in `next.config.js`:
+
+```js
+"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com",
+```
+
+After deploying, test the address autocomplete field in a browser with CSP reporting enabled (check the DevTools console for `Refused to connect` errors) to confirm no further domains are needed.
+
+---
+
+## 🟠 Issue 4 — `/api/import/confirm` Has No Rate Limit and No Row-Count Cap
+
+### What's the problem?
+
+```ts
+// app/api/import/confirm/route.ts
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'   // imported...
+
+export async function POST(req: NextRequest) {
+  // ...
+  const { rows, gym_id } = body
+  if (!Array.isArray(rows) || rows.length === 0) { ... }
+  // ...never calls checkRateLimit, and never checks rows.length against a maximum
+  const { data, error } = await supabase.from('members').insert(rows.map(...))
+  // ...
+}
+```
+
+`checkRateLimit` is imported but never invoked — this route has no per-user throttle at all, unlike every comparable mutation route in the app (members, payments, attendance-adjacent routes, inventory). There's also no upper bound on `rows.length`; the entire array from the request body is mapped and inserted in a single `.insert()` call regardless of size.
+
+### Why it matters
+
+This is the highest-volume write endpoint in the app — it's designed for bulk import, which makes the lack of limits more consequential than on a single-record route. A malicious or buggy client (or a legitimate user with a very large CSV) can:
+- Send an arbitrarily large `rows` array in one request, generating a single, very large `INSERT` that could be slow, memory-heavy, or hit a Supabase request-size limit unpredictably.
+- Call the endpoint repeatedly with no cooldown, since there's no rate limiter actually checking anything.
+
+### Fix
+
+Add the rate-limit check (the import already exists, it's just unused) and a sane row cap:
+
+```ts
+const MAX_IMPORT_ROWS = 500   // tune to your actual CSV size expectations
+
+export async function POST(req: NextRequest) {
+  // ...
+  const { allowed } = await checkRateLimit(user.id, '/api/import/confirm', 5)
+  if (!allowed) {
+    return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
+  }
+
+  const { rows, gym_id } = body
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Rows are required' } }, { status: 400 })
+  }
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: `Maximum ${MAX_IMPORT_ROWS} rows per import` } }, { status: 400 })
+  }
+  // ... rest unchanged
+}
+```
+
+For very large legitimate imports, consider chunking client-side (e.g. 500 rows per request, called repeatedly) rather than raising the cap indefinitely.
+
+---
+
+## 🟡 Issue 5 — `/api/attendance`: Unused Rate-Limit Import, No Member-Ownership Check
+
+### What's the problem?
+
+```ts
+// app/api/attendance/route.ts
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'   // imported, never called
+
+export async function POST(req: NextRequest) {
+  // ...
+  const { member_id, date, status } = body
+  const gym = await getGymForUser(supabase, user.id)
+  if (!gym) return NextResponse.json(..., { status: 404 })
+
+  const { data, error } = await supabase
+    .from('attendance')
+    .upsert({ member_id, date, gym_id: gym.id }, { onConflict: 'member_id,date' })
+    // ...
+}
+```
+
+Same dead-import pattern as Issue 4 — `checkRateLimit` is imported but not used. Separately, the route trusts `member_id` from the request body without verifying it belongs to `gym.id`. The RLS `INSERT` policy on `attendance` only checks that `gym_id` matches the caller's own gym — it does not check that `member_id` belongs to that `gym_id`, since `members` and `attendance` are different tables and the policy doesn't cross-reference them.
+
+### Why it matters
+
+This is lower severity than Issue 4 because `member_id` is a UUID (hard to guess) and the blast radius is limited to attendance records, not financial or PII data. But it's a real gap: a caller who knows (or brute-forces/leaks) another gym's `member_id` could mark attendance against it using their own `gym_id`, creating a cross-tenant data integrity issue (an attendance row pointing to a member in a different gym than the one the row claims). It's also simply inconsistent with the rest of the codebase, which checks ownership explicitly at the app layer as defense-in-depth even where RLS already covers the common case (see fix 3.2 in the original audit, which added exactly this kind of check to `GET /api/members/[id]`).
+
+### Fix
+
+```ts
+export async function POST(req: NextRequest) {
+  const startTime = Date.now()
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
+
+    const { allowed } = await checkRateLimit(user.id, '/api/attendance', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
+
+    let body
+    try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
+
+    const { member_id, date, status } = body
+
+    const gym = await getGymForUser(supabase, user.id)
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
+    // Verify the member belongs to this gym before marking attendance
+    const { data: member } = await supabase.from('members').select('gym_id').eq('id', member_id).single()
+    if (!member || member.gym_id !== gym.id) {
+      return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
+    }
+
+    const { data, error } = await supabase
+      .from('attendance')
+      .upsert({ member_id, date, gym_id: gym.id }, { onConflict: 'member_id,date' })
+      .select('id')
+      .single()
+
+    // ... rest unchanged
+  }
+}
+```
+
+---
+
+## 🟡 Issue 6 — Bulk Import and Gym Deletion Don't Invalidate the Cache
+
+### What's the problem?
+
+Following the same class of bug as the previously-fixed cache invalidation gaps:
+
+- `app/api/import/confirm/route.ts` inserts potentially hundreds of new members but never invalidates `membersList` or `dashboard` caches. This is the worst version of the staleness bug seen so far — instead of one member being stale, an entire bulk import is invisible on the members list for up to 5 minutes.
+- `app/api/account/delete-gym/route.ts` deletes the gym row entirely (cascading to all related tables) but leaves any cached `members_list`, `dashboard`, and `payments_page` Redis keys for that `gym_id` in place until they expire naturally. Low impact since the gym and its owner's session are both gone, but worth a one-line cleanup for hygiene.
+
+### Fix
+
+In `app/api/import/confirm/route.ts`, after the successful insert:
 ```ts
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
@@ -74,126 +327,29 @@ await deleteCache(cacheKeys.membersList(gym.id))
 await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
 ```
 
-**`app/api/payments/route.ts` (`POST`)** — after the successful insert:
+In `app/api/account/delete-gym/route.ts`, after the successful gym delete (optional, but cheap to add):
 ```ts
-import { deleteCache } from '@/lib/cache'
-import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { invalidatePattern } from '@/lib/cache'
 
-await deleteCache(cacheKeys.payments12mo(gym.id))
-await deleteCache(cacheKeys.paymentsAll(gym.id))
-await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
+await invalidatePattern(`gym:${gym_id}:*`)
 ```
-
-### Recommendation
-
-Beyond patching these four spots, consider a lint rule or code-review checklist item: *any write to `members`, `memberships`, or `inventory_sales` must be paired with a cache invalidation call.* The fact that this gap exists even after a dedicated remediation pass for the same class of bug suggests the underlying pattern (manually remembering to invalidate at every call site) doesn't scale — a database trigger, webhook, or wrapping all writes in a single mutation helper would remove the need to get this right by hand each time.
 
 ---
 
-## 🟠 Issue 2 — `support_tickets` "Clear" Feature Is Silently Broken (Functional, Not Just Performance)
+## What Was Re-Verified (Still Correctly Fixed)
 
-### What's the problem?
-
-The remediation doc (fix 3.4) says: a new RLS `UPDATE` policy ("Migration 17") was added for `support_tickets`, and on the strength of that, the service-role client in `app/api/support/clear/route.ts` was removed in favor of the regular authenticated Supabase client.
-
-The code change is real — `support/clear/route.ts` now uses the standard client. **But the migration was never actually added to `supabase-schema.sql`.** Checking the schema file directly:
-
-```sql
--- support_tickets RLS policies that actually exist:
-CREATE POLICY "Gym owners can view their support tickets" ON support_tickets FOR SELECT ...
-CREATE POLICY "Gym owners can insert support tickets" ON support_tickets FOR INSERT ...
--- No UPDATE policy exists.
-```
-
-There's also a pre-existing, unrelated "[Migration 17]" block already in the schema (it enables Realtime publication for `admin_messages`/`support_tickets`) — it looks like this name collision is how the new policy got lost during the edit.
-
-### Why it matters
-
-Postgres RLS defaults to **DENY** for any operation with no matching policy. Since there's no `UPDATE` policy on `support_tickets`, and the route no longer uses the service-role client that used to bypass RLS, every `.update({ is_cleared_by_owner: true })` call against `support_tickets` in that route will now silently affect **zero rows** — no error is thrown, the endpoint returns `{ success: true }`, but nothing actually happens. The "clear all resolved tickets" and "clear single ticket" features are broken for support tickets specifically (the `admin_messages` clear path is fine, since that policy does exist).
-
-### Fix
-
-Add the missing policy to `supabase-schema.sql`, near the existing `support_tickets` policies:
-
-```sql
-CREATE POLICY "Gym owners can update their support tickets"
-  ON support_tickets FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
-```
-
-Then run this directly against the live Supabase database (SQL Editor), since schema file changes don't auto-deploy:
-
-```sql
-CREATE POLICY "Gym owners can update their support tickets"
-  ON support_tickets FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
-```
-
-After applying it, manually verify by clearing a resolved support ticket in the UI and confirming `is_cleared_by_owner` actually flips in the database.
-
----
-
-## 🟢 Issue 3 — Duplicate Index Definition (Hygiene, No Functional Impact)
-
-### What's the problem?
-
-`idx_gyms_id_owner` is defined twice in `supabase-schema.sql` — once near the top of the file (where the original indexes live) and again near the bottom under a "[Migration 18]" comment block, which appears to have been appended without checking whether the index already existed.
-
-```sql
--- Near top of file:
-CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
-
--- ...hundreds of lines later, under "[Migration 18]":
-CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
-```
-
-### Why it matters
-
-`IF NOT EXISTS` makes this harmless at runtime — the second statement is a no-op. But it's the exact same "schema file maintained by hand-appending, not proper migrations" smell that the original audit flagged (and the remediation fixed) for the duplicate `attendance` RLS line. It signals the same root cause is still present and will likely produce more duplicates over time.
-
-### Fix
-
-Remove the duplicate block at the bottom of the file:
-
-```sql
--- ================================================
--- [Migration 18] Add covering index for RLS subquery performance
--- ================================================
-CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
-```
-
-Going forward, treat `supabase-schema.sql` as the source of truth and grep for an existing `CREATE INDEX`/`CREATE POLICY` name before appending a new migration block with the same target.
-
----
-
-## What Was Verified as Correctly Fixed (No Action Needed)
-
-For completeness, everything below was checked against the actual code and matches the remediation doc's claims:
-
-| # | Issue | Verified |
-|---|---|---|
-| 2.1 | `getAllTimePayments` auth gate before cache lookup | ✅ Correct |
-| 2.2 | `AccountMenu` auth-state re-fetch guard | ✅ Correct |
-| 3.1 / 3.6 | DAL adoption in `account/`, `inventory/[id]`, `members/bulk-edit` pages | ✅ Correct |
-| 3.2 | `GET /api/members/[id]` `gym_id` filter | ✅ Correct |
-| 3.3 | Duplicate `attendance` RLS line removed | ✅ Correct |
-| 3.5 | `ShellGuard` props typed (no more `any`) | ✅ Correct |
-| 3.7 | `invalidateInventoryCache`/`invalidateInventoryItemCache` ownership check | ✅ Correct |
-| 3.8 | Health endpoint returns error code only, not raw object | ✅ Correct |
-| 4.1 | DAL `getGym()` includes `onboarding_data` | ✅ Correct |
-| 4.2 | Members page: redundant `.order('name')` removed, `localeCompare` secondary sort added | ✅ Correct |
-| 4.3 | `ShellGuard` `useEffect` split, `pathname` removed from interval-setup dependency array | ✅ Correct |
-| 4.4 | `cacheWrapper` console logs gated behind `NODE_ENV`, `globalCacheStats` removed | ✅ Correct |
-| 6.2 | `_reports_archived/` moved out of `app/` | ✅ Correct |
-| 6.3 | `/api/import` stub returns `501` instead of fake `200` | ✅ Correct |
-| 7.1 | TTL extended to 300s on dashboard, members, payments pages | ✅ Correct |
-| 7.2 | `ADMIN_EMAIL` unset → `500`/redirect with clear log, not silent `403` | ✅ Correct |
+The three issues from `outstanding issues.md` were checked again in this upload and remain correctly fixed:
+- Cache invalidation in `EditMemberClient.tsx`, `BulkEditClient.tsx`, `app/api/members/[id]/route.ts` (PATCH), `app/api/payments/route.ts` (POST).
+- `support_tickets` UPDATE RLS policy present in `supabase-schema.sql`.
+- Duplicate `idx_gyms_id_owner` index removed (only one definition remains).
 
 ---
 
 ## Recommended Fix Order
 
-1. **Issue 2** (support_tickets RLS) — broken feature, fix this week.
-2. **Issue 1** (cache invalidation gaps) — visible staleness bug, fix this week.
-3. **Issue 3** (duplicate index) — cosmetic, backlog.
+1. **Issue 1** (inventory cache double-encoding) — silently breaks a whole page, fix immediately.
+2. **Issue 4** (import/confirm rate limit + row cap) — unbounded write endpoint, fix this week.
+3. **Issue 3** (CSP blocking Places API) — visible feature breakage for users with strict CSP enforcement.
+4. **Issue 2** (AppShell caching) — affects every page switch; biggest aggregate latency win available.
+5. **Issue 5** (attendance rate limit + ownership check) — defense-in-depth, lower urgency.
+6. **Issue 6** (bulk import / gym delete cache invalidation) — same pattern as already-fixed issues, quick to apply.

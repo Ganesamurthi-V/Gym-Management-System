@@ -8,9 +8,9 @@ export async function getCachedInventory(gymId: string) {
   const cacheKey = `inventory:${gymId}`
 
   // 1. Try fetching from Redis
-  const cachedData = await redis.get(cacheKey)
+  const cachedData = await redis.get<any[]>(cacheKey)
   if (cachedData) {
-    return cachedData as any[]
+    return cachedData
   }
 
   // 2. Cache miss -> Fetch from Supabase
@@ -29,7 +29,7 @@ export async function getCachedInventory(gymId: string) {
   const items = data || []
 
   // 3. Store in Redis
-  await redis.set(cacheKey, JSON.stringify(items), { ex: CACHE_EXPIRY })
+  await redis.set(cacheKey, items, { ex: CACHE_EXPIRY })
 
   return items
 }
@@ -37,9 +37,9 @@ export async function getCachedInventory(gymId: string) {
 export async function getCachedInventoryItem(gymId: string, itemId: string) {
   const cacheKey = `inventory-item:${itemId}`
 
-  const cachedData = await redis.get(cacheKey)
+  const cachedData = await redis.get<any>(cacheKey)
   if (cachedData) {
-    return cachedData as any
+    return cachedData
   }
 
   const supabase = await createClient()
@@ -54,7 +54,7 @@ export async function getCachedInventoryItem(gymId: string, itemId: string) {
     return null
   }
 
-  await redis.set(cacheKey, JSON.stringify(data), { ex: CACHE_EXPIRY })
+  await redis.set(cacheKey, data, { ex: CACHE_EXPIRY })
 
   return data
 }
@@ -62,9 +62,9 @@ export async function getCachedInventoryItem(gymId: string, itemId: string) {
 export async function getCachedInventorySales(itemId: string) {
   const cacheKey = `inventory-sales:${itemId}`
 
-  const cachedData = await redis.get(cacheKey)
+  const cachedData = await redis.get<any[]>(cacheKey)
   if (cachedData) {
-    return cachedData as any[]
+    return cachedData
   }
 
   const supabase = await createClient()
@@ -77,7 +77,7 @@ export async function getCachedInventorySales(itemId: string) {
   // Ignore error as migration might not be run
   const sales = data || []
 
-  await redis.set(cacheKey, JSON.stringify(sales), { ex: CACHE_EXPIRY })
+  await redis.set(cacheKey, sales, { ex: CACHE_EXPIRY })
 
   return sales
 }

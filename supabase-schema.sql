@@ -32,6 +32,40 @@ CREATE TABLE IF NOT EXISTS members (
 -- Memberships table (one per payment/renewal)
 CREATE TABLE IF NOT EXISTS memberships (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ================================================
+-- TABLES
+-- ================================================
+
+-- Gyms table
+CREATE TABLE IF NOT EXISTS gyms (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Members table
+CREATE TABLE IF NOT EXISTS members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_number INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  gender TEXT CHECK (gender IN ('male', 'female', 'other')),
+  area TEXT,
+  pending_amount INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(gym_id, phone),
+  UNIQUE(gym_id, member_number)
+);
+
+-- Memberships table (one per payment/renewal)
+CREATE TABLE IF NOT EXISTS memberships (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   plan TEXT NOT NULL CHECK (plan IN ('monthly', 'quarterly', 'annual')),
@@ -40,6 +74,17 @@ CREATE TABLE IF NOT EXISTS memberships (
   end_date DATE NOT NULL,
   amount INTEGER NOT NULL DEFAULT 0,
   admission_fee INTEGER NOT NULL DEFAULT 0,
+  due_amount INTEGER NOT NULL DEFAULT 0,
+  payment_mode TEXT NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Due Payments table
+CREATE TABLE IF NOT EXISTS due_payments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
   payment_mode TEXT NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -84,25 +129,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
 
-CREATE INDEX IF NOT EXISTS idx_admin_messages_gym_id ON admin_messages(gym_id);
-CREATE INDEX IF NOT EXISTS idx_admin_messages_created_at ON admin_messages(created_at DESC);
-
--- Covering index for the RLS subquery pattern used on every protected table:
--- EXISTS (SELECT 1 FROM gyms WHERE id = table.gym_id AND owner_id = auth.uid())
-CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
-
--- ROW LEVEL SECURITY (RLS)
-
-ALTER TABLE gyms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE admin_messages ENABLE ROW LEVEL SECURITY;
-
--- GYMS policies
-CREATE POLICY "Users can view their own gym"
-  ON gyms FOR SELECT
-  USING (owner_id = auth.uid());
+CREATE INDEX IF NOT EXISTS idx_due_payments_gym_id ON due_payments(gym_id);
 
 CREATE POLICY "Users can insert their own gym"
   ON gyms FOR INSERT
@@ -150,21 +177,6 @@ CREATE POLICY "Gym owners can insert memberships"
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
   );
 
-CREATE POLICY "Gym owners can update memberships"
-  ON memberships FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can delete memberships"
-  ON memberships FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
-  );
-
--- ATTENDANCE policies
-CREATE POLICY "Gym owners can view attendance"
-  ON attendance FOR SELECT
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
   );

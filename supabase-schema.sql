@@ -811,6 +811,11 @@ CREATE POLICY "Gym owners can insert support tickets"
     EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid())
   );
 
+CREATE POLICY "Gym owners can update their support tickets"
+  ON support_tickets FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
+
+
 -- ================================================
 -- [Migration 17] Enable Realtime for Support & Messages
 -- ================================================
@@ -1195,9 +1200,4 @@ BEGIN
   );
 
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- ================================================
--- [Migration 18] Add covering index for RLS subquery performance
--- ================================================
-CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

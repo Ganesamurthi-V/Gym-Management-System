@@ -4,6 +4,10 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { format } from 'date-fns'
+
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now()
@@ -80,6 +84,10 @@ export async function POST(req: NextRequest) {
       const mapped = mapSupabaseError(error)
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
+
+    await deleteCache(cacheKeys.payments12mo(gym.id))
+    await deleteCache(cacheKeys.paymentsAll(gym.id))
+    await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {

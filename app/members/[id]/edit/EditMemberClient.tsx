@@ -96,6 +96,8 @@ export function EditMemberClient({ member }: Props) {
         })
         .eq('id', member.id)
       if (err) throw err
+      const { invalidateMembersCache } = await import('../../actions')
+      await invalidateMembersCache(member.gym_id)
       toast.success('Member details updated successfully!')
       router.push(`/members/${member.id}`)
       router.refresh()

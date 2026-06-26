@@ -140,6 +140,18 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
   const [fullSales, setFullSales] = useState<ProductSale[] | null>(null)
   const [fullDuePayments, setFullDuePayments] = useState<DuePayment[] | null>(null)
   const [isLoadingAllTime, setIsLoadingAllTime] = useState(false)
+  
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportOptions, setExportOptions] = useState({ 
+    memberships: true, 
+    inventory: true, 
+    dues: true,
+    period: 'month' as Period,
+    customFrom: '',
+    customTo: '',
+    mode: 'all' as ModeFilter
+  })
+  
   const supabase = createClient()
 
   const activePayments = fullPayments ?? payments
@@ -214,8 +226,9 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
   }
 
   async function exportExcel() {
-    let currentM = membershipTransactions
-    let currentI = inventoryTransactions
+    let rawPayments = fullPayments ?? payments
+    let rawSales = fullSales ?? productSales
+    let rawDues = fullDuePayments ?? duePayments
 
     if (!fullPayments) {
       setIsLoadingAllTime(true)
@@ -225,19 +238,37 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
         setFullSales(data.productSales as any)
         setFullDuePayments(data.duePayments as any)
         
-        const allT = buildTransactions(data.payments as any, data.productSales as any, data.duePayments as any)
-        currentM = allT.filter(t => t.type === 'membership')
-        currentI = allT.filter(t => t.type === 'inventory')
-        // We can add due export later if needed
+        rawPayments = data.payments as any
+        rawSales = data.productSales as any
+        rawDues = data.duePayments as any
       } finally {
         setIsLoadingAllTime(false)
       }
     }
 
+    const allT = buildTransactions(rawPayments, rawSales, rawDues)
+
+    const range = exportOptions.period === 'custom' && exportOptions.customFrom && exportOptions.customTo
+      ? { start: startOfDay(parseISO(exportOptions.customFrom)), end: endOfDay(parseISO(exportOptions.customTo)) }
+      : getPeriodRange(exportOptions.period)
+
+    const filteredExport = allT.filter(p => {
+      if (range && !isWithinInterval(parseISO(p.timestamp), range)) return false
+      if (exportOptions.mode !== 'all' && p.mode !== exportOptions.mode) return false
+      return true
+    })
+
+    const currentM = exportOptions.memberships ? filteredExport.filter(t => t.type === 'membership') : []
+    const currentI = exportOptions.inventory ? filteredExport.filter(t => t.type === 'inventory') : []
+    const currentD = exportOptions.dues ? filteredExport.filter(t => t.type === 'due') : []
+
     const ExcelJS = (await import('exceljs')).default
     const wb = new ExcelJS.Workbook()
+    
+    let worksheetAdded = false
 
     if (currentM.length > 0) {
+      worksheetAdded = true
       const wsMembers = wb.addWorksheet('Membership Payments')
       wsMembers.columns = [
         { header: 'Member #',       key: 'num',   width: 10 },
@@ -264,8 +295,9 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       })
     }
 
-    if (currentI.length > 0 || currentM.length === 0) {
-      const wsInv = wb.addWorksheet(currentM.length === 0 && currentI.length === 0 ? 'Payments' : 'Inventory Payments')
+    if (currentI.length > 0) {
+      worksheetAdded = true
+      const wsInv = wb.addWorksheet('Inventory Payments')
       wsInv.columns = [
         { header: 'Date',     key: 'date',  width: 20 },
         { header: 'Product',  key: 'prod',  width: 22 },
@@ -285,6 +317,34 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       })
     }
 
+    if (currentD.length > 0) {
+      worksheetAdded = true
+      const wsDues = wb.addWorksheet('Due Payments')
+      wsDues.columns = [
+        { header: 'Member #',       key: 'num',   width: 10 },
+        { header: 'Name',           key: 'name',  width: 22 },
+        { header: 'Phone',          key: 'phone', width: 14 },
+        { header: 'Mode',           key: 'mode',  width: 10 },
+        { header: 'Amount',         key: 'total', width: 12 },
+        { header: 'Date Collected', key: 'date',  width: 20 },
+      ]
+      wsDues.getRow(1).font = { bold: true }
+      currentD.forEach(p => {
+        wsDues.addRow({
+          num:   p.member_number ?? '-',
+          name:  p.title,
+          phone: p.subtitle,
+          mode:  p.mode.toUpperCase(),
+          total: p.amount,
+          date:  formatDate(p.timestamp)
+        })
+      })
+    }
+
+    if (!worksheetAdded) {
+      wb.addWorksheet('Payments')
+    }
+
     const buf = await wb.xlsx.writeBuffer()
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
@@ -299,7 +359,10 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
     <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900">Payments</h1>
-        <button onClick={exportExcel} disabled={isLoadingAllTime}
+        <button onClick={() => {
+          setExportOptions({ memberships: true, inventory: true, dues: true, period, customFrom, customTo, mode: modeFilter })
+          setShowExportModal(true)
+        }} disabled={isLoadingAllTime}
           className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50">
           <Download className="w-4 h-4" />{isLoadingAllTime ? 'Loading...' : 'Export'}
         </button>
@@ -480,12 +543,16 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
-              {activeTab === 'membership' ? (
+              {activeTab === 'membership' || activeTab === 'due' ? (
                 <>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Period</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">
+                    {activeTab === 'membership' ? 'Plan' : 'Type'}
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">
+                    {activeTab === 'membership' ? 'Period' : 'Date'}
+                  </th>
                 </>
               ) : (
                 <>
@@ -506,7 +573,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
               const { bg, text, border, icon } = modeConfig[mode]
               return (
                 <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
-                  {activeTab === 'membership' ? (
+                  {activeTab === 'membership' || activeTab === 'due' ? (
                     <>
                       <td className="px-5 py-3.5 font-mono text-xs text-slate-400">
                         {payment.member_number ? `#${payment.member_number}` : '-'}
@@ -519,7 +586,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
                         {payment.col3}
                       </td>
                       <td className="px-5 py-3.5 text-slate-500 text-xs">
-                        {payment.col4}
+                        {activeTab === 'due' ? formatDate(payment.timestamp) : payment.col4}
                       </td>
                     </>
                   ) : (
@@ -555,6 +622,70 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           </table>
         </div>
       </div>
+
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">Customize Export</h2>
+              <p className="text-sm text-slate-500 mt-1">Select which transaction types to include in your Excel file.</p>
+            </div>
+            <div className="p-5 space-y-4 bg-slate-50 max-h-[60vh] overflow-y-auto no-scrollbar">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Data Types</label>
+                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                  <input type="checkbox" checked={exportOptions.memberships} onChange={(e) => setExportOptions(prev => ({ ...prev, memberships: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
+                  <span className="text-sm font-semibold text-slate-700">Memberships</span>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                  <input type="checkbox" checked={exportOptions.inventory} onChange={(e) => setExportOptions(prev => ({ ...prev, inventory: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
+                  <span className="text-sm font-semibold text-slate-700">Inventory Sales</span>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                  <input type="checkbox" checked={exportOptions.dues} onChange={(e) => setExportOptions(prev => ({ ...prev, dues: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
+                  <span className="text-sm font-semibold text-slate-700">Due Collections</span>
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Date Range</label>
+                <select value={exportOptions.period} onChange={(e) => setExportOptions(prev => ({ ...prev, period: e.target.value as Period }))} className="input-field w-full">
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="all">All Time</option>
+                  <option value="custom">Custom Date Range</option>
+                </select>
+                {exportOptions.period === 'custom' && (
+                  <div className="flex gap-2 mt-2">
+                    <input type="date" value={exportOptions.customFrom} onChange={e => setExportOptions(prev => ({ ...prev, customFrom: e.target.value }))} className="input-field flex-1" />
+                    <input type="date" value={exportOptions.customTo} onChange={e => setExportOptions(prev => ({ ...prev, customTo: e.target.value }))} className="input-field flex-1" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Payment Mode</label>
+                <select value={exportOptions.mode} onChange={(e) => setExportOptions(prev => ({ ...prev, mode: e.target.value as ModeFilter }))} className="input-field w-full">
+                  <option value="all">All Modes</option>
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+            </div>
+            <div className="p-4 bg-white flex gap-3">
+              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-200 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => { setShowExportModal(false); exportExcel(); }} disabled={!exportOptions.memberships && !exportOptions.inventory && !exportOptions.dues} className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-50">
+                Export Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

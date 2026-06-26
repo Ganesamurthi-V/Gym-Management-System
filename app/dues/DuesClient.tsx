@@ -26,6 +26,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   const [paying, setPaying] = useState<string | null>(null)
   const [payAmount, setPayAmount] = useState('')
   const [payMode, setPayMode] = useState<string>('cash')
+  const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -82,13 +83,32 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   return (
     <div className="space-y-4 md:space-y-5 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Fee Dues</h1>
-        <div className="card px-4 py-2.5 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-500" />
-          <div>
-            <p className="text-xs text-slate-400">Total Pending</p>
-            <p className="text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center justify-between w-full sm:w-auto">
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Fee Dues</h1>
+          <div className="card px-4 py-2.5 flex items-center gap-2 sm:hidden">
+            <AlertCircle className="w-4 h-4 text-red-500" />
+            <div>
+              <p className="text-xs text-slate-400">Total Pending</p>
+              <p className="text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <input
+            type="search"
+            placeholder="Search by ID, Name or Phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-field w-full sm:w-64"
+          />
+          <div className="card px-4 py-2.5 hidden sm:flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-500" />
+            <div>
+              <p className="text-xs text-slate-400">Total Pending</p>
+              <p className="text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -101,9 +121,15 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
         </div>
       ) : (
         <div className="card overflow-hidden">
-          <div className="divide-y divide-slate-50">
-            {members.map(member => (
-              <div key={member.id} className="p-4">
+          <div className="space-y-3">
+            {members.filter((m) => {
+              if (!searchQuery) return true;
+              const query = searchQuery.toLowerCase();
+              return m.name.toLowerCase().includes(query) || 
+                     m.phone.includes(query) || 
+                     String(m.member_number).includes(query);
+            }).map(member => (
+              <div key={member.id} className="card p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
                     <span className="text-red-600 font-bold text-sm">

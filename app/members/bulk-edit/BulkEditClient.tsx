@@ -199,7 +199,10 @@ export function EditMembersClient({ members, gymId }: Props) {
         if (err) throw new Error(`Failed to update ${original.name}: ${err.message}`)
       }
       const { invalidateMembersCache } = await import('../actions')
-      await invalidateMembersCache(gymId)
+      const cacheResult = await invalidateMembersCache(gymId)
+      if (!cacheResult.success) {
+        console.warn('Cache invalidation failed after member update:', cacheResult.error)
+      }
       router.push('/members')
       router.refresh()
     } catch (err: any) {

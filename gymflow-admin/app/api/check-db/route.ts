@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyRequestAuth } from '@/lib/auth'
+import type { NextRequest } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!(await verifyRequestAuth(req))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   

@@ -858,12 +858,6 @@ END $$;
 
 
 -- ================================================
--- [Migration 11] Add Category to Memberships
--- ================================================
-
-ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both';
-
--- ================================================
 -- [Migration 12] Dashboard RPC
 -- ================================================
 

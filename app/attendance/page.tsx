@@ -1,20 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser, getGym } from '@/lib/dal'
 import { AttendanceClient } from './AttendanceClient'
 import { format } from 'date-fns'
 
 export const revalidate = 0
 
 export default async function AttendancePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getAuthUser()
   if (!user) return null
 
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id, name')
-    .eq('owner_id', user.id)
-    .single()
-
+  const { gym } = await getGym(user.id)
   if (!gym) return null
 
   const today = format(new Date(), 'yyyy-MM-dd')

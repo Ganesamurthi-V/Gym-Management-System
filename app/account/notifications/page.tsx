@@ -9,19 +9,16 @@ export default async function NotificationsPage() {
   const logger = new RequestLogger('NotificationsPage')
   logger.start('Page Load')
 
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
+  const { getAuthUser, getGym } = await import('@/lib/dal')
+  const { user } = await getAuthUser()
   if (!user) return null
 
   // Get user's gym
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  const { gym } = await getGym(user.id)
 
   if (!gym) return <div className="p-8 text-center text-slate-500">No gym found</div>
+
+  const supabase = await createClient()
 
   logger.start('Check Unread')
   // Check if there are any unread messages before updating

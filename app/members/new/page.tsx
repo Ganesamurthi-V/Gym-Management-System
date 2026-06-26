@@ -212,6 +212,9 @@ export default function NewMemberPage() {
 
       if (membershipError) throw membershipError
 
+      const { invalidateMembersCache } = await import('../actions')
+      await invalidateMembersCache(gym.id)
+
       toast.success('Member added successfully!')
       router.push('/members')
       router.refresh()

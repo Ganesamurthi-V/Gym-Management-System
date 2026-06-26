@@ -22,10 +22,15 @@ function DumbbellIcon({ className }: { className?: string }) {
   )
 }
 
+import type { User } from '@supabase/supabase-js'
+import type { getGym } from '@/lib/dal'
+
+type GymRow = Awaited<ReturnType<typeof getGym>>['gym']
+
 interface ShellGuardProps {
   children: React.ReactNode
-  initialUser: any
-  initialGym: any
+  initialUser: User | null
+  initialGym: GymRow
   initialIsActive: boolean
   initialUnreadCount: number
 }
@@ -37,11 +42,16 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
   const [collapsed, setCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
 
+  // Effect 1: Mount-time setup — restore sidebar state
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
     setMounted(true)
+  }, [])
 
+  // Effect 2: Auth guard — set up focus listener and 10s interval.
+  // Does NOT include `pathname` so the interval is not reset on every navigation.
+  useEffect(() => {
     if (isShellless) return
 
     if (!initialUser || !initialIsActive) {
@@ -82,7 +92,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       window.removeEventListener('focus', checkAuth)
       clearInterval(interval)
     }
-  }, [isShellless, pathname, initialUser, initialIsActive])
+  }, [isShellless, initialUser, initialIsActive])
 
   function toggle() {
     setCollapsed(prev => {

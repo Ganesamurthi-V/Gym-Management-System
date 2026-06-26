@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,6 +87,9 @@ export async function POST(req: NextRequest) {
       const mapped = mapSupabaseError(error)
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
+
+    await deleteCache(cacheKeys.membersList(gym.id))
+    await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {

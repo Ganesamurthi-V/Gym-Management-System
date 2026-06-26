@@ -87,13 +87,15 @@ CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
 CREATE INDEX IF NOT EXISTS idx_admin_messages_gym_id ON admin_messages(gym_id);
 CREATE INDEX IF NOT EXISTS idx_admin_messages_created_at ON admin_messages(created_at DESC);
 
+-- Covering index for the RLS subquery pattern used on every protected table:
+-- EXISTS (SELECT 1 FROM gyms WHERE id = table.gym_id AND owner_id = auth.uid())
+CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
+
 -- ROW LEVEL SECURITY (RLS)
 
 ALTER TABLE gyms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
-
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_messages ENABLE ROW LEVEL SECURITY;
 
@@ -153,7 +155,8 @@ CREATE POLICY "Gym owners can update memberships"
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
   );
-CREATE POLICY "Gym owners can delete memberships"
+
+CREATE POLICY "Gym owners can delete memberships"
   ON memberships FOR DELETE
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
@@ -354,8 +357,11 @@ CREATE POLICY "Authenticated users can read localities"
 CREATE POLICY "Authenticated users can read aliases"
   ON geo_aliases FOR SELECT USING (auth.uid() IS NOT NULL);
 
--- Hardened: Only service role or admins should modify global localities/aliases
--- For this SaaS, we restrict to SELECT for regular authenticated users.
+-- INSERT/UPDATE/DELETE on geo_localities and geo_aliases is intentionally blocked for regular users.
+-- In Postgres RLS, when ENABLE ROW LEVEL SECURITY is on and no matching policy exists for an
+-- operation, the default is DENY. There are intentionally no INSERT/UPDATE/DELETE policies here.
+-- Use the service role (admin client) for bulk seed operations only.
+-- Do NOT add a permissive mutation policy thinking you are filling a gap - this is by design.
 
 CREATE POLICY "Gym owners can manage their own gym aliases"
   ON geo_gym_aliases FOR ALL
@@ -1189,4 +1195,9 @@ BEGIN
   );
 
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ================================================
+-- [Migration 18] Add covering index for RLS subquery performance
+-- ================================================
+CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);

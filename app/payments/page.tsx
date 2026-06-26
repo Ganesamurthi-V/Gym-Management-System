@@ -13,7 +13,7 @@ export default async function PaymentsPage() {
 
   const cacheKey = `gym:${gym.id}:payments_page:12mo`
   
-  const data = await cacheWrapper(cacheKey, 60, async () => {
+  const data = await cacheWrapper(cacheKey, 300, async () => {
     const supabase = await createClient()
     
     const twelveMonthsAgo = format(subMonths(new Date(), 12), 'yyyy-MM-dd')

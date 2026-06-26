@@ -51,6 +51,9 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
     if (error) {
       alert('Failed to record payment. Please try again.')
     } else {
+      const { invalidateMembersCache } = await import('../members/actions')
+      await invalidateMembersCache(gymId)
+
       setMembers(prev => prev
         .map(m => m.id === member.id ? { ...m, pending_amount: newPending } : m)
         .filter(m => m.pending_amount > 0)

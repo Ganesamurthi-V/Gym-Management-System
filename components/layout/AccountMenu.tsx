@@ -52,7 +52,14 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
           if (currentUserId.current === session.user.id) return
           currentUserId.current = session.user.id
 
-          if (session.user.email === initialEmail && initialGymId) {
+          // Use server-rendered props only when we have all of them AND the
+          // session belongs to the same user the server rendered for.
+          // If initialGymId or initialGymName is missing (e.g. mid-onboarding),
+          // fall through to fetchForUser so we don't silently show stale/empty state.
+          const isSameUser = session.user.email === initialEmail
+          const haveAllProps = initialGymId && initialGymName
+
+          if (isSameUser && haveAllProps) {
             setEmail(initialEmail ?? null)
             setGymId(initialGymId ?? null)
             setGymName(initialGymName ?? null)

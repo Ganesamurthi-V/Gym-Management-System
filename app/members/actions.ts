@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+
 
 export async function exportMembersToExcelAction(
   gymId: string, 
@@ -188,6 +191,26 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
     })
 
     return { success: true, data: result }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+
+export async function invalidateMembersCache(gymId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("Unauthorized")
+
+    const { data: gym } = await supabase.from('gyms').select('id').eq('id', gymId).eq('owner_id', user.id).single()
+    if (!gym) throw new Error("Unauthorized Gym Access")
+
+    await deleteCache(cacheKeys.membersList(gym.id))
+    await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
+    await deleteCache(cacheKeys.payments12mo(gym.id))
+    await deleteCache(cacheKeys.paymentsAll(gym.id))
+    return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message }
   }

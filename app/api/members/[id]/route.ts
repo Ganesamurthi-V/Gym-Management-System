@@ -20,10 +20,14 @@ export async function GET(
     const { allowed } = await checkRateLimit(user.id, '/api/members/[id]', ROUTE_LIMITS.DEFAULT)
     if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
 
+    const gym = await getGymForUser(supabase, user.id)
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
     const { data, error } = await supabase
       .from('members')
       .select('id, name, phone, age, gender, member_number, legacy_member_id, created_at')
       .eq('id', id)
+      .eq('gym_id', gym.id)
       .single()
 
     if (error) {

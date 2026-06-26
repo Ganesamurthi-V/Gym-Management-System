@@ -118,6 +118,10 @@ CREATE TABLE IF NOT EXISTS admin_messages (
 
 -- INDEXES (for performance)
 
+-- Covering index for the RLS subquery pattern used on every protected table:
+-- EXISTS (SELECT 1 FROM gyms WHERE id = table.gym_id AND owner_id = auth.uid())
+CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
+
 CREATE INDEX IF NOT EXISTS idx_members_gym_id ON members(gym_id);
 CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
 CREATE INDEX IF NOT EXISTS idx_memberships_gym_id ON memberships(gym_id);

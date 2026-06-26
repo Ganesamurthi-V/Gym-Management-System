@@ -10,6 +10,8 @@ export default async function DuesPage() {
   const { gym } = await getGym(user.id)
   if (!gym) return null
 
+  const supabase = await createClient()
+
   // Filter pending_amount > 0 in DB, only fetch needed columns
   const { data: members } = await supabase
     .from('members')

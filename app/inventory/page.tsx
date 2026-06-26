@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Plus, Package } from 'lucide-react'
 import InventoryFilters from '@/components/inventory/InventoryFilters'
 import { getCachedInventory } from '@/lib/api/inventory'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function InventoryPage(props: { searchParams?: Promise<{ query?: string, category?: string }> }) {
   const searchParams = await props.searchParams;
@@ -14,6 +15,8 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
 
   const { gym } = await getGym(user.id)
   if (!gym) return null
+
+  const supabase = await createClient()
 
   let items: any[] = []
   try {

@@ -13,6 +13,7 @@ export default async function AttendancePage() {
   if (!gym) return null
 
   const today = format(new Date(), 'yyyy-MM-dd')
+  const supabase = await createClient()
 
   // Fetch today's attendance count only
   const { count } = await supabase

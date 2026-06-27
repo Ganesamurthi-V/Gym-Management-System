@@ -6,10 +6,20 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, User, Settings, Lock, Bell, ChevronRight } from 'lucide-react'
 
-export default function AccountMenu() {
+interface AccountMenuProps {
+  initialEmail?: string | null
+  initialGymId?: string | null
+  initialGymName?: string | null
+  initialUnreadCount?: number
+}
+
+export default function AccountMenu({ initialEmail, initialGymId, initialGymName, initialUnreadCount }: AccountMenuProps = {}) {
   const [isOpen, setIsOpen] = useState(false)
-  const [email, setEmail] = useState<string | null>(null)
-  const [gymName, setGymName] = useState<string | null>(null)
+  const [email, setEmail] = useState<string | null>(initialEmail ?? null)
+  const [gymId, setGymId] = useState<string | null>(initialGymId ?? null)
+  const [gymName, setGymName] = useState<string | null>(initialGymName ?? null)
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount ?? 0)
+  const currentUserId = useRef<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -19,31 +29,83 @@ export default function AccountMenu() {
       setEmail(userEmail)
       const { data: gym } = await supabase
         .from('gyms')
-        .select('name')
+        .select('id, name')
         .eq('owner_id', userId)
         .single()
       setGymName(gym?.name ?? null)
-    }
+      setGymId(gym?.id ?? null)
 
-    // Initial load
-    supabase.auth.getUser().then(({ data: { user } }: { data: { user: { id: string; email?: string } | null } }) => {
-      if (user) fetchForUser(user.id, user.email ?? '')
-    })
+      if (gym?.id) {
+        const { count } = await supabase
+          .from('admin_messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('gym_id', gym.id)
+          .is('read_at', null)
+        setUnreadCount(count ?? 0)
+      }
+    }
 
     // Re-fetch whenever auth state changes (login / logout / account switch)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: string, session: { user: { id: string; email?: string } } | null) => {
         if (session?.user) {
-          fetchForUser(session.user.id, session.user.email ?? '')
+          if (currentUserId.current === session.user.id) return
+          currentUserId.current = session.user.id
+
+          // Use server-rendered props only when we have all of them AND the
+          // session belongs to the same user the server rendered for.
+          // If initialGymId or initialGymName is missing (e.g. mid-onboarding),
+          // fall through to fetchForUser so we don't silently show stale/empty state.
+          const isSameUser = session.user.email === initialEmail
+          const haveAllProps = initialGymId && initialGymName
+
+          if (isSameUser && haveAllProps) {
+            setEmail(initialEmail ?? null)
+            setGymId(initialGymId ?? null)
+            setGymName(initialGymName ?? null)
+            setUnreadCount(initialUnreadCount ?? 0)
+          } else {
+            fetchForUser(session.user.id, session.user.email ?? '')
+          }
         } else {
+          currentUserId.current = null
           setEmail(null)
           setGymName(null)
+          setGymId(null)
+          setUnreadCount(0)
         }
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase, initialEmail, initialGymId, initialGymName, initialUnreadCount])
+
+  // Realtime subscription for unread count via Broadcast (Bypasses missing publication issues)
+  useEffect(() => {
+    if (!gymId) return
+
+    const channel = supabase
+      .channel(`gym_support_${gymId}`)
+      .on(
+        'broadcast',
+        { event: 'refetch_support' },
+        async () => {
+          // Re-fetch unread count when an admin message is received or ticket updated
+          const { count } = await supabase
+            .from('admin_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('gym_id', gymId)
+            .is('read_at', null)
+            
+          setUnreadCount(count ?? 0)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [gymId, supabase])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -71,10 +133,13 @@ export default function AccountMenu() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center hover:ring-2 hover:ring-brand-300 transition-all"
+        className="relative w-8 h-8 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center hover:ring-2 hover:ring-brand-300 transition-all"
         title={gymName ?? email ?? ''}
       >
         <span className="text-brand-700 font-bold text-xs">{initials}</span>
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full" />
+        )}
       </button>
 
       {isOpen && (
@@ -126,17 +191,22 @@ export default function AccountMenu() {
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
-              <div className="w-full flex items-center justify-between p-3 rounded-xl opacity-60 cursor-not-allowed">
+              <Link href="/account/notifications" onClick={() => setIsOpen(false)}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
+                  <div className="relative w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
                     <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center">
+                        <span className="text-[8px] font-bold text-white leading-none">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                      </span>
+                    )}
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-semibold text-slate-700">Notifications</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">Coming soon</span>
-                  </div>
+                  <span className="text-sm font-semibold text-slate-700">Contact & Support</span>
                 </div>
-              </div>
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
+              </Link>
             </div>
 
             <div className="p-2 border-t border-slate-50">

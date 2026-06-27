@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +19,9 @@ export async function GET(req: NextRequest) {
     const { allowed } = await checkRateLimit(user.id, '/api/members', ROUTE_LIMITS.DEFAULT)
     if (!allowed) return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
 
+    const gym = await getGymForUser(supabase, user.id)
+    if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
     const { searchParams } = req.nextUrl
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
     const offset = parseInt(searchParams.get('offset') ?? '0')
@@ -23,6 +29,7 @@ export async function GET(req: NextRequest) {
     const { data, error, count } = await supabase
       .from('members')
       .select('id, name, phone, age, gender, member_number, legacy_member_id, created_at', { count: 'exact' })
+      .eq('gym_id', gym.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -80,6 +87,9 @@ export async function POST(req: NextRequest) {
       const mapped = mapSupabaseError(error)
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
+
+    await deleteCache(cacheKeys.membersList(gym.id))
+    await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {

@@ -1,8 +1,8 @@
-# GymDesk — Gym Management SaaS
+# GymFlow — Gym Management SaaS
 
 > Know exactly who paid, who didn't, and who's about to expire — without using notebooks.
 
-**GymDesk** is a full-stack gym management SaaS built for small to mid-size gyms in **Tamil Nadu and Puducherry, India**. It features intelligent area normalization powered by AI, a premium mobile-first UI, and complete multi-tenant data isolation.
+**GymFlow** is a full-stack gym management SaaS built for small to mid-size gyms in **Tamil Nadu and Puducherry, India**. It features intelligent area normalization powered by AI, a premium mobile-first UI, and complete multi-tenant data isolation.
 
 ---
 
@@ -42,6 +42,8 @@
 | **Geo Intelligence Engine** | 11-step area normalization pipeline with AI fallback (Gemini 2.0 Flash). 1200+ static aliases. Client-side seed data fallback. |
 | **Account Settings** | Edit gym name, gym info (type, city, phone, address, opening year, branches), change password. Toast notifications. Danger zone. |
 | **Observability & Caching** | Request-scoped APM-style logger (`RequestLogger`) for granular performance tracing. Upstash Redis caching for heavy reports (1 RPC -> Cache architecture). |
+| **Support System** | In-app messaging for owners to contact admins. Includes real-time notifications via Supabase Broadcast and a dedicated history center. |
+| **Super Admin Panel** | Separate Next.js app (`/gymflow-admin`) for global oversight, support ticket resolution, and system health monitoring. |
 
 ---
 
@@ -103,6 +105,10 @@ gymflow/
 │           ├── cluster-detect/       # POST: dataset cluster detection
 │           ├── save-alias/           # POST: save gym-specific alias
 │           └── seed/                 # POST: populate geo_localities (run once)
+├── gymflow-admin/                    # Super Admin Panel (Separate Next.js app)
+│   ├── app/                          # Admin routes (Dashboard, Support, Auth)
+│   ├── components/                   # Admin UI components
+│   └── lib/                          # Admin auth & helpers
 ├── components/
 │   ├── layout/
 │   │   ├── AppShell.tsx              # Thin server wrapper
@@ -295,6 +301,8 @@ All tables use **Row Level Security** scoped to `gym_id → owner_id = auth.uid(
 | `memberships` | One row per payment/renewal (plan, dates, amount, admission_fee, payment_mode) | By `gym_id` |
 | `attendance` | Daily check-ins, unique per `(member_id, date)` | By `gym_id` |
 | `gym_plan_prices` | Per-gym plan prices + joining fees (monthly, quarterly, annual) | By `gym_id` |
+| `support_tickets` | Support messages sent from gyms to the admin | By `gym_id` |
+| `admin_messages` | Responses and broadcast messages from admin to gyms | By `gym_id` |
 
 ### Geo Tables
 
@@ -507,6 +515,12 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 | Rate limiting on geo API routes | ✅ |
 | Server-side rate limiter (per-user, per-route) | ✅ |
 | Structured APM-style request logging | ✅ |
+| Admin Panel for global system oversight | ✅ |
+| In-app Support Ticketing system | ✅ |
+| Real-time WebSocket notifications via Supabase Broadcast | ✅ |
+| Dedicated Support Notification Center for owners | ✅ |
+| Secure "Clear All" notification logic via Service Role | ✅ |
+| Complete global rebranding to GymFlow | ✅ |
 
 ---
 
@@ -533,4 +547,4 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 
 Private. Built for gym owners, by fitness enthusiasts.
 
-© 2026 GymDesk. Tamil Nadu & Puducherry, India.
+© 2026 GymFlow. Tamil Nadu & Puducherry, India.

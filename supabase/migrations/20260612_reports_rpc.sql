@@ -248,4 +248,4 @@ BEGIN
   );
 
 END;
-$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = '';
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

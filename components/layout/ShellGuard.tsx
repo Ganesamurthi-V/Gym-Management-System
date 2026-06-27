@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
+import { createClient } from '@/lib/supabase/client'
 
 const SHELL_EXCLUDED = ['/auth/', '/onboarding']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
@@ -21,18 +22,77 @@ function DumbbellIcon({ className }: { className?: string }) {
   )
 }
 
-export default function ShellGuard({ children }: { children: React.ReactNode }) {
+import type { User } from '@supabase/supabase-js'
+import type { getGym } from '@/lib/dal'
+
+type GymRow = Awaited<ReturnType<typeof getGym>>['gym']
+
+interface ShellGuardProps {
+  children: React.ReactNode
+  initialUser: User | null
+  initialGym: GymRow
+  initialIsActive: boolean
+  initialUnreadCount: number
+}
+
+export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount }: ShellGuardProps) {
   const pathname = usePathname()
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
   const [collapsed, setCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
 
+  // Effect 1: Mount-time setup — restore sidebar state
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
     setMounted(true)
   }, [])
+
+  // Effect 2: Auth guard — set up focus listener and 10s interval.
+  // Does NOT include `pathname` so the interval is not reset on every navigation.
+  useEffect(() => {
+    if (isShellless) return
+
+    if (!initialUser || !initialIsActive) {
+      const supabase = createClient()
+      supabase.auth.signOut().then(() => {
+        window.location.href = '/auth/login'
+      })
+      return
+    }
+
+    const supabase = createClient()
+    
+    const checkAuth = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user) {
+        // User is invalid or logged out
+        await supabase.auth.signOut()
+        window.location.href = '/auth/login'
+        return
+      }
+
+      // Check real-time database status
+      if (user.email) {
+        const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: user.email })
+        if (isActive === false) {
+          await supabase.auth.signOut()
+          window.location.href = '/auth/login'
+        }
+      }
+    }
+
+    // Check on window focus, and every 10 seconds
+    window.addEventListener('focus', checkAuth)
+    const interval = setInterval(checkAuth, 10000)
+    
+    return () => {
+      window.removeEventListener('focus', checkAuth)
+      clearInterval(interval)
+    }
+  }, [isShellless, initialUser, initialIsActive])
 
   function toggle() {
     setCollapsed(prev => {
@@ -58,10 +118,7 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
       >
         {/* ── Logo row ── */}
         <div className="flex items-center h-16 border-b border-slate-100 flex-shrink-0 px-3">
-          {/* Logo icon — always visible */}
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
-            <DumbbellIcon className="w-4 h-4 text-white" />
-          </div>
+          <img src="/logo.png" alt="VIVI GYM Logo" className="w-12 h-12 rounded-xl object-contain flex-shrink-0" />
 
           {/* gymflow text + collapse arrow — only when expanded */}
           <div className={`
@@ -119,15 +176,21 @@ export default function ShellGuard({ children }: { children: React.ReactNode }) 
         ${collapsed ? 'md:pl-14' : 'md:pl-60'}
       `}>
         <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
-          <div className="w-full px-4 md:px-6 flex items-center justify-between">
-            <div className="flex items-center gap-2 md:hidden">
-              <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
-                <DumbbellIcon className="w-3.5 h-3.5 text-white" />
-              </div>
-              <span className="text-base font-bold text-slate-900">gymflow</span>
+          <div className="w-full px-4 md:px-6 flex items-center justify-between relative">
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="VIVI GYM Logo" className="w-10 h-10 rounded-lg object-contain md:hidden" />
             </div>
-            <div className="hidden md:block" />
-            <AccountMenu />
+            
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
+              <img src="/logo.png" alt="VIVI GYM Logo" className="w-12 h-12 object-contain" />
+              <span className="text-xl font-black text-brand-600 tracking-tight">VIVI GYM</span>
+            </div>
+            <AccountMenu 
+              initialEmail={initialUser?.email} 
+              initialGymId={initialGym?.id}
+              initialGymName={initialGym?.name}
+              initialUnreadCount={initialUnreadCount} 
+            />
           </div>
         </header>
 

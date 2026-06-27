@@ -3,12 +3,14 @@ import { EditMembersClient } from './BulkEditClient'
 import { redirect } from 'next/navigation'
 
 export default async function EditMembersPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { getAuthUser, getGym } = await import('@/lib/dal')
+  const { user } = await getAuthUser()
   if (!user) redirect('/auth/login')
 
-  const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
+  const { gym } = await getGym(user.id)
   if (!gym) redirect('/dashboard')
+
+  const supabase = await createClient()
 
   const { data: members } = await supabase
     .from('members')

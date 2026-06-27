@@ -1,14 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser, getGym } from '@/lib/dal'
 import { DuesClient } from './DuesClient'
 import { getMemberStatus } from '@/lib/utils'
 
 export default async function DuesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getAuthUser()
   if (!user) return null
 
-  const { data: gym } = await supabase.from('gyms').select('id, name').eq('owner_id', user.id).single()
+  const { gym } = await getGym(user.id)
   if (!gym) return null
+
+  const supabase = await createClient()
 
   // Filter pending_amount > 0 in DB, only fetch needed columns
   const { data: members } = await supabase

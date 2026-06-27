@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import * as Sentry from '@sentry/nextjs'
 
 export class RequestLogger {
   private requestId: string
@@ -64,9 +65,9 @@ export class RequestLogger {
       timestamp: new Date().toISOString()
     }
 
-    // Log summary as error to bypass Vercel filters in production, use log in dev
+    // Use a structured prefix so this can be filtered/searched without polluting error-rate metrics
     if (process.env.NODE_ENV === 'production') {
-      console.error(JSON.stringify(log))
+      console.log(`[METRICS] ${JSON.stringify(log)}`)
     } else {
       console.log(JSON.stringify(log))
     }
@@ -81,5 +82,19 @@ export class RequestLogger {
       stack: process.env.NODE_ENV === 'production' ? undefined : (error instanceof Error ? error.stack : undefined),
       timestamp: new Date().toISOString()
     }))
+
+    Sentry.withScope((scope) => {
+      scope.setTag("request_id", this.requestId);
+      scope.setTag("page", this.context);
+      scope.setExtra("context_message", message);
+      if (this.payloadBytes) scope.setExtra("payload_bytes", this.payloadBytes);
+      if (this.cacheHit !== null) scope.setTag("cache_hit", this.cacheHit);
+
+      if (error instanceof Error) {
+        Sentry.captureException(error);
+      } else {
+        Sentry.captureMessage(`[${this.context}] ${message}: ${String(error)}`, 'error');
+      }
+    });
   }
 }

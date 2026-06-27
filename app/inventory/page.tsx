@@ -1,49 +1,41 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUser, getGym } from '@/lib/dal'
 import Link from 'next/link'
 import { Plus, Package } from 'lucide-react'
 import InventoryFilters from '@/components/inventory/InventoryFilters'
-
-export const revalidate = 0
+import { getCachedInventory } from '@/lib/api/inventory'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function InventoryPage(props: { searchParams?: Promise<{ query?: string, category?: string }> }) {
   const searchParams = await props.searchParams;
   const query = searchParams?.query || '';
   const category = searchParams?.category || '';
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getAuthUser()
   if (!user) return null
 
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
-
+  const { gym } = await getGym(user.id)
   if (!gym) return null
 
-  // Fetch inventory items
-  // Wrapping in try-catch in case they haven't run the migration yet to prevent hard crashes
+  const supabase = await createClient()
+
   let items: any[] = []
   try {
-    let queryBuilder = supabase
-      .from('inventory')
-      .select('*')
-      .eq('gym_id', gym.id)
-      
-    if (query) {
-      queryBuilder = queryBuilder.or(`product_name.ilike.%${query}%,sku.ilike.%${query}%`)
-    }
-
-    if (category) {
-      queryBuilder = queryBuilder.eq('category', category)
-    }
-
-    const { data: inventoryItems, error } = await queryBuilder.order('created_at', { ascending: false })
-      
-    if (!error && inventoryItems) {
-      items = inventoryItems
-    }
+    const allItems = await getCachedInventory(gym.id)
+    
+    // Apply filters in memory
+    items = allItems.filter(item => {
+      let matches = true
+      if (query) {
+        const lowerQuery = query.toLowerCase()
+        const matchName = item.product_name?.toLowerCase().includes(lowerQuery)
+        const matchSku = item.sku?.toLowerCase().includes(lowerQuery)
+        if (!matchName && !matchSku) matches = false
+      }
+      if (category && item.category !== category) {
+        matches = false
+      }
+      return matches
+    })
   } catch (e) {
     console.error("Inventory fetch error - did you run the DB migration?", e)
   }

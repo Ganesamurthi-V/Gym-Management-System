@@ -4,17 +4,14 @@ import { AccountClient } from './AccountClient'
 export const dynamic = 'force-dynamic'
 
 export default async function AccountPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { getAuthUser, getGym } = await import('@/lib/dal')
+  const { user } = await getAuthUser()
   if (!user) return null
 
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id, name, created_at, onboarding_data')
-    .eq('owner_id', user.id)
-    .single()
-
+  const { gym } = await getGym(user.id)
   if (!gym) return null
+
+  const supabase = await createClient()
 
   // Extract onboarding details stored in JSONB
   const ob = (gym.onboarding_data ?? {}) as Record<string, any>

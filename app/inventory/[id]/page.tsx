@@ -1,57 +1,35 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import InventoryDetailClient from '@/components/inventory/InventoryDetailClient'
-
-export const revalidate = 0
+import { getCachedInventoryItem, getCachedInventorySales, getCachedInventorySiblings } from '@/lib/api/inventory'
 
 export default async function InventoryItemPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const id = params.id;
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const { getAuthUser, getGym } = await import('@/lib/dal')
+  const { user } = await getAuthUser()
   if (!user) return null
 
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
-
+  const { gym } = await getGym(user.id)
   if (!gym) return null
 
   // Fetch product
-  const { data: product, error } = await supabase
-    .from('inventory')
-    .select('*')
-    .eq('id', id)
-    .eq('gym_id', gym.id)
-    .single()
+  const product = await getCachedInventoryItem(gym.id, id)
 
-  if (error || !product) {
+  if (!product) {
     notFound()
   }
 
   // Fetch sales for this product
   let sales: any[] = []
   try {
-    const { data: salesData } = await supabase
-      .from('inventory_sales')
-      .select('*')
-      .eq('inventory_id', id)
-      .order('sold_at', { ascending: false })
-    if (salesData) sales = salesData
+    sales = await getCachedInventorySales(id)
   } catch (e) {
     // Migration might not be run yet
   }
 
   // Fetch siblings (variants of this product)
-  const { data: siblings } = await supabase
-    .from('inventory')
-    .select('*')
-    .eq('gym_id', gym.id)
-    .eq('product_name', product.product_name)
-    .order('created_at', { ascending: true })
+  const siblings = await getCachedInventorySiblings(gym.id, product.product_name)
 
   return (
     <InventoryDetailClient

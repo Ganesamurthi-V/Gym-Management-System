@@ -5,6 +5,7 @@ import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check 
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
+import { getAllTimePayments } from './actions'
 
 interface Payment {
   id: string
@@ -15,6 +16,17 @@ interface Payment {
   end_date: string
   amount: number
   admission_fee: number | null
+  due_amount: number | null
+  payment_mode: string
+  created_at: string
+  member?: { id: string; name: string; phone: string; member_number: number }
+}
+
+interface DuePayment {
+  id: string
+  member_id: string
+  gym_id: string
+  amount: number
   payment_mode: string
   created_at: string
   member?: { id: string; name: string; phone: string; member_number: number }
@@ -42,6 +54,7 @@ interface PendingMember {
 interface Props {
   payments: Payment[]
   productSales?: ProductSale[]
+  duePayments?: DuePayment[]
   pendingMembers: PendingMember[]
   gymId: string
   gymName: string
@@ -58,7 +71,61 @@ function getPeriodRange(period: Period): { start: Date; end: Date } | null {
   return null
 }
 
-export function PaymentsClient({ payments, productSales = [], pendingMembers, gymId, gymName }: Props) {
+function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePayment[]) {
+  const m = mList.map(p => ({
+    id: p.id,
+    type: 'membership' as const,
+    timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
+    amount: p.amount + (p.admission_fee ?? 0) - (p.due_amount ?? 0),
+    base_amount: p.amount,
+    admission_fee: p.admission_fee ?? 0,
+    due_amount: p.due_amount ?? 0,
+    mode: p.payment_mode,
+    title: p.member?.name ?? 'Unknown',
+    subtitle: p.member?.phone ?? '',
+    col3: p.plan,
+    col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
+    feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm${p.due_amount ? ` - ${formatCurrency(p.due_amount)} due` : ''}` : undefined,
+    member_number: p.member?.member_number
+  }))
+
+  const s = sList.map(ps => ({
+    id: ps.id,
+    type: 'inventory' as const,
+    timestamp: ps.sold_at,
+    amount: Number(ps.total_price),
+    base_amount: Number(ps.total_price),
+    admission_fee: 0,
+    mode: ps.payment_mode,
+    title: 'Inventory Sale',
+    subtitle: 'Walk-in / Direct',
+    col3: ps.product_name,
+    col4: `${ps.variant_name} (x${ps.quantity})`,
+    feeBreakdown: undefined,
+    member_number: undefined
+  }))
+
+  const d = dList.map(dp => ({
+    id: dp.id,
+    type: 'due' as const,
+    timestamp: dp.created_at,
+    amount: Number(dp.amount),
+    base_amount: Number(dp.amount),
+    admission_fee: 0,
+    due_amount: 0,
+    mode: dp.payment_mode,
+    title: dp.member?.name ?? 'Unknown',
+    subtitle: dp.member?.phone ?? '',
+    col3: 'Due Collection',
+    col4: '-',
+    feeBreakdown: undefined,
+    member_number: dp.member?.member_number
+  }))
+
+  return [...m, ...s, ...d].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+export function PaymentsClient({ payments, productSales = [], duePayments = [], pendingMembers, gymId, gymName }: Props) {
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
   const [search, setSearch]   = useState('')
@@ -68,44 +135,32 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
   const [showPending, setShowPending] = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
-  const [activeTab, setActiveTab]     = useState<'membership' | 'inventory'>('membership')
+  const [activeTab, setActiveTab]     = useState<'membership' | 'inventory' | 'due'>('membership')
+  const [fullPayments, setFullPayments] = useState<Payment[] | null>(null)
+  const [fullSales, setFullSales] = useState<ProductSale[] | null>(null)
+  const [fullDuePayments, setFullDuePayments] = useState<DuePayment[] | null>(null)
+  const [isLoadingAllTime, setIsLoadingAllTime] = useState(false)
+  
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportOptions, setExportOptions] = useState({ 
+    memberships: true, 
+    inventory: true, 
+    dues: true,
+    period: 'month' as Period,
+    customFrom: '',
+    customTo: '',
+    mode: 'all' as ModeFilter
+  })
+  
   const supabase = createClient()
 
+  const activePayments = fullPayments ?? payments
+  const activeSales = fullSales ?? productSales
+  const activeDuePayments = fullDuePayments ?? duePayments
+
   const allTransactions = useMemo(() => {
-    const m = payments.map(p => ({
-      id: p.id,
-      type: 'membership' as const,
-      timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
-      amount: p.amount + (p.admission_fee ?? 0),
-      base_amount: p.amount,
-      admission_fee: p.admission_fee ?? 0,
-      mode: p.payment_mode,
-      title: p.member?.name ?? 'Unknown',
-      subtitle: p.member?.phone ?? '',
-      col3: p.plan,
-      col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
-      feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm` : undefined,
-      member_number: p.member?.member_number
-    }))
-
-    const s = productSales.map(ps => ({
-      id: ps.id,
-      type: 'inventory' as const,
-      timestamp: ps.sold_at,
-      amount: Number(ps.total_price),
-      base_amount: Number(ps.total_price),
-      admission_fee: 0,
-      mode: ps.payment_mode,
-      title: 'Inventory Sale',
-      subtitle: 'Walk-in / Direct',
-      col3: ps.product_name,
-      col4: `${ps.variant_name} (x${ps.quantity})`,
-      feeBreakdown: undefined,
-      member_number: undefined
-    }))
-
-    return [...m, ...s].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [payments, productSales])
+    return buildTransactions(activePayments, activeSales, activeDuePayments)
+  }, [activePayments, activeSales, activeDuePayments])
 
   const filtered = useMemo(() => {
     const range = period === 'custom' && customFrom && customTo
@@ -139,7 +194,8 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
 
   const membershipTransactions = filtered.filter(p => p.type === 'membership')
   const inventoryTransactions = filtered.filter(p => p.type === 'inventory')
-  const displayTransactions = activeTab === 'membership' ? membershipTransactions : inventoryTransactions
+  const dueTransactions = filtered.filter(p => p.type === 'due')
+  const displayTransactions = activeTab === 'membership' ? membershipTransactions : activeTab === 'inventory' ? inventoryTransactions : dueTransactions
 
   const modeConfig = {
     cash: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <Banknote className="w-4 h-4 text-emerald-600" /> },
@@ -154,11 +210,65 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
     setMarkingId(null)
   }
 
+  async function handlePeriodChange(p: Period) {
+    setPeriod(p)
+    if (p === 'all' && !fullPayments) {
+      setIsLoadingAllTime(true)
+      try {
+        const data = await getAllTimePayments(gymId)
+        setFullPayments(data.payments as any)
+        setFullSales(data.productSales as any)
+        setFullDuePayments(data.duePayments as any)
+      } finally {
+        setIsLoadingAllTime(false)
+      }
+    }
+  }
+
   async function exportExcel() {
+    let rawPayments = fullPayments ?? payments
+    let rawSales = fullSales ?? productSales
+    let rawDues = fullDuePayments ?? duePayments
+
+    if (!fullPayments) {
+      setIsLoadingAllTime(true)
+      try {
+        const data = await getAllTimePayments(gymId)
+        setFullPayments(data.payments as any)
+        setFullSales(data.productSales as any)
+        setFullDuePayments(data.duePayments as any)
+        
+        rawPayments = data.payments as any
+        rawSales = data.productSales as any
+        rawDues = data.duePayments as any
+      } finally {
+        setIsLoadingAllTime(false)
+      }
+    }
+
+    const allT = buildTransactions(rawPayments, rawSales, rawDues)
+
+    const range = exportOptions.period === 'custom' && exportOptions.customFrom && exportOptions.customTo
+      ? { start: startOfDay(parseISO(exportOptions.customFrom)), end: endOfDay(parseISO(exportOptions.customTo)) }
+      : getPeriodRange(exportOptions.period)
+
+    const filteredExport = allT.filter(p => {
+      if (range && !isWithinInterval(parseISO(p.timestamp), range)) return false
+      if (exportOptions.mode !== 'all' && p.mode !== exportOptions.mode) return false
+      return true
+    })
+
+    const currentM = exportOptions.memberships ? filteredExport.filter(t => t.type === 'membership') : []
+    const currentI = exportOptions.inventory ? filteredExport.filter(t => t.type === 'inventory') : []
+    const currentD = exportOptions.dues ? filteredExport.filter(t => t.type === 'due') : []
+
     const ExcelJS = (await import('exceljs')).default
     const wb = new ExcelJS.Workbook()
+    
+    let worksheetAdded = false
 
-    if (membershipTransactions.length > 0) {
+    if (currentM.length > 0) {
+      worksheetAdded = true
       const wsMembers = wb.addWorksheet('Membership Payments')
       wsMembers.columns = [
         { header: 'Member #',       key: 'num',   width: 10 },
@@ -171,7 +281,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
         { header: 'Total',          key: 'total', width: 12 },
       ]
       wsMembers.getRow(1).font = { bold: true }
-      membershipTransactions.forEach(p => {
+      currentM.forEach(p => {
         wsMembers.addRow({
           num:   p.member_number ?? '-',
           name:  p.title,
@@ -185,8 +295,9 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
       })
     }
 
-    if (inventoryTransactions.length > 0 || membershipTransactions.length === 0) {
-      const wsInv = wb.addWorksheet(membershipTransactions.length === 0 && inventoryTransactions.length === 0 ? 'Payments' : 'Inventory Payments')
+    if (currentI.length > 0) {
+      worksheetAdded = true
+      const wsInv = wb.addWorksheet('Inventory Payments')
       wsInv.columns = [
         { header: 'Date',     key: 'date',  width: 20 },
         { header: 'Product',  key: 'prod',  width: 22 },
@@ -195,7 +306,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
         { header: 'Total',    key: 'total', width: 12 },
       ]
       wsInv.getRow(1).font = { bold: true }
-      inventoryTransactions.forEach(p => {
+      currentI.forEach(p => {
         wsInv.addRow({
           date:  formatDate(p.timestamp),
           prod:  p.col3,
@@ -204,6 +315,34 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           total: p.amount,
         })
       })
+    }
+
+    if (currentD.length > 0) {
+      worksheetAdded = true
+      const wsDues = wb.addWorksheet('Due Payments')
+      wsDues.columns = [
+        { header: 'Member #',       key: 'num',   width: 10 },
+        { header: 'Name',           key: 'name',  width: 22 },
+        { header: 'Phone',          key: 'phone', width: 14 },
+        { header: 'Mode',           key: 'mode',  width: 10 },
+        { header: 'Amount',         key: 'total', width: 12 },
+        { header: 'Date Collected', key: 'date',  width: 20 },
+      ]
+      wsDues.getRow(1).font = { bold: true }
+      currentD.forEach(p => {
+        wsDues.addRow({
+          num:   p.member_number ?? '-',
+          name:  p.title,
+          phone: p.subtitle,
+          mode:  p.mode.toUpperCase(),
+          total: p.amount,
+          date:  formatDate(p.timestamp)
+        })
+      })
+    }
+
+    if (!worksheetAdded) {
+      wb.addWorksheet('Payments')
     }
 
     const buf = await wb.xlsx.writeBuffer()
@@ -220,9 +359,12 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
     <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900">Payments</h1>
-        <button onClick={exportExcel}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
-          <Download className="w-4 h-4" />Export
+        <button onClick={() => {
+          setExportOptions({ memberships: true, inventory: true, dues: true, period, customFrom, customTo, mode: modeFilter })
+          setShowExportModal(true)
+        }} disabled={isLoadingAllTime}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50">
+          <Download className="w-4 h-4" />{isLoadingAllTime ? 'Loading...' : 'Export'}
         </button>
       </div>
 
@@ -247,6 +389,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           <div className="flex sm:flex-col gap-4 sm:gap-1 text-sm bg-black/10 px-4 py-2.5 rounded-lg border border-white/10">
             <p className="text-white/90">Memberships: <span className="font-bold text-white">{formatCurrency(membershipTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
             <p className="text-white/90">Inventory: <span className="font-bold text-white">{formatCurrency(inventoryTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
+            <p className="text-white/90">Dues Collected: <span className="font-bold text-white">{formatCurrency(dueTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
           </div>
         </div>
       </div>
@@ -293,11 +436,11 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {(['today', 'week', 'month', 'all', 'custom'] as Period[]).map(p => (
-            <button key={p} onClick={() => setPeriod(p)}
-              className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+            <button key={p} onClick={() => handlePeriodChange(p)} disabled={isLoadingAllTime}
+              className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-50 ${
                 period === p ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-500'
               }`}>
-              {p === 'all' ? 'All Time' : p === 'custom' ? 'Custom' : p.charAt(0).toUpperCase() + p.slice(1)}
+              {p === 'all' && isLoadingAllTime && period !== 'all' ? 'Loading...' : p === 'all' ? 'All Time' : p === 'custom' ? 'Custom' : p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
           ))}
         </div>
@@ -344,16 +487,22 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           }`}>
           Inventory ({inventoryTransactions.length})
         </button>
+        <button onClick={() => setActiveTab('due')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'due' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}>
+          Dues ({dueTransactions.length})
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="search" placeholder={activeTab === 'membership' ? "Search by name or phone..." : "Search product..."}
+          <input type="search" placeholder={activeTab === 'membership' ? "Search by name or phone..." : activeTab === 'due' ? "Search dues..." : "Search product..."}
             value={search} onChange={e => setSearch(e.target.value)}
             className="input-field pl-9" />
         </div>
-        {activeTab === 'membership' && (
+        {(activeTab === 'membership' || activeTab === 'due') && (
           <div className="relative sm:w-40">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">#</span>
             <input type="search" placeholder="Member ID"
@@ -394,12 +543,16 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
-              {activeTab === 'membership' ? (
+              {activeTab === 'membership' || activeTab === 'due' ? (
                 <>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Period</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">
+                    {activeTab === 'membership' ? 'Plan' : 'Type'}
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">
+                    {activeTab === 'membership' ? 'Period' : 'Date'}
+                  </th>
                 </>
               ) : (
                 <>
@@ -420,7 +573,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
               const { bg, text, border, icon } = modeConfig[mode]
               return (
                 <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
-                  {activeTab === 'membership' ? (
+                  {activeTab === 'membership' || activeTab === 'due' ? (
                     <>
                       <td className="px-5 py-3.5 font-mono text-xs text-slate-400">
                         {payment.member_number ? `#${payment.member_number}` : '-'}
@@ -433,7 +586,7 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
                         {payment.col3}
                       </td>
                       <td className="px-5 py-3.5 text-slate-500 text-xs">
-                        {payment.col4}
+                        {activeTab === 'due' ? formatDate(payment.timestamp) : payment.col4}
                       </td>
                     </>
                   ) : (
@@ -469,6 +622,70 @@ export function PaymentsClient({ payments, productSales = [], pendingMembers, gy
           </table>
         </div>
       </div>
+
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">Customize Export</h2>
+              <p className="text-sm text-slate-500 mt-1">Select which transaction types to include in your Excel file.</p>
+            </div>
+            <div className="p-5 space-y-4 bg-slate-50 max-h-[60vh] overflow-y-auto no-scrollbar">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Data Types</label>
+                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                  <input type="checkbox" checked={exportOptions.memberships} onChange={(e) => setExportOptions(prev => ({ ...prev, memberships: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
+                  <span className="text-sm font-semibold text-slate-700">Memberships</span>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                  <input type="checkbox" checked={exportOptions.inventory} onChange={(e) => setExportOptions(prev => ({ ...prev, inventory: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
+                  <span className="text-sm font-semibold text-slate-700">Inventory Sales</span>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                  <input type="checkbox" checked={exportOptions.dues} onChange={(e) => setExportOptions(prev => ({ ...prev, dues: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
+                  <span className="text-sm font-semibold text-slate-700">Due Collections</span>
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Date Range</label>
+                <select value={exportOptions.period} onChange={(e) => setExportOptions(prev => ({ ...prev, period: e.target.value as Period }))} className="input-field w-full">
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="all">All Time</option>
+                  <option value="custom">Custom Date Range</option>
+                </select>
+                {exportOptions.period === 'custom' && (
+                  <div className="flex gap-2 mt-2">
+                    <input type="date" value={exportOptions.customFrom} onChange={e => setExportOptions(prev => ({ ...prev, customFrom: e.target.value }))} className="input-field flex-1" />
+                    <input type="date" value={exportOptions.customTo} onChange={e => setExportOptions(prev => ({ ...prev, customTo: e.target.value }))} className="input-field flex-1" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Payment Mode</label>
+                <select value={exportOptions.mode} onChange={(e) => setExportOptions(prev => ({ ...prev, mode: e.target.value as ModeFilter }))} className="input-field w-full">
+                  <option value="all">All Modes</option>
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+            </div>
+            <div className="p-4 bg-white flex gap-3">
+              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-200 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => { setShowExportModal(false); exportExcel(); }} disabled={!exportOptions.memberships && !exportOptions.inventory && !exportOptions.dues} className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-50">
+                Export Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

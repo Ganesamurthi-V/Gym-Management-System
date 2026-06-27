@@ -126,7 +126,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       >
         {/* ── Logo row ── */}
         <div className="flex items-center h-16 border-b border-slate-100 flex-shrink-0 px-3">
-          <Image src="/logo.png" alt="VIVI GYM Logo" width={48} height={48} className="rounded-xl object-contain flex-shrink-0" priority />
+          <Image src="/logo.png" alt="VIVI GYM Logo" width={48} height={48} className="rounded-xl object-contain flex-shrink-0" />
 
           {/* gymflow text + collapse arrow — only when expanded */}
           <div className={`
@@ -186,7 +186,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
           <div className="w-full px-4 md:px-6 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
-              <Image src="/logo.png" alt="VIVI GYM Logo" width={40} height={40} className="rounded-lg object-contain md:hidden" priority />
+              <Image src="/logo.png" alt="VIVI GYM Logo" width={40} height={40} className="rounded-lg object-contain md:hidden" />
             </div>
             
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">

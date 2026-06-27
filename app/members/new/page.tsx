@@ -35,6 +35,8 @@ export default function NewMemberPage() {
   const [numError, setNumError] = useState('')
   const [checkingNum, setCheckingNum] = useState(false)
   const [gymId, setGymId] = useState<string | null>(null)
+  // Issue C fix: cache onboarding_data in state so handleSaveNewPlan never needs a gyms re-fetch.
+  const [gymOnboardingData, setGymOnboardingData] = useState<Record<string, any>>({})
   const [gymPlans, setGymPlans] = useState<MembershipPlan[]>([])
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [newPlan, setNewPlan] = useState<MembershipPlan>({
@@ -65,6 +67,8 @@ export default function NewMemberPage() {
       const { data: gym } = await supabase.from('gyms').select('id, onboarding_data').eq('owner_id', user.id).single()
       if (!gym) return
       setGymId(gym.id)
+      // Issue C fix: store the full onboarding_data object so handleSaveNewPlan can use it directly.
+      setGymOnboardingData((gym.onboarding_data as Record<string, any>) ?? {})
 
       // Fetch next member number
       const { data: memberData } = await supabase
@@ -242,13 +246,14 @@ export default function NewMemberPage() {
     setShowPlanModal(false)
     toast.success('Plan added successfully!')
 
-    // Update database
-    const { data: gym } = await supabase.from('gyms').select('onboarding_data').eq('id', gymId).single()
-    if (gym) {
-      const currentData = gym.onboarding_data as any || {}
-      currentData.plans = updatedPlans
-      await supabase.from('gyms').update({ onboarding_data: currentData }).eq('id', gymId)
-    }
+    // Issue C fix: use gymOnboardingData already in state — no SELECT needed.
+    // Spread to avoid mutating state directly, then merge the updated plans array.
+    const merged = { ...gymOnboardingData, plans: updatedPlans }
+    await supabase.from('gyms').update({ onboarding_data: merged }).eq('id', gymId)
+
+    // Keep local cache in sync so a second plan save in the same session
+    // doesn't overwrite merged with the stale original object.
+    setGymOnboardingData(merged)
   }
 
   const endDate = form.start_date

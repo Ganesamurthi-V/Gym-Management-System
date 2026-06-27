@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (clearAll) {
-      console.log('CLEAR ALL REQUEST RECEIVED', { type, gymId: gym.id })
+      if (process.env.NODE_ENV !== 'production') console.log('CLEAR ALL REQUEST RECEIVED', { type, gymId: gym.id })
       if (type === 'admin_messages') {
         const { error, data } = await supabase
           .from('admin_messages')
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
           .eq('gym_id', gym.id)
           .not('read_at', 'is', null)
           .select()
-        console.log('Admin messages clear result:', { error, updatedCount: data?.length })
+        if (process.env.NODE_ENV !== 'production') console.log('Admin messages clear result:', { error, updatedCount: data?.length })
         if (error) throw error
       } else if (type === 'support_tickets') {
         const { error, data } = await supabase
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
           .eq('gym_id', gym.id)
           .eq('status', 'resolved')
           .select()
-        console.log('Support tickets clear result:', { error, updatedCount: data?.length })
+        if (process.env.NODE_ENV !== 'production') console.log('Support tickets clear result:', { error, updatedCount: data?.length })
         if (error) throw error
       }
     } else if (id) {

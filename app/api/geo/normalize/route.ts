@@ -2,13 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { normalizeInput, toPhoneticKey, expandAbbreviations } from '@/lib/geo/normalizer'
 import { scoreAgainstList } from '@/lib/geo/fuzzyMatch'
-import { ALIAS_MAP } from '@/lib/geo/aliases'
 import { CONFIDENCE } from '@/lib/geo/types'
 import { groqInferLocation } from '@/lib/geo/aiInference'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, AIInferenceResult } from '@/lib/geo/types'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
+
+// Issue 10 fix: Lazy-load the 58KB ALIAS_MAP module so it is NOT parsed at Lambda cold-start.
+// The module is evaluated only on the first request to this route, saving 20-80ms on cold starts.
+let _aliasMap: Record<string, string> | null = null
+async function getAliasMap(): Promise<Record<string, string>> {
+  if (!_aliasMap) {
+    const mod = await import('@/lib/geo/aliases')
+    _aliasMap = mod.ALIAS_MAP
+  }
+  return _aliasMap
+}
 function sanitize(s: string): string {
   return s.replace(/\0/g, '').slice(0, 500)
 }
@@ -72,6 +82,7 @@ export async function POST(req: NextRequest) {
     const normalized = expandAbbreviations(normalizeInput(rawInput))
 
     // ── Step 1: Alias lookup ──────────────────────────────────────────────────
+    const ALIAS_MAP = await getAliasMap()
     const aliasHit = ALIAS_MAP[normalized]
     if (aliasHit) {
       const { data: locality, error: locError } = await supabase

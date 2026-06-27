@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -19,7 +20,6 @@ interface Props {
 }
 
 export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Props) {
-  console.log("[CLIENT] DASHBOARD_CLIENT_RENDERED")
   const [sendingBulk, setSendingBulk] = useState(false)
   const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
@@ -35,11 +35,21 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       setFetchingMonth(true)
       const fetchMonth = async () => {
         const todayStr = format(new Date(), 'yyyy-MM-dd')
+
+        // Issue 4 fix: Added server-side date filter — only fetch memberships expiring THIS month.
+        // Previously fetched ALL memberships for the gym (full table scan), which could be
+        // thousands of rows for older gyms. Now filtered at the DB level.
+        const currentMonth = todayStr.slice(0, 7) // e.g. "2026-06"
+        const monthStart = `${currentMonth}-01`
+        const monthEnd = `${currentMonth}-31` // Postgres clamps to last valid day
+
         const { data: membershipsData } = await supabase
           .from('memberships')
           .select('member_id, end_date, member:members(id, name, phone, member_number)')
           .eq('gym_id', gymId)
-          .order('created_at', { ascending: false })
+          .gte('end_date', monthStart)
+          .lte('end_date', monthEnd)
+          .order('end_date', { ascending: true })
 
         const memberMap = new Map<string, any>()
         for (const m of membershipsData ?? []) {
@@ -48,14 +58,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           memberMap.set(m.member_id, { ...(m.member as any), latest_membership: m, days_remaining: daysRemaining })
         }
 
-        const currentMonth = todayStr.slice(0, 7) // e.g. "2026-06"
-        const monthExpiring = Array.from(memberMap.values()).filter(m => {
-          if (!m.latest_membership) return false
-          const endStr = m.latest_membership.end_date // "2026-06-25"
-          return endStr.startsWith(currentMonth)
-        })
-
-        setMonthMembers(monthExpiring.sort((a, b) => a.days_remaining - b.days_remaining))
+        setMonthMembers(Array.from(memberMap.values()).sort((a, b) => a.days_remaining - b.days_remaining))
         setFetchingMonth(false)
       }
       fetchMonth()
@@ -128,7 +131,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
-            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+            <Image src="/logo.png" alt="Logo" width={32} height={32} className="object-contain" priority />
             <span className="text-sm text-slate-500 font-medium">{gymName}</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>

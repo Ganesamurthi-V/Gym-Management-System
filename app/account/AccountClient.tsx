@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import Image from 'next/image'
 
 interface Props {
   email: string
@@ -274,7 +275,7 @@ export function AccountClient({
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Gym Profile</p>
 
         <div className="flex items-start gap-4">
-          <img src="/logo.png" alt="Logo" className="w-14 h-14 rounded-2xl object-contain flex-shrink-0 shadow-sm border border-slate-100" />
+          <Image src="/logo.png" alt="Logo" width={56} height={56} className="rounded-2xl object-contain flex-shrink-0 shadow-sm border border-slate-100" />
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-slate-900 truncate">{gymName}</h2>
             <div className="flex items-center gap-1.5 mt-1">

@@ -4,28 +4,39 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+const isProd = process.env.NODE_ENV === 'production';
+
 Sentry.init({
-  dsn: "https://4bf63dde38b636a6a1d5480116e2601a@o4511622015156224.ingest.us.sentry.io/4511622026428416",
+  // Issue 1 fix: DSN moved to environment variable — never commit credentials to source.
+  // Add NEXT_PUBLIC_SENTRY_DSN to Vercel env vars and rotate the key in Sentry → Project Settings → Client Keys.
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   // Add optional integrations for additional features
   integrations: [Sentry.replayIntegration()],
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
+  // Issue 7 fix: 10% sampling in production avoids quota exhaustion and reduces per-request overhead (~5-15ms).
+  // 100% sampling retained in development for full visibility.
+  tracesSampleRate: isProd ? 0.1 : 1.0,
+
   // Enable logs to be sent to Sentry
   enableLogs: true,
 
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-
-  // Define how likely Replay events are sampled when an error occurs.
+  // Reduced replay sampling in production (5%) to control Sentry quota.
+  // Error-triggered replays remain at 100% — most valuable for debugging.
+  replaysSessionSampleRate: isProd ? 0.05 : 0.1,
   replaysOnErrorSampleRate: 1.0,
 
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  // Issue 2 fix: sendDefaultPii REMOVED (was `true`).
+  // This prevents automatic capture of IPs, cookies, and request bodies which may contain
+  // gym member PII (names, phones). Required for DPDPA 2023 compliance in India.
+  beforeSend(event) {
+    // Explicitly strip any request body or cookies that may contain member PII
+    if (event.request) {
+      delete event.request.data;
+      delete event.request.cookies;
+    }
+    return event;
+  },
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

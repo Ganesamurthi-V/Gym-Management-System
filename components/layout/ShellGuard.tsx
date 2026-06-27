@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 
 const SHELL_EXCLUDED = ['/auth/', '/onboarding']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
@@ -49,7 +50,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     setMounted(true)
   }, [])
 
-  // Effect 2: Auth guard — set up focus listener and 10s interval.
+  // Effect 2: Auth guard — set up focus listener and 60s interval.
   // Does NOT include `pathname` so the interval is not reset on every navigation.
   useEffect(() => {
     if (isShellless) return
@@ -65,6 +66,10 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     const supabase = createClient()
     
     const checkAuth = async () => {
+      // Issue 3 fix: skip check entirely when tab is in the background.
+      // This prevents background tabs from hammering Supabase/Redis unnecessarily.
+      if (document.hidden) return
+
       const { data: { user }, error } = await supabase.auth.getUser()
       
       if (error || !user) {
@@ -84,9 +89,12 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       }
     }
 
-    // Check on window focus, and every 10 seconds
+    // Issue 3 fix: interval raised from 10s → 60s.
+    // Gym deactivation is a rare admin action — 60s detection lag is acceptable
+    // and reduces polling load from 12 req/min to 1 req/min per user.
+    // Focus listener provides instant re-check for free when user switches tabs.
     window.addEventListener('focus', checkAuth)
-    const interval = setInterval(checkAuth, 10000)
+    const interval = setInterval(checkAuth, 60_000)
     
     return () => {
       window.removeEventListener('focus', checkAuth)
@@ -118,7 +126,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       >
         {/* ── Logo row ── */}
         <div className="flex items-center h-16 border-b border-slate-100 flex-shrink-0 px-3">
-          <img src="/logo.png" alt="VIVI GYM Logo" className="w-12 h-12 rounded-xl object-contain flex-shrink-0" />
+          <Image src="/logo.png" alt="VIVI GYM Logo" width={48} height={48} className="rounded-xl object-contain flex-shrink-0" priority />
 
           {/* gymflow text + collapse arrow — only when expanded */}
           <div className={`
@@ -178,11 +186,11 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
           <div className="w-full px-4 md:px-6 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="VIVI GYM Logo" className="w-10 h-10 rounded-lg object-contain md:hidden" />
+              <Image src="/logo.png" alt="VIVI GYM Logo" width={40} height={40} className="rounded-lg object-contain md:hidden" priority />
             </div>
             
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
-              <img src="/logo.png" alt="VIVI GYM Logo" className="w-12 h-12 object-contain" />
+              <Image src="/logo.png" alt="VIVI GYM Logo" width={48} height={48} className="object-contain" priority />
               <span className="text-xl font-black text-brand-600 tracking-tight">VIVI GYM</span>
             </div>
             <AccountMenu 

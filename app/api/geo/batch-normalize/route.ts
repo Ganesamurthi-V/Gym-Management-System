@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { normalizeInput, toPhoneticKey, expandAbbreviations } from '@/lib/geo/normalizer'
 import { scoreAgainstList } from '@/lib/geo/fuzzyMatch'
-import { ALIAS_MAP } from '@/lib/geo/aliases'
 import { CONFIDENCE } from '@/lib/geo/types'
 import { detectDatasetCluster, clusterBoost } from '@/lib/geo/clustering'
 import { groqInferLocation} from '@/lib/geo/aiInference'
@@ -10,6 +9,16 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, DatasetCluster, AIInferenceResult } from '@/lib/geo/types'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
+
+// Issue 10 fix: Lazy-load the 58KB ALIAS_MAP module so it is NOT parsed at Lambda cold-start.
+let _aliasMap: Record<string, string> | null = null
+async function getAliasMap(): Promise<Record<string, string>> {
+  if (!_aliasMap) {
+    const mod = await import('@/lib/geo/aliases')
+    _aliasMap = mod.ALIAS_MAP
+  }
+  return _aliasMap
+}
 
 const BATCH_LIMIT = 200
 
@@ -85,10 +94,11 @@ export async function POST(req: NextRequest) {
 
     // Load localities + DB aliases once (Independent queries parallelized)
     const gymId = inputs.find(i => i.gym_id)?.gym_id
-    const [localitiesRes, aliasesRes, gymAliasesRes] = await Promise.all([
+    const [localitiesRes, aliasesRes, gymAliasesRes, ALIAS_MAP] = await Promise.all([
       supabase.from('geo_localities').select('id, name, name_normalized, name_phonetic, district, state').eq('is_active', true).limit(3000),
       supabase.from('geo_aliases').select('alias_normalized, locality_id, geo_localities(id, name, district, state)'),
-      gymId ? supabase.from('geo_gym_aliases').select('alias_normalized, canonical_name').eq('gym_id', gymId) : Promise.resolve({ data: null, error: null })
+      gymId ? supabase.from('geo_gym_aliases').select('alias_normalized, canonical_name').eq('gym_id', gymId) : Promise.resolve({ data: null, error: null }),
+      getAliasMap(),
     ])
 
     if (localitiesRes.error) {

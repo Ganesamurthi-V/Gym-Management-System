@@ -144,25 +144,21 @@ export default function NewMemberPage() {
   }
 
   async function handleApprove() {
+    if (!gymId) { setError('Gym data not loaded. Please wait and try again.'); return }
     setLoading(true)
     setError('')
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
-      if (!gym) throw new Error('Gym not found')
-
+      // Issue 6 fix: gymId is already in state from mount-time useEffect — no re-fetch needed.
       const { data: existing } = await supabase
-        .from('members').select('id').eq('gym_id', gym.id).eq('phone', form.phone).single()
+        .from('members').select('id').eq('gym_id', gymId).eq('phone', form.phone).single()
       if (existing && form.phone.trim()) throw new Error('A member with this phone number already exists.')
 
       const memberNumber = parseInt(form.member_number)
       if (!memberNumber) throw new Error('Member ID is required')
 
       const { data: existingNum } = await supabase
-        .from('members').select('id').eq('gym_id', gym.id).eq('member_number', memberNumber).single()
+        .from('members').select('id').eq('gym_id', gymId).eq('member_number', memberNumber).single()
       if (existingNum) throw new Error(`${formatMemberId(memberNumber)} is already taken`)
 
       const finalMemberNumber = memberNumber
@@ -170,7 +166,7 @@ export default function NewMemberPage() {
       const { data: member, error: memberError } = await supabase
         .from('members')
         .insert({
-          gym_id: gym.id,
+          gym_id: gymId,
           member_number: finalMemberNumber,
           name: form.name.trim(),
           phone: form.phone.trim(),
@@ -200,7 +196,7 @@ export default function NewMemberPage() {
         .from('memberships')
         .insert({
           member_id: member.id,
-          gym_id: gym.id,
+          gym_id: gymId,
           plan: form.plan === 'custom' ? 'monthly' : form.plan,
           category: form.category,
           start_date: form.start_date,
@@ -214,7 +210,7 @@ export default function NewMemberPage() {
       if (membershipError) throw membershipError
 
       const { invalidateMembersCache } = await import('../actions')
-      await invalidateMembersCache(gym.id)
+      await invalidateMembersCache(gymId)
 
       toast.success('Member added successfully!')
       router.push('/members')

@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import GooglePlacesAutocomplete from '@/components/location/GooglePlacesAutocomplete'
 import type { NormalizedPlaceResult } from '@/services/location/normalizeGooglePlace'
+import { invalidateGymCache } from '@/app/account/actions'
 
 type Step = 'personal' | 'membership' | 'preview'
 
@@ -250,6 +251,9 @@ export default function NewMemberPage() {
     // Spread to avoid mutating state directly, then merge the updated plans array.
     const merged = { ...gymOnboardingData, plans: updatedPlans }
     await supabase.from('gyms').update({ onboarding_data: merged }).eq('id', gymId)
+
+    // Issue 3 fix: bust the 120s Redis gym cache so getGym() returns fresh onboarding_data.
+    await invalidateGymCache()
 
     // Keep local cache in sync so a second plan save in the same session
     // doesn't overwrite merged with the stale original object.

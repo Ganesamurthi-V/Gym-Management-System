@@ -10,17 +10,20 @@ export default async function AppShell({ children }: { children: React.ReactNode
   let unreadCount = 0
 
   if (user) {
-    const [gymResult, activeStatusResult] = await Promise.all([
-      getGym(user.id),
-      getGymActiveStatus(user.email ?? '')
-    ])
-    gym = gymResult.gym
-    isActive = activeStatusResult.isActive !== false
+    const { gym: gymResult } = await getGym(user.id)
+    gym = gymResult
 
-    if (gym) {
-      const { count } = await getUnreadAdminMessages(gym.id)
-      unreadCount = count ?? 0
-    }
+    // Issue 1 & 6 fix: Run getGymActiveStatus and getUnreadAdminMessages in parallel.
+    // Previously getUnreadAdminMessages ran sequentially AFTER the first Promise.all
+    // completed, adding ~30-100ms of unnecessary latency to every navigation.
+    // Since getGymActiveStatus only needs user.email and getUnreadAdminMessages only
+    // needs gym.id (now available after getGym resolves), they can run concurrently.
+    const [activeStatusResult, unreadResult] = await Promise.all([
+      getGymActiveStatus(user.email ?? ''),
+      gym ? getUnreadAdminMessages(gym.id) : Promise.resolve({ count: 0 }),
+    ])
+    isActive = activeStatusResult.isActive !== false
+    unreadCount = unreadResult.count ?? 0
   }
 
   return (

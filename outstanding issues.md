@@ -1,639 +1,291 @@
-# GymFlow — Full Production Audit Report
-**Date:** 27 June 2026
-**Codebase:** Gym-Management-System-vivi-gym
-**Auditor:** Automated deep-scan + manual code review
-**Scope:** Main app (`/app`, `/lib`, `/components`) · Admin panel (`/gymflow-admin`) · Database schema · Build config
+# GymFlow — Performance Audit (Navigation Latency)
+
+**Audience:** This document is written for an AI coding agent (Antigravity) to read and act on directly. Every issue includes: the exact file, the exact problem, why it causes the symptom, and the precise fix to implement. Do not skip the "Why this causes the symptom" sections — they explain how the issues compound, which matters for getting the fix order right.
+
+**Symptom under investigation:** Every page in the app (Dashboard, Members, Payments, Dues, Attendance, Inventory) takes 1.5–3 seconds to load on every sidebar navigation, showing a full skeleton loading state each time. This happens **even on pages with almost no data** (e.g. the Dues page with exactly 1 row took as long as the Payments page with 20 rows), which rules out query/data-volume as the cause and points at fixed per-navigation overhead.
+
+**Root cause, in one sentence:** The auth + gym-context lookup chain runs as real, uncached network round-trips to Supabase multiple times on every single navigation, because (a) the root layout's data-fetching component re-executes on every route change, (b) Next.js 15's client router cache is configured to never cache dynamic navigations, and (c) the gym record lookup has no cache layer at all.
 
 ---
 
-## Executive Summary
+## Issue 1 — `AppShell` re-runs its full data-fetch chain on every navigation (🔴 Critical — primary cause)
 
-The codebase is a Next.js 15 App Router SaaS gym management platform backed by Supabase (PostgreSQL + RLS) and Upstash Redis. The overall architecture is sound. Caching, rate limiting, RLS, and a Data Access Layer (DAL) are all present. Previous audit cycles have cleared numerous critical bugs.
+**File:** `components/layout/AppShell.tsx`, wired into `app/layout.tsx`
 
-However, **12 issues remain** that affect latency, performance, and security before this is production-grade for a real user base. These range from a 10-second polling hammer that fires 6 network requests every 10 seconds per tab, to a full-table memberships scan that runs on every dashboard "month" filter click, to a 768 KB unoptimized PNG served with zero caching, to hardcoded Sentry credentials committed to the repo.
+**What's happening:**
 
-**Overall verdict: ⚠️ NEEDS FIXES — not production-ready at scale.**
+```tsx
+// app/layout.tsx
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        <SmoothScrollProvider>
+          <AppShell>{children}</AppShell>   {/* <-- async Server Component, root layout */}
+        </SmoothScrollProvider>
+        ...
+```
 
----
-
-## Severity Legend
-
-| Label | Meaning |
-|-------|---------|
-| 🔴 P0 — Critical | Data exposure, security hole, or crash-level bug |
-| 🟠 P1 — High | Significant latency or performance regression under real load |
-| 🟡 P2 — Medium | Noticeable slowdown or wasted resources; won't crash but will degrade UX |
-| 🟢 P3 — Low | Hygiene / best-practice issues; low user impact |
-
----
-
-## Issue Index
-
-| # | Severity | Title | File(s) |
-|---|----------|-------|---------|
-| 1 | 🔴 P0 | Sentry DSN hardcoded in source — public credential leak | `instrumentation-client.ts` |
-| 2 | 🔴 P0 | `sendDefaultPii: true` in Sentry — PII sent to third party | `instrumentation-client.ts` |
-| 3 | 🟠 P1 | 10-second polling hammers Supabase + Redis on every tab | `ShellGuard.tsx` |
-| 4 | 🟠 P1 | Dashboard "month filter" fires a full memberships table scan from the client | `DashboardClient.tsx` |
-| 5 | 🟠 P1 | `logo.png` is 768 KB, served unoptimized via raw `<img>` with no caching | `public/logo.png`, all pages |
-| 6 | 🟠 P1 | `NewMemberPage` is a pure Client Component that re-fetches auth + gym on every interaction | `app/members/new/page.tsx` |
-| 7 | 🟠 P1 | `tracesSampleRate: 1` in production — 100% Sentry tracing on every request | `instrumentation-client.ts` |
-| 8 | 🟡 P2 | Missing compound index `(gym_id, date)` on `attendance` — dashboard RPC does full scan | `supabase-schema.sql` |
-| 9 | 🟡 P2 | Missing compound index `(gym_id, end_date)` on `memberships` — used in dashboard RPC | `supabase-schema.sql` |
-| 10 | 🟡 P2 | `aliases.ts` is a 58 KB static file bundled into every server route that imports geo logic | `lib/geo/aliases.ts` |
-| 11 | 🟡 P2 | `console.log("[CLIENT] DASHBOARD_CLIENT_RENDERED")` leaks to browser console in production | `DashboardClient.tsx` |
-| 12 | 🟢 P3 | Admin panel missing `CSP` and `HSTS` security headers | `gymflow-admin/next.config.js` |
-
----
-
-## Detailed Findings & Fixes
-
----
-
-### Issue 1 🔴 P0 — Sentry DSN hardcoded in source
-
-**File:** `instrumentation-client.ts`
-
-```typescript
-// CURRENT — credential committed to Git
-Sentry.init({
-  dsn: "https://4bf63dde38b636a6a1d5480116e2601a@o4511622015156224.ingest.us.sentry.io/4511622026428416",
+```tsx
+// components/layout/AppShell.tsx
+export default async function AppShell({ children }) {
+  const { user } = await getAuthUser()                          // Supabase auth round-trip #1 (this request)
   ...
-})
-```
-
-The Sentry DSN is a public credential that identifies your project. With it, anyone can send arbitrary events to your Sentry account, polluting your error feed, inflating event quotas, and potentially causing you to be rate-limited. It is currently committed in plaintext to the repository. If the repo is ever public or the Git history is leaked, this is permanently compromised.
-
-**Fix:**
-
-Move to an environment variable and regenerate the DSN in Sentry's project settings after rotating:
-
-```typescript
-// instrumentation-client.ts
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  const [gymResult, activeStatusResult] = await Promise.all([
+    getGym(user.id),                                             // DB round-trip — NOT cached (see Issue 3)
+    getGymActiveStatus(user.email ?? ''),                        // Redis-cached RPC, 120s TTL
+  ])
   ...
-})
-```
-
-```bash
-# .env.local
-NEXT_PUBLIC_SENTRY_DSN=https://your-new-dsn@sentry.io/...
-```
-
-Add `NEXT_PUBLIC_SENTRY_DSN` to your Vercel environment variables and rotate the DSN in Sentry → Project Settings → Client Keys. Also add `NEXT_PUBLIC_SENTRY_DSN` to `.env.example` (without the value) so future developers know it is required.
-
----
-
-### Issue 2 🔴 P0 — `sendDefaultPii: true` ships PII to a third-party
-
-**File:** `instrumentation-client.ts`
-
-```typescript
-// CURRENT
-sendDefaultPii: true,
-```
-
-`sendDefaultPii: true` causes Sentry to capture user IP addresses, cookies, HTTP headers, and request bodies automatically. In India, this likely triggers obligations under the Digital Personal Data Protection Act (DPDPA) 2023. Gym member names and phone numbers flow through request bodies (e.g., on the member creation form), meaning they could be captured in Sentry error events without user consent.
-
-**Fix:**
-
-```typescript
-// instrumentation-client.ts
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  // Remove sendDefaultPii entirely (defaults to false)
-  // If you need user context for debugging, set it explicitly and scrub sensitive fields:
-  beforeSend(event) {
-    // Strip any request body that may contain member PII
-    if (event.request) {
-      delete event.request.data
-      delete event.request.cookies
-    }
-    return event
-  },
-  ...
-})
-```
-
----
-
-### Issue 3 🟠 P1 — 10-second polling hammers Supabase + Redis on every open tab
-
-**File:** `components/layout/ShellGuard.tsx` · Line 89
-
-```typescript
-// CURRENT — fires every 10 seconds, per tab, always
-const interval = setInterval(checkAuth, 10000)
-```
-
-`checkAuth` makes **two network calls** every time it fires:
-1. `supabase.auth.getUser()` — a Supabase Auth network request
-2. `supabase.rpc('check_gym_active', { p_email: user.email })` — a database RPC call
-
-A single logged-in user with two browser tabs open is making **12 Supabase requests per minute** just from auth polling — before they interact with anything. With 50 concurrent users this is 600 requests/minute of polling traffic alone. This directly degrades response times for real user actions because connection pools are shared.
-
-**Root cause:** The polling was introduced to detect admin-triggered gym deactivations, but the current interval is far too aggressive. The deactivation is a rare administrative action — there is no need to detect it within 10 seconds.
-
-**Fix — Option A (recommended): Exponential backoff + visibility API**
-
-```typescript
-// ShellGuard.tsx
-useEffect(() => {
-  if (isShellless || !initialUser || !initialIsActive) return
-
-  const supabase = createClient()
-  let pollInterval = 60_000 // Start at 60 seconds
-
-  const checkAuth = async () => {
-    if (document.hidden) return // Skip if tab is not visible
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error || !user) {
-      await supabase.auth.signOut()
-      window.location.href = '/auth/login'
-      return
-    }
-    if (user.email) {
-      const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: user.email })
-      if (isActive === false) {
-        await supabase.auth.signOut()
-        window.location.href = '/auth/login'
-      }
-    }
+  if (gym) {
+    const { count } = await getUnreadAdminMessages(gym.id)        // Redis-cached, 30s TTL — but runs SEQUENTIALLY after the Promise.all, not inside it
   }
-
-  // Check on focus only (free), plus a conservative 60-second background poll
-  window.addEventListener('focus', checkAuth)
-  const interval = setInterval(checkAuth, pollInterval)
-
-  return () => {
-    window.removeEventListener('focus', checkAuth)
-    clearInterval(interval)
-  }
-}, [isShellless, initialUser, initialIsActive])
+  ...
+}
 ```
 
-**Fix — Option B (best, if Supabase Realtime is already in use):** Use a Supabase Realtime subscription on the `gyms` table filtered by `id = gym.id` and the `is_active` column. The change only fires when an admin deactivates the gym — zero polling at all.
+`AppShell` is mounted in the **root layout**, wrapping every route in the app. Because it's an `async` Server Component, Next.js has to re-render it as part of the React Server Component (RSC) payload for every navigation that isn't served entirely from the client router cache. The video evidence (full skeleton → content cycle on every click, ~1.5–2.5s, regardless of destination page's data size) shows this is happening on every single navigation, not just on hard reloads.
 
-```typescript
-// Subscribe to gym deactivation via Realtime instead of polling
-const channel = supabase
-  .channel('gym-status')
-  .on('postgres_changes', {
-    event: 'UPDATE',
-    schema: 'public',
-    table: 'gyms',
-    filter: `id=eq.${initialGym?.id}`,
-  }, async (payload) => {
-    if (payload.new.is_active === false) {
-      await supabase.auth.signOut()
-      window.location.href = '/auth/login'
-    }
-  })
-  .subscribe()
-
-return () => { supabase.removeChannel(channel) }
-```
-
----
-
-### Issue 4 🟠 P1 — Dashboard "month filter" fires a full memberships table scan from the client
-
-**File:** `app/dashboard/DashboardClient.tsx` · Lines 34–57
-
-```typescript
-// CURRENT — no date filter, fetches ALL memberships for the gym
-const { data: membershipsData } = await supabase
-  .from('memberships')
-  .select('member_id, end_date, member:members(id, name, phone, member_number)')
-  .eq('gym_id', gymId)
-  .order('created_at', { ascending: false })
-  // ❌ No date range! Fetches every membership ever recorded.
-```
-
-When a user clicks "This Month" on the dashboard, a client-side fetch pulls **every membership record for the gym** across all time, then filters in JavaScript. For a gym with 500 members and 3 years of records, this could be 1,500–3,000 rows transferred to the browser over a mobile connection. This is a full table scan with no date predicate.
-
-**Fix:** Add a server-side date filter. Since you control the query, add a `gte` filter for the start of the current month:
-
-```typescript
-// DashboardClient.tsx — inside the fetchMonth() function
-const currentMonth = todayStr.slice(0, 7) // e.g. "2026-06"
-const monthStart = `${currentMonth}-01`
-const monthEnd = `${currentMonth}-31` // Postgres will clamp to last day
-
-const { data: membershipsData } = await supabase
-  .from('memberships')
-  .select('member_id, end_date, member:members(id, name, phone, member_number)')
-  .eq('gym_id', gymId)
-  .gte('end_date', monthStart)   // ✅ Only memberships expiring this month
-  .lte('end_date', monthEnd)
-  .order('end_date', { ascending: true })
-```
-
-**Even better:** Move this logic to the existing `get_gym_dashboard` RPC and pass a `p_month` parameter, so it is server-side computed and cacheable via Redis. The RPC already has the infrastructure — add a `v_month_expiring` variable alongside `v_expiring_this_week`.
-
----
-
-### Issue 5 🟠 P1 — `logo.png` is 768 KB served unoptimized via raw `<img>`
-
-**Files:** `public/logo.png` (768,198 bytes), `app/dashboard/DashboardClient.tsx:131`, `app/account/AccountClient.tsx:277`, `gymflow-admin/public/logo.png` (768,198 bytes — duplicate)
-
-The logo is served three times in the same byte-for-byte 768 KB file. It is used via a raw HTML `<img>` tag, which means:
-
-- Next.js Image Optimization is completely bypassed
-- No WebP conversion — the 768 KB PNG is sent to every device including mobile
-- No `srcSet` / responsive sizing — an 8×8px icon loads a 768 KB image
-- No browser cache-control headers are added by Next.js for raw `/public/` files served via `<img>`
-- The file is duplicated inside `gymflow-admin/public/` — same binary, double the deploy size
+**Why this causes the symptom:**
+This single component fires 3–4 sequential/semi-sequential network calls (auth check, gym lookup, active-status RPC, unread-count query) before React can even start resolving the destination page's own data. Since it sits above every route in the tree, this cost is paid on every navigation — which is exactly why the delay is constant regardless of which page you go to or how much data that page has.
 
 **Fix:**
 
-```typescript
-// Replace raw <img> with Next.js <Image> everywhere
-import Image from 'next/image'
+1. **Parallelize `getUnreadAdminMessages` into the existing `Promise.all`** instead of running it after:
 
-// In DashboardClient.tsx
-<Image
-  src="/logo.png"
-  alt="GymFlow Logo"
-  width={32}
-  height={32}
-  className="object-contain"
-  priority // above-the-fold, preload it
-/>
+```tsx
+export default async function AppShell({ children }: { children: React.ReactNode }) {
+  const { user } = await getAuthUser()
 
-// In AccountClient.tsx  
-<Image
-  src="/logo.png"
-  alt="GymFlow Logo"
-  width={56}
-  height={56}
-  className="rounded-2xl object-contain shadow-sm border border-slate-100"
-/>
-```
+  let gym = null
+  let isActive = true
+  let unreadCount = 0
 
-Then compress the source PNG. A gym logo at 768 KB is almost certainly a high-DPI export that was not resized. Run:
+  if (user) {
+    const [gymResult, activeStatusResult] = await Promise.all([
+      getGym(user.id),
+      getGymActiveStatus(user.email ?? ''),
+    ])
+    gym = gymResult.gym
+    isActive = activeStatusResult.isActive !== false
 
-```bash
-# Install sharp (already used by Next.js internally)
-npx sharp-cli --input logo.png --output logo.png --resize 200 200 --format webp
-# Or use squoosh-cli / imageoptim
-```
-
-A properly sized logo PNG should be under 20 KB. At 200×200px for a 2× Retina display it will be sharp everywhere. Next.js `<Image>` will serve WebP automatically to supported browsers.
-
-**Remove the duplicate** from `gymflow-admin/public/logo.png` and either point to a CDN URL or copy it as part of the build process.
-
----
-
-### Issue 6 🟠 P1 — `NewMemberPage` re-fetches auth and gym on every interaction
-
-**File:** `app/members/new/page.tsx`
-
-This page is a pure `'use client'` component (there is no corresponding server component). On every interaction that triggers a state change — member number blur, phone duplicate check, form submit — the code calls `supabase.auth.getUser()` and `supabase.from('gyms').select(...)` from scratch:
-
-```typescript
-// Called on member_number blur (line 63-65)
-const { data: { user } } = await supabase.auth.getUser()
-const { data: gym } = await supabase.from('gyms').select('id, onboarding_data').eq('owner_id', user.id).single()
-
-// Called again in handleSubmit (line 151-154) — second auth + gym fetch
-const { data: { user } } = await supabase.auth.getUser()
-const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
-
-// Called a third time for plan saving (line 250)
-const { data: gym } = await supabase.from('gyms').select('onboarding_data').eq('id', gymId).single()
-```
-
-That is **3 separate `gyms` table fetches** and **2 separate auth calls** in a single page session. The gym ID and user are completely static for the duration of the session — there is no reason to re-fetch them.
-
-**Fix:** Fetch auth and gym once in a `useEffect` on mount, store in state, and reuse:
-
-```typescript
-// app/members/new/page.tsx
-const [gymId, setGymId] = useState<string | null>(null)
-const [gymOnboardingData, setGymOnboardingData] = useState<any>(null)
-
-// Single fetch on mount — never again
-useEffect(() => {
-  async function init() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/auth/login'); return }
-    const { data: gym } = await supabase
-      .from('gyms')
-      .select('id, onboarding_data')
-      .eq('owner_id', user.id)
-      .single()
     if (gym) {
-      setGymId(gym.id)
-      setGymOnboardingData(gym.onboarding_data)
+      // Run this in parallel too — don't block on gym/active-status to fire it.
+      // Restructure as a single Promise.all of all three independent calls.
     }
   }
-  init()
-}, []) // ← empty deps: runs once
-
-// All subsequent handlers use gymId from state — no DB calls
-async function handleSubmit() {
-  if (!gymId) return
-  // Use gymId directly — no re-fetch needed
-  const { data, error } = await supabase.from('members').insert({ gym_id: gymId, ... })
+  ...
 }
 ```
 
-**Better approach:** Convert to a Server Component that passes `gymId` and `onboardingData` as props, matching the pattern used by every other page in the app (dashboard, members, payments, account).
+  Better: restructure so all three (`getGym`, `getGymActiveStatus`, and the unread count once you have a gym id candidate) are not artificially serialized. Since `getUnreadAdminMessages` needs `gym.id`, the cleanest fix is to fetch `gym` first, then fire `getGymActiveStatus` and `getUnreadAdminMessages` together:
+
+```tsx
+export default async function AppShell({ children }: { children: React.ReactNode }) {
+  const { user } = await getAuthUser()
+
+  let gym = null
+  let isActive = true
+  let unreadCount = 0
+
+  if (user) {
+    const { gym: gymResult } = await getGym(user.id)
+    gym = gymResult
+
+    const [activeStatusResult, unreadResult] = await Promise.all([
+      getGymActiveStatus(user.email ?? ''),
+      gym ? getUnreadAdminMessages(gym.id) : Promise.resolve({ count: 0 }),
+    ])
+    isActive = activeStatusResult.isActive !== false
+    unreadCount = unreadResult.count ?? 0
+  }
+
+  return (
+    <ShellGuard initialUser={user} initialGym={gym} initialIsActive={isActive} initialUnreadCount={unreadCount}>
+      {children}
+    </ShellGuard>
+  )
+}
+```
+
+  This turns 1 sequential chain of ~4 calls into 1 call (`getGym`) + 2 parallel calls — cuts roughly a third off this component's own latency.
+
+2. **The bigger structural fix — stop re-running this on every navigation at all.** This data (user, gym, active-status, unread-count) does not need to be fetched fresh on every route change. Two valid approaches, pick one:
+
+   - **Option A (lowest-risk, recommended first step):** Move the unread-count + active-status polling entirely to the client side, fetched once on mount inside `ShellGuard` (which already has a `useEffect` running every 60s for the active-status check — extend that same interval/effect to also fetch unread count) instead of doing it server-side per navigation. Keep `getAuthUser()` + `getGym()` server-side in `AppShell` since you need `gym.id`/`gym.name` for the initial render, but drop `getGymActiveStatus` and `getUnreadAdminMessages` from `AppShell` and let `ShellGuard`'s existing polling effect own both. This removes 2 of the 4 calls from the per-navigation hot path immediately.
+
+   - **Option B (more thorough):** Once Issue 3 (caching `getGym`) is fixed, the remaining calls in `AppShell` become cheap (Redis round-trips, ~10-30ms each, instead of Postgres queries). Combined with Option A this brings the `AppShell` contribution down to near-zero. Do both.
 
 ---
 
-### Issue 7 🟠 P1 — `tracesSampleRate: 1` captures 100% of transactions in production
+## Issue 2 — Auth is validated twice per navigation: once in middleware, once in the DAL (🔴 Critical)
 
-**File:** `instrumentation-client.ts`
+**Files:** `middleware.ts`, `lib/dal.ts`
 
-```typescript
-// CURRENT — traces EVERY request
-tracesSampleRate: 1,
+**What's happening:**
+
+```ts
+// middleware.ts — runs on every request to a protected route
+const { data: { user } } = await supabase.auth.getUser()
 ```
 
-A `tracesSampleRate` of `1` means Sentry captures a performance trace for 100% of user sessions. Each trace adds overhead: header injection, span creation, and HTTP calls to Sentry's ingestion endpoint. This is appropriate in development but burns through your Sentry quota rapidly in production and adds measurable overhead to every page load (typically 5–15ms per request for the instrumentation overhead).
-
-**Fix:**
-
-```typescript
-// instrumentation-client.ts
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-  // 10% sampling in production captures plenty of data for performance analysis
-  // while keeping quota usage manageable
-
-  replaysSessionSampleRate: 0.05, // Reduce from 10% to 5% in production
-  replaysOnErrorSampleRate: 1.0,  // Keep 100% on errors — this is valuable
+```ts
+// lib/dal.ts — runs again inside the Server Component tree (AppShell, every layout, every page)
+export const getAuthUser = cache(async () => {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  return { user, error }
 })
 ```
 
-Also consider using `tracesSampler` for finer control — excluding health check endpoints and static asset requests from tracing entirely:
+`supabase.auth.getUser()` is not a local JWT decode — by design it makes a network call to the Supabase Auth server to revalidate the token on every call (this is intentional in Supabase's API for security: `getUser()` is the "trust no one, always verify" method, as opposed to `getSession()` which trusts the local cookie/JWT without a round-trip).
 
-```typescript
-tracesSampler: (samplingContext) => {
-  const url = samplingContext.request?.url ?? ''
-  if (url.includes('/api/health') || url.includes('/_next/')) return 0
-  return 0.1
-},
-```
+`React.cache()` on `getAuthUser` deduplicates calls **within the same render pass of a single request** — so all the `getAuthUser()` calls inside `AppShell`, the route's `layout.tsx`, and the route's `page.tsx` correctly collapse into one network call per request. But middleware runs in a **separate execution context** (the Edge/Node middleware layer, before the React render even starts), so `React.cache()` cannot deduplicate across it. That means every navigation pays for **two** real auth round-trips: one in middleware, one in the DAL.
 
----
-
-### Issue 8 🟡 P2 — Missing compound index `(gym_id, date)` on `attendance`
-
-**File:** `supabase-schema.sql`
-
-The database has three separate single-column indexes on `attendance`:
-
-```sql
--- CURRENT — three separate single-column indexes
-CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
-CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
-```
-
-The dashboard RPC and attendance page both query with `WHERE gym_id = p_gym_id AND date = p_today`. PostgreSQL can use either the `gym_id` or `date` index for this query, but not both simultaneously via a standard B-tree merge. For a gym with 1,000 attendance records and a busy date, this means scanning more rows than necessary.
-
-The most common query pattern is "attendance for gym X on date Y" — this should have a covering index.
-
-**Fix — add a migration:**
-
-```sql
--- supabase/migrations/20260627_perf_indexes.sql
-
--- Compound index for the most common attendance query pattern
-CREATE INDEX IF NOT EXISTS idx_attendance_gym_date 
-  ON attendance(gym_id, date);
-
--- This replaces the need to use both separate indexes in conjunction.
--- The existing idx_attendance_gym_id and idx_attendance_date can be kept
--- for queries that filter on only one column.
-```
-
-Run via Supabase migrations:
-```bash
-supabase db push
-```
-
----
-
-### Issue 9 🟡 P2 — Missing compound index `(gym_id, end_date)` on `memberships`
-
-**File:** `supabase-schema.sql`
-
-The dashboard RPC (`get_gym_dashboard`) and the "expiring members" logic filter memberships by `WHERE m.gym_id = p_gym_id` and then evaluate `end_date` for status classification. The existing indexes are:
-
-```sql
-idx_memberships_gym_id   ON memberships(gym_id)        -- single column
-idx_memberships_end_date ON memberships(end_date)       -- single column (no gym_id!)
-idx_memberships_start_date ON memberships(gym_id, start_date) -- compound, wrong column
-```
-
-The `idx_memberships_end_date` index has no `gym_id`, meaning it covers all gyms. When the planner uses it for a gym-scoped query, it must re-filter by `gym_id` after the index scan. A compound `(gym_id, end_date)` index would allow an index-only scan for the expiry status logic.
+**Why this causes the symptom:**
+Two sequential network round-trips to Supabase's auth server, on every navigation, before any page-specific data fetching even begins. This is pure latency tax, unrelated to what page you're going to.
 
 **Fix:**
 
-```sql
--- supabase/migrations/20260627_perf_indexes.sql (add to same migration as Issue 8)
+Pass the already-verified user from middleware into the request so the DAL doesn't need to re-verify. The simplest robust approach: have middleware set a header with the verified user id (or just rely on the fact that middleware already confirmed the session is valid and let the DAL use the cheaper `getSession()` instead of `getUser()` for the in-render calls, since middleware already did the expensive verification for this request).
 
--- Compound index for expiry status queries (dashboard RPC, expiring members)
-CREATE INDEX IF NOT EXISTS idx_memberships_gym_end_date
-  ON memberships(gym_id, end_date);
+Recommended fix — keep `getUser()` in middleware (it's the right place for the security-critical check, and it already redirects unauthenticated users before any rendering happens), but change `lib/dal.ts`'s `getAuthUser` to use `getSession()` instead of `getUser()` for the in-render reads, since by the time a Server Component is rendering, middleware has already verified the session for this request:
+
+```ts
+// lib/dal.ts
+export const getAuthUser = cache(async () => {
+  const supabase = await createClient()
+  const { data: { session }, error } = await supabase.auth.getSession()
+  return { user: session?.user ?? null, error }
+})
 ```
+
+`getSession()` reads the JWT from cookies and validates its signature/expiry locally — no network call. Since middleware has already done the authoritative server-side check for this request (and redirects to `/auth/login` if invalid), it's safe for the DAL to trust the local session for the remainder of this same request. This removes one full network round-trip from every navigation.
+
+**Caveat to flag in the PR:** confirm this doesn't weaken any check that specifically relies on `getUser()`'s server-side revalidation (e.g. detecting a user who was deleted/banned mid-session). If that matters for this app, an alternative is to have middleware attach a custom header (e.g. `x-verified-user-id`) to the request after its own `getUser()` call, and have the DAL read that header instead of calling Supabase again at all. Either approach removes the duplicate network call; the header approach is more correct but is a slightly bigger change.
 
 ---
 
-### Issue 10 🟡 P2 — `aliases.ts` is a 58 KB static dictionary bundled into server routes
+## Issue 3 — `getGym()` has no cache layer — hits Postgres on every navigation (🟠 High)
 
-**File:** `lib/geo/aliases.ts`
+**File:** `lib/dal.ts`
 
-`ALIAS_MAP` is a 1,222-line, 58,002-byte JavaScript object containing Tamil Nadu / Puducherry location aliases. It is imported directly in:
+**What's happening:**
 
-- `app/api/geo/normalize/route.ts`
-- `app/api/geo/batch-normalize/route.ts`
-
-In a Vercel serverless deployment, this file is included in the Lambda bundle for those routes. A 58 KB module is not catastrophic, but it contributes to cold-start time since Node.js must parse and evaluate it on first invocation. Additionally, the in-memory dictionary is rebuilt from scratch on every cold start.
-
-**Fix Option A — Use the `geo_aliases` database table instead:**
-
-The schema already has a `geo_aliases` table with a GIN trigram index (`idx_geo_localities_trgm`). The in-memory `ALIAS_MAP` was originally a faster alternative to DB lookups, but with a properly indexed table and Supabase connection pooling, a DB alias lookup will be comparable in speed and avoids the bundle size penalty.
-
-```typescript
-// lib/geo/matchArea.ts — replace ALIAS_MAP lookup with DB lookup
-const { data: alias } = await supabase
-  .from('geo_aliases')
-  .select('canonical_name')
-  .eq('alias_normalized', normalizedInput)
-  .single()
-
-if (alias) return { matched_by: 'alias', value: alias.canonical_name }
+```ts
+export const getGym = cache(async (userId: string) => {
+  const supabase = await createClient()
+  const { data: gym, error } = await supabase
+    .from('gyms')
+    .select('id, name, onboarding_completed, owner_id, created_at, onboarding_data')
+    .eq('owner_id', userId)
+    .single()
+  return { gym, error }
+})
 ```
 
-**Fix Option B — Lazy load the alias map:**
+Compare this to `getGymActiveStatus` and `getUnreadAdminMessages` in the same file, which both wrap their query in `cacheWrapper(key, ttlSeconds, fn)` (Redis-backed, see `lib/cache.ts`). `getGym` only has `React.cache()`, which — as explained in Issue 2 — only dedupes within a single request. Across navigations, this is a fresh Postgres query every time.
 
-If the in-memory approach is preferred for speed, lazy-load the module so it is only parsed when the geo routes are actually invoked:
-
-```typescript
-// In normalize/route.ts
-let ALIAS_MAP: Record<string, string> | null = null
-
-async function getAliasMap() {
-  if (!ALIAS_MAP) {
-    const mod = await import('@/lib/geo/aliases')
-    ALIAS_MAP = mod.ALIAS_MAP
-  }
-  return ALIAS_MAP
-}
-```
-
----
-
-### Issue 11 🟡 P2 — Debug `console.log` committed in production client code
-
-**File:** `app/dashboard/DashboardClient.tsx` · Line 22
-
-```typescript
-// CURRENT — ships to every user's browser console
-console.log("[CLIENT] DASHBOARD_CLIENT_RENDERED")
-```
-
-This log fires in production on every dashboard render for every user. While harmless, it exposes internal component names to any user who opens DevTools and is contrary to the `removeConsole` compiler option already configured in `next.config.js` (which only removes `console.log` at build time — this one will remain in development builds and any non-production Vercel preview deployments).
+**Why this causes the symptom:**
+The gym record (name, onboarding status, onboarding_data) almost never changes between page loads. Re-fetching it from Postgres on every navigation is pure waste, and it's called from `AppShell` (root layout, every page), the layout files (`app/payments/layout.tsx`, `app/members/layout.tsx`, etc.), and most `page.tsx` files — meaning it's one of the most frequently-executed queries in the whole app, and the only one in this hot path without a cache.
 
 **Fix:**
 
-Remove the line entirely. If render debugging is needed in development:
+Wrap it in `cacheWrapper`, same pattern as the other DAL functions in this file:
 
-```typescript
-if (process.env.NODE_ENV === 'development') {
-  console.log("[CLIENT] DASHBOARD_CLIENT_RENDERED")
-}
+```ts
+export const getGym = cache(async (userId: string) => {
+  return cacheWrapper(`user:${userId}:gym`, 120, async () => {
+    const supabase = await createClient()
+    const { data: gym, error } = await supabase
+      .from('gyms')
+      .select('id, name, onboarding_completed, owner_id, created_at, onboarding_data')
+      .eq('owner_id', userId)
+      .single()
+    return { gym, error }
+  })
+})
 ```
+
+**Cache invalidation note:** anywhere the app updates the `gyms` row (onboarding completion, gym name change, `onboarding_data` updates — e.g. the `handleSaveNewPlan` flow fixed in the previous audit round) must call `invalidatePattern(`user:${userId}:gym`)` or `deleteCache(...)` after the write, or the UI will show stale gym data for up to 120 seconds after an update. Search the codebase for all Supabase `.update()` / `.upsert()` calls targeting the `gyms` table and add the corresponding cache invalidation next to each one. Known locations to check: `app/onboarding/OnboardingWizard.tsx`, `app/members/new/page.tsx` (handleSaveNewPlan), any account/settings update path in `app/account/AccountClient.tsx`.
 
 ---
 
-### Issue 12 🟢 P3 — Admin panel missing `CSP` and `HSTS` headers
+## Issue 4 — Next.js Router cache is configured to never cache dynamic navigations (🟠 High)
 
-**File:** `gymflow-admin/next.config.js`
+**File:** `next.config.js` (missing config), affects all routes
 
-The admin panel has a minimal `headers()` config with only three headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`). The main app has a full Content Security Policy and `Strict-Transport-Security`. The admin panel — which has access to all gym data and support tickets — has neither.
+**What's happening:**
+
+Next.js 15's App Router has a client-side Router Cache that, by default, caches the RSC payload for recently-visited routes for a short window so that re-visiting them (e.g. clicking back, or revisiting a tab) doesn't always trigger a full server round-trip. The relevant setting is `experimental.staleTimes`, and Next.js 15's **out-of-the-box default for dynamic routes is `0` seconds** — meaning every navigation to a dynamic route (which all of these gym-data pages are, since they're per-user and marked `revalidate = 0` in some cases, see Issue 5) is always treated as cache-cold.
+
+`next.config.js` in this repo has no `experimental.staleTimes` override, so it's running on this zero-cache default for every protected route.
+
+**Why this causes the symptom:**
+Even if Issues 1–3 are fully fixed, every navigation will still re-trigger a full RSC round-trip with no client-side memoization at all, because the framework itself isn't configured to retain anything between navigations. This is what makes the delay feel constant and "fresh" on every single click, including re-visiting a page you were just on seconds ago.
 
 **Fix:**
 
-```javascript
-// gymflow-admin/next.config.js
-const adminSecurityHeaders = [
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  {
-    key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co",
-      "font-src 'self'",
-      "frame-ancestors 'none'",
-    ].join('; '),
-  },
-]
+Add a `staleTimes` config to allow short-lived caching of dynamic route segments on the client router cache:
 
+```js
+// next.config.js
 const nextConfig = {
-  reactStrictMode: true,
-  async headers() {
-    return [{ source: '/(.*)', headers: adminSecurityHeaders }]
+  experimental: {
+    staleTimes: {
+      dynamic: 30,   // cache dynamic route RSC payloads for 30s client-side
+      static: 180,
+    },
+    serverActions: { ... }, // keep existing config
+    optimizePackageImports: ['lucide-react', 'date-fns'],
   },
+  ...
 }
 ```
 
----
-
-## Performance Impact Summary
-
-The table below maps each issue to its estimated latency contribution in a real production scenario (50 active users, mixed mobile/desktop):
-
-| Issue | Latency Impact | Frequency |
-|-------|---------------|-----------|
-| 10s polling (Issue 3) | +100–200ms per auth check; 12 req/min/user just from polling | Every 10s per open tab |
-| Full memberships scan (Issue 4) | +300–800ms on "month" filter click; scales with gym size | On filter toggle |
-| 768 KB logo PNG (Issue 5) | +1.5–3s on first load on a 3G/4G mobile connection | Every first page load |
-| New member page re-fetches (Issue 6) | +80–200ms per interaction (member ID blur, submit) | On every form interaction |
-| Sentry 100% sampling (Issue 7) | +5–15ms overhead per request; quota exhaustion risk | Every request |
-| Missing compound indexes (Issues 8–9) | +10–50ms per dashboard load as data grows | Every dashboard page load |
-| `aliases.ts` bundle (Issue 10) | +20–80ms cold start on geo API routes | Cold starts |
+**Important tradeoff to flag:** a `dynamic: 30` setting means if a user updates data on one page (e.g. adds a payment) and then navigates to a different page within 30 seconds, they might briefly see a stale RSC payload from the client cache rather than the fresh server render, **unless** the mutation calls `router.refresh()` or the relevant Server Action calls `revalidatePath()`/`revalidateTag()`. Check that mutations in `app/payments/actions.ts`, `app/members/actions.ts`, and `app/inventory/actions.ts` already call `revalidatePath` for their respective routes (this should already be standard Next.js Server Action practice in this codebase — confirm it is, and add it anywhere it's missing) before relying on a longer `staleTimes` value. Start with a conservative value (`dynamic: 30`) and only increase it once revalidation-on-mutation is confirmed everywhere.
 
 ---
 
-## Confirmed Working (From Previous Audits)
+## Issue 5 — `export const revalidate = 0` on the Members page disables all caching for that route segment (🟡 Medium)
 
-The following previously identified issues are confirmed fixed in this build and require no further action:
+**File:** `app/members/page.tsx`
 
-- ✅ `gymflow-admin /api/check-db` authentication (now has `verifyRequestAuth` guard)
-- ✅ Cache invalidation after member add / payment / import — all mutation paths covered
-- ✅ RLS `idx_gyms_id_owner` compound index — present in schema
-- ✅ Attendance route member IDOR — ownership check in place
-- ✅ Rate limiting on all API routes including attendance
-- ✅ `support_tickets` UPDATE RLS policy — present
-- ✅ `AppShell` — `getGymActiveStatus` and `getUnreadAdminMessages` are cached via `cacheWrapper`
-- ✅ DAL memoization via `React.cache()` — `getAuthUser` and `getGym` deduplicated per render
-- ✅ Dashboard RPC (`get_gym_dashboard`) — Postgres-side aggregation, JS fallback present
-- ✅ `removeConsole` in production builds — configured in `next.config.js`
-- ✅ `optimizePackageImports` for `lucide-react` and `date-fns`
-- ✅ ExcelJS kept server-side via `serverExternalPackages`
-- ✅ Chunk splitting for Supabase and date-fns bundles
-- ✅ Middleware fast-path — non-protected routes skip auth check immediately
+**What's happening:**
 
----
-
-## Fix Priority Roadmap
-
-### Phase 1 — Do Before Any Real Traffic (P0/P1)
-
-1. **Rotate Sentry DSN** and move to env var (Issue 1)
-2. **Remove `sendDefaultPii: true`** (Issue 2)
-3. **Reduce polling from 10s to 60s** or switch to Realtime subscription (Issue 3)
-4. **Add date filter to dashboard month query** (Issue 4)
-5. **Replace `<img>` with `<Image>`** and compress logo.png to <20 KB (Issue 5)
-
-### Phase 2 — Before Scaling Past 100 Users (P1/P2)
-
-6. **Consolidate NewMemberPage fetches** to a single mount-time init (Issue 6)
-7. **Set `tracesSampleRate: 0.1`** in production Sentry config (Issue 7)
-8. **Add compound database indexes** `(gym_id, date)` and `(gym_id, end_date)` (Issues 8–9)
-
-### Phase 3 — Ongoing Hygiene (P2/P3)
-
-9. **Migrate aliases.ts** to DB lookup or lazy-load (Issue 10)
-10. **Remove debug console.log** from DashboardClient (Issue 11)
-11. **Add full security headers** to gymflow-admin (Issue 12)
-
----
-
-## SQL Migration for Issues 8 & 9
-
-Save this as `supabase/migrations/20260627_perf_indexes.sql`:
-
-```sql
--- Performance indexes for Issues 8 & 9
--- Compound index for attendance queries (gym + date together)
-CREATE INDEX IF NOT EXISTS idx_attendance_gym_date
-  ON attendance(gym_id, date);
-
--- Compound index for membership expiry queries (gym + end_date together)
--- This supersedes the single-column idx_memberships_end_date for gym-scoped queries
-CREATE INDEX IF NOT EXISTS idx_memberships_gym_end_date
-  ON memberships(gym_id, end_date);
-
--- Optional: also add (gym_id, pending_amount) for the dues query in dashboard
-CREATE INDEX IF NOT EXISTS idx_members_gym_dues
-  ON members(gym_id, pending_amount)
-  WHERE pending_amount > 0; -- Partial index: only rows with actual dues
+```ts
+export const revalidate = 0
 ```
 
+This explicitly opts the Members route out of Next.js's Full Route Cache and Data Cache, forcing a fully dynamic server render on every single request to this route — stacking on top of Issues 1, 2, and 4 rather than mitigating any of them. Note that `getMembersData` inside this same file is already wrapped in `cacheWrapper` (Redis, 300s TTL) — so the data fetch itself is cached — but `revalidate = 0` still forces Next.js to re-execute the whole Server Component function (including the now-cheap-but-still-present `getAuthUser`/`getGym` calls and the cache lookup itself) on every hit, rather than potentially serving a cached RSC output.
+
+**Why this causes the symptom:**
+This is a smaller contributor than Issues 1–4, but it's actively working against the fixes above. There's no comment in the code explaining why `revalidate = 0` was chosen here specifically (it's not present on the Payments or Dashboard pages), which suggests it may have been added reactively to fix a stale-data bug rather than as a deliberate performance decision.
+
+**Fix:**
+
+Remove `export const revalidate = 0` unless there's a specific reason it's needed (check git history / commit message for this line first — if it was added to fix a real staleness bug, that bug needs a `revalidatePath('/members')` call at the actual mutation site instead of disabling caching for the whole route). If no clear reason is found, delete the line and rely on the existing `cacheWrapper` (300s TTL) plus proper `revalidatePath` calls in `app/members/actions.ts` for correctness.
+
 ---
+
+## Issue 6 — `getUnreadAdminMessages` and `getGymActiveStatus` run sequentially after gym resolution instead of fully in parallel (🟡 Medium — overlaps with Issue 1, listed separately for clarity)
+
+**File:** `components/layout/AppShell.tsx`
+
+Already covered in the Issue 1 fix above. Flagging separately here because it's a distinct, independently-verifiable change: confirm after the fix that `getGymActiveStatus` and `getUnreadAdminMessages` are in the same `Promise.all` (or otherwise running concurrently), not two sequential `await` statements. This is a quick win once `getGym` no longer blocks ahead of it.
+
+---
+
+## Fix Priority Order
+
+Apply in this order — later fixes depend on earlier ones being in place to be safe/effective:
+
+1. **Issue 3** — add `cacheWrapper` to `getGym()`. Lowest risk, immediate win, and de-risks Issue 4 (since `staleTimes` becomes less load-bearing once the underlying data fetch is already fast).
+2. **Issue 1** — parallelize `AppShell`'s calls, and move active-status/unread-count polling client-side (Option A). Biggest single win since this runs on every navigation.
+3. **Issue 2** — switch `getAuthUser()` in the DAL to `getSession()`. Removes one full network round-trip per navigation. Do this after confirming with the team whether `getUser()`'s server-revalidation behavior is relied upon anywhere security-sensitive.
+4. **Issue 5** — remove `revalidate = 0` from the Members page, after checking it's not masking a real bug.
+5. **Issue 4** — add `staleTimes` config, only after confirming `revalidatePath`/`revalidateTag` calls exist on all the relevant mutations (payments, members, inventory, dues actions). Doing this last and only after the above is safest, since a misconfigured client cache combined with missing revalidation calls would show stale data to users, which is a worse problem than slow loads.
+
+## Suggested Verification After Fixes
+
+- Re-record the same navigation sequence from the original video (Members → Payments → Dues → Attendance → Inventory → Dashboard) and confirm the skeleton duration drops to well under 500ms per navigation.
+- Check `lib/logger.ts`'s `RequestLogger.summary()` output (already instrumented in `app/dashboard/page.tsx` and `app/members/page.tsx`) in server logs after each fix — the `authMs` and `redisGetMs`/`dataMs` fields will show directly whether each fix is landing as expected. Add the same `RequestLogger` instrumentation to `app/payments/page.tsx`, `app/dues/page.tsx`, `app/inventory/page.tsx`, and `app/attendance/page.tsx` if not already present, so all six pages are equally observable.

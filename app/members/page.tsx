@@ -7,7 +7,12 @@ import type { MemberWithStatus } from '@/types'
 import { cacheWrapper } from '@/lib/cache'
 import { RequestLogger } from '@/lib/logger'
 
-export const revalidate = 0
+// Issue 5 fix: Removed `export const revalidate = 0`.
+// getMembersData is already wrapped in cacheWrapper (300s Redis TTL) and
+// all mutation paths (new member, edit, bulk-edit, delete) call
+// invalidateMembersCache() to bust the cache on actual data changes.
+// Keeping revalidate=0 forced a full Server Component re-execute on every hit
+// despite the data being served from Redis — pure waste with no correctness benefit.
 
 const PAGE_SIZE = 200
 

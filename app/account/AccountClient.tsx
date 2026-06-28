@@ -11,6 +11,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
+import { invalidateGymCache } from './actions'
 
 interface Props {
   email: string
@@ -123,6 +124,8 @@ export function AccountClient({
     if (error) {
       setMessage({ type: 'error', text: error.message })
     } else {
+      // Issue 3 fix: bust the 120s Redis gym cache so getGym() returns fresh data.
+      await invalidateGymCache()
       setGymName(trimmed)
       setMessage({ type: 'success', text: 'Gym name updated successfully.' })
       setTimeout(() => { closeModal(); showToast('Gym name updated') }, 1200)
@@ -162,6 +165,8 @@ export function AccountClient({
     if (error) {
       setMessage({ type: 'error', text: error.message })
     } else {
+      // Issue 3 fix: bust the 120s Redis gym cache so getGym() returns fresh data.
+      await invalidateGymCache()
       closeModal()
       showToast('Gym info saved')
       router.refresh()

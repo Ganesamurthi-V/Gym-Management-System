@@ -28,6 +28,16 @@ const nextConfig = {
     return [{ source: '/(.*)', headers: securityHeaders }]
   },
   experimental: {
+    // Issue 4 fix: Set staleTimes to enable client-side router cache for
+    // dynamic routes. Next.js 15 defaults to 0s for dynamic routes, meaning
+    // every single navigation (even back to a page just visited) triggers a
+    // full RSC round-trip. 30s is conservative: all mutation paths in this app
+    // already call invalidateMembersCache() / router.refresh(), so stale
+    // RSC payloads will not be served after data-mutating user actions.
+    staleTimes: {
+      dynamic: 30,   // cache dynamic route RSC payloads 30s client-side
+      static: 180,   // cache static route RSC payloads 3min client-side
+    },
     serverActions: {
       bodySizeLimit: '2mb',
       allowedOrigins: [

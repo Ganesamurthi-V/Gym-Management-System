@@ -19,11 +19,23 @@ export const viewport: Viewport = {
 }
 
 import { SmoothScrollProvider } from '@/components/providers/SmoothScrollProvider'
+import NextTopLoader from 'nextjs-toploader'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={`${sora.variable} font-sans antialiased bg-white text-slate-900`}>
+        <NextTopLoader 
+          color="#2563EB" 
+          initialPosition={0.08} 
+          crawlSpeed={200} 
+          height={3} 
+          crawl={true} 
+          showSpinner={false} 
+          easing="ease" 
+          speed={200} 
+          shadow="0 0 10px #2563EB,0 0 5px #2563EB" 
+        />
         <SmoothScrollProvider>
           <AppShell>{children}</AppShell>
         </SmoothScrollProvider>

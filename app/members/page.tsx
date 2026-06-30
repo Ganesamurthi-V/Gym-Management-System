@@ -24,37 +24,61 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
     const supabase = await createClient()
 
     logger.start('FETCH_MEMBERS')
-    const { data: members, count } = await supabase
-      .from('members')
-      .select(`
-        id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id,
-        memberships(
-          id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id
-        )
-      `, { count: 'exact' })
-      .eq('gym_id', gymId)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
+    // Issue 4 fix: Fetch members and their latest/oldest memberships separately to avoid
+    // pulling hundreds of renewals per member. This is more efficient than the previous
+    // approach which fetched ALL memberships for every member.
+    const [membersRes, latestMembershipsRes, oldestMembershipsRes] = await Promise.all([
+      supabase
+        .from('members')
+        .select('id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id', { count: 'exact' })
+        .eq('gym_id', gymId)
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE),
+      // Get latest membership per member (most recent created_at)
+      supabase
+        .from('memberships')
+        .select('id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id')
+        .eq('gym_id', gymId)
+        .order('member_id', { ascending: true })
+        .order('created_at', { ascending: false }),
+      // Get oldest membership per member (earliest start_date)
+      supabase
+        .from('memberships')
+        .select('start_date, member_id')
+        .eq('gym_id', gymId)
+        .order('member_id', { ascending: true })
+        .order('start_date', { ascending: true })
+    ])
     logger.end('FETCH_MEMBERS')
+    
+    const members = membersRes.data ?? []
+    const count = membersRes.count ?? 0
+    
+    // Build lookup maps for O(1) access
+    const latestByMember = new Map<string, any>()
+    const oldestByMember = new Map<string, any>()
+    
+    for (const m of latestMembershipsRes.data ?? []) {
+      if (!latestByMember.has(m.member_id)) {
+        latestByMember.set(m.member_id, m)
+      }
+    }
+    
+    for (const m of oldestMembershipsRes.data ?? []) {
+      if (!oldestByMember.has(m.member_id)) {
+        oldestByMember.set(m.member_id, m)
+      }
+    }
 
     logger.start('AGGREGATION')
-    const result: MemberWithStatus[] = (members ?? []).map(m => {
-      const memberships = m.memberships as any[] ?? [];
+    const result: MemberWithStatus[] = members.map(m => {
+      const latest = latestByMember.get(m.id) ?? null
+      const oldest = oldestByMember.get(m.id) ?? null
       
-      const sortedByCreated = [...memberships].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      const latest = sortedByCreated[0] ?? null;
+      const join_date = oldest?.start_date?.substring(0, 10) || m.created_at?.substring(0, 10) || ""
       
-      const sortedByStartDate = [...memberships].sort((a, b) => {
-        const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
-        const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
-        return dateA - dateB;
-      });
-      const oldest = sortedByStartDate[0] ?? null;
-      
-      const join_date = oldest?.start_date?.substring(0, 10) || m.created_at?.substring(0, 10) || "";
-      
-      const status = latest ? getMemberStatus(latest.end_date) : 'expired';
-      const days_remaining = latest ? getDaysRemaining(latest.end_date) : -999;
+      const status = latest ? getMemberStatus(latest.end_date) : 'expired'
+      const days_remaining = latest ? getDaysRemaining(latest.end_date) : -999
       
       return {
         id: m.id,

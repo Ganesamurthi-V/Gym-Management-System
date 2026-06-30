@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, Dumbbell, CalendarCheck, TrendingUp, FileText, IndianRupee, Send, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -28,7 +28,9 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   const [fetchingMonth, setFetchingMonth] = useState(false)
 
   const router = useRouter()
-  const supabase = createClient()
+  
+  // Issue 9 fix: Memoize Supabase client to prevent recreation on every render
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     if (expiringFilter === 'month' && monthMembers === null && !fetchingMonth) {

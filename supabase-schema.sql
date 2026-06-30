@@ -133,6 +133,13 @@ CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
 
+-- Issue 10 fix: Add composite indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_attendance_member_date ON attendance(member_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_attendance_gym_date ON attendance(gym_id, date);
+
+-- Issue 11 fix: Add partial index for dues aggregation
+CREATE INDEX IF NOT EXISTS idx_members_gym_dues ON members(gym_id, pending_amount) WHERE pending_amount > 0;
+
 CREATE INDEX IF NOT EXISTS idx_due_payments_gym_id ON due_payments(gym_id);
 
 CREATE POLICY "Users can insert their own gym"

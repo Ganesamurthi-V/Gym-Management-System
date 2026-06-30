@@ -11,7 +11,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
-import { invalidateGymCache } from './actions'
+import { invalidateGymCache, invalidateAllGymCaches } from './actions'
 
 interface Props {
   email: string
@@ -217,6 +217,9 @@ export function AccountClient({
       return
     }
     setMessage({ type: 'success', text: 'All member data deleted. Your login is intact.' })
+    // Bust all gym-scoped Redis caches so dashboard and members page reflect
+    // empty state immediately instead of serving stale cached data.
+    await invalidateAllGymCaches(gymId)
     setTimeout(() => { closeModal(); router.refresh() }, 2000)
     setIsSaving(false)
   }

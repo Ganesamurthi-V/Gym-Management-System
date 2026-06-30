@@ -12,27 +12,28 @@ export default async function MemberDetailPage({
 
   const supabase = await createClient()
 
-  const { data: member } = await supabase
-    .from('members')
-    .select('*')
-    .eq('id', id)
-    .single()
+  // Issue 1 fix: Parallel fetching instead of sequential waterfall
+  const [{ data: member }, { data: memberships }, { data: attendance }] = await Promise.all([
+    supabase
+      .from('members')
+      .select('id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('memberships')
+      .select('*')
+      .eq('member_id', id)
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('attendance')
+      .select('*')
+      .eq('member_id', id)
+      .order('date', { ascending: false })
+      .limit(10),
+  ])
 
   if (!member) notFound()
-
-  const { data: memberships } = await supabase
-    .from('memberships')
-    .select('*')
-    .eq('member_id', id)
-    .order('created_at', { ascending: false })
-    .limit(5)
-
-  const { data: attendance } = await supabase
-    .from('attendance')
-    .select('*')
-    .eq('member_id', id)
-    .order('date', { ascending: false })
-    .limit(10)
 
   const latestMembership = memberships?.[0] ?? null
   const status = latestMembership

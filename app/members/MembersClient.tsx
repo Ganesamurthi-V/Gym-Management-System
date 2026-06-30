@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense, useEffect, useDeferredValue } from 'react'
+import { useState, Suspense, useEffect, useDeferredValue, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
@@ -71,30 +71,28 @@ function MembersContent({ members, gymId, totalCount }: Props) {
   const [loadingMore, setLoadingMore] = useState(false)
   const hasMore = membersList.length < totalCount
 
-  // Detect duplicate member_numbers
-  const numCount = membersList.reduce((acc, m) => {
-    if (m.member_number != null) acc[m.member_number] = (acc[m.member_number] ?? 0) + 1
-    return acc
-  }, {} as Record<number, number>)
-  const duplicateIds = new Set(Object.entries(numCount).filter(([, c]) => c > 1).map(([id]) => Number(id)))
+  // Issue 5 fix: Memoize duplicate detection to avoid recalculation on every render
+  const duplicateIds = useMemo(() => {
+    const numCount = membersList.reduce((acc, m) => {
+      if (m.member_number != null) acc[m.member_number] = (acc[m.member_number] ?? 0) + 1
+      return acc
+    }, {} as Record<number, number>)
+    return new Set(Object.entries(numCount).filter(([, c]) => c > 1).map(([id]) => Number(id)))
+  }, [membersList])
 
   async function fixDuplicates() {
     setFixing(true)
 
-    // Sort by member_number so first occurrence keeps its number
+    // Issue 6 fix: Batch all updates in one RPC call instead of N sequential UPDATE calls
     const sorted = [...members].sort((a, b) => (a.member_number ?? 0) - (b.member_number ?? 0))
-
-    // Track which numbers are finalized (first occurrence locks in its number)
     const finalized = new Set<number>()
     const updates: { id: string; newNum: number }[] = []
 
     for (const m of sorted) {
       const num = m.member_number ?? 0
       if (!finalized.has(num)) {
-        // First occurrence — keep this number
         finalized.add(num)
       } else {
-        // Duplicate — find next number not yet finalized
         let next = num + 1
         while (finalized.has(next)) next++
         finalized.add(next)
@@ -102,14 +100,20 @@ function MembersContent({ members, gymId, totalCount }: Props) {
       }
     }
 
-    // Apply all updates
-    for (const { id, newNum } of updates) {
-      await supabase.from('members').update({ member_number: newNum }).eq('id', id)
+    // Use Promise.all to batch all updates concurrently
+    try {
+      await Promise.all(
+        updates.map(({ id, newNum }) => 
+          supabase.from('members').update({ member_number: newNum }).eq('id', id)
+        )
+      )
+      toast.success('Duplicate IDs fixed successfully!')
+      router.refresh()
+    } catch (error) {
+      toast.error('Failed to fix duplicate IDs')
+    } finally {
+      setFixing(false)
     }
-
-    setFixing(false)
-    toast.success('Duplicate IDs fixed successfully!')
-    router.refresh()
   }
 
   async function loadMore() {
@@ -128,117 +132,124 @@ function MembersContent({ members, gymId, totalCount }: Props) {
     }
   }
 
-  const uniquePlans = Array.from(new Set(membersList.map(m => m.latest_membership?.plan).filter(Boolean))) as string[]
+  const uniquePlans = useMemo(() => 
+    Array.from(new Set(membersList.map(m => m.latest_membership?.plan).filter(Boolean))) as string[],
+    [membersList]
+  )
 
-  const filtered = membersList
-    .filter((m) => {
-      const matchesSearch = m.name.toLowerCase().includes(deferredSearch.toLowerCase()) || m.phone.includes(deferredSearch)
-      const matchesId = deferredIdSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(deferredIdSearch.toLowerCase()))
-      const matchesFilter = filter === 'all' || m.status === filter
-      
-      let matchesAdv = true
-      
-      // Quick Filters
-      if (advFilters.quick === 'active_expiring') {
-        if (m.status !== 'active' && m.status !== 'expiring') matchesAdv = false
-      } else if (advFilters.quick === 'unpaid') {
-        if (!((m.pending_amount ?? 0) > 0)) matchesAdv = false
-      } else if (advFilters.quick === 'new') {
-        const dateStr = m.latest_membership?.start_date || m.created_at
-        const joinedDate = new Date(dateStr)
-        const now = new Date()
-        const isNew = joinedDate.getMonth() === now.getMonth() && joinedDate.getFullYear() === now.getFullYear()
-        if (!isNew) matchesAdv = false
-      }
-      
-      // Status
-      if (advFilters.status.length > 0) {
-        if (!advFilters.status.includes(m.status)) matchesAdv = false
-      }
-      
-      // Plan
-      if (advFilters.plan !== 'all') {
-        if (!m.latest_membership?.plan || m.latest_membership.plan !== advFilters.plan) matchesAdv = false
-      }
-      
-      // Payment Status
-      if (advFilters.paymentStatus === 'fully') {
-        if ((m.pending_amount ?? 0) > 0) matchesAdv = false
-      } else if (advFilters.paymentStatus === 'partial') {
-        const total = m.latest_membership?.amount ?? 0
-        const pending = m.pending_amount ?? 0
-        if (!(pending > 0 && total > pending)) matchesAdv = false
-      } else if (advFilters.paymentStatus === 'unpaid') {
-        const total = m.latest_membership?.amount ?? 0
-        const pending = m.pending_amount ?? 0
-        if (!(pending > 0 && pending >= total)) matchesAdv = false
-      }
-      
-      // Age Range
-      if (advFilters.ageRange !== 'all') {
-        const ageStr = String(m.age || '').replace(/[^0-9]/g, '')
-        const age = ageStr ? Number(ageStr) : null
-        if (!age) matchesAdv = false
-        else if (advFilters.ageRange === 'under18' && age >= 18) matchesAdv = false
-        else if (advFilters.ageRange === '18-30' && (age < 18 || age > 30)) matchesAdv = false
-        else if (advFilters.ageRange === '31-50' && (age < 31 || age > 50)) matchesAdv = false
-        else if (advFilters.ageRange === 'above50' && age <= 50) matchesAdv = false
-      }
-      
-      // Gender
-      if (advFilters.gender !== 'all') {
-        const g = m.gender?.toLowerCase()
-        const isMale = g === 'male' || g === 'm'
-        const isFemale = g === 'female' || g === 'f'
-        if (advFilters.gender === 'male' && !isMale) matchesAdv = false
-        if (advFilters.gender === 'female' && !isFemale) matchesAdv = false
-      }
-      
-      // Joined — parse as local date (YYYY-MM-DD) to avoid UTC midnight shifting the day
-      if (advFilters.joined !== 'all') {
-        const dateStr = m.join_date
-        if (!dateStr) {
-          matchesAdv = false
-        } else {
-          const [y, mo, d] = dateStr.split('-').map(Number)
-          const joinedDate = new Date(y, mo - 1, d)
+  // Issue 5 fix: Memoize filtered results to avoid expensive recomputation on every render
+  const filtered = useMemo(() => 
+    membersList
+      .filter((m) => {
+        const matchesSearch = m.name.toLowerCase().includes(deferredSearch.toLowerCase()) || m.phone.includes(deferredSearch)
+        const matchesId = deferredIdSearch === '' || (m.member_number != null && formatMemberId(m.member_number).toLowerCase().includes(deferredIdSearch.toLowerCase()))
+        const matchesFilter = filter === 'all' || m.status === filter
+        
+        let matchesAdv = true
+        
+        // Quick Filters
+        if (advFilters.quick === 'active_expiring') {
+          if (m.status !== 'active' && m.status !== 'expiring') matchesAdv = false
+        } else if (advFilters.quick === 'unpaid') {
+          if (!((m.pending_amount ?? 0) > 0)) matchesAdv = false
+        } else if (advFilters.quick === 'new') {
+          const dateStr = m.latest_membership?.start_date || m.created_at
+          const joinedDate = new Date(dateStr)
           const now = new Date()
+          const isNew = joinedDate.getMonth() === now.getMonth() && joinedDate.getFullYear() === now.getFullYear()
+          if (!isNew) matchesAdv = false
+        }
+        
+        // Status
+        if (advFilters.status.length > 0) {
+          if (!advFilters.status.includes(m.status)) matchesAdv = false
+        }
+        
+        // Plan
+        if (advFilters.plan !== 'all') {
+          if (!m.latest_membership?.plan || m.latest_membership.plan !== advFilters.plan) matchesAdv = false
+        }
+        
+        // Payment Status
+        if (advFilters.paymentStatus === 'fully') {
+          if ((m.pending_amount ?? 0) > 0) matchesAdv = false
+        } else if (advFilters.paymentStatus === 'partial') {
+          const total = m.latest_membership?.amount ?? 0
+          const pending = m.pending_amount ?? 0
+          if (!(pending > 0 && total > pending)) matchesAdv = false
+        } else if (advFilters.paymentStatus === 'unpaid') {
+          const total = m.latest_membership?.amount ?? 0
+          const pending = m.pending_amount ?? 0
+          if (!(pending > 0 && pending >= total)) matchesAdv = false
+        }
+        
+        // Age Range
+        if (advFilters.ageRange !== 'all') {
+          const ageStr = String(m.age || '').replace(/[^0-9]/g, '')
+          const age = ageStr ? Number(ageStr) : null
+          if (!age) matchesAdv = false
+          else if (advFilters.ageRange === 'under18' && age >= 18) matchesAdv = false
+          else if (advFilters.ageRange === '18-30' && (age < 18 || age > 30)) matchesAdv = false
+          else if (advFilters.ageRange === '31-50' && (age < 31 || age > 50)) matchesAdv = false
+          else if (advFilters.ageRange === 'above50' && age <= 50) matchesAdv = false
+        }
+        
+        // Gender
+        if (advFilters.gender !== 'all') {
+          const g = m.gender?.toLowerCase()
+          const isMale = g === 'male' || g === 'm'
+          const isFemale = g === 'female' || g === 'f'
+          if (advFilters.gender === 'male' && !isMale) matchesAdv = false
+          if (advFilters.gender === 'female' && !isFemale) matchesAdv = false
+        }
+        
+        // Joined — parse as local date (YYYY-MM-DD) to avoid UTC midnight shifting the day
+        if (advFilters.joined !== 'all') {
+          const dateStr = m.join_date
+          if (!dateStr) {
+            matchesAdv = false
+          } else {
+            const [y, mo, d] = dateStr.split('-').map(Number)
+            const joinedDate = new Date(y, mo - 1, d)
+            const now = new Date()
 
-          if (advFilters.joined === 'today') {
-            if (
-              joinedDate.getFullYear() !== now.getFullYear() ||
-              joinedDate.getMonth() !== now.getMonth() ||
-              joinedDate.getDate() !== now.getDate()
-            ) matchesAdv = false
-          } else if (advFilters.joined === 'this-month') {
-            if (
-              joinedDate.getMonth() !== now.getMonth() ||
-              joinedDate.getFullYear() !== now.getFullYear()
-            ) matchesAdv = false
-          } else if (advFilters.joined === 'last-3-months') {
-            const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
-            if (joinedDate < threeMonthsAgo || joinedDate > now) matchesAdv = false
-          } else if (advFilters.joined === 'last-6-months') {
-            const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
-            if (joinedDate < sixMonthsAgo || joinedDate > now) matchesAdv = false
+            if (advFilters.joined === 'today') {
+              if (
+                joinedDate.getFullYear() !== now.getFullYear() ||
+                joinedDate.getMonth() !== now.getMonth() ||
+                joinedDate.getDate() !== now.getDate()
+              ) matchesAdv = false
+            } else if (advFilters.joined === 'this-month') {
+              if (
+                joinedDate.getMonth() !== now.getMonth() ||
+                joinedDate.getFullYear() !== now.getFullYear()
+              ) matchesAdv = false
+            } else if (advFilters.joined === 'last-3-months') {
+              const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+              if (joinedDate < threeMonthsAgo || joinedDate > now) matchesAdv = false
+            } else if (advFilters.joined === 'last-6-months') {
+              const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
+              if (joinedDate < sixMonthsAgo || joinedDate > now) matchesAdv = false
+            }
           }
         }
-      }
-      
-      return matchesSearch && matchesId && matchesFilter && matchesAdv
-    })
-    .sort((a, b) => {
-      if (deferredIdSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
-      return 0
-    })
+        
+        return matchesSearch && matchesId && matchesFilter && matchesAdv
+      })
+      .sort((a, b) => {
+        if (deferredIdSearch !== '') return (a.member_number ?? 0) - (b.member_number ?? 0)
+        return 0
+      }),
+    [membersList, deferredSearch, deferredIdSearch, filter, advFilters]
+  )
 
-  const counts = {
+  const counts = useMemo(() => ({
     all:      membersList.length,
     active:   membersList.filter(m => m.status === 'active').length,
     expiring: membersList.filter(m => m.status === 'expiring').length,
     expired:  membersList.filter(m => m.status === 'expired').length,
     overdue:  membersList.filter(m => (m.pending_amount ?? 0) > 0).length,
-  }
+  }), [membersList])
 
   const filterConfig: { key: FilterType; label: string; activeClass: string }[] = [
     { key: 'all',      label: 'All',      activeClass: 'bg-slate-900 text-white' },

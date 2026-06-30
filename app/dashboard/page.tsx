@@ -30,12 +30,16 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
       // Fallback to JS aggregation if RPC is not yet created in the DB
       console.warn('Fallback to JS aggregation for Dashboard. Please run the dashboard RPC migration.')
       
+      // Issue 3 fix: Add date filter to prevent full table scan on large gyms
+      const oneYearAgo = format(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+      
       logger.start('Promise.all')
       const [membershipsRes, attendanceRes, todayPaymentsRes, duesRes] = await Promise.all([
         supabase
           .from('memberships')
           .select('member_id, end_date, member:members(id, name, phone, member_number)')
           .eq('gym_id', gymId)
+          .gte('end_date', oneYearAgo)  // Only fetch memberships expiring within last/next year
           .order('created_at', { ascending: false }),
         supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('date', today),
         supabase.from('memberships').select('amount, admission_fee').eq('gym_id', gymId).eq('start_date', today),

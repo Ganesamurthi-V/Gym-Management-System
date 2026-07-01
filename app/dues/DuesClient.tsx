@@ -27,6 +27,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   const [payAmount, setPayAmount] = useState('')
   const [payMode, setPayMode] = useState<string>('cash')
   const [searchQuery, setSearchQuery] = useState('')
+  const [collecting, setCollecting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -45,6 +46,8 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
     const collect = Math.min(amt, member.pending_amount)
     const newPending = member.pending_amount - collect
 
+    setCollecting(true)
+
     const { error } = await supabase
       .from('members')
       .update({ pending_amount: newPending })
@@ -52,6 +55,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
 
     if (error) {
       alert('Failed to record payment. Please try again.')
+      setCollecting(false)
     } else {
       // Record the due payment
       await supabase.from('due_payments').insert({
@@ -76,6 +80,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
       setPaying(null)
       setPayAmount('')
       setPayMode('cash')
+      setCollecting(false)
       router.refresh()
     }
   }
@@ -187,11 +192,24 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
                     </select>
                     <button
                       onClick={() => handleCollect(member)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-lg hover:bg-emerald-600 transition-colors"
+                      disabled={collecting}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      <Check className="w-4 h-4" /> Collect
+                      {collecting ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Please wait...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" /> Collect
+                        </>
+                      )}
                     </button>
-                    <button onClick={() => setPaying(null)} className="text-sm text-slate-400 hover:text-slate-600">Cancel</button>
+                    <button onClick={() => setPaying(null)} disabled={collecting} className="text-sm text-slate-400 hover:text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Cancel</button>
                   </div>
                 )}
               </div>

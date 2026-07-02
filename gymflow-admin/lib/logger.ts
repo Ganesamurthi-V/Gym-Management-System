@@ -19,6 +19,7 @@
 
 // No Node.js-only imports — this file is imported by middleware (Edge runtime).
 // crypto.randomUUID() is a Web Crypto global available in Edge, Node.js, and browsers.
+import { type NextRequest } from 'next/server'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

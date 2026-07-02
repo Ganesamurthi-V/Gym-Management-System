@@ -1,10 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
-import type { NextRequest } from 'next/server'
 
-export const dynamic = 'force-dynamic'
-
+/**
+ * GET /api/support/ticket-count
+ * Returns open ticket count for sidebar badge.
+ * Replaces direct client-side Supabase queries with anon key.
+ */
 export async function GET(req: NextRequest) {
   if (!(await verifyRequestAuth(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -12,14 +14,14 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient()
 
-  // Only return a health check count — no raw data exposed
   const { count, error } = await supabase
     .from('support_tickets')
     .select('*', { count: 'exact', head: true })
+    .eq('status', 'open')
 
   if (error) {
-    return NextResponse.json({ ok: false, error: 'Database query failed' }, { status: 500 })
+    return NextResponse.json({ count: 0 })
   }
 
-  return NextResponse.json({ ok: true, ticketCount: count })
+  return NextResponse.json({ count: count ?? 0 })
 }

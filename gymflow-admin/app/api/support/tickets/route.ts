@@ -1,80 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { sanitizeTicketResolution } from '@/lib/sanitize'
+import { apiLogger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
+  const log = apiLogger('ADMIN_TICKETS_LIST', req)
+
   if (!(await verifyRequestAuth(req))) {
+    log.summary(401)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const rateLimitResponse = await rateLimit(req, 'tickets_list', RATE_LIMITS.TICKET_LIST.limit, RATE_LIMITS.TICKET_LIST.window)
+  if (rateLimitResponse) { log.summary(429); return rateLimitResponse }
+
   try {
+    log.start('DB_QUERY')
     const supabase = createAdminClient()
-    
-    // Fetch tickets with gym details
     const { data: tickets, error } = await supabase
       .from('support_tickets')
       .select('*, gyms(name, owner_id)')
       .eq('is_cleared_by_admin', false)
       .order('created_at', { ascending: false })
+    log.end('DB_QUERY')
 
     if (error) throw error
 
+    log.summary(200)
     return NextResponse.json(tickets)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    log.error('Failed to fetch tickets', error)
+    log.summary(500)
+    return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 })
   }
 }
 
 export async function PATCH(req: NextRequest) {
+  const log = apiLogger('ADMIN_TICKETS_RESOLVE', req)
+  log.adminAction = 'resolve_ticket'
+
   if (!(await verifyRequestAuth(req))) {
+    log.summary(401)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const rateLimitResponse = await rateLimit(req, 'ticket_resolve', RATE_LIMITS.TICKET_RESOLVE.limit, RATE_LIMITS.TICKET_RESOLVE.window)
+  if (rateLimitResponse) { log.summary(429); return rateLimitResponse }
+
   try {
-    const { ticketId, status, replySubject, replyMessage } = await req.json()
-    if (!ticketId || !status) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
+    const rawBody = await req.json()
+
+    const sanitized = sanitizeTicketResolution(rawBody)
+    if ('error' in sanitized) {
+      log.warn('Invalid ticket resolution input', { error: sanitized.error })
+      log.summary(400)
+      return NextResponse.json({ error: sanitized.error }, { status: 400 })
     }
 
+    const { ticketId, status, replySubject, replyMessage } = sanitized
+
+    log.start('DB_FETCH_TICKET')
     const supabase = createAdminClient()
-    
-    // First, fetch the ticket to get the gym_id
     const { data: ticket, error: fetchErr } = await supabase
       .from('support_tickets')
-      .select('gym_id')
+      .select('gym_id, status')
       .eq('id', ticketId)
       .single()
-      
-    if (fetchErr || !ticket) throw new Error('Ticket not found')
+    log.end('DB_FETCH_TICKET')
 
-    const { error } = await supabase
-      .from('support_tickets')
-      .update({ 
-        status, 
-        resolved_at: status === 'resolved' ? new Date().toISOString() : null 
-      })
-      .eq('id', ticketId)
-
-    if (error) throw error
-    
-
-    // If resolving and we have a reply message, send it to the gym
-    if (status === 'resolved' && replySubject && replyMessage) {
-      const { error: msgError } = await supabase
-        .from('admin_messages')
-        .insert({
-          gym_id: ticket.gym_id,
-          subject: replySubject,
-          body: replyMessage,
-          type: 'success'
-        })
-        
-      if (msgError) throw msgError
-      
+    if (fetchErr || !ticket) {
+      log.warn('Ticket not found for resolution', { ticketId })
+      log.summary(404)
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
+    if (ticket.status === 'resolved') {
+      log.warn('Attempt to resolve already-resolved ticket', { ticketId })
+      log.summary(400)
+      return NextResponse.json({ error: 'Ticket already resolved' }, { status: 400 })
+    }
+
+    log.start('DB_UPDATE_TICKET')
+    const { error } = await supabase
+      .from('support_tickets')
+      .update({ status, resolved_at: status === 'resolved' ? new Date().toISOString() : null })
+      .eq('id', ticketId)
+    log.end('DB_UPDATE_TICKET')
+
+    if (error) throw error
+
+    log.start('DB_INSERT_REPLY')
+    const { error: msgError } = await supabase
+      .from('admin_messages')
+      .insert({ gym_id: ticket.gym_id, subject: replySubject, body: replyMessage, type: 'success', sent_by: 'super_admin' })
+    log.end('DB_INSERT_REPLY')
+
+    if (msgError) {
+      log.warn('Failed to send reply message after resolving ticket', { ticketId })
+    }
+
+    log.info('Ticket resolved', { ticketId })
+    log.summary(200)
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    log.error('Failed to resolve ticket', error)
+    log.summary(500)
+    return NextResponse.json({ error: 'Failed to resolve ticket' }, { status: 500 })
   }
 }

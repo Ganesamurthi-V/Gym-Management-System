@@ -11,15 +11,21 @@ export default function AuthPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     setLoading(true)
+
+    // Fallback to reading from the DOM directly in case autofill didn't trigger onChange
+    const form = e.currentTarget
+    const inputElement = form.elements.namedItem('admin_password_field') as HTMLInputElement
+    const finalPassword = password || (inputElement ? inputElement.value : '')
+
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: finalPassword }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -62,6 +68,9 @@ export default function AuthPage() {
               <div className="relative">
                 <input
                   type={show ? 'text' : 'password'}
+                  id="admin_password_field"
+                  name="admin_password_field"
+                  autoComplete="new-password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Enter admin secret"
@@ -88,7 +97,7 @@ export default function AuthPage() {
 
             <button
               type="submit"
-              disabled={loading || !password}
+              disabled={loading}
               className="admin-btn-primary w-full justify-center py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}

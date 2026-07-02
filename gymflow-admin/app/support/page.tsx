@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { createClient } from '@supabase/supabase-js'
 
 type Gym = { id: string; name: string; owner: { email: string } }
 type Ticket = {
@@ -73,20 +72,6 @@ export default function SupportPage() {
       
       toast.success('Message sent to gym owner successfully!')
       
-      // Broadcast to gym owner
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      if (supabaseUrl && supabaseAnonKey) {
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
-        const channel = supabase.channel(`gym_support_${selectedGym}`)
-        channel.subscribe(async (status: string) => {
-          if (status === 'SUBSCRIBED') {
-            await channel.send({ type: 'broadcast', event: 'refetch_support', payload: {} })
-            supabase.removeChannel(channel)
-          }
-        })
-      }
-
       setSubject('')
       setBody('')
       setSelectedGym('')
@@ -99,35 +84,12 @@ export default function SupportPage() {
     }
   }
 
+  // Poll for new tickets every 30 seconds when on the tickets tab
   useEffect(() => {
-    if (activeTab === 'tickets') {
-      fetchTickets()
-    }
-  }, [activeTab])
-
-  // Real-time subscription via Broadcast (Bypasses RLS issues for anon admin)
-  useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!supabaseUrl || !supabaseAnonKey) return
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-    const channel = supabase
-      .channel('admin_support_channel')
-      .on(
-        'broadcast',
-        { event: 'refetch_tickets' },
-        (payload: any) => {
-          toast('New support ticket received!', { icon: '🔔', style: { background: '#3b82f6', color: '#fff' } })
-          if (activeTab === 'tickets') fetchTickets()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    if (activeTab !== 'tickets') return
+    fetchTickets()
+    const interval = setInterval(fetchTickets, 30_000)
+    return () => clearInterval(interval)
   }, [activeTab])
 
   async function fetchTickets() {
@@ -169,20 +131,6 @@ export default function SupportPage() {
       if (!res.ok) throw new Error('Failed to update')
       toast.success('Ticket resolved and message sent!')
       
-      // Broadcast to gym owner
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      if (supabaseUrl && supabaseAnonKey) {
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
-        const channel = supabase.channel(`gym_support_${resolvingTicket.gym_id}`)
-        channel.subscribe(async (status: string) => {
-          if (status === 'SUBSCRIBED') {
-            await channel.send({ type: 'broadcast', event: 'refetch_support', payload: {} })
-            supabase.removeChannel(channel)
-          }
-        })
-      }
-
       setResolvingTicket(null)
       fetchTickets()
     } catch (e) {

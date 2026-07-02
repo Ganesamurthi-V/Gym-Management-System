@@ -6,8 +6,7 @@ import {
   LayoutDashboard, Building2, ScrollText, Bug,
   HeadphonesIcon, LogOut, Shield, ChevronRight
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useEffect, useRef, useState } from 'react'
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,52 +16,31 @@ const NAV = [
   { href: '/support', label: 'Support', icon: HeadphonesIcon },
 ]
 
+// Poll interval in ms — no realtime needed, lightweight polling is sufficient
+const POLL_INTERVAL = 30_000
+
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [openTicketsCount, setOpenTicketsCount] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  async function fetchTicketCount() {
+    try {
+      const res = await fetch('/api/support/ticket-count')
+      if (!res.ok) return
+      const data = await res.json()
+      setOpenTicketsCount(data.count ?? 0)
+    } catch {
+      // Silently fail — non-critical UI badge
+    }
+  }
 
   useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!supabaseUrl || !supabaseAnonKey) return
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-    // Initial fetch
-    supabase
-      .from('support_tickets')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'open')
-      .then(({ count }) => setOpenTicketsCount(count ?? 0))
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('realtime_admin_sidebar_tickets')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'support_tickets' },
-        (payload: any) => {
-          if (payload.new.status === 'open') {
-            setOpenTicketsCount(prev => prev + 1)
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'support_tickets' },
-        (payload: any) => {
-          if (payload.old.status === 'open' && payload.new.status !== 'open') {
-            setOpenTicketsCount(prev => Math.max(0, prev - 1))
-          } else if (payload.old.status !== 'open' && payload.new.status === 'open') {
-            setOpenTicketsCount(prev => prev + 1)
-          }
-        }
-      )
-      .subscribe()
-
+    fetchTicketCount()
+    timerRef.current = setInterval(fetchTicketCount, POLL_INTERVAL)
     return () => {
-      supabase.removeChannel(channel)
+      if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [])
 

@@ -1,14 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyAdminSession, COOKIE_NAME } from './lib/auth'
+import { generateRequestId, REQUEST_ID_HEADER } from './lib/logger'
 
 const PUBLIC_PATHS = ['/auth', '/api/auth']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Stamp every admin request with a unique request ID
+  const requestId = request.headers.get(REQUEST_ID_HEADER) ?? generateRequestId()
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(REQUEST_ID_HEADER, requestId)
+
   // Allow public paths through
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
-    return NextResponse.next()
+    const res = NextResponse.next({ request: { headers: requestHeaders } })
+    res.headers.set(REQUEST_ID_HEADER, requestId)
+    return res
   }
 
   // Allow Next.js internals and static assets
@@ -22,10 +30,14 @@ export async function middleware(request: NextRequest) {
   if (!isAuthed) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
-    return NextResponse.redirect(url)
+    const res = NextResponse.redirect(url)
+    res.headers.set(REQUEST_ID_HEADER, requestId)
+    return res
   }
 
-  return NextResponse.next()
+  const res = NextResponse.next({ request: { headers: requestHeaders } })
+  res.headers.set(REQUEST_ID_HEADER, requestId)
+  return res
 }
 
 export const config = {

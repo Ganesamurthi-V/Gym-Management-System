@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     if (!validation.success) {
       log.warn('Invalid webhook payload schema', {
-        errors: validation.error.errors,
+        errors: validation.error.issues,
       })
       
       const processingTime = Math.round(performance.now() - startTime)

@@ -259,47 +259,38 @@ export default function ImportEditPage() {
       const { data: gym } = await supabase.from("gyms").select("id").eq("owner_id", user.id).single();
       if (!gym) throw new Error("Gym not found");
 
-      const { data: existingNums } = await supabase
-        .from("members").select("member_number").eq("gym_id", gym.id) as { data: { member_number: number }[] | null };
-      const existingNumSet = new Set((existingNums ?? []).map(m => m.member_number));
-      let nextAvailable = 1;
-
       const toInsert = validRows;
       const skipped = skippedRows.length;
 
-      // Final guard — re-check uniqueness at save time
-      for (const row of toInsert) {
-        const num = parseInt(row.member_number);
-        if (!num) throw new Error(`Member "${row.name}" is missing a Member ID`);
-        if (existingNumSet.has(num)) throw new Error(`Member ID #${num} is already taken ("${row.name}")`);
-        existingNumSet.add(num);
+      // ── Insert members via server route (safe ID assignment server-side) ────
+      // We send the rows WITHOUT member_number — the server re-assigns them
+      // all above the current MAX to guarantee no constraint violation.
+      const res = await fetch("/api/import/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: toInsert }),
+      });
+
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error?.message || "Member insert failed");
       }
 
-      const { data: insertedMembers, error: batchErr } = await supabase
+      // ── Fetch the newly inserted members by phone to get their IDs ──────────
+      const phones = toInsert.map(r => String(r.phone).replace(/\D/g, '').slice(0, 15)).filter(Boolean);
+      const { data: insertedMembers, error: fetchErr } = await supabase
         .from("members")
-        .insert(toInsert.map(row => {
-          let num = parseInt(row.member_number);
-          if (!num || existingNumSet.has(num)) { num = nextAvailable; nextAvailable++; }
-          existingNumSet.add(num);
-          if (num >= nextAvailable) nextAvailable = num + 1;
-          return {
-            gym_id: gym.id,
-            member_number: num,
-            name: row.name,
-            phone: row.phone,
-            ...(row.gender && { gender: row.gender }),
-            ...(row.age && { age: parseInt(row.age) }),
-            ...(row.area && { area: row.area }),
-            legacy_member_id: row.legacy_member_id || null,
-          };
-        }))
-        .select("id, phone") as { data: { id: string; phone: string }[] | null; error: any };
+        .select("id, phone")
+        .eq("gym_id", gym.id)
+        .in("phone", phones) as { data: { id: string; phone: string }[] | null; error: any };
 
-      if (batchErr || !insertedMembers) throw new Error(batchErr?.message || "Insert failed");
+      if (fetchErr || !insertedMembers) throw new Error(fetchErr?.message || "Failed to fetch inserted members");
 
       const phoneToId = new Map(insertedMembers.map(m => [m.phone, m.id]));
+
+      // ── Insert memberships ───────────────────────────────────────────────────
       const membershipsToInsert = toInsert.map(row => {
-        const memberId = phoneToId.get(row.phone);
+        const memberId = phoneToId.get(String(row.phone).replace(/\D/g, '').slice(0, 15));
         if (!memberId) return null;
         const end_date = calcEndDate(row.start_date, row.plan as any);
         return {

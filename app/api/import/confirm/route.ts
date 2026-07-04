@@ -42,26 +42,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
 
-    // ── Re-assign member_numbers server-side at insert time ───────────────────
-    //
-    // The pipeline assigned IDs during preview (client-side). By the time the
-    // user clicks "Import Now", those IDs may already be taken — either from a
-    // previous import that ran between preview and confirm, or from a double-
-    // click. We re-assign here using the real DB state to guarantee no collision.
-
-    // 1. Get current MAX member_number for this gym
-    const { data: maxRow } = await supabase
+    // ── Step 1: get MAX member_number from DB ─────────────────────────────────
+    const { data: maxRow, error: maxErr } = await supabase
       .from('members')
       .select('member_number')
       .eq('gym_id', gym.id)
       .order('member_number', { ascending: false })
       .limit(1)
 
+    console.log('[IMPORT] gym_id      :', gym.id)
+    console.log('[IMPORT] maxRow      :', JSON.stringify(maxRow), '| maxErr:', maxErr?.message ?? 'none')
+
     const maxExisting = maxRow?.[0]?.member_number
       ? parseInt(String(maxRow[0].member_number))
       : 0
 
-    // 2. Assign sequential IDs starting above the current max
+    console.log('[IMPORT] maxExisting :', maxExisting, '→ nextId starts at', maxExisting + 1)
+
+    // ── Step 2: assign sequential IDs above the current max ───────────────────
     let nextId = maxExisting + 1
     const usedInBatch = new Set<number>()
 
@@ -72,38 +70,39 @@ export async function POST(req: NextRequest) {
       return id
     }
 
-    // 3. Build final insert rows with guaranteed-unique member_numbers
-    const insertRows = rows.map((r) => {
-      const memberId = claimNext()
+    // ── Step 3: build insert payload ─────────────────────────────────────────
+    const insertRows = rows.map((r) => ({
+      gym_id:           gym.id,
+      name:             String(r.name  ?? '').trim().slice(0, 255),
+      phone:            String(r.phone ?? '').replace(/\D/g, '').slice(0, 15),
+      age:              parseInt(r.age as string) || null,
+      gender:           ['male', 'female', 'other'].includes(r.gender as string) ? r.gender : null,
+      area:             r.area ? String(r.area).slice(0, 100) : null,
+      member_number:    claimNext(),
+      legacy_member_id: r.legacy_member_id ? String(r.legacy_member_id).slice(0, 50) : null,
+    }))
 
-      return {
-        gym_id:           gym.id,
-        owner_id:         user.id,
-        name:             String(r.name  ?? '').trim().slice(0, 255),
-        phone:            String(r.phone ?? '').replace(/\D/g, '').slice(0, 15),
-        age:              parseInt(r.age as string) || null,
-        gender:           ['male', 'female', 'other'].includes(r.gender as string) ? r.gender : null,
-        area:             r.area ? String(r.area).slice(0, 100) : null,
-        member_number:    memberId,
-        legacy_member_id: r.legacy_member_id
-          ? String(r.legacy_member_id).slice(0, 50)
-          : null,
-      }
-    })
+    const assignedIds = insertRows.map(r => r.member_number)
+    console.log('[IMPORT] rows        :', insertRows.length)
+    console.log('[IMPORT] ids assigned:', assignedIds.join(', '))
+    console.log('[IMPORT] duplicates? :', assignedIds.length !== new Set(assignedIds).size)
 
-    // 4. Insert
-    const { data, error } = await supabase
+    // ── Step 4: insert ────────────────────────────────────────────────────────
+    const { data, error: insertErr } = await supabase
       .from('members')
       .insert(insertRows)
       .select('id')
 
-    if (error) {
-      const mapped = mapSupabaseError(error)
+    if (insertErr) {
+      console.error('[IMPORT] INSERT FAILED:', insertErr.code, insertErr.message, insertErr.details)
+      const mapped = mapSupabaseError(insertErr)
       return NextResponse.json(
         { success: false, error: { code: mapped.code, message: mapped.message } },
         { status: mapped.status },
       )
     }
+
+    console.log('[IMPORT] inserted    :', data?.length ?? 0, 'rows')
 
     await Promise.all([
       deleteCache(cacheKeys.membersList(gym.id)),

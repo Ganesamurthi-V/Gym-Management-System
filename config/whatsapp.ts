@@ -70,7 +70,7 @@ export function getWhatsAppConfig(): WhatsAppEnv {
     return validated
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessage = `WhatsApp configuration validation failed:\n${error.errors
+      const errorMessage = `WhatsApp configuration validation failed:\n${error.issues
         .map(e => `  - ${e.path.join('.')}: ${e.message}`)
         .join('\n')}`
       

@@ -45,7 +45,7 @@ export async function verifyWebhook(
 
     if (!validation.success) {
       log.warn('Webhook verification failed - invalid query parameters', {
-        errors: validation.error.errors,
+        errors: validation.error.issues,
       })
       return NextResponse.json(
         { error: 'Invalid verification parameters' },

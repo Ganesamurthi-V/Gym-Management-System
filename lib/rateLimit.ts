@@ -4,7 +4,7 @@ import { Redis } from '@upstash/redis'
 /**
  * Server-side rate limiter using Upstash Redis.
  *
- * Groq llama-3.1-8b-instant limits (free tier):
+ * Groq qwen/qwen3.6-27b limits (free tier):
  *   30 RPM  |  14,400 RPD  |  6,000 TPM  |  500,000 TPD
  *
  * ROUTE_LIMITS below are per-user-per-minute caps enforced BEFORE we hit Groq,

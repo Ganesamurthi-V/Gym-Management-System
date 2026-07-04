@@ -9,6 +9,8 @@ import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, AIInferenceResult } from '@/lib/geo/types'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
 
+export const maxDuration = 30 // Qwen3.6-27b single inference can take up to 6s
+
 // Issue 10 fix: Lazy-load the 58KB ALIAS_MAP module so it is NOT parsed at Lambda cold-start.
 // The module is evaluated only on the first request to this route, saving 20-80ms on cold starts.
 let _aliasMap: Record<string, string> | null = null
@@ -273,7 +275,7 @@ export async function POST(req: NextRequest) {
       } else {
         // 3. Groq (only if both miss)
         try {
-          aiResult = await withTimeout(groqInferLocation(rawInput, groqApiKey), 5000)
+          aiResult = await withTimeout(groqInferLocation(rawInput, groqApiKey), 15000)
 
           if (aiResult && aiResult.probable_location && typeof aiResult.confidence === 'number') {
             // Write to DB cache immediately

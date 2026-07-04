@@ -106,11 +106,21 @@ export function normalizeDate(raw: string): string {
 }
 
 /**
- * Normalizes a member number that may contain a prefix/suffix to a plain integer string.
- * Handles the GF-prefixed format (e.g. "GF0001" → "1") as well as legacy formats
- * like "C1006" → "1006", "GYM-42" → "42", "MEM_007" → "7", "#123" → "123".
- * Returns empty string if no number found — pipeline will auto-assign.
- * The `original` field preserves the raw value for storage as legacy_member_id.
+/**
+ * Normalizes a member number from the import file.
+ *
+ * GF-prefixed IDs (e.g. "GF0042", "gf42", "GF-001") are treated as native
+ * GymFlow IDs — the numeric part is extracted and checked against the DB.
+ *
+ * Everything else (e.g. "C1002", "MEM007", "GYM-42", "#123", plain "1002")
+ * is treated as a LEGACY ID from another system. We store the raw value in
+ * `legacy_member_id` and return `number: ""` so the pipeline auto-assigns a
+ * fresh GymFlow ID — preventing any collision with existing members.
+ *
+ * Returns:
+ *   number   — numeric string to use as member_number, or "" to auto-assign
+ *   prefix   — detected prefix (informational only)
+ *   original — raw trimmed value for legacy_member_id storage
  */
 export function normalizeMemberNumber(raw: string): {
   number: string;
@@ -120,25 +130,14 @@ export function normalizeMemberNumber(raw: string): {
   const trimmed = raw.trim();
   if (!trimmed) return { number: "", prefix: "", original: "" };
 
-  // Handle GF-prefixed format: "GF0001", "gf42", "GF-001", etc.
+  // GF-prefixed → native GymFlow ID, extract the number
   const gfMatch = trimmed.match(/^[Gg][Ff][-_\s]?(\d+)/);
   if (gfMatch) {
     const number = String(parseInt(gfMatch[1], 10));
     return { number, prefix: "GF", original: trimmed };
   }
 
-  // Match: optional non-digit prefix, digits, optional non-digit suffix
-  const match = trimmed.match(/^([^0-9]*)(\d+)([^0-9]*)$/);
-  if (match) {
-    const prefix = match[1].replace(/[-_\s]+$/, "");
-    const number = String(parseInt(match[2], 10)); // removes leading zeros
-    return { number, prefix, original: trimmed };
-  }
-
-  // Pure digits only
-  const num = parseInt(trimmed.replace(/\D/g, ""), 10);
-  if (!isNaN(num)) return { number: String(num), prefix: "", original: trimmed };
-
-  // Cannot extract — let pipeline auto-assign
+  // Anything else (C1002, MEM007, GYM-42, plain 1002, #123, etc.)
+  // → treat as legacy ID from another system, always auto-assign a new GF ID
   return { number: "", prefix: "", original: trimmed };
 }

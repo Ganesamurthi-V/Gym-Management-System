@@ -108,80 +108,105 @@ export async function runImportPipeline(
   // ── Stage 4 & 5 & 6: ID assignment + phone dedup ─────────────────────────
   onStage?.("ids");
 
-  // Fetch existing DB state, avoiding memory exhaustion at scale
-  let existingPhones: string[] = [];
-  let existingNums: number[] = [];
-  let maxNum = 0;
+  // Collect explicit numbers the file contains (GF-prefixed IDs that were
+  // already parsed to integers by normalizeMemberNumber)
+  const requestedNums = parsed
+    .map((r) => parseInt(r.member_number))
+    .filter((n) => !isNaN(n) && n > 0)
+
+  // Ask the server for (a) the current MAX member_number and (b) which of the
+  // requested numbers already exist. We do this via API because the client-side
+  // Supabase instance is anon-keyed and RLS blocks direct member reads.
+  let nextId = 1
+  let conflictingNums = new Set<number>()
+  let existingPhones: string[] = []
 
   if (gym) {
-    const filePhones = Array.from(new Set(parsed.map(r => r.phone).filter(Boolean)));
-    const fileNums = Array.from(new Set(parsed.map(r => parseInt(r.member_number)).filter(n => !isNaN(n))));
+    const filePhones = Array.from(new Set(parsed.map(r => r.phone).filter(Boolean)))
 
-    const [phonesRes, numsRes] = await Promise.all([
-      filePhones.length > 0 
-        ? supabase.from("members").select("phone").eq("gym_id", gym.id).in("phone", filePhones)
-        : Promise.resolve({ data: [] }),
-      // Fetch all numbers to find the lowest available gap starting from 1
-      supabase.from("members").select("member_number").eq("gym_id", gym.id)
-    ]);
+    const [idRes] = await Promise.all([
+      // Single server call returns: next_id, conflicts, existing_phones
+      fetch(
+        `/api/import/next-member-id?${new URLSearchParams({
+          ...(requestedNums.length > 0 && { requested: requestedNums.join(',') }),
+          ...(filePhones.length > 0    && { phones:    filePhones.join(',') }),
+        })}`,
+      ).then(r => r.ok
+        ? r.json() as Promise<{ next_id: number; conflicts: number[]; existing_phones: string[] }>
+        : null
+      ),
+    ])
 
-    existingPhones = (phonesRes.data as any[] ?? []).map(m => m.phone);
-    existingNums = (numsRes.data as any[] ?? []).map(m => m.member_number);
+    if (idRes) {
+      nextId           = idRes.next_id
+      conflictingNums  = new Set(idRes.conflicts)
+      existingPhones   = idRes.existing_phones ?? []
+    }
   }
 
-  const dbPhones = new Set(existingPhones);
-  const dbNums = new Set(existingNums);
+  const dbPhones = new Set(existingPhones)
 
   // Phone dedup within file
-  const phoneCount = new Map<string, number>();
-  parsed.forEach(r => {
-    if (r.phone) phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1);
-  });
-  parsed.forEach(r => {
-    if (r._status !== "error" && r.phone && phoneCount.get(r.phone)! > 1) {
-      r._status = "duplicate";
-      r._error = "Duplicate phone in file";
+  const phoneCount = new Map<string, number>()
+  parsed.forEach((r) => {
+    if (r.phone) phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1)
+  })
+  parsed.forEach((r) => {
+    if (r._status !== 'error' && r.phone && phoneCount.get(r.phone)! > 1) {
+      r._status = 'duplicate'
+      r._error = 'Duplicate phone in file'
     }
-  });
+  })
 
-  // ID assignment: always start checking from 1 to fill any gaps
-  const assignedNums = new Set<string>();
-  let nextId = 1;
-  function nextAvailable(): string {
-    while (dbNums.has(nextId) || assignedNums.has(String(nextId))) nextId++;
-    return String(nextId++);
+  // ID assignment — always start from nextId (above current DB max)
+  const assignedNums = new Set<number>()
+
+  function nextAvailable(): number {
+    while (assignedNums.has(nextId) || conflictingNums.has(nextId)) nextId++
+    const id = nextId++
+    assignedNums.add(id)
+    return id
   }
 
-  const seenNums = new Set<string>();
-  parsed.forEach(r => {
-    if (r._status === "error" || r._status === "duplicate") return;
-    if (!r.member_number) {
-      const newNum = nextAvailable();
-      assignedNums.add(newNum);
-      seenNums.add(newNum);
-      r.member_number = newNum;
-      r._id_auto = true;
+  // Track numbers claimed within this file for intra-file dedup
+  const usedInFile = new Set<number>()
+
+  parsed.forEach((r) => {
+    if (r._status === 'error' || r._status === 'duplicate') return
+
+    const parsedNum = parseInt(r.member_number)
+    const hasExplicitNum = !isNaN(parsedNum) && parsedNum > 0
+
+    if (!hasExplicitNum) {
+      // No explicit ID (legacy prefix or blank) — auto-assign
+      const newNum = nextAvailable()
+      r.member_number = String(newNum)
+      r._id_auto = true
     } else {
-      const inDB   = dbNums.has(parseInt(r.member_number));
-      const inFile = seenNums.has(r.member_number);
+      const inDB   = conflictingNums.has(parsedNum)
+      const inFile = usedInFile.has(parsedNum)
+
       if (inDB || inFile) {
-        const newNum = nextAvailable();
-        assignedNums.add(newNum);
-        seenNums.add(newNum);
-        r._id_conflict = false;
-        // Preserve the original ID as legacy before overwriting
-        if (!r.legacy_member_id && r.member_number) {
-          r.legacy_member_id = `GF${r.member_number.padStart(4, '0')}`;
+        // Preserve original as legacy reference, assign a fresh ID
+        if (!r.legacy_member_id) {
+          r.legacy_member_id = `GF${parsedNum.toString().padStart(4, '0')}`
         }
-        r._error = `ID GF${r.member_number.padStart(4, '0')} ${inDB ? "exists in DB" : "duplicate in file"} — auto-assigned GF${newNum.padStart(4, '0')}`;
-        r.member_number = newNum;
-        r._id_auto = true;
+        const newNum = nextAvailable()
+        r._error = `ID GF${parsedNum.toString().padStart(4, '0')} ${inDB ? 'exists in DB' : 'duplicate in file'} — auto-assigned GF${newNum.toString().padStart(4, '0')}`
+        r.member_number = String(newNum)
+        r._id_auto = true
+        r._id_conflict = false
       } else {
-        seenNums.add(r.member_number);
-        assignedNums.add(r.member_number);
+        // Valid explicit ID — claim it and advance nextId past it
+        usedInFile.add(parsedNum)
+        if (parsedNum >= nextId) nextId = parsedNum + 1
       }
     }
-  });
+
+    // Always record the final assigned number to catch intra-file duplicates
+    const finalNum = parseInt(r.member_number)
+    if (!isNaN(finalNum)) usedInFile.add(finalNum)
+  })
 
   // DB phone conflict check
   parsed.forEach(r => {

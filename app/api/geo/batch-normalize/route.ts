@@ -4,11 +4,12 @@ import { normalizeInput, toPhoneticKey, expandAbbreviations } from '@/lib/geo/no
 import { scoreAgainstList } from '@/lib/geo/fuzzyMatch'
 import { CONFIDENCE } from '@/lib/geo/types'
 import { detectDatasetCluster, clusterBoost } from '@/lib/geo/clustering'
-import { groqInferLocation} from '@/lib/geo/aiInference'
+import { groqInferLocation, groqInferBatch } from '@/lib/geo/aiInference'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
-import { withTimeout } from '@/lib/timeout'
 import type { NormalizationResult, DatasetCluster, AIInferenceResult } from '@/lib/geo/types'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
+
+export const maxDuration = 60 // Vercel Pro: allow up to 60s for batch AI inference
 
 // Issue 10 fix: Lazy-load the 58KB ALIAS_MAP module so it is NOT parsed at Lambda cold-start.
 let _aliasMap: Record<string, string> | null = null
@@ -193,77 +194,106 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Phase 2: Groq AI fallback (SERIAL with 2s gap — 30 RPM limit)
+    // Phase 2: Groq AI fallback — single batched request for all misses
     const groqApiKey = process.env.GROQ_API_KEY ?? ''
-    const needsAI = inputs.map((inp, i) => ({ ...inp, i })).filter(({ i }) => phase1Results[i] === null)
+    const needsAI = inputs
+      .map((inp, i) => ({ raw_input: inp.raw_input, i }))
+      .filter(({ i }) => phase1Results[i] === null)
     const finalResults: NormalizationResult[] = [...phase1Results] as NormalizationResult[]
 
     if (needsAI.length > 0 && groqApiKey) {
-      for (let index = 0; index < needsAI.length; index++) {
-        const { raw_input, i } = needsAI[index]
-        const key = raw_input.toLowerCase().trim()
+      // Check DB cache for all misses first
+      const cacheKeys = needsAI.map(({ raw_input }) => raw_input.toLowerCase().trim())
+      const { data: dbCacheRows } = await supabase
+        .from('geo_ai_cache')
+        .select('raw_input_normalized, probable_location, district, state, confidence, reasoning')
+        .in('raw_input_normalized', cacheKeys)
 
-        // 1. Memory check (already handled by groqInferLocation but we'll be careful here)
-        // 2. DB Cache check
-        const { data: dbCached } = await supabase
-          .from('geo_ai_cache')
-          .select('probable_location, district, state, confidence, reasoning')
-          .eq('raw_input_normalized', key)
-          .single()
+      const dbCacheMap = new Map(
+        (dbCacheRows ?? []).map(r => [r.raw_input_normalized, r])
+      )
 
-        let aiResult: AIInferenceResult | null = null
-
-        if (dbCached) {
-          aiResult = {
-            probable_location: dbCached.probable_location,
-            district: dbCached.district,
-            state: dbCached.state,
-            confidence: dbCached.confidence,
-            reasoning: dbCached.reasoning
-          }
-        } else {
-          // 3. Groq check (only if cache misses)
-          if (index > 0) await new Promise(r => setTimeout(r, 2000)) // 2s gap for 30 RPM
-
-          try {
-            aiResult = await withTimeout(groqInferLocation(raw_input, groqApiKey, {
-              top_district: cluster.top_district,
-              top_state: cluster.top_state,
-            }), 5000)
-
-            if (aiResult && aiResult.probable_location && typeof aiResult.confidence === 'number') {
-              void supabase.from('geo_ai_cache').upsert({
-                raw_input_normalized: key,
-                raw_input_display: raw_input.trim(),
-                probable_location: aiResult.probable_location,
-                district: aiResult.district,
-                state: aiResult.state,
-                confidence: aiResult.confidence,
-                reasoning: aiResult.reasoning,
-                cluster_district: cluster.top_district,
-              }, { onConflict: 'raw_input_normalized' })
-            }
-          } catch {
-            console.warn(`[Batch] Groq timeout for ${raw_input}`)
-            aiResult = null
-          }
-        }
-
-        if (aiResult && aiResult.probable_location && aiResult.confidence >= 0.40) {
-          const boostedAI = applyWeightedScore(aiResult.confidence, { district: aiResult.district, state: aiResult.state }, cluster)
-          finalResults[i] = {
-            raw_input,
-            normalized_value: aiResult.probable_location,
+      // Split into: already in DB cache vs truly needs Groq
+      const needsGroq: typeof needsAI = []
+      for (const item of needsAI) {
+        const key = item.raw_input.toLowerCase().trim()
+        const cached = dbCacheMap.get(key)
+        if (cached) {
+          const boosted = applyWeightedScore(
+            cached.confidence,
+            { district: cached.district, state: cached.state },
+            cluster
+          )
+          finalResults[item.i] = {
+            raw_input: item.raw_input,
+            normalized_value: cached.probable_location,
             canonical_locality_id: null,
-            confidence_score: parseFloat(Math.min(boostedAI, 0.85).toFixed(4)),
+            confidence_score: parseFloat(Math.min(boosted, 0.85).toFixed(4)),
             matched_by: 'ai',
-            geo_hierarchy: { state: aiResult.state, district: aiResult.district, city: aiResult.probable_location, locality: '' },
-            suggestions: [{ name: aiResult.probable_location, confidence: aiResult.confidence, matched_by: 'ai' }],
-            requires_review: boostedAI < CONFIDENCE.AUTO_ACCEPT,
-            ai_reasoning: aiResult.reasoning,
+            geo_hierarchy: {
+              state: cached.state,
+              district: cached.district,
+              city: cached.probable_location,
+              locality: '',
+            },
+            suggestions: [{ name: cached.probable_location, confidence: cached.confidence, matched_by: 'ai' }],
+            requires_review: boosted < CONFIDENCE.AUTO_ACCEPT,
+            ai_reasoning: cached.reasoning,
           }
         } else {
-          finalResults[i] = buildUnresolved(raw_input)
+          needsGroq.push(item)
+        }
+      }
+
+      // Batch all Groq misses in one (chunked) call
+      if (needsGroq.length > 0) {
+        const groqInputs = needsGroq.map(({ raw_input }) => raw_input)
+        const aiResults = await groqInferBatch(groqInputs, groqApiKey, {
+          top_district: cluster.top_district,
+          top_state: cluster.top_state,
+        })
+
+        for (const { raw_input, i } of needsGroq) {
+          const key = raw_input.toLowerCase().trim()
+          const aiResult = aiResults.get(key) ?? null
+
+          if (aiResult && aiResult.probable_location && aiResult.confidence >= 0.40) {
+            const boosted = applyWeightedScore(
+              aiResult.confidence,
+              { district: aiResult.district, state: aiResult.state },
+              cluster
+            )
+            finalResults[i] = {
+              raw_input,
+              normalized_value: aiResult.probable_location,
+              canonical_locality_id: null,
+              confidence_score: parseFloat(Math.min(boosted, 0.85).toFixed(4)),
+              matched_by: 'ai',
+              geo_hierarchy: {
+                state: aiResult.state,
+                district: aiResult.district,
+                city: aiResult.probable_location,
+                locality: '',
+              },
+              suggestions: [{ name: aiResult.probable_location, confidence: aiResult.confidence, matched_by: 'ai' }],
+              requires_review: boosted < CONFIDENCE.AUTO_ACCEPT,
+              ai_reasoning: aiResult.reasoning,
+            }
+
+            // Persist to DB cache (fire and forget)
+            void supabase.from('geo_ai_cache').upsert({
+              raw_input_normalized: key,
+              raw_input_display: raw_input.trim(),
+              probable_location: aiResult.probable_location,
+              district: aiResult.district,
+              state: aiResult.state,
+              confidence: aiResult.confidence,
+              reasoning: aiResult.reasoning,
+              cluster_district: cluster.top_district,
+            }, { onConflict: 'raw_input_normalized' })
+          } else {
+            finalResults[i] = buildUnresolved(raw_input)
+          }
         }
       }
     } else {

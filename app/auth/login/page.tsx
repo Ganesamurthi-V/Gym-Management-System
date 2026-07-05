@@ -223,21 +223,21 @@ export default function LoginPage() {
       </div>
 
       {/* ─── RIGHT PANEL: Login form ─── */}
-      <div className="flex-1 flex flex-col bg-[#FAFBFD] lg:bg-white">
+      <div className="flex-1 flex flex-col bg-[#FAFBFD] lg:bg-white min-w-0">
         {/* Mobile logo (only on smaller screens) */}
-        <div className="lg:hidden flex items-center gap-3 p-6 pb-0">
-          <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center">
-            <Dumbbell className="w-4.5 h-4.5 text-white" />
+        <div className="lg:hidden flex items-center gap-3 p-4 xs:p-6 pb-0">
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center">
+            <Dumbbell className="w-4 h-4 text-white" />
           </div>
-          <span className="text-lg font-black text-slate-900 tracking-tight">gymflow</span>
+          <span className="text-base xs:text-lg font-black text-slate-900 tracking-tight">gymflow</span>
         </div>
 
         {/* Form container — centered */}
-        <div className="flex-1 flex items-center justify-center px-6 py-10">
+        <div className="flex-1 flex items-center justify-center px-4 xs:px-6 py-8 xs:py-10">
           <div className={`w-full max-w-[400px] transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
             {/* Heading */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-black text-[#0F172A] tracking-tight">Sign in</h2>
+            <div className="mb-6 xs:mb-8">
+              <h2 className="text-xl xs:text-2xl font-black text-[#0F172A] tracking-tight">Sign in</h2>
               <p className="text-sm text-slate-400 mt-1.5 font-medium">
                 Access your gym management dashboard
               </p>

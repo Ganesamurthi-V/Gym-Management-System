@@ -356,19 +356,19 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
   }
 
   return (
-    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Payments</h1>
+    <div className="space-y-4 md:space-y-5 w-full">
+      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Payments</h1>
         <button onClick={() => {
           setExportOptions({ memberships: true, inventory: true, dues: true, period, customFrom, customTo, mode: modeFilter })
           setShowExportModal(true)
         }} disabled={isLoadingAllTime}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50">
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50 self-start xs:self-auto">
           <Download className="w-4 h-4" />{isLoadingAllTime ? 'Loading...' : 'Export'}
         </button>
       </div>
 
-      <div className="card p-5 bg-gradient-to-br from-brand-500 to-brand-600">
+      <div className="card p-4 xs:p-5 bg-gradient-to-br from-brand-500 to-brand-600">
         <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-1">
           {period === 'today' ? "Today's Collection"
             : period === 'week' ? "This Week's Collection"
@@ -376,17 +376,17 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
             : period === 'custom' && customFrom && customTo ? `${customFrom} → ${customTo}`
             : 'All Time Collection'}
         </p>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 xs:gap-4">
           <div>
-            <p className="text-3xl font-bold text-white">{formatCurrency(totalCollected)}</p>
-            <div className="flex flex-wrap gap-4 mt-3">
+            <p className="text-2xl xs:text-3xl font-bold text-white">{formatCurrency(totalCollected)}</p>
+            <div className="flex flex-wrap gap-3 xs:gap-4 mt-3">
               <span className="text-white/70 text-xs">Cash <span className="text-white font-bold">{formatCurrency(cashTotal)}</span></span>
               <span className="text-white/70 text-xs">UPI <span className="text-white font-bold">{formatCurrency(upiTotal)}</span></span>
               <span className="text-white/70 text-xs">Card <span className="text-white font-bold">{formatCurrency(cardTotal)}</span></span>
               <span className="text-white/70 text-xs">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</span>
             </div>
           </div>
-          <div className="flex sm:flex-col gap-4 sm:gap-1 text-sm bg-black/10 px-4 py-2.5 rounded-lg border border-white/10">
+          <div className="flex sm:flex-col gap-3 sm:gap-1 text-xs xs:text-sm bg-black/10 px-3 xs:px-4 py-2 xs:py-2.5 rounded-lg border border-white/10">
             <p className="text-white/90">Memberships: <span className="font-bold text-white">{formatCurrency(membershipTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
             <p className="text-white/90">Inventory: <span className="font-bold text-white">{formatCurrency(inventoryTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
             <p className="text-white/90">Dues Collected: <span className="font-bold text-white">{formatCurrency(dueTransactions.reduce((s, p) => s + p.amount, 0))}</span></p>
@@ -540,29 +540,29 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       {/* Desktop table */}
       <div className="hidden md:block card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               {activeTab === 'membership' || activeTab === 'due' ? (
                 <>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">
+                  <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide hidden lg:table-cell">#</th>
+                  <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
+                  <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide hidden xl:table-cell">
                     {activeTab === 'membership' ? 'Plan' : 'Type'}
                   </th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">
+                  <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide hidden lg:table-cell">
                     {activeTab === 'membership' ? 'Period' : 'Date'}
                   </th>
                 </>
               ) : (
                 <>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Date</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Product</th>
-                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Variant</th>
+                  <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Date</th>
+                  <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Product</th>
+                  <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide hidden lg:table-cell">Variant</th>
                 </>
               )}
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
-              <th className="text-right px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
+              <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
+              <th className="text-right px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -575,39 +575,39 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
                 <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
                   {activeTab === 'membership' || activeTab === 'due' ? (
                     <>
-                      <td className="px-5 py-3.5 font-mono text-xs text-slate-400">
+                      <td className="px-4 xl:px-5 py-3.5 font-mono text-xs text-slate-400 hidden lg:table-cell">
                         {payment.member_number ? `#${payment.member_number}` : '-'}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 xl:px-5 py-3.5">
                         <p className="font-semibold text-slate-900">{payment.title}</p>
                         <p className="text-xs text-slate-400">{payment.subtitle}</p>
                       </td>
-                      <td className="px-5 py-3.5 text-slate-500 capitalize">
+                      <td className="px-4 xl:px-5 py-3.5 text-slate-500 capitalize hidden xl:table-cell">
                         {payment.col3}
                       </td>
-                      <td className="px-5 py-3.5 text-slate-500 text-xs">
+                      <td className="px-4 xl:px-5 py-3.5 text-slate-500 text-xs hidden lg:table-cell">
                         {activeTab === 'due' ? formatDate(payment.timestamp) : payment.col4}
                       </td>
                     </>
                   ) : (
                     <>
-                      <td className="px-5 py-3.5 text-slate-500 text-xs">
+                      <td className="px-4 xl:px-5 py-3.5 text-slate-500 text-xs">
                         {formatDate(payment.timestamp)}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 xl:px-5 py-3.5">
                         <p className="font-semibold text-slate-900">{payment.col3}</p>
                       </td>
-                      <td className="px-5 py-3.5 text-slate-500">
+                      <td className="px-4 xl:px-5 py-3.5 text-slate-500 hidden lg:table-cell">
                         {payment.col4}
                       </td>
                     </>
                   )}
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 xl:px-5 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${bg} ${text} ${border}`}>
                       {icon}{mode.toUpperCase()}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-4 xl:px-5 py-3.5 text-right">
                     <p className="font-bold text-slate-900">{formatCurrency(payment.amount)}</p>
                     {payment.feeBreakdown && (
                       <p className="text-xs text-slate-400 mt-0.5">

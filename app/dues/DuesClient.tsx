@@ -105,33 +105,33 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   }
 
   return (
-    <div className="space-y-4 md:space-y-5 max-w-4xl mx-auto">
+    <div className="space-y-4 md:space-y-5 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center justify-between w-full sm:w-auto">
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Fee Dues</h1>
-          <div className="card px-4 py-2.5 flex items-center gap-2 sm:hidden">
+      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
+        <div className="flex items-center justify-between w-full xs:w-auto">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Fee Dues</h1>
+          <div className="card px-3 xs:px-4 py-2 xs:py-2.5 flex items-center gap-2 xs:hidden">
             <AlertCircle className="w-4 h-4 text-red-500" />
             <div>
               <p className="text-xs text-slate-400">Total Pending</p>
-              <p className="text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
+              <p className="text-sm xs:text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 xs:gap-3 w-full xs:w-auto">
           <input
             type="search"
-            placeholder="Search by ID, Name or Phone..."
+            placeholder="Search name or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input-field w-full sm:w-64"
+            className="input-field w-full xs:w-52 sm:w-64"
           />
-          <div className="card px-4 py-2.5 hidden sm:flex items-center gap-2">
+          <div className="card px-3 xs:px-4 py-2 xs:py-2.5 hidden xs:flex items-center gap-2 flex-shrink-0">
             <AlertCircle className="w-4 h-4 text-red-500" />
             <div>
               <p className="text-xs text-slate-400">Total Pending</p>
-              <p className="text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
+              <p className="text-sm xs:text-base font-bold text-red-600">{formatCurrency(totalDues)}</p>
             </div>
           </div>
         </div>
@@ -189,12 +189,12 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
 
                 {/* Inline collect form */}
                 {paying === member.id && (
-                  <div className="mt-3 flex items-center gap-2 pl-13">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 pl-0 xs:pl-13">
                     <input
                       type="number"
                       value={payAmount}
                       onChange={e => setPayAmount(e.target.value)}
-                      className="input-field w-36"
+                      className="input-field w-32 xs:w-36"
                       placeholder="Amount collected"
                       min="1"
                       max={member.pending_amount}
@@ -203,7 +203,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
                     <select
                       value={payMode}
                       onChange={e => setPayMode(e.target.value)}
-                      className="input-field w-28 py-2"
+                      className="input-field w-24 xs:w-28 py-2"
                     >
                       <option value="cash">Cash</option>
                       <option value="upi">UPI</option>

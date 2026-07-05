@@ -332,7 +332,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col md:flex-row overflow-hidden">
       {/* -- Left Sidebar (Desktop Only) -- */}
-      <div className="hidden md:flex md:w-80 lg:w-96 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex-col justify-between p-6 border-r border-slate-800 flex-shrink-0">
+      <div className="hidden md:flex md:w-72 lg:w-80 xl:w-96 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex-col justify-between p-5 lg:p-6 border-r border-slate-800 flex-shrink-0">
         <div className="space-y-8">
           {/* Logo row */}
           <div className="flex items-center gap-2.5">
@@ -440,7 +440,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
 
         {/* -- Content Workspace -- */}
         <div ref={scrollRef} className="flex-1 overflow-hidden bg-slate-50/50">
-          <div className="max-w-3xl mx-auto px-4 py-8 lg:py-12">
+          <div className="max-w-3xl mx-auto px-3 xs:px-4 py-6 xs:py-8 lg:py-12">
             {/* Step header */}
             <div
               className={`mb-6 transition-all duration-200 ${

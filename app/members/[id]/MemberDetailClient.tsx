@@ -118,14 +118,14 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
   const initials = member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-4xl mx-auto space-y-4 xs:space-y-5">
+      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
         <div className="flex items-center gap-2 md:gap-3">
           <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Members
           </Link>
           <span className="text-slate-300">/</span>
-          <h1 className="text-xl font-bold text-slate-900">Member Details</h1>
+          <h1 className="text-lg xs:text-xl font-bold text-slate-900">Member Details</h1>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/members/${member.id}/edit`}
@@ -139,13 +139,13 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       </div>
 
       <div className="card overflow-hidden">
-        <div className={`bg-gradient-to-br ${statusConfig[status].bar} p-5`}>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/25 rounded-2xl flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-xl">{initials}</span>
+        <div className={`bg-gradient-to-br ${statusConfig[status].bar} p-4 xs:p-5`}>
+          <div className="flex items-center gap-3 xs:gap-4">
+            <div className="w-14 h-14 xs:w-16 xs:h-16 bg-white/25 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+              <span className="text-white font-bold text-lg xs:text-xl">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-bold text-xl leading-tight truncate">{member.name}</p>
+              <p className="text-white font-bold text-lg xs:text-xl leading-tight truncate">{member.name}</p>
               <p className="text-white/80 text-sm mt-0.5">{member.phone}</p>
               <p className="text-white/60 text-xs mt-0.5">{formatMemberId(member.member_number)}</p>
               <span className={cn('inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full', statusConfig[status].className)}>
@@ -155,7 +155,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           </div>
         </div>
 
-        <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="p-3 xs:p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 xs:gap-3">
           {member.gender && <InfoTile label="Gender" value={member.gender.charAt(0).toUpperCase() + member.gender.slice(1)} />}
           {member.age && <InfoTile label="Age" value={`${member.age} yrs`} />}
           {member.area && <InfoTile label="Area" value={member.area} />}

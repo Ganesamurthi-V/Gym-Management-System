@@ -65,6 +65,25 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
         payment_mode: payMode
       })
 
+      // Auto-send payment due confirmation
+      const remaining = member.pending_amount - collect
+      if (member.phone?.replace(/\D/g, '').length >= 10) {
+        const { data: gym } = await supabase.from('gyms').select('name').eq('id', gymId).single()
+        fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            templateId: 'payment_due_reminder',
+            context: {
+              phone:      member.phone,
+              memberName: member.name,
+              gymName:    gym?.name ?? '',
+              dueAmount:  remaining > 0 ? remaining : 0,
+            },
+          }),
+        }).catch(() => {})
+      }
+
       const { invalidateMembersCache } = await import('../members/actions')
       await invalidateMembersCache(gymId)
 

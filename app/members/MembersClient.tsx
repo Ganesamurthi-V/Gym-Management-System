@@ -301,92 +301,93 @@ function MembersContent({ members, gymId, totalCount }: Props) {
   }
 
   return (
-    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto">
+    <div className="space-y-4 md:space-y-5 w-full">
       {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Members</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col xs:flex-row xs:items-start sm:items-center justify-between gap-3">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Members</h1>
+        <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
           <button
             onClick={() => setShowAdvFilterModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <Filter className="w-4 h-4" />
-            <span>Advanced Filter</span>
+            <Filter className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <span className="hidden xs:inline">Advanced</span>
+            <span className="xs:hidden">Filter</span>
             {Object.values(advFilters).filter(v => v !== 'all' && v !== null && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
               <span className="w-4 h-4 bg-brand-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                 !
               </span>
             )}
           </button>
-          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
-            <Download className="w-4 h-4" />
+          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+            <Download className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
-          <Link href="/import" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
-            <Upload className="w-4 h-4" />
+          <Link href="/import" className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+            <Upload className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Import</span>
           </Link>
-          <Link href="/members/bulk-edit" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
-            <Edit2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Edit Members</span>
+          <Link href="/members/bulk-edit" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+            <Edit2 className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <span>Edit Members</span>
           </Link>
-          <Link href="/members/attendance" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
-            <Calendar className="w-4 h-4" />
-            <span className="hidden sm:inline">Attendance Log</span>
+          <Link href="/members/attendance" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+            <Calendar className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <span>Attendance Log</span>
           </Link>
-          <Link href="/members/new" className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Member</span>
-            <span className="sm:hidden">Add</span>
+          <Link href="/members/new" className="flex items-center gap-1.5 px-2.5 xs:px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
+            <Plus className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <span className="hidden xs:inline">Add Member</span>
+            <span className="xs:hidden">Add</span>
           </Link>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3">
         {/* Total Members */}
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#3B82F6]" style={{ backgroundColor: '#EFF6FF' }}>
-          <div className="w-9 h-9 bg-[#DBEAFE] rounded-xl flex items-center justify-center flex-shrink-0">
-            <Users className="w-4 h-4 text-[#2563EB]" />
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#3B82F6]" style={{ backgroundColor: '#EFF6FF' }}>
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#DBEAFE] rounded-xl flex items-center justify-center flex-shrink-0">
+            <Users className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#2563EB]" />
           </div>
-          <div>
-            <p className="text-xs text-[#475569] font-semibold">Total Members</p>
-            <p className="text-lg font-bold text-[#1D4ED8]">
+          <div className="min-w-0">
+            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold leading-tight">Total Members</p>
+            <p className="text-base xs:text-lg font-bold text-[#1D4ED8]">
               {membersList.length} <span className="text-xs font-normal text-slate-400">/ {totalCount}</span>
             </p>
           </div>
         </div>
 
         {/* Active Members */}
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#22C55E]" style={{ backgroundColor: '#F0FDF4' }}>
-          <div className="w-9 h-9 bg-[#DCFCE7] rounded-xl flex items-center justify-center flex-shrink-0">
-            <Check className="w-4 h-4 text-[#16A34A]" />
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#22C55E]" style={{ backgroundColor: '#F0FDF4' }}>
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#DCFCE7] rounded-xl flex items-center justify-center flex-shrink-0">
+            <Check className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#16A34A]" />
           </div>
           <div>
-            <p className="text-xs text-[#475569] font-semibold">Active</p>
-            <p className="text-lg font-bold text-[#15803D]">{counts.active}</p>
+            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold">Active</p>
+            <p className="text-base xs:text-lg font-bold text-[#15803D]">{counts.active}</p>
           </div>
         </div>
 
         {/* Expired Members */}
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#EF4444]" style={{ backgroundColor: '#FEF2F2' }}>
-          <div className="w-9 h-9 bg-[#FEE2E2] rounded-xl flex items-center justify-center flex-shrink-0">
-            <X className="w-4 h-4 text-[#DC2626]" />
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#EF4444]" style={{ backgroundColor: '#FEF2F2' }}>
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#FEE2E2] rounded-xl flex items-center justify-center flex-shrink-0">
+            <X className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#DC2626]" />
           </div>
           <div>
-            <p className="text-xs text-[#475569] font-semibold">Expired</p>
-            <p className="text-lg font-bold text-[#B91C1C]">{counts.expired}</p>
+            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold">Expired</p>
+            <p className="text-base xs:text-lg font-bold text-[#B91C1C]">{counts.expired}</p>
           </div>
         </div>
 
         {/* Overdue Dues */}
-        <div className="card p-3.5 flex items-center gap-3 hover:shadow-md transition-all border border-[#F97316]" style={{ backgroundColor: '#FFF7ED' }}>
-          <div className="w-9 h-9 bg-[#FFEDD5] rounded-xl flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="w-4 h-4 text-[#EA580C]" />
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#F97316]" style={{ backgroundColor: '#FFF7ED' }}>
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#FFEDD5] rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#EA580C]" />
           </div>
           <div>
-            <p className="text-xs text-[#475569] font-semibold">Overdue Dues</p>
-            <p className="text-lg font-bold text-[#C2410C]">{counts.overdue}</p>
+            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold">Overdue Dues</p>
+            <p className="text-base xs:text-lg font-bold text-[#C2410C]">{counts.overdue}</p>
           </div>
         </div>
       </div>
@@ -514,16 +515,16 @@ function MembersContent({ members, gymId, totalCount }: Props) {
       {/* Desktop: Table */}
       <div className="hidden md:block card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Expires</th>
-              <th className="text-left px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Status</th>
-              <th className="px-5 py-3" />
+              <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
+              <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Member</th>
+              <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide hidden lg:table-cell">Phone</th>
+              <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide hidden xl:table-cell">Plan</th>
+              <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Expires</th>
+              <th className="text-left px-4 xl:px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Status</th>
+              <th className="px-4 xl:px-5 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -538,7 +539,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
               const { label, cls } = statusConfig[member.status]
               return (
                 <tr key={member.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 xl:px-5 py-3.5">
                     <span className={cn(
                       'font-mono text-xs',
                       duplicateIds.has(member.member_number) ? 'text-red-500 font-bold' : 'text-slate-400'
@@ -547,16 +548,16 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                       {duplicateIds.has(member.member_number) && <span className="ml-1">⚠</span>}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 ${avatarColors[member.status]} rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0`}>
+                  <td className="px-4 xl:px-5 py-3.5">
+                    <div className="flex items-center gap-2 xl:gap-3">
+                      <div className={`w-7 h-7 xl:w-8 xl:h-8 ${avatarColors[member.status]} rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0`}>
                         {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
-                      <span className="font-semibold text-slate-900">{member.name}</span>
+                      <span className="font-semibold text-slate-900 truncate max-w-[120px] xl:max-w-none">{member.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-slate-500">{member.phone}</td>
-                  <td className="px-5 py-3.5 text-slate-500">
+                  <td className="px-4 xl:px-5 py-3.5 text-slate-500 hidden lg:table-cell">{member.phone}</td>
+                  <td className="px-4 xl:px-5 py-3.5 text-slate-500 hidden xl:table-cell">
                     {member.latest_membership ? (
                       <div className="flex flex-col">
                         <span className="capitalize text-slate-900 font-medium">{member.latest_membership.plan}</span>
@@ -568,19 +569,19 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                       </div>
                     ) : '—'}
                   </td>
-                  <td className="px-5 py-3.5 text-slate-500">
+                  <td className="px-4 xl:px-5 py-3.5 text-slate-500">
                     {member.latest_membership ? (
                       <span>{formatDate(member.latest_membership.end_date)}
-                        <span className="ml-1.5 text-xs text-slate-400">
+                        <span className="ml-1.5 text-xs text-slate-400 hidden lg:inline">
                           ({member.days_remaining >= 0 ? `${member.days_remaining}d left` : `${Math.abs(member.days_remaining)}d ago`})
                         </span>
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 xl:px-5 py-3.5">
                     <span className={cn('text-xs px-2.5 py-1 rounded-full font-semibold border', cls)}>{label}</span>
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 xl:px-5 py-3.5">
                     <div className="flex items-center gap-2 justify-end">
                       {member.latest_membership && member.status !== 'active' && (
                         isValidPhone(member.phone) ? (
@@ -600,12 +601,12 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                             className="flex items-center gap-1.5 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors"
                             title="Send WhatsApp reminder"
                           >
-                            <MessageCircle className="w-3.5 h-3.5" />Remind
+                            <MessageCircle className="w-3.5 h-3.5" /><span className="hidden xl:inline">Remind</span>
                           </a>
                         ) : (
                           <div className="flex items-center gap-1.5 bg-slate-200 text-slate-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-not-allowed"
                             title="Invalid phone number — cannot send WhatsApp message">
-                            <MessageCircle className="w-3.5 h-3.5" />Remind
+                            <MessageCircle className="w-3.5 h-3.5" /><span className="hidden xl:inline">Remind</span>
                           </div>
                         )
                       )}

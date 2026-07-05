@@ -128,20 +128,20 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   }
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6 animate-slide-up max-w-7xl mx-auto lg:h-[calc(100vh-120px)]">
+    <div className="flex flex-col gap-4 md:gap-5 animate-slide-up w-full h-full">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
-            <Image src="/logo.png" alt="Logo" width={32} height={32} className="object-contain" priority />
-            <span className="text-sm text-slate-500 font-medium">{gymName}</span>
+            <Image src="/logo.png" alt="Logo" width={28} height={28} className="object-contain md:w-8 md:h-8" priority />
+            <span className="text-xs sm:text-sm text-slate-500 font-medium truncate max-w-[180px] sm:max-w-none">{gymName}</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
         </div>
       </div>
 
       {/* Stats Grid — 2 cols mobile, 3 cols tablet, 6 cols desktop */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
         <StatCard icon={<Users className="w-4 h-4 text-emerald-600" />} label="Active" value={stats.total_active} bg="bg-emerald-50" href="/members?filter=active" />
         <StatCard icon={<CheckSquare className="w-4 h-4 text-brand-600" />} label="Attendance" value={stats.today_attendance} bg="bg-brand-50" href="/attendance" />
         <StatCard icon={<Clock className="w-4 h-4 text-amber-600" />} label="Expiring" value={stats.expiring_this_week} bg="bg-amber-50" href="/members?filter=expiring" />
@@ -150,10 +150,11 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
         <StatCardCurrency icon={<AlertTriangle className="w-4 h-4 text-red-500" />} label="Total Dues" value={stats.total_dues} bg="bg-red-50" href="/dues" danger />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-stretch flex-1 min-h-0">
-        <div className="flex-1 w-full min-w-0 flex flex-col min-h-0">
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: '420px' }}>
+        {/* Expiring members — fills all available horizontal space */}
+        <div className="flex-1 min-w-0 flex flex-col">
           <motion.div
-            className="card flex-1 flex flex-col min-h-0"
+            className="card flex-1 flex flex-col"
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 30, delay: 0.15 }}
@@ -171,35 +172,35 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           </motion.div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="w-full lg:w-96 flex-shrink-0 card p-4 md:p-5 flex flex-col gap-3 bg-gradient-to-b from-white to-slate-50">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+        {/* Quick Actions — fixed width on desktop, full width on mobile */}
+        <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 card p-4 md:p-5 flex flex-col gap-3 bg-gradient-to-b from-white to-slate-50">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <TrendingUp className="w-3 h-3" />
             Quick Actions
           </p>
-          <div className="flex flex-col gap-3 flex-1 justify-center">
-            <Link href="/members/new" className="flex items-center gap-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-              Add New Member
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-2.5 flex-1 lg:justify-center">
+            <Link href="/members/new" className="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
+              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><Plus className="w-4 h-4" /></div>
+              <span className="text-xs sm:text-sm">Add New Member</span>
             </Link>
-            <Link href="/attendance" className="flex items-center gap-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><CalendarCheck className="w-5 h-5" /></div>
-              Mark Attendance
+            <Link href="/attendance" className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
+              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><CalendarCheck className="w-4 h-4" /></div>
+              <span className="text-xs sm:text-sm">Mark Attendance</span>
             </Link>
-            <Link href="/members/attendance" className="flex items-center gap-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-indigo-200 active:scale-95 transition-all">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><ClipboardList className="w-5 h-5" /></div>
-              Attendance Log
+            <Link href="/members/attendance" className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-indigo-200 active:scale-95 transition-all">
+              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4" /></div>
+              <span className="text-xs sm:text-sm">Attendance Log</span>
             </Link>
-            {/* Feature 3: Daily Collection PDF */}
             <button onClick={handleDailyPDF} disabled={generatingPDF}
-              className="w-full flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3.5 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
+              className="w-full flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
             >
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-5 h-5" /></div>
-              {generatingPDF ? 'Generating...' : "Daily Report PDF"}
+              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><FileText className="w-4 h-4" /></div>
+              <span className="text-xs sm:text-sm">{generatingPDF ? 'Generating...' : 'Daily Report PDF'}</span>
             </button>
-            <Link href="/dues" className="flex items-center gap-3 bg-white text-red-600 rounded-xl p-3.5 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
-              <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5" /></div>
-              View Fee Dues {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">{formatCurrency(stats.total_dues)}</span>}
+            <Link href="/dues" className="col-span-2 lg:col-span-1 flex items-center gap-2 bg-white text-red-600 rounded-xl p-3 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
+              <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0"><IndianRupee className="w-4 h-4" /></div>
+              <span className="text-xs sm:text-sm">View Fee Dues</span>
+              {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">{formatCurrency(stats.total_dues)}</span>}
             </Link>
           </div>
         </div>
@@ -266,10 +267,10 @@ function ExpiringContent({
 
 function StatCard({ icon, label, value, bg, href }: { icon: React.ReactNode; label: string; value: number; bg: string; href?: string }) {
   const content = (
-    <div className="card p-3.5 md:p-4 hover:shadow-md transition-shadow">
-      <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}>{icon}</div>
-      <p className="text-2xl font-bold text-slate-900 leading-none">{value}</p>
-      <p className="text-xs text-slate-500 mt-1">{label}</p>
+    <div className="card p-3 xs:p-3.5 md:p-4 hover:shadow-md transition-shadow">
+      <div className={`w-7 h-7 xs:w-8 xs:h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}>{icon}</div>
+      <p className="text-xl xs:text-2xl font-bold text-slate-900 leading-none">{value}</p>
+      <p className="text-[10px] xs:text-xs text-slate-500 mt-1 leading-tight">{label}</p>
     </div>
   )
   if (href) return <Link href={href}>{content}</Link>
@@ -278,12 +279,12 @@ function StatCard({ icon, label, value, bg, href }: { icon: React.ReactNode; lab
 
 function StatCardCurrency({ icon, label, value, bg, href, danger }: { icon: React.ReactNode; label: string; value: number; bg: string; href?: string; danger?: boolean }) {
   const content = (
-    <div className="card p-3.5 md:p-4 hover:shadow-md transition-shadow">
-      <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}>{icon}</div>
-      <p className={`text-lg font-bold leading-none ${danger && value > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+    <div className="card p-3 xs:p-3.5 md:p-4 hover:shadow-md transition-shadow">
+      <div className={`w-7 h-7 xs:w-8 xs:h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}>{icon}</div>
+      <p className={`text-sm xs:text-base md:text-lg font-bold leading-none ${danger && value > 0 ? 'text-red-600' : 'text-slate-900'}`}>
         {formatCurrency(value)}
       </p>
-      <p className="text-xs text-slate-500 mt-1">{label}</p>
+      <p className="text-[10px] xs:text-xs text-slate-500 mt-1 leading-tight">{label}</p>
     </div>
   )
   if (href) return <Link href={href}>{content}</Link>
@@ -301,23 +302,23 @@ function ExpiringMemberRow({ member, gymId }: { member: MemberWithStatus, gymId:
         <p className="font-semibold text-slate-900 text-sm truncate">{member.name}</p>
         <p className="text-xs text-slate-400">{member.phone}</p>
       </div>
-      <p className="text-xs font-semibold text-amber-600 whitespace-nowrap hidden sm:block">
-        {daysLeft === 0 ? 'Expires today' : daysLeft < 0 ? `${Math.abs(daysLeft)}d ago` : `${daysLeft}d left`}
+      <p className="text-xs font-semibold text-amber-600 whitespace-nowrap">
+        {daysLeft === 0 ? 'Today' : daysLeft < 0 ? `${Math.abs(daysLeft)}d ago` : `${daysLeft}d left`}
       </p>
       {member.latest_membership && (
         isValidPhone(member.phone) ? (
           <a href={buildWhatsAppLink(member.phone, member.name, member.latest_membership.end_date)}
             target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-semibold px-2 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors whitespace-nowrap"
           >
             <MessageCircle className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Remind</span>
+            <span className="hidden lg:inline">Remind</span>
           </a>
         ) : (
-          <div className="flex items-center gap-1 bg-slate-200 text-slate-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-not-allowed whitespace-nowrap"
+          <div className="flex items-center gap-1 bg-slate-200 text-slate-400 text-xs font-semibold px-2 py-1.5 rounded-lg cursor-not-allowed whitespace-nowrap"
             title="Invalid phone number — cannot send WhatsApp message">
             <MessageCircle className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Remind</span>
+            <span className="hidden lg:inline">Remind</span>
           </div>
         )
       )}

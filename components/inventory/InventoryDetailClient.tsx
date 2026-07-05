@@ -277,22 +277,22 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
   const totalUnitsSold = sales.reduce((s, sale) => s + sale.quantity, 0)
 
   return (
-    <div className="w-full h-[calc(100vh-6rem)] flex flex-col gap-4 pb-2">
+    <div className="w-full flex flex-col gap-4 pb-4 xs:pb-2">
       {/* Header */}
-      <div className="flex-none flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/inventory" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
-            <ArrowLeft className="w-5 h-5" />
+      <div className="flex-none flex flex-col xs:flex-row xs:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 xs:gap-3">
+          <Link href="/inventory" className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all flex-shrink-0">
+            <ArrowLeft className="w-4 h-4 xs:w-5 xs:h-5" />
           </Link>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900">{product.product_name}</h1>
-            <p className="text-sm text-slate-500 mt-0.5">{product.variant_name} {product.sku ? `• ${product.sku}` : ''}</p>
+          <div className="min-w-0">
+            <h1 className="text-lg xs:text-xl md:text-2xl font-bold text-slate-900 truncate">{product.product_name}</h1>
+            <p className="text-xs xs:text-sm text-slate-500 mt-0.5 truncate">{product.variant_name} {product.sku ? `• ${product.sku}` : ''}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setShowEditModal(true)}
-            className="btn-secondary py-2 px-4 text-xs flex items-center gap-1.5"
+            className="btn-secondary py-2 px-3 xs:px-4 text-xs flex items-center gap-1.5"
           >
             <Pencil className="w-3.5 h-3.5" />
             Edit
@@ -300,14 +300,15 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           <button
             onClick={() => setShowSellModal(true)}
             disabled={product.initial_stock === 0}
-            className="btn-primary py-2 px-4 text-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary py-2 px-3 xs:px-4 text-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShoppingCart className="w-3.5 h-3.5" />
-            Sell Stock
+            <span className="hidden xs:inline">Sell Stock</span>
+            <span className="xs:hidden">Sell</span>
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-colors"
+            className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -329,7 +330,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
         </div>
       )}
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4 xs:gap-6">
         {/* Left Col: Product Details */}
         <div className="md:col-span-1 flex flex-col gap-4 min-h-0">
           {/* Sales Summary Card */}

@@ -7,6 +7,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '360px',   // small phones (iPhone SE, Galaxy A)
+        '3xl': '1920px', // large monitors / TV-sized displays
+      },
       colors: {
         brand: {
           50:  '#EFF6FF',
@@ -34,6 +38,10 @@ module.exports = {
       },
       fontFamily: {
         sans: ['var(--font-sora)', 'system-ui', 'sans-serif'],
+      },
+      maxWidth: {
+        '8xl': '88rem',  // 1408px – comfortable reading width for xxl screens
+        '9xl': '96rem',  // 1536px
       },
     },
   },

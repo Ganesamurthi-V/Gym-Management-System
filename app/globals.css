@@ -9,10 +9,14 @@
 
   html, body {
     scroll-behavior: smooth;
+    /* Prevent horizontal overflow on small screens */
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-white;
+    /* Minimum safe width — prevents layout breaking below 320px */
+    min-width: 320px;
   }
 
   html.lenis, html.lenis body {
@@ -156,5 +160,28 @@
   @keyframes float-star {
     0%, 100% { transform: translateY(0) rotate(0deg); }
     50%      { transform: translateY(-8px) rotate(15deg); }
+  }
+
+  /* Safe area bottom padding for devices with home indicators */
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Responsive table cell — hides on small screens but shows on larger */
+  .td-responsive {
+    @apply hidden md:table-cell;
+  }
+
+  /* Touch-friendly minimum tap target */
+  .tap-target {
+    @apply min-w-[44px] min-h-[44px];
+  }
+
+  /* Container helpers for xxl screens */
+  .content-xxl {
+    @apply max-w-7xl mx-auto 3xl:max-w-8xl;
   }
 }

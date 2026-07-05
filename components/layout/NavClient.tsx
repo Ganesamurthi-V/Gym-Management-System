@@ -103,7 +103,7 @@ export function MobileNav() {
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-slate-200 rounded-full" />
         </div>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+        <div className="flex items-center justify-between px-4 xs:px-5 py-3 border-b border-slate-100">
           <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Menu</span>
           <button
             onClick={() => setOpen(false)}
@@ -112,7 +112,7 @@ export function MobileNav() {
             <X className="w-4 h-4" />
           </button>
         </div>
-        <nav className="px-3 py-3 space-y-1">
+        <nav className="px-2 xs:px-3 py-2 xs:py-3 space-y-1">
           {NAV_ITEMS.map(({ label, href, icon: Icon, comingSoon }) => {
             const active = isActive(href) && !comingSoon
             return (
@@ -126,11 +126,11 @@ export function MobileNav() {
                     setOpen(false)
                   }
                 }}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all ${
+                className={`flex items-center gap-3 xs:gap-4 px-3 xs:px-4 py-3 xs:py-3.5 rounded-2xl text-sm font-semibold transition-all ${
                   active ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                <div className={`w-8 h-8 xs:w-9 xs:h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                   active ? 'bg-brand-100' : 'bg-slate-100'
                 }`}>
                   <Icon className={`w-4 h-4 ${active ? 'text-brand-600' : 'text-slate-500'}`} />
@@ -146,7 +146,7 @@ export function MobileNav() {
             )
           })}
         </nav>
-        <div className="px-4 pb-6 pt-2">
+        <div className="px-3 xs:px-4 pb-6 xs:pb-8 pt-2 pb-safe-bottom">
           <Link
             href="/members/new"
             onClick={() => setOpen(false)}
@@ -164,21 +164,21 @@ export function MobileNav() {
 
   return (
     <>
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 flex items-center justify-between px-5 h-16">
-        <div className="flex items-center gap-2.5">
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 flex items-center justify-between px-4 xs:px-5 h-14 xs:h-16 pb-safe-bottom">
+        <div className="flex items-center gap-2 xs:gap-2.5 min-w-0">
           {current && (
             <>
-              <current.icon className="w-4 h-4 text-brand-600" />
-              <span className="text-sm font-bold text-slate-800">{current.label}</span>
+              <current.icon className="w-4 h-4 text-brand-600 flex-shrink-0" />
+              <span className="text-sm font-bold text-slate-800 truncate">{current.label}</span>
             </>
           )}
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 transition-colors"
+          className="w-9 h-9 xs:w-10 xs:h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 transition-colors flex-shrink-0"
           aria-label="Open menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-4 h-4 xs:w-5 xs:h-5" />
         </button>
       </div>
 

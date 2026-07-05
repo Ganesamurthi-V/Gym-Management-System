@@ -203,53 +203,53 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
   }
 
   return (
-    <div className="relative w-full h-[85vh] flex flex-col items-center justify-center p-4 md:p-8 animate-slide-up overflow-hidden rounded-3xl">
+    <div className="relative w-full min-h-[80vh] flex flex-col items-center justify-center p-3 xs:p-4 md:p-8 animate-slide-up overflow-hidden rounded-2xl xs:rounded-3xl">
       
       {/* Session Toggle */}
-      <div className="absolute top-6 right-6 md:top-8 md:right-8 z-20">
+      <div className="absolute top-3 right-3 xs:top-4 xs:right-4 md:top-8 md:right-8 z-20">
         <div className="bg-white/80 backdrop-blur-md rounded-full p-1 shadow-md border border-slate-200 flex items-center">
           <button
             type="button"
             onClick={() => { setSessionType('morning'); inputRef.current?.focus() }}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all",
+              "flex items-center gap-1 xs:gap-2 px-2.5 xs:px-4 py-1.5 xs:py-2 rounded-full text-xs xs:text-sm font-bold transition-all",
               sessionType === 'morning' 
                 ? "bg-brand-50 text-brand-700 shadow-sm" 
                 : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
             )}
           >
-            <Sun className="w-4 h-4" />
-            <span className="hidden sm:inline">Morning</span>
+            <Sun className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <span className="hidden xs:inline">Morning</span>
           </button>
           <button
             type="button"
             onClick={() => { setSessionType('evening'); inputRef.current?.focus() }}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all",
+              "flex items-center gap-1 xs:gap-2 px-2.5 xs:px-4 py-1.5 xs:py-2 rounded-full text-xs xs:text-sm font-bold transition-all",
               sessionType === 'evening' 
                 ? "bg-brand-50 text-brand-700 shadow-sm" 
                 : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
             )}
           >
-            <Moon className="w-4 h-4" />
-            <span className="hidden sm:inline">Evening</span>
+            <Moon className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <span className="hidden xs:inline">Evening</span>
           </button>
         </div>
       </div>
 
       <div className="w-full max-w-5xl flex flex-col items-center z-10">
         
-        <div className="text-center mb-10 md:mb-12">
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-2">
+        <div className="text-center mb-8 xs:mb-10 md:mb-12">
+          <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-2">
             {gymName}
           </h1>
-          <p className="text-base md:text-lg text-slate-500 font-bold tracking-widest uppercase">Self-Service Attendance</p>
-          <p className="text-sm text-slate-400 mt-2">{displayDate}</p>
+          <p className="text-sm xs:text-base md:text-lg text-slate-500 font-bold tracking-widest uppercase">Self-Service Attendance</p>
+          <p className="text-xs xs:text-sm text-slate-400 mt-2">{displayDate}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="w-full flex flex-col items-center">
-          <div className="w-full max-w-2xl space-y-4">
-            <label htmlFor="memberId" className="block text-sm md:text-base font-bold text-slate-400 text-center uppercase tracking-widest">
+          <div className="w-full max-w-2xl space-y-3 xs:space-y-4">
+            <label htmlFor="memberId" className="block text-xs xs:text-sm md:text-base font-bold text-slate-400 text-center uppercase tracking-widest">
               Enter your Member ID
             </label>
             <input
@@ -263,26 +263,26 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
               value={memberId}
               onChange={(e) => setMemberId(e.target.value)}
               placeholder="1042"
-              className="w-full text-center text-5xl md:text-6xl font-black text-brand-600 bg-transparent border-b-2 border-slate-200 py-4 focus:border-brand-500 transition-colors outline-none placeholder:text-slate-200 placeholder:font-bold"
+              className="w-full text-center text-4xl xs:text-5xl md:text-6xl font-black text-brand-600 bg-transparent border-b-2 border-slate-200 py-3 xs:py-4 focus:border-brand-500 transition-colors outline-none placeholder:text-slate-200 placeholder:font-bold"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading || !memberId.trim()}
-            className="w-full max-w-sm mt-10 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-4 md:py-5 font-bold text-lg md:text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20"
+            className="w-full max-w-sm mt-8 xs:mt-10 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3.5 xs:py-4 md:py-5 font-bold text-base xs:text-lg md:text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20"
           >
             {isLoading ? (
-              <Loader2 className="w-8 h-8 animate-spin" />
+              <Loader2 className="w-6 h-6 xs:w-8 xs:h-8 animate-spin" />
             ) : (
               'Confirm'
             )}
           </button>
         </form>
 
-        <div className="mt-12 text-center">
-          <p className="text-base font-bold text-slate-400">
-            Total Checked-in Today: <span className="text-slate-700 bg-white shadow-sm px-4 py-1.5 rounded-full border border-slate-100 ml-2">{totalPresent}</span>
+        <div className="mt-8 xs:mt-12 text-center">
+          <p className="text-sm xs:text-base font-bold text-slate-400">
+            Total Checked-in Today: <span className="text-slate-700 bg-white shadow-sm px-3 xs:px-4 py-1 xs:py-1.5 rounded-full border border-slate-100 ml-2">{totalPresent}</span>
           </p>
         </div>
 

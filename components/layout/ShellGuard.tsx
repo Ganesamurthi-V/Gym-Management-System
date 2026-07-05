@@ -121,7 +121,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           hidden md:flex flex-col bg-white border-r border-slate-200
           fixed inset-y-0 left-0 z-30 overflow-hidden
           transition-[width] duration-300 ease-in-out group/sidebar
-          ${collapsed ? 'w-14 cursor-pointer hover:w-60' : 'w-60 cursor-default'}
+          ${collapsed ? 'w-14 cursor-pointer hover:w-60' : 'w-56 lg:w-60 cursor-default'}
         `}
       >
         {/* ── Logo row ── */}
@@ -181,17 +181,17 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       <div className={`
         flex flex-col min-h-screen min-w-0
         transition-[padding] duration-300 ease-in-out
-        ${collapsed ? 'md:pl-14' : 'md:pl-60'}
+        ${collapsed ? 'md:pl-14' : 'md:pl-56 lg:pl-60'}
       `}>
         <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
-          <div className="w-full px-4 md:px-6 flex items-center justify-between relative">
+          <div className="w-full px-3 xs:px-4 md:px-6 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
               <Image src="/logo.png" alt="VIVI GYM Logo" width={40} height={40} className="rounded-lg object-contain md:hidden" />
             </div>
             
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
-              <Image src="/logo.png" alt="VIVI GYM Logo" width={48} height={48} className="object-contain" priority />
-              <span className="text-xl font-black text-brand-600 tracking-tight">VIVI GYM</span>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 md:gap-3">
+              <Image src="/logo.png" alt="VIVI GYM Logo" width={44} height={44} className="object-contain" priority />
+              <span className="text-base md:text-xl font-black text-brand-600 tracking-tight">VIVI GYM</span>
             </div>
             <AccountMenu 
               initialEmail={initialUser?.email} 
@@ -203,7 +203,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         </header>
 
         <main className="flex-1 w-full bg-slate-50 min-w-0">
-          <div className="p-4 md:p-6 pb-24 md:pb-8">
+          <div className="w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 pb-24 md:pb-8">
             {children}
           </div>
         </main>

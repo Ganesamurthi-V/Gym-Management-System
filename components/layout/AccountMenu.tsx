@@ -148,7 +148,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
           <div className="fixed inset-0 bg-black/20 z-40 md:hidden" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown Panel */}
-          <div className="fixed md:absolute top-14 md:top-full left-4 right-4 md:left-auto md:right-0 mt-2 md:w-64 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden transition-all animate-pop-in">
+          <div className="fixed md:absolute top-14 md:top-full left-3 right-3 xs:left-4 xs:right-4 md:left-auto md:right-0 mt-2 md:w-64 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden transition-all animate-pop-in">
             <div className="p-4 border-b border-slate-50">
               {gymName && <p className="text-sm font-bold text-slate-900 truncate">{gymName}</p>}
               <p className="text-xs font-medium text-slate-400 truncate mt-0.5">{email}</p>

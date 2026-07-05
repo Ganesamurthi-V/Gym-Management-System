@@ -35,6 +35,13 @@ export default async function MemberDetailPage({
 
   if (!member) notFound()
 
+  // Fetch gym name for WhatsApp templates
+  const { data: gym } = await supabase
+    .from('gyms')
+    .select('name')
+    .eq('id', member.gym_id)
+    .single()
+
   const latestMembership = memberships?.[0] ?? null
   const status = latestMembership
     ? getMemberStatus(latestMembership.end_date)
@@ -51,6 +58,7 @@ export default async function MemberDetailPage({
       attendance={attendance ?? []}
       status={status}
       daysRemaining={daysRemaining}
+      gymName={gym?.name}
     />
   )
 }

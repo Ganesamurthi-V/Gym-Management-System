@@ -6,10 +6,12 @@ import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2, Sun, Moon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { buildWhatsAppLink, formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
+import { formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
 import type { Member, Membership, Attendance, MemberStatus, Plan, PaymentMode } from '@/types'
 import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
+import { WhatsAppTemplateModal } from '@/components/whatsapp/WhatsAppTemplateModal'
+import type { TemplateId } from '@/lib/whatsapp/sender'
 
 interface Props {
   member: Member
@@ -17,10 +19,13 @@ interface Props {
   attendance: Attendance[]
   status: MemberStatus
   daysRemaining: number
+  gymName?: string
 }
 
-export function MemberDetailClient({ member, memberships, attendance, status, daysRemaining }: Props) {
+export function MemberDetailClient({ member, memberships, attendance, status, daysRemaining, gymName }: Props) {
   const [showRenewForm, setShowRenewForm] = useState(false)
+  const [showWhatsApp, setShowWhatsApp] = useState(false)
+  const [whatsAppTemplate, setWhatsAppTemplate] = useState<TemplateId>('gymflow_welcome_member')
   const [renewForm, setRenewForm] = useState({
     plan: 'monthly' as Plan,
     custom_months: '',
@@ -64,6 +69,24 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
 
       const { invalidateMembersCache } = await import('../actions')
       await invalidateMembersCache(gym.id)
+
+      // Auto-send renewal confirmation template
+      if (isValidPhone(member.phone)) {
+        fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            templateId: 'membership_renewed',
+            context: {
+              phone:      member.phone,
+              memberName: member.name,
+              gymName:    gymName ?? '',
+              plan:       renewForm.plan === 'custom' ? 'monthly' : renewForm.plan,
+              validUntil: end_date,
+            },
+          }),
+        }).catch(() => {}) // fire-and-forget
+      }
 
       setShowRenewForm(false)
       toast.success('Membership renewed successfully!')
@@ -156,12 +179,18 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       <div className="grid grid-cols-2 gap-3">
         {latestMembership && (
           isValidPhone(member.phone) ? (
-            <a href={buildWhatsAppLink(member.phone, member.name, latestMembership.end_date)}
-              target="_blank" rel="noopener noreferrer"
+            <button
+              onClick={() => {
+                const t: TemplateId =
+                  status === 'expired'   ? 'membership_expired'          :
+                  status === 'expiring'  ? 'membership_expiry_reminder'  : 'gymflow_welcome_member'
+                setWhatsAppTemplate(t)
+                setShowWhatsApp(true)
+              }}
               className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3.5 rounded-2xl font-semibold text-sm shadow-md shadow-emerald-200 active:scale-[0.98] transition-all"
             >
               <MessageCircle className="w-4 h-4" />WhatsApp
-            </a>
+            </button>
           ) : (
             <div className="flex flex-col items-center justify-center gap-1 bg-slate-100 text-slate-400 py-3.5 rounded-2xl text-sm cursor-not-allowed">
               <div className="flex items-center gap-2">
@@ -178,6 +207,23 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           <Plus className="w-4 h-4" />Renew
         </button>
       </div>
+
+      <WhatsAppTemplateModal
+        open={showWhatsApp}
+        onClose={() => setShowWhatsApp(false)}
+        defaultTemplate={whatsAppTemplate}
+        context={{
+          phone:         member.phone,
+          memberName:    member.name,
+          gymName:       gymName ?? '',
+          plan:          latestMembership?.plan,
+          startDate:     latestMembership?.start_date,
+          validUntil:    latestMembership?.end_date,
+          expiryDate:    latestMembership?.end_date,
+          daysRemaining: daysRemaining >= 0 ? daysRemaining : 0,
+          dueAmount:     member.pending_amount > 0 ? member.pending_amount : undefined,
+        }}
+      />
 
       {showRenewForm && (
         <div className="card p-4">

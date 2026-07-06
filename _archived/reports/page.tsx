@@ -2,12 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import { ReportsClient } from './ReportsClient'
 import { format } from 'date-fns'
 import { cacheWrapper } from '@/lib/cache'
-import { RequestLogger } from '@/lib/logger'
+import { RequestLogger, apiLogger } from '@/lib/logger'
 
 export const revalidate = 300
 
 async function getReportsData(gymId: string, logger: RequestLogger) {
-  logger.step('ENTER getReportsData')
+  logger.info('ENTER getReportsData')
   try {
     const supabase = await createClient()
     const today = format(new Date(), 'yyyy-MM-dd')
@@ -30,12 +30,12 @@ async function getReportsData(gymId: string, logger: RequestLogger) {
     const totalMembers = (rpcData.activeCount ?? 0) + (rpcData.expiredCount ?? 0)
     logger.end('AGGREGATION')
 
-    logger.step('BEFORE RETURN')
+    logger.info('BEFORE RETURN')
     const result = {
       ...rpcData,
       totalMembers
     }
-    logger.step('RETURN OBJECT CREATED')
+    logger.info('RETURN OBJECT CREATED')
     return result
   } catch (error: any) {
     logger.error('ERROR', error)
@@ -44,14 +44,14 @@ async function getReportsData(gymId: string, logger: RequestLogger) {
 }
 
 export default async function ReportsPage() {
-  const logger = new RequestLogger('REPORTS')
+  const logger = apiLogger('REPORTS')
   
   try {
     logger.start('AUTH')
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     logger.end('AUTH')
-    logger.step('AFTER AUTH')
+    logger.info('AFTER AUTH')
     
     if (!user) return null
 
@@ -86,8 +86,8 @@ export default async function ReportsPage() {
     const reportsData = await cacheWrapper(cacheKey, 300, () => getReportsData(gym.id, logger), logger)
     logger.end('CACHE')
     
-    logger.setPayload(reportsData)
-    logger.summary()
+    logger.info('Payload', { reportsData })
+    logger.summary(200)
 
     return (
       <ReportsClient

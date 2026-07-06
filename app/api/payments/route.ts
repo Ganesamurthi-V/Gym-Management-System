@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 
 
 export async function GET(req: NextRequest) {
-  const log = apiLogger('PAYMENTS_API_GET', req)
+  const log = apiLogger('PAYMENTS_API_GET')
   try {
     log.start('AUTH')
     const supabase = await createClient()
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       log.summary(401)
       return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
     }
-    log.userId = user.id
+    log.info('User Info', { userId: user.id })
 
     const { searchParams } = req.nextUrl
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       log.summary(404)
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
-    log.gymId = gym.id
+    log.info('Gym Info', { gymId: gym.id })
 
     log.start('DB_QUERY')
     const { data, error } = await supabase
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
 
-    log.setPayload(data)
+    log.info('Payload', { data })
     log.summary(200)
     return NextResponse.json({
       success: true,
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const log = apiLogger('PAYMENTS_API_POST', req)
+  const log = apiLogger('PAYMENTS_API_POST')
   try {
     log.start('AUTH')
     const supabase = await createClient()
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       log.summary(401)
       return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
     }
-    log.userId = user.id
+    log.info('User Info', { userId: user.id })
 
     let body
     try { body = await req.json() } catch {
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       log.summary(404)
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
-    log.gymId = gym.id
+    log.info('Gym Info', { gymId: gym.id })
 
     log.start('DB_INSERT')
     const { data, error } = await supabase

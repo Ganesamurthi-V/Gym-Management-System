@@ -7,14 +7,14 @@ import { format } from 'date-fns'
 
 
 import { cacheWrapper } from '@/lib/cache'
-import { RequestLogger } from '@/lib/logger'
+import { RequestLogger, apiLogger } from '@/lib/logger'
 
 async function getDashboardData(gymId: string, logger: RequestLogger) {
   const today = format(new Date(), 'yyyy-MM-dd')
   const cacheKey = `gym:${gymId}:dashboard:${today}`
 
   return cacheWrapper(cacheKey, 300, async () => {
-    logger.step('ENTER getDashboardData')
+    logger.info('ENTER getDashboardData')
     try {
       const supabase = await createClient()
 
@@ -63,7 +63,7 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
       const totalDues = (duesRes.data ?? []).reduce((s, m) => s + (m.pending_amount ?? 0), 0)
       logger.end('AGGREGATION')
 
-      logger.step('BEFORE RETURN')
+      logger.info('BEFORE RETURN')
       const result = {
         stats: {
           total_active: allMembers.filter(m => m.status === 'active' || m.status === 'expiring').length,
@@ -75,7 +75,7 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
         },
         expiringMembers: expiringThisWeek.sort((a, b) => a.days_remaining - b.days_remaining),
       }
-      logger.step('RETURN OBJECT CREATED')
+      logger.info('RETURN OBJECT CREATED')
       return result
     } catch (error: any) {
       logger.error('ERROR', error)
@@ -85,13 +85,13 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
 }
 
 export default async function DashboardPage() {
-  const logger = new RequestLogger('DASHBOARD')
+  const logger = apiLogger('DASHBOARD')
   
   try {
     logger.start('AUTH')
     const { user } = await getAuthUser()
     logger.end('AUTH')
-    logger.step('AFTER AUTH')
+    logger.info('AFTER AUTH')
     
     if (!user) return null
 
@@ -111,8 +111,8 @@ export default async function DashboardPage() {
     const dashboardData = await getDashboardData(gym.id, logger)
     logger.end('CACHE')
     
-    logger.setPayload(dashboardData)
-    logger.summary()
+    logger.info('Payload', { dashboardData })
+    logger.summary(200)
 
     return (
       <DashboardClient gymName={gym.name} stats={dashboardData.stats} expiringMembers={dashboardData.expiringMembers} gymId={gym.id} />

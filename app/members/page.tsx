@@ -5,7 +5,7 @@ import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 import { cacheWrapper } from '@/lib/cache'
-import { RequestLogger } from '@/lib/logger'
+import { RequestLogger, apiLogger } from '@/lib/logger'
 
 // Issue 5 fix: Removed `export const revalidate = 0`.
 // getMembersData is already wrapped in cacheWrapper (300s Redis TTL) and
@@ -20,7 +20,7 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
   const cacheKey = `gym:${gymId}:members_list`
 
   return cacheWrapper(cacheKey, 300, async () => {
-    logger.step('ENTER getMembersData')
+    logger.info('ENTER getMembersData')
     const supabase = await createClient()
 
     logger.start('FETCH_MEMBERS')
@@ -110,7 +110,7 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
 }
 
 export default async function MembersPage() {
-  const logger = new RequestLogger('MEMBERS')
+  const logger = apiLogger('MEMBERS')
   
   try {
     logger.start('AUTH')
@@ -129,8 +129,8 @@ export default async function MembersPage() {
     const { result, count } = await getMembersData(gym.id, logger)
     logger.end('CACHE')
     
-    logger.setPayload({ result, count })
-    logger.summary()
+    logger.info('Payload', { result, count })
+    logger.summary(200)
 
     return (
       <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>

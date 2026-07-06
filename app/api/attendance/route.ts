@@ -7,7 +7,7 @@ import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
 
 export async function POST(req: NextRequest) {
-  const log = apiLogger('ATTENDANCE_API_POST', req)
+  const log = apiLogger('ATTENDANCE_API_POST')
   try {
     log.start('AUTH')
     const supabase = await createClient()
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       log.summary(401)
       return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
     }
-    log.userId = user.id
+    log.info('User Info', { userId: user.id })
 
     const { allowed } = await checkRateLimit(user.id, '/api/attendance', ROUTE_LIMITS.DEFAULT)
     if (!allowed) {
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       log.summary(404)
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
-    log.gymId = gym.id
+    log.info('Gym Info', { gymId: gym.id })
 
     // Verify the member belongs to this gym before marking attendance
     log.start('MEMBER_CHECK')

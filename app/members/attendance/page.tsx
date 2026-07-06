@@ -2,13 +2,13 @@ import { Suspense } from 'react' // Force recompile
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser, getGym } from '@/lib/dal'
 import { AttendanceLogClient } from './AttendanceLogClient'
-import { RequestLogger } from '@/lib/logger'
+import { RequestLogger, apiLogger } from '@/lib/logger'
 import { redirect } from 'next/navigation'
 
 export const revalidate = 0
 
 async function getAttendanceLogs(gymId: string, logger: RequestLogger) {
-  logger.step('ENTER getAttendanceLogs')
+  logger.info('ENTER getAttendanceLogs')
   const supabase = await createClient()
 
   logger.start('FETCH_LOGS')
@@ -35,7 +35,7 @@ async function getAttendanceLogs(gymId: string, logger: RequestLogger) {
 }
 
 export default async function AttendanceLogPage() {
-  const logger = new RequestLogger('ATTENDANCE_LOG')
+  const logger = apiLogger('ATTENDANCE_LOG')
   
   try {
     logger.start('AUTH')
@@ -51,7 +51,7 @@ export default async function AttendanceLogPage() {
     if (!gym) redirect('/onboarding')
 
     const logs = await getAttendanceLogs(gym.id, logger)
-    logger.summary()
+    logger.summary(200)
 
     return (
       <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading attendance...</div>}>

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { RequestLogger } from '@/lib/logger'
+import { RequestLogger, apiLogger } from '@/lib/logger'
 
 export async function fetchAttendanceLogsAction(
   gymId: string,
@@ -9,9 +9,9 @@ export async function fetchAttendanceLogsAction(
   endDate: string | null,
   session: 'all' | 'morning' | 'evening'
 ) {
-  const logger = new RequestLogger('ATTENDANCE_LOG_ACTION')
+  const logger = apiLogger('ATTENDANCE_LOG_ACTION')
   try {
-    logger.step('ENTER fetchAttendanceLogsAction')
+    logger.info('ENTER fetchAttendanceLogsAction')
     const supabase = await createClient()
     
     // Auth check
@@ -68,6 +68,6 @@ export async function fetchAttendanceLogsAction(
     logger.error('ERROR', err)
     return { success: false, error: err.message || 'Failed to fetch logs' }
   } finally {
-    logger.summary()
+    logger.summary(200)
   }
 }

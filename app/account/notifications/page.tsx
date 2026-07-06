@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import SupportHeaderClient from '@/components/support/SupportHeaderClient'
 import SupportTabsClient from '@/components/support/SupportTabsClient'
-import { RequestLogger } from '@/lib/logger'
+import { RequestLogger, apiLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
 export default async function NotificationsPage() {
-  const logger = new RequestLogger('NotificationsPage')
+  const logger = apiLogger('NotificationsPage')
   logger.start('Page Load')
 
   const { getAuthUser, getGym } = await import('@/lib/dal')
@@ -64,7 +64,7 @@ export default async function NotificationsPage() {
   const tickets = ticketData || []
 
   logger.end('Page Load')
-  logger.summary()
+  logger.summary(200)
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

@@ -21,7 +21,7 @@
 
 import { fetchJson }              from '@/lib/fetch'
 import { logger }                 from '@/lib/logger'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import type {
   SendResult,
   TemplateId,
@@ -249,15 +249,23 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
       template: {
         name: 'gymflow_welcome_member',
         language: { code: 'en' },
-        components: [{
-          type: 'body',
-          parameters: [
-            txt(ctx.gymName),
-            txt(ctx.memberName),
-            txt(planLabel(ctx.plan)),
-            txt(ctx.startDate ? formatDate(ctx.startDate) : '—'),
-          ],
-        }],
+        // Approved template has a HEADER ("Welcome to {{1}}") + a 4-var BODY.
+        // Body positional order is [gym, member, plan, startDate] → {{1}}..{{4}}.
+        components: [
+          {
+            type: 'header',
+            parameters: [txt(ctx.gymName)],
+          },
+          {
+            type: 'body',
+            parameters: [
+              txt(ctx.gymName),
+              txt(ctx.memberName),
+              txt(planLabel(ctx.plan)),
+              txt(ctx.startDate ? formatDate(ctx.startDate) : '—'),
+            ],
+          },
+        ],
       },
     },
     membership_renewed: {
@@ -313,11 +321,14 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
       template: {
         name: 'payment_due_reminder',
         language: { code: 'en' },
+        // Approved body already prints the ₹ symbol ("Amount : ₹{{2}}"), so the
+        // parameter must be the bare grouped number — NOT formatCurrency(), which
+        // would render "₹₹2,000".
         components: [{
           type: 'body',
           parameters: [
             txt(ctx.memberName),
-            txt(formatCurrency(ctx.dueAmount ?? 0)),
+            txt(new Intl.NumberFormat('en-IN').format(ctx.dueAmount ?? 0)),
           ],
         }],
       },

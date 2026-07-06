@@ -233,7 +233,7 @@ export async function markMessageRead(messageId: string): Promise<boolean> {
 
 // ─── Template payload builder ─────────────────────────────────────────────────
 
-function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContext): Record<string, unknown> {
+export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContext): Record<string, unknown> {
   const to  = normalisePhone(ctx.phone)
   const txt = (text: string) => ({ type: 'text', text })
 

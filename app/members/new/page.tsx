@@ -217,6 +217,29 @@ export default function NewMemberPage() {
       const { invalidateMembersCache } = await import('../actions')
       await invalidateMembersCache(gymId)
 
+      // Auto-send welcome WhatsApp message (fire-and-forget, non-blocking)
+      if (form.phone && form.phone.replace(/\D/g, '').length >= 10) {
+        const { data: gymData } = await supabase
+          .from('gyms')
+          .select('name')
+          .eq('id', gymId)
+          .single()
+
+        fetch('/api/whatsapp/automation/welcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gymId,
+            gymName: gymData?.name ?? '',
+            memberId: member.id,
+            memberName: form.name.trim(),
+            phone: form.phone.trim(),
+            plan: form.plan === 'custom' ? 'monthly' : form.plan,
+            startDate: form.start_date,
+          }),
+        }).catch(() => {}) // fire-and-forget
+      }
+
       toast.success('Member added successfully!')
       router.push('/members')
       router.refresh()

@@ -1,175 +1,129 @@
 /**
  * WhatsApp Cloud API Configuration
- * 
- * Environment variable validation and configuration loading.
- * Validates all required credentials on startup.
+ *
+ * All outbound WhatsApp API calls route through the GymFlow transparent proxy:
+ *   https://graph.gymflow.sbs/api/graph  →  https://graph.facebook.com
+ *
+ * The proxy URL is controlled by WHATSAPP_BASE_URL (in .env.local / Vercel).
+ * The upstream destination is controlled by GRAPH_API_BASE_URL (read by the proxy route).
+ *
+ * Neither value needs to be changed for normal operation.
  */
 
 import { z } from 'zod'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Environment Schema
-// ═══════════════════════════════════════════════════════════════════════════
+// ─── Environment schema ───────────────────────────────────────────────────────
 
 const whatsappEnvSchema = z.object({
-  // Webhook configuration
+  // Webhook verification + signature
   WHATSAPP_VERIFY_TOKEN: z.string().min(32, 'Verify token must be at least 32 characters'),
-  WHATSAPP_APP_SECRET: z.string().min(32, 'App secret must be at least 32 characters'),
-  
+  WHATSAPP_APP_SECRET:   z.string().min(32, 'App secret must be at least 32 characters'),
+
   // WhatsApp Business Platform credentials
   WHATSAPP_PHONE_NUMBER_ID: z.string().min(1, 'Phone number ID is required'),
-  WHATSAPP_ACCESS_TOKEN: z.string().min(1, 'Access token is required'),
-  
-  // Optional configuration
+  WHATSAPP_ACCESS_TOKEN:    z.string().min(1, 'Access token is required'),
+
+  // API routing
+  // WHATSAPP_BASE_URL  — base URL for outbound API calls (via proxy)
+  // WHATSAPP_API_VERSION — Meta Graph API version (e.g. v21.0)
   WHATSAPP_API_VERSION: z.string().default('v21.0'),
-  WHATSAPP_BASE_URL: z.string().url().default('https://graph.facebook.com'),
+  WHATSAPP_BASE_URL: z
+    .string()
+    .url()
+    .default('https://graph.gymflow.sbs/api/graph'),
 })
 
 export type WhatsAppEnv = z.infer<typeof whatsappEnvSchema>
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Configuration Loading
-// ═══════════════════════════════════════════════════════════════════════════
+// ─── Config loading (singleton + cached) ─────────────────────────────────────
 
-let cachedConfig: WhatsAppEnv | null = null
-let configError: Error | null = null
+let _config: WhatsAppEnv | null = null
+let _error:  Error | null       = null
 
-/**
- * Load and validate WhatsApp configuration from environment variables
- * 
- * Validates on first call and caches the result.
- * Throws if validation fails.
- */
 export function getWhatsAppConfig(): WhatsAppEnv {
-  // Return cached config if available
-  if (cachedConfig) {
-    return cachedConfig
-  }
-
-  // If we already tried and failed, throw the same error
-  if (configError) {
-    throw configError
-  }
+  if (_config) return _config
+  if (_error)  throw _error
 
   try {
-    // Extract environment variables
-    const env = {
-      WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
-      WHATSAPP_APP_SECRET: process.env.WHATSAPP_APP_SECRET,
+    const validated = whatsappEnvSchema.parse({
+      WHATSAPP_VERIFY_TOKEN:    process.env.WHATSAPP_VERIFY_TOKEN,
+      WHATSAPP_APP_SECRET:      process.env.WHATSAPP_APP_SECRET,
       WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
-      WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
-      WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION,
-      WHATSAPP_BASE_URL: process.env.WHATSAPP_BASE_URL,
-    }
-
-    // Validate
-    const validated = whatsappEnvSchema.parse(env)
-
-    // Cache and return
-    cachedConfig = validated
-    return validated
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errorMessage = `WhatsApp configuration validation failed:\n${error.issues
-        .map(e => `  - ${e.path.join('.')}: ${e.message}`)
+      WHATSAPP_ACCESS_TOKEN:    process.env.WHATSAPP_ACCESS_TOKEN,
+      WHATSAPP_API_VERSION:     process.env.WHATSAPP_API_VERSION,
+      WHATSAPP_BASE_URL:        process.env.WHATSAPP_BASE_URL,
+    })
+    _config = validated
+    return _config
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const msg = `WhatsApp configuration validation failed:\n${err.issues
+        .map(i => `  - ${i.path.join('.')}: ${i.message}`)
         .join('\n')}`
-      
-      configError = new Error(errorMessage)
-      throw configError
+      _error = new Error(msg)
+      throw _error
     }
-    
-    configError = error as Error
-    throw configError
+    _error = err as Error
+    throw _error
   }
 }
 
-/**
- * Check if WhatsApp is configured (without throwing)
- * 
- * Useful for conditional features.
- */
 export function isWhatsAppConfigured(): boolean {
-  try {
-    getWhatsAppConfig()
-    return true
-  } catch {
-    return false
-  }
+  try { getWhatsAppConfig(); return true } catch { return false }
 }
 
-/**
- * Validate configuration on server startup
- * 
- * Call this during app initialization to fail fast.
- */
 export function validateWhatsAppConfig(): void {
   try {
-    const config = getWhatsAppConfig()
+    const cfg = getWhatsAppConfig()
     console.log('✅ WhatsApp configuration validated')
-    console.log(`   Phone Number ID: ${config.WHATSAPP_PHONE_NUMBER_ID}`)
-    console.log(`   API Version: ${config.WHATSAPP_API_VERSION}`)
-  } catch (error) {
+    console.log(`   Base URL:        ${cfg.WHATSAPP_BASE_URL}`)
+    console.log(`   Phone Number ID: ${cfg.WHATSAPP_PHONE_NUMBER_ID}`)
+    console.log(`   API Version:     ${cfg.WHATSAPP_API_VERSION}`)
+  } catch (err) {
     console.error('❌ WhatsApp configuration validation failed')
-    console.error(error instanceof Error ? error.message : String(error))
-    
-    // In production, fail hard
-    if (process.env.NODE_ENV === 'production') {
-      throw error
-    }
+    console.error(err instanceof Error ? err.message : String(err))
+    if (process.env.NODE_ENV === 'production') throw err
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// API URLs
-// ═══════════════════════════════════════════════════════════════════════════
+// ─── URL helpers ──────────────────────────────────────────────────────────────
 
-/**
- * Get WhatsApp API base URL
- */
+/** https://graph.gymflow.sbs/api/graph/v21.0 */
 export function getWhatsAppApiUrl(): string {
-  const config = getWhatsAppConfig()
-  return `${config.WHATSAPP_BASE_URL}/${config.WHATSAPP_API_VERSION}`
+  const cfg = getWhatsAppConfig()
+  return `${cfg.WHATSAPP_BASE_URL.replace(/\/$/, '')}/${cfg.WHATSAPP_API_VERSION}`
 }
 
 /**
- * Get URL for sending messages
+ * Full messages endpoint for the configured phone number.
+ * https://graph.gymflow.sbs/api/graph/v21.0/<phone_number_id>/messages
  */
 export function getWhatsAppMessagesUrl(): string {
-  const config = getWhatsAppConfig()
-  return `${getWhatsAppApiUrl()}/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`
+  const cfg = getWhatsAppConfig()
+  return `${getWhatsAppApiUrl()}/${cfg.WHATSAPP_PHONE_NUMBER_ID}/messages`
 }
 
-/**
- * Get URL for downloading media
- */
+/** https://graph.gymflow.sbs/api/graph/v21.0/<media_id> */
 export function getWhatsAppMediaUrl(mediaId: string): string {
   return `${getWhatsAppApiUrl()}/${mediaId}`
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Security
-// ═══════════════════════════════════════════════════════════════════════════
+// ─── Auth header ──────────────────────────────────────────────────────────────
 
-/**
- * Get authorization header for WhatsApp API requests
- */
 export function getWhatsAppAuthHeader(): { Authorization: string } {
-  const config = getWhatsAppConfig()
-  return {
-    Authorization: `Bearer ${config.WHATSAPP_ACCESS_TOKEN}`,
-  }
+  const cfg = getWhatsAppConfig()
+  return { Authorization: `Bearer ${cfg.WHATSAPP_ACCESS_TOKEN}` }
 }
 
-/**
- * Redact sensitive values for logging
- */
-export function redactConfig(config: WhatsAppEnv): Record<string, string> {
+// ─── Logging helper (redacts secrets) ────────────────────────────────────────
+
+export function redactConfig(cfg: WhatsAppEnv): Record<string, string> {
   return {
-    WHATSAPP_VERIFY_TOKEN: '***REDACTED***',
-    WHATSAPP_APP_SECRET: '***REDACTED***',
-    WHATSAPP_PHONE_NUMBER_ID: config.WHATSAPP_PHONE_NUMBER_ID,
-    WHATSAPP_ACCESS_TOKEN: `${config.WHATSAPP_ACCESS_TOKEN.slice(0, 10)}...***REDACTED***`,
-    WHATSAPP_API_VERSION: config.WHATSAPP_API_VERSION,
-    WHATSAPP_BASE_URL: config.WHATSAPP_BASE_URL,
+    WHATSAPP_VERIFY_TOKEN:    '***REDACTED***',
+    WHATSAPP_APP_SECRET:      '***REDACTED***',
+    WHATSAPP_PHONE_NUMBER_ID: cfg.WHATSAPP_PHONE_NUMBER_ID,
+    WHATSAPP_ACCESS_TOKEN:    `${cfg.WHATSAPP_ACCESS_TOKEN.slice(0, 10)}…***REDACTED***`,
+    WHATSAPP_API_VERSION:     cfg.WHATSAPP_API_VERSION,
+    WHATSAPP_BASE_URL:        cfg.WHATSAPP_BASE_URL,
   }
 }

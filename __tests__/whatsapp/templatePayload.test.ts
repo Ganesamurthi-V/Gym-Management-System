@@ -46,7 +46,12 @@ describe('buildTemplatePayload — common envelope', () => {
 })
 
 describe('buildTemplatePayload — gymflow_welcome_member', () => {
-  it('maps gym, member, plan, start date in order', () => {
+  it('includes the gym name in the header (approved template has "Welcome to {{1}}")', () => {
+    const p = buildTemplatePayload('gymflow_welcome_member', { ...base, plan: 'monthly' }) as any
+    expect(headerTexts(p)).toEqual(['Iron Temple'])
+  })
+
+  it('maps gym, member, plan, start date in the body in order', () => {
     const p = buildTemplatePayload('gymflow_welcome_member', {
       ...base, plan: 'monthly', startDate: '2026-07-06',
     }) as any
@@ -97,16 +102,17 @@ describe('buildTemplatePayload — membership_expired', () => {
 })
 
 describe('buildTemplatePayload — payment_due_reminder', () => {
-  it('maps member name and formatted rupee amount', () => {
+  it('maps member name and a bare grouped amount (template already prints ₹)', () => {
     const p = buildTemplatePayload('payment_due_reminder', { ...base, dueAmount: 1500 }) as any
     const texts = bodyTexts(p)
     expect(texts[0]).toBe('Arjun')
-    expect(texts[1]).toMatch(/1,500/)      // ₹1,500 (Intl en-IN grouping)
+    expect(texts[1]).toBe('1,500')            // NOT "₹1,500" — avoids "₹₹1,500"
+    expect(texts[1]).not.toContain('₹')
   })
 
   it('defaults a missing amount to zero', () => {
     const p = buildTemplatePayload('payment_due_reminder', base) as any
-    expect(bodyTexts(p)[1]).toMatch(/0/)
+    expect(bodyTexts(p)[1]).toBe('0')
   })
 })
 

@@ -70,20 +70,20 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       const { invalidateMembersCache } = await import('../actions')
       await invalidateMembersCache(gym.id)
 
-      // Auto-send renewal confirmation template
+      // Auto-send renewal confirmation + cancel old expiry reminder cycles
       if (isValidPhone(member.phone)) {
-        fetch('/api/whatsapp/send', {
+        fetch('/api/whatsapp/automation/renewal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            templateId: 'membership_renewed',
-            context: {
-              phone:      member.phone,
-              memberName: member.name,
-              gymName:    gymName ?? '',
-              plan:       renewForm.plan === 'custom' ? 'monthly' : renewForm.plan,
-              validUntil: end_date,
-            },
+            gymId:           gym.id,
+            gymName:         gymName ?? '',
+            memberId:        member.id,
+            memberName:      member.name,
+            phone:           member.phone,
+            plan:            renewForm.plan === 'custom' ? 'monthly' : renewForm.plan,
+            validUntil:      end_date,
+            previousEndDate: latestMembership?.end_date ?? undefined,
           }),
         }).catch(() => {}) // fire-and-forget
       }

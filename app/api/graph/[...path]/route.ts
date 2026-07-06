@@ -1,42 +1,48 @@
 /**
- * Transparent Reverse Proxy — Meta WhatsApp Graph API
+ * app/api/graph/[...path]/route.ts
  *
- * Route:  /api/graph/[...path]
- * Domain: https://graph.gymflow.sbs/api/graph
+ * Transparent reverse proxy — Meta WhatsApp Graph API
  *
- * Every request arriving here is forwarded verbatim to:
- *   https://graph.facebook.com/{path}?{query}
+ * Incoming:  https://graph.gymflow.sbs/api/graph/{version}/{resource}
+ * Forwards:  https://graph.facebook.com/{version}/{resource}
  *
- * The proxy is fully transparent:
- *   - Method, headers, body, query params → preserved exactly
- *   - Status code, response headers, response body ← preserved exactly
- *   - No token validation, no body inspection, no caching, no modification
+ * The proxy is 100% transparent:
+ *   - Method, headers, body, query params → forwarded exactly
+ *   - Status code, response headers, body ← returned exactly
+ *   - No caching, no token validation, no body inspection, no modification
  *
  * Example:
- *   POST https://graph.gymflow.sbs/api/graph/v23.0/123456/messages
- *   →  POST https://graph.facebook.com/v23.0/123456/messages
+ *   POST https://graph.gymflow.sbs/api/graph/v23.0/1234567/messages
+ *   → POST https://graph.facebook.com/v23.0/1234567/messages
  *
- * Logging: method + endpoint + status + latency only.
- * Sensitive data (tokens, bodies, phone numbers) is never logged.
+ * Upstream URL is read from GRAPH_API_BASE_URL env var.
+ * Sensitive headers (Authorization, tokens) are NEVER logged.
  *
- * Config:
- *   GRAPH_API_BASE_URL  — upstream base (default: https://graph.facebook.com)
+ * Supports: GET  POST  PUT  PATCH  DELETE  OPTIONS
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 
-// ─── Upstream base URL ────────────────────────────────────────────────────────
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
-function getUpstreamBase(): string {
+// ─── Upstream ─────────────────────────────────────────────────────────────────
+
+function upstreamBase(): string {
   return (
     process.env.GRAPH_API_BASE_URL?.replace(/\/$/, '') ??
     'https://graph.facebook.com'
   )
 }
 
-// ─── Headers to strip from the incoming request ───────────────────────────────
-// These are Next.js / Vercel infrastructure headers that must not be forwarded.
+// ─── Header filters ───────────────────────────────────────────────────────────
 
+/**
+ * Infrastructure / hop-by-hop headers that must NOT be forwarded to upstream.
+ * These are injected by Vercel / Cloudflare and are meaningless or harmful
+ * when sent to graph.facebook.com.
+ */
 const STRIP_REQUEST_HEADERS = new Set([
   'host',
   'x-forwarded-for',
@@ -60,9 +66,7 @@ const STRIP_REQUEST_HEADERS = new Set([
   'te',
 ])
 
-// ─── Headers to strip from the upstream response ─────────────────────────────
-// Hop-by-hop headers that must not be returned to the client.
-
+/** Hop-by-hop headers from upstream response that must NOT be returned to clients. */
 const STRIP_RESPONSE_HEADERS = new Set([
   'connection',
   'keep-alive',
@@ -74,153 +78,119 @@ const STRIP_RESPONSE_HEADERS = new Set([
   'upgrade',
 ])
 
-// ─── Core proxy handler ───────────────────────────────────────────────────────
+/** Fields that must never appear in log output. */
+const NEVER_LOG_HEADERS = new Set([
+  'authorization',
+  'x-hub-signature',
+  'x-hub-signature-256',
+])
+
+// ─── Core proxy ───────────────────────────────────────────────────────────────
 
 async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
-  const upstreamBase = getUpstreamBase()
-  const upstreamPath = path.join('/')
-  const search       = req.nextUrl.search ?? '' // preserve query string exactly
+  const upstream = upstreamBase()
+  const pathStr  = path.join('/')
+  const search   = req.nextUrl.search // already URL-encoded, pass through verbatim
 
-  const upstreamUrl = `${upstreamBase}/${upstreamPath}${search}`
+  const targetUrl = `${upstream}/${pathStr}${search}`
 
-  // ── Build forwarded headers ────────────────────────────────────────────────
-  const forwardedHeaders = new Headers()
+  // ── Forward headers ───────────────────────────────────────────────────────
+  const fwdHeaders = new Headers()
   req.headers.forEach((value, key) => {
-    if (!STRIP_REQUEST_HEADERS.has(key.toLowerCase())) {
-      forwardedHeaders.set(key, value)
+    const lower = key.toLowerCase()
+    if (!STRIP_REQUEST_HEADERS.has(lower) && !NEVER_LOG_HEADERS.has(lower)) {
+      fwdHeaders.set(key, value)
+    } else if (!STRIP_REQUEST_HEADERS.has(lower)) {
+      // Sensitive header — forward but never log
+      fwdHeaders.set(key, value)
     }
   })
-  // Set Host to match upstream so TLS SNI and vhost routing work correctly
-  forwardedHeaders.set('host', new URL(upstreamBase).hostname)
+  // Override Host so SNI/vhost routing works correctly at graph.facebook.com
+  fwdHeaders.set('host', new URL(upstream).hostname)
 
-  // ── Determine whether to include a body ───────────────────────────────────
-  // GET, HEAD, OPTIONS, DELETE typically have no body
-  const HAS_BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
-  const body = HAS_BODY_METHODS.has(req.method)
-    ? req.body   // ReadableStream — streamed through, not buffered
-    : undefined
+  // ── Body — stream directly, never buffer ─────────────────────────────────
+  const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+  const body = BODY_METHODS.has(req.method) ? req.body : null
 
   const startMs = Date.now()
 
-  // ── Structured log (no sensitive data) ────────────────────────────────────
-  console.log(
-    JSON.stringify({
-      ts:      new Date().toISOString(),
-      type:    'graph_proxy_request',
-      method:  req.method,
-      path:    `/${upstreamPath}`,
-      query:   search || null,
-    })
-  )
+  // ── Structured request log (no sensitive data) ────────────────────────────
+  logger.info('graph_proxy_request', {
+    method: req.method,
+    path:   `/${pathStr}`,
+    query:  search || null,
+  })
 
-  // ── Forward request ────────────────────────────────────────────────────────
-  let upstreamRes: Response
-
+  // ── Forward ───────────────────────────────────────────────────────────────
+  let upstream_res: Response
   try {
-    upstreamRes = await fetch(upstreamUrl, {
-      method:  req.method,
-      headers: forwardedHeaders,
+    upstream_res = await fetch(targetUrl, {
+      method:   req.method,
+      headers:  fwdHeaders,
       body,
-      // @ts-expect-error — Node 18+ fetch supports duplex for streaming bodies
-      duplex:  'half',
-      signal:  AbortSignal.timeout(30_000), // 30 s max
-      // Never follow redirects automatically — pass them through to the client
-      redirect: 'manual',
+      // @ts-expect-error — Node 18+ fetch accepts duplex for streaming request bodies
+      duplex:   'half',
+      redirect: 'manual', // pass 3xx through — do not follow
+      signal:   AbortSignal.timeout(30_000),
     })
   } catch (err) {
     const latencyMs = Date.now() - startMs
     const message   = err instanceof Error ? err.message : String(err)
 
-    console.error(
-      JSON.stringify({
-        ts:        new Date().toISOString(),
-        type:      'graph_proxy_error',
-        method:    req.method,
-        path:      `/${upstreamPath}`,
-        error:     message,
-        latencyMs,
-      })
-    )
+    logger.error('graph_proxy_upstream_error', { method: req.method, path: `/${pathStr}`, latencyMs, error: message })
 
     return NextResponse.json(
-      {
-        error: {
-          message: 'Upstream request failed',
-          type:    'ProxyError',
-          code:    502,
-        },
-      },
-      { status: 502 }
+      { error: { message: 'Upstream request failed', type: 'ProxyError', code: 502 } },
+      { status: 502 },
     )
   }
 
   const latencyMs = Date.now() - startMs
 
-  // ── Log response ────────────────────────────────────────────────────────────
-  console.log(
-    JSON.stringify({
-      ts:        new Date().toISOString(),
-      type:      'graph_proxy_response',
-      method:    req.method,
-      path:      `/${upstreamPath}`,
-      status:    upstreamRes.status,
-      latencyMs,
-    })
-  )
+  // ── Structured response log ───────────────────────────────────────────────
+  logger.info('graph_proxy_response', {
+    method:    req.method,
+    path:      `/${pathStr}`,
+    status:    upstream_res.status,
+    latencyMs,
+  })
 
-  // ── Build response headers ─────────────────────────────────────────────────
-  const responseHeaders = new Headers()
-  upstreamRes.headers.forEach((value, key) => {
+  // ── Response headers ──────────────────────────────────────────────────────
+  const resHeaders = new Headers()
+  upstream_res.headers.forEach((value, key) => {
     if (!STRIP_RESPONSE_HEADERS.has(key.toLowerCase())) {
-      responseHeaders.set(key, value)
+      resHeaders.set(key, value)
     }
   })
-  // Allow cross-origin access (needed when called from browser-side code)
-  responseHeaders.set('access-control-allow-origin', '*')
+  resHeaders.set('access-control-allow-origin', '*')
 
-  // ── Stream response body back ──────────────────────────────────────────────
-  return new NextResponse(upstreamRes.body, {
-    status:  upstreamRes.status,
-    headers: responseHeaders,
+  // ── Stream body back verbatim ─────────────────────────────────────────────
+  return new NextResponse(upstream_res.body, {
+    status:  upstream_res.status,
+    headers: resHeaders,
   })
 }
 
-// ─── Route exports ────────────────────────────────────────────────────────────
-// One export per HTTP method — Next.js App Router requirement.
-// All delegate to the same proxy() function.
+// ─── Route handlers ───────────────────────────────────────────────────────────
 
-export const dynamic = 'force-dynamic' // never cache
-export const runtime = 'nodejs'        // required for streaming body
+type Ctx = { params: Promise<{ path: string[] }> }
 
-type RouteContext = { params: Promise<{ path: string[] }> }
-
-export async function GET(req: NextRequest, ctx: RouteContext) {
-  const { path } = await ctx.params
-  return proxy(req, path)
+export async function GET(req: NextRequest, { params }: Ctx) {
+  return proxy(req, (await params).path)
 }
-
-export async function POST(req: NextRequest, ctx: RouteContext) {
-  const { path } = await ctx.params
-  return proxy(req, path)
+export async function POST(req: NextRequest, { params }: Ctx) {
+  return proxy(req, (await params).path)
 }
-
-export async function PUT(req: NextRequest, ctx: RouteContext) {
-  const { path } = await ctx.params
-  return proxy(req, path)
+export async function PUT(req: NextRequest, { params }: Ctx) {
+  return proxy(req, (await params).path)
 }
-
-export async function PATCH(req: NextRequest, ctx: RouteContext) {
-  const { path } = await ctx.params
-  return proxy(req, path)
+export async function PATCH(req: NextRequest, { params }: Ctx) {
+  return proxy(req, (await params).path)
 }
-
-export async function DELETE(req: NextRequest, ctx: RouteContext) {
-  const { path } = await ctx.params
-  return proxy(req, path)
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  return proxy(req, (await params).path)
 }
-
-export async function OPTIONS(req: NextRequest, ctx: RouteContext) {
-  // Return CORS preflight without hitting upstream
+export async function OPTIONS(_req: NextRequest, _ctx: Ctx) {
   return new NextResponse(null, {
     status: 204,
     headers: {

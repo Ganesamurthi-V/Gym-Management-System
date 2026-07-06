@@ -88,7 +88,7 @@ export async function cacheWrapper<T>(
   fetchFn: () => Promise<T>,
   logger?: RequestLogger
 ): Promise<T> {
-  if (logger) logger.step('CACHE ENTER')
+  if (logger) logger.info('CACHE ENTER')
   
   try {
     if (logger) logger.start('REDIS GET')
@@ -97,13 +97,13 @@ export async function cacheWrapper<T>(
     if (logger) logger.end('REDIS GET')
 
     if (cachedData !== null) {
-      if (logger) logger.step('CACHE HIT')
-      if (logger) logger.step('RETURNING CACHED DATA')
+      if (logger) logger.info('CACHE HIT')
+      if (logger) logger.info('RETURNING CACHED DATA')
       logCacheMetric('HIT', key, Date.now() - startTime)
       return cachedData
     }
 
-    if (logger) logger.step('CACHE MISS')
+    if (logger) logger.info('CACHE MISS')
 
     // Cache Miss: Execute the database query
     if (logger) logger.start('FETCHFN')
@@ -115,7 +115,7 @@ export async function cacheWrapper<T>(
     await setCache(key, freshData, ttlSeconds)
     if (logger) logger.end('REDIS SET')
     
-    if (logger) logger.step('RETURNING FRESH DATA')
+    if (logger) logger.info('RETURNING FRESH DATA')
     
     // Backwards compatibility for global stats
     logCacheMetric('MISS', key, Date.now() - startTime)

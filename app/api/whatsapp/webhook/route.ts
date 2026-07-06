@@ -39,7 +39,7 @@ export const maxDuration = 10 // Vercel function timeout: 10 seconds
  * Meta calls this once during webhook setup to verify the endpoint.
  */
 export async function GET(req: NextRequest) {
-  const log = apiLogger('WHATSAPP_WEBHOOK_VERIFY', req)
+  const log = apiLogger('WHATSAPP_WEBHOOK_VERIFY')
   
   try {
     const response = await verifyWebhook(req, log)
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
  * Handles messages, status updates, and errors.
  */
 export async function POST(req: NextRequest) {
-  const log = apiLogger('WHATSAPP_WEBHOOK', req)
+  const log = apiLogger('WHATSAPP_WEBHOOK')
   const startTime = performance.now()
   
   let signatureValid = false

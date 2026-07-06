@@ -6,8 +6,23 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { GET, POST } from '@/app/api/whatsapp/webhook/route'
 import * as crypto from 'crypto'
+
+// The webhook route persists logs / processes events through Supabase + Redis.
+// Those IO boundaries are exercised by their own tests — here we stub them so the
+// route's request-handling logic (verification, signature, schema) is tested in
+// isolation without a live database.
+vi.mock('@/repositories/whatsapp/whatsappRepository', () => ({
+  saveWebhookLog: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('@/services/whatsapp/messageProcessor', () => ({
+  processMessages: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('@/services/whatsapp/statusProcessor', () => ({
+  processStatuses: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { GET, POST } from '@/app/api/whatsapp/webhook/route'
 
 // Mock environment variables
 beforeEach(() => {
@@ -373,13 +388,21 @@ describe('POST /api/whatsapp/webhook - Message Types', () => {
 
 describe('POST /api/whatsapp/webhook - Error Handling', () => {
   it('should handle malformed JSON gracefully', async () => {
+    // Sign the (malformed) body so it passes signature verification and actually
+    // reaches the JSON-parse path this test is exercising.
+    const body = 'invalid json {'
+    const signature = crypto
+      .createHmac('sha256', 'test_app_secret_32_characters_long_123456')
+      .update(body)
+      .digest('hex')
+
     const req = new NextRequest('http://localhost:3000/api/whatsapp/webhook', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Hub-Signature-256': 'sha256=test',
+        'X-Hub-Signature-256': `sha256=${signature}`,
       },
-      body: 'invalid json {',
+      body,
     })
 
     const response = await POST(req)

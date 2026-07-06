@@ -154,6 +154,55 @@ function checkRedis(): void {
   }
 }
 
+function checkCronSecret(): void {
+  const secret = process.env.CRON_SECRET
+
+  if (!secret) {
+    addResult('Cron Secret', 'fail', 'CRON_SECRET not set — daily automation cron will reject all calls')
+    return
+  }
+
+  if (secret === 'your_cron_secret_min_32_chars') {
+    addResult('Cron Secret', 'fail', 'Using example secret — generate a real one')
+    return
+  }
+
+  if (secret.length < 32) {
+    addResult('Cron Secret', 'warning', `Secret is ${secret.length} chars (recommended: 32+)`)
+    return
+  }
+
+  addResult('Cron Secret', 'pass', `Set (${secret.length} characters)`)
+}
+
+function checkApiRouting(): void {
+  const baseUrl = process.env.WHATSAPP_BASE_URL
+  const version = process.env.WHATSAPP_API_VERSION
+  const upstream = process.env.GRAPH_API_BASE_URL
+
+  if (!baseUrl) {
+    addResult('WhatsApp Base URL', 'warning', 'WHATSAPP_BASE_URL not set (defaults to proxy)')
+  } else if (!baseUrl.startsWith('https://')) {
+    addResult('WhatsApp Base URL', 'warning', 'Should be an HTTPS URL')
+  } else {
+    addResult('WhatsApp Base URL', 'pass', baseUrl)
+  }
+
+  if (!version) {
+    addResult('WhatsApp API Version', 'warning', 'WHATSAPP_API_VERSION not set (defaults to v21.0)')
+  } else if (!/^v\d+\.\d+$/.test(version)) {
+    addResult('WhatsApp API Version', 'warning', `Unexpected format: ${version} (expected vNN.N)`)
+  } else {
+    addResult('WhatsApp API Version', 'pass', version)
+  }
+
+  if (!upstream) {
+    addResult('Graph Upstream URL', 'warning', 'GRAPH_API_BASE_URL not set (proxy defaults to graph.facebook.com)')
+  } else {
+    addResult('Graph Upstream URL', 'pass', upstream)
+  }
+}
+
 function checkSentry(): void {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
   
@@ -240,8 +289,10 @@ async function main() {
     checkAppSecret()
     checkPhoneNumberId()
     checkAccessToken()
+    checkApiRouting()
     checkSupabase()
     checkRedis()
+    checkCronSecret()
     checkSentry()
     
     // Print results

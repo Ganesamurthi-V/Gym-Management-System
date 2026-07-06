@@ -67,37 +67,20 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
 
       const remaining = member.pending_amount - collect
 
-      // Cancel due reminder cycles (fire-and-forget)
-      if (member.phone?.replace(/\D/g, '').length >= 10) {
-        const { data: gym } = await supabase.from('gyms').select('name').eq('id', gymId).single()
-        // Send payment due confirmation via existing API
-        fetch('/api/whatsapp/send', {
+      // If dues are fully cleared, stop any active due-reminder cycle.
+      // (No "payment received" template is sent — payment_due_reminder is a
+      // "you still owe" message and would be misleading here.)
+      if (remaining === 0 && member.phone?.replace(/\D/g, '').length >= 10) {
+        fetch('/api/whatsapp/automation/due-cleared', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            templateId: 'payment_due_reminder',
-            context: {
-              phone:      member.phone,
-              memberName: member.name,
-              gymName:    gym?.name ?? '',
-              dueAmount:  remaining > 0 ? remaining : 0,
-            },
+            gymId,
+            memberId: member.id,
+            phone:    member.phone,
+            dueDate:  new Date().toISOString().slice(0, 10),
           }),
         }).catch(() => {})
-
-        // If dues fully cleared, cancel the reminder cycle
-        if (remaining === 0) {
-          fetch('/api/whatsapp/automation/due-cleared', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              gymId,
-              memberId: member.id,
-              phone:    member.phone,
-              dueDate:  new Date().toISOString().slice(0, 10),
-            }),
-          }).catch(() => {})
-        }
       }
 
       const { invalidateMembersCache } = await import('../members/actions')

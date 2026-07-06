@@ -2,35 +2,38 @@
  * WhatsApp Automation Engine
  *
  * Implements all 6 automated template sending rules:
- *  1. gymflow_welcome_member   — on new member registration (event-driven)
- *  2. membership_renewed       — on renewal payment (event-driven)
+ *  1. gymflow_welcome_member     — on new member registration (event-driven)
+ *  2. membership_renewed         — on renewal payment (event-driven)
  *  3. membership_expiry_reminder — scheduled, every 3 days, up to 7 times
- *  4. membership_expired       — scheduled, every 3 days, up to 7 times
- *  5. payment_due_reminder     — scheduled, every 3 days, up to 7 times
- *  6. birthday_wishes          — scheduled, once per year
+ *  4. membership_expired         — scheduled, every 3 days, up to 7 times
+ *  5. payment_due_reminder       — scheduled, every 3 days, up to 7 times
+ *  6. birthday_wishes            — scheduled, once per year
  *
  * All scheduled sends go through the cron endpoint: POST /api/cron/whatsapp
  * Event-driven sends are called directly from server actions.
  *
- * Idempotency is enforced at two layers:
- *  1. DB unique index: (member_id, template_name, sent_at::date)
- *  2. Cycle key: prevents restarting a reminder cycle that's already complete
+ * Idempotency & cadence are enforced through the whatsapp_automation_logs table:
+ *  1. Partial unique index (status='sent') → never send the same template to the
+ *     same member twice in one day.
+ *  2. Cycle state (send_count / cancelled) → enforce the 3-day gap, the 7-send
+ *     cap, and hard-stop a cycle once the member renews or pays.
+ *
+ * The pure "should we send today?" decision lives in ./scheduling.ts.
  */
 
 import { createClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
 import type { TemplateId, TemplateContext } from './sender'
-import { formatDate } from '@/lib/utils'
-import { format, differenceInDays, parseISO, addDays } from 'date-fns'
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-/** Max sends per reminder cycle (Day 0, 3, 6, 9, 12, 15, 18 = 7 sends) */
-const MAX_REMINDER_SENDS = 7
-/** Interval between reminder sends in days */
-const REMINDER_INTERVAL_DAYS = 3
-/** Total reminder window = 7 × 3 = 21 days */
-const REMINDER_WINDOW_DAYS = (MAX_REMINDER_SENDS - 1) * REMINDER_INTERVAL_DAYS // 18
+import {
+  MAX_REMINDER_SENDS,
+  daysUntil,
+  isExpiringInWindow,
+  isExpiredInWindow,
+  isBirthdayToday,
+  decideScheduledSend,
+  type CycleState,
+} from './scheduling'
+import { format } from 'date-fns'
 
 // ─── DB Client ────────────────────────────────────────────────────────────────
 
@@ -40,6 +43,8 @@ function getAdminClient() {
   if (!url || !key) throw new Error('Supabase env vars missing')
   return createClient(url, key)
 }
+
+type AdminClient = ReturnType<typeof getAdminClient>
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,36 +67,62 @@ interface GymRow {
   name: string
 }
 
-// ─── Log helpers ─────────────────────────────────────────────────────────────
+interface Stats {
+  processed: number
+  sent: number
+  skipped: number
+  failed: number
+  errors: string[]
+}
+
+/** The three cyclic reminder templates managed by the scheduler. */
+const CYCLIC_TEMPLATES = [
+  'membership_expiry_reminder',
+  'membership_expired',
+  'payment_due_reminder',
+] as const
+
+// ─── Cycle state helpers ───────────────────────────────────────────────────────
 
 /**
- * How many times has this cycle already sent?
- * Returns -1 if the member already renewed (cycle should stop).
+ * Read the current state of a specific reminder cycle (identified by cycleKey).
+ * The most recent row wins: a 'cancelled' row closes the cycle; otherwise its
+ * send_count is the number of sends so far.
  */
-async function getCycleSendCount(
-  supabase: ReturnType<typeof getAdminClient>,
+async function getCycleState(
+  supabase: AdminClient,
   memberId: string,
   templateName: string,
   cycleKey: string,
-): Promise<number> {
+): Promise<CycleState> {
   const { data, error } = await supabase
     .from('whatsapp_automation_logs')
-    .select('send_count, id')
+    .select('send_count, status, sent_at')
     .eq('member_id', memberId)
     .eq('template_name', templateName)
     .eq('cycle_key', cycleKey)
     .order('sent_at', { ascending: false })
     .limit(1)
 
-  if (error || !data || data.length === 0) return 0
-  return data[0].send_count
+  if (error || !data || data.length === 0) {
+    return { sendCount: 0, lastSentAt: null, cancelled: false }
+  }
+
+  const row = data[0] as { send_count: number; status: string; sent_at: string }
+  const cancelled = row.status === 'cancelled'
+  return {
+    sendCount: cancelled ? MAX_REMINDER_SENDS : row.send_count,
+    lastSentAt: row.sent_at,
+    cancelled,
+  }
 }
 
 /**
- * Was a message already sent today for this member + template?
+ * Was any send for this member + template recorded today?
+ * Used as the hard same-day dedup gate (mirrors the partial unique index).
  */
 async function alreadySentToday(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   memberId: string,
   templateName: string,
   today: string,
@@ -101,18 +132,56 @@ async function alreadySentToday(
     .select('id')
     .eq('member_id', memberId)
     .eq('template_name', templateName)
-    .gte('sent_at', `${today}T00:00:00Z`)
-    .lt('sent_at', `${today}T23:59:59Z`)
+    .eq('status', 'sent')
+    .gte('sent_at', `${today}T00:00:00.000Z`)
+    .lt('sent_at', `${today}T23:59:59.999Z`)
     .limit(1)
 
   return !error && data !== null && data.length > 0
 }
 
 /**
+ * Resolve the cycle key for the payment_due_reminder cycle.
+ *
+ * Unlike expiry/expired (which have a stable trigger date = membership end date),
+ * a payment due has no natural anchor, so we must NOT key the cycle by "today"
+ * (that would restart the cycle every day and send a reminder daily).
+ *
+ * Instead we continue the member's active due cycle:
+ *   - no prior cycle            → start a new one anchored to today
+ *   - latest cycle cancelled    → previous due was paid; start a fresh one today
+ *   - latest cycle complete     → 7 reminders already sent; stop (return null)
+ *   - otherwise                 → continue the existing cycle
+ */
+async function resolveDueCycleKey(
+  supabase: AdminClient,
+  memberId: string,
+  today: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('whatsapp_automation_logs')
+    .select('cycle_key, send_count, status')
+    .eq('member_id', memberId)
+    .eq('template_name', 'payment_due_reminder')
+    .order('sent_at', { ascending: false })
+    .limit(1)
+
+  const newKey = `payment_due_reminder:${memberId}:${today}`
+
+  if (!data || data.length === 0) return newKey
+
+  const latest = data[0] as { cycle_key: string; send_count: number; status: string }
+
+  if (latest.status === 'cancelled') return newKey            // previous due paid → new cycle
+  if (latest.send_count >= MAX_REMINDER_SENDS) return null    // cycle exhausted → stop
+  return latest.cycle_key                                      // continue active cycle
+}
+
+/**
  * Was the welcome message already sent for this member (ever)?
  */
 async function welcomeAlreadySent(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   memberId: string,
 ): Promise<boolean> {
   const { data, error } = await supabase
@@ -120,6 +189,7 @@ async function welcomeAlreadySent(
     .select('id')
     .eq('member_id', memberId)
     .eq('template_name', 'gymflow_welcome_member')
+    .eq('status', 'sent')
     .limit(1)
 
   return !error && data !== null && data.length > 0
@@ -129,18 +199,19 @@ async function welcomeAlreadySent(
  * Was a birthday wish already sent this calendar year?
  */
 async function birthdayAlreadySentThisYear(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   memberId: string,
   year: number,
 ): Promise<boolean> {
-  const yearStart = `${year}-01-01T00:00:00Z`
-  const yearEnd   = `${year}-12-31T23:59:59Z`
+  const yearStart = `${year}-01-01T00:00:00.000Z`
+  const yearEnd   = `${year}-12-31T23:59:59.999Z`
 
   const { data, error } = await supabase
     .from('whatsapp_automation_logs')
     .select('id')
     .eq('member_id', memberId)
     .eq('template_name', 'birthday_wishes')
+    .eq('status', 'sent')
     .gte('sent_at', yearStart)
     .lte('sent_at', yearEnd)
     .limit(1)
@@ -149,10 +220,10 @@ async function birthdayAlreadySentThisYear(
 }
 
 /**
- * Record a successful or failed send in the log.
+ * Record a send / failure / cancellation in the log.
  */
 async function recordSend(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   {
     gymId,
     memberId,
@@ -173,7 +244,7 @@ async function recordSend(
     cycleKey: string
     sendCount: number
     messageId?: string
-    status: 'sent' | 'failed' | 'skipped'
+    status: 'sent' | 'failed' | 'skipped' | 'cancelled'
     errorMessage?: string
     triggerDate?: string
     metadata?: Record<string, unknown>
@@ -319,23 +390,16 @@ export async function sendRenewalMessage({
  *
  * This is the main cron job function — runs once per day.
  * It processes:
- *  - membership_expiry_reminder (members expiring within 21 days)
- *  - membership_expired         (members expired within last 21 days)
+ *  - membership_expiry_reminder (members expiring within the window)
+ *  - membership_expired         (members expired within the window)
  *  - payment_due_reminder       (members with pending_amount > 0)
  *  - birthday_wishes            (members whose birthday is today)
  */
-export async function runDailyWhatsAppAutomation(): Promise<{
-  processed: number
-  sent: number
-  skipped: number
-  failed: number
-  errors: string[]
-}> {
+export async function runDailyWhatsAppAutomation(): Promise<Stats> {
   const supabase = getAdminClient()
   const today = format(new Date(), 'yyyy-MM-dd')
-  const todayDate = new Date(today)
 
-  const stats = { processed: 0, sent: 0, skipped: 0, failed: 0, errors: [] as string[] }
+  const stats: Stats = { processed: 0, sent: 0, skipped: 0, failed: 0, errors: [] }
 
   try {
     // ── Fetch all active gyms ──────────────────────────────────────────────
@@ -351,7 +415,7 @@ export async function runDailyWhatsAppAutomation(): Promise<{
 
     for (const gym of gyms as GymRow[]) {
       try {
-        await processGym(supabase, gym, today, todayDate, stats)
+        await processGym(supabase, gym, today, stats)
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         stats.errors.push(`Gym ${gym.id}: ${msg}`)
@@ -367,19 +431,11 @@ export async function runDailyWhatsAppAutomation(): Promise<{
 }
 
 async function processGym(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   gym: GymRow,
   today: string,
-  todayDate: Date,
-  stats: { processed: number; sent: number; skipped: number; failed: number; errors: string[] },
+  stats: Stats,
 ): Promise<void> {
-  // Fetch members that might need automation
-  // - memberships expiring in next 21 days OR expired in last 21 days
-  // - pending_amount > 0
-  // - birthday today
-  const windowStart = format(addDays(todayDate, -REMINDER_WINDOW_DAYS), 'yyyy-MM-dd')
-  const windowEnd   = format(addDays(todayDate, REMINDER_WINDOW_DAYS), 'yyyy-MM-dd')
-
   const { data: members, error } = await supabase
     .from('members')
     .select(`
@@ -402,6 +458,7 @@ async function processGym(
     // Resolve latest membership
     const memberships = (rawMember.memberships ?? []) as { plan: string; end_date: string; created_at: string }[]
     const latestMs = memberships
+      .slice()
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null
 
     const member: AutomationMember = {
@@ -418,39 +475,38 @@ async function processGym(
 
     stats.processed++
 
-    // ── 1. Expiry reminders ───────────────────────────────────────────────
+    // ── 1. Expiry / expired reminders ─────────────────────────────────────
     if (member.latest_membership) {
-      const endDate = parseISO(member.latest_membership.end_date)
-      const daysUntilExpiry = differenceInDays(endDate, todayDate) // negative = expired
+      const endDate = member.latest_membership.end_date
 
-      if (daysUntilExpiry >= 0 && daysUntilExpiry <= REMINDER_WINDOW_DAYS) {
-        // Expiring within window — send membership_expiry_reminder
+      if (isExpiringInWindow(endDate, today)) {
         await tryScheduledSend({
           supabase, gym, member, today,
           templateName: 'membership_expiry_reminder',
-          triggerDate: member.latest_membership.end_date,
+          cycleKey: `membership_expiry_reminder:${member.id}:${endDate}`,
+          triggerDate: endDate,
           ctx: {
             phone,
             gymName: gym.name,
             memberName: member.name,
             plan: member.latest_membership.plan,
-            expiryDate: member.latest_membership.end_date,
-            daysRemaining: daysUntilExpiry,
+            expiryDate: endDate,
+            daysRemaining: daysUntil(endDate, today),
           },
           stats,
         })
-      } else if (daysUntilExpiry < 0 && Math.abs(daysUntilExpiry) <= REMINDER_WINDOW_DAYS) {
-        // Expired within window — send membership_expired
+      } else if (isExpiredInWindow(endDate, today)) {
         await tryScheduledSend({
           supabase, gym, member, today,
           templateName: 'membership_expired',
-          triggerDate: member.latest_membership.end_date,
+          cycleKey: `membership_expired:${member.id}:${endDate}`,
+          triggerDate: endDate,
           ctx: {
             phone,
             gymName: gym.name,
             memberName: member.name,
             plan: member.latest_membership.plan,
-            expiryDate: member.latest_membership.end_date,
+            expiryDate: endDate,
           },
           stats,
         })
@@ -459,63 +515,58 @@ async function processGym(
 
     // ── 2. Payment due reminder ───────────────────────────────────────────
     if (member.pending_amount > 0) {
-      await tryScheduledSend({
-        supabase, gym, member, today,
-        templateName: 'payment_due_reminder',
-        triggerDate: today,
-        ctx: {
-          phone,
-          gymName: gym.name,
-          memberName: member.name,
-          dueAmount: member.pending_amount,
-        },
-        stats,
-      })
-    }
-
-    // ── 3. Birthday wishes ────────────────────────────────────────────────
-    if (member.date_of_birth) {
-      const dob = member.date_of_birth // "YYYY-MM-DD"
-      const [, dobMonth, dobDay] = dob.split('-')
-      const [todayYear, todayMonth, todayDay] = today.split('-')
-
-      if (dobMonth === todayMonth && dobDay === todayDay) {
-        const year = parseInt(todayYear, 10)
-        const alreadySent = await birthdayAlreadySentThisYear(supabase, member.id, year)
-        if (!alreadySent) {
-          const result = await sendWhatsAppTemplate('birthday_wishes', {
+      const dueCycleKey = await resolveDueCycleKey(supabase, member.id, today)
+      if (dueCycleKey) {
+        await tryScheduledSend({
+          supabase, gym, member, today,
+          templateName: 'payment_due_reminder',
+          cycleKey: dueCycleKey,
+          triggerDate: dueCycleKey.split(':').pop() ?? today,
+          ctx: {
             phone,
             gymName: gym.name,
             memberName: member.name,
-          })
-          const cycleKey = `birthday_wishes:${member.id}:${todayYear}`
-          await recordSend(supabase, {
-            gymId: gym.id,
-            memberId: member.id,
-            phone,
-            templateName: 'birthday_wishes',
-            cycleKey,
-            sendCount: 1,
-            messageId: result.messageId,
-            status: result.success ? 'sent' : 'failed',
-            errorMessage: result.error,
-            triggerDate: today,
-          })
-          result.success ? stats.sent++ : stats.failed++
-        } else {
-          stats.skipped++
-        }
+            dueAmount: member.pending_amount,
+          },
+          stats,
+        })
+      } else {
+        stats.skipped++
+      }
+    }
+
+    // ── 3. Birthday wishes ────────────────────────────────────────────────
+    if (member.date_of_birth && isBirthdayToday(member.date_of_birth, today)) {
+      const year = parseInt(today.slice(0, 4), 10)
+      if (await birthdayAlreadySentThisYear(supabase, member.id, year)) {
+        stats.skipped++
+      } else {
+        const result = await sendWhatsAppTemplate('birthday_wishes', {
+          phone,
+          gymName: gym.name,
+          memberName: member.name,
+        })
+        await recordSend(supabase, {
+          gymId: gym.id,
+          memberId: member.id,
+          phone,
+          templateName: 'birthday_wishes',
+          cycleKey: `birthday_wishes:${member.id}:${year}`,
+          sendCount: 1,
+          messageId: result.messageId,
+          status: result.success ? 'sent' : 'failed',
+          errorMessage: result.error,
+          triggerDate: today,
+        })
+        result.success ? stats.sent++ : stats.failed++
       }
     }
   }
 }
 
 /**
- * Attempt a scheduled send (expiry/expired/due reminders).
- * Enforces:
- *  - Once every REMINDER_INTERVAL_DAYS days
- *  - Max MAX_REMINDER_SENDS per cycle
- *  - Stop if member has renewed (for expiry templates)
+ * Attempt a scheduled cyclic send (expiry / expired / due reminders).
+ * Cadence & cancellation are enforced by decideScheduledSend().
  */
 async function tryScheduledSend({
   supabase,
@@ -523,59 +574,31 @@ async function tryScheduledSend({
   member,
   today,
   templateName,
+  cycleKey,
   triggerDate,
   ctx,
   stats,
 }: {
-  supabase: ReturnType<typeof getAdminClient>
+  supabase: AdminClient
   gym: GymRow
   member: AutomationMember
   today: string
-  templateName: string
+  templateName: TemplateId
+  cycleKey: string
   triggerDate: string
   ctx: TemplateContext
-  stats: { sent: number; skipped: number; failed: number }
+  stats: Stats
 }): Promise<void> {
-  const cycleKey = `${templateName}:${member.id}:${triggerDate}`
+  const state = await getCycleState(supabase, member.id, templateName, cycleKey)
+  const alreadyToday = await alreadySentToday(supabase, member.id, templateName, today)
 
-  // Already sent today?
-  if (await alreadySentToday(supabase, member.id, templateName, today)) {
+  const decision = decideScheduledSend(state, { alreadySentToday: alreadyToday, today })
+  if (!decision.send) {
     stats.skipped++
     return
   }
 
-  // How many times sent in this cycle?
-  const sendCount = await getCycleSendCount(supabase, member.id, templateName, cycleKey)
-
-  // Cycle complete?
-  if (sendCount >= MAX_REMINDER_SENDS) {
-    stats.skipped++
-    return
-  }
-
-  // Enforce 3-day interval — find the last send date for this cycle
-  if (sendCount > 0) {
-    const { data: lastLog } = await supabase
-      .from('whatsapp_automation_logs')
-      .select('sent_at')
-      .eq('member_id', member.id)
-      .eq('template_name', templateName)
-      .eq('cycle_key', cycleKey)
-      .order('sent_at', { ascending: false })
-      .limit(1)
-
-    if (lastLog && lastLog.length > 0) {
-      const lastSent = parseISO(lastLog[0].sent_at)
-      const daysSinceLast = differenceInDays(new Date(today), lastSent)
-      if (daysSinceLast < REMINDER_INTERVAL_DAYS) {
-        stats.skipped++
-        return
-      }
-    }
-  }
-
-  // All checks pass — send
-  const result = await sendWhatsAppTemplate(templateName as TemplateId, ctx)
+  const result = await sendWhatsAppTemplate(templateName, ctx)
 
   await recordSend(supabase, {
     gymId: gym.id,
@@ -583,7 +606,7 @@ async function tryScheduledSend({
     phone: member.phone,
     templateName,
     cycleKey,
-    sendCount: sendCount + 1,
+    sendCount: state.sendCount + 1,
     messageId: result.messageId,
     status: result.success ? 'sent' : 'failed',
     errorMessage: result.error,
@@ -595,11 +618,16 @@ async function tryScheduledSend({
 }
 
 /**
- * Cancel all pending reminder cycles for a member.
- * Call this when a member renews their membership or clears dues.
+ * Cancel active reminder cycles for a member.
+ * Call this when a member renews their membership or clears their dues.
  *
- * This doesn't delete logs — it records a 'skipped' entry with
- * send_count = MAX_REMINDER_SENDS to signal "cycle complete, stop sending".
+ * For each template we find the member's most recent cycle and, if it's still
+ * active (not already cancelled or complete), record a single 'cancelled'
+ * sentinel row. getCycleState() then treats that cycle as closed, so the
+ * scheduler will never send another reminder for it.
+ *
+ * The cycle is resolved from the logs, so callers don't need to know the exact
+ * trigger date — the `triggerDate` argument is retained only for the audit row.
  */
 export async function cancelReminderCycles({
   gymId,
@@ -612,30 +640,36 @@ export async function cancelReminderCycles({
   memberId: string
   phone: string
   templates: TemplateId[]
-  triggerDate: string
+  triggerDate?: string
 }): Promise<void> {
   const supabase = getAdminClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
 
   for (const template of templates) {
-    const cycleKey = `${template}:${memberId}:${triggerDate}`
-    const sendCount = await getCycleSendCount(supabase, memberId, template, cycleKey)
+    const { data } = await supabase
+      .from('whatsapp_automation_logs')
+      .select('cycle_key, send_count, status')
+      .eq('member_id', memberId)
+      .eq('template_name', template)
+      .order('sent_at', { ascending: false })
+      .limit(1)
 
-    if (sendCount < MAX_REMINDER_SENDS) {
-      // Fill to max so the scheduler won't send any more
-      for (let i = sendCount; i < MAX_REMINDER_SENDS; i++) {
-        await recordSend(supabase, {
-          gymId,
-          memberId,
-          phone,
-          templateName: template,
-          cycleKey,
-          sendCount: i + 1,
-          status: 'skipped',
-          errorMessage: 'Cancelled — member renewed or paid',
-          triggerDate,
-        })
-      }
-    }
+    if (!data || data.length === 0) continue
+
+    const latest = data[0] as { cycle_key: string; send_count: number; status: string }
+
+    // Already cancelled or fully sent — nothing to do.
+    if (latest.status === 'cancelled' || latest.send_count >= MAX_REMINDER_SENDS) continue
+
+    await recordSend(supabase, {
+      gymId,
+      memberId,
+      phone,
+      templateName: template,
+      cycleKey: latest.cycle_key,
+      sendCount: MAX_REMINDER_SENDS,
+      status: 'cancelled',
+      errorMessage: 'Cancelled — member renewed or paid',
+      triggerDate: triggerDate ?? latest.cycle_key.split(':').pop(),
+    })
   }
 }

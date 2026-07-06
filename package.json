@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "prepare": "husky",
-    "test": "vitest",
+    "test": "vitest run",
     "test:watch": "vitest --watch",
     "verify:whatsapp": "tsx scripts/verify-whatsapp-setup.ts"
   },
@@ -51,6 +51,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.23.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

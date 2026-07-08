@@ -53,8 +53,10 @@ CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_sent_at
 
 -- Unique constraint: one send per (member, template, day).
 -- Prevents the cron from firing twice in the same day for the same member.
+-- Uses timezone('UTC', sent_at)::date — TIMESTAMPTZ::date is not immutable
+-- because it depends on session timezone, so the explicit UTC cast is required.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wa_auto_logs_daily_dedup
-  ON whatsapp_automation_logs(member_id, template_name, (sent_at::date));
+  ON whatsapp_automation_logs(member_id, template_name, (timezone('UTC', sent_at)::date));
 
 -- ── RLS ────────────────────────────────────────────────────────────────────
 

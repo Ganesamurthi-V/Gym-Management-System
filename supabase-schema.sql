@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS members (
   area TEXT,
   pending_amount INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(gym_id, phone),
   UNIQUE(gym_id, member_number)
 );
 
@@ -59,7 +58,6 @@ CREATE TABLE IF NOT EXISTS members (
   area TEXT,
   pending_amount INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(gym_id, phone),
   UNIQUE(gym_id, member_number)
 );
 

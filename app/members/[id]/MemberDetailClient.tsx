@@ -107,6 +107,10 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       if (e2) throw e2
       const { error: e3 } = await supabase.from('members').delete().eq('id', member.id)
       if (e3) throw e3
+      // Bust the Redis members cache so the list page doesn't re-serve the
+      // just-deleted member from stale cache after navigation.
+      const { invalidateMembersCache } = await import('../actions')
+      await invalidateMembersCache(member.gym_id)
       toast.success('Member deleted successfully')
       router.push('/members')
       router.refresh()

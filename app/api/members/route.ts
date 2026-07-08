@@ -60,7 +60,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
 
-    log.info('Payload', { data })
+    // Security: do not log `data` — member records contain PII (names, phones).
+    log.info('Payload ready', { returned: data?.length ?? 0, count })
     log.summary(200)
     return NextResponse.json({
       success: true,
@@ -92,10 +93,37 @@ export async function POST(req: NextRequest) {
     }
     log.info('User Info', { userId: user.id })
 
+    // Security: rate-limit writes to match the GET handler and the [id] routes.
+    // Without this, POST was the one unthrottled entry point for member creation.
+    const { allowed } = await checkRateLimit(user.id, '/api/members', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) {
+      log.summary(429)
+      return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
+    }
+
     let body
     try { body = await req.json() } catch {
       log.summary(400)
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 })
+    }
+
+    // Security: validate/normalize required fields before insert. Previously
+    // `name`/`phone` were written straight through (empty or wrong-typed values
+    // could be persisted) and `gender` was never checked against the DB constraint.
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
+    if (!name || !phone) {
+      log.summary(400)
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Name and phone are required' } }, { status: 400 })
+    }
+
+    let gender: string | null = null
+    if (body.gender !== undefined && body.gender !== null && body.gender !== '') {
+      if (!['male', 'female', 'other'].includes(body.gender)) {
+        log.summary(400)
+        return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid gender' } }, { status: 400 })
+      }
+      gender = body.gender
     }
 
     const age = parseInt(body.age)
@@ -119,10 +147,10 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from('members')
       .insert({
-        name: body.name,
-        phone: body.phone,
+        name,
+        phone,
         age,
-        gender: body.gender,
+        gender,
         member_number,
         gym_id: gym.id
       })

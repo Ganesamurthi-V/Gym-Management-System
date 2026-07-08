@@ -148,32 +148,13 @@ export default function GooglePlacesAutocomplete({
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [])
 
-  // ── Lenis smooth scroll + wheel isolation on suggestions list ─────────────
+  // ── Wheel isolation on suggestions list ──────────────────────────────────
   // Non-passive native wheel listener so preventDefault actually works.
   // When cursor is inside the list → scrolls the list.
   // When list hits top/bottom → lets the page scroll normally.
   useEffect(() => {
     const el = suggestionsRef.current
     if (!el || !open) return
-
-    let lenis: any = null
-
-    async function initLenis() {
-      const LenisModule = await import('lenis')
-      const Lenis = LenisModule.default
-      lenis = new Lenis({
-        wrapper: el as HTMLElement,
-        content: (el as HTMLElement).firstElementChild as HTMLElement,
-        duration: 0.8,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        orientation: 'vertical',
-        smoothWheel: true,
-      })
-      function raf(time: number) { lenis.raf(time); requestAnimationFrame(raf) }
-      requestAnimationFrame(raf)
-    }
-
-    initLenis()
 
     // Non-passive wheel listener — prevents page scroll when inside the list
     const target = el
@@ -186,7 +167,6 @@ export default function GooglePlacesAutocomplete({
     target.addEventListener('wheel', onWheel, { passive: false })
 
     return () => {
-      if (lenis) lenis.destroy()
       target.removeEventListener('wheel', onWheel)
     }
   }, [open, suggestions.length])
@@ -384,7 +364,7 @@ export default function GooglePlacesAutocomplete({
           className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
           style={{ maxHeight: '224px', overflowY: 'hidden' }}
         >
-          <div> {/* Lenis content wrapper */}
+          <div> {/* suggestions list wrapper */}
           {suggestions.map((s, i) => (
             <li
               key={s.place_id}
@@ -411,7 +391,7 @@ export default function GooglePlacesAutocomplete({
               <span>· normalized by gymflow</span>
             </p>
           </li>
-          </div> {/* end Lenis content wrapper */}
+          </div> {/* end suggestions list wrapper */}
         </ul>
       )}
     </div>

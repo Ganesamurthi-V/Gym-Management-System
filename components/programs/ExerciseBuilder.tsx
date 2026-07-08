@@ -391,7 +391,6 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
 
         {/* Builder Canvas */}
         <div 
-          data-lenis-prevent
           className="flex-1 min-h-0 overflow-y-auto p-6 bg-slate-50/30"
         >
           
@@ -587,7 +586,6 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
                 
                 {showSearch && searchQuery && (
                   <div 
-                    data-lenis-prevent
                     className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden max-h-[300px] overflow-y-auto"
                   >
                     {EXERCISE_LIBRARY.filter(ex => ex.name.toLowerCase().includes(searchQuery.toLowerCase())).map((ex, i) => (
@@ -633,7 +631,6 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
           </div>
           
           <div 
-            data-lenis-prevent
             className="p-5 overflow-y-auto flex-1 min-h-0"
           >
             <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Live Program Structure</h4>

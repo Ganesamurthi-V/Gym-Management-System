@@ -121,6 +121,10 @@ export function EditMembersClient({ members, gymId }: Props) {
       if (ids.length > 0) {
         const { error: e3 } = await supabase.from('members').delete().in('id', ids)
         if (e3) throw e3
+        // Bust the Redis members cache so the list page reflects the deletions
+        // instead of re-serving stale cached rows after navigation.
+        const { invalidateMembersCache } = await import('../actions')
+        await invalidateMembersCache(gymId)
       }
       router.push('/members')
       router.refresh()

@@ -149,7 +149,10 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
         )
       `)
       .eq('gym_id', gymId)
-      .order('name')
+      // Must match the initial page load ordering (created_at DESC in page.tsx).
+      // Ordering by a different column here made "Load More" fetch an
+      // inconsistent slice, duplicating some members and skipping others.
+      .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
     if (error) throw error

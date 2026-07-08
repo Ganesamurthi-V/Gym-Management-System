@@ -129,7 +129,10 @@ export default async function MembersPage() {
     const { result, count } = await getMembersData(gym.id, logger)
     logger.end('CACHE')
     
-    logger.info('Payload', { result, count })
+    // Security/perf: do NOT log the full member payload — it contains PII
+    // (names, phone numbers) and serializing hundreds of records on every
+    // request is pure overhead. Log only non-sensitive counts.
+    logger.info('Payload ready', { returned: result.length, count })
     logger.summary(200)
 
     return (

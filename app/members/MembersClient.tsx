@@ -84,7 +84,9 @@ function MembersContent({ members, gymId, totalCount }: Props) {
     setFixing(true)
 
     // Issue 6 fix: Batch all updates in one RPC call instead of N sequential UPDATE calls
-    const sorted = [...members].sort((a, b) => (a.member_number ?? 0) - (b.member_number ?? 0))
+    // Use membersList (all loaded members) rather than the initial `members` prop,
+    // so duplicates among "Load More"-fetched rows are also renumbered.
+    const sorted = [...membersList].sort((a, b) => (a.member_number ?? 0) - (b.member_number ?? 0))
     const finalized = new Set<number>()
     const updates: { id: string; newNum: number }[] = []
 
@@ -103,10 +105,14 @@ function MembersContent({ members, gymId, totalCount }: Props) {
     // Use Promise.all to batch all updates concurrently
     try {
       await Promise.all(
-        updates.map(({ id, newNum }) => 
+        updates.map(({ id, newNum }) =>
           supabase.from('members').update({ member_number: newNum }).eq('id', id)
         )
       )
+      // Bust the Redis members cache so router.refresh() re-fetches fresh rows
+      // instead of re-serving the stale (pre-renumber) cached list.
+      const { invalidateMembersCache } = await import('./actions')
+      await invalidateMembersCache(gymId)
       toast.success('Duplicate IDs fixed successfully!')
       router.refresh()
     } catch (error) {

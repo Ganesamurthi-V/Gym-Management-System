@@ -154,11 +154,6 @@ export default function NewMemberPage() {
     setError('')
 
     try {
-      // Issue 6 fix: gymId is already in state from mount-time useEffect — no re-fetch needed.
-      const { data: existing } = await supabase
-        .from('members').select('id').eq('gym_id', gymId).eq('phone', form.phone).single()
-      if (existing && form.phone.trim()) throw new Error('A member with this phone number already exists.')
-
       const memberNumber = parseInt(form.member_number)
       if (!memberNumber) throw new Error('Member ID is required')
 

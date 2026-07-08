@@ -23,8 +23,9 @@
 DROP INDEX IF EXISTS idx_wa_auto_logs_daily_dedup;
 
 -- Recreate it as a PARTIAL unique index that only constrains real sends.
+-- Uses timezone('UTC', sent_at)::date — TIMESTAMPTZ::date is not immutable.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wa_auto_logs_daily_dedup_sent
-  ON whatsapp_automation_logs (member_id, template_name, (sent_at::date))
+  ON whatsapp_automation_logs (member_id, template_name, (timezone('UTC', sent_at)::date))
   WHERE status = 'sent';
 
 -- Composite index to resolve "the current cycle for this member+template"

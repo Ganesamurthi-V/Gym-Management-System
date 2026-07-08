@@ -17,7 +17,6 @@ import {
   isRecognizedPlan,
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
-import { useLenisScroll } from "@/lib/hooks/useLenisScroll";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
 

@@ -12,7 +12,7 @@
 |-------|-----------|
 | **Framework** | Next.js 15 (App Router, React Server Components) |
 | **Language** | TypeScript 5 (strict mode) |
-| **Styling** | Tailwind CSS 3, Sora font (Google Fonts), Lenis smooth scroll |
+| **Styling** | Tailwind CSS 3, Sora font (Google Fonts) |
 | **Backend** | Supabase (PostgreSQL 15, Auth, Row Level Security) |
 | **Caching** | Upstash Redis (Serverless HTTP/REST caching) |
 | **AI** | Google Gemini 2.0 Flash (area inference fallback) |
@@ -119,7 +119,7 @@ gymflow/
 │   ├── ui/
 │   │   └── FitnessLoader.tsx         # Centered dumbbell loading animation
 │   ├── providers/
-│   │   └── SmoothScrollProvider.tsx   # Lenis smooth scroll wrapper (root-level)
+│   │   └── SmoothScrollProvider.tsx   # Scroll provider wrapper (root-level)
 │   ├── import/                       # Import-specific components
 │   └── location/                     # Location/area components
 ├── lib/
@@ -139,7 +139,6 @@ gymflow/
 │   │   ├── normalizers.ts            # normalizePlan, normalizeGender, normalizeAge, normalizeDate, etc.
 │   │   └── pipeline.ts              # Shared 6-stage post-parse pipeline
 │   ├── hooks/
-│   │   └── useLenisScroll.ts         # Lenis smooth scroll hook for sub-containers
 │   ├── pdf.ts                        # HTML-based daily collection PDF (print window)
 │   ├── rateLimit.ts                  # In-memory per-user rate limiter
 │   ├── timeout.ts                    # Request timeout utility
@@ -350,7 +349,6 @@ New gym owners are automatically redirected to `/onboarding` on first login:
 - Autosaves to `localStorage` on every keystroke — safe to close and resume
 - Plan prices auto-fill membership fees when adding new members
 - All data stored in `gyms.onboarding_data` JSONB + `gym_plan_prices` table
-- Uses Lenis smooth scroll within the wizard content area
 
 ---
 
@@ -509,7 +507,6 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 | Toast notifications on save | ✅ |
 | Multi-gym isolation (RLS) | ✅ |
 | Per-gym plan prices + joining fees | ✅ |
-| Lenis smooth scroll (root + sub-containers) | ✅ |
 | Skeleton loading states for all major routes | ✅ |
 | Mobile-scrollable import/bulk-edit previews | ✅ |
 | Rate limiting on geo API routes | ✅ |

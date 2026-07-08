@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 import { calcEndDate } from "@/lib/utils";
 import { searchLocalities } from "@/lib/geo/matchArea";
 import type { ImportedRow } from "../page";
-import { useLenisScroll } from "@/lib/hooks/useLenisScroll";
 import WizardHeader from "@/components/import/WizardHeader";
 
 type Step = "edit" | "preview" | "done";
@@ -43,9 +42,6 @@ export default function ImportEditPage() {
   const mirrorRef = useRef<HTMLDivElement>(null);
   const tableInnerRef = useRef<HTMLDivElement>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
-
-  // Use Lenis smooth scroll on the final preview box container
-  useLenisScroll(previewScrollRef, [rows, step]);
 
   // Track sidebar collapsed state for the fixed scrollbar left offset
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -465,7 +461,7 @@ export default function ImportEditPage() {
       </div>
 
       <div className="card overflow-hidden w-full max-w-full">
-        <div ref={scrollRef} className="overflow-x-auto" data-lenis-prevent>
+        <div ref={scrollRef} className="overflow-x-auto">
           <div ref={tableInnerRef} className="min-w-full w-max">
           <table className="w-full text-sm">
             <thead>

@@ -237,7 +237,7 @@ export function EditMembersClient({ members, gymId }: Props) {
           <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Changes Summary</p>
           </div>
-          <div className="divide-y divide-slate-50 overflow-y-auto rounded-b-2xl" data-lenis-prevent style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}>
+          <div className="divide-y divide-slate-50 overflow-y-auto rounded-b-2xl" style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}>
             {changes.map(({ original, edited }) => {
               const diffs: { label: string; from: string; to: string }[] = []
               if (parseInt(edited.member_number) !== original.member_number)

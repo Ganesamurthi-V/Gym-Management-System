@@ -9,7 +9,7 @@ GymFlow is a multi-tenant SaaS application designed specifically for small to mi
 **Core Philosophy:** "Know exactly who paid, who didn't, and who's about to expire — without using notebooks."
 
 - **Primary Users:** Gym owners with limited tech experience. The UI must be highly intuitive, mobile-first, and lightning-fast on 4G networks.
-- **Tech Stack:** Next.js 15 (App Router), Supabase (PostgreSQL 15), Tailwind CSS, Framer Motion, Lenis Smooth Scroll.
+- **Tech Stack:** Next.js 15 (App Router), Supabase (PostgreSQL 15), Tailwind CSS, Framer Motion.
 
 ---
 
@@ -33,7 +33,7 @@ GymFlow is a multi-tenant SaaS application designed specifically for small to mi
   - Browser: `import { createClient } from '@/lib/supabase/client'`
 
 ### 4. UI/UX & Design System
-- **Mobile-First Data Tables:** Use native `overflow-y-auto` for tables and lists to ensure smooth touch scrolling. **Do NOT apply Lenis smooth scrolling to internal scrollable containers.**
+- **Mobile-First Data Tables:** Use native `overflow-y-auto` for tables and lists to ensure smooth touch scrolling.
 - **Color Palette:** The primary brand color is Royal Blue (`brand-500` / `#2563EB`). Success actions use `emerald`, warnings use `amber`, and destructive/overdue actions use `red`.
 - **Loading States:** Use skeletons (`loading.tsx`) and the central `FitnessLoader.tsx` component.
 - **Animations:** Use Framer Motion for scroll-reveal effects (like on the Reports page) and CSS for micro-interactions (`animate-pop-in`, `animate-pulse-soft`).
@@ -93,7 +93,7 @@ A 6-step setup flow for new gym owners covering:
 ## 🔄 Current Project Status (As of May 2026)
 
 - **Completed:** Auth, Onboarding, Dashboard, Member CRUD, Bulk Import Pipeline, Geo Intelligence Engine, Attendance, Reports, Account Settings.
-- **Recent Updates:** Integrated Lenis smooth scroll globally, refined the 6-step onboarding wizard, added Google Places metadata to members, implemented PDF daily collection reports, and added APM-style structured Request Logging (`lib/logger.ts`) for detailed performance tracing.
+- **Recent Updates:** Refined the 6-step onboarding wizard, added Google Places metadata to members, implemented PDF daily collection reports, and added APM-style structured Request Logging (`lib/logger.ts`) for detailed performance tracing.
 - **Stable:** The core architecture is stable and production-ready.
 
 ## 📌 Agent Directives

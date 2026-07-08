@@ -7,7 +7,6 @@ import {
   ChevronRight, ChevronLeft, Check, Plus, Trash2, X, Clock, Users, TrendingUp, Zap
 } from 'lucide-react'
 import usePlacesAutocomplete from 'use-places-autocomplete'
-import { useLenisScroll } from '@/lib/hooks/useLenisScroll'
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 
 // --- Types --------------------------------------------------------------------
@@ -169,7 +168,6 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   const [error, setError] = useState('')
 
   const scrollRef = useRef<HTMLDivElement>(null)
-  useLenisScroll(scrollRef, [currentStep])
 
   // Restore from localStorage on mount
   useEffect(() => {

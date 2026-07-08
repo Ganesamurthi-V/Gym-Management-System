@@ -256,7 +256,7 @@ function ExpiringContent({
         </div>
       ) : (
         <div className="flex-1 relative min-h-[200px]">
-          <div data-lenis-prevent="true" className="absolute inset-0 overflow-y-auto divide-y divide-slate-50 overscroll-contain">
+          <div className="absolute inset-0 overflow-y-auto divide-y divide-slate-50 overscroll-contain">
             {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} gymId={gymId} />)}
           </div>
         </div>

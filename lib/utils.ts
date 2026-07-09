@@ -59,7 +59,10 @@ export function buildWhatsAppLink(phone: string, memberName: string, endDate: st
 
 export function buildCustomWhatsAppLink(phone: string, message: string): string {
   const cleanPhone = phone.replace(/\D/g, '')
-  const withCountryCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`
+  // Use the last 10 digits as the local number and always prefix 91. A bare
+  // startsWith('91') check mis-handled 10-digit numbers that begin with "91"
+  // (e.g. 9198765432), sending them without a country code.
+  const withCountryCode = cleanPhone.length >= 10 ? `91${cleanPhone.slice(-10)}` : cleanPhone
   return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`
 }
 

@@ -133,6 +133,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Age and member_number must be integers' } }, { status: 400 })
     }
 
+    // Optional date_of_birth — powers the birthday_wishes WhatsApp automation.
+    let date_of_birth: string | null = null
+    if (body.date_of_birth !== undefined && body.date_of_birth !== null && body.date_of_birth !== '') {
+      const dob = String(body.date_of_birth).slice(0, 10)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || isNaN(Date.parse(dob))) {
+        log.summary(400)
+        return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'date_of_birth must be YYYY-MM-DD' } }, { status: 400 })
+      }
+      date_of_birth = dob
+    }
+
     log.start('GET_GYM')
     const gym = await getGymForUser(supabase, user.id)
     log.end('GET_GYM')
@@ -151,6 +162,7 @@ export async function POST(req: NextRequest) {
         phone,
         age,
         gender,
+        date_of_birth,
         member_number,
         gym_id: gym.id
       })

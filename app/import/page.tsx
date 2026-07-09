@@ -13,6 +13,7 @@ import {
   normalizeGender,
   normalizePaymentMode,
   normalizeAge,
+  normalizeDob,
   normalizeMemberNumber,
   isRecognizedPlan,
 } from "@/lib/import/normalizers";
@@ -30,6 +31,7 @@ export interface ImportedRow {
   payment_mode: string;
   gender: string;
   age: string;
+  date_of_birth?: string;
   area: string;
   member_number: string;
   /** Original ID from the source file, preserved as legacy reference */
@@ -57,6 +59,7 @@ const EXPECTED_COLUMNS = [
   { key: "payment_mode", label: "Payment Mode", required: false },
   { key: "gender", label: "Gender", required: false },
   { key: "age", label: "Age", required: false },
+  { key: "date_of_birth", label: "Date of Birth", required: false },
   { key: "area", label: "Area", required: false },
 ];
 
@@ -296,15 +299,17 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     "memberage", "member age", "member_age",
     "ageyears", "age years", "age_years",
     "ageinyyears", "age in years",
-    // Date of birth (we'll parse to age)
-    "dob", "dateofbirth", "date of birth", "date_of_birth",
-    "birthdate", "birth date", "birth_date",
-    "birthday", "birth day",
-    "bornon", "born on",
     // Current age
     "currentage", "current age", "current_age",
     "clientage", "client age", "client_age",
     "customerage", "customer age",
+  ],
+
+  date_of_birth: [
+    "dob", "dateofbirth", "date of birth", "date_of_birth",
+    "birthdate", "birth date", "birth_date",
+    "birthday", "birth day", "birthdays",
+    "bornon", "born on", "dateofbirthdob",
   ],
 
   area: [
@@ -416,7 +421,7 @@ function excelSerialToDate(serial: number): string { return sharedExcelSerialToD
 const FIELD_LABELS: Record<string, string> = {
   member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan", category: "Category",
   start_date: "Start Date", amount: "Amount", payment_mode: "Payment Mode",
-  gender: "Gender", age: "Age", area: "Area",
+  gender: "Gender", age: "Age", date_of_birth: "Date of Birth", area: "Area",
 };
 
 const STAGES = [
@@ -615,6 +620,7 @@ export default function ImportPage() {
       const payment_mode = normalizePaymentMode(getCol(row, colMap, "payment_mode") || "cash");
       const gender = normalizeGender(getCol(row, colMap, "gender"));
       const age = normalizeAge(getCol(row, colMap, "age"));
+      const date_of_birth = normalizeDob(getCol(row, colMap, "date_of_birth"));
       const rawArea = getCol(row, colMap, "area");
       const rawMemberNum = getCol(row, colMap, "member_number");
       const { number: member_number, original: legacy_member_id } = normalizeMemberNumber(rawMemberNum);
@@ -656,6 +662,7 @@ export default function ImportPage() {
         payment_mode,
         gender,
         age,
+        date_of_birth,
         area: rawArea,
         member_number,
         legacy_member_id: legacy_member_id || undefined,

@@ -40,6 +40,18 @@ describe('buildTemplatePayload — common envelope', () => {
     expect(p.to).toBe('919876543210')
   })
 
+  it('adds the country code to a 10-digit number that itself starts with 91', () => {
+    // Regression: 9198765432 is a valid 10-digit mobile. The old
+    // startsWith("91") guard left it uncoded → WhatsApp could not route it.
+    const p = buildTemplatePayload('gymflow_welcome_member', { ...base, phone: '9198765432' }) as any
+    expect(p.to).toBe('919198765432')
+  })
+
+  it('normalises numbers written with +91 and separators', () => {
+    const p = buildTemplatePayload('gymflow_welcome_member', { ...base, phone: '+91 98765 43210' }) as any
+    expect(p.to).toBe('919876543210')
+  })
+
   it('throws on an unknown template', () => {
     expect(() => buildTemplatePayload('not_a_template' as any, base)).toThrow()
   })

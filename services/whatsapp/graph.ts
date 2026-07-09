@@ -59,7 +59,13 @@ function getAuthHeader(): Record<string, string> {
 
 function normalisePhone(phone: string): string {
   const digits = phone.replace(/\D/g, '')
-  return digits.startsWith('91') ? digits : `91${digits}`
+  // The Indian subscriber number is the last 10 digits; always render as
+  // country-code + those 10 digits. Guarding on startsWith('91') was a bug:
+  // a valid 10-digit mobile that itself starts with "91" (e.g. 9198765432)
+  // would be left WITHOUT a country code and fail to route on WhatsApp.
+  // This form is also idempotent for numbers already stored as 91XXXXXXXXXX.
+  if (digits.length >= 10) return `91${digits.slice(-10)}`
+  return digits
 }
 
 function planLabel(plan?: string): string {

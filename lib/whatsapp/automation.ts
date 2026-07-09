@@ -657,8 +657,12 @@ export async function cancelReminderCycles({
 
     const latest = data[0] as { cycle_key: string; send_count: number; status: string }
 
-    // Already cancelled or fully sent — nothing to do.
-    if (latest.status === 'cancelled' || latest.send_count >= MAX_REMINDER_SENDS) continue
+    // Only skip if this cycle is ALREADY cancelled (idempotent — avoids stacking
+    // duplicate sentinels). A *completed* cycle (send_count >= MAX) must still get
+    // a 'cancelled' sentinel: otherwise resolveDueCycleKey() sees the exhausted
+    // cycle as the latest row and returns null forever, so a later re-incurred due
+    // (member paid, then owes again) would never restart its reminder cycle.
+    if (latest.status === 'cancelled') continue
 
     await recordSend(supabase, {
       gymId,

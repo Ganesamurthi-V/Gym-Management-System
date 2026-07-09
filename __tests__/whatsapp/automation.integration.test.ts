@@ -274,6 +274,34 @@ describe('B2: cancelReminderCycles actually stops the cycle', () => {
     await runDailyWhatsAppAutomation()
     expect(sendCountFor('payment_due_reminder')).toBe(2)
   })
+
+  it('restarts reminders for a re-incurred due after the FIRST cycle ran to completion', async () => {
+    // Regression: once a due cycle hits the 7-send cap, cancelReminderCycles used
+    // to skip writing the 'cancelled' sentinel, so resolveDueCycleKey() returned
+    // null forever and a later re-incurred due got no reminders.
+    const m = addMember({ pending_amount: 500 })
+
+    // Run long enough for the cycle to reach its 7-send cap.
+    for (let day = 0; day < 40; day++) {
+      setDay(day)
+      await runDailyWhatsAppAutomation()
+    }
+    expect(sendCountFor('payment_due_reminder')).toBe(7)
+
+    // Member clears the due (due-cleared endpoint) even though the cycle is done.
+    m.pending_amount = 0
+    await cancelReminderCycles({
+      gymId: 'gym-1', memberId: m.id, phone: m.phone,
+      templates: ['payment_due_reminder'],
+    })
+    expect(logsFor('payment_due_reminder').some(r => r.status === 'cancelled')).toBe(true)
+
+    // Later the member owes again → a fresh cycle must open and send.
+    m.pending_amount = 800
+    setDay(60)
+    await runDailyWhatsAppAutomation()
+    expect(sendCountFor('payment_due_reminder')).toBe(8)
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

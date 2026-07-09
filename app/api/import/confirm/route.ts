@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       phone:            String(r.phone ?? '').replace(/\D/g, '').slice(0, 15),
       age:              parseInt(r.age as string) || null,
       gender:           ['male', 'female', 'other'].includes(r.gender as string) ? r.gender : null,
+      date_of_birth:    /^\d{4}-\d{2}-\d{2}$/.test(String(r.date_of_birth ?? '')) ? r.date_of_birth : null,
       area:             r.area ? String(r.area).slice(0, 100) : null,
       member_number:    claimNext(),
       legacy_member_id: r.legacy_member_id ? String(r.legacy_member_id).slice(0, 50) : null,

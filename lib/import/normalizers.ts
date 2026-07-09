@@ -88,6 +88,31 @@ export function normalizeAge(raw: string): string {
   return total > 0 && total <= 120 ? String(total) : "";
 }
 
+/**
+ * Normalize a date-of-birth cell to "YYYY-MM-DD", or "" when absent/unparseable.
+ * Unlike normalizeDate() it never defaults to today (a bogus DOB would fire a
+ * wrong-day birthday message). Only month+day matter for the birthday_wishes
+ * automation, so an ambiguous 2-digit year is harmless.
+ */
+export function normalizeDob(raw: string): string {
+  const t = (raw ?? "").trim();
+  if (!t) return "";
+  const isoMatch = t.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1];
+  const n = Number(t);
+  if (!isNaN(n) && n > 0 && !t.includes("-") && !t.includes("/")) return excelSerialToDate(n);
+  if (t.includes("/") || t.includes("-")) {
+    const parts = t.split(/[/-]/);
+    if (parts.length === 3) {
+      const [a, b, c] = parts;
+      if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c.padStart(2, "0")}`; // YYYY-MM-DD
+      const year = c.length === 4 ? c : (Number(c) > 30 ? "19" + c : "20" + c);        // DD/MM/YY(YY)
+      return `${year}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+    }
+  }
+  return "";
+}
+
 export function normalizeDate(raw: string): string {
   const t = raw.trim();
   const isoMatch = t.match(/^(\d{4}-\d{2}-\d{2})/);

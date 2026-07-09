@@ -162,6 +162,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
         <div className="p-3 xs:p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 xs:gap-3">
           {member.gender && <InfoTile label="Gender" value={member.gender.charAt(0).toUpperCase() + member.gender.slice(1)} />}
           {member.age && <InfoTile label="Age" value={`${member.age} yrs`} />}
+          {member.date_of_birth && <InfoTile label="Birthday" value={formatDate(member.date_of_birth)} />}
           {member.area && <InfoTile label="Area" value={member.area} />}
           {member.legacy_member_id && <InfoTile label="Legacy ID" value={member.legacy_member_id} />}
           {latestMembership && (

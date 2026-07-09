@@ -18,6 +18,8 @@ export interface Member {
   phone: string
   gender?: 'male' | 'female' | 'other' | null
   age?: number | null
+  /** ISO date "YYYY-MM-DD". Drives the birthday_wishes WhatsApp automation. */
+  date_of_birth?: string | null
   area?: string | null
   pending_amount: number
   created_at: string

@@ -50,7 +50,9 @@ export interface TemplateDefinition {
 
 function waLink(phone: string, message: string): string {
   const clean = phone.replace(/\D/g, '')
-  const withCode = clean.startsWith('91') ? clean : `91${clean}`
+  // Last 10 digits + country code. startsWith('91') alone dropped the country
+  // code for valid 10-digit numbers beginning with "91" (e.g. 9198765432).
+  const withCode = clean.length >= 10 ? `91${clean.slice(-10)}` : clean
   return `https://wa.me/${withCode}?text=${encodeURIComponent(message)}`
 }
 

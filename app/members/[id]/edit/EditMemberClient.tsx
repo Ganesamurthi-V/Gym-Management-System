@@ -32,6 +32,7 @@ export function EditMemberClient({ member }: Props) {
     phone: member.phone,
     gender: (member.gender ?? '') as 'male' | 'female' | 'other' | '',
     age: member.age ? String(member.age) : '',
+    date_of_birth: member.date_of_birth ? member.date_of_birth.slice(0, 10) : '',
     area: member.area ?? '',
     member_number: String(member.member_number),
   })
@@ -67,6 +68,8 @@ export function EditMemberClient({ member }: Props) {
     changes.push({ field: 'gender', label: 'Gender', from: member.gender ?? '—', to: form.gender || '—' })
   if (form.age !== (member.age ? String(member.age) : ''))
     changes.push({ field: 'age', label: 'Age', from: member.age ? `${member.age} yrs` : '—', to: form.age ? `${form.age} yrs` : '—' })
+  if (form.date_of_birth !== (member.date_of_birth ? member.date_of_birth.slice(0, 10) : ''))
+    changes.push({ field: 'date_of_birth', label: 'Birth Date', from: member.date_of_birth ? member.date_of_birth.slice(0, 10) : '—', to: form.date_of_birth || '—' })
   if (form.area !== (member.area ?? ''))
     changes.push({ field: 'area', label: 'Area', from: member.area ?? '—', to: form.area || '—' })
 
@@ -92,6 +95,7 @@ export function EditMemberClient({ member }: Props) {
           phone: form.phone.trim(),
           ...(form.gender ? { gender: form.gender } : { gender: null }),
           age: form.age ? parseInt(form.age) : null,
+          date_of_birth: form.date_of_birth || null,
           area: form.area.trim() || null,
         })
         .eq('id', member.id)
@@ -239,6 +243,14 @@ export function EditMemberClient({ member }: Props) {
               <input type="number" value={form.age} onChange={e => update('age', e.target.value)}
                 className="input-field" placeholder="25" min="1" max="120" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+              Date of Birth <span className="text-slate-400 normal-case font-medium">(for birthday wishes)</span>
+            </label>
+            <input type="date" value={form.date_of_birth} onChange={e => update('date_of_birth', e.target.value)}
+              className="input-field" max={new Date().toISOString().slice(0, 10)} />
           </div>
 
           <div>

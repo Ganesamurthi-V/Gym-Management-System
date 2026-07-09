@@ -256,6 +256,9 @@ CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at
 -- [Migration 5] Add age to members
 ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age < 120);
 
+-- [Migration 5b] Add date_of_birth to members (drives birthday_wishes WhatsApp automation)
+ALTER TABLE members ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+
 -- [Migration 7] Add profile info to gyms
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS city TEXT;
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS gst_number TEXT;

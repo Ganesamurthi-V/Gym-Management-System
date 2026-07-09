@@ -70,13 +70,24 @@ export async function PATCH(
     let body
     try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
 
-    const updates: Record<string, string | number> = {}
+    const updates: Record<string, string | number | null> = {}
     if (body.name !== undefined) updates.name = body.name
     if (body.phone !== undefined) updates.phone = body.phone
     if (body.age !== undefined) {
       const age = parseInt(body.age)
       if (isNaN(age)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Age must be an integer' } }, { status: 400 })
       updates.age = age
+    }
+    if (body.date_of_birth !== undefined) {
+      if (body.date_of_birth === null || body.date_of_birth === '') {
+        updates.date_of_birth = null
+      } else {
+        const dob = String(body.date_of_birth).slice(0, 10)
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || isNaN(Date.parse(dob))) {
+          return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'date_of_birth must be YYYY-MM-DD' } }, { status: 400 })
+        }
+        updates.date_of_birth = dob
+      }
     }
     if (body.member_number !== undefined) {
       const num = parseInt(body.member_number)

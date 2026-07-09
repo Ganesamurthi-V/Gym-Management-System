@@ -49,6 +49,7 @@ export default function NewMemberPage() {
     phone: '',
     gender: '' as 'male' | 'female' | 'other' | '',
     age: '',
+    date_of_birth: '',
     area: '',
     member_number: '',
     plan: 'monthly' as Plan,
@@ -173,6 +174,7 @@ export default function NewMemberPage() {
           pending_amount: parseInt(form.pending_amount) || 0,
           ...(form.gender && { gender: form.gender }),
           ...(form.age && { age: parseInt(form.age) }),
+          ...(form.date_of_birth && { date_of_birth: form.date_of_birth }),
           ...(form.area.trim() && { area: form.area.trim() }),
           // Google Places supplementary metadata (never used as canonical ID)
           ...(googleMeta && {
@@ -325,6 +327,7 @@ export default function NewMemberPage() {
             <DetailRow icon={<Phone className="w-4 h-4 text-slate-400" />} label="Phone" value={form.phone} />
             {form.gender && <DetailRow icon={<User className="w-4 h-4 text-slate-400" />} label="Gender" value={form.gender.charAt(0).toUpperCase() + form.gender.slice(1)} />}
             {form.age && <DetailRow icon={<User className="w-4 h-4 text-slate-400" />} label="Age" value={`${form.age} yrs`} />}
+            {form.date_of_birth && <DetailRow icon={<Calendar className="w-4 h-4 text-slate-400" />} label="Date of Birth" value={formatDate(form.date_of_birth)} />}
             {form.area && <DetailRow icon={<MapPin className="w-4 h-4 text-slate-400" />} label="Area" value={form.area} />}
             <DetailRow icon={<Calendar className="w-4 h-4 text-slate-400" />} label="Plan" value={planLabel} />
             <DetailRow icon={<Calendar className="w-4 h-4 text-slate-400" />} label="Category" value={form.category === 'both' ? 'Strength + Cardio' : form.category.charAt(0).toUpperCase() + form.category.slice(1)} />
@@ -482,6 +485,15 @@ export default function NewMemberPage() {
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Age</label>
                 <input type="number" value={form.age} onChange={(e) => update('age', e.target.value)}
                   className="input-field" placeholder="25" min="1" max="120" />
+              </div>
+
+              {/* Date of Birth */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                  Date of Birth <span className="text-slate-400 normal-case font-medium">(for birthday wishes)</span>
+                </label>
+                <input type="date" value={form.date_of_birth} onChange={(e) => update('date_of_birth', e.target.value)}
+                  className="input-field" max={format(new Date(), 'yyyy-MM-dd')} />
               </div>
 
               {/* Area */}

@@ -24,12 +24,12 @@ import { z } from 'zod'
 // ─── Request schema ───────────────────────────────────────────────────────────
 
 const TEMPLATE_IDS: TemplateId[] = [
-  'gymflow_welcome_member',
+  '_gymflow_welcome_member',
   'membership_renewed',
   'membership_expiry_reminder',
   'membership_expired',
   'payment_due_reminder',
-  'birthday_wishes',
+  '_birthday_wishes',
 ]
 
 const sendSchema = z.object({

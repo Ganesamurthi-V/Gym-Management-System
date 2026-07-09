@@ -187,7 +187,14 @@ export function EditMembersClient({ members, gymId }: Props) {
     setLoading(true)
     setError('')
     try {
+      // Track members whose pending dues transition from >0 to 0 in this save,
+      // so we can stop their active payment_due_reminder cycle (same behaviour as
+      // DuesClient). Collected during the loop and fired only after every update
+      // succeeds, so we never cancel a cycle for a row that failed to save.
+      const duesCleared: { memberId: string; phone: string }[] = []
+
       for (const { original, edited } of changes) {
+        const newPending = parseInt(edited.pending_amount) || 0
         const { error: err } = await supabase
           .from('members')
           .update({
@@ -197,16 +204,35 @@ export function EditMembersClient({ members, gymId }: Props) {
             gender: edited.gender || null,
             age: edited.age ? parseInt(edited.age) : null,
             area: edited.area.trim() || null,
-            pending_amount: parseInt(edited.pending_amount) || 0,
+            pending_amount: newPending,
           })
           .eq('id', original.id)
         if (err) throw new Error(`Failed to update ${original.name}: ${err.message}`)
+
+        const phone = edited.phone.trim()
+        if ((original.pending_amount ?? 0) > 0 && newPending === 0 && phone.replace(/\D/g, '').length >= 10) {
+          duesCleared.push({ memberId: original.id, phone })
+        }
       }
       const { invalidateMembersCache } = await import('../actions')
       const cacheResult = await invalidateMembersCache(gymId)
       if (!cacheResult.success) {
         console.warn('Cache invalidation failed after member update:', cacheResult.error)
       }
+
+      // Stop the due-reminder cycle for members who were just cleared to zero.
+      // Fire-and-forget — never blocks the redirect or fails the save.
+      if (duesCleared.length > 0) {
+        const dueDate = new Date().toISOString().slice(0, 10)
+        for (const { memberId, phone } of duesCleared) {
+          fetch('/api/whatsapp/automation/due-cleared', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gymId, memberId, phone, dueDate }),
+          }).catch(() => {})
+        }
+      }
+
       router.push('/members')
       router.refresh()
     } catch (err: any) {

@@ -34,7 +34,7 @@ function planLabel(plan?: string): string {
 
 const TEMPLATES: TemplateMeta[] = [
   {
-    id: 'gymflow_welcome_member',
+    id: '_gymflow_welcome_member',
     label: 'Welcome Member',
     emoji: '🎉',
     description: 'Send when a new member joins',
@@ -74,7 +74,7 @@ const TEMPLATES: TemplateMeta[] = [
       `Hi ${ctx.memberName}, you have a pending payment of ${formatCurrency(ctx.dueAmount ?? 0)} at our gym. Please clear your dues at the earliest. 🙏`,
   },
   {
-    id: 'birthday_wishes',
+    id: '_birthday_wishes',
     label: 'Birthday Wishes',
     emoji: '🎂',
     description: 'Marketing — send on member\'s birthday',
@@ -94,7 +94,7 @@ export interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate = 'gymflow_welcome_member' }: Props) {
+export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate = '_gymflow_welcome_member' }: Props) {
   const [selectedId, setSelectedId] = useState<TemplateId>(defaultTemplate)
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')

@@ -171,12 +171,12 @@ export interface ProcessedStatus {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type TemplateId =
-  | 'gymflow_welcome_member'
+  | '_gymflow_welcome_member'
   | 'membership_renewed'
   | 'membership_expiry_reminder'
   | 'membership_expired'
   | 'payment_due_reminder'
-  | 'birthday_wishes'
+  | '_birthday_wishes'
 
 export interface TemplateContext {
   /** 10-digit or E.164 */
@@ -190,6 +190,7 @@ export interface TemplateContext {
   daysRemaining?: number
   /** Rupees */
   dueAmount?: number
+  memberId?: string
 }
 
 export interface SendResult {

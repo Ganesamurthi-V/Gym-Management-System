@@ -360,7 +360,7 @@ describe('event-driven & annual sends', () => {
     }
     await sendWelcomeMessage(args)
     await sendWelcomeMessage(args) // retry / double-submit
-    expect(sendCountFor('gymflow_welcome_member')).toBe(1)
+    expect(sendCountFor('_gymflow_welcome_member')).toBe(1)
   })
 
   it('sends a birthday wish once, only on the birthday', async () => {
@@ -369,13 +369,13 @@ describe('event-driven & annual sends', () => {
     // Not the birthday yet
     setDay(0)
     await runDailyWhatsAppAutomation()
-    expect(sendCountFor('birthday_wishes')).toBe(0)
+    expect(sendCountFor('_birthday_wishes')).toBe(0)
 
     // On the birthday — send once even if cron somehow runs twice
     setDay(2)
     await runDailyWhatsAppAutomation()
     await runDailyWhatsAppAutomation()
-    expect(sendCountFor('birthday_wishes')).toBe(1)
+    expect(sendCountFor('_birthday_wishes')).toBe(1)
   })
 })
 

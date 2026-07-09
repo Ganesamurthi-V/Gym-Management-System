@@ -2,12 +2,12 @@
  * WhatsApp Automation Engine
  *
  * Implements all 6 automated template sending rules:
- *  1. gymflow_welcome_member     — on new member registration (event-driven)
+ *  1. _gymflow_welcome_member     — on new member registration (event-driven)
  *  2. membership_renewed         — on renewal payment (event-driven)
  *  3. membership_expiry_reminder — scheduled, every 3 days, up to 7 times
  *  4. membership_expired         — scheduled, every 3 days, up to 7 times
  *  5. payment_due_reminder       — scheduled, every 3 days, up to 7 times
- *  6. birthday_wishes            — scheduled, once per year
+ *  6. _birthday_wishes            — scheduled, once per year
  *
  * All scheduled sends go through the cron endpoint: POST /api/cron/whatsapp
  * Event-driven sends are called directly from server actions.
@@ -34,6 +34,7 @@ import {
   type CycleState,
 } from './scheduling'
 import { format } from 'date-fns'
+import { formatMemberId } from '@/types'
 
 // ─── DB Client ────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ type AdminClient = ReturnType<typeof getAdminClient>
 interface AutomationMember {
   id: string
   gym_id: string
+  member_number: number
   name: string
   phone: string
   date_of_birth: string | null
@@ -188,7 +190,7 @@ async function welcomeAlreadySent(
     .from('whatsapp_automation_logs')
     .select('id')
     .eq('member_id', memberId)
-    .eq('template_name', 'gymflow_welcome_member')
+    .eq('template_name', '_gymflow_welcome_member')
     .eq('status', 'sent')
     .limit(1)
 
@@ -210,7 +212,7 @@ async function birthdayAlreadySentThisYear(
     .from('whatsapp_automation_logs')
     .select('id')
     .eq('member_id', memberId)
-    .eq('template_name', 'birthday_wishes')
+    .eq('template_name', '_birthday_wishes')
     .eq('status', 'sent')
     .gte('sent_at', yearStart)
     .lte('sent_at', yearEnd)
@@ -303,22 +305,31 @@ export async function sendWelcomeMessage({
   // Skip if already sent
   if (await welcomeAlreadySent(supabase, memberId)) return
 
+  const { data } = await supabase
+    .from('members')
+    .select('member_number')
+    .eq('id', memberId)
+    .limit(1)
+
+  const memberData = data?.[0]
+
   const ctx: TemplateContext = {
     phone,
     gymName,
     memberName,
     plan,
     startDate,
+    memberId: formatMemberId(memberData?.member_number),
   }
 
-  const result = await sendWhatsAppTemplate('gymflow_welcome_member', ctx)
-  const cycleKey = `gymflow_welcome_member:${memberId}:${startDate}`
+  const result = await sendWhatsAppTemplate('_gymflow_welcome_member', ctx)
+  const cycleKey = `_gymflow_welcome_member:${memberId}:${startDate}`
 
   await recordSend(supabase, {
     gymId,
     memberId,
     phone,
-    templateName: 'gymflow_welcome_member',
+    templateName: '_gymflow_welcome_member',
     cycleKey,
     sendCount: 1,
     messageId: result.messageId,
@@ -393,7 +404,7 @@ export async function sendRenewalMessage({
  *  - membership_expiry_reminder (members expiring within the window)
  *  - membership_expired         (members expired within the window)
  *  - payment_due_reminder       (members with pending_amount > 0)
- *  - birthday_wishes            (members whose birthday is today)
+ *  - _birthday_wishes            (members whose birthday is today)
  */
 export async function runDailyWhatsAppAutomation(): Promise<Stats> {
   const supabase = getAdminClient()
@@ -439,7 +450,7 @@ async function processGym(
   const { data: members, error } = await supabase
     .from('members')
     .select(`
-      id, gym_id, name, phone, date_of_birth, pending_amount,
+      id, gym_id, member_number, name, phone, date_of_birth, pending_amount,
       memberships(plan, end_date, category, created_at)
     `)
     .eq('gym_id', gym.id)
@@ -464,6 +475,7 @@ async function processGym(
     const member: AutomationMember = {
       id: rawMember.id,
       gym_id: rawMember.gym_id,
+      member_number: rawMember.member_number,
       name: rawMember.name,
       phone,
       date_of_birth: rawMember.date_of_birth ?? null,
@@ -507,6 +519,7 @@ async function processGym(
             memberName: member.name,
             plan: member.latest_membership.plan,
             expiryDate: endDate,
+            memberId: formatMemberId(member.member_number),
           },
           stats,
         })
@@ -541,7 +554,7 @@ async function processGym(
       if (await birthdayAlreadySentThisYear(supabase, member.id, year)) {
         stats.skipped++
       } else {
-        const result = await sendWhatsAppTemplate('birthday_wishes', {
+        const result = await sendWhatsAppTemplate('_birthday_wishes', {
           phone,
           gymName: gym.name,
           memberName: member.name,
@@ -550,8 +563,8 @@ async function processGym(
           gymId: gym.id,
           memberId: member.id,
           phone,
-          templateName: 'birthday_wishes',
-          cycleKey: `birthday_wishes:${member.id}:${year}`,
+          templateName: '_birthday_wishes',
+          cycleKey: `_birthday_wishes:${member.id}:${year}`,
           sendCount: 1,
           messageId: result.messageId,
           status: result.success ? 'sent' : 'failed',

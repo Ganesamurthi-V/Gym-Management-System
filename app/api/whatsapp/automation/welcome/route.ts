@@ -2,7 +2,7 @@
  * POST /api/whatsapp/automation/welcome
  *
  * Called server-side (fire-and-forget) immediately after a new member is created.
- * Sends the gymflow_welcome_member template exactly once.
+ * Sends the _gymflow_welcome_member template exactly once.
  *
  * Auth: must be a logged-in gym owner (same session that created the member).
  *

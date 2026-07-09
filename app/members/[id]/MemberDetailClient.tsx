@@ -25,7 +25,7 @@ interface Props {
 export function MemberDetailClient({ member, memberships, attendance, status, daysRemaining, gymName }: Props) {
   const [showRenewForm, setShowRenewForm] = useState(false)
   const [showWhatsApp, setShowWhatsApp] = useState(false)
-  const [whatsAppTemplate, setWhatsAppTemplate] = useState<TemplateId>('gymflow_welcome_member')
+  const [whatsAppTemplate, setWhatsAppTemplate] = useState<TemplateId>('_gymflow_welcome_member')
   const [renewForm, setRenewForm] = useState({
     plan: 'monthly' as Plan,
     custom_months: '',
@@ -188,7 +188,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
               onClick={() => {
                 const t: TemplateId =
                   status === 'expired'   ? 'membership_expired'          :
-                  status === 'expiring'  ? 'membership_expiry_reminder'  : 'gymflow_welcome_member'
+                  status === 'expiring'  ? 'membership_expiry_reminder'  : '_gymflow_welcome_member'
                 setWhatsAppTemplate(t)
                 setShowWhatsApp(true)
               }}
@@ -227,6 +227,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           expiryDate:    latestMembership?.end_date,
           daysRemaining: daysRemaining >= 0 ? daysRemaining : 0,
           dueAmount:     member.pending_amount > 0 ? member.pending_amount : undefined,
+          memberId:      formatMemberId(member.member_number),
         }}
       />
 

@@ -250,18 +250,14 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
   }
 
   const templates: Record<TemplateId, Record<string, unknown>> = {
-    gymflow_welcome_member: {
+    _gymflow_welcome_member: {
       ...base,
       template: {
-        name: 'gymflow_welcome_member',
+        name: '_gymflow_welcome_member',
         language: { code: 'en' },
-        // Approved template has a HEADER ("Welcome to {{1}}") + a 4-var BODY.
-        // Body positional order is [gym, member, plan, startDate] → {{1}}..{{4}}.
+        // Approved template has a static IMAGE HEADER (auto-displayed by Meta).
+        // Body positional order is [gym, member, plan, startDate, memberId] → {{1}}..{{5}}.
         components: [
-          {
-            type: 'header',
-            parameters: [txt(ctx.gymName)],
-          },
           {
             type: 'body',
             parameters: [
@@ -269,6 +265,7 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
               txt(ctx.memberName),
               txt(planLabel(ctx.plan)),
               txt(ctx.startDate ? formatDate(ctx.startDate) : '—'),
+              txt(ctx.memberId ?? '—'),
             ],
           },
         ],
@@ -279,15 +276,28 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
       template: {
         name: 'membership_renewed',
         language: { code: 'en' },
-        components: [{
-          type: 'body',
-          parameters: [
-            txt(ctx.memberName),
-            txt(ctx.gymName),
-            txt(planLabel(ctx.plan)),
-            txt(ctx.validUntil ? formatDate(ctx.validUntil) : '—'),
-          ],
-        }],
+        components: [
+          {
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: {
+                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
+                }
+              }
+            ]
+          },
+          {
+            type: 'body',
+            parameters: [
+              txt(ctx.memberName),
+              txt(ctx.gymName),
+              txt(planLabel(ctx.plan)),
+              txt(ctx.validUntil ? formatDate(ctx.validUntil) : '—'),
+            ],
+          }
+        ],
       },
     },
     membership_expiry_reminder: {
@@ -295,15 +305,28 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
       template: {
         name: 'membership_expiry_reminder',
         language: { code: 'en' },
-        components: [{
-          type: 'body',
-          parameters: [
-            txt(ctx.memberName),
-            txt(planLabel(ctx.plan)),
-            txt(ctx.expiryDate ? formatDate(ctx.expiryDate) : '—'),
-            txt(String(ctx.daysRemaining ?? 0)),
-          ],
-        }],
+        components: [
+          {
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: {
+                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
+                }
+              }
+            ]
+          },
+          {
+            type: 'body',
+            parameters: [
+              txt(ctx.memberName),
+              txt(planLabel(ctx.plan)),
+              txt(ctx.expiryDate ? formatDate(ctx.expiryDate) : '—'),
+              txt(String(ctx.daysRemaining ?? 0)),
+            ],
+          }
+        ],
       },
     },
     membership_expired: {
@@ -311,15 +334,28 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
       template: {
         name: 'membership_expired',
         language: { code: 'en' },
-        components: [{
-          type: 'body',
-          parameters: [
-            txt(ctx.memberName),
-            txt(ctx.gymName),
-            txt(planLabel(ctx.plan)),
-            txt(ctx.expiryDate ? formatDate(ctx.expiryDate) : '—'),
-          ],
-        }],
+        components: [
+          {
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: {
+                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
+                }
+              }
+            ]
+          },
+          {
+            type: 'body',
+            parameters: [
+              txt(ctx.memberName),
+              txt(ctx.gymName),
+              txt(ctx.expiryDate ? formatDate(ctx.expiryDate) : '—'),
+              txt(ctx.memberId ?? '—'),
+            ],
+          }
+        ],
       },
     },
     payment_due_reminder: {
@@ -330,23 +366,52 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         // Approved body already prints the ₹ symbol ("Amount : ₹{{2}}"), so the
         // parameter must be the bare grouped number — NOT formatCurrency(), which
         // would render "₹₹2,000".
-        components: [{
-          type: 'body',
-          parameters: [
-            txt(ctx.memberName),
-            txt(new Intl.NumberFormat('en-IN').format(ctx.dueAmount ?? 0)),
-          ],
-        }],
+        components: [
+          {
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: {
+                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
+                }
+              }
+            ]
+          },
+          {
+            type: 'body',
+            parameters: [
+              txt(ctx.memberName),
+              txt(new Intl.NumberFormat('en-IN').format(ctx.dueAmount ?? 0)),
+            ],
+          }
+        ],
       },
     },
-    birthday_wishes: {
+    _birthday_wishes: {
       ...base,
       template: {
-        name: 'birthday_wishes',
+        name: '_birthday_wishes',
         language: { code: 'en' },
         components: [
-          { type: 'header', parameters: [txt(ctx.memberName)] },
-          { type: 'body',   parameters: [txt(ctx.gymName)] },
+          {
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: {
+                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
+                }
+              }
+            ]
+          },
+          {
+            type: 'body',
+            parameters: [
+              txt(ctx.gymName),
+              txt(ctx.memberName)
+            ],
+          }
         ],
       },
     },

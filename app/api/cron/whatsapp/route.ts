@@ -5,7 +5,7 @@
  *  - membership_expiry_reminder  (every 3 days, up to 7 times)
  *  - membership_expired          (every 3 days, up to 7 times)
  *  - payment_due_reminder        (every 3 days, up to 7 times)
- *  - birthday_wishes             (once per year on member's birthday)
+ *  - _birthday_wishes             (once per year on member's birthday)
  *
  * Security: Protected by CRON_SECRET header.
  * Vercel Cron calls this automatically based on vercel.json schedule.

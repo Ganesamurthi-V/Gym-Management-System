@@ -135,7 +135,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             ${collapsed ? 'opacity-0 w-0 ml-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto group-hover/sidebar:ml-3' : 'opacity-100'}
           `}>
             <span className="text-lg font-bold text-slate-900 tracking-tight flex-1 truncate whitespace-nowrap">
-              gymflow
+              GymFlow
             </span>
             {/* Arrow — only visible when expanded, click to collapse */}
             <button

@@ -273,8 +273,38 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
     }
   }
 
-  const totalSalesRevenue = sales.reduce((s, sale) => s + Number(sale.total_price), 0)
-  const totalUnitsSold = sales.reduce((s, sale) => s + sale.quantity, 0)
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date()
+    return {
+      start: new Date(today.setHours(0, 0, 0, 0)),
+      end: new Date(today.setHours(23, 59, 59, 999))
+    }
+  })
+
+  const filteredSales = sales.filter(sale => {
+    const saleDate = new Date(sale.sold_at)
+    return saleDate >= dateRange.start && saleDate <= dateRange.end
+  })
+
+  const totalSalesRevenue = filteredSales.reduce((s, sale) => s + Number(sale.total_price), 0)
+  const totalUnitsSold = filteredSales.reduce((s, sale) => s + sale.quantity, 0)
+
+  const activities = [
+    {
+      id: `created-${product.id}`,
+      type: 'creation',
+      date: new Date(product.created_at),
+      title: `Added to inventory with ${product.initial_stock} units for ₹${product.selling_price}`,
+      tag: undefined
+    },
+    ...sales.map(sale => ({
+      id: sale.id,
+      type: 'sale',
+      date: new Date(sale.sold_at),
+      title: `Sold ${sale.quantity} unit${sale.quantity > 1 ? 's' : ''} via ${sale.payment_mode.toUpperCase()} for ₹${sale.total_price.toLocaleString('en-IN')}`,
+      tag: 'Sale'
+    }))
+  ].sort((a, b) => b.date.getTime() - a.date.getTime())
 
   return (
     <div className="w-full flex flex-col gap-4 pb-4 xs:pb-2">
@@ -286,13 +316,13 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           </Link>
           <div className="min-w-0">
             <h1 className="text-lg xs:text-xl md:text-2xl font-bold text-slate-900 truncate">{product.product_name}</h1>
-            <p className="text-xs xs:text-sm text-slate-500 mt-0.5 truncate">{product.variant_name} {product.sku ? `• ${product.sku}` : ''}</p>
+            <p className="text-xs xs:text-sm text-slate-500 mt-0.5 truncate">{product.variant_name} • {product.category || 'Uncategorized'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setShowEditModal(true)}
-            className="btn-secondary py-2 px-3 xs:px-4 text-xs flex items-center gap-1.5"
+            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
             Edit
@@ -300,7 +330,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           <button
             onClick={() => setShowSellModal(true)}
             disabled={product.initial_stock === 0}
-            className="btn-primary py-2 px-3 xs:px-4 text-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors border border-blue-600"
           >
             <ShoppingCart className="w-3.5 h-3.5" />
             <span className="hidden xs:inline">Sell Stock</span>
@@ -308,9 +338,10 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-colors"
+            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-white border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">Delete</span>
           </button>
         </div>
       </div>
@@ -334,16 +365,18 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
         {/* Left Col: Product Details */}
         <div className="md:col-span-1 flex flex-col gap-4 min-h-0">
           {/* Sales Summary Card */}
-          <div className="card p-5 space-y-3 bg-gradient-to-br from-emerald-50/50 to-white border-emerald-100">
+          <div className="card p-5 space-y-3 border-slate-100">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sales Summary</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white p-3 rounded-xl border border-emerald-100">
+              <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Revenue</p>
                 <p className="text-lg font-bold text-emerald-600">₹{totalSalesRevenue.toLocaleString('en-IN')}</p>
+                <p className="text-[10px] text-slate-400 mt-1">Total Revenue</p>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-emerald-100">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Units Sold</p>
                 <p className="text-lg font-bold text-slate-900">{totalUnitsSold}</p>
+                <p className="text-[10px] text-slate-400 mt-1">Total Units</p>
               </div>
             </div>
           </div>
@@ -364,7 +397,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                 <Link 
                   key={sib.id} 
                   href={`/inventory/${sib.id}`}
-                  className={`block p-3 rounded-xl border transition-all ${sib.id === product.id ? 'border-brand-500 bg-brand-50' : 'border-slate-100 hover:border-brand-200 hover:bg-slate-50'}`}
+                  className={`block p-3 rounded-xl border transition-all ${sib.id === product.id ? 'border-blue-200 bg-blue-50/50' : 'border-slate-100 hover:border-blue-100 hover:bg-slate-50'}`}
                 >
                   <div className="flex items-center justify-between">
                     <p className={`text-sm font-bold ${sib.id === product.id ? 'text-brand-900' : 'text-slate-700'}`}>
@@ -383,71 +416,82 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           </div>
 
           <div className="card p-5 space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 mb-2">
-              <Package className="w-6 h-6" />
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Category</p>
-              <p className="text-sm font-semibold text-slate-900 capitalize">{product.category || 'N/A'}</p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Brand</p>
-              <p className="text-sm font-semibold text-slate-900">{product.brand || 'N/A'}</p>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Selling Price</p>
-              <p className="text-lg font-bold text-brand-600">₹{product.selling_price}</p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cost Price</p>
-              <p className="text-sm font-semibold text-slate-600">₹{product.cost_price}</p>
-            </div>
-
-            {product.member_price && (
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Member Price</p>
-                <p className="text-sm font-semibold text-indigo-600">₹{product.member_price}</p>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                <Package className="w-4 h-4" />
               </div>
-            )}
-
-            <div className="pt-4 border-t border-slate-100">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Stock</p>
-              <div className="flex items-center gap-2">
-                <Box className={`w-4 h-4 ${product.initial_stock === 0 ? 'text-red-500' : product.initial_stock <= (product.low_stock_threshold || 5) ? 'text-amber-500' : 'text-emerald-500'}`} />
-                <p className="text-lg font-bold text-slate-900">{product.initial_stock} units</p>
-              </div>
-              {product.initial_stock === 0 && (
-                <p className="text-xs text-red-500 font-semibold mt-1">Out of stock</p>
-              )}
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Product Details</h3>
             </div>
-
-            {product.description && (
-              <div className="pt-4 border-t border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Description</p>
-                <p className="text-sm text-slate-600">{product.description}</p>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                <p className="text-sm font-medium text-slate-500">Category</p>
+                <p className="text-sm font-bold text-slate-900 capitalize">{product.category || 'N/A'}</p>
               </div>
-            )}
+
+              <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                <p className="text-sm font-medium text-slate-500">Brand</p>
+                <p className="text-sm font-bold text-slate-900">{product.brand || 'N/A'}</p>
+              </div>
+
+              <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                <p className="text-sm font-medium text-slate-500">Selling Price</p>
+                <p className="text-sm font-bold text-blue-600">₹{product.selling_price}</p>
+              </div>
+
+              <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                <p className="text-sm font-medium text-slate-500">Cost Price</p>
+                <p className="text-sm font-bold text-slate-900">₹{product.cost_price}</p>
+              </div>
+
+              <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                <p className="text-sm font-medium text-slate-500">Stock</p>
+                <p className={`text-sm font-bold ${product.initial_stock === 0 ? 'text-red-500' : product.initial_stock <= (product.low_stock_threshold || 5) ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {product.initial_stock} in stock
+                </p>
+              </div>
+
+              <div className="flex justify-between items-center pb-3">
+                <p className="text-sm font-medium text-slate-500">SKU</p>
+                <p className="text-sm font-bold text-slate-900">{product.sku || 'N/A'}</p>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Right Col: Sales History */}
         <div className="md:col-span-2 xl:col-span-3 flex flex-col min-h-0 h-full">
           <div className="card flex flex-col h-full overflow-hidden">
-            <div className="flex-none px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-                <ShoppingCart className="w-4 h-4" />
+            <div className="flex-none px-5 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Sales History</h2>
+                  <p className="text-xs text-slate-500 font-medium">{filteredSales.length} transaction{filteredSales.length !== 1 ? 's' : ''}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Sales History</h2>
-                <p className="text-xs text-slate-500 font-medium">{sales.length} transaction{sales.length !== 1 ? 's' : ''}</p>
+              
+              <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-sm text-slate-600">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <input 
+                  type="date" 
+                  value={format(dateRange.start, 'yyyy-MM-dd')} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: new Date(new Date(e.target.value).setHours(0,0,0,0)) }))}
+                  className="bg-transparent outline-none text-xs text-slate-600"
+                />
+                <span>-</span>
+                <input 
+                  type="date" 
+                  value={format(dateRange.end, 'yyyy-MM-dd')} 
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: new Date(new Date(e.target.value).setHours(23,59,59,999)) }))}
+                  className="bg-transparent outline-none text-xs text-slate-600"
+                />
               </div>
             </div>
 
-            {sales.length === 0 ? (
+            {filteredSales.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-10 px-4">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
                   <ShoppingCart className="w-8 h-8 text-slate-300" />
@@ -458,7 +502,8 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                 </p>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+              <>
+                <div className="flex-1 overflow-y-auto custom-scrollbar relative">
                 <table className="w-full text-left border-collapse">
                   <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-sm shadow-sm z-10">
                     <tr className="bg-slate-50/80 border-b border-slate-100">
@@ -471,7 +516,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
-                    {sales.map(sale => (
+                    {filteredSales.map(sale => (
                       <tr key={sale.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-5 py-3 text-sm text-slate-600 font-medium">
                           <div className="flex items-center gap-2">
@@ -506,8 +551,68 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                   </tbody>
                 </table>
               </div>
+              
+              {/* Sales Footer Summary */}
+              <div className="flex-none p-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                <div className="text-center flex-1 border-r border-slate-200 last:border-0">
+                  <p className="text-lg font-bold text-slate-900">{filteredSales.length}</p>
+                  <p className="text-xs text-slate-500 font-medium">Total Transactions</p>
+                </div>
+                <div className="text-center flex-1 border-r border-slate-200 last:border-0">
+                  <p className="text-lg font-bold text-slate-900">{totalUnitsSold}</p>
+                  <p className="text-xs text-slate-500 font-medium">Total Units Sold</p>
+                </div>
+                <div className="text-center flex-1 border-r border-slate-200 last:border-0">
+                  <p className="text-lg font-bold text-emerald-600">₹{totalSalesRevenue.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-slate-500 font-medium">Total Revenue</p>
+                </div>
+                <div className="text-center flex-1 border-r border-slate-200 last:border-0">
+                  <p className="text-lg font-bold text-slate-900">₹{filteredSales.length > 0 ? Math.round(totalSalesRevenue / filteredSales.length).toLocaleString('en-IN') : 0}</p>
+                  <p className="text-xs text-slate-500 font-medium">Average Order Value</p>
+                </div>
+              </div>
+              </>
             )}
           </div>
+          
+          {/* Recent Activity Card */}
+          <div className="card flex flex-col mt-4 flex-none">
+            <div className="flex-none px-5 py-4 border-b border-slate-100 bg-white flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded bg-blue-50 flex items-center justify-center text-blue-600">
+                <Tag className="w-3.5 h-3.5" />
+              </div>
+              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Recent Activity</h2>
+            </div>
+            <div className="p-5 flex flex-col gap-4 max-h-64 overflow-y-auto">
+              {activities.slice(0, 5).map((act, i) => (
+                <div key={act.id} className="relative pl-6 pb-2">
+                  <div className="absolute left-1.5 top-1.5 w-2 h-2 rounded-full bg-blue-500 z-10"></div>
+                  {i !== activities.slice(0, 5).length - 1 && (
+                    <div className="absolute left-2.5 top-3 w-px h-full bg-blue-100"></div>
+                  )}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-0.5">{format(act.date, 'dd MMM yyyy, h:mm a')}</p>
+                      <p className="text-sm font-medium text-slate-900">{act.title}</p>
+                    </div>
+                    {act.tag && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600">
+                        {act.tag}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {activities.length > 5 && (
+              <div className="p-3 border-t border-slate-100 text-center">
+                <button className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors">
+                  View All Activity ⌄
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
 

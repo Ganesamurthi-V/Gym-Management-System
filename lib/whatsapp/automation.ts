@@ -23,7 +23,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
-import type { TemplateId, TemplateContext } from './sender'
+import type { TemplateId, TemplateContext, SendResult } from './sender'
 import {
   MAX_REMINDER_SENDS,
   daysUntil,
@@ -103,6 +103,9 @@ async function getCycleState(
     .eq('member_id', memberId)
     .eq('template_name', templateName)
     .eq('cycle_key', cycleKey)
+    // Ignore 'error' rows (transient/systemic failures) so they never consume a
+    // cycle slot or advance the 3-day gate — the next cron run simply retries.
+    .in('status', ['sent', 'failed', 'cancelled'])
     .order('sent_at', { ascending: false })
     .limit(1)
 
@@ -165,6 +168,9 @@ async function resolveDueCycleKey(
     .select('cycle_key, send_count, status')
     .eq('member_id', memberId)
     .eq('template_name', 'payment_due_reminder')
+    // Ignore transient 'error' rows so a failed attempt never mis-resolves the
+    // cycle (its send_count is a claim placeholder, not a real send count).
+    .in('status', ['sent', 'failed', 'cancelled'])
     .order('sent_at', { ascending: false })
     .limit(1)
 
@@ -246,7 +252,7 @@ async function recordSend(
     cycleKey: string
     sendCount: number
     messageId?: string
-    status: 'sent' | 'failed' | 'skipped' | 'cancelled'
+    status: 'sent' | 'failed' | 'skipped' | 'cancelled' | 'error'
     errorMessage?: string
     triggerDate?: string
     metadata?: Record<string, unknown>
@@ -272,6 +278,94 @@ async function recordSend(
       console.error('[WA Automation] Failed to record send:', error.message)
     }
   }
+}
+
+// ─── Atomic claim-then-send (prevents duplicate messages under concurrency) ────
+
+/**
+ * Atomically claim today's send slot by inserting the 'sent' row BEFORE the
+ * message is dispatched. The partial unique index
+ *   (member_id, template_name, UTC(sent_at)::date) WHERE status = 'sent'
+ * guarantees exactly one claim wins. If a concurrent run — a double-fired cron
+ * or a double-submitted event send — already holds today's slot, the insert is
+ * rejected as a duplicate and we return { claimed:false } so the caller does
+ * NOT send. This closes the check-then-send race that alreadySentToday() alone
+ * could not (the old code sent first and recorded second).
+ *
+ * Returns the new row id so finalizeSend() can attach the message_id / status.
+ */
+async function claimDailySlot(
+  supabase: AdminClient,
+  params: {
+    gymId: string
+    memberId: string
+    phone: string
+    templateName: string
+    cycleKey: string
+    sendCount: number
+    triggerDate?: string
+    metadata?: Record<string, unknown>
+  },
+): Promise<{ claimed: boolean; id: string | null }> {
+  const { data, error } = await supabase
+    .from('whatsapp_automation_logs')
+    .insert({
+      gym_id: params.gymId,
+      member_id: params.memberId,
+      phone_number: params.phone,
+      template_name: params.templateName,
+      cycle_key: params.cycleKey,
+      send_count: params.sendCount,
+      message_id: null,
+      status: 'sent',
+      error_message: null,
+      trigger_date: params.triggerDate ?? null,
+      metadata: params.metadata ?? {},
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    // Unique-index violation = another run already claimed today's slot → skip.
+    if (error.message?.includes('unique') || error.message?.includes('duplicate')) {
+      return { claimed: false, id: null }
+    }
+    // Any other DB error → treat as not-claimed so we never dispatch a message
+    // we failed to record (which would risk an untracked duplicate next run).
+    console.error('[WA Automation] claim insert failed:', error.message)
+    return { claimed: false, id: null }
+  }
+
+  return { claimed: true, id: (data as { id: string } | null)?.id ?? null }
+}
+
+/**
+ * Reconcile a claimed slot with the actual send result.
+ *   success            → keep 'sent', attach the Meta message_id
+ *   permanent 4xx      → downgrade to 'failed' (keeps the slot consumed)
+ *   transient/systemic → downgrade to 'error' (releases the slot; getCycleState
+ *                        and resolveDueCycleKey ignore it, so the next cron retries)
+ */
+async function finalizeSend(
+  supabase: AdminClient,
+  rowId: string | null,
+  result: SendResult,
+): Promise<void> {
+  if (!rowId) return
+
+  const update: Record<string, unknown> = result.success
+    ? { message_id: result.messageId ?? null }
+    : {
+        status: isTransientFailure(result) ? 'error' : 'failed',
+        error_message: result.error ?? null,
+      }
+
+  const { error } = await supabase
+    .from('whatsapp_automation_logs')
+    .update(update)
+    .eq('id', rowId)
+
+  if (error) console.error('[WA Automation] finalize update failed:', error.message)
 }
 
 // ─── Event-driven sends ───────────────────────────────────────────────────────
@@ -322,21 +416,23 @@ export async function sendWelcomeMessage({
     memberId: formatMemberId(memberData?.member_number),
   }
 
-  const result = await sendWhatsAppTemplate('_gymflow_welcome_member', ctx)
   const cycleKey = `_gymflow_welcome_member:${memberId}:${startDate}`
 
-  await recordSend(supabase, {
+  // Claim before sending so two concurrent submits (double-click / retry) can
+  // never both dispatch the welcome message.
+  const claim = await claimDailySlot(supabase, {
     gymId,
     memberId,
     phone,
     templateName: '_gymflow_welcome_member',
     cycleKey,
     sendCount: 1,
-    messageId: result.messageId,
-    status: result.success ? 'sent' : 'failed',
-    errorMessage: result.error,
     triggerDate: startDate,
   })
+  if (!claim.claimed) return
+
+  const result = await sendWhatsAppTemplate('_gymflow_welcome_member', ctx)
+  await finalizeSend(supabase, claim.id, result)
 }
 
 /**
@@ -378,20 +474,20 @@ export async function sendRenewalMessage({
     validUntil,
   }
 
-  const result = await sendWhatsAppTemplate('membership_renewed', ctx)
-
-  await recordSend(supabase, {
+  // Claim before sending so a double-submitted renewal can't dispatch twice.
+  const claim = await claimDailySlot(supabase, {
     gymId,
     memberId,
     phone,
     templateName: 'membership_renewed',
     cycleKey,
     sendCount: 1,
-    messageId: result.messageId,
-    status: result.success ? 'sent' : 'failed',
-    errorMessage: result.error,
     triggerDate: today,
   })
+  if (!claim.claimed) return
+
+  const result = await sendWhatsAppTemplate('membership_renewed', ctx)
+  await finalizeSend(supabase, claim.id, result)
 }
 
 // ─── Scheduled sends (called by cron) ────────────────────────────────────────
@@ -554,27 +650,44 @@ async function processGym(
       if (await birthdayAlreadySentThisYear(supabase, member.id, year)) {
         stats.skipped++
       } else {
-        const result = await sendWhatsAppTemplate('_birthday_wishes', {
-          phone,
-          gymName: gym.name,
-          memberName: member.name,
-        })
-        await recordSend(supabase, {
+        // Claim first so a double-fired cron can't send two birthday wishes.
+        const claim = await claimDailySlot(supabase, {
           gymId: gym.id,
           memberId: member.id,
           phone,
           templateName: '_birthday_wishes',
           cycleKey: `_birthday_wishes:${member.id}:${year}`,
           sendCount: 1,
-          messageId: result.messageId,
-          status: result.success ? 'sent' : 'failed',
-          errorMessage: result.error,
           triggerDate: today,
         })
-        result.success ? stats.sent++ : stats.failed++
+        if (!claim.claimed) {
+          stats.skipped++
+        } else {
+          const result = await sendWhatsAppTemplate('_birthday_wishes', {
+            phone,
+            gymName: gym.name,
+            memberName: member.name,
+          })
+          await finalizeSend(supabase, claim.id, result)
+          result.success ? stats.sent++ : stats.failed++
+        }
       }
     }
   }
+}
+
+/**
+ * Is a failed send transient/systemic (retry later would help) rather than
+ * permanent? A permanent failure is a real Meta 4xx (bad number, rejected or
+ * paused template, blocked business) — retrying will not help, so it should
+ * consume a cycle slot. Everything else is transient: a thrown exception
+ * (network error, timeout, missing/rotated token → no httpStatus) or a 429/5xx
+ * that exhausted fetch.ts's retries.
+ */
+function isTransientFailure(result: SendResult): boolean {
+  const s = result.httpStatus
+  if (s === undefined) return true       // network / timeout / config exception
+  return s === 429 || s >= 500           // rate-limit or upstream — retryable
 }
 
 /**
@@ -611,21 +724,30 @@ async function tryScheduledSend({
     return
   }
 
-  const result = await sendWhatsAppTemplate(templateName, ctx)
-
-  await recordSend(supabase, {
+  // Atomically claim today's slot BEFORE sending. If a concurrent run already
+  // holds it (double-fired cron), the unique index rejects this insert and we
+  // must NOT send — preventing a duplicate message.
+  const claim = await claimDailySlot(supabase, {
     gymId: gym.id,
     memberId: member.id,
     phone: member.phone,
     templateName,
     cycleKey,
     sendCount: state.sendCount + 1,
-    messageId: result.messageId,
-    status: result.success ? 'sent' : 'failed',
-    errorMessage: result.error,
     triggerDate,
     metadata: { daysRemaining: ctx.daysRemaining, dueAmount: ctx.dueAmount },
   })
+  if (!claim.claimed) {
+    stats.skipped++
+    return
+  }
+
+  const result = await sendWhatsAppTemplate(templateName, ctx)
+
+  // finalizeSend reconciles the claim: success keeps 'sent', a permanent 4xx
+  // becomes 'failed' (slot consumed), a transient/systemic failure becomes
+  // 'error' (slot released; getCycleState ignores it, so the next cron retries).
+  await finalizeSend(supabase, claim.id, result)
 
   result.success ? stats.sent++ : stats.failed++
 }

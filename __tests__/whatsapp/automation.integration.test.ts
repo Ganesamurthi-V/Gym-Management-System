@@ -50,17 +50,22 @@ class FakeQuery {
   private filters: Array<(r: any) => boolean> = []
   private _order: { col: string; ascending: boolean } | null = null
   private _limit: number | null = null
-  private _mode: 'select' | 'insert' = 'select'
+  private _mode: 'select' | 'insert' | 'update' = 'select'
   private _row: any = null
+  private _updates: any = null
+  private _single = false
 
   constructor(private store: Record<string, any[]>, private table: string) {}
 
   select() { return this }
+  single() { this._single = true; return this }
+  update(row: any) { this._mode = 'update'; this._updates = row; return this }
   eq(col: string, val: unknown) { this.filters.push(r => r[col] === val); return this }
   gte(col: string, val: string) { this.filters.push(r => r[col] >= val); return this }
   gt(col: string, val: string) { this.filters.push(r => r[col] > val); return this }
   lt(col: string, val: string) { this.filters.push(r => r[col] < val); return this }
   lte(col: string, val: string) { this.filters.push(r => r[col] <= val); return this }
+  in(col: string, vals: unknown[]) { this.filters.push(r => vals.includes(r[col])); return this }
   not(col: string, _op: string, _val: unknown) {
     this.filters.push(r => r[col] !== null && r[col] !== undefined)
     return this
@@ -81,7 +86,7 @@ class FakeQuery {
       )
     }
     if (this._limit != null) rows = rows.slice(0, this._limit)
-    return { data: rows, error: null }
+    return { data: this._single ? (rows[0] ?? null) : rows, error: null }
   }
 
   private runInsert() {
@@ -104,10 +109,20 @@ class FakeQuery {
     }
 
     this.store[this.table].push(row)
-    return { data: [row], error: null }
+    return { data: this._single ? row : [row], error: null }
   }
 
-  private run() { return this._mode === 'insert' ? this.runInsert() : this.runSelect() }
+  private runUpdate() {
+    const rows = (this.store[this.table] ?? []).filter(r => this.filters.every(f => f(r)))
+    for (const r of rows) Object.assign(r, this._updates)
+    return { data: this._single ? (rows[0] ?? null) : rows, error: null }
+  }
+
+  private run() {
+    if (this._mode === 'insert') return this.runInsert()
+    if (this._mode === 'update') return this.runUpdate()
+    return this.runSelect()
+  }
 
   // Thenable so `await query...` and `await query.insert(...)` both work.
   then(resolve: (v: any) => void, reject?: (e: unknown) => void) {
@@ -212,6 +227,115 @@ describe('B1: payment_due_reminder sends every 3 days, not daily', () => {
     }
     const keys = new Set(logsFor('payment_due_reminder').filter(r => r.status === 'sent').map(r => r.cycle_key))
     expect(keys.size).toBe(1)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Transient vs permanent send failures
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('send failures: transient retries, permanent consumes a slot', () => {
+  const sentCount = (t: string) => logsFor(t).filter(r => r.status === 'sent').length
+
+  it('does NOT consume a slot on a transient failure and retries the next day', async () => {
+    addMember({ pending_amount: 500 })
+
+    // Day 0 — transient failure (thrown exception → no httpStatus).
+    h.sendMock.mockResolvedValueOnce({ success: false, error: 'network timeout' })
+    setDay(0)
+    await runDailyWhatsAppAutomation()
+
+    const rows = logsFor('payment_due_reminder')
+    expect(rows.some(r => r.status === 'error')).toBe(true)
+    expect(rows.some(r => r.status === 'sent')).toBe(false)
+
+    // Day 1 — API recovered. The slot was not consumed and the 3-day gate was
+    // not advanced, so it retries immediately.
+    setDay(1)
+    await runDailyWhatsAppAutomation()
+    expect(sentCount('payment_due_reminder')).toBe(1)
+  })
+
+  it('treats an exhausted 429/5xx as transient (retryable)', async () => {
+    addMember({ pending_amount: 500 })
+
+    h.sendMock.mockResolvedValueOnce({ success: false, httpStatus: 503, error: 'HTTP 503' })
+    setDay(0)
+    await runDailyWhatsAppAutomation()
+    expect(logsFor('payment_due_reminder').some(r => r.status === 'error')).toBe(true)
+
+    setDay(1)
+    await runDailyWhatsAppAutomation()
+    expect(sentCount('payment_due_reminder')).toBe(1)
+  })
+
+  it('consumes a slot on a permanent 4xx and enforces the 3-day gap', async () => {
+    addMember({ pending_amount: 500 })
+
+    // Day 0 — permanent failure (Meta 4xx, e.g. invalid recipient).
+    h.sendMock.mockResolvedValueOnce({ success: false, httpStatus: 400, error: 'invalid recipient' })
+    setDay(0)
+    await runDailyWhatsAppAutomation()
+    expect(logsFor('payment_due_reminder').some(r => r.status === 'failed')).toBe(true)
+
+    // Day 1 — within the 3-day gap the failed attempt holds the slot: no retry.
+    setDay(1)
+    await runDailyWhatsAppAutomation()
+    expect(sentCount('payment_due_reminder')).toBe(0)
+
+    // Day 3 — gap elapsed: sends.
+    setDay(3)
+    await runDailyWhatsAppAutomation()
+    expect(sentCount('payment_due_reminder')).toBe(1)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Atomic claim-before-send (no duplicate message under concurrency)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('claim-before-send prevents duplicate messages', () => {
+  it('does not double-send when a second run overlaps the first mid-send', async () => {
+    addMember({ pending_amount: 500 })
+    setDay(0)
+
+    // Fire a *concurrent* cron run WHILE the first send is in flight. Under the
+    // old send-then-record order the second run would see no 'sent' row yet and
+    // send again. With claim-before-send the slot is already recorded, so the
+    // overlapping run sees it and skips.
+    let reentered = false
+    h.sendMock.mockImplementationOnce(async (template: string) => {
+      if (!reentered) {
+        reentered = true
+        await runDailyWhatsAppAutomation()
+      }
+      return { success: true, messageId: `wamid.${template}` }
+    })
+
+    await runDailyWhatsAppAutomation()
+
+    expect(sendCountFor('payment_due_reminder')).toBe(1)
+    expect(logsFor('payment_due_reminder').filter(r => r.status === 'sent').length).toBe(1)
+  })
+
+  it('welcome message survives a double-submit racing mid-send', async () => {
+    addMember({ id: 'mem-1' })
+    const args = {
+      gymId: 'gym-1', gymName: 'Iron Temple', memberId: 'mem-1',
+      memberName: 'Arjun', phone: '9876543210', plan: 'monthly', startDate: label(0),
+    }
+
+    let reentered = false
+    h.sendMock.mockImplementationOnce(async (template: string) => {
+      if (!reentered) {
+        reentered = true
+        await sendWelcomeMessage(args) // concurrent double-submit
+      }
+      return { success: true, messageId: `wamid.${template}` }
+    })
+
+    await sendWelcomeMessage(args)
+    expect(sendCountFor('_gymflow_welcome_member')).toBe(1)
   })
 })
 

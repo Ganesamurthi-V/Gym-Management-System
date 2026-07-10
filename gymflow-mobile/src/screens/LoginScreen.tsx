@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { saveToken } from '@/lib/auth';
-import { ADMIN_API_BASE } from '@/lib/api';
+import { loginWithPassword } from '@/lib/api';
 import { AdminInput } from '@/components/AdminInput';
 import { AdminButton } from '@/components/AdminButton';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -29,21 +29,14 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   async function handleLogin() {
     if (!password.trim()) return;
     setLoading(true);
+    console.log('[LoginScreen] Attempting login...');
     try {
-      const res = await fetch(`${ADMIN_API_BASE}/api/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? 'Invalid password');
-      }
-
+      await loginWithPassword(password);
       await saveToken(password);
+      console.log('[LoginScreen] Login successful, navigating...');
       onLoginSuccess();
     } catch (e: any) {
+      console.error('[LoginScreen] Login Error:', e.message);
       Alert.alert('Login Failed', e.message ?? 'Invalid admin password');
     } finally {
       setLoading(false);

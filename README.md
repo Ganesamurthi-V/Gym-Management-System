@@ -544,4 +544,4 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 
 Private. Built for gym owners, by fitness enthusiasts.
 
-© 2026 GymFlow. Tamil Nadu & Puducherry, India.
+© 2026 GymFlow. Tamil Nadu & Puducherry, India..

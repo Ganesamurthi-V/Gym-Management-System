@@ -20,6 +20,7 @@ interface MembershipPlan {
   hasDiscount: boolean
   discountPercent: number
   hasFreezeOption: boolean
+  customDurationMonths?: number
 }
 
 interface GymDetailsData {
@@ -82,9 +83,9 @@ interface OnboardingData {
 const STORAGE_KEY = 'gymflow_onboarding'
 
 const DEFAULT_PLANS: MembershipPlan[] = [
-  { planName: 'Monthly', category: 'both', duration: 'monthly', price: 1500, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
-  { planName: 'Quarterly', category: 'both', duration: 'quarterly', price: 4000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
-  { planName: 'Annual', category: 'both', duration: 'annual', price: 10000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false },
+  { planName: 'Monthly', category: 'both', duration: 'monthly', price: 1500, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false, customDurationMonths: 1 },
+  { planName: 'Quarterly', category: 'both', duration: 'quarterly', price: 4000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false, customDurationMonths: 3 },
+  { planName: 'Annual', category: 'both', duration: 'annual', price: 10000, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false, customDurationMonths: 12 },
 ]
 
 const DEFAULT_DATA: OnboardingData = {
@@ -240,7 +241,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   const addPlan = useCallback(() => {
     setData(prev => ({
       ...prev,
-      plans: [...prev.plans, { planName: '', category: 'both', duration: 'monthly', price: 0, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false }],
+      plans: [...prev.plans, { planName: '', category: 'both', duration: 'monthly', price: 0, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false, customDurationMonths: 1 }],
     }))
   }, [])
 
@@ -437,7 +438,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         </div>
 
         {/* -- Content Workspace -- */}
-        <div ref={scrollRef} className="flex-1 overflow-hidden bg-slate-50/50">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-slate-50/50">
           <div className="max-w-3xl mx-auto px-3 xs:px-4 py-6 xs:py-8 lg:py-12">
             {/* Step header */}
             <div
@@ -804,16 +805,32 @@ function StepMembershipPlans({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Duration</label>
-              <select
-                value={plan.duration}
-                onChange={e => onUpdate(i, { duration: e.target.value as MembershipPlan['duration'] })}
-                className="input-field"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="annual">Annual</option>
-                <option value="custom">Custom</option>
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={plan.duration}
+                  onChange={e => onUpdate(i, { duration: e.target.value as MembershipPlan['duration'] })}
+                  className="input-field"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="annual">Annual</option>
+                  <option value="custom">Custom</option>
+                </select>
+                {plan.duration === 'custom' && (
+                  <input
+                    type="number"
+                    min={1}
+                    value={plan.customDurationMonths || ''}
+                    onChange={e => {
+                      const val = parseInt(e.target.value);
+                      onUpdate(i, { customDurationMonths: isNaN(val) ? undefined : val });
+                    }}
+                    className="input-field w-20 px-2 text-center"
+                    placeholder="Mos"
+                    title="Number of months"
+                  />
+                )}
+              </div>
             </div>
           </div>
 

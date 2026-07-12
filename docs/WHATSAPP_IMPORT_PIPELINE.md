@@ -1,23 +1,18 @@
-# Feature: WhatsApp Messaging for Imported Members
+# Feature: WhatsApp Support for Imported Members (Notifications Only)
 
 ## Objective
 
-Implement a robust WhatsApp messaging workflow for members imported via Excel/CSV so they behave exactly like members created manually. Once imported, there should be **no distinction** between imported and manually created members for messaging, reminders, renewals, or automation.
+Members imported via Excel/CSV should behave exactly like manually created members **except** they must **NOT** receive the `_gymflow_welcome_member` template automatically or manually through the import workflow.
+
+Imported members should immediately become eligible for all future automated WhatsApp notifications and reminders based on their membership data.
 
 ---
 
-# Current Problem
+# Expected Behaviour
 
-Currently, members imported from Excel are simply inserted into the database. However, the application does not provide a proper workflow for sending WhatsApp template messages to these imported members.
+After importing:
 
-The goal is to allow gym owners to safely send WhatsApp messages after importing members while preventing accidental spam.
-
----
-
-# Expected Workflow
-
-```
-Import Excel/CSV
+Excel/CSV
         │
         ▼
 Validate Data
@@ -26,60 +21,48 @@ Validate Data
 Normalize Data
         │
         ▼
-Insert Members
+Insert into members table
         │
         ▼
-Import Completed
+Import Complete
         │
         ▼
-Show Import Summary
-        │
-        ▼
-Gym Owner chooses:
-    • Send Welcome Messages
-    • Skip
-```
+Member participates in all future automations
+
+No welcome message should ever be queued during or immediately after import.
 
 ---
 
-# Step 1 — Import Members
+# Import Rules
 
-The import process should continue working as it does today.
+Imported members must be stored in the normal `members` table.
 
-Each imported member should be inserted into the normal members table.
+Do not create a separate table for imported members.
 
-There should never be a separate "Imported Members" table.
+The import process should populate all required fields, including:
 
-Example:
-
-```
-members
--------
-id
-member_id
-full_name
-phone_number
-membership_plan
-join_date
-expiry_date
-gym_id
-status
-...
-```
-
-After insertion, imported members should behave exactly like manually created members.
+- member_id
+- full_name
+- phone_number
+- membership_plan
+- join_date
+- expiry_date
+- birthday
+- gym_id
+- member_status
 
 ---
 
-# Step 2 — Phone Number Validation
+# Phone Number Validation
 
 During import:
 
-Validate every phone number.
+- Validate every phone number.
+- Convert numbers into E.164 format.
+- Mark invalid numbers as `INVALID_NUMBER`.
+- Only members with valid numbers should receive future WhatsApp notifications.
 
-Convert all numbers into E.164 format.
-
-Example
+Example:
 
 ```
 9876543210
@@ -89,506 +72,158 @@ Example
 919876543210
 ```
 
-If invalid:
+---
+
+# No Welcome Message
+
+This is a strict rule.
+
+Do NOT send `_gymflow_welcome_member` after importing members.
+
+Reason:
+
+Imported members are existing gym members, not newly registered members.
+
+Sending a welcome message after import would create confusion.
+
+Even if the import contains 500 members:
 
 ```
-whatsapp_status = INVALID_NUMBER
+Imported Successfully
+
+500 Members
 ```
 
-Otherwise
+No welcome messages should be created.
 
-```
-whatsapp_status = ACTIVE
-```
-
-Never attempt to send messages to invalid numbers.
+No queue entries should be generated.
 
 ---
 
-# Step 3 — Import Summary Screen
+# Future Automations
 
-After import completes, display a detailed summary.
+Imported members must automatically receive future scheduled notifications whenever they become eligible.
 
-Example:
+Supported templates:
 
-----------------------------------------
+- membership_expiry_reminder
+- membership_expired
+- membership_renewed
+- payment_due_reminder
+- _birthday_wishes
 
-Import Successful
+These templates should work exactly as they do for manually created members.
 
-✔ Total Rows : 450
-
-✔ Imported : 432
-
-⚠ Duplicate Members : 8
-
-❌ Invalid Phone Numbers : 10
-
-----------------------------------------
-
-WhatsApp
-
-Send Welcome Message to imported members?
-
-( ) Yes
-
-( ) No
-
-----------------------------------------
-
-If the user chooses "No"
-
-Import finishes.
-
-No WhatsApp messages are sent.
+No special logic should exist for imported members.
 
 ---
 
-# Step 4 — Send Welcome Messages
+# Automation Examples
 
-If the gym owner selects
+## Membership Expiry Reminder
 
-```
-Send Welcome Messages
-```
+If
 
-The system should NOT send all messages immediately.
-
-Instead,
-
-Create one WhatsApp job for each eligible member.
-
-Example
-
-```
-Member 1
-↓
-
-Queue
-
-Member 2
-↓
-
-Queue
-
-Member 3
-↓
-
-Queue
-```
-
-The existing WhatsApp queue/outbox system should process them one by one.
-
-Never send hundreds of requests simultaneously.
-
----
-
-# Step 5 — Eligible Members
-
-Only members meeting ALL conditions should receive messages.
-
-Required conditions:
-
-• Active membership
-
-• Valid phone number
-
-• whatsapp_status = ACTIVE
-
-• Not already sent
-
-• Not opted out
-
----
-
-# Step 6 — Prevent Duplicate Messages
-
-If welcome message already sent
-
-Do NOT send again.
-
-Maintain a log.
-
-Example
-
-```
-member_notifications
-
-id
-
-member_id
-
-template_name
-
-sent_at
-
-status
-```
-
-Before sending
-
-Check
-
-```
-Does
-
-member_id
-
-+
-
-_gymflow_welcome_member
-
-already exist?
-
-YES
+Days Remaining <= configured reminder days
 
 ↓
-
-Skip
-```
-
----
-
-# Step 7 — Bulk Messaging Screen
-
-Create a new page.
-
-Title
-
-```
-Imported Members
-```
-
-Display
-
-```
-☑ Select All
-
-☑ Ravi
-
-☑ Kumar
-
-☑ Priya
-
-☐ Arun
-
-☑ Mano
-
-...
-```
-
-Right side
-
-```
-Template
-
-▼
-
-_gymflow_welcome_member
-```
-
-Below
-
-```
-Selected
-
-327 Members
-```
-
-Buttons
-
-```
-Preview
 
 Send
 
-Cancel
-```
-
----
-
-# Step 8 — Message Preview
-
-Before sending,
-
-show a preview.
-
-Example
-
-```
-Header Image
-
-Hi Ganesh!
-
-Your membership has been successfully activated.
-
-Member ID
-
-GF001
-
-Membership Plan
-
-Premium
-
-Start Date
-
-26/07/2026
-
-Powered by Gym Flow
-```
-
-The preview should use actual member data.
-
----
-
-# Step 9 — Queue Processing
-
-The sender should never call WhatsApp directly from the UI.
-
-Instead
-
-```
-User clicks Send
-
-↓
-
-Insert jobs into Outbox
-
-↓
-
-Background Worker
-
-↓
-
-Validate
-
-↓
-
-Send Template
-
-↓
-
-Save Response
-
-↓
-
-Update Status
-```
-
-Reuse the existing outbox publisher and recovery jobs.
-
----
-
-# Step 10 — Failed Messages
-
-If WhatsApp returns an error
-
-Store
-
-```
-FAILED
-
-Reason
-
-Retry Count
-
-Meta Error Code
-```
-
-Example
-
-```
-132012
-
-Template mismatch
-```
-
-Allow retry.
-
----
-
-# Step 11 — Future Automation
-
-After import,
-
-the member should automatically participate in all scheduled automations.
-
-No extra code should be written specifically for imported members.
-
-Imported members should receive:
-
-• membership_expiry_reminder
-
-• membership_expired
-
-• payment_due_reminder
-
-• _birthday_wishes
-
-• membership_renewed
-
-Exactly the same as manually added members.
-
----
-
-# Step 12 — Manual Bulk Messaging
-
-Add another page
-
-```
-Members
-
-↓
-
-Bulk Actions
-
-↓
-
-Send WhatsApp
-```
-
-The owner can
-
-Filter
-
-```
-Membership Plan
-
-Expiry Soon
-
-Birthday Today
-
-Payment Due
-
-Imported This Week
-
-Custom Selection
-```
-
-Choose Template
-
-```
-membership_renewed
-
 membership_expiry_reminder
 
-payment_due_reminder
+---
+
+## Membership Expired
+
+If
+
+Expiry Date < Today
+
+↓
+
+Send
 
 membership_expired
 
+---
+
+## Birthday
+
+If
+
+Birthday == Today
+
+↓
+
+Send
+
 _birthday_wishes
 
-_gymflow_welcome_member
-```
+---
 
-The system should automatically validate that the selected template receives the correct variables.
+## Payment Due
+
+If
+
+Outstanding Amount > 0
+
+↓
+
+Follow the existing reminder schedule.
 
 ---
 
-# Step 13 — Template Validation
+## Membership Renewed
 
-Before every send:
+When the gym owner renews an imported member's membership inside GymFlow,
 
-Verify:
+↓
 
-✅ Template exists
+Send
 
-✅ Approved
+membership_renewed
 
-✅ Variable count matches
-
-✅ Variable order matches
-
-✅ Header image included
-
-✅ Body variables populated
-
-✅ Phone number valid
-
-If validation fails,
-
-Do not send.
-
-Log the error.
+This should behave exactly like a manually added member.
 
 ---
 
-# Step 14 — Activity Logs
+# Manual WhatsApp Messaging
 
-Maintain complete logs.
+Imported members should appear in the normal Members list.
 
-Example
+The gym owner can manually select them and send supported notification templates if required.
 
-```
-26 Jul
-
-Imported
-
-432 Members
-
-26 Jul
-
-Queued
-
-432 Welcome Messages
-
-26 Jul
-
-Sent
-
-428
-
-26 Jul
-
-Failed
-
-4
-
-Reason
-
-Invalid Number
-```
+However, `_gymflow_welcome_member` should not be available for imported members.
 
 ---
 
-# Step 15 — User Experience
+# Template Validation
 
-The owner should always know:
+Before every WhatsApp send:
 
-• How many members were imported
+- Verify template exists.
+- Verify template is approved.
+- Verify variable count.
+- Verify variable order.
+- Verify required header image.
+- Verify all variables are populated.
+- Verify phone number is valid.
 
-• How many are eligible for WhatsApp
+If validation fails:
 
-• How many were queued
-
-• How many were delivered
-
-• How many failed
-
-• Why they failed
-
-Display progress while sending.
-
-Example
-
-```
-Sending Messages...
-
-██████████░░░░░
-
-258 / 432
-
-60%
-```
+- Do not send the message.
+- Log the reason.
 
 ---
 
 # Architecture Rules
 
-- Never create separate logic for imported members.
-- Imported members must use the same members table.
+- Imported members must use the same `members` table.
+- Do not create separate messaging logic for imported members.
 - Reuse the existing WhatsApp queue and outbox system.
-- Never send messages synchronously from the frontend.
-- Always queue messages.
-- Always validate template names and variables before sending.
-- Prevent duplicate template sends unless explicitly allowed.
-- Keep all message history for auditing and retries.
+- Never send WhatsApp messages directly from the frontend.
+- All automated notifications must go through the existing queue.
+- Imported members become part of the normal notification system immediately after import.
+- Never queue or send `_gymflow_welcome_member` as part of the import process.
+- `_gymflow_welcome_member` should only be sent when a brand-new member is created directly inside GymFlow.

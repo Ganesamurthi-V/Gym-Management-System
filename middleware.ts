@@ -56,6 +56,10 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     const res = NextResponse.redirect(url)
+    // Preserve cookies that might have been updated during session refresh
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      res.cookies.set(cookie.name, cookie.value, cookie)
+    })
     res.headers.set(REQUEST_ID_HEADER, requestId)
     return res
   }
@@ -64,6 +68,10 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     const res = NextResponse.redirect(url)
+    // Preserve cookies that might have been updated during session refresh
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      res.cookies.set(cookie.name, cookie.value, cookie)
+    })
     res.headers.set(REQUEST_ID_HEADER, requestId)
     return res
   }

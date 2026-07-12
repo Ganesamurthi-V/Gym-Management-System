@@ -361,8 +361,8 @@ export default function GooglePlacesAutocomplete({
       {open && suggestions.length > 0 && (
         <ul
           ref={suggestionsRef}
-          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
-          style={{ maxHeight: '224px', overflowY: 'hidden' }}
+          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-y-auto"
+          style={{ maxHeight: '224px' }}
         >
           <div> {/* suggestions list wrapper */}
           {suggestions.map((s, i) => (

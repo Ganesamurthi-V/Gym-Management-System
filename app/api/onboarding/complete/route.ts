@@ -11,6 +11,7 @@ interface MembershipPlan {
   hasDiscount: boolean
   discountPercent: number
   hasFreezeOption: boolean
+  customDurationMonths?: number
 }
 
 export async function POST(req: NextRequest) {

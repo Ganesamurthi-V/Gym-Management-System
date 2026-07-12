@@ -60,13 +60,16 @@ describe('buildTemplatePayload — common envelope', () => {
 describe('buildTemplatePayload — _gymflow_welcome_member', () => {
 
 
-  it('maps gym, member, plan, start date, member ID in the body in order', () => {
+  it('maps gym, member, plan, start date, member ID in the body in order and includes an image header', () => {
     const p = buildTemplatePayload('_gymflow_welcome_member', {
       ...base, plan: 'monthly', startDate: '2026-07-06', memberId: 'GF001'
     }) as any
     expect(p.template.name).toBe('_gymflow_welcome_member')
     expect(p.template.language.code).toBe('en')
     expect(bodyTexts(p)).toEqual(['Iron Temple', 'Arjun', 'Monthly', '06 Jul 2026', 'GF001'])
+
+    const header = p.template.components.find((c: any) => c.type === 'header')
+    expect(header.parameters[0].type).toBe('image')
   })
 
   it('falls back to a dash when start date and member ID are missing', () => {
@@ -138,10 +141,11 @@ describe('buildTemplatePayload — payment_due_reminder', () => {
 })
 
 describe('buildTemplatePayload — _birthday_wishes', () => {
-  it('maps gym name, member name and includes an image header', () => {
+  it('maps member name, gym name in order and includes an image header', () => {
     const p = buildTemplatePayload('_birthday_wishes', base) as any
-    expect(bodyTexts(p)).toEqual(['Iron Temple', 'Arjun'])
-    
+    // Approved body order is [memberName, gymName] → {{1}}, {{2}}.
+    expect(bodyTexts(p)).toEqual(['Arjun', 'Iron Temple'])
+
     const header = p.template.components.find((c: any) => c.type === 'header')
     expect(header.parameters[0].type).toBe('image')
   })

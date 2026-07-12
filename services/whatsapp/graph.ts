@@ -22,6 +22,7 @@
 import { fetchJson }              from '@/lib/fetch'
 import { logger }                 from '@/lib/logger'
 import { formatDate } from '@/lib/utils'
+import { validateTemplatePayload, formatValidationError } from './validateTemplate'
 import type {
   SendResult,
   TemplateId,
@@ -118,6 +119,11 @@ export async function sendMessage(body: Record<string, unknown>): Promise<SendRe
 
 /**
  * Build and send an approved Meta template message.
+ *
+ * The built payload is validated against the approved template contract
+ * (templateSpec.ts) BEFORE any API call. If validation fails — wrong variable
+ * count/order, an empty variable, a missing header image, etc. — the WhatsApp
+ * API is NOT called and a clear validation error is returned.
  */
 export async function sendTemplate(
   templateId: TemplateId,
@@ -129,7 +135,29 @@ export async function sendTemplate(
   }
 
   const body = buildTemplatePayload(templateId, ctx)
+
+  // Log the final payload before sending (recipient masked — never log full PII).
+  logger.info('sendTemplate payload built', {
+    templateId,
+    payload: { ...body, to: maskRecipient((body as { to?: string }).to) },
+  })
+
+  // Gate: refuse to dispatch anything that does not exactly match the approved
+  // template contract.
+  const validation = validateTemplatePayload(templateId, body)
+  if (!validation.valid) {
+    const error = formatValidationError(templateId, validation)
+    logger.warn('sendTemplate blocked by validation', { templateId, errors: validation.errors })
+    return { success: false, error }
+  }
+
   return sendMessage(body)
+}
+
+/** Mask all but the last 4 digits of the recipient for safe logging. */
+function maskRecipient(to?: string): string {
+  if (!to) return ''
+  return to.length <= 4 ? '****' : `${'*'.repeat(to.length - 4)}${to.slice(-4)}`
 }
 
 // ─── uploadMedia ──────────────────────────────────────────────────────────────
@@ -239,6 +267,21 @@ export async function markMessageRead(messageId: string): Promise<boolean> {
 
 // ─── Template payload builder ─────────────────────────────────────────────────
 
+/**
+ * The image-header component shared by EVERY approved template.
+ *
+ * All six templates must use the identical GymFlow logo as their header image —
+ * centralising it here makes that a structural guarantee (change the asset once
+ * and every template updates together, so they can never drift apart).
+ */
+function headerImageComponent(): Record<string, unknown> {
+  const link = (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
+  return {
+    type: 'header',
+    parameters: [{ type: 'image', image: { link } }],
+  }
+}
+
 export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContext): Record<string, unknown> {
   const to  = normalisePhone(ctx.phone)
   const txt = (text: string) => ({ type: 'text', text })
@@ -255,9 +298,11 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
       template: {
         name: '_gymflow_welcome_member',
         language: { code: 'en' },
-        // Approved template has a static IMAGE HEADER (auto-displayed by Meta).
+        // Approved template has a dynamic IMAGE HEADER that must be supplied as a
+        // header parameter (omitting it → Meta error 132012).
         // Body positional order is [gym, member, plan, startDate, memberId] → {{1}}..{{5}}.
         components: [
+          headerImageComponent(),
           {
             type: 'body',
             parameters: [
@@ -277,17 +322,7 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         name: 'membership_renewed',
         language: { code: 'en' },
         components: [
-          {
-            type: 'header',
-            parameters: [
-              {
-                type: 'image',
-                image: {
-                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
-                }
-              }
-            ]
-          },
+          headerImageComponent(),
           {
             type: 'body',
             parameters: [
@@ -306,17 +341,7 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         name: 'membership_expiry_reminder',
         language: { code: 'en' },
         components: [
-          {
-            type: 'header',
-            parameters: [
-              {
-                type: 'image',
-                image: {
-                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
-                }
-              }
-            ]
-          },
+          headerImageComponent(),
           {
             type: 'body',
             parameters: [
@@ -335,17 +360,7 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         name: 'membership_expired',
         language: { code: 'en' },
         components: [
-          {
-            type: 'header',
-            parameters: [
-              {
-                type: 'image',
-                image: {
-                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
-                }
-              }
-            ]
-          },
+          headerImageComponent(),
           {
             type: 'body',
             parameters: [
@@ -367,17 +382,7 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         // parameter must be the bare grouped number — NOT formatCurrency(), which
         // would render "₹₹2,000".
         components: [
-          {
-            type: 'header',
-            parameters: [
-              {
-                type: 'image',
-                image: {
-                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
-                }
-              }
-            ]
-          },
+          headerImageComponent(),
           {
             type: 'body',
             parameters: [
@@ -394,22 +399,13 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         name: '_birthday_wishes',
         language: { code: 'en' },
         components: [
-          {
-            type: 'header',
-            parameters: [
-              {
-                type: 'image',
-                image: {
-                  link: (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
-                }
-              }
-            ]
-          },
+          headerImageComponent(),
           {
             type: 'body',
+            // Approved body order is [memberName, gymName] → {{1}}, {{2}}.
             parameters: [
-              txt(ctx.gymName),
-              txt(ctx.memberName)
+              txt(ctx.memberName),
+              txt(ctx.gymName)
             ],
           }
         ],

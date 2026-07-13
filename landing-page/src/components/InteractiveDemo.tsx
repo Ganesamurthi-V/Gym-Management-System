@@ -1,0 +1,666 @@
+import { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { 
+  LayoutDashboard, Users, List, AlertCircle, CalendarCheck, Package, 
+  Activity, TrendingUp, ChevronLeft, Search, Filter, Download, Upload, 
+  Edit3, Plus, Bell, MessageCircle, Clock, ChevronDown, Check, Sun, Moon
+} from 'lucide-react';
+
+gsap.registerPlugin(ScrollTrigger);
+
+const SIDEBAR_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'members', label: 'Members', icon: Users },
+  { id: 'payments', label: 'Payments', icon: List },
+  { id: 'dues', label: 'Dues', icon: AlertCircle },
+  { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+  { id: 'inventory', label: 'Inventory', icon: Package },
+  { id: 'programs', label: 'Programs', icon: Activity, soon: true },
+  { id: 'reports', label: 'Reports', icon: TrendingUp, soon: true },
+];
+
+export function InteractiveDemo() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const mainAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.from('.reveal-demo', {
+        y: 40,
+        opacity: 0,
+        duration: 0.8,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: 'top 75%',
+        }
+      });
+    }, containerRef);
+    return () => ctx.revert();
+  }, []);
+
+  // Minimal entrance animation when tab changes
+  useEffect(() => {
+    if (mainAreaRef.current) {
+      gsap.fromTo(
+        mainAreaRef.current.children,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
+      );
+    }
+  }, [activeTab]);
+
+  return (
+    <section ref={containerRef} className="py-[100px] px-6 md:px-10 bg-slate-50 relative overflow-hidden">
+      <div className="text-center mb-[50px] relative z-10">
+        <span className="reveal-demo inline-block text-[11px] font-bold tracking-[3px] uppercase text-blue-600 mb-3.5">Experience GymFlow</span>
+        <h2 className="reveal-demo text-[42px] font-black text-slate-900 tracking-tight leading-[1.1] mb-4">
+          Try it for <span className="text-blue-600">yourself.</span>
+        </h2>
+        <p className="reveal-demo text-base text-slate-500 leading-relaxed max-w-[560px] mx-auto">
+          Click around the sidebar to see how easy it is to manage your entire gym from one place.
+        </p>
+      </div>
+
+      <div className="reveal-demo max-w-[1250px] mx-auto relative z-10">
+        {/* Safari Browser Chrome */}
+        <div className="bg-slate-100 rounded-t-xl border border-slate-200/80 border-b-0 px-4 py-3 flex items-center shadow-sm relative z-20">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-400 border border-red-500/20" />
+            <div className="w-3 h-3 rounded-full bg-amber-400 border border-amber-500/20" />
+            <div className="w-3 h-3 rounded-full bg-green-400 border border-green-500/20" />
+          </div>
+          
+          <div className="flex-1 flex justify-center">
+            <div className="bg-white border border-slate-200/80 rounded-md px-10 py-1 flex items-center justify-center text-xs font-medium text-slate-500 shadow-sm min-w-[280px]">
+              <svg className="w-3 h-3 mr-1.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              app.gymflow.com/fit-zone-gym
+            </div>
+          </div>
+          <div className="w-16" />
+        </div>
+
+        {/* App Frame */}
+        <div className="bg-white border border-slate-200/80 rounded-b-xl shadow-[0_20px_60px_rgba(0,0,0,0.08)] overflow-hidden flex h-[760px] text-slate-800 font-sans">
+          
+          {/* Sidebar */}
+          <div className="w-[220px] bg-white border-r border-slate-100 flex flex-col flex-shrink-0 relative">
+            <div className="h-[68px] flex items-center justify-between px-5 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 flex items-center justify-center">
+                  <img src="/logo_only.png" alt="GymFlow Logo" className="w-7 h-7 object-contain" />
+                </div>
+                <span className="text-base font-extrabold tracking-tight text-slate-900">GymFlow</span>
+              </div>
+              <button className="w-6 h-6 rounded border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="flex-1 py-4 flex flex-col justify-between">
+              <div className="space-y-1.5 px-3">
+                {SIDEBAR_ITEMS.map((item) => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => !item.soon && setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-[9px] rounded-lg text-[14px] font-medium transition-colors relative ${
+                        isActive 
+                          ? 'bg-blue-50/70 text-blue-600' 
+                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                      } ${item.soon ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <item.icon className={`w-[18px] h-[18px] ${isActive ? 'text-blue-600' : 'text-slate-400'}`} strokeWidth={isActive ? 2.5 : 2} />
+                        {item.label}
+                      </div>
+                      
+                      {item.soon && (
+                        <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50">SOON</span>
+                      )}
+                      
+                      {isActive && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="px-4 pb-2">
+                <button className="w-full bg-[#1e40af] hover:bg-blue-800 text-white py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
+                  <Plus className="w-4 h-4" />
+                  Add Member
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Area */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-white">
+            {/* Topbar */}
+            <div className="h-[68px] bg-white border-b border-slate-100 flex items-center justify-center relative flex-shrink-0 px-6">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 flex items-center justify-center">
+                  <img src="/logo_only.png" alt="GymFlow Logo" className="w-7 h-7 object-contain" />
+                </div>
+                <span className="text-lg font-black tracking-tight text-blue-600 uppercase">Fit Zone Gym</span>
+              </div>
+              
+              <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center">
+                  <img src="/logo_only.png" alt="User Avatar" className="w-5 h-5 object-contain" />
+                </div>
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+              <div ref={mainAreaRef} className="h-full">
+                {activeTab === 'dashboard' && <DashboardView />}
+                {activeTab === 'members' && <MembersView />}
+                {activeTab === 'payments' && <PaymentsView />}
+                {activeTab === 'dues' && <DuesView />}
+                {activeTab === 'attendance' && <AttendanceView />}
+                {activeTab === 'inventory' && <InventoryView />}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Shared Components ──────────────────────────────────────────────────────
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <div className="mb-6 flex items-center gap-2">
+      <div className="w-5 h-5 opacity-40">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg>
+      </div>
+      <span className="text-sm font-semibold text-slate-500">Fit Zone Gym</span>
+      <h2 className="text-2xl font-bold text-slate-900 w-full absolute left-8 top-6 opacity-0">Hidden</h2>
+      {/* Real Title positioned absolutely wouldn't work with flow, just fake it */}
+    </div>
+  );
+}
+
+// ─── Dashboard View ─────────────────────────────────────────────────────────
+
+function DashboardView() {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-center gap-2 mb-2 text-slate-400">
+        <div className="w-4 h-4"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg></div>
+        <span className="text-xs font-semibold">Fit Zone Gym</span>
+      </div>
+      <h2 className="text-[26px] font-black text-slate-900 tracking-tight mb-6">Dashboard</h2>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-6 gap-4 mb-8">
+        {[
+          { label: 'Active', val: '42', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Attendance', val: '0', color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Expiring', val: '3', color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Expired', val: '39', color: 'text-rose-500', bg: 'bg-rose-50' },
+          { label: 'Today\'s Collection', val: '₹0', color: 'text-teal-500', bg: 'bg-teal-50' },
+          { label: 'Total Dues', val: '₹0', color: 'text-rose-500', bg: 'bg-rose-50' },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between h-[104px]">
+            <div className={`w-7 h-7 rounded-full ${stat.bg} ${stat.color} flex items-center justify-center mb-1`}>
+              <Users className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <div className="text-2xl font-black text-slate-900 leading-none">{stat.val}</div>
+              <div className="text-[11px] text-slate-500 font-medium mt-1">{stat.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-6">
+        {/* Expiring This Week */}
+        <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <h3 className="font-bold text-slate-900 text-sm">Expiring This Week</h3>
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            </div>
+            <button className="text-sm font-bold text-blue-600 hover:text-blue-700">See all</button>
+          </div>
+          <div className="p-2">
+            {[
+              { n: 'Harini Raj', p: '919384886895', t: 'Today', c: 'text-amber-500' },
+              { n: 'Vignesh Das', p: '919384886895', t: '2d left', c: 'text-amber-500' },
+              { n: 'Naveen Verma', p: '919384886895', t: '5d left', c: 'text-amber-500' },
+            ].map((usr, i) => (
+              <div key={i} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                    {usr.n.split(' ').map(n=>n[0]).join('')}
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-bold text-slate-900 leading-tight">{usr.n}</div>
+                    <div className="text-[11px] text-slate-400 font-medium">{usr.p}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className={`text-[11px] font-bold ${usr.c}`}>{usr.t}</span>
+                  <button className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded text-[11px] font-bold flex items-center gap-1.5 transition-colors">
+                    <MessageCircle className="w-3 h-3" />
+                    Remind
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="w-[300px] bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-5 py-4 flex items-center gap-2 border-b border-slate-100">
+            <TrendingUp className="w-4 h-4 text-slate-400" />
+            <h3 className="font-bold text-slate-400 text-[11px] tracking-wider uppercase">Quick Actions</h3>
+          </div>
+          <div className="p-4 flex flex-col gap-3">
+            <button className="w-full bg-[#2563eb] hover:bg-blue-700 text-white py-3 rounded-lg text-[13px] font-bold flex items-center px-4 transition-colors">
+              <Plus className="w-4 h-4 mr-3 opacity-70" />
+              Add New Member
+            </button>
+            <button className="w-full bg-[#0d9488] hover:bg-teal-700 text-white py-3 rounded-lg text-[13px] font-bold flex items-center px-4 transition-colors">
+              <CalendarCheck className="w-4 h-4 mr-3 opacity-70" />
+              Mark Attendance
+            </button>
+            <button className="w-full bg-[#6366f1] hover:bg-indigo-600 text-white py-3 rounded-lg text-[13px] font-bold flex items-center px-4 transition-colors">
+              <List className="w-4 h-4 mr-3 opacity-70" />
+              Attendance Log
+            </button>
+            <button className="w-full bg-[#059669] hover:bg-emerald-700 text-white py-3 rounded-lg text-[13px] font-bold flex items-center px-4 transition-colors">
+              <Package className="w-4 h-4 mr-3 opacity-70" />
+              Daily Report PDF
+            </button>
+            <button className="w-full bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 py-3 rounded-lg text-[13px] font-bold flex items-center px-4 transition-colors">
+              <span className="w-4 h-4 mr-3 opacity-70 flex items-center justify-center font-bold">₹</span>
+              View Fee Dues
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Members View ───────────────────────────────────────────────────────────
+
+function MembersView() {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-[26px] font-black text-slate-900 tracking-tight">Members</h2>
+        <div className="flex items-center gap-2">
+          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+            <Filter className="w-3.5 h-3.5" /> Advanced
+          </button>
+          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+            <Upload className="w-3.5 h-3.5" /> Import
+          </button>
+          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+            <Edit3 className="w-3.5 h-3.5" /> Edit Members
+          </button>
+          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+            <CalendarCheck className="w-3.5 h-3.5" /> Attendance Log
+          </button>
+          <button className="bg-[#1e40af] text-white px-4 py-2 rounded-lg text-[13px] font-semibold flex items-center gap-1.5 hover:bg-blue-800">
+            <Plus className="w-3.5 h-3.5" /> Add Member
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[12px] text-slate-600 font-medium">Total Members</div>
+            <div className="text-xl font-black text-slate-900"><span className="text-blue-600">81</span> <span className="text-sm font-medium text-slate-400">/ 81</span></div>
+          </div>
+        </div>
+        <div className="bg-white border border-emerald-200 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
+            <Check className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[12px] text-slate-600 font-medium">Active</div>
+            <div className="text-xl font-black text-emerald-600">39</div>
+          </div>
+        </div>
+        <div className="bg-rose-50/30 border border-rose-200 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[12px] text-slate-600 font-medium">Expired</div>
+            <div className="text-xl font-black text-rose-600">39</div>
+          </div>
+        </div>
+        <div className="bg-orange-50/30 border border-orange-200 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[12px] text-slate-600 font-medium">Overdue Dues</div>
+            <div className="text-xl font-black text-orange-600">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input type="text" placeholder="Search by name or phone..." className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none" />
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] text-slate-400 min-w-[120px]">
+          # GF0001
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <button className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-[12px] font-bold">All (81)</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-[12px] font-bold">Active (39)</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-[12px] font-bold">Expiring (3)</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-[12px] font-bold">Expired (39)</button>
+      </div>
+
+      <div className="flex-1 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+              <th className="px-5 py-3 font-bold">#</th>
+              <th className="px-5 py-3 font-bold">MEMBER</th>
+              <th className="px-5 py-3 font-bold">PHONE</th>
+              <th className="px-5 py-3 font-bold">PLAN</th>
+              <th className="px-5 py-3 font-bold">EXPIRES</th>
+              <th className="px-5 py-3 font-bold">STATUS</th>
+            </tr>
+          </thead>
+          <tbody className="text-[13px]">
+            {[
+              { id: 'GF0063', n: 'Harini Raj', p: '919384886895', plan: 'Quarterly', pl: 'Strength + Cardio', exp: '13 Jul 2026 (0d left)', s: 'Expiring', sColor: 'text-amber-500 border-amber-200', bg: 'bg-amber-400' },
+              { id: 'GF0043', n: 'Naveen Verma', p: '919384886895', plan: 'Monthly', pl: 'Strength + Cardio', exp: '18 Jul 2026 (5d left)', s: 'Expiring', sColor: 'text-amber-500 border-amber-200', bg: 'bg-amber-400' },
+              { id: 'GF0062', n: 'Vignesh Das', p: '919384886895', plan: 'Monthly', pl: 'Strength + Cardio', exp: '15 Jul 2026 (2d left)', s: 'Expiring', sColor: 'text-amber-500 border-amber-200', bg: 'bg-amber-400' },
+              { id: 'GF0059', n: 'Aakash Das', p: '919384886895', plan: 'Annual', pl: 'Strength + Cardio', exp: '17 Apr 2027 (278d left)', s: 'Active', sColor: 'text-emerald-500 border-emerald-200', bg: 'bg-emerald-500' },
+              { id: 'GF0024', n: 'Aakash Reddy', p: '919384886895', plan: 'Annual', pl: 'Strength + Cardio', exp: '17 May 2027 (308d left)', s: 'Active', sColor: 'text-emerald-500 border-emerald-200', bg: 'bg-emerald-500' },
+            ].map((m, i) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/50">
+                <td className="px-5 py-4 text-slate-400 font-medium text-[11px]">{m.id}</td>
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded ${m.bg} text-white flex items-center justify-center text-xs font-bold`}>
+                      {m.n.split(' ').map(x=>x[0]).join('')}
+                    </div>
+                    <div className="font-bold text-slate-800">{m.n}</div>
+                  </div>
+                </td>
+                <td className="px-5 py-4 text-slate-500">{m.p}</td>
+                <td className="px-5 py-4">
+                  <div className="font-bold text-slate-700">{m.plan}</div>
+                  <div className="text-[11px] text-slate-400">{m.pl}</div>
+                </td>
+                <td className="px-5 py-4 text-slate-500">{m.exp}</td>
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-bold border ${m.sColor}`}>
+                      {m.s}
+                    </span>
+                    {m.s === 'Expiring' && (
+                      <button className="bg-emerald-500 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1">
+                        <MessageCircle className="w-2.5 h-2.5" /> Remind
+                      </button>
+                    )}
+                    <ChevronLeft className="w-4 h-4 text-slate-300 rotate-180 ml-auto" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Payments View ──────────────────────────────────────────────────────────
+
+function PaymentsView() {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-[26px] font-black text-slate-900 tracking-tight">Payments</h2>
+        <button className="px-4 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+          <Download className="w-3.5 h-3.5" /> Export
+        </button>
+      </div>
+
+      <div className="bg-[#1d4ed8] rounded-xl p-6 text-white mb-6 relative overflow-hidden shadow-md">
+        <div className="absolute inset-0 bg-blue-600/50 mix-blend-overlay" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-bold tracking-widest text-white/70 uppercase mb-2">This Month's Collection</div>
+            <div className="text-[40px] font-black leading-none mb-3">₹0</div>
+            <div className="flex items-center gap-4 text-[12px] font-medium text-white/90">
+              <span>Cash <span className="font-bold text-white">₹0</span></span>
+              <span>UPI <span className="font-bold text-white">₹0</span></span>
+              <span>Card <span className="font-bold text-white">₹0</span></span>
+              <span className="text-white/60 ml-2">0 transactions</span>
+            </div>
+          </div>
+          <div className="text-[13px] text-right font-medium space-y-1.5">
+            <div>Memberships: <span className="font-bold">₹0</span></div>
+            <div>Inventory: <span className="font-bold">₹0</span></div>
+            <div>Dues Collected: <span className="font-bold">₹0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">Today</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">Week</button>
+        <button className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-[12px] font-bold">Month</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">All Time</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">Custom</button>
+        
+        <div className="w-px h-6 bg-slate-200 mx-2" />
+        
+        <button className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-[12px] font-bold">All Modes</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">CASH</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">UPI</button>
+        <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">CARD</button>
+      </div>
+
+      <div className="flex items-center gap-6 border-b border-slate-200 mb-6">
+        <button className="pb-3 border-b-2 border-blue-600 text-blue-600 text-[13px] font-bold">Memberships (0)</button>
+        <button className="pb-3 text-slate-500 text-[13px] font-semibold hover:text-slate-800">Inventory (0)</button>
+        <button className="pb-3 text-slate-500 text-[13px] font-semibold hover:text-slate-800">Dues (0)</button>
+      </div>
+
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input type="text" placeholder="Search by name or phone..." className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none" />
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] text-slate-400 min-w-[120px]">
+          # Member ID
+        </div>
+      </div>
+
+      <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col">
+        <div className="bg-slate-50/80 border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-400 font-bold flex px-6 py-3">
+          <div className="w-16">#</div>
+          <div className="flex-1">MEMBER</div>
+          <div className="w-48 text-center">PLAN</div>
+          <div className="w-32 text-center">PERIOD</div>
+          <div className="w-32 text-center">MODE</div>
+          <div className="w-32 text-right">AMOUNT</div>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-[13px] text-slate-400 font-medium">
+          No transactions found
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dues View ──────────────────────────────────────────────────────────────
+
+function DuesView() {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-[26px] font-black text-slate-900 tracking-tight">Fee Dues</h2>
+        <div className="flex items-center gap-4">
+          <input type="text" placeholder="Search name or phone..." className="w-64 px-4 py-2 bg-white border border-slate-200 rounded-lg text-[13px] focus:outline-none" />
+          <div className="bg-white border border-rose-100 rounded-lg px-4 py-1.5 flex items-center gap-3 shadow-sm">
+            <AlertCircle className="w-4 h-4 text-rose-500" />
+            <div className="text-right">
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total Pending</div>
+              <div className="text-base font-black text-rose-600 leading-none">₹0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center">
+        <div className="text-4xl mb-4">🎉</div>
+        <h3 className="text-lg font-bold text-slate-700 mb-1">No pending dues!</h3>
+        <p className="text-sm text-slate-400">All members are up to date</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Attendance View ────────────────────────────────────────────────────────
+
+function AttendanceView() {
+  return (
+    <div className="h-full flex flex-col items-center pt-10">
+      <div className="w-full max-w-[500px]">
+        <div className="flex justify-end mb-10">
+          <div className="bg-white border border-slate-200 p-1 rounded-full flex shadow-sm">
+            <button className="px-4 py-1.5 rounded-full text-[13px] font-semibold text-slate-500 flex items-center gap-1.5 hover:bg-slate-50">
+              <Sun className="w-3.5 h-3.5" /> Morning
+            </button>
+            <button className="px-4 py-1.5 rounded-full text-[13px] font-semibold text-blue-600 bg-blue-50 flex items-center gap-1.5">
+              <Moon className="w-3.5 h-3.5" /> Evening
+            </button>
+          </div>
+        </div>
+
+        <div className="text-center mb-16">
+          <h2 className="text-[42px] font-black text-slate-900 tracking-tight leading-none mb-2">Fit Zone Gym</h2>
+          <div className="text-[13px] font-bold tracking-widest text-slate-500 uppercase mb-3">Self-Service Attendance</div>
+          <div className="text-[13px] text-slate-400">Monday, 13 Jul 2026</div>
+        </div>
+
+        <div className="text-center mb-12">
+          <div className="text-[11px] font-bold text-slate-400 tracking-widest uppercase mb-4">Enter Your Member ID</div>
+          <input 
+            type="text" 
+            placeholder="1042" 
+            className="w-full text-center text-[56px] font-black text-slate-200 focus:text-slate-800 placeholder:text-slate-100 focus:outline-none border-b-2 border-blue-500 pb-2 bg-transparent"
+          />
+        </div>
+
+        <button className="w-full max-w-[300px] mx-auto block bg-slate-500 hover:bg-slate-600 text-white rounded-full py-4 text-lg font-bold shadow-lg transition-colors mb-12">
+          Confirm
+        </button>
+
+        <div className="text-center flex items-center justify-center gap-3">
+          <span className="text-[13px] font-bold text-slate-400">Total Checked-in Today:</span>
+          <span className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">0</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inventory View ────────────────────────────────────────────────────────
+
+function InventoryView() {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h2 className="text-[26px] font-black text-slate-900 tracking-tight leading-tight mb-1.5">Inventory<br/>Management</h2>
+          <p className="text-[13px] text-slate-400 max-w-[200px] leading-snug">Manage your products, stock, and pricing</p>
+        </div>
+        <button className="flex-1 max-w-[650px] ml-12 mt-2 bg-[#2563eb] hover:bg-blue-700 text-white py-3.5 rounded-xl text-[14px] font-bold flex items-center justify-center transition-colors shadow-sm">
+          <Plus className="w-4 h-4 mr-2" />
+          Add New Product
+        </button>
+      </div>
+
+      <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="relative w-[360px]">
+            <Search className="w-4 h-4 text-slate-300 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input type="text" placeholder="Search products, SKUs..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none placeholder:text-slate-400" />
+          </div>
+          <button className="px-4 py-2.5 border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            All Categories
+          </button>
+        </div>
+        
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-400 font-bold bg-white">
+              <th className="px-6 py-4 font-bold">PRODUCT</th>
+              <th className="px-6 py-4 font-bold">SKU</th>
+              <th className="px-6 py-4 font-bold">CATEGORY</th>
+              <th className="px-6 py-4 font-bold">PRICE</th>
+              <th className="px-6 py-4 font-bold text-right">STOCK</th>
+            </tr>
+          </thead>
+          <tbody className="text-[13px]">
+            {[
+              { n: 'Muscle Blaze Whey', s: 'Banana', c: 'Supplements', p: '₹2500', st: '10IN STOCK' },
+              { n: 'Nakpro whey', s: 'Chocolate', c: 'Supplements', p: '₹1200', st: '10IN STOCK' },
+            ].map((item, i) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/50">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-lg bg-slate-50 border border-slate-100 text-slate-300 flex items-center justify-center">
+                      <Package className="w-5 h-5" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800 text-[14px]">{item.n}</div>
+                      <div className="text-[12px] text-slate-500 mt-0.5">{item.s}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-slate-300 font-medium">—</td>
+                <td className="px-6 py-4 text-slate-500 font-medium text-[13px]">{item.c}</td>
+                <td className="px-6 py-4 font-black text-slate-800 text-[14px]">{item.p}</td>
+                <td className="px-6 py-4 text-right">
+                  <span className="inline-flex px-3 py-1.5 rounded-full text-[10px] font-extrabold text-emerald-500 bg-[#ecfdf5] tracking-widest uppercase">
+                    {item.st}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

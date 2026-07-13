@@ -24,6 +24,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
 import type { TemplateId, TemplateContext, SendResult } from './sender'
+import { enqueueSend, kickDrain } from './queue'
+import { finalizeSendRow } from './finalize'
 import {
   MAX_REMINDER_SENDS,
   REMINDER_WINDOW_DAYS,
@@ -73,7 +75,10 @@ interface GymRow {
 
 interface Stats {
   processed: number
+  /** Sent inline (event-driven welcome / renewal). */
   sent: number
+  /** Enqueued for throttled delivery (scheduled expiry / expired / due / birthday). */
+  queued: number
   skipped: number
   failed: number
   errors: string[]
@@ -341,34 +346,8 @@ async function claimDailySlot(
   return { claimed: true, id: (data as { id: string } | null)?.id ?? null }
 }
 
-/**
- * Reconcile a claimed slot with the actual send result.
- *   success            → keep 'sent', attach the Meta message_id
- *   permanent 4xx      → downgrade to 'failed' (keeps the slot consumed)
- *   transient/systemic → downgrade to 'error' (releases the slot; getCycleState
- *                        and resolveDueCycleKey ignore it, so the next cron retries)
- */
-async function finalizeSend(
-  supabase: AdminClient,
-  rowId: string | null,
-  result: SendResult,
-): Promise<void> {
-  if (!rowId) return
-
-  const update: Record<string, unknown> = result.success
-    ? { message_id: result.messageId ?? null }
-    : {
-        status: isTransientFailure(result) ? 'error' : 'failed',
-        error_message: result.error ?? null,
-      }
-
-  const { error } = await supabase
-    .from('whatsapp_automation_logs')
-    .update(update)
-    .eq('id', rowId)
-
-  if (error) console.error('[WA Automation] finalize update failed:', error.message)
-}
+// finalizeSend / isTransientFailure now live in ./finalize (shared with the
+// queue drain). finalizeSendRow is used directly at every reconcile site.
 
 // ─── Event-driven sends ───────────────────────────────────────────────────────
 
@@ -434,7 +413,7 @@ export async function sendWelcomeMessage({
   if (!claim.claimed) return
 
   const result = await sendWhatsAppTemplate('_gymflow_welcome_member', ctx)
-  await finalizeSend(supabase, claim.id, result)
+  await finalizeSendRow(supabase, claim.id, result)
 }
 
 /**
@@ -489,7 +468,7 @@ export async function sendRenewalMessage({
   if (!claim.claimed) return
 
   const result = await sendWhatsAppTemplate('membership_renewed', ctx)
-  await finalizeSend(supabase, claim.id, result)
+  await finalizeSendRow(supabase, claim.id, result)
 }
 
 // ─── Scheduled sends (called by cron) ────────────────────────────────────────
@@ -508,7 +487,7 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
   const supabase = getAdminClient()
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  const stats: Stats = { processed: 0, sent: 0, skipped: 0, failed: 0, errors: [] }
+  const stats: Stats = { processed: 0, sent: 0, queued: 0, skipped: 0, failed: 0, errors: [] }
 
   try {
     // ── Fetch all active gyms ──────────────────────────────────────────────
@@ -536,6 +515,9 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
     stats.errors.push(`Fatal: ${msg}`)
   }
 
+  // Start draining the freshly enqueued sends (best-effort; the queue persists).
+  if (stats.queued > 0) await kickDrain().catch(() => {})
+
   return stats
 }
 
@@ -559,7 +541,7 @@ export async function runImportBatchAutomation({
   gymId: string
   memberIds: string[]
 }): Promise<Stats> {
-  const stats: Stats = { processed: 0, sent: 0, skipped: 0, failed: 0, errors: [] }
+  const stats: Stats = { processed: 0, sent: 0, queued: 0, skipped: 0, failed: 0, errors: [] }
   if (!memberIds.length) return stats
 
   const supabase = getAdminClient()
@@ -610,6 +592,9 @@ export async function runImportBatchAutomation({
       stats.failed++
     }
   }
+
+  // Kick off throttled delivery of the batch we just enqueued (first 5 go now).
+  if (stats.queued > 0) await kickDrain().catch(() => {})
 
   return stats
 }
@@ -687,31 +672,28 @@ async function processGym(
         if (!claim.claimed) {
           stats.skipped++
         } else {
-          const result = await sendWhatsAppTemplate('_birthday_wishes', {
-            phone,
-            gymName: gym.name,
-            memberName: member.name,
+          // Enqueue for throttled delivery; the slot is already claimed so the
+          // log row is reconciled by the drain via finalizeSendRow.
+          const enq = await enqueueSend(supabase, {
+            gymId: gym.id,
+            memberId: member.id,
+            templateName: '_birthday_wishes',
+            context: { phone, gymName: gym.name, memberName: member.name },
+            cycleKey: `_birthday_wishes:${member.id}:${year}`,
+            triggerDate: today,
+            logRowId: claim.id,
           })
-          await finalizeSend(supabase, claim.id, result)
-          result.success ? stats.sent++ : stats.failed++
+          if (enq.enqueued) {
+            stats.queued++
+          } else {
+            // Couldn't enqueue — release the claimed slot so the next run retries.
+            await finalizeSendRow(supabase, claim.id, { success: false, error: 'enqueue failed' })
+            stats.failed++
+          }
         }
       }
     }
   }
-}
-
-/**
- * Is a failed send transient/systemic (retry later would help) rather than
- * permanent? A permanent failure is a real Meta 4xx (bad number, rejected or
- * paused template, blocked business) — retrying will not help, so it should
- * consume a cycle slot. Everything else is transient: a thrown exception
- * (network error, timeout, missing/rotated token → no httpStatus) or a 429/5xx
- * that exhausted fetch.ts's retries.
- */
-function isTransientFailure(result: SendResult): boolean {
-  const s = result.httpStatus
-  if (s === undefined) return true       // network / timeout / config exception
-  return s === 429 || s >= 500           // rate-limit or upstream — retryable
 }
 
 /**
@@ -800,7 +782,8 @@ async function processExpiryExpired(
 
 /**
  * Attempt a scheduled cyclic send (expiry / expired / due reminders).
- * Cadence & cancellation are enforced by decideScheduledSend().
+ * Cadence & cancellation are enforced by decideScheduledSend(); the actual
+ * dispatch is deferred to the throttled queue (enqueueSend + drain).
  */
 async function tryScheduledSend({
   supabase,
@@ -850,14 +833,26 @@ async function tryScheduledSend({
     return
   }
 
-  const result = await sendWhatsAppTemplate(templateName, ctx)
+  // Enqueue for throttled delivery instead of sending inline. The claimed slot
+  // reserves idempotency now; the drain sends later and reconciles claim.id via
+  // finalizeSendRow (message id on success, 'failed'/'error' on failure).
+  const enq = await enqueueSend(supabase, {
+    gymId: gym.id,
+    memberId: member.id,
+    templateName,
+    context: ctx,
+    cycleKey,
+    triggerDate,
+    logRowId: claim.id,
+  })
 
-  // finalizeSend reconciles the claim: success keeps 'sent', a permanent 4xx
-  // becomes 'failed' (slot consumed), a transient/systemic failure becomes
-  // 'error' (slot released; getCycleState ignores it, so the next cron retries).
-  await finalizeSend(supabase, claim.id, result)
-
-  result.success ? stats.sent++ : stats.failed++
+  if (enq.enqueued) {
+    stats.queued++
+  } else {
+    // Couldn't enqueue — release the claimed slot so the next run retries.
+    await finalizeSendRow(supabase, claim.id, { success: false, error: 'enqueue failed' })
+    stats.failed++
+  }
 }
 
 /**

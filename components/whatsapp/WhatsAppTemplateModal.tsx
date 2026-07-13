@@ -90,25 +90,42 @@ export interface Props {
   onClose: () => void
   context: TemplateContext
   defaultTemplate?: TemplateId
+  /**
+   * When true, the member was created via Excel/CSV import. The welcome
+   * template is an onboarding message for brand-new members only, so it is
+   * removed from the picker and can never be selected for imported members.
+   */
+  isImported?: boolean
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate = '_gymflow_welcome_member' }: Props) {
-  const [selectedId, setSelectedId] = useState<TemplateId>(defaultTemplate)
+export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate = '_gymflow_welcome_member', isImported = false }: Props) {
+  // Imported members never see the welcome template.
+  const templates = isImported
+    ? TEMPLATES.filter(t => t.id !== '_gymflow_welcome_member')
+    : TEMPLATES
+
+  // Clamp an incoming welcome default to a valid template for imported members.
+  const initialId: TemplateId =
+    isImported && defaultTemplate === '_gymflow_welcome_member'
+      ? templates[0].id
+      : defaultTemplate
+
+  const [selectedId, setSelectedId] = useState<TemplateId>(initialId)
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
   // Reset state when modal opens / default changes
   useEffect(() => {
     if (open) {
-      setSelectedId(defaultTemplate)
+      setSelectedId(initialId)
       setStatus('idle')
       setErrorMsg('')
     }
-  }, [open, defaultTemplate])
+  }, [open, initialId])
 
-  const selected = TEMPLATES.find(t => t.id === selectedId) ?? TEMPLATES[0]
+  const selected = templates.find(t => t.id === selectedId) ?? templates[0]
   const previewText = selected.preview(context)
 
   async function handleSend() {
@@ -195,7 +212,7 @@ export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate 
           <div className="px-5 pt-4 pb-2">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Choose Template</p>
             <div className="space-y-2">
-              {TEMPLATES.map((t) => {
+              {templates.map((t) => {
                 const active = selectedId === t.id
                 return (
                   <button

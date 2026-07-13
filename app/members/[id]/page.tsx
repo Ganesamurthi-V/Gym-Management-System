@@ -16,7 +16,7 @@ export default async function MemberDetailPage({
   const [{ data: member }, { data: memberships }, { data: attendance }] = await Promise.all([
     supabase
       .from('members')
-      .select('id, gym_id, member_number, name, phone, gender, age, date_of_birth, area, pending_amount, created_at, legacy_member_id')
+      .select('id, gym_id, member_number, name, phone, gender, age, date_of_birth, area, pending_amount, created_at, legacy_member_id, is_imported')
       .eq('id', id)
       .single(),
     supabase

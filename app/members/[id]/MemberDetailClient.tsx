@@ -186,9 +186,14 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           isValidPhone(member.phone) ? (
             <button
               onClick={() => {
+                // Welcome is only valid for brand-new members created inside
+                // GymFlow — never for imported members. Fall back to renewed.
+                const activeDefault: TemplateId = member.is_imported
+                  ? 'membership_renewed'
+                  : '_gymflow_welcome_member'
                 const t: TemplateId =
                   status === 'expired'   ? 'membership_expired'          :
-                  status === 'expiring'  ? 'membership_expiry_reminder'  : '_gymflow_welcome_member'
+                  status === 'expiring'  ? 'membership_expiry_reminder'  : activeDefault
                 setWhatsAppTemplate(t)
                 setShowWhatsApp(true)
               }}
@@ -217,6 +222,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
         open={showWhatsApp}
         onClose={() => setShowWhatsApp(false)}
         defaultTemplate={whatsAppTemplate}
+        isImported={!!member.is_imported}
         context={{
           phone:         member.phone,
           memberName:    member.name,

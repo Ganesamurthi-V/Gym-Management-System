@@ -3,8 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
     const authHeader = req.headers.get('authorization')
     const token = authHeader?.split(' ')[1]
     const validPassword = process.env.ADMIN_PASSWORD

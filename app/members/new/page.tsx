@@ -22,6 +22,7 @@ interface MembershipPlan {
   duration: 'monthly' | 'quarterly' | 'annual' | 'custom'
   price: number
   joiningFee: number
+  customDurationMonths?: number
 }
 
 export default function NewMemberPage() {

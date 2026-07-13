@@ -47,7 +47,7 @@ function SendMessageTab() {
   const loadGyms = useCallback(() => {
     setLoadingGyms(true);
     fetchGyms()
-      .then(data => setGyms(data))
+      .then(data => setGyms(data || []))
       .catch(() => {})
       .finally(() => setLoadingGyms(false));
   }, []);

@@ -11,13 +11,11 @@
  *
  * Query params:
  *   requested  — comma-separated member_number integers the file wants to use
- *   phones     — comma-separated phone numbers to check for conflicts
  *
  * Response:
  *   {
  *     next_id:         number    // start auto-assigning from here
  *     conflicts:       number[]  // subset of `requested` that already exist
- *     existing_phones: string[]  // subset of `phones` that already exist
  *   }
  */
 
@@ -47,14 +45,8 @@ export async function GET(req: NextRequest) {
       .map(s => parseInt(s.trim()))
       .filter(n => !isNaN(n) && n > 0)
 
-    const rawPhones = req.nextUrl.searchParams.get('phones') ?? ''
-    const phones = rawPhones
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean)
-
-    // Run all three queries in parallel
-    const [maxRes, conflictRes, phoneRes] = await Promise.all([
+    // Run both queries in parallel
+    const [maxRes, conflictRes] = await Promise.all([
       // MAX member_number — single row, fast descending index scan
       supabase
         .from('members')
@@ -71,15 +63,6 @@ export async function GET(req: NextRequest) {
             .eq('gym_id', gym.id)
             .in('member_number', requestedNums)
         : Promise.resolve({ data: [] as { member_number: number }[] }),
-
-      // Which of the file's phones already exist
-      phones.length > 0
-        ? supabase
-            .from('members')
-            .select('phone')
-            .eq('gym_id', gym.id)
-            .in('phone', phones)
-        : Promise.resolve({ data: [] as { phone: string }[] }),
     ])
 
     const maxRow = (maxRes.data ?? [])[0]
@@ -90,10 +73,7 @@ export async function GET(req: NextRequest) {
       .map(r => parseInt(String(r.member_number)))
       .filter(n => !isNaN(n))
 
-    const existingPhones = ((phoneRes.data ?? []) as { phone: string }[])
-      .map(r => r.phone)
-
-    return NextResponse.json({ next_id: nextId, conflicts, existing_phones: existingPhones })
+    return NextResponse.json({ next_id: nextId, conflicts })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error'
     return NextResponse.json({ error: message }, { status: 500 })

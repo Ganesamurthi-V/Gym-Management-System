@@ -1,10 +1,12 @@
 import axios from 'axios';
 import { getToken } from '../auth';
 
+import { Platform } from 'react-native';
 import { ADMIN_API_BASE as ENV_ADMIN_API_BASE } from '@env';
 
-// Fallback to localhost if env variable is not found
-export const ADMIN_API_BASE = ENV_ADMIN_API_BASE || 'http://localhost:3001';
+// Fallback to localhost (or 10.0.2.2 for Android emulator) connecting to Next.js on port 3000
+const defaultBaseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+export const ADMIN_API_BASE = ENV_ADMIN_API_BASE || defaultBaseUrl;
 
 // Create a configured Axios instance
 export const apiClient = axios.create({

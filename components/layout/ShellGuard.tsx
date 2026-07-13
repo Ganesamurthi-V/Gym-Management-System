@@ -58,7 +58,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     if (!initialUser || !initialIsActive) {
       const supabase = createClient()
       supabase.auth.signOut().then(() => {
-        window.location.href = '/auth/login'
+        window.location.href = !initialIsActive ? '/auth/login?error=blocked' : '/auth/login'
       })
       return
     }
@@ -84,7 +84,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: user.email })
         if (isActive === false) {
           await supabase.auth.signOut()
-          window.location.href = '/auth/login'
+          window.location.href = '/auth/login?error=blocked'
         }
       }
     }

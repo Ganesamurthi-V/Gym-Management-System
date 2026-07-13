@@ -25,6 +25,13 @@ export const REMINDER_INTERVAL_DAYS = 3
 /** Total reminder window = (7 - 1) × 3 = 18 days */
 export const REMINDER_WINDOW_DAYS = (MAX_REMINDER_SENDS - 1) * REMINDER_INTERVAL_DAYS // 18
 
+/**
+ * How far past expiry an IMPORTED member may be and still receive the one-time
+ * expired notification fired right after an import (2 months). Members expired
+ * longer than this are treated as long-inactive and never messaged on import.
+ */
+export const IMPORT_EXPIRED_WINDOW_DAYS = 60
+
 // ─── Cycle state ────────────────────────────────────────────────────────────
 
 /** The current state of a reminder cycle, derived from the automation logs. */
@@ -95,10 +102,19 @@ export function isExpiringInWindow(endDate: string, today: string): boolean {
   return d >= 0 && d <= REMINDER_WINDOW_DAYS
 }
 
-/** Membership expired within the reminder window (already past end date). */
-export function isExpiredInWindow(endDate: string, today: string): boolean {
+/**
+ * Membership expired (already past end date) and no more than `windowDays` ago.
+ * Generalizes the expired-eligibility check so the daily cron and the
+ * import-time send can use different windows (18 days vs 60 days).
+ */
+export function isExpiredWithinWindow(endDate: string, today: string, windowDays: number): boolean {
   const d = daysUntil(endDate, today)
-  return d < 0 && Math.abs(d) <= REMINDER_WINDOW_DAYS
+  return d < 0 && Math.abs(d) <= windowDays
+}
+
+/** Membership expired within the standard reminder window (already past end date). */
+export function isExpiredInWindow(endDate: string, today: string): boolean {
+  return isExpiredWithinWindow(endDate, today, REMINDER_WINDOW_DAYS)
 }
 
 /** True if the member's birthday (month + day) falls on `today`. */

@@ -26,9 +26,11 @@ import { sendWhatsAppTemplate } from './sender'
 import type { TemplateId, TemplateContext, SendResult } from './sender'
 import {
   MAX_REMINDER_SENDS,
+  REMINDER_WINDOW_DAYS,
+  IMPORT_EXPIRED_WINDOW_DAYS,
   daysUntil,
   isExpiringInWindow,
-  isExpiredInWindow,
+  isExpiredWithinWindow,
   isBirthdayToday,
   decideScheduledSend,
   type CycleState,
@@ -537,6 +539,81 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
   return stats
 }
 
+/**
+ * Immediately send expiry/expired reminders for a freshly imported batch of
+ * members — so an import doesn't have to wait for the next daily cron run.
+ *
+ * Only 'membership_expiry_reminder' and 'membership_expired' fire here. The
+ * expired window is widened to IMPORT_EXPIRED_WINDOW_DAYS (2 months): imported
+ * members expired longer than that are considered long-inactive and receive
+ * nothing. Invalid phones (INVALID_NUMBER / < 10 digits) are skipped. All sends
+ * reuse the standard idempotency, so the daily cron won't re-send the same day.
+ *
+ * Called (fire-and-forget) from the import confirm flow via
+ * POST /api/whatsapp/automation/import-batch.
+ */
+export async function runImportBatchAutomation({
+  gymId,
+  memberIds,
+}: {
+  gymId: string
+  memberIds: string[]
+}): Promise<Stats> {
+  const stats: Stats = { processed: 0, sent: 0, skipped: 0, failed: 0, errors: [] }
+  if (!memberIds.length) return stats
+
+  const supabase = getAdminClient()
+  const today = format(new Date(), 'yyyy-MM-dd')
+
+  const { data: gymRow, error: gymErr } = await supabase
+    .from('gyms')
+    .select('id, name')
+    .eq('id', gymId)
+    .single()
+
+  if (gymErr || !gymRow) {
+    stats.errors.push(`Import batch: gym ${gymId} not found: ${gymErr?.message}`)
+    return stats
+  }
+  const gym = gymRow as GymRow
+
+  const { data: members, error } = await supabase
+    .from('members')
+    .select(`
+      id, gym_id, member_number, name, phone, date_of_birth, pending_amount,
+      memberships(plan, end_date, category, created_at)
+    `)
+    .eq('gym_id', gymId)
+    .in('id', memberIds)
+
+  if (error || !members) {
+    stats.errors.push(`Import batch member fetch: ${error?.message}`)
+    return stats
+  }
+
+  for (const rawMember of members as any[]) {
+    const phone: string = rawMember.phone ?? ''
+    // Skip invalid phones (INVALID_NUMBER sentinel has 0 digits).
+    if (!phone || phone.replace(/\D/g, '').length < 10) {
+      stats.skipped++
+      continue
+    }
+
+    const member = toAutomationMember(rawMember)
+    stats.processed++
+
+    try {
+      await processExpiryExpired(supabase, gym, member, today, stats, IMPORT_EXPIRED_WINDOW_DAYS)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      stats.errors.push(`Import batch member ${rawMember.id}: ${msg}`)
+      stats.failed++
+    }
+  }
+
+  return stats
+}
+
 async function processGym(
   supabase: AdminClient,
   gym: GymRow,
@@ -562,65 +639,12 @@ async function processGym(
     // Skip invalid phones
     if (!phone || phone.replace(/\D/g, '').length < 10) continue
 
-    // Resolve latest membership
-    const memberships = (rawMember.memberships ?? []) as { plan: string; end_date: string; created_at: string }[]
-    const latestMs = memberships
-      .slice()
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null
-
-    const member: AutomationMember = {
-      id: rawMember.id,
-      gym_id: rawMember.gym_id,
-      member_number: rawMember.member_number,
-      name: rawMember.name,
-      phone,
-      date_of_birth: rawMember.date_of_birth ?? null,
-      pending_amount: rawMember.pending_amount ?? 0,
-      latest_membership: latestMs
-        ? { plan: latestMs.plan, end_date: latestMs.end_date }
-        : null,
-    }
+    const member = toAutomationMember(rawMember)
 
     stats.processed++
 
-    // ── 1. Expiry / expired reminders ─────────────────────────────────────
-    if (member.latest_membership) {
-      const endDate = member.latest_membership.end_date
-
-      if (isExpiringInWindow(endDate, today)) {
-        await tryScheduledSend({
-          supabase, gym, member, today,
-          templateName: 'membership_expiry_reminder',
-          cycleKey: `membership_expiry_reminder:${member.id}:${endDate}`,
-          triggerDate: endDate,
-          ctx: {
-            phone,
-            gymName: gym.name,
-            memberName: member.name,
-            plan: member.latest_membership.plan,
-            expiryDate: endDate,
-            daysRemaining: daysUntil(endDate, today),
-          },
-          stats,
-        })
-      } else if (isExpiredInWindow(endDate, today)) {
-        await tryScheduledSend({
-          supabase, gym, member, today,
-          templateName: 'membership_expired',
-          cycleKey: `membership_expired:${member.id}:${endDate}`,
-          triggerDate: endDate,
-          ctx: {
-            phone,
-            gymName: gym.name,
-            memberName: member.name,
-            plan: member.latest_membership.plan,
-            expiryDate: endDate,
-            memberId: formatMemberId(member.member_number),
-          },
-          stats,
-        })
-      }
-    }
+    // ── 1. Expiry / expired reminders (standard 18-day expired window) ─────
+    await processExpiryExpired(supabase, gym, member, today, stats)
 
     // ── 2. Payment due reminder ───────────────────────────────────────────
     if (member.pending_amount > 0) {
@@ -688,6 +712,90 @@ function isTransientFailure(result: SendResult): boolean {
   const s = result.httpStatus
   if (s === undefined) return true       // network / timeout / config exception
   return s === 429 || s >= 500           // rate-limit or upstream — retryable
+}
+
+/**
+ * Build the internal AutomationMember shape from a raw members+memberships row,
+ * resolving the latest membership by created_at. Shared by the daily cron and
+ * the import-time batch send so both see identical membership resolution.
+ */
+function toAutomationMember(rawMember: any): AutomationMember {
+  const memberships = (rawMember.memberships ?? []) as { plan: string; end_date: string; created_at: string }[]
+  const latestMs = memberships
+    .slice()
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null
+
+  return {
+    id: rawMember.id,
+    gym_id: rawMember.gym_id,
+    member_number: rawMember.member_number,
+    name: rawMember.name,
+    phone: rawMember.phone ?? '',
+    date_of_birth: rawMember.date_of_birth ?? null,
+    pending_amount: rawMember.pending_amount ?? 0,
+    latest_membership: latestMs
+      ? { plan: latestMs.plan, end_date: latestMs.end_date }
+      : null,
+  }
+}
+
+/**
+ * Send the expiry-reminder / expired templates for one member.
+ *
+ * `expiredWindowDays` bounds how far past expiry the 'membership_expired'
+ * template still fires: the daily cron uses the standard 18-day window; the
+ * import-time send widens it to 2 months (IMPORT_EXPIRED_WINDOW_DAYS) so
+ * recently-lapsed imports are notified once, while members expired longer than
+ * that are treated as long-inactive and skipped.
+ *
+ * Cadence & idempotency come from tryScheduledSend, so a send here and the
+ * daily cron can never double-message the same member+template on the same day.
+ */
+async function processExpiryExpired(
+  supabase: AdminClient,
+  gym: GymRow,
+  member: AutomationMember,
+  today: string,
+  stats: Stats,
+  expiredWindowDays: number = REMINDER_WINDOW_DAYS,
+): Promise<void> {
+  if (!member.latest_membership) return
+  const endDate = member.latest_membership.end_date
+  const phone = member.phone
+
+  if (isExpiringInWindow(endDate, today)) {
+    await tryScheduledSend({
+      supabase, gym, member, today,
+      templateName: 'membership_expiry_reminder',
+      cycleKey: `membership_expiry_reminder:${member.id}:${endDate}`,
+      triggerDate: endDate,
+      ctx: {
+        phone,
+        gymName: gym.name,
+        memberName: member.name,
+        plan: member.latest_membership.plan,
+        expiryDate: endDate,
+        daysRemaining: daysUntil(endDate, today),
+      },
+      stats,
+    })
+  } else if (isExpiredWithinWindow(endDate, today, expiredWindowDays)) {
+    await tryScheduledSend({
+      supabase, gym, member, today,
+      templateName: 'membership_expired',
+      cycleKey: `membership_expired:${member.id}:${endDate}`,
+      triggerDate: endDate,
+      ctx: {
+        phone,
+        gymName: gym.name,
+        memberName: member.name,
+        plan: member.latest_membership.plan,
+        expiryDate: endDate,
+        memberId: formatMemberId(member.member_number),
+      },
+      stats,
+    })
+  }
 }
 
 /**

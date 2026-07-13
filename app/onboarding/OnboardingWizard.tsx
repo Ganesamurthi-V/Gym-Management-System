@@ -596,7 +596,10 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
               type="number"
               min={1}
               value={data.branchCount}
-              onChange={e => onChange({ branchCount: parseInt(e.target.value) || 1 })}
+              onChange={e => {
+                const val = parseInt(e.target.value);
+                onChange({ branchCount: isNaN(val) ? ('' as any) : val });
+              }}
               className="input-field"
             />
           </div>

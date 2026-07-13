@@ -122,17 +122,14 @@ export async function runImportPipeline(
   let existingPhones: string[] = []
 
   if (gym) {
-    const filePhones = Array.from(new Set(parsed.map(r => r.phone).filter(Boolean)))
-
     const [idRes] = await Promise.all([
       // Single server call returns: next_id, conflicts, existing_phones
       fetch(
         `/api/import/next-member-id?${new URLSearchParams({
           ...(requestedNums.length > 0 && { requested: requestedNums.join(',') }),
-          ...(filePhones.length > 0    && { phones:    filePhones.join(',') }),
         })}`,
       ).then(r => r.ok
-        ? r.json() as Promise<{ next_id: number; conflicts: number[]; existing_phones: string[] }>
+        ? r.json() as Promise<{ next_id: number; conflicts: number[] }>
         : null
       ),
     ])
@@ -140,23 +137,11 @@ export async function runImportPipeline(
     if (idRes) {
       nextId           = idRes.next_id
       conflictingNums  = new Set(idRes.conflicts)
-      existingPhones   = idRes.existing_phones ?? []
     }
   }
 
-  const dbPhones = new Set(existingPhones)
-
-  // Phone dedup within file
-  const phoneCount = new Map<string, number>()
-  parsed.forEach((r) => {
-    if (r.phone) phoneCount.set(r.phone, (phoneCount.get(r.phone) ?? 0) + 1)
-  })
-  parsed.forEach((r) => {
-    if (r._status !== 'error' && r.phone && phoneCount.get(r.phone)! > 1) {
-      r._status = 'duplicate'
-      r._error = 'Duplicate phone in file'
-    }
-  })
+  // Phone dedup within file and DB phone conflict checks have been removed 
+  // to allow duplicate phone numbers (e.g. families sharing a phone).
 
   // ID assignment — always start from nextId (above current DB max)
   const assignedNums = new Set<number>()
@@ -208,13 +193,7 @@ export async function runImportPipeline(
     if (!isNaN(finalNum)) usedInFile.add(finalNum)
   })
 
-  // DB phone conflict check
-  parsed.forEach(r => {
-    if (r._status !== "error" && r._status !== "duplicate" && r.phone && dbPhones.has(r.phone)) {
-      r._status = "duplicate";
-      r._error = "Phone already exists in database";
-    }
-  });
+
 
   return { rows: parsed, clusterInfo };
 }

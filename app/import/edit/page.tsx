@@ -297,6 +297,15 @@ export default function ImportEditPage() {
       const { error: msErr } = await supabase.from("memberships").insert(membershipsToInsert);
       if (msErr) throw new Error(msErr.message);
 
+      // ── Immediately fire expiry/expired reminders for the imported batch ───
+      // Fire-and-forget: the "Import Complete" screen must not wait on sends.
+      // The daily cron is the backstop. Welcome messages are never sent here.
+      void fetch("/api/whatsapp/automation/import-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberIds }),
+      }).catch(() => {});
+
       // Auto-learn resolved localities
       try {
         const aliasesToSave = new Map<string, string>();
@@ -458,7 +467,7 @@ export default function ImportEditPage() {
       </div>
 
       <div className="card overflow-hidden w-full max-w-full">
-        <div ref={scrollRef} className="overflow-x-auto">
+        <div ref={scrollRef} className="overflow-x-auto pb-48">
           <div ref={tableInnerRef} className="min-w-full w-max">
           <table className="w-full text-sm">
             <thead>

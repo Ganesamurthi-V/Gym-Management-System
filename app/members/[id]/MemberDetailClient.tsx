@@ -59,7 +59,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       const { error: err } = await supabase.from('memberships').insert({
         member_id: member.id,
         gym_id: gym.id,
-        plan: renewForm.plan === 'custom' ? 'monthly' : renewForm.plan,
+        plan: renewForm.plan,
         start_date: renewForm.start_date,
         end_date,
         amount: parseInt(renewForm.amount),
@@ -81,7 +81,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
             memberId:        member.id,
             memberName:      member.name,
             phone:           member.phone,
-            plan:            renewForm.plan === 'custom' ? 'monthly' : renewForm.plan,
+            plan:            renewForm.plan,
             validUntil:      end_date,
             previousEndDate: latestMembership?.end_date ?? undefined,
           }),
@@ -257,8 +257,11 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
               </div>
               {renewForm.plan === 'custom' && (
                 <div className="mt-2 flex items-center gap-2">
-                  <input type="number" min="1" max="24" value={renewForm.custom_months}
-                    onChange={(e) => setRenewForm(p => ({ ...p, custom_months: e.target.value }))}
+                  <input type="number" min="1" max="24" value={renewForm.custom_months || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setRenewForm(p => ({ ...p, custom_months: val }));
+                    }}
                     className="input-field w-28" placeholder="e.g. 2" required />
                   <span className="text-sm text-slate-500 font-medium">months</span>
                 </div>

@@ -9,6 +9,7 @@ import {
   Alert,
   TouchableOpacity,
   StatusBar,
+  Image,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { saveToken } from '@/lib/auth';
@@ -55,9 +56,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
       >
         {/* Logo / Header */}
         <View style={styles.logoArea}>
-          <View style={styles.logoBox}>
-            <Feather name="activity" size={32} color={Colors.indigo} />
-          </View>
+          <Image source={require('../../assets/logo_only.png')} style={styles.logoImage} />
           <Text style={styles.title}>GymFlow Admin</Text>
           <Text style={styles.subtitle}>Super Admin Panel</Text>
         </View>
@@ -131,16 +130,11 @@ const styles = StyleSheet.create({
     gap: Spacing.xxl,
   },
   logoArea: { alignItems: 'center', gap: Spacing.sm },
-  logoBox: {
+  logoImage: {
     width: 72,
     height: 72,
-    borderRadius: 24,
-    backgroundColor: Colors.indigoBg,
-    borderWidth: 1,
-    borderColor: Colors.indigoBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: Spacing.sm,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 28,

@@ -26,7 +26,7 @@ export default function GymsScreen() {
     else setLoading(true);
     try {
       const data = await fetchGyms();
-      setGyms(data);
+      setGyms(data || []);
       setError(null);
     } catch (e: any) {
       setError(e.message ?? 'Failed to load gyms');

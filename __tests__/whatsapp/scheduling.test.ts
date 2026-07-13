@@ -11,11 +11,13 @@ import {
   MAX_REMINDER_SENDS,
   REMINDER_INTERVAL_DAYS,
   REMINDER_WINDOW_DAYS,
+  IMPORT_EXPIRED_WINDOW_DAYS,
   decideScheduledSend,
   daysBetween,
   daysUntil,
   isExpiringInWindow,
   isExpiredInWindow,
+  isExpiredWithinWindow,
   isBirthdayToday,
   type CycleState,
 } from '@/lib/whatsapp/scheduling'
@@ -27,6 +29,7 @@ describe('constants', () => {
     expect(MAX_REMINDER_SENDS).toBe(7)
     expect(REMINDER_INTERVAL_DAYS).toBe(3)
     expect(REMINDER_WINDOW_DAYS).toBe(18)
+    expect(IMPORT_EXPIRED_WINDOW_DAYS).toBe(60)
   })
 })
 
@@ -129,6 +132,33 @@ describe('membership window helpers', () => {
       const a = isExpiringInWindow(end, '2026-07-06')
       const b = isExpiredInWindow(end, '2026-07-06')
       expect(a && b).toBe(false)
+    }
+  })
+})
+
+describe('isExpiredWithinWindow (import-time 2-month window)', () => {
+  it('honors an arbitrary expired window in days', () => {
+    // 18-day window still matches the standard helper.
+    expect(isExpiredWithinWindow('2026-06-18', '2026-07-06', 18)).toBe(true)   // -18 edge
+    expect(isExpiredWithinWindow('2026-06-17', '2026-07-06', 18)).toBe(false)  // -19 outside
+  })
+
+  it('notifies imports expired up to 2 months ago, but not longer', () => {
+    // -60 days (May 7 → Jul 6) is inside the 2-month import window.
+    expect(isExpiredWithinWindow('2026-05-07', '2026-07-06', IMPORT_EXPIRED_WINDOW_DAYS)).toBe(true)
+    // -61 days (May 6 → Jul 6) is long-inactive → suppressed.
+    expect(isExpiredWithinWindow('2026-05-06', '2026-07-06', IMPORT_EXPIRED_WINDOW_DAYS)).toBe(false)
+  })
+
+  it('never treats a not-yet-expired membership as expired', () => {
+    expect(isExpiredWithinWindow('2026-07-06', '2026-07-06', IMPORT_EXPIRED_WINDOW_DAYS)).toBe(false) // expires today
+    expect(isExpiredWithinWindow('2026-07-20', '2026-07-06', IMPORT_EXPIRED_WINDOW_DAYS)).toBe(false) // future
+  })
+
+  it('agrees with isExpiredInWindow at the 18-day window', () => {
+    for (let offset = -25; offset <= 5; offset++) {
+      const end = new Date(Date.UTC(2026, 6, 6) + offset * 86400000).toISOString().slice(0, 10)
+      expect(isExpiredWithinWindow(end, '2026-07-06', REMINDER_WINDOW_DAYS)).toBe(isExpiredInWindow(end, '2026-07-06'))
     }
   })
 })

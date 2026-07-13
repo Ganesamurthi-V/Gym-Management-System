@@ -23,6 +23,8 @@ export interface Member {
   area?: string | null
   pending_amount: number
   created_at: string
+  /** True for members created via Excel/CSV import — suppresses the welcome template. */
+  is_imported?: boolean | null
 }
 
 /** Formats a member_number integer as the GF-prefixed ID string, e.g. 1 → "GF0001" */

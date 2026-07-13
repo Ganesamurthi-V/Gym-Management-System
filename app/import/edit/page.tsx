@@ -272,22 +272,19 @@ export default function ImportEditPage() {
         throw new Error(result.error?.message || "Member insert failed");
       }
 
-      // ── Fetch the newly inserted members by phone to get their IDs ──────────
-      const phones = toInsert.map(r => String(r.phone).replace(/\D/g, '').slice(0, 15)).filter(Boolean);
-      const { data: insertedMembers, error: fetchErr } = await supabase
-        .from("members")
-        .select("id, phone")
-        .eq("gym_id", gym.id)
-        .in("phone", phones) as { data: { id: string; phone: string }[] | null; error: any };
-
-      if (fetchErr || !insertedMembers) throw new Error(fetchErr?.message || "Failed to fetch inserted members");
-
-      const phoneToId = new Map(insertedMembers.map(m => [m.phone, m.id]));
+      // ── Link memberships by index ─────────────────────────────────────────
+      // The server returns the inserted member IDs in the same order as the
+      // rows we sent. Zip them together — this is robust against normalized
+      // (E.164 / INVALID_NUMBER) and duplicate phone numbers, which the old
+      // "re-query members by phone" approach could not distinguish.
+      const memberIds: string[] = result.data?.member_ids ?? [];
+      if (memberIds.length !== toInsert.length) {
+        throw new Error("Import mismatch: server returned a different member count");
+      }
 
       // ── Insert memberships ───────────────────────────────────────────────────
-      const membershipsToInsert = toInsert.map(row => {
-        const memberId = phoneToId.get(String(row.phone).replace(/\D/g, '').slice(0, 15));
-        if (!memberId) return null;
+      const membershipsToInsert = toInsert.map((row, i) => {
+        const memberId = memberIds[i];
         const end_date = calcEndDate(row.start_date, row.plan as any);
         return {
           member_id: memberId, gym_id: gym.id, plan: row.plan, category: row.category || 'both',
@@ -295,7 +292,7 @@ export default function ImportEditPage() {
           amount: parseInt(row.amount) || 0, payment_mode: row.payment_mode,
           created_at: row.start_date + "T00:00:00Z",
         };
-      }).filter(Boolean) as any[];
+      });
 
       const { error: msErr } = await supabase.from("memberships").insert(membershipsToInsert);
       if (msErr) throw new Error(msErr.message);

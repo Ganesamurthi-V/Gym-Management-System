@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Dumbbell, ArrowRight, Users, TrendingUp, Shield, Zap } from 'lucide-react'
 
@@ -94,6 +95,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true)
+    const searchParams = new URLSearchParams(window.location.search)
+    if (searchParams.get('error') === 'blocked') {
+      setError('Your access is blocked by admin')
+    }
   }, [])
   const [loginSuccess, setLoginSuccess] = useState(false)
   const [userName, setUserName] = useState('')
@@ -106,16 +111,20 @@ export default function LoginPage() {
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      // If login fails (e.g. because user is banned), check if their gym was deactivated
-      const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: email })
-      
-      if (isActive === false) {
-        setError('contact admin to active this account')
-      } else {
-        setError('Invalid email or password')
-      }
+      setError('Invalid email or password')
       setLoading(false)
       return
+    }
+
+    // Check if user's gym was deactivated even if password was correct
+    if (data?.user) {
+      const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: email })
+      if (isActive === false) {
+        await supabase.auth.signOut()
+        setError('ur acess are banned')
+        setLoading(false)
+        return
+      }
     }
 
     // Check if user has completed onboarding
@@ -156,8 +165,8 @@ export default function LoginPage() {
         {/* Top: Logo */}
         <div className={`relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-brand-400 to-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
-              <Dumbbell className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 flex items-center justify-center">
+              <Image src="/logo_only.png" alt="GymFlow Logo" width={40} height={40} className="object-contain drop-shadow-md" />
             </div>
             <span className="text-lg font-black text-white tracking-tight">gymflow</span>
           </div>
@@ -226,8 +235,8 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col bg-[#FAFBFD] lg:bg-white min-w-0">
         {/* Mobile logo (only on smaller screens) */}
         <div className="lg:hidden flex items-center gap-3 p-4 xs:p-6 pb-0">
-          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center">
-            <Dumbbell className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center">
+            <Image src="/logo_only.png" alt="GymFlow Logo" width={36} height={36} className="object-contain drop-shadow-sm" />
           </div>
           <span className="text-base xs:text-lg font-black text-slate-900 tracking-tight">gymflow</span>
         </div>

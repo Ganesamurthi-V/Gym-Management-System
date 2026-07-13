@@ -199,7 +199,7 @@ export default function NewMemberPage() {
         .insert({
           member_id: member.id,
           gym_id: gymId,
-          plan: form.plan === 'custom' ? 'monthly' : form.plan,
+          plan: form.plan,
           category: form.category,
           start_date: form.start_date,
           end_date,
@@ -231,7 +231,7 @@ export default function NewMemberPage() {
             memberId: member.id,
             memberName: form.name.trim(),
             phone: form.phone.trim(),
-            plan: form.plan === 'custom' ? 'monthly' : form.plan,
+            plan: form.plan,
             startDate: form.start_date,
           }),
         }).catch(() => {}) // fire-and-forget
@@ -559,8 +559,11 @@ export default function NewMemberPage() {
                 </div>
                 {form.plan === 'custom' && (
                   <div className="mt-2.5 flex items-center gap-2">
-                    <input type="number" min="1" max="24" value={form.custom_months}
-                      onChange={(e) => update('custom_months', e.target.value)}
+                    <input type="number" min="1" max="24" value={form.custom_months || ''}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        update('custom_months', val);
+                      }}
                       className="input-field w-32" placeholder="e.g. 2" required />
                     <span className="text-sm text-slate-500 font-medium">months</span>
                   </div>
@@ -684,12 +687,19 @@ export default function NewMemberPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Duration</label>
-                <select value={newPlan.duration} onChange={e => setNewPlan(p => ({ ...p, duration: e.target.value as any, planName: e.target.value === 'monthly' ? 'Monthly' : e.target.value === 'quarterly' ? 'Quarterly' : 'Annual' }))} className="input-field py-3">
+                <select value={newPlan.duration} onChange={e => setNewPlan(p => ({ ...p, duration: e.target.value as any, planName: e.target.value === 'monthly' ? 'Monthly' : e.target.value === 'quarterly' ? 'Quarterly' : e.target.value === 'annual' ? 'Annual' : 'Custom' }))} className="input-field py-3">
                   <option value="monthly">1 Month (Monthly)</option>
                   <option value="quarterly">3 Months (Quarterly)</option>
                   <option value="annual">1 Year (Annual)</option>
+                  <option value="custom">Custom Duration</option>
                 </select>
               </div>
+              {newPlan.duration === 'custom' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Number of Months</label>
+                  <input type="number" value={newPlan.customDurationMonths || ''} onChange={e => setNewPlan(p => ({ ...p, customDurationMonths: Number(e.target.value) }))} className="input-field py-3" min="1" max="24" placeholder="e.g. 6" required />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Membership Fee (₹)</label>

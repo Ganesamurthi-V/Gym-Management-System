@@ -5,6 +5,7 @@ import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
+import { normalizePhoneForImport } from '@/lib/import/normalizers'
 import { format } from 'date-fns'
 
 const MAX_IMPORT_ROWS = 500
@@ -71,16 +72,21 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 3: build insert payload ─────────────────────────────────────────
+    // Phones are normalized to E.164 (91XXXXXXXXXX); unparseable numbers are
+    // stored as the INVALID_NUMBER sentinel so those members still import but
+    // are automatically excluded from every WhatsApp send. Every imported row
+    // is flagged is_imported so the welcome template is suppressed for them.
     const insertRows = rows.map((r) => ({
       gym_id:           gym.id,
       name:             String(r.name  ?? '').trim().slice(0, 255),
-      phone:            String(r.phone ?? '').replace(/\D/g, '').slice(0, 15),
+      phone:            normalizePhoneForImport(r.phone).phone,
       age:              parseInt(r.age as string) || null,
       gender:           ['male', 'female', 'other'].includes(r.gender as string) ? r.gender : null,
       date_of_birth:    /^\d{4}-\d{2}-\d{2}$/.test(String(r.date_of_birth ?? '')) ? r.date_of_birth : null,
       area:             r.area ? String(r.area).slice(0, 100) : null,
       member_number:    claimNext(),
       legacy_member_id: r.legacy_member_id ? String(r.legacy_member_id).slice(0, 50) : null,
+      is_imported:      true,
     }))
 
     const assignedIds = insertRows.map(r => r.member_number)
@@ -112,7 +118,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { imported_count: data?.length ?? 0 },
+      // member_ids are returned in the SAME order as the input rows so the
+      // caller can link memberships by index — robust against duplicate or
+      // normalized phone numbers (the old phone re-query could not be).
+      data: { imported_count: data?.length ?? 0, member_ids: (data ?? []).map(d => d.id) },
       meta: { duration_ms: Date.now() - startTime },
     })
   } catch (err: unknown) {

@@ -166,3 +166,32 @@ export function normalizeMemberNumber(raw: string): {
   // → treat as legacy ID from another system, always auto-assign a new GF ID
   return { number: "", prefix: "", original: trimmed };
 }
+
+/** Sentinel stored in members.phone when an imported number can't be validated. */
+export const INVALID_PHONE = "INVALID_NUMBER";
+
+/**
+ * Normalize an imported phone number to E.164 (Indian) form for storage.
+ *
+ * Valid input is a 10-digit Indian mobile, optionally already carrying a
+ * country code or a leading 0:
+ *   9876543210      → { phone: "919876543210", valid: true }
+ *   09876543210     → { phone: "919876543210", valid: true }
+ *   +91 98765 43210 → { phone: "919876543210", valid: true }
+ *
+ * Anything that doesn't reduce to exactly 10 significant digits is marked
+ * invalid and stored as the INVALID_PHONE sentinel, which the automation
+ * scheduler and sendTemplate both refuse to send to (they require ≥10 digits).
+ */
+export function normalizePhoneForImport(raw: unknown): { phone: string; valid: boolean } {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+
+  let core = "";
+  if (digits.length === 10) core = digits;
+  else if (digits.length === 11 && digits.startsWith("0")) core = digits.slice(1);
+  else if (digits.length === 12 && digits.startsWith("91")) core = digits.slice(2);
+  else if (digits.length === 13 && digits.startsWith("091")) core = digits.slice(3);
+
+  if (core.length === 10) return { phone: `91${core}`, valid: true };
+  return { phone: INVALID_PHONE, valid: false };
+}

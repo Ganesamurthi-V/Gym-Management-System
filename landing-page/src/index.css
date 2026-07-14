@@ -1,23 +1,57 @@
 @import "tailwindcss";
 
 @theme {
-  --color-blue-dark: #0B1FE8;
-  --color-blue-mid: #1A73E8;
-  --color-blue-bright: #2196F3;
-  --color-blue-light: #63B3ED;
-  --color-blue-pale: #EBF4FF;
-  --color-blue-tint: #F0F7FF;
-  --color-ink: #0D1117;
-  --color-ink-mid: #2D3748;
-  --color-ink-muted: #718096;
-  --color-ink-faint: #A0AEC0;
+  --color-brand-50: #EFF6FF;
+  --color-brand-100: #DBEAFE;
+  --color-brand-200: #BFDBFE;
+  --color-brand-300: #93C5FD;
+  --color-brand-400: #60A5FA;
+  --color-brand-500: #2563EB;
+  --color-brand-600: #1D4ED8;
+  --color-brand-700: #1E40AF;
+  --color-brand-800: #1E3A8A;
+  --color-brand-900: #172554;
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F8FAFC;
+  --color-surface-card: #F1F5F9;
+  --color-surface-border: #E2E8F0;
 }
 
-@layer base {
-  body {
-    font-family: 'Inter', sans-serif;
-    overflow-x: hidden;
-  }
+body {
+  font-family: 'Sora', sans-serif;
+  overflow-x: hidden;
+}
+
+.btn-primary {
+  @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl shadow-sm shadow-brand-200 hover:from-brand-600 hover:to-brand-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm;
+}
+
+.btn-secondary {
+  @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-white text-slate-700 font-semibold rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all text-sm;
+}
+
+.btn-ghost {
+  @apply flex items-center justify-center gap-2 py-2 px-3 text-slate-500 rounded-xl active:bg-slate-100 transition-all text-sm;
+}
+
+.input-field {
+  @apply w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all shadow-sm;
+}
+
+.card {
+  @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+}
+
+.status-active {
+  @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+}
+
+.status-expiring {
+  @apply bg-amber-50 text-amber-700 border border-amber-200;
+}
+
+.status-expired {
+  @apply bg-red-50 text-red-700 border border-red-200;
 }
 
 /* Lenis default styles */

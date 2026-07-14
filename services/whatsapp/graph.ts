@@ -275,7 +275,7 @@ export async function markMessageRead(messageId: string): Promise<boolean> {
  * and every template updates together, so they can never drift apart).
  */
 function headerImageComponent(): Record<string, unknown> {
-  const link = (process.env.NEXT_PUBLIC_APP_URL || 'https://gymflow.sbs') + '/logo_landspace.png'
+  const link = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.gymflow.sbs') + '/logo_landspace.png'
   return {
     type: 'header',
     parameters: [{ type: 'image', image: { link } }],

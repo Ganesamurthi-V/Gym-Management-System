@@ -39,7 +39,7 @@ export function Footer() {
           Join 500+ gym owners already using GymFlow across Tamil Nadu and Puducherry.
         </p>
         
-        <a href="#" className="reveal-cta inline-block bg-white text-blue-dark border-none rounded-lg py-4 px-9 text-base font-bold cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.2)] relative z-10">
+        <a href="https://app.gymflow.sbs" className="reveal-cta inline-block bg-white text-blue-dark border-none rounded-lg py-4 px-9 text-base font-bold cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.2)] relative z-10">
           Start Free Trial — No credit card required
         </a>
       </section>
@@ -57,8 +57,8 @@ export function Footer() {
         <div className="flex items-center gap-7">
           <a href="#" className="text-[13px] text-white/50 hover:text-blue-light transition-colors">Privacy</a>
           <a href="#" className="text-[13px] text-white/50 hover:text-blue-light transition-colors">Terms</a>
-          <a href="#" className="text-[13px] text-white/50 hover:text-blue-light transition-colors">Support</a>
-          <a href="#" className="text-[13px] text-white/50 hover:text-blue-light transition-colors">Contact</a>
+          <a href="#support" className="text-[13px] text-white/50 hover:text-blue-light transition-colors">Support</a>
+          <a href="mailto:support@gymflow.sbs" className="text-[13px] text-white/50 hover:text-blue-light transition-colors">Contact</a>
         </div>
       </footer>
     </>

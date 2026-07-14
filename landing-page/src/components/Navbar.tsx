@@ -20,13 +20,8 @@ export function Navbar() {
           : 'bg-white/90 backdrop-blur-md border-b border-blue-mid/15'
       }`}
     >
-      <a href="#" className="flex items-center gap-2.5 text-none">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-dark to-blue-bright flex items-center justify-center text-white font-black text-sm tracking-tighter">
-          GF
-        </div>
-        <span className="text-lg font-extrabold text-ink">
-          Gym<span className="text-blue-mid">Flow</span>
-        </span>
+      <a href="#" className="flex items-center text-none">
+        <img src="/logo_landspace_without_bg.png" alt="GymFlow Logo" className="h-18 w-auto" />
       </a>
 
       <div className="hidden md:flex items-center gap-9">

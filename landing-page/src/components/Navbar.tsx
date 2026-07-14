@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Dumbbell } from 'lucide-react';
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);

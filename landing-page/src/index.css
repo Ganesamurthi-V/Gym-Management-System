@@ -15,6 +15,17 @@
   --color-surface-secondary: #F8FAFC;
   --color-surface-card: #F1F5F9;
   --color-surface-border: #E2E8F0;
+
+  /* Landing Page Specific Colors */
+  --color-blue-dark: #1E3A8A;
+  --color-blue-bright: #3B82F6;
+  --color-blue-mid: #2563EB;
+  --color-blue-pale: #EFF6FF;
+  
+  --color-ink: #0F172A;
+  --color-ink-mid: #334155;
+  --color-ink-muted: #64748B;
+  --color-ink-light: #94A3B8;
 }
 
 body {
@@ -54,19 +65,4 @@ body {
   @apply bg-red-50 text-red-700 border border-red-200;
 }
 
-/* Lenis default styles */
-html.lenis, html.lenis body {
-  height: auto;
-}
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-.lenis.lenis-scrolling iframe {
-  pointer-events: none;
-}
+

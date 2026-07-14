@@ -28,16 +28,20 @@ export function InteractiveDemo() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.from('.reveal-demo', {
-        y: 40,
-        opacity: 0,
-        duration: 0.8,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: 'top 75%',
+      gsap.fromTo('.reveal-demo', 
+        { y: 30, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: 'top 75%',
+          }
         }
-      });
+      );
     }, containerRef);
     return () => ctx.revert();
   }, []);
@@ -305,22 +309,22 @@ function MembersView() {
       <div className="flex items-center justify-between mb-6 shrink-0">
         <h2 className="text-[26px] font-black text-slate-900 tracking-tight">Members</h2>
         <div className="flex items-center gap-2">
-          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+          <button className="h-9 px-3 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
             <Filter className="w-3.5 h-3.5" /> Advanced
           </button>
-          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+          <button className="h-9 px-3 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
             <Download className="w-3.5 h-3.5" /> Export
           </button>
-          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+          <button className="h-9 px-3 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
             <Upload className="w-3.5 h-3.5" /> Import
           </button>
-          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+          <button className="h-9 px-3 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
             <Edit3 className="w-3.5 h-3.5" /> Edit Members
           </button>
-          <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
+          <button className="h-9 px-3 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
             <CalendarCheck className="w-3.5 h-3.5" /> Attendance Log
           </button>
-          <button className="btn-primary px-4 py-2 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5">
+          <button className="h-9 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm shadow-brand-200">
             <Plus className="w-3.5 h-3.5" /> Add Member
           </button>
         </div>

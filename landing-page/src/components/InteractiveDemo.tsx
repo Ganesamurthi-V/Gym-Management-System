@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, List, AlertCircle, CalendarCheck, Package, 
   Activity, TrendingUp, ChevronLeft, Search, Filter, Download, Upload, 
   Edit3, Plus, MessageCircle, Clock, ChevronDown, Check, Sun, Moon,
-  Banknote, Smartphone
+  Banknote, Smartphone, MousePointer2
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -58,15 +58,23 @@ export function InteractiveDemo() {
   }, [activeTab]);
 
   return (
-    <section ref={containerRef} className="py-[100px] px-6 md:px-10 bg-slate-50 relative overflow-hidden">
-      <div className="text-center mb-[50px] relative z-10">
-        <span className="reveal-demo inline-block text-[11px] font-bold tracking-[3px] uppercase text-blue-600 mb-3.5">Experience GymFlow</span>
-        <h2 className="reveal-demo text-[42px] font-black text-slate-900 tracking-tight leading-[1.1] mb-4">
-          Try it for <span className="text-blue-600">yourself.</span>
+    <section id="demo" ref={containerRef} className="py-[100px] px-6 md:px-10 bg-slate-50 relative overflow-hidden">
+      <div className="text-center mb-[60px] relative z-10 flex flex-col items-center">
+        <span className="reveal-demo inline-block text-[11px] font-bold tracking-widest uppercase text-purple-600 bg-purple-50 border border-purple-200 px-4 py-1.5 rounded-full mb-6">
+          LIVE PREVIEW
+        </span>
+        <h2 className="reveal-demo text-[44px] md:text-[56px] font-black text-slate-900 tracking-tight leading-[1.1] mb-6">
+          Don't just read about it.<br/>
+          <span className="bg-gradient-to-br from-blue-dark to-blue-bright bg-clip-text text-transparent">Try the real UI..</span>
         </h2>
-        <p className="reveal-demo text-base text-slate-500 leading-relaxed max-w-[560px] mx-auto">
-          Click around the sidebar to see how easy it is to manage your entire gym from one place.
+        <p className="reveal-demo text-[18px] md:text-[22px] text-slate-500 leading-relaxed max-w-[600px] mx-auto mb-8">
+          This is exactly what your dashboard will look like<br />from day one.
         </p>
+        <div className="reveal-demo inline-flex items-center gap-2.5 bg-indigo-50/50 border border-indigo-100 rounded-full px-5 py-2.5 text-[13px] font-semibold text-indigo-400">
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+          <MousePointer2 className="w-4 h-4" />
+          Interactive — click the sidebar tabs to explore every page
+        </div>
       </div>
 
       <div className="reveal-demo max-w-[1250px] mx-auto relative z-10">
@@ -81,7 +89,7 @@ export function InteractiveDemo() {
           <div className="flex-1 flex justify-center">
             <div className="bg-white border border-slate-200/80 rounded-md px-10 py-1 flex items-center justify-center text-xs font-medium text-slate-500 shadow-sm min-w-[280px]">
               <svg className="w-3 h-3 mr-1.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-              app.gymflow.com/fit-zone-gym
+              app.gymflow.sbs/fit-zone-gym
             </div>
           </div>
           <div className="w-16" />

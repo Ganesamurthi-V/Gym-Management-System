@@ -56,9 +56,9 @@ export function Pricing() {
               </li>
             ))}
           </ul>
-          <button className="w-full py-3 rounded-lg text-sm font-bold bg-transparent border-[1.5px] border-blue-mid/15 text-ink-mid hover:border-blue-mid hover:text-blue-mid transition-colors">
+          <a href="https://app.gymflow.sbs" className="block text-center w-full py-3 rounded-lg text-sm font-bold bg-transparent border-[1.5px] border-blue-mid/15 text-ink-mid hover:border-blue-mid hover:text-blue-mid transition-colors">
             Start Free Trial
-          </button>
+          </a>
         </div>
 
         {/* Pro */}
@@ -76,9 +76,9 @@ export function Pricing() {
               </li>
             ))}
           </ul>
-          <button className="w-full py-3 rounded-lg text-sm font-bold bg-white text-blue-dark hover:-translate-y-px hover:shadow-lg transition-all">
+          <a href="https://app.gymflow.sbs" className="block text-center w-full py-3 rounded-lg text-sm font-bold bg-white text-blue-dark hover:-translate-y-px hover:shadow-lg transition-all">
             Get Started Now
-          </button>
+          </a>
         </div>
 
         {/* Enterprise */}
@@ -95,9 +95,9 @@ export function Pricing() {
               </li>
             ))}
           </ul>
-          <button className="w-full py-3 rounded-lg text-sm font-bold bg-transparent border-[1.5px] border-blue-mid/15 text-ink-mid hover:border-blue-mid hover:text-blue-mid transition-colors">
+          <a href="#support" className="block text-center w-full py-3 rounded-lg text-sm font-bold bg-transparent border-[1.5px] border-blue-mid/15 text-ink-mid hover:border-blue-mid hover:text-blue-mid transition-colors">
             Contact Us
-          </button>
+          </a>
         </div>
       </div>
     </section>

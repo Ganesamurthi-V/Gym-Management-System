@@ -51,10 +51,10 @@ export function Hero() {
         </p>
 
         <div className="hero-ctas flex flex-wrap items-center gap-4">
-          <a href="#" className="bg-gradient-to-br from-blue-dark to-blue-bright text-white border-none rounded-lg py-3.5 px-7 text-[15px] font-semibold cursor-pointer shadow-lg shadow-blue-dark/30 transition-transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-dark/40">
+          <a href="https://app.gymflow.sbs" className="bg-gradient-to-br from-blue-dark to-blue-bright text-white border-none rounded-lg py-3.5 px-7 text-[15px] font-semibold cursor-pointer shadow-lg shadow-blue-dark/30 transition-transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-dark/40">
             Start Free Trial — No card needed
           </a>
-          <a href="#" className="flex items-center gap-2 bg-transparent border-[1.5px] border-blue-mid/15 rounded-lg py-[13px] px-5 text-[15px] font-semibold text-ink-mid cursor-pointer transition-colors hover:border-blue-mid hover:text-blue-mid group">
+          <a href="#demo" className="flex items-center gap-2 bg-transparent border-[1.5px] border-blue-mid/15 rounded-lg py-[13px] px-5 text-[15px] font-semibold text-ink-mid cursor-pointer transition-colors hover:border-blue-mid hover:text-blue-mid group">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-dark to-blue-bright flex items-center justify-center">
               <Play className="w-3 h-3 text-white ml-0.5" fill="currentColor" />
             </div>

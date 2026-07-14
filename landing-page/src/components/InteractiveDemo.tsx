@@ -4,7 +4,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { 
   LayoutDashboard, Users, List, AlertCircle, CalendarCheck, Package, 
   Activity, TrendingUp, ChevronLeft, Search, Filter, Download, Upload, 
-  Edit3, Plus, Bell, MessageCircle, Clock, ChevronDown, Check, Sun, Moon
+  Edit3, Plus, Bell, MessageCircle, Clock, ChevronDown, Check, Sun, Moon,
+  Banknote, Smartphone
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -131,7 +132,7 @@ export function InteractiveDemo() {
               </div>
 
               <div className="px-4 pb-2">
-                <button className="w-full bg-[#1e40af] hover:bg-blue-800 text-white py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
+                <button className="btn-primary py-2.5 rounded-lg text-sm">
                   <Plus className="w-4 h-4" />
                   Add Member
                 </button>
@@ -269,7 +270,7 @@ function DashboardView() {
             <h3 className="font-bold text-slate-400 text-[11px] tracking-wider uppercase">Quick Actions</h3>
           </div>
           <div className="p-4 flex flex-col gap-3">
-            <button className="w-full bg-[#2563eb] hover:bg-blue-700 text-white py-3 rounded-lg text-[13px] font-bold flex items-center px-4 transition-colors">
+            <button className="btn-primary py-3 rounded-lg text-[13px] font-bold flex items-center justify-start px-4 transition-colors">
               <Plus className="w-4 h-4 mr-3 opacity-70" />
               Add New Member
             </button>
@@ -301,7 +302,7 @@ function DashboardView() {
 function MembersView() {
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 shrink-0">
         <h2 className="text-[26px] font-black text-slate-900 tracking-tight">Members</h2>
         <div className="flex items-center gap-2">
           <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
@@ -319,13 +320,13 @@ function MembersView() {
           <button className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
             <CalendarCheck className="w-3.5 h-3.5" /> Attendance Log
           </button>
-          <button className="bg-[#1e40af] text-white px-4 py-2 rounded-lg text-[13px] font-semibold flex items-center gap-1.5 hover:bg-blue-800">
+          <button className="btn-primary px-4 py-2 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5">
             <Plus className="w-3.5 h-3.5" /> Add Member
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-6 shrink-0">
         <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
             <Users className="w-5 h-5" />
@@ -364,7 +365,7 @@ function MembersView() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 shrink-0">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
           <input type="text" placeholder="Search by name or phone..." className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none" />
@@ -374,14 +375,15 @@ function MembersView() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 shrink-0">
         <button className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-[12px] font-bold">All (81)</button>
         <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-[12px] font-bold">Active (39)</button>
         <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-[12px] font-bold">Expiring (3)</button>
         <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-[12px] font-bold">Expired (39)</button>
       </div>
 
-      <div className="flex-1 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col">
+      <div className="flex-1 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div className="overflow-x-auto overflow-y-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-400 font-bold">
@@ -419,7 +421,7 @@ function MembersView() {
                 <td className="px-5 py-4 text-slate-500">{m.exp}</td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-bold border ${m.sColor}`}>
+                    <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-bold ${m.s === 'Active' ? 'status-active' : m.s === 'Expiring' ? 'status-expiring' : 'status-expired'}`}>
                       {m.s}
                     </span>
                     {m.s === 'Expiring' && (
@@ -434,6 +436,7 @@ function MembersView() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -444,35 +447,43 @@ function MembersView() {
 function PaymentsView() {
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 shrink-0">
         <h2 className="text-[26px] font-black text-slate-900 tracking-tight">Payments</h2>
         <button className="px-4 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50">
           <Download className="w-3.5 h-3.5" /> Export
         </button>
       </div>
 
-      <div className="bg-[#1d4ed8] rounded-xl p-6 text-white mb-6 relative overflow-hidden shadow-md">
+      <div className="bg-brand-600 rounded-xl p-6 text-white mb-4 relative overflow-hidden shadow-md shrink-0">
         <div className="absolute inset-0 bg-blue-600/50 mix-blend-overlay" />
         <div className="relative z-10 flex items-center justify-between">
           <div>
             <div className="text-[10px] font-bold tracking-widest text-white/70 uppercase mb-2">This Month's Collection</div>
-            <div className="text-[40px] font-black leading-none mb-3">₹0</div>
+            <div className="text-[40px] font-black leading-none mb-3">₹34,500</div>
             <div className="flex items-center gap-4 text-[12px] font-medium text-white/90">
-              <span>Cash <span className="font-bold text-white">₹0</span></span>
-              <span>UPI <span className="font-bold text-white">₹0</span></span>
+              <span>Cash <span className="font-bold text-white">₹22,000</span></span>
+              <span>UPI <span className="font-bold text-white">₹12,500</span></span>
               <span>Card <span className="font-bold text-white">₹0</span></span>
-              <span className="text-white/60 ml-2">0 transactions</span>
+              <span className="text-white/60 ml-2">5 transactions</span>
             </div>
           </div>
           <div className="text-[13px] text-right font-medium space-y-1.5">
-            <div>Memberships: <span className="font-bold">₹0</span></div>
+            <div>Memberships: <span className="font-bold">₹34,500</span></div>
             <div>Inventory: <span className="font-bold">₹0</span></div>
             <div>Dues Collected: <span className="font-bold">₹0</span></div>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between mb-6 shrink-0">
+        <div className="flex items-center gap-3 text-amber-700">
+          <AlertCircle className="w-5 h-5" />
+          <span className="text-[13px] font-bold">Pending Dues — ₹12,500 from 4 members</span>
+        </div>
+        <button className="text-[13px] font-bold text-amber-700 hover:text-amber-800">Show</button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4 shrink-0">
         <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">Today</button>
         <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">Week</button>
         <button className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-[12px] font-bold">Month</button>
@@ -487,13 +498,13 @@ function PaymentsView() {
         <button className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-[12px] font-bold">CARD</button>
       </div>
 
-      <div className="flex items-center gap-6 border-b border-slate-200 mb-6">
-        <button className="pb-3 border-b-2 border-blue-600 text-blue-600 text-[13px] font-bold">Memberships (0)</button>
+      <div className="flex items-center gap-6 border-b border-slate-200 mb-6 shrink-0">
+        <button className="pb-3 border-b-2 border-brand-600 text-brand-600 text-[13px] font-bold">Memberships (5)</button>
         <button className="pb-3 text-slate-500 text-[13px] font-semibold hover:text-slate-800">Inventory (0)</button>
         <button className="pb-3 text-slate-500 text-[13px] font-semibold hover:text-slate-800">Dues (0)</button>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 shrink-0">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
           <input type="text" placeholder="Search by name or phone..." className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none" />
@@ -503,17 +514,43 @@ function PaymentsView() {
         </div>
       </div>
 
-      <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col">
+      <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col min-h-0">
         <div className="bg-slate-50/80 border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-400 font-bold flex px-6 py-3">
           <div className="w-16">#</div>
           <div className="flex-1">MEMBER</div>
-          <div className="w-48 text-center">PLAN</div>
-          <div className="w-32 text-center">PERIOD</div>
-          <div className="w-32 text-center">MODE</div>
-          <div className="w-32 text-right">AMOUNT</div>
+          <div className="w-32">PLAN</div>
+          <div className="w-48">PERIOD</div>
+          <div className="w-24">MODE</div>
+          <div className="w-40 text-right">AMOUNT</div>
         </div>
-        <div className="flex-1 flex items-center justify-center text-[13px] text-slate-400 font-medium">
-          No transactions found
+        <div className="flex-1 overflow-y-auto">
+          {[
+            { id: '#85', n: 'Arun Kumar', p: '9876543210', plan: 'Quarterly', date: '13 Jul 2026 - 13 Oct 2026', mode: 'UPI', amt: '₹5,000', sub: '₹6,000 + ₹500 adm - ₹1,500 due', modeColor: 'text-brand-600 bg-brand-50 border-brand-200' },
+            { id: '#84', n: 'Priya', p: '9876543211', plan: 'Monthly', date: '13 Jul 2026 - 13 Aug 2026', mode: 'UPI', amt: '₹7,500', sub: '₹7,500 - ₹0 due', modeColor: 'text-brand-600 bg-brand-50 border-brand-200' },
+            { id: '#83', n: 'Ragul', p: '9384886895', plan: 'Annual', date: '13 Jul 2026 - 13 Jul 2027', mode: 'CASH', amt: '₹7,500', sub: '₹12,000 + ₹500 adm - ₹5,000 due', modeColor: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+            { id: '#82', n: 'Ganesh', p: '9384886895', plan: 'Annual', date: '13 Jul 2026 - 13 Jul 2027', mode: 'CASH', amt: '₹9,500', sub: '₹12,000 + ₹500 adm - ₹3,000 due', modeColor: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+            { id: '#81', n: 'Vijay', p: '9384886895', plan: 'Monthly', date: '12 Jul 2026 - 12 Aug 2026', mode: 'CASH', amt: '₹5,000', sub: '₹8,000 - ₹3,000 due', modeColor: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+          ].map((item, i) => (
+             <div key={i} className="flex px-6 py-4 border-b border-slate-100 hover:bg-slate-50/50 items-center">
+               <div className="w-16 text-[11px] font-bold text-slate-400">{item.id}</div>
+               <div className="flex-1">
+                 <div className="font-bold text-slate-800 text-[13px]">{item.n}</div>
+                 <div className="text-[11px] text-slate-400">{item.p}</div>
+               </div>
+               <div className="w-32 text-[13px] font-medium text-slate-600">{item.plan}</div>
+               <div className="w-48 text-[12px] font-medium text-slate-500">{item.date}</div>
+               <div className="w-24">
+                 <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${item.modeColor} flex items-center gap-1 w-max`}>
+                   {item.mode === 'CASH' ? <Banknote className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
+                   {item.mode}
+                 </span>
+               </div>
+               <div className="w-40 text-right">
+                 <div className="font-black text-slate-900 text-[14px]">{item.amt}</div>
+                 <div className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{item.sub}</div>
+               </div>
+             </div>
+          ))}
         </div>
       </div>
     </div>
@@ -525,7 +562,7 @@ function PaymentsView() {
 function DuesView() {
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 shrink-0">
         <h2 className="text-[26px] font-black text-slate-900 tracking-tight">Fee Dues</h2>
         <div className="flex items-center gap-4">
           <input type="text" placeholder="Search name or phone..." className="w-64 px-4 py-2 bg-white border border-slate-200 rounded-lg text-[13px] focus:outline-none" />
@@ -533,16 +570,47 @@ function DuesView() {
             <AlertCircle className="w-4 h-4 text-rose-500" />
             <div className="text-right">
               <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total Pending</div>
-              <div className="text-base font-black text-rose-600 leading-none">₹0</div>
+              <div className="text-base font-black text-rose-600 leading-none">₹12,500</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center">
-        <div className="text-4xl mb-4">🎉</div>
-        <h3 className="text-lg font-bold text-slate-700 mb-1">No pending dues!</h3>
-        <p className="text-sm text-slate-400">All members are up to date</p>
+      <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar min-h-0">
+        {[
+          { id: '#85', n: 'Arun Kumar', p: '9876543210', due: '₹1,500', initials: 'A', bg: 'bg-rose-50 text-rose-500' },
+          { id: '#83', n: 'Ragul', p: '9384886895', due: '₹5,000', initials: 'R', bg: 'bg-rose-50 text-rose-500' },
+          { id: '#82', n: 'Ganesh', p: '9384886895', due: '₹3,000', initials: 'G', bg: 'bg-rose-50 text-rose-500' },
+          { id: '#81', n: 'Vijay', p: '9384886895', due: '₹3,000', initials: 'V', bg: 'bg-rose-50 text-rose-500' },
+        ].map((item, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm hover:border-slate-300 transition-colors">
+            <div className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[14px] ${item.bg}`}>
+                {item.initials}
+              </div>
+              <div>
+                <div className="font-bold text-slate-800 text-[14px]">{item.n} <span className="text-slate-400 text-[11px] font-medium ml-1">{item.id}</span></div>
+                <div className="text-[12px] text-slate-500">{item.p}</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6">
+              <div className="text-right">
+                <div className="font-black text-rose-600 text-[15px]">{item.due}</div>
+                <div className="text-[11px] font-medium text-slate-400">pending</div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button className="w-8 h-8 rounded bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                  <MessageCircle className="w-4 h-4" />
+                </button>
+                <button className="w-8 h-8 rounded bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center shadow-sm font-bold text-[13px]">
+                  ₹
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -598,19 +666,19 @@ function AttendanceView() {
 function InventoryView() {
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-8 shrink-0">
         <div>
           <h2 className="text-[26px] font-black text-slate-900 tracking-tight leading-tight mb-1.5">Inventory<br/>Management</h2>
           <p className="text-[13px] text-slate-400 max-w-[200px] leading-snug">Manage your products, stock, and pricing</p>
         </div>
-        <button className="flex-1 max-w-[650px] ml-12 mt-2 bg-[#2563eb] hover:bg-blue-700 text-white py-3.5 rounded-xl text-[14px] font-bold flex items-center justify-center transition-colors shadow-sm">
+        <button className="btn-primary flex-1 max-w-[650px] ml-12 mt-2 py-3.5 rounded-xl text-[14px] font-bold flex items-center justify-center transition-colors shadow-sm">
           <Plus className="w-4 h-4 mr-2" />
           Add New Product
         </button>
       </div>
 
-      <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col min-h-0">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
           <div className="relative w-[360px]">
             <Search className="w-4 h-4 text-slate-300 absolute left-4 top-1/2 -translate-y-1/2" />
             <input type="text" placeholder="Search products, SKUs..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none placeholder:text-slate-400" />

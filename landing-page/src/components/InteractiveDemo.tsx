@@ -4,7 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { 
   LayoutDashboard, Users, List, AlertCircle, CalendarCheck, Package, 
   Activity, TrendingUp, ChevronLeft, Search, Filter, Download, Upload, 
-  Edit3, Plus, Bell, MessageCircle, Clock, ChevronDown, Check, Sun, Moon,
+  Edit3, Plus, MessageCircle, Clock, ChevronDown, Check, Sun, Moon,
   Banknote, Smartphone
 } from 'lucide-react';
 
@@ -180,20 +180,7 @@ export function InteractiveDemo() {
   );
 }
 
-// ─── Shared Components ──────────────────────────────────────────────────────
 
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <div className="mb-6 flex items-center gap-2">
-      <div className="w-5 h-5 opacity-40">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg>
-      </div>
-      <span className="text-sm font-semibold text-slate-500">Fit Zone Gym</span>
-      <h2 className="text-2xl font-bold text-slate-900 w-full absolute left-8 top-6 opacity-0">Hidden</h2>
-      {/* Real Title positioned absolutely wouldn't work with flow, just fake it */}
-    </div>
-  );
-}
 
 // ─── Dashboard View ─────────────────────────────────────────────────────────
 

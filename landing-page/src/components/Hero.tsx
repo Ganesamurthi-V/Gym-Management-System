@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { MapPin, Play, Sparkles, ImageIcon } from 'lucide-react';

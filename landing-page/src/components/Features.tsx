@@ -122,7 +122,9 @@ export function Features() {
 
         {/* Card grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map((feat, i) => (
+          {FEATURES.map((feat, i) => {
+            const Icon = feat.icon;
+            return (
             <div
               key={i}
               className="feat-reveal group relative rounded-[20px] p-8 cursor-default transition-all duration-300"
@@ -153,13 +155,14 @@ export function Features() {
                 className="w-12 h-12 rounded-[14px] flex items-center justify-center mb-6 transition-all duration-400 group-hover:scale-110 group-hover:-rotate-3"
                 style={{ background: feat.iconBg, border: `1px solid ${feat.iconColor}25` }}
               >
-                <feat.icon className="w-5 h-5" style={{ color: feat.iconColor }} strokeWidth={2} />
+                <Icon className="w-5 h-5" style={{ color: feat.iconColor }} strokeWidth={2} />
               </div>
 
               <h3 className="text-[17px] font-bold text-slate-900 mb-3 leading-snug">{feat.title}</h3>
               <p className="text-[14px] leading-[1.7]" style={{ color: '#64748B' }}>{feat.desc}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

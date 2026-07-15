@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { MapPin, Play, Sparkles } from 'lucide-react';
@@ -9,6 +9,10 @@ gsap.registerPlugin(ScrollTrigger);
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const wordRef = useRef<HTMLSpanElement>(null);
+
+  const WORDS = ['Paid.', 'Due.', 'Next.'];
+  const [wordIndex, setWordIndex] = useState(0);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -48,6 +52,25 @@ export function Hero() {
     }, containerRef);
 
     return () => ctx.revert();
+  }, []);
+
+  // Cycle the last word every 2s with a GSAP slide-up transition
+  useEffect(() => {
+    const el = wordRef.current;
+    if (!el) return;
+    const interval = setInterval(() => {
+      gsap.to(el, {
+        y: -24, opacity: 0, duration: 0.28, ease: 'power2.in',
+        onComplete: () => {
+          setWordIndex(i => (i + 1) % WORDS.length);
+          gsap.fromTo(el,
+            { y: 24, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.32, ease: 'power2.out' }
+          );
+        }
+      });
+    }, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -97,15 +120,18 @@ export function Hero() {
             className="hero-title font-black text-slate-900 tracking-tight mb-5"
             style={{ fontSize: 'clamp(44px, 5.5vw, 72px)', lineHeight: 1.05, fontFamily: 'Sora, sans-serif' }}
           >
-            Know Who Paid.<br />
-            Who Didn't.<br />
-            <span style={{
-              background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #3B82F6 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
-              Who's Expiring.
+            Know What's{' '}
+            <span
+              ref={wordRef}
+              style={{
+                display: 'inline-block',
+                background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #3B82F6 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              {WORDS[wordIndex]}
             </span>
           </h1>
 
@@ -114,7 +140,7 @@ export function Hero() {
             className="hero-sub font-bold mb-6"
             style={{ fontSize: '20px', color: '#2563EB' }}
           >
-            | &nbsp;— without the notebooks.
+             &nbsp;— without the notebooks.
           </p>
 
           {/* Description */}

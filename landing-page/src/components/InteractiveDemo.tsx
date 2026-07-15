@@ -103,7 +103,12 @@ export function InteractiveDemo() {
 
       <div
         className="reveal-demo max-w-[1250px] mx-auto relative z-10"
-        style={{ filter: 'drop-shadow(0 24px 48px rgba(15,23,42,0.12)) drop-shadow(0 8px 16px rgba(37,99,235,0.08))' }}
+        style={{
+          // box-shadow instead of drop-shadow filter — same look, but doesn't
+          // re-run two blur passes over the whole frame on every animation frame
+          boxShadow: '0 24px 48px rgba(15,23,42,0.12), 0 8px 16px rgba(37,99,235,0.08)',
+          borderRadius: '12px',
+        }}
       >
         {/* Browser Chrome */}
         <div
@@ -144,11 +149,8 @@ export function InteractiveDemo() {
           {/* Sidebar */}
           <div className="w-[220px] bg-white border-r border-slate-100 flex flex-col flex-shrink-0 relative">
             <div className="h-[68px] flex items-center justify-between px-5 border-b border-slate-100 flex-shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 flex items-center justify-center">
-                  <img src="/logo_only.png" alt="GymFlow Logo" className="w-7 h-7 object-contain" />
-                </div>
-                <span className="text-base font-extrabold tracking-tight text-slate-900">GymFlow</span>
+              <div className="flex items-center">
+                <img src="/logo_landspace_without_bg.png" alt="GymFlow" loading="lazy" decoding="async" className="h-[80px] w-auto object-contain" />
               </div>
               <button className="w-6 h-6 rounded border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors">
                 <ChevronLeft className="w-4 h-4" />
@@ -200,15 +202,12 @@ export function InteractiveDemo() {
             {/* Topbar */}
             <div className="h-[68px] bg-white border-b border-slate-100 flex items-center justify-center relative flex-shrink-0 px-6">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 flex items-center justify-center">
-                  <img src="/logo_only.png" alt="GymFlow Logo" className="w-7 h-7 object-contain" />
-                </div>
                 <span className="text-lg font-black tracking-tight text-blue-600 uppercase">Fit Zone Gym</span>
               </div>
               
               <div className="absolute right-6 top-1/2 -translate-y-1/2">
                 <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center">
-                  <img src="/logo_only.png" alt="User Avatar" className="w-5 h-5 object-contain" />
+                  <img src="/logo_only.png" alt="User Avatar" loading="lazy" decoding="async" className="w-5 h-5 object-contain" />
                 </div>
               </div>
             </div>

@@ -14,7 +14,6 @@ export function StatsStrip() {
         const target = parseInt(counter.dataset.target || '0', 10);
         const prefix = counter.dataset.prefix || '';
         const suffix = counter.dataset.suffix || '';
-        
         ScrollTrigger.create({
           trigger: stripRef.current,
           start: 'top 80%',
@@ -22,10 +21,10 @@ export function StatsStrip() {
           onEnter: () => {
             gsap.to(counter, {
               innerHTML: target,
-              duration: 1.8,
+              duration: 2,
               ease: 'power2.out',
               snap: { innerHTML: 1 },
-              onUpdate: function() {
+              onUpdate() {
                 counter.innerHTML = prefix + Math.floor(Number(this.targets()[0].innerHTML)) + suffix;
               },
             });
@@ -33,7 +32,6 @@ export function StatsStrip() {
         });
       });
     }, stripRef);
-
     return () => ctx.revert();
   }, []);
 
@@ -41,23 +39,64 @@ export function StatsStrip() {
     if (el) countersRef.current[i] = el;
   };
 
+  const stats = [
+    { target: 500,  prefix: '',  suffix: '+',    label: 'Gyms Onboarded',  icon: '🏋️' },
+    { target: 2,    prefix: '₹', suffix: 'Cr+',  label: 'Payments Tracked', icon: '💰' },
+    { target: 50,   prefix: '',  suffix: 'K+',   label: 'Members Managed',  icon: '👥' },
+    { target: 1200, prefix: '',  suffix: '+',    label: 'Area Aliases',     icon: '📍' },
+  ];
+
   return (
-    <section ref={stripRef} className="bg-gradient-to-br from-blue-dark to-blue-bright py-10 px-6 md:px-20 grid grid-cols-2 md:grid-cols-4 gap-y-8 md:gap-y-0">
-      <div className="text-center md:border-r border-white/15 px-5">
-        <span ref={el => setRef(el, 0)} data-target="500" data-suffix="+" className="block text-4xl font-black text-white leading-none mb-1.5">0</span>
-        <span className="text-[13px] font-medium text-white/75">Gyms Onboarded</span>
-      </div>
-      <div className="text-center md:border-r border-white/15 px-5">
-        <span ref={el => setRef(el, 1)} data-target="2" data-prefix="₹" data-suffix="Cr+" className="block text-4xl font-black text-white leading-none mb-1.5">0</span>
-        <span className="text-[13px] font-medium text-white/75">Payments Tracked</span>
-      </div>
-      <div className="text-center md:border-r border-white/15 px-5">
-        <span ref={el => setRef(el, 2)} data-target="50" data-suffix="K+" className="block text-4xl font-black text-white leading-none mb-1.5">0</span>
-        <span className="text-[13px] font-medium text-white/75">Members Managed</span>
-      </div>
-      <div className="text-center px-5">
-        <span ref={el => setRef(el, 3)} data-target="1200" data-suffix="+" className="block text-4xl font-black text-white leading-none mb-1.5">0</span>
-        <span className="text-[13px] font-medium text-white/75">Area Aliases</span>
+    <section
+      ref={stripRef}
+      className="relative overflow-hidden py-14 px-6 md:px-20"
+      style={{
+        background: 'linear-gradient(135deg, #0F172A 0%, #1E3A8A 45%, #1D4ED8 75%, #2563EB 100%)',
+      }}
+    >
+      {/* Subtle grid overlay */}
+      <div
+        className="absolute inset-0 z-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+      {/* Glow orb */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[200px] z-0"
+        style={{ background: 'radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 70%)' }}
+      />
+
+      <div className="relative z-10 max-w-[1100px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-y-10 md:gap-y-0">
+        {stats.map((s, i) => (
+          <div
+            key={i}
+            className="text-center px-6"
+            style={{
+              borderRight: i < 3 ? '1px solid rgba(255,255,255,0.10)' : 'none',
+            }}
+          >
+            <div className="text-xl mb-2">{s.icon}</div>
+            <span
+              ref={el => setRef(el, i)}
+              data-target={s.target}
+              data-prefix={s.prefix}
+              data-suffix={s.suffix}
+              className="block font-black text-white leading-none mb-2"
+              style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontFamily: 'Sora, sans-serif' }}
+            >
+              0
+            </span>
+            <span
+              className="text-[13px] font-medium tracking-wide"
+              style={{ color: 'rgba(255,255,255,0.65)' }}
+            >
+              {s.label}
+            </span>
+          </div>
+        ))}
       </div>
     </section>
   );

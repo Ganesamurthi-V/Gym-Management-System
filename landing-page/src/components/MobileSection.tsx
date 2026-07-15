@@ -5,24 +5,20 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export function MobileSection() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.reveal-mobile', 
-        { y: 30, opacity: 0 },
+      gsap.fromTo('.reveal-mobile',
+        { y: 32, opacity: 0 },
         {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: 'top 75%',
-          }
+          y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'power3.out',
+          scrollTrigger: { trigger: containerRef.current, start: 'top 75%' },
         }
       );
     }, containerRef);
@@ -30,96 +26,190 @@ export function MobileSection() {
   }, []);
 
   return (
-    <section ref={containerRef} className="py-[100px] px-6 md:px-10 bg-white relative overflow-hidden border-t border-slate-100">
-      <div className="max-w-[1250px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
-        
+    <section
+      ref={containerRef}
+      className="relative overflow-hidden py-[120px] px-6 md:px-10"
+      style={{ background: 'linear-gradient(135deg, #060D1A 0%, #0A1628 40%, #0F1F3D 70%, #0D1A35 100%)' }}
+    >
+      {/* Decorative orbs */}
+      <div
+        className="absolute -top-[100px] right-[15%] w-[500px] h-[500px] rounded-full z-0 pointer-events-none animate-[orbFloat_10s_ease-in-out_infinite]"
+        style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%)' }}
+      />
+      <div
+        className="absolute -bottom-[100px] left-[10%] w-[400px] h-[400px] rounded-full z-0 pointer-events-none animate-[orbFloat_13s_ease-in-out_infinite_reverse]"
+        style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)' }}
+      />
+      {/* Grid overlay */}
+      <div
+        className="absolute inset-0 z-0 opacity-[0.04]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      <div className="max-w-[1250px] mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
+
         {/* Left Text Content */}
         <div className="max-w-[560px]">
-          <span className="reveal-mobile inline-flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase text-blue-600 bg-blue-50 border border-blue-200 px-4 py-1.5 rounded-full mb-6">
-            <Smartphone className="w-3.5 h-3.5" />
-            MOBILE ACCESS
-          </span>
-          
-          <h2 className="reveal-mobile text-[40px] md:text-[52px] font-black text-slate-900 tracking-tight leading-[1.1] mb-4">
-            Your business,<br/>
-            always <span className="bg-gradient-to-br from-blue-dark to-blue-bright bg-clip-text text-transparent">within reach.</span>
+          {/* Badge */}
+          <div
+            className="reveal-mobile inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-8"
+            style={{
+              background: 'rgba(59,130,246,0.12)',
+              border: '1px solid rgba(59,130,246,0.25)',
+            }}
+          >
+            <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-[11px] font-bold tracking-widest uppercase text-blue-400">Mobile Access</span>
+          </div>
+
+          <h2
+            className="reveal-mobile font-black text-white tracking-tight leading-[1.08] mb-5"
+            style={{ fontSize: 'clamp(36px, 4.5vw, 56px)', fontFamily: 'Sora, sans-serif' }}
+          >
+            Your business,<br />
+            always{' '}
+            <span style={{
+              background: 'linear-gradient(135deg, #60A5FA 0%, #93C5FD 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}>within reach.</span>
           </h2>
 
-          {/* Blue accent line */}
-          <div className="reveal-mobile w-12 h-1 bg-gradient-to-r from-blue-dark to-blue-bright rounded-full mb-6" />
-          
-          <p className="reveal-mobile text-[16px] text-slate-500 leading-relaxed mb-8">
+          {/* Accent line */}
+          <div
+            className="reveal-mobile w-12 h-[3px] rounded-full mb-7"
+            style={{ background: 'linear-gradient(90deg, #3B82F6, #60A5FA)' }}
+          />
+
+          <p className="reveal-mobile text-[16px] leading-relaxed mb-10" style={{ color: 'rgba(255,255,255,0.6)' }}>
             Spend less time at the desk. Manage memberships, payments,
             and daily operations from anywhere using any device with
             an internet connection.
           </p>
 
           {/* Feature Grid 2x2 */}
-          <div className="reveal-mobile grid grid-cols-2 gap-5 mb-8">
+          <div className="reveal-mobile grid grid-cols-2 gap-4 mb-8">
             {[
-              { icon: Globe, color: 'text-blue-600 bg-blue-50', title: 'Works Everywhere', desc: 'Access your gym from any device with a browser.' },
-              { icon: RefreshCw, color: 'text-blue-500 bg-blue-50', title: 'Real-time Updates', desc: 'Instant sync across all your devices.' },
-              { icon: Shield, color: 'text-emerald-600 bg-emerald-50', title: 'Secure & Reliable', desc: 'Your data is safe with enterprise-grade security.' },
-              { icon: Zap, color: 'text-amber-500 bg-amber-50', title: 'Always Accessible', desc: 'Manage your gym anytime, anywhere.' },
+              { icon: Globe,     color: '#60A5FA', bg: 'rgba(59,130,246,0.12)',  title: 'Works Everywhere',     desc: 'Access your gym from any device with a browser.' },
+              { icon: RefreshCw, color: '#34D399', bg: 'rgba(52,211,153,0.10)',  title: 'Real-time Updates',    desc: 'Instant sync across all your devices.' },
+              { icon: Shield,    color: '#A78BFA', bg: 'rgba(167,139,250,0.10)', title: 'Secure & Reliable',    desc: 'Enterprise-grade security keeps your data safe.' },
+              { icon: Zap,       color: '#FCD34D', bg: 'rgba(252,211,77,0.10)',  title: 'Always Accessible',    desc: 'Manage your gym anytime, anywhere.' },
             ].map((f, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${f.color}`}>
-                  <f.icon className="w-4 h-4" />
+              <div
+                key={i}
+                className="flex items-start gap-3 rounded-[14px] p-4 transition-all duration-250"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)';
+                }}
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: f.bg }}
+                >
+                  <f.icon className="w-4 h-4" style={{ color: f.color }} />
                 </div>
                 <div>
-                  <div className="text-[13px] font-bold text-slate-900 mb-1">{f.title}</div>
-                  <div className="text-[12px] text-slate-500 leading-snug">{f.desc}</div>
+                  <div className="text-[13px] font-bold text-white mb-1">{f.title}</div>
+                  <div className="text-[12px] leading-snug" style={{ color: 'rgba(255,255,255,0.5)' }}>{f.desc}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Blue Banner */}
-          <div className="reveal-mobile flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl px-5 py-4 mb-6">
-            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+          {/* No install banner */}
+          <div
+            className="reveal-mobile flex items-start gap-3 rounded-xl px-5 py-4 mb-6"
+            style={{
+              background: 'rgba(37,99,235,0.12)',
+              border: '1px solid rgba(59,130,246,0.22)',
+            }}
+          >
+            <div
+              className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+              style={{ background: '#2563EB' }}
+            >
               <Check className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="text-[14px] font-bold text-blue-700">No app install required. Works in any browser.</p>
-              <p className="text-[13px] text-blue-500 mt-0.5">Just log in and you're ready to go.</p>
+              <p className="text-[14px] font-bold text-blue-300">No app install required. Works in any browser.</p>
+              <p className="text-[13px] mt-0.5" style={{ color: 'rgba(147,197,253,0.7)' }}>Just log in and you're ready to go.</p>
             </div>
           </div>
-          
-          <div className="reveal-mobile flex items-start gap-3 text-[14px] text-slate-500 leading-relaxed">
+
+          <div className="reveal-mobile flex items-start gap-3 text-[14px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
             <ArrowRight className="w-4 h-4 text-blue-400 mt-1 shrink-0" />
             <p>
-              Most gym software is <strong className="text-slate-700 font-bold">desktop-only</strong>. GymFlow X was designed mobile-first from day one. The same full power, in the palm of your hand.
+              Most gym software is <strong className="text-white font-bold">desktop-only</strong>. GymFlow was designed mobile-first from day one. The same full power, in the palm of your hand.
             </p>
           </div>
         </div>
 
         {/* Right Mobile Mockup */}
-        <div className="reveal-mobile relative w-full h-[700px] flex items-center justify-center lg:justify-end lg:pr-10" style={{ perspective: '1400px' }}>
+        <div
+          className="reveal-mobile relative w-full h-[700px] flex items-center justify-center lg:justify-end lg:pr-10"
+          style={{ perspective: '1400px' }}
+        >
+          {/* Phone outer glow */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ filter: 'blur(48px)' }}
+          >
+            <div
+              className="w-[260px] h-[500px] rounded-[40px]"
+              style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.35) 0%, transparent 70%)' }}
+            />
+          </div>
 
-          <div 
-            className="relative z-10 group transition-all duration-700 ease-out"
-            style={{ 
-              transform: 'rotateY(-18deg) rotateX(12deg) rotateZ(3deg)',
-              transformStyle: 'preserve-3d'
+          <div
+            className="relative z-10"
+            style={{
+              animation: 'phoneFloat 6s ease-in-out infinite',
+              transformStyle: 'preserve-3d',
             }}
           >
-            {/* Phone Body Thickness (3D Edge effect) */}
-            <div 
-              className="absolute inset-0 bg-gradient-to-tr from-slate-800 to-slate-600 rounded-[2.5rem] shadow-[25px_35px_60px_-10px_rgba(0,0,0,0.4)]"
-              style={{ transform: 'translateZ(-14px) translateX(8px) translateY(8px)' }}
+            {/* 3D depth layer */}
+            <div
+              className="absolute inset-0 rounded-[2.5rem]"
+              style={{
+                background: 'linear-gradient(135deg, #1E293B, #0F172A)',
+                boxShadow: '30px 40px 70px -10px rgba(0,0,0,0.7)',
+                transform: 'translateZ(-14px) translateX(10px) translateY(10px)',
+              }}
             />
 
-            {/* Hardware Buttons (Right Side) */}
-            <div className="absolute right-[-4px] top-[120px] w-3 h-10 bg-slate-700 rounded-r-md" style={{ transform: 'translateZ(-6px)' }} />
-            <div className="absolute right-[-4px] top-[180px] w-3 h-16 bg-slate-700 rounded-r-md" style={{ transform: 'translateZ(-6px)' }} />
+            {/* Hardware buttons */}
+            <div className="absolute right-[-4px] top-[120px] w-3 h-10 rounded-r-md" style={{ background: '#1E293B', transform: 'translateZ(-6px)' }} />
+            <div className="absolute right-[-4px] top-[180px] w-3 h-16 rounded-r-md" style={{ background: '#1E293B', transform: 'translateZ(-6px)' }} />
 
-            <div className="relative w-[280px] sm:w-[320px] h-[620px] bg-slate-50 rounded-[2.5rem] border-[10px] border-slate-900 overflow-hidden ring-1 ring-white/20">
+            {/* Phone body */}
+            <div
+              className="relative w-[280px] sm:w-[320px] h-[620px] rounded-[2.5rem] overflow-hidden"
+              style={{
+                background: '#F8FAFC',
+                border: '10px solid #0F172A',
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.08)',
+              }}
+            >
               {/* Notch */}
-              <div className="absolute top-0 inset-x-0 h-4 bg-slate-900 rounded-b-xl w-28 mx-auto z-20"></div>
+              <div className="absolute top-0 inset-x-0 h-4 bg-slate-900 rounded-b-xl w-28 mx-auto z-20" />
 
-              {/* Screen Content */}
+              {/* Screen */}
               <div className="h-full overflow-hidden pb-[54px] bg-slate-50">
-                
+
                 {/* Header */}
                 <div className="bg-white px-3 py-2 border-b border-slate-100 flex items-center justify-between sticky top-0 z-10 pt-6">
                   <div className="flex items-center gap-2">
@@ -141,12 +231,12 @@ export function MobileSection() {
                 {/* Stats Grid */}
                 <div className="px-4 grid grid-cols-2 gap-2 mb-3">
                   {[
-                    { val: '43', label: 'Active', icon: Users, bgClass: 'bg-emerald-50 text-emerald-500' },
-                    { val: '0', label: 'Attendance', icon: Check, bgClass: 'bg-blue-50 text-blue-500' },
-                    { val: '3', label: 'Expiring', icon: Clock, bgClass: 'bg-amber-50 text-amber-500' },
-                    { val: '40', label: 'Expired', icon: AlertTriangle, bgClass: 'bg-rose-50 text-rose-500' },
-                    { val: '₹0', label: "Today's Collection", icon: Banknote, bgClass: 'bg-cyan-50 text-cyan-500' },
-                    { val: '₹8,000', label: 'Total Dues', icon: AlertTriangle, bgClass: 'bg-rose-50 text-rose-500', valColor: 'text-rose-600' },
+                    { val: '43',     label: 'Active',          icon: Users,         bgClass: 'bg-emerald-50 text-emerald-500' },
+                    { val: '0',      label: 'Attendance',      icon: Check,         bgClass: 'bg-blue-50 text-blue-500' },
+                    { val: '3',      label: 'Expiring',        icon: Clock,         bgClass: 'bg-amber-50 text-amber-500' },
+                    { val: '40',     label: 'Expired',         icon: AlertTriangle, bgClass: 'bg-rose-50 text-rose-500' },
+                    { val: '₹0',     label: "Today's Collect", icon: Banknote,      bgClass: 'bg-cyan-50 text-cyan-500' },
+                    { val: '₹8,000', label: 'Total Dues',      icon: AlertTriangle, bgClass: 'bg-rose-50 text-rose-500', valColor: 'text-rose-600' },
                   ].map((stat, i) => (
                     <div key={i} className="bg-white border border-slate-100 rounded-xl p-2.5 shadow-sm flex flex-col justify-between h-[72px]">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center ${stat.bgClass}`}>
@@ -170,12 +260,12 @@ export function MobileSection() {
                     </div>
                     <button className="text-blue-600 font-bold text-[11px]">See all</button>
                   </div>
-                  
+
                   <div className="space-y-2">
                     {[
-                      { init: 'VD', name: 'Vignesh Das', phone: '919384886895', left: '1d left' },
+                      { init: 'VD', name: 'Vignesh Das',  phone: '919384886895', left: '1d left' },
                       { init: 'NV', name: 'Naveen Verma', phone: '919384886895', left: '4d left' },
-                      { init: 'DN', name: 'Deepa Nair', phone: '919384886895', left: '7d left' },
+                      { init: 'DN', name: 'Deepa Nair',   phone: '919384886895', left: '7d left' },
                     ].map((m, i) => (
                       <div key={i} className="bg-white border border-slate-100 rounded-lg p-2 flex items-center justify-between shadow-sm">
                         <div className="flex items-center gap-2">
@@ -205,7 +295,7 @@ export function MobileSection() {
                   <LayoutGrid className="w-4 h-4 text-blue-600" />
                   <span className="font-bold text-[13px]">Dashboard</span>
                 </div>
-                <button className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors">
+                <button className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500">
                   <Menu className="w-4 h-4" />
                 </button>
               </div>

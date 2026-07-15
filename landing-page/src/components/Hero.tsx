@@ -1,21 +1,52 @@
 // @ts-nocheck
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { MapPin, Play, Sparkles, ImageIcon } from 'lucide-react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { MapPin, Play, Sparkles } from 'lucide-react';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
+      // ── Entry animations ────────────────────────────────────────────────
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
       tl.from('.hero-badge',  { y: -14, opacity: 0, duration: 0.55 })
         .from('.hero-title',  { y: 22,  opacity: 0, duration: 0.65 }, '-=0.4')
         .from('.hero-sub',    { y: 18,  opacity: 0, duration: 0.55 }, '-=0.45')
         .from('.hero-desc',   { y: 16,  opacity: 0, duration: 0.55 }, '-=0.4')
         .from('.hero-ctas',   { y: 14,  opacity: 0, duration: 0.55 }, '-=0.4')
-        .from('.hero-mockup', { x: 60, opacity: 0,  duration: 1.0  }, '-=0.6');
+        .from('.hero-mockup', { x: 60,  opacity: 0, duration: 1.0  }, '-=0.6');
+
+      // ── Scroll-driven tilt → straight animation ──────────────────────────
+      const cardEl = cardRef.current;
+      if (!cardEl) return;
+
+      // Set perspective explicitly for GSAP
+      gsap.set(cardEl, { transformPerspective: 1400 });
+
+      // Using fromTo directly on the element ensures it never breaks on backward scroll
+      gsap.fromTo(cardEl,
+        { rotationY: -12, rotationX: 5, rotationZ: 1.5, scale: 1.20 },
+        {
+          rotationY: 0,
+          rotationX: 0,
+          rotationZ: 0,
+          scale: 1.20,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: 'top top',
+            end: '+=500', 
+            scrub: 2.5,
+          }
+        }
+      );
     }, containerRef);
+
     return () => ctx.revert();
   }, []);
 
@@ -148,8 +179,8 @@ export function Hero() {
 
         {/* ── Right — 3D Tilted Dashboard Image ─────────────────────────── */}
         <div
-          className="hero-mockup relative flex items-center justify-center lg:justify-end"
-          style={{ perspective: '1400px', paddingTop: '60px', paddingBottom: '0px' }}
+          className="hero-mockup relative flex items-center justify-center lg:justify-end lg:-mt-24 lg:-translate-x-12 xl:-translate-x-20"
+          style={{ perspective: '1400px', paddingTop: '10px', paddingBottom: '0px' }}
         >
           {/* Outer glow behind the card */}
           <div
@@ -160,13 +191,14 @@ export function Hero() {
             }}
           />
 
-          {/* 3D Tilted card */}
+          {/* 3D Tilted card — ref for scroll animation */}
           <div
-            className="relative z-10 w-full max-w-[680px]"
+            ref={cardRef}
+            className="relative z-10 w-full max-w-[1040px] xl:max-w-[1200px]"
             style={{
-              transform: 'perspective(1400px) rotateY(-12deg) rotateX(5deg) rotateZ(1.5deg)',
               transformStyle: 'preserve-3d',
               willChange: 'transform',
+              transition: 'box-shadow 0.3s ease',
             }}
           >
             {/* Drop shadow layer (3D depth illusion) */}
@@ -209,8 +241,7 @@ export function Hero() {
               <div className="w-16" />
             </div>
 
-            {/* ── IMAGE PLACEHOLDER ── */}
-            {/* Replace the src with your dashboard screenshot path e.g. src="/dashboard-screenshot.png" */}
+            {/* Dashboard image */}
             <div
               className="relative overflow-hidden rounded-b-[16px]"
               style={{
@@ -218,48 +249,9 @@ export function Hero() {
                 borderTop: 'none',
                 boxShadow: '0 32px 80px rgba(15,23,42,0.18), 0 8px 24px rgba(37,99,235,0.12)',
                 background: '#F1F5F9',
-                aspectRatio: '16/10',
               }}
             >
-              {/*
-                ┌─────────────────────────────────────────────────────┐
-                │  TO USE YOUR OWN SCREENSHOT:                        │
-                │  1. Place your image in the /public folder          │
-                │  2. Replace the <div> below with:                   │
-                │     <img src="/your-screenshot.png"                 │
-                │          alt="GymFlow Dashboard"                    │
-                │          className="w-full h-full object-cover      │
-                │                     object-top" />                  │
-                └─────────────────────────────────────────────────────┘
-              */}
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-                {/* Placeholder icon */}
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                  style={{ background: 'rgba(37,99,235,0.08)', border: '2px dashed rgba(37,99,235,0.25)' }}
-                >
-                  <ImageIcon className="w-7 h-7" style={{ color: 'rgba(37,99,235,0.4)' }} />
-                </div>
-
-                <div className="text-center">
-                  <p className="text-[14px] font-semibold" style={{ color: '#64748B' }}>
-                    Dashboard Screenshot
-                  </p>
-                  <p className="text-[12px] mt-1" style={{ color: '#94A3B8' }}>
-                    Place your image in <code className="bg-slate-200 px-1 rounded text-[11px]">/public</code> and update <code className="bg-slate-200 px-1 rounded text-[11px]">Hero.tsx</code>
-                  </p>
-                </div>
-
-                {/* Subtle grid lines to suggest a UI */}
-                <div
-                  className="absolute inset-0 opacity-20 pointer-events-none"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(rgba(37,99,235,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.3) 1px, transparent 1px)',
-                    backgroundSize: '40px 40px',
-                  }}
-                />
-              </div>
+              <img src="/hero.png" alt="GymFlow Dashboard" width="2880" height="1532" fetchPriority="high" decoding="async" className="w-full h-auto block rounded-b-[16px]" />
             </div>
           </div>
         </div>

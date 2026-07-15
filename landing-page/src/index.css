@@ -263,6 +263,24 @@ h1, h2, h3, h4 {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   PERFORMANCE
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* All sections already clip with overflow-hidden — paint containment tells the
+   browser it never needs to repaint outside their box, shrinking per-frame
+   paint work while scrolling. Zero visual difference. */
+section, footer {
+  contain: paint;
+}
+
+/* Added by the IntersectionObserver in App.tsx to offscreen sections so their
+   infinite animations (orbFloat, connectorFlow, phoneFloat, dotBlink…) stop
+   burning frames while invisible. */
+.gf-anim-paused, .gf-anim-paused * {
+  animation-play-state: paused !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    REDUCED MOTION
 ═══════════════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {

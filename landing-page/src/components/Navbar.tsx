@@ -14,8 +14,18 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 24);
-    window.addEventListener('scroll', handleScroll);
+    let ticking = false;
+    const handleScroll = () => {
+      // rAF-throttled + passive: never blocks the scroll thread
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 24);
+        ticking = false;
+      });
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -38,7 +48,11 @@ export function Navbar() {
         boxShadow: scrolled
           ? '0 4px 24px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04)'
           : 'none',
-        transition: 'all 0.3s ease',
+        // Promote to its own compositor layer so the 20px backdrop blur isn't
+        // re-rasterized with the page on every scroll frame
+        transform: 'translateZ(0)',
+        willChange: 'backdrop-filter',
+        transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
       }}
       className="fixed top-0 left-0 right-0 z-50 h-[68px] flex items-center justify-between px-6 md:px-20"
     >

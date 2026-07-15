@@ -119,7 +119,7 @@ export function Footer() {
         }}
       >
         <div className="text-center md:text-left">
-          <img src="/logo_landspace_without_bg.png" alt="GymFlow" className="h-9 w-auto mb-1 opacity-80" />
+          <img src="/logo_landspace_without_bg.png" alt="GymFlow" loading="lazy" decoding="async" className="h-9 w-auto mb-1 opacity-80" />
           <div className="text-[12px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
             Built for gym owners, by fitness enthusiasts. © 2026 GymFlow. Tamil Nadu &amp; Puducherry, India.
           </div>

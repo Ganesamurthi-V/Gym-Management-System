@@ -8,6 +8,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 export function WhatsAppSection() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const phoneRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -44,6 +45,36 @@ export function WhatsAppSection() {
           },
         }
       );
+      // Repeating vibrate/shake on the phone — feels like a notification buzz
+      const phone = phoneRef.current;
+      if (phone) {
+        const shake = () => {
+          gsap.timeline()
+            .to(phone, { x: -5, rotation: -2, duration: 0.06, ease: 'power1.inOut' })
+            .to(phone, { x:  5, rotation:  2, duration: 0.06, ease: 'power1.inOut' })
+            .to(phone, { x: -4, rotation: -1.5, duration: 0.06, ease: 'power1.inOut' })
+            .to(phone, { x:  4, rotation:  1.5, duration: 0.06, ease: 'power1.inOut' })
+            .to(phone, { x: -2, rotation: -1, duration: 0.05, ease: 'power1.inOut' })
+            .to(phone, { x:  2, rotation:  1, duration: 0.05, ease: 'power1.inOut' })
+            .to(phone, { x:  0, rotation:  0, duration: 0.05, ease: 'power1.out' });
+        };
+
+        // Fire immediately once visible, then repeat every 2.5s
+        ScrollTrigger.create({
+          trigger: containerRef.current,
+          start: 'top 75%',
+          onEnter: () => {
+            shake();
+            const interval = setInterval(shake, 2500);
+            // Clean up interval when section leaves view
+            ScrollTrigger.create({
+              trigger: containerRef.current,
+              start: 'bottom top',
+              onEnter: () => clearInterval(interval),
+            });
+          },
+        });
+      }
     }, containerRef);
     return () => ctx.revert();
   }, []);
@@ -97,103 +128,40 @@ export function WhatsAppSection() {
 
         </div>
 
-        {/* ── Right Column: Cards ─────────────────────────────────────────── */}
-        <div className="flex flex-col gap-6 relative">
-          
-          {/* Starter Plan Card */}
-          <div className="wa-card bg-[#F8FDF9] border border-[#E0F2E5] rounded-[24px] p-8 shadow-[0_8px_30px_rgba(34,197,94,0.04)] relative">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-[#E5F6EB] flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Starter Plan</div>
-                <div className="text-[18px] font-bold text-slate-900">WhatsApp Automation</div>
-              </div>
+        {/* ── Right Column: Image Mockup ─────────────────────────────────────────── */}
+        <div className="wa-card relative flex items-center justify-center lg:justify-end w-full">
+          <div className="relative w-full max-w-[380px] lg:max-w-[440px] flex justify-center">
+            {/* Soft mint blob background */}
+            <div
+              className="absolute inset-0 z-0 pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle at 50% 50%, rgba(134,239,172,0.25) 0%, rgba(187,247,208,0.15) 45%, transparent 70%)',
+                transform: 'scale(1.4)',
+              }}
+            />
+            
+            {/* Decorative dashes top-left */}
+            <div className="absolute top-[12%] left-[15%] md:top-[14%] md:left-[18%] z-0 opacity-80">
+              <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25 18 L20 4 M18 25 L4 20 M34 14 L44 4" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            
+            {/* Decorative curl bottom-right */}
+            <div className="absolute bottom-[10%] right-[12%] md:bottom-[12%] md:right-[15%] z-0 opacity-70">
+              <svg width="70" height="70" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 25 C 20 60, 60 60, 55 15" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="6 6" fill="none"/>
+                <path d="M45 20 L55 15 L60 25" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#E5F6EB] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-green-600" strokeWidth={3} />
-                </div>
-                <span className="text-slate-600 text-[15px]">Welcome message on member join</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#E5F6EB] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-green-600" strokeWidth={3} />
-                </div>
-                <span className="text-slate-600 text-[15px]">Renewal reminders before expiry</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#E5F6EB] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-green-600" strokeWidth={3} />
-                </div>
-                <span className="text-slate-600 text-[15px]">Payment due alerts</span>
-              </div>
-              <div className="flex items-start gap-3 pt-2 opacity-50">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <Ban className="w-4 h-4 text-slate-400" />
-                </div>
-                <span className="text-slate-400 text-[15px] line-through">Bulk announcements not included</span>
-              </div>
-            </div>
+            <img 
+              ref={phoneRef}
+              src="/Whatsapp_phone.png" 
+              alt="WhatsApp Automation on Phone" 
+              className="relative z-10 w-full object-contain drop-shadow-2xl" 
+            />
           </div>
-
-          {/* Growth Plan Card */}
-          <div className="wa-card bg-[#F5F8FF] border border-[#DCE6FB] rounded-[24px] p-8 shadow-[0_8px_30px_rgba(59,130,246,0.06)] relative overflow-hidden">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-[#E0EBFF] flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Growth Plan</div>
-                <div className="text-[18px] font-bold text-slate-900">Advanced WhatsApp Automation</div>
-              </div>
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100/50 text-blue-600 text-[12px] font-bold border border-blue-200/50">
-                <Zap className="w-3.5 h-3.5" fill="currentColor" />
-                Growth
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#E0EBFF] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-blue-600" strokeWidth={3} />
-                </div>
-                <span className="text-slate-600 text-[15px]">Everything in Starter</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#E0EBFF] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-blue-600" strokeWidth={3} />
-                </div>
-                <span className="text-slate-600 text-[15px]">Bulk announcements to all members</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#E0EBFF] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-blue-600" strokeWidth={3} />
-                </div>
-                <span className="text-slate-600 text-[15px]">Gym notices, offers & updates</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#E0EBFF] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-blue-600" strokeWidth={3} />
-                </div>
-                <span className="text-slate-600 text-[15px] font-medium">One-tap broadcast to your entire gym</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Small footer note */}
-          <div className="wa-card flex items-center justify-between border border-slate-100 rounded-xl p-3 bg-white shadow-sm mt-2">
-            <p className="text-[12px] text-slate-500 pl-2">
-              All plans include <strong className="text-slate-700">unlimited automated messages</strong> with no monthly limits or hidden charges.
-            </p>
-            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0 ml-4 border border-green-100">
-              <MessageSquare className="w-4 h-4 text-green-500" />
-            </div>
-          </div>
-
         </div>
 
       </div>

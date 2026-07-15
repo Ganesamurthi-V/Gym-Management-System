@@ -12,6 +12,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 export function MobileSection() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const phoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -22,6 +23,30 @@ export function MobileSection() {
           scrollTrigger: { trigger: containerRef.current, start: 'top 75%' },
         }
       );
+
+      const phoneEl = phoneRef.current;
+      if (phoneEl) {
+        gsap.set(phoneEl, { transformPerspective: 1400 });
+        
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: phoneEl,
+            start: 'top 90%',
+            end: 'bottom 10%',
+            scrub: 1.5,
+          }
+        });
+
+        tl.fromTo(phoneEl,
+          { rotationY: -55, rotationX: 0, rotationZ: 0, scale: 0.85 },
+          { rotationY: 0, scale: 1, ease: 'power1.out' }
+        )
+        .to(phoneEl, {
+          rotationY: 55, 
+          scale: 0.85, 
+          ease: 'power1.in'
+        });
+      }
     }, containerRef);
     return () => ctx.revert();
   }, []);
@@ -179,10 +204,11 @@ export function MobileSection() {
           </div>
 
           <div
+            ref={phoneRef}
             className="relative z-10"
             style={{
-              animation: 'phoneFloat 6s ease-in-out infinite',
               transformStyle: 'preserve-3d',
+              willChange: 'transform',
             }}
           >
             {/* 3D depth layer */}

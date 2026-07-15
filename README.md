@@ -540,6 +540,8 @@ Used in add/edit member area field — tries the DB first, falls back to client-
 
 ---
 
+npx vitest run __tests__/whatsapp/scheduling.test.ts
+
 ## License
 
 Private. Built for gym owners, by fitness enthusiasts.

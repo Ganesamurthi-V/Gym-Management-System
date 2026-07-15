@@ -1,7 +1,6 @@
 import { Layout } from './components/Layout';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { StatsStrip } from './components/StatsStrip';
 import { Features } from './components/Features';
 import { HowItWorks } from './components/HowItWorks';
 import { InteractiveDemo } from './components/InteractiveDemo';
@@ -15,7 +14,6 @@ function App() {
     <Layout>
       <Navbar />
       <Hero />
-      <StatsStrip />
       <Features />
       <HowItWorks />
       <InteractiveDemo />

@@ -125,27 +125,34 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         `}
       >
         {/* ── Logo row ── */}
-        <div className="flex items-center h-16 border-b border-slate-100 flex-shrink-0 px-3">
-          <Image src="/logo.png" alt={`${initialGym?.name || 'GymFlow'} Logo`} width={48} height={48} className="rounded-xl object-contain flex-shrink-0" />
-
-          {/* gymflow text + collapse arrow — only when expanded */}
-          <div className={`
-            flex items-center flex-1 min-w-0 ml-3
-            transition-all duration-200
-            ${collapsed ? 'opacity-0 w-0 ml-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto group-hover/sidebar:ml-3' : 'opacity-100'}
-          `}>
-            <span className="text-lg font-bold text-slate-900 tracking-tight flex-1 truncate whitespace-nowrap">
-              GymFlow
-            </span>
-            {/* Arrow — only visible when expanded, click to collapse */}
-            <button
-              onClick={e => { e.stopPropagation(); toggle() }}
-              title="Collapse sidebar"
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex-shrink-0 ml-1"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+        <div className="flex items-center justify-between h-16 border-b border-slate-100 flex-shrink-0 px-3 relative">
+          <div className="flex items-center flex-1 min-w-0 py-2 overflow-hidden">
+            <Image 
+              src="/logo_landspace_without_bg.png" 
+              alt={`${initialGym?.name || 'GymFlow'} Logo`} 
+              width={140} 
+              height={40} 
+              className={`object-contain object-left transition-all duration-200 ${collapsed ? 'opacity-0 w-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto' : 'opacity-100 w-auto'}`} 
+            />
+            {collapsed && (
+              <Image 
+                src="/logo_only.png" 
+                alt="Logo" 
+                width={32} 
+                height={32} 
+                className="object-contain group-hover/sidebar:hidden absolute left-3" 
+              />
+            )}
           </div>
+
+          {/* Arrow — only visible when expanded, click to collapse */}
+          <button
+            onClick={e => { e.stopPropagation(); toggle() }}
+            title="Collapse sidebar"
+            className={`w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex-shrink-0 ml-1 relative z-10 ${collapsed ? 'hidden group-hover/sidebar:flex' : ''}`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
         </div>
 
         {/* ── Nav links ── */}
@@ -186,11 +193,10 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
           <div className="w-full px-3 xs:px-4 md:px-6 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
-              <Image src="/logo.png" alt={`${initialGym?.name || 'GymFlow'} Logo`} width={40} height={40} className="rounded-lg object-contain md:hidden" />
+              <Image src="/logo_only.png" alt={`${initialGym?.name || 'GymFlow'} Logo`} width={40} height={40} className="rounded-lg object-contain md:hidden" />
             </div>
             
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 md:gap-3">
-              <Image src="/logo.png" alt={`${initialGym?.name || 'GymFlow'} Logo`} width={44} height={44} className="object-contain" priority />
               <span className="text-base md:text-xl font-black text-brand-600 tracking-tight uppercase max-w-[200px] md:max-w-[300px] truncate">{initialGym?.name || 'GymFlow'}</span>
             </div>
             <AccountMenu 

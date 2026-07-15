@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { Play, ArrowRight } from 'lucide-react';
+import { MapPin, Play, Sparkles, ImageIcon } from 'lucide-react';
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -8,14 +8,12 @@ export function Hero() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-      tl.from('.hero-badge',    { y: -16, opacity: 0, duration: 0.6 })
-        .from('.hero-title',    { y: 24,  opacity: 0, duration: 0.7 }, '-=0.45')
-        .from('.hero-sub',      { y: 20,  opacity: 0, duration: 0.6 }, '-=0.5')
-        .from('.hero-desc',     { y: 18,  opacity: 0, duration: 0.6 }, '-=0.45')
-        .from('.hero-ctas',     { y: 16,  opacity: 0, duration: 0.6 }, '-=0.45')
-        .from('.hero-trust',    { y: 12,  opacity: 0, duration: 0.5 }, '-=0.35')
-        .from('.hero-right',    { x: 48,  opacity: 0, duration: 0.9 }, '-=0.7')
-        .from('.dc-bar',        { scaleY: 0, transformOrigin: 'bottom', opacity: 0, duration: 0.9, stagger: 0.055 }, '-=0.3');
+      tl.from('.hero-badge',  { y: -14, opacity: 0, duration: 0.55 })
+        .from('.hero-title',  { y: 22,  opacity: 0, duration: 0.65 }, '-=0.4')
+        .from('.hero-sub',    { y: 18,  opacity: 0, duration: 0.55 }, '-=0.45')
+        .from('.hero-desc',   { y: 16,  opacity: 0, duration: 0.55 }, '-=0.4')
+        .from('.hero-ctas',   { y: 14,  opacity: 0, duration: 0.55 }, '-=0.4')
+        .from('.hero-mockup', { x: 60, opacity: 0,  duration: 1.0  }, '-=0.6');
     }, containerRef);
     return () => ctx.revert();
   }, []);
@@ -23,57 +21,54 @@ export function Hero() {
   return (
     <section
       ref={containerRef}
-      className="relative overflow-hidden pt-[140px] pb-[100px] px-6 md:px-20"
-      style={{ background: 'linear-gradient(160deg, #FFFFFF 0%, #F5F8FF 50%, #EFF4FF 100%)' }}
+      className="relative overflow-hidden pt-[100px] pb-0 min-h-screen"
+      style={{ background: 'linear-gradient(155deg, #FFFFFF 0%, #F0F5FF 55%, #E8F0FF 100%)' }}
     >
-      {/* ── Decorative background ──────────────────────────────────────────── */}
-      {/* Grid */}
+      {/* Dot-grid pattern — right half */}
       <div
-        className="absolute inset-0 z-0 animate-[gridPulse_7s_ease-in-out_infinite]"
+        className="absolute right-0 top-0 w-[60%] h-full z-0"
         style={{
-          backgroundImage:
-            'linear-gradient(rgba(37,99,235,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.05) 1px, transparent 1px)',
-          backgroundSize: '72px 72px',
+          backgroundImage: 'radial-gradient(circle, rgba(37,99,235,0.13) 1px, transparent 1px)',
+          backgroundSize: '26px 26px',
+          maskImage: 'linear-gradient(to left, rgba(0,0,0,0.5) 0%, transparent 70%)',
+          WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.5) 0%, transparent 70%)',
         }}
       />
-      {/* Primary orb */}
+      {/* Soft blue orb top-right */}
       <div
-        className="absolute -top-[220px] -right-[180px] z-0 w-[800px] h-[800px] rounded-full animate-[orbFloat_9s_ease-in-out_infinite]"
-        style={{
-          background: 'radial-gradient(circle, rgba(37,99,235,0.16) 0%, rgba(59,130,246,0.08) 40%, transparent 70%)',
-        }}
-      />
-      {/* Secondary orb */}
-      <div
-        className="absolute -bottom-[80px] left-[20%] z-0 w-[500px] h-[500px] rounded-full animate-[orbFloat_11s_ease-in-out_infinite_reverse]"
-        style={{
-          background: 'radial-gradient(circle, rgba(30,58,138,0.10) 0%, transparent 70%)',
-        }}
+        className="absolute -top-[80px] right-[-80px] w-[520px] h-[520px] rounded-full z-0 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.10) 0%, transparent 65%)' }}
       />
 
-      {/* ── Content grid ──────────────────────────────────────────────────── */}
-      <div className="relative z-10 max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center">
+      {/* ── Main grid ─────────────────────────────────────────────────────── */}
+      <div className="relative z-10 max-w-[1400px] mx-auto px-8 md:px-16 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-4 items-center pb-0">
 
-        {/* Left */}
-        <div className="max-w-[580px]">
+        {/* ── Left ──────────────────────────────────────────────────────── */}
+        <div className="pt-12 pb-16 flex flex-col justify-center min-h-[calc(100vh-100px)] max-w-[540px]">
+
           {/* Badge */}
-          <div className="hero-badge inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-8" style={{
-            background: 'rgba(37,99,235,0.07)',
-            border: '1px solid rgba(37,99,235,0.2)',
-          }}>
-            <span className="w-[7px] h-[7px] rounded-full bg-blue-500 animate-[dotBlink_2s_ease-in-out_infinite]" />
-            <span className="text-[11.5px] font-semibold text-blue-700 tracking-wide">
+          <div
+            className="hero-badge inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-9 w-fit"
+            style={{
+              background: 'rgba(37,99,235,0.07)',
+              border: '1px solid rgba(37,99,235,0.18)',
+            }}
+          >
+            <MapPin className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-[12px] font-semibold text-blue-700 tracking-wide">
               Built for Tamil Nadu &amp; Puducherry gyms
             </span>
           </div>
 
-          {/* H1 */}
-          <h1 className="hero-title font-black tracking-tight text-slate-900 mb-5 leading-[1.06]"
-            style={{ fontSize: 'clamp(46px, 6vw, 72px)' }}>
+          {/* Heading */}
+          <h1
+            className="hero-title font-black text-slate-900 tracking-tight mb-5"
+            style={{ fontSize: 'clamp(44px, 5.5vw, 72px)', lineHeight: 1.05, fontFamily: 'Sora, sans-serif' }}
+          >
             Know Who Paid.<br />
             Who Didn't.<br />
             <span style={{
-              background: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #3B82F6 100%)',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #3B82F6 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -82,221 +77,220 @@ export function Hero() {
             </span>
           </h1>
 
-          {/* Subtitle */}
-          <p className="hero-sub text-xl md:text-[22px] font-bold text-blue-700 mb-5">
-            — without the notebooks.
+          {/* Blue subtitle */}
+          <p
+            className="hero-sub font-bold mb-6"
+            style={{ fontSize: '20px', color: '#2563EB' }}
+          >
+            | &nbsp;— without the notebooks.
           </p>
 
-          {/* Desc */}
-          <p className="hero-desc text-[16px] font-normal leading-[1.75] max-w-[520px] mb-10" style={{ color: '#475569' }}>
+          {/* Description */}
+          <p
+            className="hero-desc leading-relaxed mb-10"
+            style={{ fontSize: '15px', color: '#64748B', maxWidth: '460px', lineHeight: 1.75 }}
+          >
             GymFlow is the all-in-one gym management platform for independent gym owners.
             Members, payments, attendance, dues, and WhatsApp reminders — in one place.
           </p>
 
           {/* CTAs */}
-          <div className="hero-ctas flex flex-wrap items-center gap-4 mb-8">
+          <div className="hero-ctas flex flex-wrap items-center gap-4">
             <a
               href="https://app.gymflow.sbs"
-              className="inline-flex items-center gap-2 text-white rounded-xl py-3.5 px-7 text-[15px] font-semibold transition-all duration-200"
+              className="inline-flex items-center gap-2.5 text-white rounded-xl py-3.5 px-7 text-[14.5px] font-semibold transition-all duration-200"
               style={{
                 background: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 55%, #3B82F6 100%)',
-                boxShadow: '0 6px 20px rgba(30,58,138,0.42), 0 2px 6px rgba(30,58,138,0.2), inset 0 1px 0 rgba(255,255,255,0.15)',
+                boxShadow: '0 6px 20px rgba(30,58,138,0.42), 0 2px 6px rgba(30,58,138,0.2)',
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)';
-                (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 12px 32px rgba(30,58,138,0.5), 0 4px 12px rgba(30,58,138,0.25), inset 0 1px 0 rgba(255,255,255,0.15)';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 12px 32px rgba(30,58,138,0.52), 0 4px 10px rgba(30,58,138,0.25)';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
-                (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 6px 20px rgba(30,58,138,0.42), 0 2px 6px rgba(30,58,138,0.2), inset 0 1px 0 rgba(255,255,255,0.15)';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(30,58,138,0.42), 0 2px 6px rgba(30,58,138,0.2)';
               }}
             >
+              <Sparkles className="w-4 h-4" />
               Start Free Trial
-              <ArrowRight className="w-4 h-4" />
             </a>
+
             <a
               href="#demo"
-              className="inline-flex items-center gap-2.5 rounded-xl py-[13px] px-5 text-[15px] font-semibold text-slate-600 transition-all duration-200 group"
+              className="inline-flex items-center gap-2.5 rounded-xl py-3.5 px-6 text-[14.5px] font-semibold text-slate-600 transition-all duration-200"
               style={{
+                background: 'rgba(255,255,255,0.9)',
                 border: '1.5px solid rgba(37,99,235,0.18)',
-                background: 'rgba(255,255,255,0.8)',
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(37,99,235,0.45)';
-                (e.currentTarget as HTMLAnchorElement).style.color = '#1E3A8A';
-                (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(37,99,235,0.45)';
+                (e.currentTarget as HTMLElement).style.color = '#1E3A8A';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(37,99,235,0.18)';
-                (e.currentTarget as HTMLAnchorElement).style.color = '#475569';
-                (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(37,99,235,0.18)';
+                (e.currentTarget as HTMLElement).style.color = '#475569';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
               }}
             >
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center"
+                className="w-6 h-6 rounded-full flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}
               >
-                <Play className="w-3 h-3 text-white ml-0.5" fill="currentColor" />
+                <Play className="w-2.5 h-2.5 text-white ml-0.5" fill="currentColor" />
               </div>
               Watch Demo
             </a>
           </div>
-
-          {/* Trust line */}
-          <div className="hero-trust flex items-center gap-2 text-[13px] text-slate-400">
-            <span className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <svg key={i} className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              ))}
-            </span>
-            <span>No credit card · 14-day free trial · 500+ gym owners</span>
-          </div>
         </div>
 
-        {/* Right — Dashboard mockup */}
-        <div className="hero-right relative">
-          {/* Dashboard card */}
+        {/* ── Right — 3D Tilted Dashboard Image ─────────────────────────── */}
+        <div
+          className="hero-mockup relative flex items-center justify-center lg:justify-end"
+          style={{ perspective: '1400px', paddingTop: '60px', paddingBottom: '0px' }}
+        >
+          {/* Outer glow behind the card */}
           <div
-            className="relative rounded-[24px] overflow-hidden"
+            className="absolute inset-0 z-0"
             style={{
-              background: '#FFFFFF',
-              border: '1px solid rgba(37,99,235,0.12)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 20px 60px rgba(15,23,42,0.12), 0 8px 24px rgba(37,99,235,0.08)',
+              background: 'radial-gradient(ellipse 60% 50% at 65% 50%, rgba(37,99,235,0.12) 0%, transparent 70%)',
+              filter: 'blur(24px)',
+            }}
+          />
+
+          {/* 3D Tilted card */}
+          <div
+            className="relative z-10 w-full max-w-[680px]"
+            style={{
+              transform: 'perspective(1400px) rotateY(-12deg) rotateX(5deg) rotateZ(1.5deg)',
+              transformStyle: 'preserve-3d',
+              willChange: 'transform',
             }}
           >
-            {/* Top accent stripe */}
-            <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg, #1E3A8A, #2563EB, #3B82F6, #60A5FA)' }} />
-
-            {/* Card header */}
-            <div className="flex items-center justify-between px-7 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(37,99,235,0.07)' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}>
-                  <span className="text-sm">🏋️</span>
-                </div>
-                <span className="text-[15px] font-bold text-slate-900">GymFlow Dashboard</span>
-              </div>
-              <div
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold"
-                style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)' }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                Live
-              </div>
-            </div>
-
-            <div className="p-6">
-              {/* Stats grid */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {[
-                  { val: '284', label: 'Active Members',      color: '#2563EB', bg: 'rgba(37,99,235,0.07)', icon: '👥' },
-                  { val: '₹12K', label: "Today's Collection", color: '#16a34a', bg: 'rgba(34,197,94,0.07)', icon: '💰' },
-                  { val: '18',  label: 'Expiring Soon',       color: '#d97706', bg: 'rgba(245,158,11,0.08)', icon: '⚠️' },
-                  { val: '₹46K', label: 'Total Dues',         color: '#dc2626', bg: 'rgba(220,38,38,0.07)', icon: '📋' },
-                ].map((stat, i) => (
-                  <div
-                    key={i}
-                    className="rounded-[14px] p-3.5"
-                    style={{ background: stat.bg, border: `1px solid ${stat.color}20` }}
-                  >
-                    <div className="text-base mb-1">{stat.icon}</div>
-                    <div className="text-[22px] font-extrabold leading-none mb-1" style={{ color: stat.color }}>{stat.val}</div>
-                    <div className="text-[11px] font-medium text-slate-500">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Chart */}
-              <div className="mb-5">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.1em] mb-3">Monthly Revenue</div>
-                <div className="flex items-end gap-1.5 h-[72px]">
-                  {[42, 58, 48, 72, 55, 80, 68, 100].map((h, i) => (
-                    <div
-                      key={i}
-                      className="dc-bar flex-1 rounded-t-[5px]"
-                      style={{
-                        height: `${h}%`,
-                        background: i === 7
-                          ? 'linear-gradient(180deg, #3B82F6, #1E3A8A)'
-                          : `linear-gradient(180deg, rgba(59,130,246,${0.3 + h / 200}), rgba(30,58,138,${0.25 + h / 200}))`,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Member list */}
-              <div className="space-y-1.5">
-                {[
-                  { init: 'KR', name: 'Karthik R.', amount: '₹1,200', paid: true },
-                  { init: 'PS', name: 'Priya S.', amount: '₹999', paid: false },
-                  { init: 'MT', name: 'Murugan T.', amount: '₹1,500', paid: true },
-                ].map((m, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between py-2 px-2 rounded-xl transition-colors hover:bg-slate-50"
-                    style={{ borderBottom: i < 2 ? '1px solid rgba(37,99,235,0.05)' : 'none' }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                        style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}
-                      >
-                        {m.init}
-                      </div>
-                      <span className="text-[13px] font-medium text-slate-700">{m.name}</span>
-                    </div>
-                    <span className={`text-[12px] font-bold flex items-center gap-1.5 ${m.paid ? 'text-blue-600' : 'text-red-500'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${m.paid ? 'bg-green-500' : 'bg-red-500'}`} />
-                      {m.amount}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Floating WhatsApp notification */}
-          <div
-            className="absolute -bottom-5 -left-6 rounded-2xl px-4 py-3 flex items-center gap-3 min-w-[230px] animate-[floatNotif_4s_ease-in-out_infinite]"
-            style={{
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(37,99,235,0.12)',
-              boxShadow: '0 8px 32px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06)',
-            }}
-          >
+            {/* Drop shadow layer (3D depth illusion) */}
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0"
-              style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}
-            >💬</div>
-            <div className="text-xs">
-              <strong className="block text-slate-900 font-bold mb-0.5">WhatsApp Sent</strong>
-              <span className="text-slate-500">Priya S. — ₹999 due reminder</span>
-            </div>
-          </div>
+              className="absolute inset-0 rounded-[16px]"
+              style={{
+                background: 'linear-gradient(135deg, #CBD5E1, #94A3B8)',
+                transform: 'translateZ(-20px) translateX(16px) translateY(16px)',
+                borderRadius: '16px',
+                opacity: 0.35,
+                filter: 'blur(2px)',
+              }}
+            />
 
-          {/* Floating renewal card */}
-          <div
-            className="absolute -top-4 -right-4 rounded-2xl px-4 py-3 flex items-center gap-2.5 min-w-[190px] animate-[floatCard_5s_ease-in-out_infinite]"
-            style={{
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(34,197,94,0.2)',
-              boxShadow: '0 8px 28px rgba(15,23,42,0.10), 0 2px 6px rgba(15,23,42,0.05)',
-            }}
-          >
-            <div className="w-8 h-8 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-sm shrink-0">🔄</div>
-            <div className="text-xs">
-              <strong className="block text-slate-900 font-bold mb-0.5">12 Renewals Today</strong>
-              <span className="text-green-600 font-medium">+₹18,000 collected</span>
+            {/* Browser chrome */}
+            <div
+              className="rounded-t-[16px] flex items-center px-4 py-3 relative z-10"
+              style={{
+                background: 'linear-gradient(180deg, #E8EDF5 0%, #DDE3EF 100%)',
+                border: '1px solid rgba(37,99,235,0.12)',
+                borderBottom: 'none',
+              }}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="w-[12px] h-[12px] rounded-full" style={{ background: '#FF5F57', border: '0.5px solid #E0443E' }} />
+                <div className="w-[12px] h-[12px] rounded-full" style={{ background: '#FFBD2E', border: '0.5px solid #DEA123' }} />
+                <div className="w-[12px] h-[12px] rounded-full" style={{ background: '#28C840', border: '0.5px solid #1DAD2B' }} />
+              </div>
+              <div className="flex-1 flex justify-center">
+                <div
+                  className="rounded-md px-8 py-[4px] flex items-center gap-1.5 text-[11px] font-medium min-w-[200px] justify-center"
+                  style={{ background: 'rgba(255,255,255,0.88)', border: '1px solid rgba(37,99,235,0.09)', color: '#64748B' }}
+                >
+                  <svg className="w-2.5 h-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  app.gymflow.sbs
+                </div>
+              </div>
+              <div className="w-16" />
+            </div>
+
+            {/* ── IMAGE PLACEHOLDER ── */}
+            {/* Replace the src with your dashboard screenshot path e.g. src="/dashboard-screenshot.png" */}
+            <div
+              className="relative overflow-hidden rounded-b-[16px]"
+              style={{
+                border: '1px solid rgba(37,99,235,0.12)',
+                borderTop: 'none',
+                boxShadow: '0 32px 80px rgba(15,23,42,0.18), 0 8px 24px rgba(37,99,235,0.12)',
+                background: '#F1F5F9',
+                aspectRatio: '16/10',
+              }}
+            >
+              {/*
+                ┌─────────────────────────────────────────────────────┐
+                │  TO USE YOUR OWN SCREENSHOT:                        │
+                │  1. Place your image in the /public folder          │
+                │  2. Replace the <div> below with:                   │
+                │     <img src="/your-screenshot.png"                 │
+                │          alt="GymFlow Dashboard"                    │
+                │          className="w-full h-full object-cover      │
+                │                     object-top" />                  │
+                └─────────────────────────────────────────────────────┘
+              */}
+              <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+                {/* Placeholder icon */}
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'rgba(37,99,235,0.08)', border: '2px dashed rgba(37,99,235,0.25)' }}
+                >
+                  <ImageIcon className="w-7 h-7" style={{ color: 'rgba(37,99,235,0.4)' }} />
+                </div>
+
+                <div className="text-center">
+                  <p className="text-[14px] font-semibold" style={{ color: '#64748B' }}>
+                    Dashboard Screenshot
+                  </p>
+                  <p className="text-[12px] mt-1" style={{ color: '#94A3B8' }}>
+                    Place your image in <code className="bg-slate-200 px-1 rounded text-[11px]">/public</code> and update <code className="bg-slate-200 px-1 rounded text-[11px]">Hero.tsx</code>
+                  </p>
+                </div>
+
+                {/* Subtle grid lines to suggest a UI */}
+                <div
+                  className="absolute inset-0 opacity-20 pointer-events-none"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(rgba(37,99,235,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.3) 1px, transparent 1px)',
+                    backgroundSize: '40px 40px',
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
 
+      </div>
+
+      {/* ── Bottom WhatsApp accent bar ─────────────────────────────────────── */}
+      <div
+        className="relative z-10 w-full py-4 px-8 md:px-16 flex flex-wrap items-center gap-6 mt-0"
+        style={{
+          background: 'linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 50%, #2563EB 100%)',
+        }}
+      >
+        <div className="flex items-center gap-2.5 text-white/80 text-sm">
+          <svg className="w-5 h-5 text-green-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.964 9.964 0 001.333 4.993L2 22l5.233-1.337a10.024 10.024 0 004.779 1.204c5.505 0 9.988-4.477 9.989-9.985 0-5.506-4.484-9.982-9.989-9.982z"/>
+          </svg>
+          <span className="font-semibold">WhatsApp reminders that actually get paid.</span>
+          <span className="text-white/50 text-[13px]">Automatic alerts for dues, renewals, and updates.</span>
+        </div>
+        <div className="ml-auto flex items-center gap-8">
+          {[
+            { icon: '⏱️', label: 'Save Time' },
+            { icon: '💳', label: 'Get Paid Faster' },
+            { icon: '📈', label: 'Grow Your Gym' },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-white/65 text-[13px] font-medium">
+              <span>{item.icon}</span>
+              {item.label}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

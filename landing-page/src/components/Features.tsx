@@ -10,7 +10,7 @@ const FEATURES = [
   {
     icon: LayoutDashboard,
     title: 'Dashboard & Live Stats',
-    desc: 'Active members, today\'s collection, expiring soon, total dues — updated live. One glance tells the full story.',
+    desc: 'Active members, today\'s collection, expiring soon, total dues.',
     iconColor: '#2563EB',
     iconBg: 'rgba(37,99,235,0.10)',
     glowColor: 'rgba(37,99,235,0.15)',
@@ -19,7 +19,7 @@ const FEATURES = [
   {
     icon: Users,
     title: 'Member Management',
-    desc: 'Full CRUD with auto-generated GF-prefixed IDs, area autocomplete, plan price auto-fill, and bulk editing.',
+    desc: 'Add, edit, search, and organize member details with fast and simple tools.',
     iconColor: '#059669',
     iconBg: 'rgba(5,150,105,0.10)',
     glowColor: 'rgba(5,150,105,0.12)',
@@ -28,7 +28,7 @@ const FEATURES = [
   {
     icon: CreditCard,
     title: 'Payments & Dues',
-    desc: 'Record cash, UPI, or card. Filter by period. Export to Excel. WhatsApp reminder deep-links for pending dues.',
+    desc: 'Record cash, UPI, or card payments, view pending dues, and send WhatsApp payment reminders instantly.',
     iconColor: '#d97706',
     iconBg: 'rgba(217,119,6,0.10)',
     glowColor: 'rgba(217,119,6,0.12)',
@@ -37,7 +37,7 @@ const FEATURES = [
   {
     icon: CheckCircle2,
     title: 'One-Tap Attendance',
-    desc: 'Mark daily attendance in a single tap. Duplicate prevention via DB constraint. Monthly calendar view included.',
+    desc: 'Record daily attendance with a single tap and view attendance history anytime.',
     iconColor: '#7c3aed',
     iconBg: 'rgba(124,58,237,0.10)',
     glowColor: 'rgba(124,58,237,0.12)',
@@ -45,8 +45,8 @@ const FEATURES = [
   },
   {
     icon: Map,
-    title: 'AI Geo Intelligence',
-    desc: '11-step area normalization pipeline with Gemini 2.0 Flash fallback. 1200+ static aliases for TN & Puducherry.',
+    title: 'Smart Area Detection',
+    desc: 'Quickly find and select member areas with automatic suggestions and accurate matching.',
     iconColor: '#e11d48',
     iconBg: 'rgba(225,29,72,0.10)',
     glowColor: 'rgba(225,29,72,0.12)',
@@ -55,7 +55,7 @@ const FEATURES = [
   {
     icon: FileUp,
     title: 'Bulk CSV/Excel Import',
-    desc: 'Smart column detection with 40+ aliases per field. 5-stage import pipeline with area review and confidence dots.',
+    desc: 'Upload your Excel or CSV file and GymFlow automatically maps and imports your members.',
     iconColor: '#0891b2',
     iconBg: 'rgba(8,145,178,0.10)',
     glowColor: 'rgba(8,145,178,0.12)',

@@ -35,10 +35,10 @@ function App() {
       <Navbar />
       <Hero />
       <Features />
+      <WhatsAppSection />
       <HowItWorks />
       <InteractiveDemo />
       <MobileSection />
-      <WhatsAppSection />
       <Pricing />
       <Testimonials />
       <Footer />

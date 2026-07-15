@@ -37,6 +37,7 @@ export function HowItWorks() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
+      // Header fade-up
       gsap.fromTo('.how-reveal',
         { y: 30, opacity: 0 },
         {
@@ -44,6 +45,35 @@ export function HowItWorks() {
           scrollTrigger: { trigger: containerRef.current, start: 'top 82%' },
         }
       );
+
+      // Per-card slide-in from alternating sides
+      document.querySelectorAll('.how-card').forEach((card, i) => {
+        const fromLeft = i % 2 === 0;
+        gsap.fromTo(card,
+          { x: fromLeft ? -60 : 60, opacity: 0 },
+          {
+            x: 0, opacity: 1, duration: 0.7, ease: 'power3.out',
+            scrollTrigger: {
+              trigger: card,
+              start: 'top 85%',
+            },
+          }
+        );
+      });
+
+      // Circle pop-in
+      document.querySelectorAll('.how-node').forEach((node) => {
+        gsap.fromTo(node,
+          { scale: 0, opacity: 0 },
+          {
+            scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)',
+            scrollTrigger: {
+              trigger: node,
+              start: 'top 88%',
+            },
+          }
+        );
+      });
     }, containerRef);
     return () => ctx.revert();
   }, []);
@@ -91,62 +121,71 @@ export function HowItWorks() {
           </p>
         </div>
 
-        {/* Steps */}
-        <div className="relative grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Connector line (desktop) */}
-          <div className="hidden md:block absolute top-[52px] left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] h-[2px] z-0"
+        {/* Steps — vertical stepper */}
+        <div className="relative max-w-[800px] mx-auto">
+
+          {/* Vertical connector line */}
+          <div
+            className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 z-0"
             style={{
-              background: 'linear-gradient(90deg, #1E3A8A, #2563EB, #3B82F6, #60A5FA)',
-              opacity: 0.3,
+              background: 'linear-gradient(180deg, #1E3A8A 0%, #2563EB 50%, #3B82F6 100%)',
+              opacity: 0.25,
             }}
           />
           {/* Animated shimmer on connector */}
-          <div className="hidden md:block absolute top-[52px] left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] h-[2px] z-0"
+          <div
+            className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 z-0"
             style={{
-              background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.6), transparent)',
-              backgroundSize: '200% 100%',
+              background: 'linear-gradient(180deg, transparent, rgba(59,130,246,0.7), transparent)',
+              backgroundSize: '100% 200%',
               animation: 'connectorFlow 3s linear infinite',
             }}
           />
 
-          {STEPS.map((step, i) => (
-            <div
-              key={i}
-              className="how-reveal group relative z-10 text-center"
-            >
-              {/* Circle */}
+          {STEPS.map((step, i) => {
+            const isLeft = i % 2 === 0;
+            return (
               <div
-                className="w-[56px] h-[56px] mx-auto mb-6 rounded-full flex items-center justify-center font-extrabold text-white text-[15px] transition-all duration-300 group-hover:scale-110 relative"
-                style={{
-                  background: 'linear-gradient(135deg, #1E3A8A, #2563EB, #3B82F6)',
-                  boxShadow: '0 8px 24px rgba(30,58,138,0.38), 0 0 0 4px rgba(37,99,235,0.1)',
-                  fontFamily: 'Sora, sans-serif',
-                }}
+                key={i}
+                className={`how-reveal relative z-10 flex items-center gap-8 mb-16 last:mb-0 ${isLeft ? 'flex-row' : 'flex-row-reverse'}`}
               >
-                {step.num}
-              </div>
+                {/* Card */}
+                <div
+                  className={`how-card flex-1 group rounded-[18px] p-6 transition-all duration-300 hover:-translate-y-1 ${isLeft ? 'text-right' : 'text-left'}`}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(37,99,235,0.09)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(37,99,235,0.05)',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 28px rgba(0,0,0,0.09), 0 0 0 1px rgba(37,99,235,0.12)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(37,99,235,0.05)';
+                  }}
+                >
+                  <div className={`text-2xl mb-3 ${isLeft ? 'text-right' : 'text-left'}`}>{step.emoji}</div>
+                  <h3 className="text-[16px] font-bold text-slate-900 mb-2 leading-snug">{step.title}</h3>
+                  <p className="text-[13px] leading-[1.65]" style={{ color: '#64748B' }}>{step.desc}</p>
+                </div>
 
-              {/* Card */}
-              <div
-                className="rounded-[18px] p-6 text-left transition-all duration-300 group-hover:-translate-y-1"
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid rgba(37,99,235,0.09)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(37,99,235,0.05)',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 28px rgba(0,0,0,0.09), 0 0 0 1px rgba(37,99,235,0.12)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(37,99,235,0.05)';
-                }}
-              >
-                <div className="text-2xl mb-3">{step.emoji}</div>
-                <h3 className="text-[15px] font-bold text-slate-900 mb-2 leading-snug">{step.title}</h3>
-                <p className="text-[13px] leading-[1.65]" style={{ color: '#64748B' }}>{step.desc}</p>
+                {/* Centre circle node */}
+                <div
+                  className="how-node shrink-0 w-[36px] h-[36px] rounded-full flex items-center justify-center font-extrabold text-white text-[11px] transition-all duration-300 hover:scale-110 relative z-10"
+                  style={{
+                    background: 'linear-gradient(135deg, #1E3A8A, #2563EB, #3B82F6)',
+                    boxShadow: '0 4px 14px rgba(30,58,138,0.38), 0 0 0 3px rgba(37,99,235,0.1)',
+                    fontFamily: 'Sora, sans-serif',
+                  }}
+                >
+                  {step.num}
+                </div>
+
+                {/* Spacer to balance opposite side */}
+                <div className="flex-1" />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

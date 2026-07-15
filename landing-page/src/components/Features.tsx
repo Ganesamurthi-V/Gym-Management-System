@@ -5,23 +5,73 @@ import { LayoutDashboard, Users, CreditCard, CheckCircle2, Map, FileUp } from 'l
 
 gsap.registerPlugin(ScrollTrigger);
 
+const FEATURES = [
+  {
+    icon: LayoutDashboard,
+    title: 'Dashboard & Live Stats',
+    desc: 'Active members, today\'s collection, expiring soon, total dues — updated live. One glance tells the full story.',
+    iconColor: '#2563EB',
+    iconBg: 'rgba(37,99,235,0.10)',
+    glowColor: 'rgba(37,99,235,0.15)',
+    accentColor: '#2563EB',
+  },
+  {
+    icon: Users,
+    title: 'Member Management',
+    desc: 'Full CRUD with auto-generated GF-prefixed IDs, area autocomplete, plan price auto-fill, and bulk editing.',
+    iconColor: '#059669',
+    iconBg: 'rgba(5,150,105,0.10)',
+    glowColor: 'rgba(5,150,105,0.12)',
+    accentColor: '#059669',
+  },
+  {
+    icon: CreditCard,
+    title: 'Payments & Dues',
+    desc: 'Record cash, UPI, or card. Filter by period. Export to Excel. WhatsApp reminder deep-links for pending dues.',
+    iconColor: '#d97706',
+    iconBg: 'rgba(217,119,6,0.10)',
+    glowColor: 'rgba(217,119,6,0.12)',
+    accentColor: '#d97706',
+  },
+  {
+    icon: CheckCircle2,
+    title: 'One-Tap Attendance',
+    desc: 'Mark daily attendance in a single tap. Duplicate prevention via DB constraint. Monthly calendar view included.',
+    iconColor: '#7c3aed',
+    iconBg: 'rgba(124,58,237,0.10)',
+    glowColor: 'rgba(124,58,237,0.12)',
+    accentColor: '#7c3aed',
+  },
+  {
+    icon: Map,
+    title: 'AI Geo Intelligence',
+    desc: '11-step area normalization pipeline with Gemini 2.0 Flash fallback. 1200+ static aliases for TN & Puducherry.',
+    iconColor: '#e11d48',
+    iconBg: 'rgba(225,29,72,0.10)',
+    glowColor: 'rgba(225,29,72,0.12)',
+    accentColor: '#e11d48',
+  },
+  {
+    icon: FileUp,
+    title: 'Bulk CSV/Excel Import',
+    desc: 'Smart column detection with 40+ aliases per field. 5-stage import pipeline with area review and confidence dots.',
+    iconColor: '#0891b2',
+    iconBg: 'rgba(8,145,178,0.10)',
+    glowColor: 'rgba(8,145,178,0.12)',
+    accentColor: '#0891b2',
+  },
+];
+
 export function Features() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.reveal',
-        { y: 30, opacity: 0 },
+      gsap.fromTo('.feat-reveal',
+        { y: 32, opacity: 0 },
         {
-          y: 0,
-          opacity: 1,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: 'top 85%',
-          }
+          y: 0, opacity: 1, duration: 0.65, stagger: 0.09, ease: 'power3.out',
+          scrollTrigger: { trigger: containerRef.current, start: 'top 82%' },
         }
       );
     }, containerRef);
@@ -29,47 +79,87 @@ export function Features() {
   }, []);
 
   return (
-    <section id="features" ref={containerRef} className="py-[120px] px-6 md:px-12 bg-white relative overflow-hidden">
+    <section
+      id="features"
+      ref={containerRef}
+      className="relative overflow-hidden py-[130px] px-6 md:px-12"
+      style={{ background: '#F5F8FF' }}
+    >
+      {/* Background radial blob */}
+      <div
+        className="absolute top-0 right-0 w-[700px] h-[700px] z-0 pointer-events-none"
+        style={{ background: 'radial-gradient(circle at 70% 30%, rgba(37,99,235,0.07) 0%, transparent 65%)' }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-[500px] h-[500px] z-0 pointer-events-none"
+        style={{ background: 'radial-gradient(circle at 30% 70%, rgba(37,99,235,0.06) 0%, transparent 65%)' }}
+      />
 
       <div className="max-w-[1250px] mx-auto relative z-10">
-        <div className="max-w-[700px] mb-[60px]">
-          <span className="reveal inline-block text-[11px] font-bold tracking-[3px] uppercase text-blue-600 mb-3.5">Core Modules</span>
-          <h2 className="reveal text-[42px] font-black text-slate-900 tracking-tight leading-[1.1] mb-4">
-            Everything your gym needs,<br />
-            <span className="bg-gradient-to-br from-blue-700 to-blue-400 bg-clip-text text-transparent">nothing it doesn't.</span>
-          </h2>
-          <p className="reveal text-base text-slate-500 leading-relaxed max-w-[560px]">
+        {/* Section header — asymmetric */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-16 gap-8">
+          <div className="max-w-[620px]">
+            <span className="feat-reveal section-badge mb-5">Core Modules</span>
+            <h2
+              className="feat-reveal font-black text-slate-900 tracking-tight leading-[1.08] mt-4"
+              style={{ fontSize: 'clamp(36px, 4.5vw, 56px)' }}
+            >
+              Everything your gym needs,<br />
+              <span style={{
+                background: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #3B82F6 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                nothing it doesn't.
+              </span>
+            </h2>
+          </div>
+          <p className="feat-reveal text-[15px] leading-relaxed max-w-[340px] lg:text-right" style={{ color: '#64748B' }}>
             Built specifically for the workflows of independent gyms in Tamil Nadu and Puducherry.
           </p>
         </div>
 
-        <div className="reveal rounded-[1.5rem] overflow-hidden bg-slate-200 border border-slate-200 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[1px]">
-            {[
-              { icon: LayoutDashboard, title: 'Dashboard & Live Stats', desc: 'Active members, today\'s collection, expiring soon, total dues — updated live. One glance tells the full story.', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', lineColor: 'bg-blue-500' },
-              { icon: Users, title: 'Member Management', desc: 'Full CRUD with auto-generated GF-prefixed IDs, area autocomplete, plan price auto-fill, and bulk editing.', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', lineColor: 'bg-emerald-500' },
-              { icon: CreditCard, title: 'Payments & Dues', desc: 'Record cash, UPI, or card. Filter by period. Export to Excel. WhatsApp reminder deep-links for pending dues.', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', lineColor: 'bg-amber-500' },
-              { icon: CheckCircle2, title: 'One-Tap Attendance', desc: 'Mark daily attendance in a single tap. Duplicate prevention via DB constraint. Monthly calendar view included.', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', lineColor: 'bg-purple-500' },
-              { icon: Map, title: 'AI Geo Intelligence', desc: '11-step area normalization pipeline with Gemini 2.0 Flash fallback. 1200+ static aliases for TN & Puducherry.', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', lineColor: 'bg-rose-500' },
-              { icon: FileUp, title: 'Bulk CSV/Excel Import', desc: 'Smart column detection with 40+ aliases per field. 5-stage import pipeline with area review and confidence dots.', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', lineColor: 'bg-indigo-500' },
-            ].map((feat, i) => (
-              <div key={i} className="bg-white p-10 group relative overflow-hidden z-0 cursor-default">
-                {/* Background tint on hover */}
-                <div className={`absolute inset-0 opacity-0 group-hover:opacity-40 transition-opacity duration-300 ${feat.bg} -z-10`} />
-                
-                {/* Icon Container with pop/rotate effect */}
-                <div className={`w-12 h-12 rounded-full border ${feat.border} ${feat.bg} flex items-center justify-center mb-6 transition-all duration-500 group-hover:scale-110 group-hover:-rotate-6 group-hover:shadow-md`}>
-                  <feat.icon className={`w-5 h-5 ${feat.color}`} />
-                </div>
-                
-                <h3 className="text-[18px] font-bold text-slate-900 mb-2">{feat.title}</h3>
-                <p className="text-[14px] text-slate-500 leading-[1.6] relative z-10">{feat.desc}</p>
-                
-                {/* Animated bottom border line */}
-                <div className={`absolute bottom-0 left-0 right-0 h-1 ${feat.lineColor} scale-x-0 origin-left transition-transform duration-500 ease-out group-hover:scale-x-100`} />
+        {/* Card grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {FEATURES.map((feat, i) => (
+            <div
+              key={i}
+              className="feat-reveal group relative rounded-[20px] p-8 cursor-default transition-all duration-300"
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid rgba(37,99,235,0.08)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05)',
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.transform = 'translateY(-4px)';
+                el.style.boxShadow = `0 2px 4px rgba(0,0,0,0.04), 0 16px 40px rgba(0,0,0,0.09), 0 0 0 1px ${feat.glowColor}, 0 0 32px ${feat.glowColor}`;
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.transform = 'translateY(0)';
+                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05)';
+              }}
+            >
+              {/* Accent line — left side */}
+              <div
+                className="absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ background: feat.accentColor }}
+              />
+
+              {/* Icon */}
+              <div
+                className="w-12 h-12 rounded-[14px] flex items-center justify-center mb-6 transition-all duration-400 group-hover:scale-110 group-hover:-rotate-3"
+                style={{ background: feat.iconBg, border: `1px solid ${feat.iconColor}25` }}
+              >
+                <feat.icon className="w-5 h-5" style={{ color: feat.iconColor }} strokeWidth={2} />
               </div>
-            ))}
-          </div>
+
+              <h3 className="text-[17px] font-bold text-slate-900 mb-3 leading-snug">{feat.title}</h3>
+              <p className="text-[14px] leading-[1.7]" style={{ color: '#64748B' }}>{feat.desc}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

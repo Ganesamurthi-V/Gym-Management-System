@@ -58,37 +58,76 @@ export function InteractiveDemo() {
   }, [activeTab]);
 
   return (
-    <section id="demo" ref={containerRef} className="py-[100px] px-6 md:px-10 bg-slate-50 relative overflow-hidden">
-      <div className="text-center mb-[60px] relative z-10 flex flex-col items-center">
-        <span className="reveal-demo inline-block text-[11px] font-bold tracking-widest uppercase text-purple-600 bg-purple-50 border border-purple-200 px-4 py-1.5 rounded-full mb-6">
-          LIVE PREVIEW
-        </span>
-        <h2 className="reveal-demo text-[44px] md:text-[56px] font-black text-slate-900 tracking-tight leading-[1.1] mb-6">
-          Don't just read about it.<br/>
-          <span className="bg-gradient-to-br from-blue-dark to-blue-bright bg-clip-text text-transparent">Try the real UI..</span>
+    <section
+      id="demo"
+      ref={containerRef}
+      className="relative overflow-hidden py-[130px] px-6 md:px-10"
+      style={{ background: '#F5F8FF' }}
+    >
+      {/* Background radial */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] z-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse, rgba(37,99,235,0.08) 0%, transparent 70%)' }}
+      />
+      <div className="text-center mb-16 relative z-10 flex flex-col items-center">
+        <span className="reveal-demo section-badge mb-5">Live Preview</span>
+        <h2
+          className="reveal-demo font-black text-slate-900 tracking-tight leading-[1.08] mt-5 mb-6"
+          style={{ fontSize: 'clamp(36px, 4.5vw, 58px)' }}
+        >
+          Don't just read about it.<br />
+          <span style={{
+            background: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #3B82F6 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>Try the real UI.</span>
         </h2>
-        <p className="reveal-demo text-[18px] md:text-[22px] text-slate-500 leading-relaxed max-w-[600px] mx-auto mb-8">
-          This is exactly what your dashboard will look like<br />from day one.
+        <p className="reveal-demo text-[17px] leading-relaxed max-w-[560px] mx-auto mb-8" style={{ color: '#64748B' }}>
+          This is exactly what your dashboard will look like from day one.
         </p>
-        <div className="reveal-demo inline-flex items-center gap-2.5 bg-indigo-50/50 border border-indigo-100 rounded-full px-5 py-2.5 text-[13px] font-semibold text-indigo-400">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+        <div
+          className="reveal-demo inline-flex items-center gap-2.5 rounded-full px-5 py-2.5 text-[13px] font-semibold"
+          style={{
+            background: 'rgba(37,99,235,0.06)',
+            border: '1px solid rgba(37,99,235,0.15)',
+            color: '#2563EB',
+          }}
+        >
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-[dotBlink_2s_ease-in-out_infinite]" />
           <MousePointer2 className="w-4 h-4" />
           Interactive — click the sidebar tabs to explore every page
         </div>
       </div>
 
-      <div className="reveal-demo max-w-[1250px] mx-auto relative z-10">
-        {/* Safari Browser Chrome */}
-        <div className="bg-slate-100 rounded-t-xl border border-slate-200/80 border-b-0 px-4 py-3 flex items-center shadow-sm relative z-20">
+      <div
+        className="reveal-demo max-w-[1250px] mx-auto relative z-10"
+        style={{ filter: 'drop-shadow(0 24px 48px rgba(15,23,42,0.12)) drop-shadow(0 8px 16px rgba(37,99,235,0.08))' }}
+      >
+        {/* Browser Chrome */}
+        <div
+          className="rounded-t-xl px-4 py-3 flex items-center relative z-20"
+          style={{
+            background: 'linear-gradient(180deg, #E8EDF5 0%, #DDE3EF 100%)',
+            border: '1px solid rgba(37,99,235,0.12)',
+            borderBottom: 'none',
+          }}
+        >
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-400 border border-red-500/20" />
-            <div className="w-3 h-3 rounded-full bg-amber-400 border border-amber-500/20" />
-            <div className="w-3 h-3 rounded-full bg-green-400 border border-green-500/20" />
+            <div className="w-[13px] h-[13px] rounded-full" style={{ background: '#FF5F57', border: '1px solid #E0443E' }} />
+            <div className="w-[13px] h-[13px] rounded-full" style={{ background: '#FFBD2E', border: '1px solid #DEA123' }} />
+            <div className="w-[13px] h-[13px] rounded-full" style={{ background: '#28C840', border: '1px solid #1DAD2B' }} />
           </div>
-          
           <div className="flex-1 flex justify-center">
-            <div className="bg-white border border-slate-200/80 rounded-md px-10 py-1 flex items-center justify-center text-xs font-medium text-slate-500 shadow-sm min-w-[280px]">
-              <svg className="w-3 h-3 mr-1.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <div
+              className="rounded-lg px-10 py-[5px] flex items-center justify-center text-[12px] font-medium min-w-[280px]"
+              style={{
+                background: 'rgba(255,255,255,0.85)',
+                border: '1px solid rgba(37,99,235,0.10)',
+                color: '#64748B',
+              }}
+            >
+              <svg className="w-3 h-3 mr-1.5" style={{ color: '#94A3B8' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
               app.gymflow.sbs/fit-zone-gym
             </div>
           </div>
@@ -96,7 +135,10 @@ export function InteractiveDemo() {
         </div>
 
         {/* App Frame */}
-        <div className="bg-white border border-slate-200/80 rounded-b-xl shadow-[0_20px_60px_rgba(0,0,0,0.08)] overflow-hidden flex h-[760px] text-slate-800 font-sans">
+        <div
+          className="overflow-hidden flex h-[760px] text-slate-800 font-sans rounded-b-xl"
+          style={{ border: '1px solid rgba(37,99,235,0.10)', borderTop: 'none', background: '#FFFFFF' }}
+        >
           
           {/* Sidebar */}
           <div className="w-[220px] bg-white border-r border-slate-100 flex flex-col flex-shrink-0 relative">

@@ -118,10 +118,15 @@ export default function LoginPage() {
 
     // Check if user's gym was deactivated even if password was correct
     if (data?.user) {
-      const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: email })
-      if (isActive === false) {
+      const { data: gymStatus } = await supabase
+        .from('gyms')
+        .select('is_active')
+        .eq('owner_id', data.user.id)
+        .single()
+
+      if (gymStatus?.is_active === false) {
         await supabase.auth.signOut()
-        setError('ur acess are banned')
+        setError('Your access is banned by admin')
         setLoading(false)
         return
       }

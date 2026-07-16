@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import {
   Clock, CheckCircle, XCircle, Upload, Copy, CreditCard,
   RefreshCw, MessageCircle, AlertCircle, ArrowRight, Shield,
-  Calendar, Zap,
+  Calendar, Zap, Check, Circle, CheckCircle2
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -44,6 +44,7 @@ interface Props {
 }
 
 export default function SubscriptionClient({ gym, subState, latestRequest, settings }: Props) {
+  const [step, setStep] = useState(1)
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly')
   const [file, setFile] = useState<File | null>(null)
   const [transactionId, setTransactionId] = useState('')
@@ -91,296 +92,287 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     setSubmitting(false)
   }
 
-  const statusBadge = () => {
-    if (subState.isExpired) return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
-        <XCircle className="w-3.5 h-3.5" /> Trial Expired
-      </div>
-    )
-    if (subState.status === 'trial') return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
-        <Clock className="w-3.5 h-3.5" /> {subState.daysLeft} day{subState.daysLeft !== 1 ? 's' : ''} left
-      </div>
-    )
+  const planFeatures = [
+    'Full access to all features',
+    'Member management',
+    'Attendance & reports',
+    'WhatsApp automation',
+    'Priority support'
+  ]
+
+  const globalFeatures = [
+    'Unlimited members',
+    'Unlimited staff',
+    'All reports & analytics',
+    'Data backup & security',
+    'Regular feature updates'
+  ]
+
+  // If subscription is active, show simple active state
+  if (subState.status === 'active' && !subState.isExpired) {
     return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-        <CheckCircle className="w-3.5 h-3.5" /> Active
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-emerald-200 p-10 text-center space-y-4 shadow-sm max-w-md w-full">
+          <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto" />
+          <h2 className="text-xl font-bold text-slate-900">Your subscription is active</h2>
+          <p className="text-sm text-slate-500">You have full access to all GymFlow features.</p>
+          <Link href="/dashboard" className="inline-flex items-center justify-center w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors">
+            Go to Dashboard
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // If payment is under review, show pending state
+  if (isPending && !success) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-amber-200 p-8 shadow-sm max-w-md w-full text-center space-y-4">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+            <RefreshCw className="w-8 h-8 text-amber-600 animate-spin" style={{ animationDuration: '3s' }} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Payment Under Review</h2>
+            <p className="text-sm text-slate-500 mt-2">
+              Submitted on {new Date(latestRequest!.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+          <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">
+            Our team is verifying your payment. This usually takes <span className="font-semibold">a few hours</span>. We'll activate your account as soon as it's confirmed.
+          </p>
+          <a
+            href={`https://wa.me/91${settings.upi_name.replace(/\D/g, '')}?text=${encodeURIComponent('Hello GymFlow Support. I have submitted a payment proof and am waiting for verification. Please confirm status.')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 w-full py-3 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl font-bold hover:bg-emerald-100 transition-colors"
+          >
+            <MessageCircle className="w-5 h-5" /> Contact Support on WhatsApp
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  // Success state immediately after submitting form
+  if (success) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl border border-emerald-200 p-10 text-center shadow-sm max-w-md w-full space-y-5">
+          <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto" />
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Payment Proof Submitted!</h2>
+            <p className="text-sm text-slate-500 mt-2">Our team will verify and activate your account shortly.</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-center gap-2 text-sm text-slate-600 font-medium border border-slate-100">
+            <Shield className="w-4 h-4 text-emerald-500" />
+            Usually activated within a few hours
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-4 py-10 md:py-16">
-      <div className="w-full max-w-lg space-y-6">
-
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="flex justify-center mb-3">
-            <Image src="/logo_only.png" alt="GymFlow" width={48} height={48} className="object-contain" />
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-4 py-8 md:py-12">
+      <div className="w-full max-w-5xl space-y-8">
+        
+        {/* Banner Section */}
+        {subState.isExpired ? (
+          <div className="bg-red-50/80 border border-red-100 rounded-3xl p-6 md:p-8 flex items-center justify-between relative overflow-hidden shadow-sm">
+             <div className="relative z-10 space-y-3">
+               <div className="flex items-center gap-3">
+                 <AlertCircle className="w-6 h-6 text-red-500" />
+                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Your Trial Has Expired</h2>
+                 <span className="px-3 py-1 bg-red-200/50 text-red-700 text-[11px] font-black uppercase tracking-wider rounded-full">Expired</span>
+               </div>
+               <p className="text-sm font-bold text-slate-700">
+                 Your 14-day free trial ended on {gym.trialEndsAt ? new Date(gym.trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'recently'}.
+               </p>
+               <p className="text-sm text-slate-500 font-medium">
+                 Choose a plan and continue using GymFlow without any interruption.
+               </p>
+             </div>
+             
+             {/* Decorative Graphic */}
+             <div className="hidden md:flex absolute -right-6 -bottom-8 opacity-20 transform rotate-[-10deg]">
+               <Calendar className="w-48 h-48 text-red-500" />
+               <Clock className="w-20 h-20 text-red-600 absolute bottom-10 -left-6 bg-red-50 rounded-full" />
+             </div>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Subscription &amp; Billing</h1>
-          <p className="text-sm text-slate-500">{gym.name}</p>
-          <div className="flex justify-center">{statusBadge()}</div>
-        </div>
-
-        {/* Active — no action needed */}
-        {subState.status === 'active' && !subState.isExpired && (
-          <div className="bg-white rounded-2xl border border-emerald-200 p-6 text-center space-y-3 shadow-sm">
-            <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
-            <h2 className="text-lg font-bold text-slate-900">Your subscription is active</h2>
-            <p className="text-sm text-slate-500">You have full access to all GymFlow features.</p>
-            <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:text-brand-700">
-              Go to Dashboard <ArrowRight className="w-4 h-4" />
-            </Link>
+        ) : subState.status === 'trial' ? (
+          <div className="bg-brand-50/80 border border-brand-100 rounded-3xl p-6 md:p-8 flex items-center justify-between relative overflow-hidden shadow-sm">
+             <div className="relative z-10 space-y-3">
+               <div className="flex items-center gap-3">
+                 <Clock className="w-6 h-6 text-brand-500" />
+                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Your Free Trial</h2>
+                 <span className="px-3 py-1 bg-brand-200/50 text-brand-700 text-[11px] font-black uppercase tracking-wider rounded-full">Active</span>
+               </div>
+               <p className="text-sm font-bold text-slate-700">
+                 You have {subState.daysLeft} day{subState.daysLeft !== 1 ? 's' : ''} left in your trial.
+               </p>
+               <p className="text-sm text-slate-500 font-medium">
+                 Choose a plan early to continue using GymFlow without any interruption.
+               </p>
+             </div>
           </div>
-        )}
+        ) : null}
 
-        {/* Pending request */}
-        {isPending && !success && (
-          <div className="bg-white rounded-2xl border border-amber-200 p-6 shadow-sm space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                <RefreshCw className="w-5 h-5 text-amber-600 animate-spin" style={{ animationDuration: '3s' }} />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Payment Under Review</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Submitted {new Date(latestRequest!.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
-              </div>
-            </div>
-            <p className="text-sm text-slate-600">
-              Our team is verifying your payment. This usually takes <span className="font-semibold">a few hours</span>. We'll activate your account as soon as it's confirmed.
-            </p>
-            <a
-              href={`https://wa.me/91${settings.upi_name.replace(/\D/g, '')}?text=${encodeURIComponent('Hello GymFlow Support. I have submitted a payment proof and am waiting for verification. Please confirm status.')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-emerald-600 font-semibold hover:text-emerald-700"
-            >
-              <MessageCircle className="w-4 h-4" /> Contact support on WhatsApp
-            </a>
-          </div>
-        )}
-
-        {/* Rejected — allow re-submission */}
-        {isRejected && !success && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3">
-            <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+        {/* Previous rejection warning */}
+        {isRejected && step === 1 && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <XCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-bold text-red-800">Your previous request was rejected</p>
+              <p className="text-base font-bold text-red-900">Your previous payment was rejected</p>
               {latestRequest?.rejection_reason && (
-                <p className="text-xs text-red-600 mt-1">{latestRequest.rejection_reason}</p>
+                <p className="text-sm text-red-700 mt-1 font-medium bg-red-100/50 p-2 rounded-lg inline-block">{latestRequest.rejection_reason}</p>
               )}
-              <p className="text-xs text-red-600 mt-1">Please submit a new payment proof below.</p>
+              <p className="text-sm text-red-600 mt-2">Please select a plan and submit a new payment proof.</p>
             </div>
           </div>
         )}
 
-        {/* Pricing cards */}
-        {(subState.isExpired || subState.status === 'trial') && !isPending && !success && (
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setSelectedPlan('monthly')}
-              className={`rounded-2xl border p-4 shadow-sm text-center space-y-1 transition-all ${
-                selectedPlan === 'monthly'
-                  ? 'bg-brand-50 border-brand-500 ring-2 ring-brand-500/20'
-                  : 'bg-white border-slate-200 hover:border-brand-300'
-              }`}
-            >
-              <Calendar className={`w-5 h-5 mx-auto ${selectedPlan === 'monthly' ? 'text-brand-600' : 'text-brand-400'}`} />
-              <p className={`text-xs font-bold uppercase tracking-wide ${selectedPlan === 'monthly' ? 'text-brand-700' : 'text-slate-400'}`}>Monthly</p>
-              <p className="text-2xl font-black text-slate-900">₹{settings.price_monthly.toLocaleString('en-IN')}</p>
-              <p className={`text-xs ${selectedPlan === 'monthly' ? 'text-brand-600/80' : 'text-slate-400'}`}>/ month</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedPlan('yearly')}
-              className={`rounded-2xl border p-4 shadow-sm text-center space-y-1 relative overflow-hidden transition-all ${
-                selectedPlan === 'yearly'
-                  ? 'bg-brand-50 border-brand-500 ring-2 ring-brand-500/20'
-                  : 'bg-white border-slate-200 hover:border-brand-300'
-              }`}
-            >
-              <div className="absolute top-2 right-2">
-                <span className="text-[9px] font-black bg-brand-500 text-white px-1.5 py-0.5 rounded-full">BEST VALUE</span>
-              </div>
-              <Zap className={`w-5 h-5 mx-auto ${selectedPlan === 'yearly' ? 'text-brand-600' : 'text-brand-400'}`} />
-              <p className={`text-xs font-bold uppercase tracking-wide ${selectedPlan === 'yearly' ? 'text-brand-700' : 'text-brand-600'}`}>Yearly</p>
-              <p className="text-2xl font-black text-slate-900">₹{settings.price_yearly.toLocaleString('en-IN')}</p>
-              <p className={`text-xs ${selectedPlan === 'yearly' ? 'text-brand-600/80' : 'text-brand-400'}`}>/ year</p>
-            </button>
-          </div>
-        )}
+        {/* Step 1 UI */}
+        {step === 1 && (
+          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm">
+             <div className="flex items-center gap-4 mb-8">
+               <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-brand-500/30">1</div>
+               <div>
+                 <h3 className="text-xl font-bold text-slate-900">Choose Your Plan</h3>
+                 <p className="text-sm text-slate-500 font-medium">Select the plan that works best for your gym.</p>
+               </div>
+             </div>
 
-        {/* Payment section */}
-        {(subState.isExpired || subState.status === 'trial') && !isPending && !success && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-brand-500" />
-                <h2 className="text-sm font-bold text-slate-900">Pay via UPI</h2>
-              </div>
-            </div>
-
-            <div className="p-5 space-y-4">
-              {/* QR code */}
-              <div className="flex justify-center">
-                <div className="p-2 border border-slate-200 rounded-xl bg-white shadow-sm">
-                  <Image
-                    src={selectedPlan === 'monthly' ? '/2999.jpeg' : '/29k.jpeg'}
-                    alt={`UPI QR Code for ${selectedPlan} plan`}
-                    width={180}
-                    height={180}
-                    className="rounded-lg object-contain"
-                  />
-                </div>
-              </div>
-
-              {/* UPI ID with copy */}
-              {settings.upi_id && (
-                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">UPI ID</p>
-                    <p className="text-sm font-bold text-slate-900 font-mono">{settings.upi_id}</p>
-                  </div>
-                  <button
-                    onClick={copyUpi}
-                    className="flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors"
-                  >
-                    {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-              )}
-
-              <p className="text-xs text-slate-500 text-center">
-                Pay using any UPI app (GPay, PhonePe, Paytm, etc.) and attach the screenshot below.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Upload form */}
-        {(subState.isExpired || subState.status === 'trial') && !isPending && !success && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Upload className="w-4 h-4 text-brand-500" />
-                <h2 className="text-sm font-bold text-slate-900">Upload Payment Proof</h2>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              {/* File upload */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Payment Screenshot or PDF <span className="text-red-500">*</span>
-                </label>
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                    file ? 'border-brand-400 bg-brand-50' : 'border-slate-300 hover:border-brand-400 hover:bg-brand-50/50'
+             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+                
+                {/* Monthly */}
+                <div 
+                  onClick={() => setSelectedPlan('monthly')}
+                  className={`md:col-span-4 cursor-pointer rounded-3xl border-2 p-6 transition-all duration-200 ${
+                    selectedPlan === 'monthly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-white hover:border-brand-200 hover:-translate-y-1'
                   }`}
                 >
-                  {file ? (
-                    <div className="space-y-1">
-                      <CheckCircle className="w-6 h-6 text-brand-500 mx-auto" />
-                      <p className="text-sm font-semibold text-brand-700">{file.name}</p>
-                      <p className="text-xs text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <Upload className="w-6 h-6 text-slate-400 mx-auto" />
-                      <p className="text-sm font-medium text-slate-600">Click to upload</p>
-                      <p className="text-xs text-slate-400">JPG, PNG or PDF • Max 10 MB</p>
-                    </div>
-                  )}
+                   <div className="flex justify-between items-start mb-5">
+                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'monthly' ? 'bg-white border-brand-100 shadow-sm' : 'bg-slate-50 border-slate-100'}`}>
+                       <Calendar className={`w-6 h-6 ${selectedPlan === 'monthly' ? 'text-brand-600' : 'text-slate-400'}`} />
+                     </div>
+                     {selectedPlan === 'monthly' ? (
+                       <CheckCircle2 className="w-7 h-7 text-brand-600 drop-shadow-sm" />
+                     ) : (
+                       <Circle className="w-7 h-7 text-slate-200" />
+                     )}
+                   </div>
+                   <h4 className={`text-lg font-bold mb-1 ${selectedPlan === 'monthly' ? 'text-brand-700' : 'text-slate-700'}`}>Monthly Plan</h4>
+                   <div className="flex items-end gap-1.5 mb-8">
+                     <span className="text-4xl font-black text-slate-900 tracking-tight">₹{settings.price_monthly.toLocaleString('en-IN')}</span>
+                     <span className="text-sm font-bold text-slate-400 mb-1.5">/ month</span>
+                   </div>
+                   
+                   <ul className="space-y-4">
+                     {planFeatures.map((f, i) => (
+                       <li key={i} className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                         <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                           <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                         </div>
+                         {f}
+                       </li>
+                     ))}
+                   </ul>
                 </div>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/jpeg,image/png,application/pdf"
-                  className="hidden"
-                  onChange={e => setFile(e.target.files?.[0] ?? null)}
-                />
-              </div>
 
-              {/* Transaction ID */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Transaction ID <span className="text-slate-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={transactionId}
-                  onChange={e => setTransactionId(e.target.value)}
-                  className="input-field"
-                  placeholder="e.g. 403612345678"
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Notes <span className="text-slate-400 font-normal">(optional)</span>
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  rows={2}
-                  className="input-field resize-none"
-                  placeholder="Any additional info..."
-                />
-              </div>
-
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm font-medium">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+                {/* Yearly */}
+                <div 
+                  onClick={() => setSelectedPlan('yearly')}
+                  className={`md:col-span-4 cursor-pointer rounded-3xl border-2 p-6 transition-all duration-200 relative ${
+                    selectedPlan === 'yearly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-white hover:border-brand-200 hover:-translate-y-1'
+                  }`}
+                >
+                   <div className="absolute top-5 right-5 bg-brand-600 text-white text-[10px] font-black px-3 py-1 rounded-full tracking-wider shadow-sm shadow-brand-500/30">BEST VALUE</div>
+                   <div className="flex justify-between items-start mb-5">
+                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'yearly' ? 'bg-white border-brand-100 shadow-sm' : 'bg-amber-50 border-amber-100/50'}`}>
+                       <Zap className={`w-6 h-6 ${selectedPlan === 'yearly' ? 'text-brand-600' : 'text-amber-500'}`} />
+                     </div>
+                     {selectedPlan === 'yearly' ? (
+                       <CheckCircle2 className="w-7 h-7 text-brand-600 mt-8 drop-shadow-sm" /> 
+                     ) : (
+                       <Circle className="w-7 h-7 text-slate-200 mt-8" />
+                     )}
+                   </div>
+                   <h4 className={`text-lg font-bold mb-1 ${selectedPlan === 'yearly' ? 'text-brand-700' : 'text-slate-700'}`}>Yearly Plan</h4>
+                   <div className="flex items-end gap-1.5 mb-8">
+                     <span className="text-4xl font-black text-slate-900 tracking-tight">₹{settings.price_yearly.toLocaleString('en-IN')}</span>
+                     <span className="text-sm font-bold text-slate-400 mb-1.5">/ year</span>
+                   </div>
+                   
+                   <ul className="space-y-4">
+                     {planFeatures.map((f, i) => (
+                       <li key={i} className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                         <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                           <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                         </div>
+                         {f}
+                       </li>
+                     ))}
+                   </ul>
                 </div>
-              )}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="btn-primary"
-              >
-                {submitting ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Submitting…</>
-                ) : (
-                  <><Upload className="w-4 h-4" /> Submit Payment Proof</>
-                )}
-              </button>
-            </form>
+                {/* All Plans Include */}
+                <div className="md:col-span-4 bg-emerald-50/60 border border-emerald-100 rounded-3xl p-6 h-fit mt-2 md:mt-4">
+                  <div className="flex items-center gap-2 mb-6">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                    <h4 className="text-base font-bold text-slate-900">All plans include</h4>
+                  </div>
+                  <ul className="space-y-5">
+                     {globalFeatures.map((f, i) => (
+                       <li key={i} className="flex items-center gap-3 text-sm font-bold text-slate-700">
+                         <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                           <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                         </div>
+                         {f}
+                       </li>
+                     ))}
+                   </ul>
+                </div>
+
+             </div>
+
+             {/* Footer Actions */}
+             <div className="mt-10 pt-8 border-t border-slate-100 flex justify-end">
+               <button 
+                 onClick={() => setStep(2)}
+                 className="px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold transition-all shadow-md shadow-brand-500/25 flex items-center gap-2"
+               >
+                 Continue to Payment <ArrowRight className="w-4 h-4" />
+               </button>
+             </div>
           </div>
         )}
 
-        {/* Success state */}
-        {success && (
-          <div className="bg-white rounded-2xl border border-emerald-200 p-8 text-center shadow-sm space-y-4">
-            <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto" />
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Payment proof submitted!</h2>
-              <p className="text-sm text-slate-500 mt-1">Our team will verify and activate your account shortly.</p>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <Shield className="w-3.5 h-3.5" />
-              <span>Usually activated within a few hours</span>
-            </div>
+        {/* Step 2 Placeholder */}
+        {step === 2 && (
+          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm min-h-[400px] flex flex-col">
+             <div className="flex items-center justify-between mb-8">
+               <div className="flex items-center gap-4">
+                 <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-brand-500/30">2</div>
+                 <div>
+                   <h3 className="text-xl font-bold text-slate-900">Complete Payment</h3>
+                   <p className="text-sm text-slate-500 font-medium">Please wait for the next design...</p>
+                 </div>
+               </div>
+               <button onClick={() => setStep(1)} className="text-brand-600 text-sm font-bold hover:underline py-2 px-4 rounded-lg hover:bg-brand-50 transition-colors">
+                 ← Back to Plans
+               </button>
+             </div>
+             
+             <div className="flex-1 flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
+                  <CreditCard className="w-8 h-8 text-slate-400" />
+                </div>
+                <p className="font-bold text-slate-500">Awaiting Step 2 UI Design...</p>
+                <p className="text-sm text-slate-400 text-center max-w-sm">I'm ready to build Step 2! Please provide the next screenshot showing how the payment section should look.</p>
+             </div>
           </div>
         )}
-
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-400">
-          Need help?{' '}
-          <a
-            href="mailto:support@gymflow.in"
-            className="text-brand-600 font-semibold hover:underline"
-          >
-            Contact support
-          </a>
-        </p>
       </div>
     </div>
   )

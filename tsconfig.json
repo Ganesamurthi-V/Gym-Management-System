@@ -39,6 +39,7 @@
     "node_modules",
     "gymflow-admin",
     "gymflow-mobile",
-    "landing-page"
+    "landing-page",
+    "demo"
   ]
 }

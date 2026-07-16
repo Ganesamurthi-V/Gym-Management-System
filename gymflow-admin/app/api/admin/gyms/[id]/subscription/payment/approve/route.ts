@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyRequestAuth } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { invalidateSubscriptionCachesForOwner } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
-function auth(req: NextRequest): boolean {
-  const token = req.headers.get('authorization')?.split(' ')[1]
-  return token === process.env.ADMIN_PASSWORD
-}
-
 /**
- * POST /api/gyms/[id]/subscription/payment/approve
+ * POST /api/admin/gyms/[id]/subscription/payment/approve
  * Body: {
  *   request_id: string,
  *   plan: 'monthly' | 'yearly' | 'lifetime',
@@ -25,7 +15,7 @@ function auth(req: NextRequest): boolean {
  * }
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  if (!auth(req)) {
+  if (!(await verifyRequestAuth(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
@@ -36,7 +26,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'request_id is required' }, { status: 400 })
     }
 
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
 
     // Verify the request belongs to this gym and is pending
     const { data: request, error: reqError } = await supabase
@@ -52,7 +42,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     const { data: gym, error: gymError } = await supabase
       .from('gyms')
-      .select('subscription_status, plan_type, subscription_ends_at, trial_ends_at')
+      .select('subscription_status, plan_type, subscription_ends_at, trial_ends_at, owner_id')
       .eq('id', id)
       .single()
     if (gymError) throw gymError
@@ -92,6 +82,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       })
       .eq('id', id)
     if (updateError) throw updateError
+
+    await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
 
     await supabase.rpc('log_subscription_action', {
       p_gym_id: id,

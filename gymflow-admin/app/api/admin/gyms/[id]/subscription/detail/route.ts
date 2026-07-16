@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     const { data: gym, error: gymError } = await supabase
       .from('gyms')
       .select(`
-        id, name, owner_id, is_active, created_at, city, phone,
+        id, name, owner_id, is_active, created_at,
         subscription_status, plan_type,
         trial_started_at, trial_ends_at,
         subscription_started_at, subscription_ends_at,

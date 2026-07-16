@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyRequestAuth } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { invalidateSubscriptionCachesForOwner } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
-function auth(req: NextRequest): boolean {
-  const token = req.headers.get('authorization')?.split(' ')[1]
-  return token === process.env.ADMIN_PASSWORD
-}
-
 /**
- * POST /api/gyms/[id]/subscription/danger
+ * POST /api/admin/gyms/[id]/subscription/danger
  * Body: {
  *   action: 'delete_gym' | 'disable_login' | 'enable_login' | 'clear_subscription' | 'ban' | 'unban',
  *   performed_by?: string,
@@ -24,7 +14,7 @@ function auth(req: NextRequest): boolean {
  * }
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  if (!auth(req)) {
+  if (!(await verifyRequestAuth(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
@@ -36,7 +26,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       return NextResponse.json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }, { status: 400 })
     }
 
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
 
     const { data: gym, error: fetchError } = await supabase
       .from('gyms')
@@ -53,6 +43,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         // Hard delete — cascade handles all related data
         const { error } = await supabase.from('gyms').delete().eq('id', id)
         if (error) throw error
+        await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
         return NextResponse.json({ success: true, action: 'deleted' })
       }
 
@@ -102,6 +93,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     if (gymUpdate) {
       const { error } = await supabase.from('gyms').update(gymUpdate).eq('id', id)
       if (error) throw error
+
+      await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
 
       await supabase.rpc('log_subscription_action', {
         p_gym_id: id,

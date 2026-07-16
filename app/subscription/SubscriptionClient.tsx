@@ -32,7 +32,6 @@ interface LatestRequest {
 interface Settings {
   upi_id: string
   upi_name: string
-  qr_code_url: string
   price_monthly: number
   price_yearly: number
 }
@@ -45,6 +44,7 @@ interface Props {
 }
 
 export default function SubscriptionClient({ gym, subState, latestRequest, settings }: Props) {
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly')
   const [file, setFile] = useState<File | null>(null)
   const [transactionId, setTransactionId] = useState('')
   const [notes, setNotes] = useState('')
@@ -73,7 +73,10 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     const fd = new FormData()
     fd.append('file', file)
     fd.append('transaction_id', transactionId)
-    fd.append('notes', notes)
+    
+    // Automatically include the selected plan in the notes for the admin
+    const finalNotes = `Intended Plan: ${selectedPlan.toUpperCase()}\n${notes}`
+    fd.append('notes', finalNotes.trim())
 
     const res = await fetch('/api/subscription/request', { method: 'POST', body: fd })
     const json = await res.json()
@@ -177,21 +180,37 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
         {/* Pricing cards */}
         {(subState.isExpired || subState.status === 'trial') && !isPending && !success && (
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm text-center space-y-1">
-              <Calendar className="w-5 h-5 text-brand-500 mx-auto" />
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Monthly</p>
+            <button
+              type="button"
+              onClick={() => setSelectedPlan('monthly')}
+              className={`rounded-2xl border p-4 shadow-sm text-center space-y-1 transition-all ${
+                selectedPlan === 'monthly'
+                  ? 'bg-brand-50 border-brand-500 ring-2 ring-brand-500/20'
+                  : 'bg-white border-slate-200 hover:border-brand-300'
+              }`}
+            >
+              <Calendar className={`w-5 h-5 mx-auto ${selectedPlan === 'monthly' ? 'text-brand-600' : 'text-brand-400'}`} />
+              <p className={`text-xs font-bold uppercase tracking-wide ${selectedPlan === 'monthly' ? 'text-brand-700' : 'text-slate-400'}`}>Monthly</p>
               <p className="text-2xl font-black text-slate-900">₹{settings.price_monthly.toLocaleString('en-IN')}</p>
-              <p className="text-xs text-slate-400">/ month</p>
-            </div>
-            <div className="bg-brand-50 rounded-2xl border border-brand-200 p-4 shadow-sm text-center space-y-1 relative overflow-hidden">
+              <p className={`text-xs ${selectedPlan === 'monthly' ? 'text-brand-600/80' : 'text-slate-400'}`}>/ month</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPlan('yearly')}
+              className={`rounded-2xl border p-4 shadow-sm text-center space-y-1 relative overflow-hidden transition-all ${
+                selectedPlan === 'yearly'
+                  ? 'bg-brand-50 border-brand-500 ring-2 ring-brand-500/20'
+                  : 'bg-white border-slate-200 hover:border-brand-300'
+              }`}
+            >
               <div className="absolute top-2 right-2">
                 <span className="text-[9px] font-black bg-brand-500 text-white px-1.5 py-0.5 rounded-full">BEST VALUE</span>
               </div>
-              <Zap className="w-5 h-5 text-brand-500 mx-auto" />
-              <p className="text-xs font-bold text-brand-600 uppercase tracking-wide">Yearly</p>
+              <Zap className={`w-5 h-5 mx-auto ${selectedPlan === 'yearly' ? 'text-brand-600' : 'text-brand-400'}`} />
+              <p className={`text-xs font-bold uppercase tracking-wide ${selectedPlan === 'yearly' ? 'text-brand-700' : 'text-brand-600'}`}>Yearly</p>
               <p className="text-2xl font-black text-slate-900">₹{settings.price_yearly.toLocaleString('en-IN')}</p>
-              <p className="text-xs text-brand-400">/ year</p>
-            </div>
+              <p className={`text-xs ${selectedPlan === 'yearly' ? 'text-brand-600/80' : 'text-brand-400'}`}>/ year</p>
+            </button>
           </div>
         )}
 
@@ -207,19 +226,17 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
 
             <div className="p-5 space-y-4">
               {/* QR code */}
-              {settings.qr_code_url && (
-                <div className="flex justify-center">
-                  <div className="p-2 border border-slate-200 rounded-xl bg-white shadow-sm">
-                    <Image
-                      src={settings.qr_code_url}
-                      alt="UPI QR Code"
-                      width={180}
-                      height={180}
-                      className="rounded-lg object-contain"
-                    />
-                  </div>
+              <div className="flex justify-center">
+                <div className="p-2 border border-slate-200 rounded-xl bg-white shadow-sm">
+                  <Image
+                    src={selectedPlan === 'monthly' ? '/2999.jpeg' : '/29k.jpeg'}
+                    alt={`UPI QR Code for ${selectedPlan} plan`}
+                    width={180}
+                    height={180}
+                    className="rounded-lg object-contain"
+                  />
                 </div>
-              )}
+              </div>
 
               {/* UPI ID with copy */}
               {settings.upi_id && (

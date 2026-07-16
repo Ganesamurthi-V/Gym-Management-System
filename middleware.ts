@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { generateRequestId, REQUEST_ID_HEADER } from '@/lib/logger'
 
 // Pages that require auth check — everything else passes through immediately
-const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import']
+const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/subscription']
 const AUTH_PREFIX = '/auth'
 
 export async function middleware(request: NextRequest) {
@@ -74,6 +74,33 @@ export async function middleware(request: NextRequest) {
     })
     res.headers.set(REQUEST_ID_HEADER, requestId)
     return res
+  }
+
+  // ── Subscription expiry guard ─────────────────────────────────────────────
+  // Runs only for authenticated users on protected routes (not /subscription itself)
+  if (user && PROTECTED_PREFIXES.some(p => pathname.startsWith(p)) && pathname !== '/subscription') {
+    const { data: gym } = await supabase
+      .from('gyms')
+      .select('subscription_status, trial_ends_at')
+      .eq('owner_id', user.id)
+      .single()
+
+    const isExpired =
+      gym?.subscription_status === 'expired' ||
+      (gym?.subscription_status === 'trial' &&
+        gym?.trial_ends_at &&
+        new Date(gym.trial_ends_at) < new Date())
+
+    if (isExpired) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/subscription'
+      const res = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        res.cookies.set(cookie.name, cookie.value, cookie)
+      })
+      res.headers.set(REQUEST_ID_HEADER, requestId)
+      return res
+    }
   }
 
   // Propagate the request ID to the response so it appears in browser devtools

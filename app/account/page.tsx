@@ -38,6 +38,7 @@ export default async function AccountPage() {
       gymAddress={ob.address ?? null}
       openingYear={ob.openingYear ?? null}
       branchCount={ob.branchCount ?? null}
+      subscriptionStatus={(gym as any).subscription_status ?? 'active'}
     />
   )
 }

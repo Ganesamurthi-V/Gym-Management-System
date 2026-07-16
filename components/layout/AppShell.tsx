@@ -1,6 +1,6 @@
 // Server component — passes children to the client shell guard
 import ShellGuard from './ShellGuard'
-import { getAuthUser, getGym, getGymActiveStatus, getUnreadAdminMessages } from '@/lib/dal'
+import { getAuthUser, getGym, getGymActiveStatus, getUnreadAdminMessages, getSubscriptionState } from '@/lib/dal'
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = await getAuthUser()
@@ -26,12 +26,17 @@ export default async function AppShell({ children }: { children: React.ReactNode
     unreadCount = unreadResult.count ?? 0
   }
 
+  // Compute subscription state for banner and redirect logic
+  const subState = getSubscriptionState(gym)
+
   return (
     <ShellGuard 
       initialUser={user}
       initialGym={gym}
       initialIsActive={isActive}
       initialUnreadCount={unreadCount}
+      initialSubscriptionStatus={subState.status}
+      initialTrialDaysLeft={subState.daysLeft ?? 0}
     >
       {children}
     </ShellGuard>

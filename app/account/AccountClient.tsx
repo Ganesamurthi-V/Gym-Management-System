@@ -27,6 +27,7 @@ interface Props {
   gymAddress?: string | null
   openingYear?: number | null
   branchCount?: number | null
+  subscriptionStatus?: string
 }
 
 type ModalType = 'gym-name' | 'gym-info' | 'password' | 'delete-data' | 'delete-gym' | null
@@ -45,6 +46,7 @@ export function AccountClient({
   gymAddress,
   openingYear,
   branchCount,
+  subscriptionStatus = 'active',
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
@@ -435,8 +437,14 @@ export function AccountClient({
         </button>
 
         <button
-          onClick={() => openModal('password')}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors group"
+          onClick={() => subscriptionStatus === 'trial' ? undefined : openModal('password')}
+          disabled={subscriptionStatus === 'trial'}
+          title={subscriptionStatus === 'trial' ? 'Password changes are not allowed during the free trial period' : undefined}
+          className={`w-full flex items-center justify-between px-5 py-4 transition-colors group ${
+            subscriptionStatus === 'trial'
+              ? 'opacity-60 cursor-not-allowed bg-slate-50'
+              : 'hover:bg-slate-50'
+          }`}
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
@@ -444,7 +452,11 @@ export function AccountClient({
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-slate-800">Change Password</p>
-              <p className="text-xs text-slate-400 mt-0.5">Update your login password</p>
+              {subscriptionStatus === 'trial' ? (
+                <p className="text-xs text-amber-600 mt-0.5 font-medium">🔒 Not available during free trial</p>
+              ) : (
+                <p className="text-xs text-slate-400 mt-0.5">Update your login password</p>
+              )}
             </div>
           </div>
           <ChevronLeft className="w-4 h-4 text-slate-300 rotate-180 group-hover:text-slate-500 transition-colors" />

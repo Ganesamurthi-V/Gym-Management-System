@@ -104,7 +104,7 @@ export type SubscriptionDetailResponse = {
 export async function fetchSubscriptionDetail(gymId: string): Promise<SubscriptionDetailResponse> {
   try {
     const { data } = await apiClient.get<SubscriptionDetailResponse>(
-      `/api/gyms/${gymId}/subscription/detail`
+      `/api/admin/gyms/${gymId}/subscription/detail`
     );
     return data;
   } catch (error) {
@@ -118,7 +118,7 @@ export async function activateSubscription(
   notes?: string
 ): Promise<void> {
   try {
-    await apiClient.post(`/api/gyms/${gymId}/subscription/activate`, { plan, notes });
+    await apiClient.post(`/api/admin/gyms/${gymId}/subscription/activate`, { plan, notes });
   } catch (error) {
     throw new Error(parseApiError(error));
   }
@@ -131,7 +131,7 @@ export async function extendTrial(
   notes?: string
 ): Promise<void> {
   try {
-    await apiClient.post(`/api/gyms/${gymId}/subscription/trial`, { action, days, notes });
+    await apiClient.post(`/api/admin/gyms/${gymId}/subscription/trial`, { action, days, notes });
   } catch (error) {
     throw new Error(parseApiError(error));
   }
@@ -139,7 +139,7 @@ export async function extendTrial(
 
 export async function expireSubscription(gymId: string, notes?: string): Promise<void> {
   try {
-    await apiClient.post(`/api/gyms/${gymId}/subscription/expire`, { notes });
+    await apiClient.post(`/api/admin/gyms/${gymId}/subscription/expire`, { notes });
   } catch (error) {
     throw new Error(parseApiError(error));
   }
@@ -152,7 +152,7 @@ export async function approvePayment(
   notes?: string
 ): Promise<void> {
   try {
-    await apiClient.post(`/api/gyms/${gymId}/subscription/payment/approve`, {
+    await apiClient.post(`/api/admin/gyms/${gymId}/subscription/payment/approve`, {
       request_id: requestId,
       plan,
       notes,
@@ -168,7 +168,7 @@ export async function rejectPayment(
   rejectionReason: string
 ): Promise<void> {
   try {
-    await apiClient.post(`/api/gyms/${gymId}/subscription/payment/reject`, {
+    await apiClient.post(`/api/admin/gyms/${gymId}/subscription/payment/reject`, {
       request_id: requestId,
       rejection_reason: rejectionReason,
     });
@@ -182,7 +182,7 @@ export async function saveAdminNotes(
   payload: Partial<GymFlags> & { admin_notes?: string }
 ): Promise<void> {
   try {
-    await apiClient.post(`/api/gyms/${gymId}/subscription/notes`, payload);
+    await apiClient.post(`/api/admin/gyms/${gymId}/subscription/notes`, payload);
   } catch (error) {
     throw new Error(parseApiError(error));
   }
@@ -198,7 +198,7 @@ export async function updateSubscriptionDates(
   }
 ): Promise<void> {
   try {
-    await apiClient.post(`/api/gyms/${gymId}/subscription/dates`, dates);
+    await apiClient.post(`/api/admin/gyms/${gymId}/subscription/dates`, dates);
   } catch (error) {
     throw new Error(parseApiError(error));
   }
@@ -211,7 +211,7 @@ export async function executeDangerAction(
 ): Promise<{ success: boolean; action: string }> {
   try {
     const { data } = await apiClient.post<{ success: boolean; action: string }>(
-      `/api/gyms/${gymId}/subscription/danger`,
+      `/api/admin/gyms/${gymId}/subscription/danger`,
       { action, notes }
     );
     return data;

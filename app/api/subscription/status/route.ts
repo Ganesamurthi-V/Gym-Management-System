@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest) {
 
   const { data: settings } = await supabase
     .from('platform_settings')
-    .select('upi_id, upi_name, qr_code_url, price_monthly, price_yearly')
+    .select('upi_id, upi_name, price_monthly, price_yearly')
     .single()
 
   const { data: pendingRequest } = await supabase

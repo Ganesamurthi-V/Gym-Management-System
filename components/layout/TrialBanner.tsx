@@ -1,7 +1,6 @@
 'use client'
 
 import { X, Clock, AlertTriangle, AlertCircle } from 'lucide-react'
-import { useState } from 'react'
 import Link from 'next/link'
 
 interface TrialBannerProps {
@@ -9,8 +8,6 @@ interface TrialBannerProps {
 }
 
 export default function TrialBanner({ daysLeft }: TrialBannerProps) {
-  const [dismissed, setDismissed] = useState(false)
-  if (dismissed) return null
 
   const urgency =
     daysLeft <= 0 ? 'red' :
@@ -59,13 +56,6 @@ export default function TrialBanner({ daysLeft }: TrialBannerProps) {
           </Link>
         </span>
       </div>
-      <button
-        onClick={() => setDismissed(true)}
-        aria-label="Dismiss trial banner"
-        className={`ml-4 flex-shrink-0 transition-colors ${s.btn}`}
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
     </div>
   )
 }

@@ -81,15 +81,20 @@ export async function middleware(request: NextRequest) {
   if (user && PROTECTED_PREFIXES.some(p => pathname.startsWith(p)) && !pathname.startsWith('/subscription')) {
     const { data: gym } = await supabase
       .from('gyms')
-      .select('subscription_status, trial_ends_at')
+      .select('subscription_status, trial_ends_at, subscription_ends_at')
       .eq('owner_id', user.id)
       .single()
 
+    const now = new Date()
     const isExpired =
       gym?.subscription_status === 'expired' ||
       (gym?.subscription_status === 'trial' &&
         gym?.trial_ends_at &&
-        new Date(gym.trial_ends_at) < new Date())
+        new Date(gym.trial_ends_at) < now) ||
+      // Lapsed paid subscription the cron hasn't flipped yet (lifetime = null, never lapses)
+      (gym?.subscription_status === 'active' &&
+        gym?.subscription_ends_at &&
+        new Date(gym.subscription_ends_at) < now)
 
     if (isExpired) {
       const url = request.nextUrl.clone()

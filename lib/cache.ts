@@ -1,4 +1,5 @@
 import { getRedisClient } from './redis'
+import { cacheKeys } from './cache-keys'
 
 /**
  * Get a value from the Redis cache.
@@ -131,4 +132,23 @@ function logCacheMetric(type: 'HIT' | 'MISS', key: string, durationMs: number) {
   if (process.env.NODE_ENV === 'development') {
     console.log(`[CACHE][Event] ${type}: ${key} - ${durationMs}ms`)
   }
+}
+
+/**
+ * Invalidates every cache key that encodes subscription/active state for a
+ * gym owner. Both keys MUST be busted together whenever subscription_status,
+ * trial_ends_at, or is_active changes on the gyms table:
+ *
+ *   - `user:${userId}:gym`        → getGym() (middleware guard, AppShell banner)
+ *   - `active_status:${email}`    → getGymActiveStatus() (AppShell → ShellGuard)
+ *
+ * Busting only the gym key (the old behaviour) left active_status serving a
+ * stale verdict for up to 120s — e.g. an admin approves a payment but the
+ * shell still treats the account as expired, or a trial expires but the
+ * owner keeps full access until the TTL runs out.
+ */
+export async function invalidateSubscriptionCaches(userId: string, email?: string | null): Promise<void> {
+  const deletions = [deleteCache(cacheKeys.gym(userId))]
+  if (email) deletions.push(deleteCache(cacheKeys.activeStatus(email)))
+  await Promise.all(deletions)
 }

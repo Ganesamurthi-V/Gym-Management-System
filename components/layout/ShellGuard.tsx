@@ -106,16 +106,20 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           // The updated RPC returns false for both, so we check gym status.
           const { data: gymStatus } = await supabase
             .from('gyms')
-            .select('subscription_status, trial_ends_at, is_active')
+            .select('subscription_status, trial_ends_at, subscription_ends_at, is_active')
             .eq('owner_id', user.id)
             .single()
 
+          const now = new Date()
           const isDeactivated = gymStatus?.is_active === false
           const isExpired =
             gymStatus?.subscription_status === 'expired' ||
             (gymStatus?.subscription_status === 'trial' &&
               gymStatus?.trial_ends_at &&
-              new Date(gymStatus.trial_ends_at) < new Date())
+              new Date(gymStatus.trial_ends_at) < now) ||
+            (gymStatus?.subscription_status === 'active' &&
+              gymStatus?.subscription_ends_at &&
+              new Date(gymStatus.subscription_ends_at) < now)
 
           if (isDeactivated) {
             await supabase.auth.signOut()

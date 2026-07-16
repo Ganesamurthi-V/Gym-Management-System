@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
 
     const { data: gym, error } = await supabase
       .from('gyms')
-      .select('id, name, created_at, is_active, owner_id')
+      .select('id, name, created_at, is_active, owner_id, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
       .eq('id', params.id)
       .single()
 

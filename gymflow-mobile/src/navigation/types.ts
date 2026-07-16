@@ -7,6 +7,7 @@ export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
   GymDetail: { gymId: string };
+  GymSubscription: { gymId: string };
 };
 
 // Bottom tabs

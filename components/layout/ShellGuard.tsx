@@ -59,11 +59,26 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
   useEffect(() => {
     if (isShellless) return
 
-    if (!initialUser || !initialIsActive) {
+    if (!initialUser) {
       const supabase = createClient()
       supabase.auth.signOut().then(() => {
-        window.location.href = !initialIsActive ? '/auth/login?error=blocked' : '/auth/login'
+        window.location.href = '/auth/login'
       })
+      return
+    }
+
+    if (!initialIsActive) {
+      // check_gym_active returns false for BOTH admin-deactivated gyms and
+      // expired trials/subscriptions. Expired accounts stay logged in and go
+      // to the subscription page; only deactivated accounts are signed out.
+      if (initialSubscriptionStatus === 'expired') {
+        window.location.href = '/subscription'
+      } else {
+        const supabase = createClient()
+        supabase.auth.signOut().then(() => {
+          window.location.href = '/auth/login?error=blocked'
+        })
+      }
       return
     }
 
@@ -126,7 +141,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       window.removeEventListener('focus', checkAuth)
       clearInterval(interval)
     }
-  }, [isShellless, initialUser, initialIsActive])
+  }, [isShellless, initialUser, initialIsActive, initialSubscriptionStatus])
 
   function toggle() {
     setCollapsed(prev => {

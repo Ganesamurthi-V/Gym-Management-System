@@ -14,8 +14,8 @@ add_legacy_member_id.sq
 node_modules/
 dist/
 *.generated.py
-supabase/
-supabase
+graphify-out/
+graphify-out
 
 # Removing the block that ignores everything except src/ since this project uses app/ structure
 # Sentry Config File

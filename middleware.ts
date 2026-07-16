@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { generateRequestId, REQUEST_ID_HEADER } from '@/lib/logger'
 
 // Pages that require auth check — everything else passes through immediately
-const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/subscription']
+const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/inventory', '/account', '/subscription']
 const AUTH_PREFIX = '/auth'
 
 export async function middleware(request: NextRequest) {
@@ -78,7 +78,7 @@ export async function middleware(request: NextRequest) {
 
   // ── Subscription expiry guard ─────────────────────────────────────────────
   // Runs only for authenticated users on protected routes (not /subscription itself)
-  if (user && PROTECTED_PREFIXES.some(p => pathname.startsWith(p)) && pathname !== '/subscription') {
+  if (user && PROTECTED_PREFIXES.some(p => pathname.startsWith(p)) && !pathname.startsWith('/subscription')) {
     const { data: gym } = await supabase
       .from('gyms')
       .select('subscription_status, trial_ends_at')

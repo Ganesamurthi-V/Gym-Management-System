@@ -106,7 +106,12 @@ export async function POST(req: NextRequest) {
         )
       }
     } else {
-      // Create gym record for first-time users
+      // Create gym record for first-time users — start their 14-day trial
+      const TRIAL_DURATION_DAYS = parseInt(process.env.TRIAL_DURATION_DAYS ?? '14', 10)
+      const now = new Date()
+      const trialEndsAt = new Date(now)
+      trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS)
+
       const { data: newGym, error: insertError } = await supabase
         .from('gyms')
         .insert({
@@ -114,6 +119,11 @@ export async function POST(req: NextRequest) {
           owner_id: user.id,
           onboarding_completed: true,
           onboarding_data: onboardingData,
+          // Subscription trial fields
+          subscription_status: 'trial',
+          plan_type: 'trial',
+          trial_started_at: now.toISOString(),
+          trial_ends_at: trialEndsAt.toISOString(),
         })
         .select('id')
         .single()

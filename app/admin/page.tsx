@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Activity, Users, Dumbbell, MapPin } from 'lucide-react'
+import { Activity, Users, Dumbbell, MapPin, CreditCard, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import Link from 'next/link'
 
 export const revalidate = 0 // Always fetch fresh metrics for the admin
 
@@ -7,17 +8,24 @@ export default async function AdminPage() {
   const supabase = createAdminClient()
 
   // Run aggregations using the service role key to bypass RLS.
-  // Use Exact count to get totals.
   const [
     { count: totalGyms },
     { count: totalMembers },
     { count: totalGeoAliases },
-    { count: pendingGeoReviews }
+    { count: pendingGeoReviews },
+    { count: pendingSubscriptions },
+    { count: trialGyms },
+    { count: activeGyms },
+    { count: expiredGyms },
   ] = await Promise.all([
     supabase.from('gyms').select('*', { count: 'exact', head: true }),
     supabase.from('members').select('*', { count: 'exact', head: true }),
     supabase.from('geo_gym_aliases').select('*', { count: 'exact', head: true }),
     supabase.from('geo_review_queue').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('subscription_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('gyms').select('*', { count: 'exact', head: true }).eq('subscription_status', 'trial'),
+    supabase.from('gyms').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active'),
+    supabase.from('gyms').select('*', { count: 'exact', head: true }).eq('subscription_status', 'expired'),
   ])
 
   const stats = [
@@ -25,6 +33,13 @@ export default async function AdminPage() {
     { label: 'Total Members (Platform)', value: totalMembers ?? 0, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-100' },
     { label: 'Learned Geo Aliases', value: totalGeoAliases ?? 0, icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-100' },
     { label: 'Pending Geo Reviews', value: pendingGeoReviews ?? 0, icon: Activity, color: 'text-amber-600', bg: 'bg-amber-100' },
+  ]
+
+  const subStats = [
+    { label: 'Pending Payment Reviews', value: pendingSubscriptions ?? 0, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-100', urgent: (pendingSubscriptions ?? 0) > 0 },
+    { label: 'On Free Trial', value: trialGyms ?? 0, icon: Clock, color: 'text-brand-600', bg: 'bg-brand-100', urgent: false },
+    { label: 'Active Subscriptions', value: activeGyms ?? 0, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100', urgent: false },
+    { label: 'Expired (No Sub)', value: expiredGyms ?? 0, icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', urgent: (expiredGyms ?? 0) > 0 },
   ]
 
   return (
@@ -48,6 +63,37 @@ export default async function AdminPage() {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Subscription Stats */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Subscription Overview</h3>
+          <Link
+            href="/admin/subscriptions"
+            className="text-sm font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1"
+          >
+            Manage Requests →
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {subStats.map((stat, i) => (
+            <div
+              key={i}
+              className={`bg-white rounded-2xl p-5 shadow-sm border transition-shadow hover:shadow-md ${
+                stat.urgent ? 'border-amber-300 bg-amber-50' : 'border-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 ${stat.bg} rounded-full flex items-center justify-center`}>
+                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                </div>
+                <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+              </div>
+              <p className="text-3xl font-bold text-gray-900">{stat.value.toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-12 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

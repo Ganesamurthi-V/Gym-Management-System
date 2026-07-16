@@ -8,7 +8,9 @@ import AccountMenu from './AccountMenu'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
-const SHELL_EXCLUDED = ['/auth/', '/onboarding']
+import TrialBanner from './TrialBanner'
+
+const SHELL_EXCLUDED = ['/auth/', '/onboarding', '/subscription']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
 
 function DumbbellIcon({ className }: { className?: string }) {
@@ -34,9 +36,11 @@ interface ShellGuardProps {
   initialGym: GymRow
   initialIsActive: boolean
   initialUnreadCount: number
+  initialSubscriptionStatus: string
+  initialTrialDaysLeft: number
 }
 
-export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount }: ShellGuardProps) {
+export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount, initialSubscriptionStatus, initialTrialDaysLeft }: ShellGuardProps) {
   const pathname = usePathname()
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
@@ -83,8 +87,30 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       if (user.email) {
         const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: user.email })
         if (isActive === false) {
-          await supabase.auth.signOut()
-          window.location.href = '/auth/login?error=blocked'
+          // Distinguish between deactivated (blocked) and expired subscription.
+          // The updated RPC returns false for both, so we check gym status.
+          const { data: gymStatus } = await supabase
+            .from('gyms')
+            .select('subscription_status, trial_ends_at, is_active')
+            .eq('owner_id', user.id)
+            .single()
+
+          const isDeactivated = gymStatus?.is_active === false
+          const isExpired =
+            gymStatus?.subscription_status === 'expired' ||
+            (gymStatus?.subscription_status === 'trial' &&
+              gymStatus?.trial_ends_at &&
+              new Date(gymStatus.trial_ends_at) < new Date())
+
+          if (isDeactivated) {
+            await supabase.auth.signOut()
+            window.location.href = '/auth/login?error=blocked'
+          } else if (isExpired) {
+            window.location.href = '/subscription'
+          } else {
+            await supabase.auth.signOut()
+            window.location.href = '/auth/login?error=blocked'
+          }
         }
       }
     }
@@ -207,6 +233,11 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             />
           </div>
         </header>
+
+        {/* Trial banner — shown between header and main when subscription is trial */}
+        {(initialSubscriptionStatus === 'trial' || initialSubscriptionStatus === 'expired') && (
+          <TrialBanner daysLeft={initialTrialDaysLeft} />
+        )}
 
         <main className="flex-1 w-full bg-slate-50 min-w-0">
           <div className="w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 pb-24 md:pb-8">

@@ -17,6 +17,10 @@ export type GymDetail = {
     owner_id: string;
     created_at: string;
     is_active: boolean;
+    subscription_status?: string;
+    plan_type?: string;
+    trial_ends_at?: string;
+    subscription_ends_at?: string;
   };
   owner: {
     email?: string;
@@ -55,6 +59,21 @@ export async function toggleGymStatus(gymId: string, isActive: boolean): Promise
 export async function resetGymPassword(userId: string, newPassword: string): Promise<void> {
   try {
     await apiClient.post('/api/gyms/reset-password', { userId, password: newPassword });
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+export type GymSubscriptionData = {
+  subscription_status?: string;
+  plan_type?: string;
+  trial_ends_at?: string | null;
+  subscription_ends_at?: string | null;
+};
+
+export async function updateGymSubscription(gymId: string, data: GymSubscriptionData): Promise<void> {
+  try {
+    await apiClient.patch(`/api/gyms/${gymId}/subscription`, data);
   } catch (error) {
     throw new Error(parseApiError(error));
   }

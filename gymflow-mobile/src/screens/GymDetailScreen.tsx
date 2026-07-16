@@ -192,6 +192,22 @@ export default function GymDetailScreen({ route, navigation }: Props) {
         </View>
       </View>
 
+      {/* Subscription Management */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Feather name="credit-card" size={15} color={Colors.indigo} />
+          <Text style={styles.cardTitle}>Subscription & Trial</Text>
+        </View>
+        <Text style={styles.toggleSub}>
+          Manage plan types, set expiry dates, and block renewals.
+        </Text>
+        <AdminButton
+          label="Manage Subscription"
+          onPress={() => navigation.navigate('GymSubscription', { gymId })}
+          variant="primary"
+        />
+      </View>
+
       {/* Password Reset */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>

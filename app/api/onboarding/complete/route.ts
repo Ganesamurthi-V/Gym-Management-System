@@ -150,6 +150,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Bust the gym-row and active-status caches: getGym may have cached a
+    // null row (or stale name/subscription fields) before onboarding wrote
+    // the gym, which would stick for the full TTL otherwise.
+    const { invalidateSubscriptionCaches } = await import('@/lib/cache')
+    await invalidateSubscriptionCaches(user.id, user.email)
+
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     return NextResponse.json(

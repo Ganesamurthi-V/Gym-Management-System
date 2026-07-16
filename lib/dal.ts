@@ -69,6 +69,13 @@ export function getSubscriptionState(gym: GymFromDAL) {
 
   // Legacy gyms or gyms without subscription columns → treat as active
   if (!status || status === 'active') {
+    // Paid subscriptions lapse too: an 'active' gym past subscription_ends_at
+    // is expired even if the daily cron hasn't flipped the row yet.
+    // (lifetime plans store subscription_ends_at = null → never lapse)
+    const subEndsAt = (gym as any).subscription_ends_at as string | null | undefined
+    if (status === 'active' && subEndsAt && new Date(subEndsAt).getTime() < Date.now()) {
+      return { status: 'expired' as const, daysLeft: 0, isExpired: true }
+    }
     return { status: 'active' as const, daysLeft: null, isExpired: false }
   }
 

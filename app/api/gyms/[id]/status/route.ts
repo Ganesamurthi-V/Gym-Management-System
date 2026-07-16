@@ -34,6 +34,14 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
     if (error) throw error
 
+    // Bust the owner's subscription/active-status caches so the block or
+    // unblock takes effect on their next request instead of after the TTL.
+    if (data?.owner_id) {
+      const { data: userData } = await supabase.auth.admin.getUserById(data.owner_id)
+      const { invalidateSubscriptionCaches } = await import('@/lib/cache')
+      await invalidateSubscriptionCaches(data.owner_id, userData?.user?.email)
+    }
+
     return NextResponse.json({ success: true, gym: data })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

@@ -5,4 +5,6 @@ export const cacheKeys = {
   dashboard: (gymId: string, date: string) => `gym:${gymId}:dashboard:${date}`,
   payments12mo: (gymId: string) => `gym:${gymId}:payments_page:12mo`,
   paymentsAll: (gymId: string) => `gym:${gymId}:payments_page:allTime`,
+  gym: (userId: string) => `user:${userId}:gym`,
+  activeStatus: (email: string) => `active_status:${email}`,
 }

@@ -16,6 +16,7 @@ import GymsScreen from './screens/tabs/GymsScreen';
 import SupportScreen from './screens/tabs/SupportScreen';
 import LogsScreen from './screens/tabs/LogsScreen';
 import GymDetailScreen from './screens/GymDetailScreen';
+import GymSubscriptionScreen from './screens/GymSubscriptionScreen';
 
 import type { RootStackParamList, TabParamList } from './navigation/types';
 
@@ -137,6 +138,18 @@ export default function App() {
                   headerStyle: { backgroundColor: Colors.bg },
                   headerTintColor: Colors.textPrimary,
                   headerTitle: 'Gym Details',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="GymSubscription"
+                component={GymSubscriptionScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: 'Manage Subscription',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
                 }}

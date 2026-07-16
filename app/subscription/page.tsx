@@ -23,10 +23,9 @@ export default async function SubscriptionPage() {
     .limit(1)
     .maybeSingle()
 
-  // Platform settings (UPI details, pricing)
   const { data: settings } = await supabase
     .from('platform_settings')
-    .select('upi_id, upi_name, qr_code_url, price_monthly, price_yearly')
+    .select('upi_id, upi_name, price_monthly, price_yearly')
     .single()
 
   const subState = getSubscriptionState(gym)
@@ -44,9 +43,8 @@ export default async function SubscriptionPage() {
       settings={settings ?? {
         upi_id: '',
         upi_name: 'GymFlow',
-        qr_code_url: '',
-        price_monthly: 999,
-        price_yearly: 9999,
+        price_monthly: 2999,
+        price_yearly: 29999,
       }}
     />
   )

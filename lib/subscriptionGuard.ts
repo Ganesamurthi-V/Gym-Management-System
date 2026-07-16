@@ -18,16 +18,21 @@ export async function requireActiveSubscription(
 ): Promise<{ allowed: boolean; response?: Response }> {
   const { data: gym } = await supabase
     .from('gyms')
-    .select('subscription_status, trial_ends_at')
+    .select('subscription_status, trial_ends_at, subscription_ends_at')
     .eq('id', gymId)
     .single()
 
+  const now = new Date()
   const isExpired =
     !gym ||
     gym.subscription_status === 'expired' ||
     (gym.subscription_status === 'trial' &&
       gym.trial_ends_at &&
-      new Date(gym.trial_ends_at) < new Date())
+      new Date(gym.trial_ends_at) < now) ||
+    // Lapsed paid subscription the cron hasn't flipped yet (lifetime = null, never lapses)
+    (gym.subscription_status === 'active' &&
+      gym.subscription_ends_at &&
+      new Date(gym.subscription_ends_at) < now)
 
   if (isExpired) {
     return {

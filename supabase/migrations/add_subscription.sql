@@ -96,8 +96,9 @@
     );
 
   -- ── 7. Update check_gym_active RPC ───────────────────────────
-  -- Returns false for admin-deactivated AND expired accounts.
-  -- (The app code now checks subscription_status to tell them apart.)
+  -- Returns false for admin-deactivated, expired-trial AND lapsed-paid accounts.
+  -- (The app code checks subscription_status to tell them apart.)
+  -- Lifetime plans store subscription_ends_at = NULL → never lapse.
   CREATE OR REPLACE FUNCTION check_gym_active(p_email text)
   RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
     SELECT
@@ -106,6 +107,9 @@
         WHEN g.subscription_status = 'expired'     THEN false
         WHEN g.subscription_status = 'trial'
              AND g.trial_ends_at < now()           THEN false
+        WHEN g.subscription_status = 'active'
+             AND g.subscription_ends_at IS NOT NULL
+             AND g.subscription_ends_at < now()    THEN false
         ELSE true
       END
     FROM auth.users u

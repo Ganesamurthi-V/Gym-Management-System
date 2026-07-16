@@ -348,15 +348,15 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
           </div>
         )}
 
-        {/* Step 2 Placeholder */}
+        {/* Step 2 UI */}
         {step === 2 && (
-          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm min-h-[400px] flex flex-col">
+          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm flex flex-col">
              <div className="flex items-center justify-between mb-8">
                <div className="flex items-center gap-4">
                  <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-brand-500/30">2</div>
                  <div>
-                   <h3 className="text-xl font-bold text-slate-900">Complete Payment</h3>
-                   <p className="text-sm text-slate-500 font-medium">Please wait for the next design...</p>
+                   <h3 className="text-xl font-bold text-slate-900">Make Payment</h3>
+                   <p className="text-sm text-slate-500 font-medium">Pay securely using any UPI app</p>
                  </div>
                </div>
                <button onClick={() => setStep(1)} className="text-brand-600 text-sm font-bold hover:underline py-2 px-4 rounded-lg hover:bg-brand-50 transition-colors">
@@ -364,13 +364,174 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                </button>
              </div>
              
-             <div className="flex-1 flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
-                  <CreditCard className="w-8 h-8 text-slate-400" />
-                </div>
-                <p className="font-bold text-slate-500">Awaiting Step 2 UI Design...</p>
-                <p className="text-sm text-slate-400 text-center max-w-sm">I'm ready to build Step 2! Please provide the next screenshot showing how the payment section should look.</p>
+             {/* Payment details block (QR + Instructions) */}
+             <div className="flex flex-col lg:flex-row gap-8 items-stretch mb-10">
+               
+               {/* Left Side: QR & Details */}
+               <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-stretch gap-6 border border-slate-100 p-5 rounded-3xl bg-white shadow-sm">
+                 <div className="w-48 h-48 sm:w-56 sm:h-56 p-3 bg-slate-50 border border-slate-100 rounded-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+                   <Image
+                     src={selectedPlan === 'monthly' ? '/2999.jpeg' : '/29k.jpeg'}
+                     alt={`UPI QR Code for ${selectedPlan} plan`}
+                     fill
+                     className="object-contain p-2"
+                   />
+                 </div>
+                 
+                 <div className="flex-1 flex flex-col justify-center space-y-4">
+                   <div>
+                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">UPI ID</p>
+                     <div className="flex items-center gap-3">
+                       <p className="text-lg font-black text-slate-900">{settings.upi_id || 'gymflow@okaxis'}</p>
+                       <button onClick={copyUpi} className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors" title="Copy UPI ID">
+                         {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                       </button>
+                     </div>
+                   </div>
+                   
+                   <div>
+                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Pay to</p>
+                     <p className="text-sm font-bold text-slate-700">{settings.upi_name}</p>
+                   </div>
+                   
+                   <div>
+                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Amount</p>
+                     <p className="text-brand-600 font-black text-lg">
+                       ₹{selectedPlan === 'monthly' ? settings.price_monthly.toLocaleString('en-IN') : settings.price_yearly.toLocaleString('en-IN')} 
+                       <span className="text-sm font-semibold ml-1">({selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'})</span>
+                     </p>
+                   </div>
+
+                   <div className="flex items-start gap-2 pt-2 border-t border-slate-50">
+                     <AlertCircle className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                     <p className="text-xs text-slate-500 font-medium">Scan QR code with any UPI app<br/>GPay, PhonePe, Paytm, BHIM, etc.</p>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Divider */}
+               <div className="hidden lg:flex flex-col items-center justify-center relative px-2">
+                 <div className="w-px h-full bg-slate-100"></div>
+                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-xs font-black text-slate-400 shadow-sm z-10">
+                   OR
+                 </div>
+               </div>
+
+               {/* Right Side: Instructions */}
+               <div className="flex-1 bg-[#F5F8FF] rounded-3xl p-6 md:p-8 flex flex-col justify-between border border-brand-100/50">
+                 <div>
+                   <div className="flex items-center gap-2 mb-6">
+                     <AlertCircle className="w-5 h-5 text-brand-600" />
+                     <h4 className="text-base font-bold text-slate-900">Payment Instructions</h4>
+                   </div>
+                   
+                   <ul className="space-y-4">
+                     {[
+                       'Scan the QR code or use the UPI ID',
+                       'Complete the payment',
+                       'Take a screenshot of the payment',
+                       'Upload the screenshot below'
+                     ].map((text, i) => (
+                       <li key={i} className="flex items-center gap-4">
+                         <div className="w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-black shadow-sm shadow-brand-500/20">{i + 1}</div>
+                         <span className="text-sm font-semibold text-slate-700">{text}</span>
+                       </li>
+                     ))}
+                   </ul>
+                 </div>
+                 
+                 <div className="mt-8 flex items-center gap-2 text-xs font-bold text-slate-500">
+                   <Shield className="w-4 h-4 text-slate-400" />
+                   Your payment is secure with UPI
+                 </div>
+               </div>
+               
              </div>
+
+             {/* Upload Form */}
+             <form onSubmit={handleSubmit} className="border-t border-slate-100 pt-8 mt-2 space-y-6">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">
+                    Payment Screenshot or PDF <span className="text-red-500">*</span>
+                  </label>
+                  
+                  <input
+                    type="file"
+                    ref={fileRef}
+                    accept="image/*,application/pdf"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                  <div 
+                    onClick={() => fileRef.current?.click()}
+                    className={`cursor-pointer border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-2 transition-colors ${
+                      file ? 'border-brand-300 bg-brand-50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                    }`}
+                  >
+                    {file ? (
+                      <>
+                        <CheckCircle2 className="w-8 h-8 text-brand-500" />
+                        <span className="text-sm font-bold text-brand-700">{file.name}</span>
+                        <span className="text-xs text-brand-600/70 font-medium">Click to change file</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-slate-400 mb-1" />
+                        <span className="text-sm font-bold text-slate-700">Click to upload proof</span>
+                        <span className="text-xs text-slate-500 font-medium">JPG, PNG or PDF • Max 10 MB</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="txnId" className="block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">
+                    Transaction ID / UTR (Optional)
+                  </label>
+                  <input
+                    id="txnId"
+                    type="text"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    placeholder="e.g. 403612345678"
+                    className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium placeholder:font-normal"
+                  />
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm font-semibold border border-red-100">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-4">
+                  <a
+                    href="https://wa.me/919384886895?text=Hello GymFlow Support. I am having issues with my subscription payment."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700 hover:underline transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4" /> Having any issues? Contact us
+                  </a>
+
+                  <button
+                    type="submit"
+                    disabled={submitting || !file}
+                    className={`px-8 py-3.5 rounded-xl font-bold transition-all shadow-md flex items-center gap-2 ${
+                      submitting || !file
+                        ? 'bg-slate-100 text-slate-400 shadow-none cursor-not-allowed'
+                        : 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/25'
+                    }`}
+                  >
+                    {submitting ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" /> Submitting...</>
+                    ) : (
+                      <>Submit Proof <ArrowRight className="w-4 h-4" /></>
+                    )}
+                  </button>
+                </div>
+             </form>
           </div>
         )}
       </div>

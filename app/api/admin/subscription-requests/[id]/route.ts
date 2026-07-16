@@ -91,7 +91,9 @@ export async function POST(
       .eq('id', id)
   }
 
-  // Invalidate Redis cache for the gym owner so the next request gets fresh data
+  // Invalidate Redis cache for the gym owner so the next request gets fresh
+  // data. Must bust both the gym row and the email-keyed active_status verdict,
+  // otherwise an approved owner stays locked out until the 120s TTL expires.
   const { data: gym } = await supabase
     .from('gyms')
     .select('owner_id')
@@ -99,8 +101,9 @@ export async function POST(
     .single()
 
   if (gym?.owner_id) {
-    const { deleteCache } = await import('@/lib/cache')
-    await deleteCache(`user:${gym.owner_id}:gym`)
+    const { data: userData } = await supabase.auth.admin.getUserById(gym.owner_id)
+    const { invalidateSubscriptionCaches } = await import('@/lib/cache')
+    await invalidateSubscriptionCaches(gym.owner_id, userData?.user?.email)
   }
 
   return NextResponse.json({ success: true })

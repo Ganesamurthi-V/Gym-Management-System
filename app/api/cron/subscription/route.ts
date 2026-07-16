@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient()
 
   // Expire all trials that have run out of time
-  const { data, error } = await supabase
+  const { data: expiredTrials, error } = await supabase
     .from('gyms')
     .update({ subscription_status: 'expired' })
     .eq('subscription_status', 'trial')
@@ -45,16 +45,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Invalidate Redis cache for each affected gym owner
-  const { deleteCache } = await import('@/lib/cache')
-  const affectedGyms = data ?? []
+  // Expire paid subscriptions that have lapsed.
+  // Lifetime plans store subscription_ends_at = NULL, so .lt() never matches them.
+  const { data: expiredSubs, error: subsError } = await supabase
+    .from('gyms')
+    .update({ subscription_status: 'expired' })
+    .eq('subscription_status', 'active')
+    .lt('subscription_ends_at', new Date().toISOString())
+    .select('id, owner_id')
+
+  if (subsError) {
+    console.error('[Cron/Sub] Failed to expire subscriptions:', subsError)
+    return NextResponse.json({ error: subsError.message }, { status: 500 })
+  }
+
+  // Invalidate Redis cache for each affected gym owner.
+  // Both the gym row cache AND the active_status verdict cache must go —
+  // the latter is keyed by email, so look the owners' emails up first.
+  const { invalidateSubscriptionCaches } = await import('@/lib/cache')
+  const affectedGyms = [...(expiredTrials ?? []), ...(expiredSubs ?? [])]
 
   await Promise.all(
-    affectedGyms.map(gym => deleteCache(`user:${gym.owner_id}:gym`))
+    affectedGyms.map(async gym => {
+      const { data: userData } = await supabase.auth.admin.getUserById(gym.owner_id)
+      await invalidateSubscriptionCaches(gym.owner_id, userData?.user?.email)
+    })
   )
 
-  console.log(`[Cron/Sub] Expired ${affectedGyms.length} trial(s)`)
-  return NextResponse.json({ expired: affectedGyms.length })
+  console.log(`[Cron/Sub] Expired ${expiredTrials?.length ?? 0} trial(s), ${expiredSubs?.length ?? 0} subscription(s)`)
+  return NextResponse.json({
+    expired: affectedGyms.length,
+    trials: expiredTrials?.length ?? 0,
+    subscriptions: expiredSubs?.length ?? 0,
+  })
 }
 
 // Allow GET for Vercel's cron ping

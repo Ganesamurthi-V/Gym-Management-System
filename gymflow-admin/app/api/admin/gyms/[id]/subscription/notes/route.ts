@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyRequestAuth } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
-function auth(req: NextRequest): boolean {
-  const token = req.headers.get('authorization')?.split(' ')[1]
-  return token === process.env.ADMIN_PASSWORD
-}
-
 /**
- * POST /api/gyms/[id]/subscription/notes
+ * POST /api/admin/gyms/[id]/subscription/notes
  * Body: {
  *   admin_notes?: string,
  *   is_vip?: boolean,
@@ -29,7 +18,7 @@ function auth(req: NextRequest): boolean {
  * }
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  if (!auth(req)) {
+  if (!(await verifyRequestAuth(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
@@ -46,7 +35,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       performed_by = 'admin',
     } = body
 
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const updates: Record<string, any> = {}
 
     if (admin_notes !== undefined) updates.admin_notes = admin_notes

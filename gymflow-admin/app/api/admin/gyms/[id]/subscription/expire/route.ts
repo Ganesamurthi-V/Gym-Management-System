@@ -1,36 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyRequestAuth } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { invalidateSubscriptionCachesForOwner } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
-function auth(req: NextRequest): boolean {
-  const token = req.headers.get('authorization')?.split(' ')[1]
-  return token === process.env.ADMIN_PASSWORD
-}
-
-/** POST /api/gyms/[id]/subscription/expire
+/** POST /api/admin/gyms/[id]/subscription/expire
  *  Body: { performed_by?: string, notes?: string }
  *  Immediately marks subscription as expired.
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  if (!auth(req)) {
+  if (!(await verifyRequestAuth(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
     const { id } = await props.params
     const { performed_by = 'admin', notes } = await req.json()
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
 
     const { data: gym, error: fetchError } = await supabase
       .from('gyms')
-      .select('subscription_status, plan_type, subscription_ends_at, trial_ends_at')
+      .select('subscription_status, plan_type, subscription_ends_at, trial_ends_at, owner_id')
       .eq('id', id)
       .single()
     if (fetchError) throw fetchError
@@ -45,6 +35,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       })
       .eq('id', id)
     if (error) throw error
+
+    await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
 
     await supabase.rpc('log_subscription_action', {
       p_gym_id: id,

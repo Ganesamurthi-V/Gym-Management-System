@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyRequestAuth } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
-function auth(req: NextRequest): boolean {
-  const token = req.headers.get('authorization')?.split(' ')[1]
-  return token === process.env.ADMIN_PASSWORD
-}
-
 /**
- * POST /api/gyms/[id]/subscription/payment/reject
+ * POST /api/admin/gyms/[id]/subscription/payment/reject
  * Body: {
  *   request_id: string,
  *   rejection_reason: string,
@@ -24,7 +13,7 @@ function auth(req: NextRequest): boolean {
  * }
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  if (!auth(req)) {
+  if (!(await verifyRequestAuth(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
@@ -35,7 +24,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'request_id and rejection_reason are required' }, { status: 400 })
     }
 
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
 
     const { data: request, error: reqError } = await supabase
       .from('subscription_requests')

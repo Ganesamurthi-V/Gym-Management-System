@@ -62,35 +62,8 @@ export const getUnreadAdminMessages = cache(async (gymId: string) => {
 // we handle that gracefully by treating missing fields as 'active' (legacy).
 type GymFromDAL = Awaited<ReturnType<typeof getGym>>['gym']
 
+import { computeSubscriptionState } from './subscription-utils'
+
 export function getSubscriptionState(gym: GymFromDAL) {
-  if (!gym) return { status: 'unknown' as const, daysLeft: 0, isExpired: true }
-
-  const status = (gym as any).subscription_status as string | undefined
-
-  // Legacy gyms or gyms without subscription columns → treat as active
-  if (!status || status === 'active') {
-    // Paid subscriptions lapse too: an 'active' gym past subscription_ends_at
-    // is expired even if the daily cron hasn't flipped the row yet.
-    // (lifetime plans store subscription_ends_at = null → never lapse)
-    const subEndsAt = (gym as any).subscription_ends_at as string | null | undefined
-    if (status === 'active' && subEndsAt && new Date(subEndsAt).getTime() < Date.now()) {
-      return { status: 'expired' as const, daysLeft: 0, isExpired: true }
-    }
-    return { status: 'active' as const, daysLeft: null, isExpired: false }
-  }
-
-  if (status === 'trial') {
-    const trialEndsAt = (gym as any).trial_ends_at as string | null
-    const endsAt = trialEndsAt ? new Date(trialEndsAt).getTime() : 0
-    const msLeft = endsAt - Date.now()
-    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
-    return {
-      status: daysLeft <= 0 ? ('expired' as const) : ('trial' as const),
-      daysLeft: Math.max(0, daysLeft),
-      isExpired: daysLeft <= 0,
-    }
-  }
-
-  // status === 'expired'
-  return { status: 'expired' as const, daysLeft: 0, isExpired: true }
+  return computeSubscriptionState(gym as any)
 }

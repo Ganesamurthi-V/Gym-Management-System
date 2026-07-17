@@ -147,7 +147,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             table: 'gyms',
             filter: `id=eq.${initialGym?.id}`,
           },
-          (payload) => {
+          (payload: any) => {
             if (payload.new.subscription_status === 'active') {
               window.location.href = '/dashboard'
             }

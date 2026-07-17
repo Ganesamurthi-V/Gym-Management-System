@@ -7,6 +7,7 @@ import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
+import toast from 'react-hot-toast'
 
 import TrialBanner from './TrialBanner'
 
@@ -120,44 +121,53 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       }
     }
 
-    // Issue 3 fix: interval raised from 10s → 60s.
-    // Gym deactivation is a rare admin action — 60s detection lag is acceptable
-    // and reduces polling load from 12 req/min to 1 req/min per user.
-    // Focus listener provides instant re-check for free when user switches tabs.
+    // Issue 3 fix: Focus listener provides instant re-check when user switches tabs.
+    // Replaced 60s polling with Supabase Realtime for instant updates without network overhead.
     window.addEventListener('focus', checkAuth)
-    const interval = setInterval(checkAuth, 60_000)
+    
+    // Global Realtime listener for gym status (activation, expiration, blocking)
+    const channel = supabase
+      .channel(`gym-${initialGym?.id}-global-status`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'gyms',
+          filter: `id=eq.${initialGym?.id}`,
+        },
+        (payload: any) => {
+          const { is_active, subscription_status } = payload.new
+          
+          if (is_active === false) {
+            supabase.auth.signOut().then(() => {
+              window.location.href = '/auth/login?error=blocked'
+            })
+            return
+          }
+          
+          // Only redirect to subscription if they aren't already there and it just expired
+          if (subscription_status === 'expired' && pathname !== '/subscription') {
+            window.location.href = '/subscription'
+            return
+          }
+          
+          // If activated while on the paywall, show toast and redirect
+          if (subscription_status === 'active' && pathname === '/subscription') {
+            toast.success('Your subscription has been activated!')
+            setTimeout(() => {
+              window.location.href = '/dashboard'
+            }, 1500)
+          }
+        }
+      )
+      .subscribe()
     
     return () => {
       window.removeEventListener('focus', checkAuth)
-      clearInterval(interval)
+      supabase.removeChannel(channel)
     }
-  }, [isShellless, initialUser, initialIsActive, initialSubscriptionStatus])
-
-  // Effect 3: Realtime subscription status update when on paywall
-  useEffect(() => {
-    if (pathname === '/subscription' && initialSubscriptionStatus !== 'active') {
-      const supabase = createClient()
-      const channel = supabase
-        .channel(`gym-${initialGym?.id}-subscription`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'gyms',
-            filter: `id=eq.${initialGym?.id}`,
-          },
-          (payload: any) => {
-            if (payload.new.subscription_status === 'active') {
-              window.location.href = '/dashboard'
-            }
-          }
-        )
-        .subscribe()
-
-      return () => { supabase.removeChannel(channel) }
-    }
-  }, [pathname, initialSubscriptionStatus, initialGym?.id])
+  }, [isShellless, initialUser, initialIsActive, initialSubscriptionStatus, initialGym?.id, pathname])
 
   function toggle() {
     setCollapsed(prev => {

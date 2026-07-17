@@ -10,6 +10,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
+import { computeSubscriptionState } from '@/lib/subscription-utils'
 
 interface GymInfo {
   id: string
@@ -58,14 +59,14 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [liveRequest, setLiveRequest] = useState(latestRequest)
+  const [liveSubState, setLiveSubState] = useState(subState)
 
-  // ── Realtime listener for payment requests ────────────────────────
+  // ── Realtime listeners ────────────────────────
   useEffect(() => {
-    // Don't listen if subscription is already fully active
-    if (subState.status === 'active' && !subState.isExpired) return
-
     const supabase = createClient()
-    const channel = supabase
+    
+    // Listen to subscription_requests for this gym
+    const reqChannel = supabase
       .channel(`gym-${gym.id}-requests`)
       .on(
         'postgres_changes',
@@ -92,8 +93,29 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [gym.id, subState.status, subState.isExpired])
+    // Listen to gyms table for this gym (subscription status changes)
+    const gymChannel = supabase
+      .channel(`gym-${gym.id}-subclient`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'gyms',
+          filter: `id=eq.${gym.id}`,
+        },
+        (payload: any) => {
+          const newState = computeSubscriptionState(payload.new)
+          setLiveSubState(newState)
+        }
+      )
+      .subscribe()
+
+    return () => { 
+      supabase.removeChannel(reqChannel)
+      supabase.removeChannel(gymChannel)
+    }
+  }, [gym.id])
 
   const isPending  = liveRequest?.status === 'pending'
   const isApproved = liveRequest?.status === 'approved'
@@ -149,7 +171,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   ]
 
   // If subscription is active, show simple active state
-  if (subState.status === 'active' && !subState.isExpired) {
+  if (liveSubState.status === 'active' && !liveSubState.isExpired) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl border border-emerald-200 p-10 text-center space-y-4 shadow-sm max-w-md w-full">
@@ -218,7 +240,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
       <div className="w-full max-w-5xl space-y-8">
         
         {/* Banner Section */}
-        {subState.isExpired ? (
+        {liveSubState.isExpired ? (
           <div className="bg-red-50/80 border border-red-100 rounded-3xl p-6 md:p-8 flex items-center justify-between relative overflow-hidden shadow-sm">
              <div className="relative z-10 space-y-3">
                <div className="flex items-center gap-3">
@@ -240,7 +262,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                <Clock className="w-20 h-20 text-red-600 absolute bottom-10 -left-6 bg-red-50 rounded-full" />
              </div>
           </div>
-        ) : subState.status === 'trial' ? (
+        ) : liveSubState.status === 'trial' ? (
           <div className="bg-brand-50/80 border border-brand-100 rounded-3xl p-6 md:p-8 flex items-center justify-between relative overflow-hidden shadow-sm">
              <div className="relative z-10 space-y-3">
                <div className="flex items-center gap-3">
@@ -249,7 +271,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                  <span className="px-3 py-1 bg-brand-200/50 text-brand-700 text-[11px] font-black uppercase tracking-wider rounded-full">Active</span>
                </div>
                <p className="text-sm font-bold text-slate-700">
-                 You have {subState.daysLeft} day{subState.daysLeft !== 1 ? 's' : ''} left in your trial.
+                 You have {liveSubState.daysLeft} day{liveSubState.daysLeft !== 1 ? 's' : ''} left in your trial.
                </p>
                <p className="text-sm text-slate-500 font-medium">
                  Choose a plan early to continue using GymFlow without any interruption.

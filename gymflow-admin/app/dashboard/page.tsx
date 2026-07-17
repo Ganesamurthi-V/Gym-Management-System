@@ -4,6 +4,8 @@ import { Building2, Users, AlertTriangle, Bug, ShieldCheck, Activity } from 'luc
 import Link from 'next/link'
 import ResolveButton from '@/components/errors/ResolveButton'
 
+export const dynamic = 'force-dynamic'
+
 function StatCard({ icon, label, value, sub, color }: {
   icon: React.ReactNode, label: string, value: string | number, sub?: string, color: string
 }) {

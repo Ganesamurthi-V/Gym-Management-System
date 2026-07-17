@@ -3,6 +3,8 @@ import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getSentryIssues } from '@/lib/sentry-api'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/dashboard — aggregated dashboard stats for the mobile app
 export async function GET(req: NextRequest) {
   if (!(await verifyRequestAuth(req))) {

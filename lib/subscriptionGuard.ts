@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
+import { computeSubscriptionState } from '@/lib/subscription-utils'
 
 /**
  * requireActiveSubscription
@@ -22,19 +23,9 @@ export async function requireActiveSubscription(
     .eq('id', gymId)
     .single()
 
-  const now = new Date()
-  const isExpired =
-    !gym ||
-    gym.subscription_status === 'expired' ||
-    (gym.subscription_status === 'trial' &&
-      gym.trial_ends_at &&
-      new Date(gym.trial_ends_at) < now) ||
-    // Lapsed paid subscription the cron hasn't flipped yet (lifetime = null, never lapses)
-    (gym.subscription_status === 'active' &&
-      gym.subscription_ends_at &&
-      new Date(gym.subscription_ends_at) < now)
+  const subState = computeSubscriptionState(gym)
 
-  if (isExpired) {
+  if (subState.isExpired) {
     return {
       allowed: false,
       response: Response.json(

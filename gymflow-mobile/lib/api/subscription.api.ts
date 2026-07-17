@@ -3,7 +3,7 @@ import { parseApiError } from './error-handler';
 
 // ── Types ─────────────────────────────────────────────────────────
 
-export type SubscriptionStatus = 'trial' | 'active' | 'expired';
+export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled' | 'suspended';
 export type PlanType = 'trial' | 'monthly' | 'yearly' | 'lifetime';
 
 export type GymFlags = {

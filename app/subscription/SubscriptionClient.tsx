@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import toast from 'react-hot-toast'
 
 interface GymInfo {
   id: string
@@ -55,31 +57,47 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const [copied, setCopied] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // ── Auto-redirect when admin activates the account ────────────────────────
-  // Poll every 10 seconds. Stop polling if already active or if page unmounts.
-  const checkStatus = useCallback(async () => {
-    try {
-      const res = await fetch('/api/subscription/status', { cache: 'no-store' })
-      if (!res.ok) return
-      const json = await res.json()
-      if (json?.subscriptionStatus === 'active') {
-        window.location.href = '/dashboard'
-      }
-    } catch {
-      // ignore network errors
-    }
-  }, [])
+  const [liveRequest, setLiveRequest] = useState(latestRequest)
 
+  // ── Realtime listener for payment requests ────────────────────────
   useEffect(() => {
-    // Don't poll if already active — shouldn't happen here but guard anyway
+    // Don't listen if subscription is already fully active
     if (subState.status === 'active' && !subState.isExpired) return
-    const id = setInterval(checkStatus, 10_000)
-    return () => clearInterval(id)
-  }, [checkStatus, subState.status, subState.isExpired])
 
-  const isPending  = latestRequest?.status === 'pending'
-  const isApproved = latestRequest?.status === 'approved'
-  const isRejected = latestRequest?.status === 'rejected'
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`gym-${gym.id}-requests`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'subscription_requests',
+          filter: `gym_id=eq.${gym.id}`,
+        },
+        (payload: any) => {
+          const { status, rejection_reason } = payload.new
+          
+          setLiveRequest(prev => prev ? { ...prev, status, rejection_reason } : payload.new)
+          
+          if (status === 'rejected') {
+            toast.error('Your payment request was rejected.')
+            setSuccess(false) // If they were on the success screen, drop them back to plans
+          } else if (status === 'approved') {
+            // ShellGuard will handle the redirect, but we can show success state instantly
+            setSuccess(true)
+            toast.success('Payment approved! Redirecting...')
+          }
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [gym.id, subState.status, subState.isExpired])
+
+  const isPending  = liveRequest?.status === 'pending'
+  const isApproved = liveRequest?.status === 'approved'
+  const isRejected = liveRequest?.status === 'rejected'
 
   function copyUpi() {
     navigator.clipboard.writeText(settings.upi_id)
@@ -157,7 +175,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
           <div>
             <h2 className="text-xl font-bold text-slate-900">Payment Under Review</h2>
             <p className="text-sm text-slate-500 mt-2">
-              Submitted on {new Date(latestRequest!.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              Submitted on {liveRequest?.submitted_at ? new Date(liveRequest.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'recently'}
             </p>
           </div>
           <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -246,8 +264,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
             <XCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-base font-bold text-red-900">Your previous payment was rejected</p>
-              {latestRequest?.rejection_reason && (
-                <p className="text-sm text-red-700 mt-1 font-medium bg-red-100/50 p-2 rounded-lg inline-block">{latestRequest.rejection_reason}</p>
+              {liveRequest?.rejection_reason && (
+                <p className="text-sm text-red-700 mt-1 font-medium bg-red-100/50 p-2 rounded-lg inline-block">{liveRequest.rejection_reason}</p>
               )}
               <p className="text-sm text-red-600 mt-2">Please select a plan and submit a new payment proof.</p>
             </div>

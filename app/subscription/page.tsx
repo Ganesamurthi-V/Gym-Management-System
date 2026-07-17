@@ -37,6 +37,7 @@ export default async function SubscriptionPage() {
         name: gym.name,
         subscriptionStatus: (gym as any).subscription_status ?? 'trial',
         trialEndsAt: (gym as any).trial_ends_at ?? null,
+        subscriptionEndsAt: (gym as any).subscription_ends_at ?? null,
       }}
       subState={subState}
       latestRequest={latestRequest ?? null}

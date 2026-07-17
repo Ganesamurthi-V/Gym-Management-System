@@ -10,6 +10,7 @@ import Image from 'next/image'
 import toast from 'react-hot-toast'
 
 import TrialBanner from './TrialBanner'
+import { computeSubscriptionState } from '@/lib/subscription-utils'
 
 const SHELL_EXCLUDED = ['/auth/', '/onboarding', '/subscription']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
@@ -47,6 +48,11 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
   const [collapsed, setCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
+
+  // Live subscription state — updated in real-time via the Realtime channel.
+  // Seeded from server-rendered initial values so the first paint is instant.
+  const [liveSubStatus, setLiveSubStatus] = useState(initialSubscriptionStatus)
+  const [liveDaysLeft, setLiveDaysLeft] = useState(initialTrialDaysLeft)
 
   // Effect 1: Mount-time setup — restore sidebar state
   useEffect(() => {
@@ -138,23 +144,36 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         },
         (payload: any) => {
           const { is_active, subscription_status } = payload.new
-          
+
           if (is_active === false) {
             supabase.auth.signOut().then(() => {
               window.location.href = '/auth/login?error=blocked'
             })
             return
           }
-          
-          // Only redirect to subscription if they aren't already there and it just expired
-          if (subscription_status === 'expired' && pathname !== '/subscription') {
+
+          // Recompute subscription state from the fresh row so the banner
+          // updates immediately without waiting for a server-side re-render.
+          const newState = computeSubscriptionState(payload.new)
+          setLiveSubStatus(newState.status)
+          setLiveDaysLeft(newState.daysLeft ?? 0)
+
+          // Hard redirect cases
+          if (newState.isExpired && pathname !== '/subscription') {
             window.location.href = '/subscription'
             return
           }
-          
-          // If activated while on the paywall, show toast and redirect
-          if (subscription_status === 'active' && pathname === '/subscription') {
-            toast.success('Your subscription has been activated!')
+
+          // If subscription was just activated while the user is on the paywall
+          if (
+            (subscription_status === 'active' || subscription_status === 'trial') &&
+            pathname === '/subscription'
+          ) {
+            toast.success(
+              subscription_status === 'active'
+                ? 'Your subscription has been activated!'
+                : 'Your trial has been reset. Redirecting...'
+            )
             setTimeout(() => {
               window.location.href = '/dashboard'
             }, 1500)
@@ -275,9 +294,14 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           </div>
         </header>
 
-        {/* Trial banner — shown between header and main when subscription is trial */}
-        {(initialSubscriptionStatus === 'trial' || initialSubscriptionStatus === 'expired') && (
-          <TrialBanner daysLeft={initialTrialDaysLeft} />
+        {/* Subscription banner — shown between header and main content when
+            the subscription is on trial, expiring soon, or already expired.
+            Uses live state so the banner updates in real-time without a page reload. */}
+        {(liveSubStatus === 'trial' || liveSubStatus === 'expiring' || liveSubStatus === 'expired') && (
+          <TrialBanner
+            mode={liveSubStatus === 'expiring' ? 'expiring' : liveSubStatus === 'expired' ? 'expired' : 'trial'}
+            daysLeft={liveDaysLeft}
+          />
         )}
 
         <main className="flex-1 w-full bg-slate-50 min-w-0">

@@ -80,6 +80,7 @@ function formatCurrency(amount?: number | null): string {
 function getStatusColor(status: string) {
   switch (status) {
     case 'active': return Colors.emerald;
+    case 'expiring': return Colors.amber;
     case 'trial': return Colors.amber;
     case 'expired': return Colors.red;
     case 'cancelled': return Colors.red;
@@ -91,6 +92,7 @@ function getStatusColor(status: string) {
 function getStatusBg(status: string) {
   switch (status) {
     case 'active': return Colors.emeraldBg;
+    case 'expiring': return Colors.amberBg;
     case 'trial': return Colors.amberBg;
     case 'expired': return Colors.redBg;
     case 'cancelled': return Colors.redBg;
@@ -717,11 +719,59 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   if (!data) return null;
 
   const { gym, owner, pendingRequest, timeline, usageStats } = data;
-  const days = daysRemaining(
-    gym.subscription_status === 'trial' ? gym.trial_ends_at : gym.subscription_ends_at
-  );
-  const statusColor = getStatusColor(gym.subscription_status);
-  const statusBg = getStatusBg(gym.subscription_status);
+
+  // ── Derive effective subscription state client-side ──────────────────────
+  // This mirrors computeSubscriptionState() from the web app so the badge and
+  // status chip are always accurate even when the cron hasn't yet flipped the
+  // DB status (e.g. active → expired between cron runs).
+  const EXPIRING_SOON_DAYS = 7;
+
+  function getEffectiveState(g: typeof gym): {
+    effectiveStatus: string;
+    days: number | null;
+    isExpired: boolean;
+    isExpiringSoon: boolean;
+  } {
+    const status = g.subscription_status;
+    if (status === 'expired' || status === 'cancelled' || status === 'suspended') {
+      return { effectiveStatus: status, days: 0, isExpired: true, isExpiringSoon: false };
+    }
+    if (status === 'active') {
+      if (!g.subscription_ends_at) {
+        // Lifetime plan
+        return { effectiveStatus: 'active', days: null, isExpired: false, isExpiringSoon: false };
+      }
+      const msLeft = new Date(g.subscription_ends_at).getTime() - Date.now();
+      const d = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+      if (d <= 0) return { effectiveStatus: 'expired', days: 0, isExpired: true, isExpiringSoon: false };
+      if (d <= EXPIRING_SOON_DAYS) return { effectiveStatus: 'expiring', days: d, isExpired: false, isExpiringSoon: true };
+      return { effectiveStatus: 'active', days: d, isExpired: false, isExpiringSoon: false };
+    }
+    if (status === 'trial') {
+      if (!g.trial_ends_at) return { effectiveStatus: 'expired', days: 0, isExpired: true, isExpiringSoon: false };
+      const msLeft = new Date(g.trial_ends_at).getTime() - Date.now();
+      const d = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+      if (d <= 0) return { effectiveStatus: 'expired', days: 0, isExpired: true, isExpiringSoon: false };
+      return { effectiveStatus: 'trial', days: d, isExpired: false, isExpiringSoon: d <= EXPIRING_SOON_DAYS };
+    }
+    return { effectiveStatus: 'expired', days: 0, isExpired: true, isExpiringSoon: false };
+  }
+
+  const { effectiveStatus, days, isExpired, isExpiringSoon } = getEffectiveState(gym);
+
+  // Auto-refresh when the local calculation has detected expiry but the DB
+  // row still carries the old status. This covers the gap between cron runs.
+  // We fire once, not in a loop — the refresh will pull the fresh DB row.
+  const autoRefreshFiredRef = React.useRef(false);
+  if (isExpired && gym.subscription_status !== 'expired' && !autoRefreshFiredRef.current) {
+    autoRefreshFiredRef.current = true;
+    // Defer to avoid calling setState during render
+    setTimeout(() => loadData(true), 0);
+  }
+
+  // Use the effective status for colour-coding so the UI is always consistent
+  const statusColor = getStatusColor(effectiveStatus);
+  const statusBg = getStatusBg(effectiveStatus);
 
   // Renewal history = timeline items that have plan info (successful activations)
   const renewalHistory = timeline.filter(l =>
@@ -825,7 +875,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             <InfoRow label="Phone" value={gym.phone || '—'} />
             <View style={styles.statusRow}>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.statusText, { color: statusColor }]}>{gym.subscription_status.charAt(0).toUpperCase() + gym.subscription_status.slice(1)}</Text>
+              <Text style={[styles.statusText, { color: statusColor }]}>{effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1)}</Text>
               <StatusChip label={gym.plan_type.charAt(0).toUpperCase() + gym.plan_type.slice(1)} color={Colors.indigo} bg={Colors.indigoBg} />
             </View>
             <View style={styles.dateGrid}>
@@ -841,7 +891,13 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             {days !== null && (
               <View style={[styles.daysRemainingBadge, { backgroundColor: getDaysBadgeColor(days) + '22', borderColor: getDaysBadgeColor(days) + '55' }]}>
                 <Feather name="clock" size={13} color={getDaysBadgeColor(days)} />
-                <Text style={[styles.daysRemainingText, { color: getDaysBadgeColor(days) }]}>{days > 0 ? `${days} Days Remaining` : 'Expired'}</Text>
+                <Text style={[styles.daysRemainingText, { color: getDaysBadgeColor(days) }]}>
+                  {isExpired
+                    ? 'Expired'
+                    : isExpiringSoon
+                      ? `Expiring in ${days} Day${days !== 1 ? 's' : ''} — Renew Soon`
+                      : `${days} Days Remaining`}
+                </Text>
               </View>
             )}
             {gym.plan_type === 'lifetime' && (

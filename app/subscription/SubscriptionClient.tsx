@@ -17,12 +17,14 @@ interface GymInfo {
   name: string
   subscriptionStatus: string
   trialEndsAt: string | null
+  subscriptionEndsAt: string | null
 }
 
 interface SubState {
   status: string
   daysLeft: number | null
   isExpired: boolean
+  isExpiringSoon?: boolean
 }
 
 interface LatestRequest {
@@ -170,8 +172,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     'Regular feature updates'
   ]
 
-  // If subscription is active, show simple active state
-  if (liveSubState.status === 'active' && !liveSubState.isExpired) {
+  // If subscription is active (not expiring soon), show simple active state
+  if (liveSubState.status === 'active' && !liveSubState.isExpired && !liveSubState.isExpiringSoon) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl border border-emerald-200 p-10 text-center space-y-4 shadow-sm max-w-md w-full">
@@ -245,21 +247,46 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
              <div className="relative z-10 space-y-3">
                <div className="flex items-center gap-3">
                  <AlertCircle className="w-6 h-6 text-red-500" />
-                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Your Trial Has Expired</h2>
+                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                   {liveSubState.status === 'trial' || gym.subscriptionStatus === 'trial'
+                     ? 'Your Trial Has Expired'
+                     : 'Your Subscription Has Expired'}
+                 </h2>
                  <span className="px-3 py-1 bg-red-200/50 text-red-700 text-[11px] font-black uppercase tracking-wider rounded-full">Expired</span>
                </div>
                <p className="text-sm font-bold text-slate-700">
-                 Your 14-day free trial ended on {gym.trialEndsAt ? new Date(gym.trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'recently'}.
+                 {gym.subscriptionStatus === 'trial'
+                   ? `Your 14-day free trial ended on ${gym.trialEndsAt ? new Date(gym.trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'recently'}.`
+                   : `Your subscription ended on ${gym.subscriptionEndsAt ? new Date(gym.subscriptionEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'recently'}.`}
                </p>
                <p className="text-sm text-slate-500 font-medium">
                  Choose a plan and continue using GymFlow without any interruption.
                </p>
              </div>
-             
-             {/* Decorative Graphic */}
              <div className="hidden md:flex absolute -right-6 -bottom-8 opacity-20 transform rotate-[-10deg]">
                <Calendar className="w-48 h-48 text-red-500" />
                <Clock className="w-20 h-20 text-red-600 absolute bottom-10 -left-6 bg-red-50 rounded-full" />
+             </div>
+          </div>
+        ) : (liveSubState.status === 'expiring' || liveSubState.isExpiringSoon) ? (
+          <div className="bg-amber-50/80 border border-amber-200 rounded-3xl p-6 md:p-8 flex items-center justify-between relative overflow-hidden shadow-sm">
+             <div className="relative z-10 space-y-3">
+               <div className="flex items-center gap-3">
+                 <AlertCircle className="w-6 h-6 text-amber-500" />
+                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Your Subscription is Expiring Soon</h2>
+                 <span className="px-3 py-1 bg-amber-200/50 text-amber-700 text-[11px] font-black uppercase tracking-wider rounded-full">Expiring</span>
+               </div>
+               <p className="text-sm font-bold text-slate-700">
+                 {liveSubState.daysLeft != null && liveSubState.daysLeft <= 1
+                   ? 'Your subscription expires today!'
+                   : `Your subscription expires in ${liveSubState.daysLeft} day${liveSubState.daysLeft !== 1 ? 's' : ''}.`}
+               </p>
+               <p className="text-sm text-slate-500 font-medium">
+                 Renew now to keep uninterrupted access to all GymFlow features.
+               </p>
+             </div>
+             <div className="hidden md:flex absolute -right-6 -bottom-8 opacity-20 transform rotate-[-10deg]">
+               <Clock className="w-48 h-48 text-amber-500" />
              </div>
           </div>
         ) : liveSubState.status === 'trial' ? (

@@ -61,6 +61,16 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       .limit(1)
       .maybeSingle()
 
+    let pendingRequestWithUrl = pendingRequest || null;
+    if (pendingRequestWithUrl?.uploaded_file_url) {
+      const { data } = await supabase.storage
+        .from('payment-proofs')
+        .createSignedUrl(pendingRequestWithUrl.uploaded_file_url, 3600)
+      if (data?.signedUrl) {
+        pendingRequestWithUrl = { ...pendingRequestWithUrl, uploaded_file_url: data.signedUrl }
+      }
+    }
+
     // Fetch last approved payment info
     const { data: lastApprovedRequest } = await supabase
       .from('subscription_requests')
@@ -70,6 +80,16 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       .order('reviewed_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+
+    let lastApprovedRequestWithUrl = lastApprovedRequest || null;
+    if (lastApprovedRequestWithUrl?.uploaded_file_url) {
+      const { data } = await supabase.storage
+        .from('payment-proofs')
+        .createSignedUrl(lastApprovedRequestWithUrl.uploaded_file_url, 3600)
+      if (data?.signedUrl) {
+        lastApprovedRequestWithUrl = { ...lastApprovedRequestWithUrl, uploaded_file_url: data.signedUrl }
+      }
+    }
 
     // Fetch audit timeline (last 50)
     const { data: timeline } = await supabase
@@ -89,8 +109,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     return NextResponse.json({
       gym,
       owner,
-      pendingRequest: pendingRequest || null,
-      lastApprovedRequest: lastApprovedRequest || null,
+      pendingRequest: pendingRequestWithUrl,
+      lastApprovedRequest: lastApprovedRequestWithUrl,
       timeline: timeline || [],
       usageStats: usageStats || null,
     })

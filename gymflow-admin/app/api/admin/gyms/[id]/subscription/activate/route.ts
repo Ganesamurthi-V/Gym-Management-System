@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       endsAt = null
     }
 
-    // Update gym
+    // Update gym — always clear trial fields when activating a paid plan
     const { error: updateError } = await supabase
       .from('gyms')
       .update({
@@ -54,6 +54,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         plan_type: plan,
         subscription_started_at: now.toISOString(),
         subscription_ends_at: endsAt,
+        // Clear trial remnants so middleware sees a clean 'active' state
+        trial_ends_at: null,
+        last_payment_status: 'paid',
+        last_payment_date: now.toISOString(),
       })
       .eq('id', id)
     if (updateError) throw updateError

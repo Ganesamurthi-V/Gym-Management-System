@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Clock, CheckCircle, XCircle, Upload, Copy, CreditCard,
   RefreshCw, MessageCircle, AlertCircle, ArrowRight, Shield,
@@ -54,6 +54,28 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // ── Auto-redirect when admin activates the account ────────────────────────
+  // Poll every 10 seconds. Stop polling if already active or if page unmounts.
+  const checkStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/subscription/status', { cache: 'no-store' })
+      if (!res.ok) return
+      const json = await res.json()
+      if (json?.subscriptionStatus === 'active') {
+        window.location.href = '/dashboard'
+      }
+    } catch {
+      // ignore network errors
+    }
+  }, [])
+
+  useEffect(() => {
+    // Don't poll if already active — shouldn't happen here but guard anyway
+    if (subState.status === 'active' && !subState.isExpired) return
+    const id = setInterval(checkStatus, 10_000)
+    return () => clearInterval(id)
+  }, [checkStatus, subState.status, subState.isExpired])
 
   const isPending  = latestRequest?.status === 'pending'
   const isApproved = latestRequest?.status === 'approved'

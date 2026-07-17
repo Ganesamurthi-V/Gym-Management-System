@@ -82,6 +82,8 @@ function getStatusColor(status: string) {
     case 'active': return Colors.emerald;
     case 'trial': return Colors.amber;
     case 'expired': return Colors.red;
+    case 'cancelled': return Colors.red;
+    case 'suspended': return Colors.amber;
     default: return Colors.textMuted;
   }
 }
@@ -91,6 +93,8 @@ function getStatusBg(status: string) {
     case 'active': return Colors.emeraldBg;
     case 'trial': return Colors.amberBg;
     case 'expired': return Colors.redBg;
+    case 'cancelled': return Colors.redBg;
+    case 'suspended': return Colors.amberBg;
     default: return Colors.bgInput;
   }
 }

@@ -135,7 +135,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
   // Effect 3: Realtime subscription status update when on paywall
   useEffect(() => {
-    if (pathname === '/subscription' && initialSubscriptionStatus === 'expired') {
+    if (pathname === '/subscription' && initialSubscriptionStatus !== 'active') {
       const supabase = createClient()
       const channel = supabase
         .channel(`gym-${initialGym?.id}-subscription`)

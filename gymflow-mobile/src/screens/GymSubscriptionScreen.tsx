@@ -495,10 +495,23 @@ const qaStyles = StyleSheet.create({
   text: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
 });
 
+// ─── Tab Bar ───────────────────────────────────────────────────────────────────
+const TABS = [
+  { key: 'overview', label: 'Overview', icon: 'activity' },
+  { key: 'billing',  label: 'Billing',  icon: 'credit-card' },
+  { key: 'history',  label: 'History',  icon: 'list' },
+  { key: 'settings', label: 'Settings', icon: 'settings' },
+] as const;
+
+type TabKey = typeof TABS[number]['key'];
+
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 
 export default function GymSubscriptionScreen({ route, navigation }: Props) {
   const { gymId } = route.params;
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   // Load state
   const [loading, setLoading] = useState(true);
@@ -769,523 +782,301 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: 160 }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadData(true)}
-            tintColor={Colors.indigo}
-          />
-        }
-      >
-        {/* ─── 1. Gym Information Card ─────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="activity" title="Gym Information" color={Colors.indigo} />
-          <View style={styles.gymHeroRow}>
-            <View style={styles.gymAvatar}>
-              <Text style={styles.gymAvatarText}>{gym.name.charAt(0).toUpperCase()}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.gymName}>{gym.name}</Text>
-              {gym.city && <Text style={styles.gymCity}>📍 {gym.city}</Text>}
-            </View>
-            <StatusChip
-              label={gym.is_active ? 'Active' : 'Banned'}
-              color={gym.is_active ? Colors.emerald : Colors.red}
-              bg={gym.is_active ? Colors.emeraldBg : Colors.redBg}
-            />
-          </View>
-          <Divider />
-          <InfoRow label="Owner" value={owner?.email || gym.owner_id} />
-          <InfoRow label="Gym ID" value={gym.id} mono />
-          <InfoRow label="Phone" value={gym.phone || '—'} />
-          <InfoRow label="Email" value={owner?.email || '—'} />
-          <InfoRow label="Joined" value={fmtDate(gym.created_at)} />
-          {gym.is_vip && (
-            <View style={styles.vipBadge}>
-              <Feather name="star" size={12} color={Colors.amber} />
-              <Text style={styles.vipText}>VIP Customer</Text>
-            </View>
-          )}
-        </View>
+      {/* ─── Tab Bar ──────────────────────────────────────────────── */}
+      <View style={styles.tabBar}>
+        {TABS.map(tab => {
+          const isActive = activeTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+              onPress={() => setActiveTab(tab.key)}
+            >
+              <Feather name={tab.icon as any} size={16} color={isActive ? Colors.indigo : Colors.textMuted} />
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
-        {/* ─── 2. Subscription Status Card ─────────────── */}
-        <View style={[styles.card, { borderColor: statusColor + '44' }]}>
-          <SectionHeader icon="credit-card" title="Subscription Status" color={statusColor} />
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {gym.subscription_status.charAt(0).toUpperCase() + gym.subscription_status.slice(1)}
-            </Text>
-            <StatusChip
-              label={gym.plan_type.charAt(0).toUpperCase() + gym.plan_type.slice(1)}
-              color={Colors.indigo}
-              bg={Colors.indigoBg}
-            />
-          </View>
-          <View style={styles.dateGrid}>
-            <View style={styles.dateCell}>
-              <Text style={styles.dateCellLabel}>Started</Text>
-              <Text style={styles.dateCellValue}>
-                {fmtDate(gym.subscription_started_at || gym.trial_started_at)}
-              </Text>
+      {/* ─── OVERVIEW TAB ─────────────────────────────────────────── */}
+      {activeTab === 'overview' && (
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.indigo} />}>
+          <View style={styles.card}>
+            <SectionHeader icon="activity" title="Gym Information" color={Colors.indigo} />
+            <View style={styles.gymHeroRow}>
+              <View style={styles.gymAvatar}>
+                <Text style={styles.gymAvatarText}>{gym.name.charAt(0).toUpperCase()}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.gymName}>{gym.name}</Text>
+                {gym.city && <Text style={styles.gymCity}>📍 {gym.city}</Text>}
+              </View>
+              <StatusChip label={gym.is_active ? 'Active' : 'Banned'} color={gym.is_active ? Colors.emerald : Colors.red} bg={gym.is_active ? Colors.emeraldBg : Colors.redBg} />
             </View>
-            <View style={styles.dateCell}>
-              <Text style={styles.dateCellLabel}>Expires</Text>
-              <Text style={styles.dateCellValue}>
-                {gym.plan_type === 'lifetime'
-                  ? 'Never'
-                  : fmtDate(gym.subscription_ends_at || gym.trial_ends_at)}
-              </Text>
-            </View>
-          </View>
-          {days !== null && (
-            <View style={[styles.daysRemainingBadge, { backgroundColor: getDaysBadgeColor(days) + '22', borderColor: getDaysBadgeColor(days) + '55' }]}>
-              <Feather name="clock" size={13} color={getDaysBadgeColor(days)} />
-              <Text style={[styles.daysRemainingText, { color: getDaysBadgeColor(days) }]}>
-                {days > 0 ? `${days} Days Remaining` : 'Expired'}
-              </Text>
-            </View>
-          )}
-          {gym.plan_type === 'lifetime' && (
-            <View style={[styles.daysRemainingBadge, { backgroundColor: Colors.emeraldBg, borderColor: Colors.emeraldBorder }]}>
-              <Feather name="infinity" size={13} color={Colors.emerald} />
-              <Text style={[styles.daysRemainingText, { color: Colors.emerald }]}>Lifetime Access</Text>
-            </View>
-          )}
-        </View>
-
-        {/* ─── 3. Trial Information Card (conditional) ─── */}
-        {gym.subscription_status === 'trial' && (
-          <View style={[styles.card, { borderColor: Colors.amberBorder }]}>
-            <SectionHeader icon="clock" title="Trial Information" color={Colors.amber} />
-            <InfoRow label="Trial Started" value={fmtDate(gym.trial_started_at)} />
-            <InfoRow label="Trial Ends" value={fmtDate(gym.trial_ends_at)} />
             <Divider />
-            <Text style={styles.subLabel}>EXTEND TRIAL</Text>
-            <View style={styles.trialBtnRow}>
-              {[3, 7, 14].map(d => (
-                <TouchableOpacity
-                  key={d}
-                  style={styles.trialExtBtn}
-                  disabled={actionLoading}
-                  onPress={() => confirmAction({
-                    title: `Extend Trial by ${d} Days?`,
-                    message: `This will add ${d} days to the current trial expiry date.`,
-                    confirmLabel: `+${d} Days`,
-                    confirmColor: Colors.amber,
-                    onConfirm: () => doAction(() => extendTrial(gymId, 'extend', d)),
-                  })}
-                >
-                  <Text style={styles.trialExtBtnText}>+{d} Days</Text>
+            <InfoRow label="Owner" value={owner?.email || gym.owner_id} />
+            <InfoRow label="Phone" value={gym.phone || '—'} />
+            <View style={styles.statusRow}>
+              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <Text style={[styles.statusText, { color: statusColor }]}>{gym.subscription_status.charAt(0).toUpperCase() + gym.subscription_status.slice(1)}</Text>
+              <StatusChip label={gym.plan_type.charAt(0).toUpperCase() + gym.plan_type.slice(1)} color={Colors.indigo} bg={Colors.indigoBg} />
+            </View>
+            <View style={styles.dateGrid}>
+              <View style={styles.dateCell}>
+                <Text style={styles.dateCellLabel}>Started</Text>
+                <Text style={styles.dateCellValue}>{fmtDate(gym.subscription_started_at || gym.trial_started_at)}</Text>
+              </View>
+              <View style={styles.dateCell}>
+                <Text style={styles.dateCellLabel}>Expires</Text>
+                <Text style={styles.dateCellValue}>{gym.plan_type === 'lifetime' ? 'Never' : fmtDate(gym.subscription_ends_at || gym.trial_ends_at)}</Text>
+              </View>
+            </View>
+            {days !== null && (
+              <View style={[styles.daysRemainingBadge, { backgroundColor: getDaysBadgeColor(days) + '22', borderColor: getDaysBadgeColor(days) + '55' }]}>
+                <Feather name="clock" size={13} color={getDaysBadgeColor(days)} />
+                <Text style={[styles.daysRemainingText, { color: getDaysBadgeColor(days) }]}>{days > 0 ? `${days} Days Remaining` : 'Expired'}</Text>
+              </View>
+            )}
+            {gym.plan_type === 'lifetime' && (
+              <View style={[styles.daysRemainingBadge, { backgroundColor: Colors.emeraldBg, borderColor: Colors.emeraldBorder }]}>
+                <Feather name="infinity" size={13} color={Colors.emerald} />
+                <Text style={[styles.daysRemainingText, { color: Colors.emerald }]}>Lifetime Access</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.card}>
+            <SectionHeader icon="zap" title="Quick Actions" color={Colors.purple} />
+            {actionLoading && (
+              <View style={styles.actionLoading}><ActivityIndicator color={Colors.indigo} size="small" /><Text style={styles.actionLoadingText}>Processing...</Text></View>
+            )}
+            <View style={styles.quickActionsGrid}>
+              <QuickActionBtn icon="check-circle" label="Activate Monthly" color={Colors.emerald} bg={Colors.emeraldBg} disabled={actionLoading} onPress={() => confirmAction({ title: 'Activate Monthly Subscription?', message: 'This will activate a Monthly subscription starting today for 30 days.', confirmLabel: 'Activate', confirmColor: Colors.emerald, onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')) })} />
+              <QuickActionBtn icon="calendar" label="Activate Yearly" color={Colors.indigo} bg={Colors.indigoBg} disabled={actionLoading} onPress={() => confirmAction({ title: 'Activate Yearly Subscription?', message: 'This will activate a Yearly subscription starting today for 365 days.', confirmLabel: 'Activate', confirmColor: Colors.indigo, onConfirm: () => doAction(() => activateSubscription(gymId, 'yearly')) })} />
+              <QuickActionBtn icon="star" label="Activate Lifetime" color={Colors.amber} bg={Colors.amberBg} disabled={actionLoading} onPress={() => confirmAction({ title: 'Activate Lifetime Subscription?', message: 'This will grant permanent lifetime access. This cannot be automatically reversed.', confirmLabel: 'Activate', confirmColor: Colors.amber, onConfirm: () => doAction(() => activateSubscription(gymId, 'lifetime')) })} />
+              <QuickActionBtn icon="clock" label="Extend Trial" color={Colors.sky} bg={Colors.skyBg} disabled={actionLoading} onPress={() => confirmAction({ title: 'Extend Trial by 7 Days?', message: 'This will add 7 more days to the current trial expiry.', confirmLabel: 'Extend', confirmColor: Colors.sky, onConfirm: () => doAction(() => extendTrial(gymId, 'extend', 7)) })} />
+              <QuickActionBtn icon="refresh-cw" label="Reset Trial" color={Colors.purple} bg={Colors.purpleBg} disabled={actionLoading} onPress={() => confirmAction({ title: 'Reset Trial?', message: 'This will reset the trial to a fresh 14-day trial starting today.', confirmLabel: 'Reset', confirmColor: Colors.purple, onConfirm: () => doAction(() => extendTrial(gymId, 'reset')) })} />
+              <QuickActionBtn icon="x-circle" label="Expire Now" color={Colors.red} bg={Colors.redBg} disabled={actionLoading} onPress={() => confirmAction({ title: 'Expire Subscription Now?', message: 'This will immediately mark the subscription as expired. The gym owner will lose access.', confirmLabel: 'Expire Now', confirmColor: Colors.red, onConfirm: () => doAction(() => expireSubscription(gymId, 'Admin forced expiry')) })} />
+            </View>
+          </View>
+
+          {pendingRequest && (
+            <View style={[styles.card, { borderColor: Colors.amberBorder }]}>
+              <SectionHeader icon="alert-circle" title="Pending Renewal Request" color={Colors.amber} />
+              <View style={[styles.pendingBadge]}>
+                <View style={styles.pendingDot} />
+                <Text style={styles.pendingText}>Pending Verification</Text>
+              </View>
+              <InfoRow label="Submitted" value={fmtDateTime(pendingRequest.submitted_at)} />
+              <InfoRow label="Transaction ID" value={pendingRequest.transaction_id || '—'} mono />
+              {pendingRequest.notes && (
+                <View style={styles.pendingNotes}><Text style={styles.pendingNoteText}>{pendingRequest.notes}</Text></View>
+              )}
+              {pendingRequest.uploaded_file_url && (
+                <TouchableOpacity style={styles.viewScreenshotBtn} onPress={() => Linking.openURL(pendingRequest.uploaded_file_url)}>
+                  <Feather name="image" size={14} color={Colors.indigo} />
+                  <Text style={styles.viewScreenshotText}>View Payment Screenshot</Text>
                 </TouchableOpacity>
+              )}
+              <View style={styles.approveRejectRow}>
+                <TouchableOpacity style={[styles.approveBtn]} disabled={actionLoading} onPress={() => confirmAction({ title: 'Approve Payment?', message: `Approve the payment for ${gym.name} and activate Monthly plan?`, confirmLabel: 'Approve', confirmColor: Colors.emerald, onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, 'monthly')) })}>
+                  <Feather name="check" size={14} color={Colors.emerald} />
+                  <Text style={[styles.approveRejectText, { color: Colors.emerald }]}>Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.rejectBtn]} disabled={actionLoading} onPress={() => { setRejectionReason(''); confirmAction({ title: 'Reject Payment?', message: 'Please provide a reason for rejection. This will be visible to the gym owner.', confirmLabel: 'Reject', confirmColor: Colors.red, inputPlaceholder: 'Rejection reason (required)...', inputValue: rejectionReason, onInputChange: setRejectionReason, onConfirm: () => { const reason = confirmDialog.inputValue || rejectionReason; if (!reason?.trim()) { Alert.alert('Required', 'Please enter a rejection reason'); return; } doAction(() => rejectPayment(gymId, pendingRequest.id, reason)); } }); }}>
+                  <Feather name="x" size={14} color={Colors.red} />
+                  <Text style={[styles.approveRejectText, { color: Colors.red }]}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.card}>
+            <SectionHeader icon="bar-chart-2" title="Usage Statistics" color={Colors.sky} />
+            <View style={styles.statsGrid}>
+              {[
+                { label: 'Members', value: usageStats?.total_members?.toLocaleString() || '0', icon: 'users', color: Colors.indigo },
+                { label: 'Revenue', value: formatCurrency(usageStats?.total_revenue), icon: 'trending-up', color: Colors.emerald },
+                { label: 'Attendance', value: usageStats?.total_attendance?.toLocaleString() || '0', icon: 'activity', color: Colors.sky },
+                { label: 'WhatsApp', value: `${usageStats?.whatsapp_sent?.toLocaleString() || '0'} msgs`, icon: 'message-circle', color: '#25D366' },
+                { label: 'Payments', value: usageStats?.total_payments?.toLocaleString() || '0', icon: 'credit-card', color: Colors.amber },
+                { label: 'Reports', value: usageStats?.reports_generated?.toLocaleString() || '0', icon: 'file-text', color: Colors.purple },
+                { label: 'Storage', value: usageStats?.storage_used_kb ? `${(usageStats.storage_used_kb / 1024).toFixed(1)} MB` : '0 MB', icon: 'hard-drive', color: Colors.textSecondary },
+                { label: 'Last Active', value: usageStats?.last_active_at ? fmtDate(usageStats.last_active_at) : '—', icon: 'clock', color: Colors.textMuted },
+              ].map((stat, i) => (
+                <View key={i} style={styles.statCell}>
+                  <Feather name={stat.icon as any} size={16} color={stat.color} />
+                  <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
               ))}
-              <TouchableOpacity
-                style={[styles.trialExtBtn, { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder }]}
-                disabled={actionLoading}
-                onPress={() => confirmAction({
-                  title: 'Extend Trial by Custom Days?',
-                  message: 'Enter number of days to extend the trial.',
-                  confirmLabel: 'Extend',
-                  confirmColor: Colors.indigo,
-                  inputPlaceholder: 'Number of days (e.g. 10)',
-                  inputValue: customTrialDays,
-                  onInputChange: setCustomTrialDays,
-                  onConfirm: () => doAction(() => extendTrial(gymId, 'custom', parseInt(confirmDialog.inputValue || '7', 10))),
-                })}
-              >
-                <Text style={[styles.trialExtBtnText, { color: Colors.indigo }]}>Custom</Text>
-              </TouchableOpacity>
             </View>
           </View>
-        )}
+        </ScrollView>
+      )}
 
-        {/* ─── 4. Quick Subscription Actions ──────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="zap" title="Quick Actions" color={Colors.purple} />
-          {actionLoading && (
-            <View style={styles.actionLoading}>
-              <ActivityIndicator color={Colors.indigo} size="small" />
-              <Text style={styles.actionLoadingText}>Processing...</Text>
-            </View>
-          )}
-          <View style={styles.quickActionsGrid}>
-            <QuickActionBtn
-              icon="check-circle" label="Activate Monthly"
-              color={Colors.emerald} bg={Colors.emeraldBg}
-              disabled={actionLoading}
-              onPress={() => confirmAction({
-                title: 'Activate Monthly Subscription?',
-                message: 'This will activate a Monthly subscription starting today for 30 days.',
-                confirmLabel: 'Activate', confirmColor: Colors.emerald,
-                onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')),
-              })}
-            />
-            <QuickActionBtn
-              icon="calendar" label="Activate Yearly"
-              color={Colors.indigo} bg={Colors.indigoBg}
-              disabled={actionLoading}
-              onPress={() => confirmAction({
-                title: 'Activate Yearly Subscription?',
-                message: 'This will activate a Yearly subscription starting today for 365 days.',
-                confirmLabel: 'Activate', confirmColor: Colors.indigo,
-                onConfirm: () => doAction(() => activateSubscription(gymId, 'yearly')),
-              })}
-            />
-            <QuickActionBtn
-              icon="star" label="Activate Lifetime"
-              color={Colors.amber} bg={Colors.amberBg}
-              disabled={actionLoading}
-              onPress={() => confirmAction({
-                title: 'Activate Lifetime Subscription?',
-                message: 'This will grant permanent lifetime access. This cannot be automatically reversed.',
-                confirmLabel: 'Activate', confirmColor: Colors.amber,
-                onConfirm: () => doAction(() => activateSubscription(gymId, 'lifetime')),
-              })}
-            />
-            <QuickActionBtn
-              icon="clock" label="Extend Trial"
-              color={Colors.sky} bg={Colors.skyBg}
-              disabled={actionLoading}
-              onPress={() => confirmAction({
-                title: 'Extend Trial by 7 Days?',
-                message: 'This will add 7 more days to the current trial expiry.',
-                confirmLabel: 'Extend', confirmColor: Colors.sky,
-                onConfirm: () => doAction(() => extendTrial(gymId, 'extend', 7)),
-              })}
-            />
-            <QuickActionBtn
-              icon="refresh-cw" label="Reset Trial"
-              color={Colors.purple} bg={Colors.purpleBg}
-              disabled={actionLoading}
-              onPress={() => confirmAction({
-                title: 'Reset Trial?',
-                message: 'This will reset the trial to a fresh 14-day trial starting today.',
-                confirmLabel: 'Reset', confirmColor: Colors.purple,
-                onConfirm: () => doAction(() => extendTrial(gymId, 'reset')),
-              })}
-            />
-            <QuickActionBtn
-              icon="x-circle" label="Expire Now"
-              color={Colors.red} bg={Colors.redBg}
-              disabled={actionLoading}
-              onPress={() => confirmAction({
-                title: 'Expire Subscription Now?',
-                message: 'This will immediately mark the subscription as expired. The gym owner will lose access.',
-                confirmLabel: 'Expire Now', confirmColor: Colors.red,
-                onConfirm: () => doAction(() => expireSubscription(gymId, 'Admin forced expiry')),
-              })}
-            />
+      {/* ─── BILLING TAB ────────────────────────────────────────────── */}
+      {activeTab === 'billing' && (
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.indigo} />}>
+          <View style={styles.card}>
+            <SectionHeader icon="dollar-sign" title="Payment Information" color={Colors.emerald} />
+            <InfoRow label="Last Amount" value={formatCurrency(gym.last_payment_amount)} />
+            <InfoRow label="Payment Method" value={gym.last_payment_method || '—'} />
+            <InfoRow label="Transaction ID" value={gym.last_transaction_id || '—'} mono />
+            <InfoRow label="Payment Date" value={fmtDate(gym.last_payment_date)} />
+            <InfoRow label="Payment Status" value={gym.last_payment_status === 'paid' ? '✅ Paid' : gym.last_payment_status === 'pending' ? '🟡 Pending' : gym.last_payment_status === 'failed' ? '❌ Failed' : '—'} />
           </View>
-        </View>
 
-        {/* ─── 5. Subscription Dates ───────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="calendar" title="Subscription Dates" color={Colors.indigo} />
-          <DateCard
-            label="Subscription Started"
-            value={subStartDate}
-            onChange={d => { setSubStartDate(d); setDatesChanged(true); setDirty(true); }}
-          />
-          <DateCard
-            label="Subscription Ends"
-            value={subEndDate}
-            onChange={d => { setSubEndDate(d); setDatesChanged(true); setDirty(true); }}
-          />
-          <Divider />
-          <DateCard
-            label="Trial Started"
-            value={trialStartDate}
-            onChange={d => { setTrialStartDate(d); setDatesChanged(true); setDirty(true); }}
-          />
-          <DateCard
-            label="Trial Ends"
-            value={trialEndDate}
-            onChange={d => { setTrialEndDate(d); setDatesChanged(true); setDirty(true); }}
-          />
-        </View>
+          <View style={styles.card}>
+            <SectionHeader icon="calendar" title="Subscription Dates" color={Colors.indigo} />
+            <DateCard label="Subscription Started" value={subStartDate} onChange={d => { setSubStartDate(d); setDatesChanged(true); setDirty(true); }} />
+            <DateCard label="Subscription Ends" value={subEndDate} onChange={d => { setSubEndDate(d); setDatesChanged(true); setDirty(true); }} />
+            <Divider />
+            <DateCard label="Trial Started" value={trialStartDate} onChange={d => { setTrialStartDate(d); setDatesChanged(true); setDirty(true); }} />
+            <DateCard label="Trial Ends" value={trialEndDate} onChange={d => { setTrialEndDate(d); setDatesChanged(true); setDirty(true); }} />
+          </View>
 
-        {/* ─── 6. Payment Information ──────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="dollar-sign" title="Payment Information" color={Colors.emerald} />
-          <InfoRow label="Last Amount" value={formatCurrency(gym.last_payment_amount)} />
-          <InfoRow label="Payment Method" value={gym.last_payment_method || '—'} />
-          <InfoRow label="Transaction ID" value={gym.last_transaction_id || '—'} mono />
-          <InfoRow label="Payment Date" value={fmtDate(gym.last_payment_date)} />
-          <InfoRow label="Payment Status" value={
-            gym.last_payment_status === 'paid' ? '✅ Paid' :
-            gym.last_payment_status === 'pending' ? '🟡 Pending' :
-            gym.last_payment_status === 'failed' ? '❌ Failed' : '—'
-          } />
-        </View>
-
-        {/* ─── 7. Pending Renewal Request ──────────────── */}
-        {pendingRequest && (
-          <View style={[styles.card, { borderColor: Colors.amberBorder }]}>
-            <SectionHeader icon="alert-circle" title="Pending Renewal Request" color={Colors.amber} />
-            <View style={[styles.pendingBadge]}>
-              <View style={styles.pendingDot} />
-              <Text style={styles.pendingText}>Pending Verification</Text>
-            </View>
-            <InfoRow label="Submitted" value={fmtDateTime(pendingRequest.submitted_at)} />
-            <InfoRow label="Transaction ID" value={pendingRequest.transaction_id || '—'} mono />
-            {pendingRequest.notes && (
-              <View style={styles.pendingNotes}>
-                <Text style={styles.pendingNoteText}>{pendingRequest.notes}</Text>
+          {gym.subscription_status === 'trial' && (
+            <View style={[styles.card, { borderColor: Colors.amberBorder }]}>
+              <SectionHeader icon="clock" title="Trial Information" color={Colors.amber} />
+              <InfoRow label="Trial Started" value={fmtDate(gym.trial_started_at)} />
+              <InfoRow label="Trial Ends" value={fmtDate(gym.trial_ends_at)} />
+              <Divider />
+              <Text style={styles.subLabel}>EXTEND TRIAL</Text>
+              <View style={styles.trialBtnRow}>
+                {[3, 7, 14].map(d => (
+                  <TouchableOpacity key={d} style={styles.trialExtBtn} disabled={actionLoading} onPress={() => confirmAction({ title: `Extend Trial by ${d} Days?`, message: `This will add ${d} days to the current trial expiry date.`, confirmLabel: `+${d} Days`, confirmColor: Colors.amber, onConfirm: () => doAction(() => extendTrial(gymId, 'extend', d)) })}>
+                    <Text style={styles.trialExtBtnText}>+{d} Days</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={[styles.trialExtBtn, { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder }]} disabled={actionLoading} onPress={() => confirmAction({ title: 'Extend Trial by Custom Days?', message: 'Enter number of days to extend the trial.', confirmLabel: 'Extend', confirmColor: Colors.indigo, inputPlaceholder: 'Number of days (e.g. 10)', inputValue: customTrialDays, onInputChange: setCustomTrialDays, onConfirm: () => doAction(() => extendTrial(gymId, 'custom', parseInt(confirmDialog.inputValue || '7', 10))) })}>
+                  <Text style={[styles.trialExtBtnText, { color: Colors.indigo }]}>Custom</Text>
+                </TouchableOpacity>
               </View>
-            )}
-            {pendingRequest.uploaded_file_url && (
-              <TouchableOpacity
-                style={styles.viewScreenshotBtn}
-                onPress={() => Linking.openURL(pendingRequest.uploaded_file_url)}
-              >
-                <Feather name="image" size={14} color={Colors.indigo} />
-                <Text style={styles.viewScreenshotText}>View Payment Screenshot</Text>
-              </TouchableOpacity>
-            )}
-            <View style={styles.approveRejectRow}>
-              <TouchableOpacity
-                style={[styles.approveBtn]}
-                disabled={actionLoading}
-                onPress={() => confirmAction({
-                  title: 'Approve Payment?',
-                  message: `Approve the payment for ${gym.name} and activate Monthly plan?`,
-                  confirmLabel: 'Approve', confirmColor: Colors.emerald,
-                  onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, 'monthly')),
-                })}
-              >
-                <Feather name="check" size={14} color={Colors.emerald} />
-                <Text style={[styles.approveRejectText, { color: Colors.emerald }]}>Approve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.rejectBtn]}
-                disabled={actionLoading}
-                onPress={() => {
-                  setRejectionReason('');
-                  confirmAction({
-                    title: 'Reject Payment?',
-                    message: 'Please provide a reason for rejection. This will be visible to the gym owner.',
-                    confirmLabel: 'Reject', confirmColor: Colors.red,
-                    inputPlaceholder: 'Rejection reason (required)...',
-                    inputValue: rejectionReason,
-                    onInputChange: setRejectionReason,
-                    onConfirm: () => {
-                      const reason = confirmDialog.inputValue || rejectionReason;
-                      if (!reason?.trim()) {
-                        Alert.alert('Required', 'Please enter a rejection reason');
-                        return;
-                      }
-                      doAction(() => rejectPayment(gymId, pendingRequest.id, reason));
-                    },
-                  });
-                }}
-              >
-                <Feather name="x" size={14} color={Colors.red} />
-                <Text style={[styles.approveRejectText, { color: Colors.red }]}>Reject</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        {/* ─── 8. Customer Usage Statistics ───────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="bar-chart-2" title="Usage Statistics" color={Colors.sky} />
-          <View style={styles.statsGrid}>
-            {[
-              { label: 'Members', value: usageStats?.total_members?.toLocaleString() || '0', icon: 'users', color: Colors.indigo },
-              { label: 'Revenue', value: formatCurrency(usageStats?.total_revenue), icon: 'trending-up', color: Colors.emerald },
-              { label: 'Attendance', value: usageStats?.total_attendance?.toLocaleString() || '0', icon: 'activity', color: Colors.sky },
-              { label: 'WhatsApp', value: `${usageStats?.whatsapp_sent?.toLocaleString() || '0'} msgs`, icon: 'message-circle', color: '#25D366' },
-              { label: 'Payments', value: usageStats?.total_payments?.toLocaleString() || '0', icon: 'credit-card', color: Colors.amber },
-              { label: 'Reports', value: usageStats?.reports_generated?.toLocaleString() || '0', icon: 'file-text', color: Colors.purple },
-              { label: 'Storage', value: usageStats?.storage_used_kb ? `${(usageStats.storage_used_kb / 1024).toFixed(1)} MB` : '0 MB', icon: 'hard-drive', color: Colors.textSecondary },
-              { label: 'Last Active', value: usageStats?.last_active_at ? fmtDate(usageStats.last_active_at) : '—', icon: 'clock', color: Colors.textMuted },
-            ].map((stat, i) => (
-              <View key={i} style={styles.statCell}>
-                <Feather name={stat.icon as any} size={16} color={stat.color} />
-                <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* ─── 9. Activity Timeline ─────────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="list" title="Activity Timeline" color={Colors.indigo} />
-          {timeline.length === 0 ? (
-            <Text style={styles.emptyText}>No activity recorded yet.</Text>
-          ) : (
-            timeline.slice(0, 20).map((log, i) => (
-              <TimelineItem key={log.id} log={log} isLast={i === Math.min(timeline.length, 20) - 1} />
-            ))
           )}
-          {timeline.length > 20 && (
-            <Text style={styles.moreText}>+{timeline.length - 20} more entries</Text>
-          )}
-        </View>
+        </ScrollView>
+      )}
 
-        {/* ─── 10. Admin Notes ──────────────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="edit-3" title="Admin Notes" color={Colors.purple} />
-          {editingNotes ? (
-            <>
-              <TextInput
-                value={adminNotes}
-                onChangeText={v => { setAdminNotes(v); setDirty(true); }}
-                placeholder="Add internal notes about this customer..."
-                placeholderTextColor={Colors.textMuted}
-                style={styles.notesInput}
-                multiline
-                autoFocus
-                textAlignVertical="top"
-              />
-              <TouchableOpacity
-                style={styles.doneEditingBtn}
-                onPress={() => setEditingNotes(false)}
-              >
-                <Feather name="check" size={12} color={Colors.emerald} />
-                <Text style={styles.doneEditingText}>Done Editing</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
+      {/* ─── HISTORY TAB ────────────────────────────────────────────── */}
+      {activeTab === 'history' && (
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.indigo} />}>
+          <View style={styles.card}>
+            <SectionHeader icon="repeat" title="Renewal History" color={Colors.sky} />
+            {renewalHistory.length === 0 ? (
+              <Text style={styles.emptyText}>No renewal history yet.</Text>
+            ) : (
+              renewalHistory.map((log, i) => (
+                <View key={log.id}>
+                  <View style={styles.renewalRow}>
+                    <View style={[styles.renewalPlanBadge, { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder }]}>
+                      <Text style={styles.renewalPlanText}>{log.new_plan?.toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.renewalDates}>
+                        {fmtDate(log.created_at)}
+                        {log.new_expiry ? ` → ${fmtDate(log.new_expiry)}` : ''}
+                      </Text>
+                      <Text style={styles.renewalStatus}>{log.new_status?.toUpperCase() || 'ACTIVE'}</Text>
+                    </View>
+                  </View>
+                  {i < renewalHistory.length - 1 && <Divider />}
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={styles.card}>
+            <SectionHeader icon="list" title="Activity Timeline" color={Colors.indigo} />
+            {timeline.length === 0 ? (
+              <Text style={styles.emptyText}>No activity recorded yet.</Text>
+            ) : (
+              timeline.slice(0, 20).map((log, i) => (
+                <TimelineItem key={log.id} log={log} isLast={i === Math.min(timeline.length, 20) - 1} />
+              ))
+            )}
+            {timeline.length > 20 && (
+              <Text style={styles.moreText}>+{timeline.length - 20} more entries</Text>
+            )}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ─── SETTINGS TAB ───────────────────────────────────────────── */}
+      {activeTab === 'settings' && (
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.indigo} />}>
+          <View style={styles.card}>
+            <SectionHeader icon="edit-3" title="Admin Notes" color={Colors.purple} />
+            {editingNotes ? (
+              <>
+                <TextInput value={adminNotes} onChangeText={v => { setAdminNotes(v); setDirty(true); }} placeholder="Add internal notes about this customer..." placeholderTextColor={Colors.textMuted} style={styles.notesInput} multiline autoFocus textAlignVertical="top" />
+                <TouchableOpacity style={styles.doneEditingBtn} onPress={() => setEditingNotes(false)}>
+                  <Feather name="check" size={12} color={Colors.emerald} />
+                  <Text style={styles.doneEditingText}>Done Editing</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
               <TouchableOpacity style={styles.notesDisplay} onPress={() => setEditingNotes(true)}>
-                <Text style={adminNotes ? styles.notesText : styles.notesEmpty}>
-                  {adminNotes || 'Tap to add notes about this customer...'}
-                </Text>
+                <Text style={adminNotes ? styles.notesText : styles.notesEmpty}>{adminNotes || 'Tap to add notes about this customer...'}</Text>
                 <Feather name="edit-2" size={14} color={Colors.textMuted} style={{ alignSelf: 'flex-start', marginTop: 2 }} />
               </TouchableOpacity>
-            </>
-          )}
-        </View>
+            )}
+          </View>
 
-        {/* ─── 11. Internal Flags ───────────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="toggle-right" title="Internal Flags" color={Colors.amber} />
-          <Text style={styles.flagsNote}>Admin only — not visible to gym owner</Text>
-          {[
-            { key: 'is_vip', label: 'VIP Customer', icon: 'star', color: Colors.amber },
-            { key: 'is_payment_verified', label: 'Payment Verified', icon: 'check-circle', color: Colors.emerald },
-            { key: 'whatsapp_enabled', label: 'WhatsApp Enabled', icon: 'message-circle', color: '#25D366' },
-            { key: 'priority_support', label: 'Priority Support', icon: 'headphones', color: Colors.sky },
-            { key: 'auto_renewal_eligible', label: 'Auto Renewal Eligible', icon: 'refresh-cw', color: Colors.indigo },
-            { key: 'lifetime_offer', label: 'Lifetime Offer Available', icon: 'gift', color: Colors.purple },
-          ].map(({ key, label, icon, color }) => (
-            <View key={key} style={styles.flagRow}>
-              <View style={styles.flagLeft}>
-                <Feather name={icon as any} size={14} color={color} />
-                <Text style={styles.flagLabel}>{label}</Text>
-              </View>
-              <Switch
-                value={flags[key as keyof typeof flags]}
-                onValueChange={v => {
-                  setFlags(prev => ({ ...prev, [key]: v }));
-                  setDirty(true);
-                }}
-                trackColor={{ false: Colors.bgInput, true: color + '44' }}
-                thumbColor={flags[key as keyof typeof flags] ? color : Colors.textMuted}
-              />
-            </View>
-          ))}
-        </View>
-
-        {/* ─── 12. Renewal History ─────────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="repeat" title="Renewal History" color={Colors.sky} />
-          {renewalHistory.length === 0 ? (
-            <Text style={styles.emptyText}>No renewal history yet.</Text>
-          ) : (
-            renewalHistory.map((log, i) => (
-              <View key={log.id}>
-                <View style={styles.renewalRow}>
-                  <View style={[styles.renewalPlanBadge, { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder }]}>
-                    <Text style={styles.renewalPlanText}>{log.new_plan?.toUpperCase()}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.renewalDates}>
-                      {fmtDate(log.created_at)}
-                      {log.new_expiry ? ` → ${fmtDate(log.new_expiry)}` : ''}
-                    </Text>
-                    <Text style={styles.renewalStatus}>{log.new_status?.toUpperCase() || 'ACTIVE'}</Text>
-                  </View>
-                </View>
-                {i < renewalHistory.length - 1 && <Divider />}
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* ─── 13. Security Information ────────────────── */}
-        <View style={styles.card}>
-          <SectionHeader icon="shield" title="Security Information" color={Colors.emerald} />
-          <InfoRow label="Registered Email" value={owner?.email || '—'} />
-          <InfoRow label="Last Login" value={fmtDateTime(owner?.last_sign_in_at)} />
-          <InfoRow label="Account Created" value={fmtDate(owner?.created_at)} />
-          <InfoRow label="Email Verified" value={owner?.email_confirmed_at ? '✅ Verified' : '❌ Pending'} />
-          <InfoRow label="Login Disabled" value={gym.login_disabled ? '🔴 Yes' : '🟢 No'} />
-        </View>
-
-        {/* ─── 14. Danger Zone ─────────────────────────── */}
-        <View style={[styles.card, styles.dangerCard]}>
-          <SectionHeader icon="alert-triangle" title="Danger Zone" color={Colors.red} />
-          <Text style={styles.dangerNote}>All actions are irreversible or require confirmation. Proceed with caution.</Text>
-          <View style={styles.dangerGrid}>
+          <View style={styles.card}>
+            <SectionHeader icon="toggle-right" title="Internal Flags" color={Colors.amber} />
+            <Text style={styles.flagsNote}>Admin only — not visible to gym owner</Text>
             {[
-              {
-                label: 'Disable Login', icon: 'user-x', action: 'disable_login',
-                msg: 'This will immediately prevent the gym owner from logging in.',
-              },
-              {
-                label: 'Enable Login', icon: 'user-check', action: 'enable_login',
-                msg: 'This will re-enable gym owner login.',
-              },
-              {
-                label: 'Clear Subscription', icon: 'trash-2', action: 'clear_subscription',
-                msg: 'This will clear all subscription data and reset the gym to trial status.',
-              },
-              {
-                label: 'Ban Account', icon: 'slash', action: 'ban',
-                msg: 'This will ban the gym account. The gym owner will lose all access.',
-              },
-              {
-                label: 'Unban Account', icon: 'check-circle', action: 'unban',
-                msg: 'This will unban the gym account and restore access.',
-              },
-              {
-                label: 'Delete Gym', icon: 'x-octagon', action: 'delete_gym',
-                msg: '⚠️ PERMANENT. This will delete the gym and ALL its data including members, attendance, and payments. This CANNOT be undone.',
-              },
-            ].map(({ label, icon, action, msg }) => (
-              <TouchableOpacity
-                key={action}
-                style={[
-                  styles.dangerBtn,
-                  action === 'delete_gym' && { borderColor: Colors.red, backgroundColor: Colors.redBg },
-                ]}
-                disabled={actionLoading}
-                onPress={() => confirmAction({
-                  title: `${label}?`,
-                  message: msg,
-                  confirmLabel: label,
-                  confirmColor: Colors.red,
-                  onConfirm: () => doAction(async () => {
-                    const result = await executeDangerAction(gymId, action as any);
-                    if (action === 'delete_gym') {
-                      navigation.goBack();
-                    }
-                  }),
-                })}
-              >
-                <Feather name={icon as any} size={14} color={Colors.red} />
-                <Text style={styles.dangerBtnText}>{label}</Text>
-              </TouchableOpacity>
+              { key: 'is_vip', label: 'VIP Customer', icon: 'star', color: Colors.amber },
+              { key: 'is_payment_verified', label: 'Payment Verified', icon: 'check-circle', color: Colors.emerald },
+              { key: 'whatsapp_enabled', label: 'WhatsApp Enabled', icon: 'message-circle', color: '#25D366' },
+              { key: 'priority_support', label: 'Priority Support', icon: 'headphones', color: Colors.sky },
+              { key: 'auto_renewal_eligible', label: 'Auto Renewal Eligible', icon: 'refresh-cw', color: Colors.indigo },
+              { key: 'lifetime_offer', label: 'Lifetime Offer Available', icon: 'gift', color: Colors.purple },
+            ].map(({ key, label, icon, color }) => (
+              <View key={key} style={styles.flagRow}>
+                <View style={styles.flagLeft}>
+                  <Feather name={icon as any} size={14} color={color} />
+                  <Text style={styles.flagLabel}>{label}</Text>
+                </View>
+                <Switch value={flags[key as keyof typeof flags]} onValueChange={v => { setFlags(prev => ({ ...prev, [key]: v })); setDirty(true); }} trackColor={{ false: Colors.bgInput, true: color + '44' }} thumbColor={flags[key as keyof typeof flags] ? color : Colors.textMuted} />
+              </View>
             ))}
           </View>
-        </View>
-      </ScrollView>
+
+          <View style={styles.card}>
+            <SectionHeader icon="shield" title="Security Information" color={Colors.emerald} />
+            <InfoRow label="Registered Email" value={owner?.email || '—'} />
+            <InfoRow label="Last Login" value={fmtDateTime(owner?.last_sign_in_at)} />
+            <InfoRow label="Account Created" value={fmtDate(owner?.created_at)} />
+            <InfoRow label="Email Verified" value={owner?.email_confirmed_at ? '✅ Verified' : '❌ Pending'} />
+            <InfoRow label="Login Disabled" value={gym.login_disabled ? '🔴 Yes' : '🟢 No'} />
+          </View>
+
+          <View style={[styles.card, styles.dangerCard]}>
+            <SectionHeader icon="alert-triangle" title="Danger Zone" color={Colors.red} />
+            <Text style={styles.dangerNote}>All actions are irreversible or require confirmation. Proceed with caution.</Text>
+            <View style={styles.dangerGrid}>
+              {[
+                { label: 'Disable Login', icon: 'user-x', action: 'disable_login', msg: 'This will immediately prevent the gym owner from logging in.' },
+                { label: 'Enable Login', icon: 'user-check', action: 'enable_login', msg: 'This will re-enable gym owner login.' },
+                { label: 'Clear Subscription', icon: 'trash-2', action: 'clear_subscription', msg: 'This will clear all subscription data and reset the gym to trial status.' },
+                { label: 'Ban Account', icon: 'slash', action: 'ban', msg: 'This will ban the gym account. The gym owner will lose all access.' },
+                { label: 'Unban Account', icon: 'check-circle', action: 'unban', msg: 'This will unban the gym account and restore access.' },
+                { label: 'Delete Gym', icon: 'x-octagon', action: 'delete_gym', msg: '⚠️ PERMANENT. This will delete the gym and ALL its data including members, attendance, and payments. This CANNOT be undone.' },
+              ].map(({ label, icon, action, msg }) => (
+                <TouchableOpacity key={action} style={[styles.dangerBtn, action === 'delete_gym' && { borderColor: Colors.red, backgroundColor: Colors.redBg }]} disabled={actionLoading} onPress={() => confirmAction({ title: `${label}?`, message: msg, confirmLabel: label, confirmColor: Colors.red, onConfirm: () => doAction(async () => { const result = await executeDangerAction(gymId, action as any); if (action === 'delete_gym') { navigation.goBack(); } }) })}>
+                  <Feather name={icon as any} size={14} color={Colors.red} />
+                  <Text style={styles.dangerBtnText}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      )}
 
       {/* ─── Sticky Bottom Bar (save notes/flags/dates) ──── */}
       <StickyBottomBar
@@ -1326,6 +1117,25 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.lg, gap: Spacing.lg },
   centered: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
   loadingText: { fontSize: 13, color: Colors.textMuted },
+
+  // Tab Bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.bgCardBorder,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    gap: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: { borderBottomColor: Colors.indigo },
+  tabText: { fontSize: 11, fontWeight: '600', color: Colors.textMuted },
+  tabTextActive: { color: Colors.indigo, fontWeight: '700' },
 
   // Cards
   card: {

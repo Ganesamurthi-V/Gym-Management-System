@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { generateRequestId, REQUEST_ID_HEADER } from '@/lib/logger'
+import { computeSubscriptionState } from '@/lib/subscription-utils'
 
 // Pages that require auth check — everything else passes through immediately
 const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/inventory', '/account', '/subscription']
@@ -85,18 +86,9 @@ export async function middleware(request: NextRequest) {
       .eq('owner_id', user.id)
       .single()
 
-    const now = new Date()
-    const isExpired =
-      gym?.subscription_status === 'expired' ||
-      (gym?.subscription_status === 'trial' &&
-        gym?.trial_ends_at &&
-        new Date(gym.trial_ends_at) < now) ||
-      // Lapsed paid subscription the cron hasn't flipped yet (lifetime = null, never lapses)
-      (gym?.subscription_status === 'active' &&
-        gym?.subscription_ends_at &&
-        new Date(gym.subscription_ends_at) < now)
+    const subState = computeSubscriptionState(gym)
 
-    if (isExpired) {
+    if (subState.isExpired) {
       const url = request.nextUrl.clone()
       url.pathname = '/subscription'
       const res = NextResponse.redirect(url)

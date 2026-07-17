@@ -27,12 +27,20 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     if (trial_ends_at !== undefined) updates.trial_ends_at = trial_ends_at || null
     if (subscription_ends_at !== undefined) updates.subscription_ends_at = subscription_ends_at || null
 
-    const { error } = await supabase
+    const { data: gym, error } = await supabase
       .from('gyms')
       .update(updates)
       .eq('id', params.id)
+      .select('owner_id')
+      .single()
 
     if (error) throw error
+
+    if (gym?.owner_id) {
+      const { data: userData } = await supabase.auth.admin.getUserById(gym.owner_id)
+      const { invalidateSubscriptionCaches } = await import('@/lib/cache')
+      await invalidateSubscriptionCaches(gym.owner_id, userData?.user?.email)
+    }
 
     return NextResponse.json({ success: true })
   } catch (err: any) {

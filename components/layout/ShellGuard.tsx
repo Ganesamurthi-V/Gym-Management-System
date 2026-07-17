@@ -110,23 +110,9 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             .eq('owner_id', user.id)
             .single()
 
-          const now = new Date()
           const isDeactivated = gymStatus?.is_active === false
-          const isExpired =
-            gymStatus?.subscription_status === 'expired' ||
-            (gymStatus?.subscription_status === 'trial' &&
-              gymStatus?.trial_ends_at &&
-              new Date(gymStatus.trial_ends_at) < now) ||
-            (gymStatus?.subscription_status === 'active' &&
-              gymStatus?.subscription_ends_at &&
-              new Date(gymStatus.subscription_ends_at) < now)
 
           if (isDeactivated) {
-            await supabase.auth.signOut()
-            window.location.href = '/auth/login?error=blocked'
-          } else if (isExpired) {
-            window.location.href = '/subscription'
-          } else {
             await supabase.auth.signOut()
             window.location.href = '/auth/login?error=blocked'
           }
@@ -146,6 +132,32 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       clearInterval(interval)
     }
   }, [isShellless, initialUser, initialIsActive, initialSubscriptionStatus])
+
+  // Effect 3: Realtime subscription status update when on paywall
+  useEffect(() => {
+    if (pathname === '/subscription' && initialSubscriptionStatus === 'expired') {
+      const supabase = createClient()
+      const channel = supabase
+        .channel(`gym-${initialGym?.id}-subscription`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'gyms',
+            filter: `id=eq.${initialGym?.id}`,
+          },
+          (payload) => {
+            if (payload.new.subscription_status === 'active') {
+              window.location.href = '/dashboard'
+            }
+          }
+        )
+        .subscribe()
+
+      return () => { supabase.removeChannel(channel) }
+    }
+  }, [pathname, initialSubscriptionStatus, initialGym?.id])
 
   function toggle() {
     setCollapsed(prev => {

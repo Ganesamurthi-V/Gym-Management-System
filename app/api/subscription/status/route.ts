@@ -43,12 +43,25 @@ export async function GET(_req: NextRequest) {
 
   const subState = getSubscriptionState(gym as any)
 
+  // Derive a human-readable expiry date for whichever window is active so the
+  // mobile app never has to pick between trialEndsAt / subscriptionEndsAt itself.
+  const effectiveExpiryAt =
+    gym.subscription_status === 'trial'
+      ? gym.trial_ends_at
+      : gym.subscription_ends_at ?? null
+
   return NextResponse.json({
     subscriptionStatus: gym.subscription_status,
     planType:           gym.plan_type,
     trialEndsAt:        gym.trial_ends_at,
     subscriptionEndsAt: gym.subscription_ends_at,
-    subState,
+    effectiveExpiryAt,
+    subState: {
+      status:         subState.status,
+      daysLeft:       subState.daysLeft,
+      isExpired:      subState.isExpired,
+      isExpiringSoon: subState.isExpiringSoon,
+    },
     settings:           settings ?? null,
     pendingRequest:     pendingRequest ?? null,
   })

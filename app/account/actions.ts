@@ -6,18 +6,18 @@ import { cacheKeys } from '@/lib/cache-keys'
 import { format } from 'date-fns'
 
 /**
- * Invalidates the Redis cache for a gym row after a write to the gyms table.
- * Must be called after any supabase.from('gyms').update() or .upsert() from
- * client components (which cannot import server-only Redis modules directly).
+ * Invalidates the Redis cache for the gym identity row after a write to stable
+ * fields like name or onboarding_data.
  *
- * Cache key mirrors the one in lib/dal.ts getGym: `user:${userId}:gym`
+ * Subscription fields (subscription_status, trial_ends_at, etc.) are no longer
+ * cached so writes to those columns need no invalidation here.
  */
 export async function invalidateGymCache(): Promise<void> {
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return
 
-  await deleteCache(`user:${session.user.id}:gym`)
+  await deleteCache(cacheKeys.gym(session.user.id))
 }
 
 /**
@@ -39,13 +39,11 @@ export async function invalidateAllGymCaches(gymId: string): Promise<void> {
     .single()
   if (!gym) return
 
-  // Delete all known gym-scoped cache keys in parallel
   await Promise.all([
     deleteCache(cacheKeys.membersList(gymId)),
     deleteCache(cacheKeys.dashboard(gymId, format(new Date(), 'yyyy-MM-dd'))),
     deleteCache(cacheKeys.payments12mo(gymId)),
     deleteCache(cacheKeys.paymentsAll(gymId)),
-    // Wipe any dashboard keys from other dates (e.g. if server clock differs)
     invalidatePattern(`gym:${gymId}:dashboard:*`),
   ])
 }

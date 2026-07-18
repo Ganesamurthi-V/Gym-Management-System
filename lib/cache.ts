@@ -135,20 +135,12 @@ function logCacheMetric(type: 'HIT' | 'MISS', key: string, durationMs: number) {
 }
 
 /**
- * Invalidates every cache key that encodes subscription/active state for a
- * gym owner. Both keys MUST be busted together whenever subscription_status,
- * trial_ends_at, or is_active changes on the gyms table:
+ * Invalidates the gym identity cache for a specific owner.
+ * Call this after any write to gym name or onboarding fields.
  *
- *   - `user:${userId}:gym`        → getGym() (middleware guard, AppShell banner)
- *   - `active_status:${email}`    → getGymActiveStatus() (AppShell → ShellGuard)
- *
- * Busting only the gym key (the old behaviour) left active_status serving a
- * stale verdict for up to 120s — e.g. an admin approves a payment but the
- * shell still treats the account as expired, or a trial expires but the
- * owner keeps full access until the TTL runs out.
+ * Subscription fields (subscription_status, trial_ends_at, etc.) are no longer
+ * cached, so writes to those columns need no cache invalidation.
  */
-export async function invalidateSubscriptionCaches(userId: string, email?: string | null): Promise<void> {
-  const deletions = [deleteCache(cacheKeys.gym(userId))]
-  if (email) deletions.push(deleteCache(cacheKeys.activeStatus(email)))
-  await Promise.all(deletions)
+export async function invalidateGymIdentityCache(userId: string): Promise<void> {
+  await deleteCache(cacheKeys.gym(userId))
 }

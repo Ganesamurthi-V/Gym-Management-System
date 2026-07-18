@@ -36,12 +36,6 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
     if (error) throw error
 
-    if (gym?.owner_id) {
-      const { data: userData } = await supabase.auth.admin.getUserById(gym.owner_id)
-      const { invalidateSubscriptionCaches } = await import('@/lib/cache')
-      await invalidateSubscriptionCaches(gym.owner_id, userData?.user?.email)
-    }
-
     return NextResponse.json({ success: true })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

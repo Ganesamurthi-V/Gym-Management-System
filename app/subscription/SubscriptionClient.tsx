@@ -87,7 +87,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
             toast.error('Your payment request was rejected.')
             setSuccess(false) // If they were on the success screen, drop them back to plans
           } else if (status === 'approved') {
-            // ShellGuard will handle the redirect, but we can show success state instantly
+            // The gym channel listener will handle the redirect once the gyms
+            // row is updated. Show success state here immediately.
             setSuccess(true)
             toast.success('Payment approved! Redirecting...')
           }
@@ -109,6 +110,20 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
         (payload: any) => {
           const newState = computeSubscriptionState(payload.new)
           setLiveSubState(newState)
+
+          // If the admin activated the subscription while the user is on this
+          // page, redirect them immediately. We use window.location so the
+          // server re-renders the shell with the fresh active state.
+          if (!newState.isExpired && (newState.status === 'active' || newState.status === 'trial')) {
+            toast.success(
+              newState.status === 'active'
+                ? 'Your subscription has been activated! Redirecting...'
+                : 'Your trial has been extended! Redirecting...'
+            )
+            setTimeout(() => {
+              window.location.href = '/dashboard'
+            }, 1500)
+          }
         }
       )
       .subscribe()

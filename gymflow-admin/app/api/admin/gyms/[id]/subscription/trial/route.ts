@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { invalidateSubscriptionCachesForOwner } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 

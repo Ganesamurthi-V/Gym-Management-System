@@ -150,11 +150,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Bust the gym-row and active-status caches: getGym may have cached a
-    // null row (or stale name/subscription fields) before onboarding wrote
-    // the gym, which would stick for the full TTL otherwise.
-    const { invalidateSubscriptionCaches } = await import('@/lib/cache')
-    await invalidateSubscriptionCaches(user.id, user.email)
+    // Bust the gym identity cache so getGym() returns the fresh name and
+    // onboarding_completed = true on the next request.
+    const { invalidateGymIdentityCache } = await import('@/lib/cache')
+    await invalidateGymIdentityCache(user.id)
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {

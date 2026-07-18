@@ -598,6 +598,9 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Auto-refresh fired ref moved up to fix rules of hooks
+  const autoRefreshFiredRef = React.useRef(false);
+
   // ── Save handler (notes + flags + dates) ─────────────────────────
 
   async function handleSave() {
@@ -762,7 +765,6 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   // Auto-refresh when the local calculation has detected expiry but the DB
   // row still carries the old status. This covers the gap between cron runs.
   // We fire once, not in a loop — the refresh will pull the fresh DB row.
-  const autoRefreshFiredRef = React.useRef(false);
   if (isExpired && gym.subscription_status !== 'expired' && !autoRefreshFiredRef.current) {
     autoRefreshFiredRef.current = true;
     // Defer to avoid calling setState during render

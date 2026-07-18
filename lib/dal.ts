@@ -1,48 +1,80 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { cacheWrapper } from '@/lib/cache'
+import { computeSubscriptionState } from './subscription-utils'
 
-// Issue 2 fix: Use getSession() instead of getUser() for in-render reads.
-// getSession() validates the JWT signature/expiry locally — no network call.
-// Middleware already performs the authoritative server-side getUser() check
-// for every request before any Server Component renders, so this is safe.
+// ── Auth ──────────────────────────────────────────────────────────────────────
+// Uses getSession() (JWT-local, no network) rather than getUser().
+// Middleware already does the authoritative getUser() check before any Server
+// Component renders, so this is safe and fast.
 export const getAuthUser = cache(async () => {
   const supabase = await createClient()
   const { data: { session }, error } = await supabase.auth.getSession()
   return { user: session?.user ?? null, error }
 })
 
-// Issue 3 fix: Wrap in cacheWrapper with 120s Redis TTL.
-// Previously only React.cache() was used, which only deduplicates within a
-// single render pass — meaning a fresh Postgres query on every navigation.
-// The gym record almost never changes between page loads.
-// IMPORTANT: any code path that writes to the gyms table MUST call
-// deleteCache(`user:${userId}:gym`) after the write.
+// ── Gym identity (cached) ─────────────────────────────────────────────────────
+// Fetches only the stable, non-security-sensitive fields: id, name, owner info,
+// and onboarding state. These almost never change after setup, so a 120s Redis
+// TTL is safe and eliminates redundant Postgres round-trips on every navigation.
+//
+// DOES NOT include subscription_status, trial_ends_at, subscription_ends_at, or
+// any field that affects access control. Those are fetched separately via
+// getGymSubscription() which always bypasses the cache.
+//
+// IMPORTANT: any code path that writes to name, onboarding_completed, or
+// onboarding_data MUST call deleteCache(cacheKeys.gym(userId)) after the write.
 export const getGym = cache(async (userId: string) => {
   return cacheWrapper(`user:${userId}:gym`, 120, async () => {
     const supabase = await createClient()
     const { data: gym, error } = await supabase
       .from('gyms')
-      .select(`
-        id, name, onboarding_completed, owner_id, created_at, onboarding_data,
-        subscription_status, plan_type,
-        trial_started_at, trial_ends_at,
-        subscription_started_at, subscription_ends_at
-      `)
+      .select('id, name, onboarding_completed, owner_id, created_at, onboarding_data')
       .eq('owner_id', userId)
       .single()
     return { gym, error }
   })
 })
 
-export const getGymActiveStatus = cache(async (email: string) => {
-  return cacheWrapper(`active_status:${email}`, 120, async () => {
-    const supabase = await createClient()
-    const { data: isActive, error } = await supabase.rpc('check_gym_active', { p_email: email })
-    return { isActive, error }
-  })
+// ── Gym subscription state (never cached) ─────────────────────────────────────
+// Always fetches a fresh row from Postgres. Subscription status is security-
+// and access-control-critical — stale data causes the paywall bypass / stuck-
+// on-expired-page bugs we've already seen. The query is deliberately narrow
+// (only the 5 columns needed by computeSubscriptionState) to keep it cheap.
+//
+// Because this is wrapped in React.cache() it still deduplicates within a
+// single render pass (e.g. AppShell + layout both calling it), but it will
+// never serve a cross-request cached result.
+export const getGymSubscription = cache(async (userId: string) => {
+  const supabase = await createClient()
+  const { data: gym, error } = await supabase
+    .from('gyms')
+    .select(`
+      id, owner_id,
+      subscription_status, plan_type,
+      trial_ends_at, subscription_ends_at
+    `)
+    .eq('owner_id', userId)
+    .single()
+  return { gym, error }
 })
 
+// ── is_active check (never cached) ───────────────────────────────────────────
+// Determines whether the gym account is allowed to log in at all (admin ban /
+// login_disabled flag). Previously wrapped in a 120s Redis cache keyed by
+// email, which caused blocked accounts to retain access until TTL expiry.
+// A single-column select is fast enough to run on every navigation.
+export const getGymIsActive = cache(async (userId: string) => {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('gyms')
+    .select('is_active')
+    .eq('owner_id', userId)
+    .single()
+  return { isActive: data?.is_active ?? true, error }
+})
+
+// ── Unread admin messages (cached 30s) ────────────────────────────────────────
 export const getUnreadAdminMessages = cache(async (gymId: string) => {
   return cacheWrapper(`unread_count:${gymId}`, 30, async () => {
     const supabase = await createClient()
@@ -56,14 +88,15 @@ export const getUnreadAdminMessages = cache(async (gymId: string) => {
 })
 
 // ── Subscription state helper ─────────────────────────────────────────────────
-// Computes the effective subscription state from a gym row.
-// Used by AppShell (to pass to ShellGuard) and subscription page.
-// NOTE: gym may not have subscription columns yet if migration hasn't run —
-// we handle that gracefully by treating missing fields as 'active' (legacy).
-type GymFromDAL = Awaited<ReturnType<typeof getGym>>['gym']
+// Computes the effective subscription state from either a full gym row or the
+// narrow subscription row returned by getGymSubscription().
+type GymSubFields = {
+  subscription_status?: string | null
+  plan_type?: string | null
+  trial_ends_at?: string | null
+  subscription_ends_at?: string | null
+} | null
 
-import { computeSubscriptionState } from './subscription-utils'
-
-export function getSubscriptionState(gym: GymFromDAL) {
+export function getSubscriptionState(gym: GymSubFields) {
   return computeSubscriptionState(gym as any)
 }

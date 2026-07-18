@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { invalidateSubscriptionCachesForOwner } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,8 +34,6 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       })
       .eq('id', id)
     if (error) throw error
-
-    await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
 
     await supabase.rpc('log_subscription_action', {
       p_gym_id: id,

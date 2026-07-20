@@ -78,8 +78,6 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       .eq('id', id)
     if (updateError) throw updateError
 
-    await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
-
     await supabase.rpc('log_subscription_action', {
       p_gym_id: id,
       p_action: actionLabel,

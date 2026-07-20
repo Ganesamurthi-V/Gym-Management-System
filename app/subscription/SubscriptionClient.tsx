@@ -486,7 +486,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                    <div>
                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">UPI ID</p>
                      <div className="flex items-center gap-3">
-                       <p className="text-lg font-black text-slate-900">{settings.upi_id || 'gymflow@okaxis'}</p>
+                       <p className="text-lg font-black text-slate-900">{settings.upi_id || 'gxnzhhh@oksbi'}</p>
                        <button onClick={copyUpi} className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors" title="Copy UPI ID">
                          {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                        </button>

@@ -20,3 +20,4 @@ graphify-out
 # Removing the block that ignores everything except src/ since this project uses app/ structure
 # Sentry Config File
 .env.sentry-build-plugin
+.vercel

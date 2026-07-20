@@ -21,7 +21,12 @@ import { format } from 'date-fns'
 
 const h = vi.hoisted(() => {
   return {
-    store: { gyms: [] as any[], members: [] as any[], whatsapp_automation_logs: [] as any[] },
+    store: { 
+      gyms: [] as any[], 
+      members: [] as any[], 
+      whatsapp_automation_logs: [] as any[],
+      whatsapp_send_queue: [] as any[]
+    },
     sendMock: vi.fn(),
   }
 })
@@ -33,6 +38,29 @@ vi.mock('@/lib/whatsapp/sender', () => ({
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => makeFakeClient(),
 }))
+
+vi.mock('@/lib/whatsapp/queue', async (importOriginal) => {
+  const actual = await importOriginal<any>()
+  return {
+    ...actual,
+    kickDrain: async () => {
+      const supabase = makeFakeClient()
+      // Drain the queue fully until empty.
+      // drainSendQueue handles 5 at a time, so loop if needed.
+      let remaining = 1
+      while (remaining > 0) {
+        const stats = await actual.drainSendQueue({
+          supabase,
+          sender: (...args: any[]) => h.sendMock(...args),
+          takeToken: async () => ({ success: true, remaining: 100 }),
+          reschedule: async () => false,
+        })
+        remaining = stats.remaining
+      }
+      return true
+    }
+  }
+})
 
 // ─── Minimal in-memory Supabase query builder ────────────────────────────────
 
@@ -59,6 +87,7 @@ class FakeQuery {
 
   select() { return this }
   single() { this._single = true; return this }
+  maybeSingle() { this._single = true; return this }
   update(row: any) { this._mode = 'update'; this._updates = row; return this }
   eq(col: string, val: unknown) { this.filters.push(r => r[col] === val); return this }
   gte(col: string, val: string) { this.filters.push(r => r[col] >= val); return this }
@@ -93,6 +122,13 @@ class FakeQuery {
     const row = { ...this._row }
     if (!row.sent_at) row.sent_at = stamp()
     if (!row.id) row.id = `log_${(this.store[this.table]?.length ?? 0) + 1}`
+
+    if (this.table === 'whatsapp_send_queue') {
+      // Postgres defaults
+      if (row.attempts === undefined) row.attempts = 0
+      if (row.max_attempts === undefined) row.max_attempts = 3
+      if (!row.scheduled_at) row.scheduled_at = new Date(Date.now() - 1000).toISOString()
+    }
 
     // Emulate the partial unique index: one 'sent' row per member+template+day.
     if (row.status === 'sent') {
@@ -163,6 +199,7 @@ beforeEach(() => {
   h.store.gyms = [{ id: 'gym-1', name: 'Iron Temple', onboarding_completed: true }]
   h.store.members = []
   h.store.whatsapp_automation_logs = []
+  h.store.whatsapp_send_queue = []
   h.sendMock.mockReset()
   h.sendMock.mockImplementation(async (template: string) => ({
     success: true,
@@ -508,12 +545,12 @@ describe('event-driven & annual sends', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('runDailyWhatsAppAutomation stats', () => {
-  it('reports processed/sent counts', async () => {
+  it('reports processed/queued counts', async () => {
     addMember({ pending_amount: 500 })
     setDay(0)
     const stats = await runDailyWhatsAppAutomation()
     expect(stats.processed).toBe(1)
-    expect(stats.sent).toBe(1)
+    expect(stats.queued).toBe(1)
     expect(stats.errors).toEqual([])
   })
 

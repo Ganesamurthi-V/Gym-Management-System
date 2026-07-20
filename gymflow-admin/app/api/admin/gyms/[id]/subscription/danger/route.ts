@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { invalidateSubscriptionCachesForOwner } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,10 +39,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     switch (action) {
       case 'delete_gym': {
-        // Hard delete — cascade handles all related data
         const { error } = await supabase.from('gyms').delete().eq('id', id)
         if (error) throw error
-        await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
         return NextResponse.json({ success: true, action: 'deleted' })
       }
 
@@ -93,8 +90,6 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     if (gymUpdate) {
       const { error } = await supabase.from('gyms').update(gymUpdate).eq('id', id)
       if (error) throw error
-
-      await invalidateSubscriptionCachesForOwner(supabase, gym.owner_id)
 
       await supabase.rpc('log_subscription_action', {
         p_gym_id: id,

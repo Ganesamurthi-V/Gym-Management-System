@@ -149,6 +149,31 @@ Expected output: All checks pass ✅
   - Check build logs for errors
   - Verify no configuration errors
 
+> ⚠️ **Proxy subdomain binding — `graph.gymflow.sbs`**
+>
+> All outbound WhatsApp calls route through `WHATSAPP_BASE_URL` =
+> `https://graph.gymflow.sbs/api/graph`, which is served by the transparent proxy
+> at `app/api/graph/[...path]/route.ts`. That route **only exists in the main
+> `gym-management-system` project** — NOT in `super-admin` or the landing page.
+>
+> The subdomain therefore MUST be attached to `gym-management-system` in Vercel
+> (Settings → Domains). If it drifts to another project (e.g. `super-admin`), that
+> project's middleware answers instead and every send fails with a `401
+> Unauthorized` / `404 Non-JSON response` — the Meta credentials are fine, the
+> request never reaches Meta.
+>
+> - [ ] Confirm binding: `vercel domains inspect graph.gymflow.sbs` → **Projects**
+>       lists `gym-management-system`.
+> - [ ] Smoke-test the proxy after any domain change (should return HTTP 200):
+>       ```bash
+>       curl -s -o /dev/null -w "%{http_code}\n" \
+>         "https://graph.gymflow.sbs/api/graph/v25.0/$WHATSAPP_PHONE_NUMBER_ID" \
+>         -H "Authorization: Bearer $WHATSAPP_ACCESS_TOKEN"
+>       ```
+> - [ ] Prefer attaching the domain to the project in the **dashboard** (durable —
+>       auto-aliased on every prod deploy). A `vercel alias set <deployment> graph.gymflow.sbs`
+>       is a stop-gap only: it pins to one deployment and goes stale on the next deploy.
+
 ### 2. Database Migration (Production)
 
 - [ ] **Connect to Production Database**

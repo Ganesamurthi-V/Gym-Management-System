@@ -8,48 +8,40 @@ export default async function AppShell({ children }: { children: React.ReactNode
   let gym = null
   let isActive = true
   let unreadCount = 0
+  let subscriptionStatus = 'unknown'
+  let trialDaysLeft = 0
 
   if (user) {
-    // getGym: cached identity (name, id, onboarding) — stable, safe to cache.
-    // getGymSubscription: always fresh from Postgres — subscription status must never be stale.
-    // getGymIsActive: always fresh — security-critical access control flag.
-    // getUnreadAdminMessages: cached 30s — acceptable staleness for a notification count.
-    const [gymResult, subResult, activeResult, unreadResult] = await Promise.all([
-      getGym(user.id),
+    // getGym: cached identity fields (name, id, onboarding) — stable, safe to cache.
+    // getGymSubscription: always fresh from Postgres — never cached.
+    // getGymIsActive: always fresh — security-critical.
+    // getUnreadAdminMessages: cached 30s.
+    // Run all four concurrently.
+    const gymResult = await getGym(user.id)
+    gym = gymResult.gym
+
+    const [subResult, activeResult, unreadResult] = await Promise.all([
       getGymSubscription(user.id),
       getGymIsActive(user.id),
-      getGym(user.id).then(g => g.gym ? getUnreadAdminMessages(g.gym.id) : Promise.resolve({ count: 0 })),
+      gym ? getUnreadAdminMessages(gym.id) : Promise.resolve({ count: 0, error: null }),
     ])
 
-    gym = gymResult.gym
     isActive = activeResult.isActive
     unreadCount = unreadResult.count ?? 0
 
-    // Compute subscription state from the always-fresh sub row
     const subState = getSubscriptionState(subResult.gym)
-
-    return (
-      <ShellGuard
-        initialUser={user}
-        initialGym={gym}
-        initialIsActive={isActive}
-        initialUnreadCount={unreadCount}
-        initialSubscriptionStatus={subState.status}
-        initialTrialDaysLeft={subState.daysLeft ?? 0}
-      >
-        {children}
-      </ShellGuard>
-    )
+    subscriptionStatus = subState.status
+    trialDaysLeft = subState.daysLeft ?? 0
   }
 
   return (
     <ShellGuard
-      initialUser={null}
-      initialGym={null}
-      initialIsActive={true}
-      initialUnreadCount={0}
-      initialSubscriptionStatus="unknown"
-      initialTrialDaysLeft={0}
+      initialUser={user}
+      initialGym={gym}
+      initialIsActive={isActive}
+      initialUnreadCount={unreadCount}
+      initialSubscriptionStatus={subscriptionStatus}
+      initialTrialDaysLeft={trialDaysLeft}
     >
       {children}
     </ShellGuard>

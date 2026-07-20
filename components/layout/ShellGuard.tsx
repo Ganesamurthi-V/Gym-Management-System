@@ -92,38 +92,28 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     const supabase = createClient()
     
     const checkAuth = async () => {
-      // Issue 3 fix: skip check entirely when tab is in the background.
-      // This prevents background tabs from hammering Supabase/Redis unnecessarily.
+      // Skip check entirely when tab is in the background.
       if (document.hidden) return
 
       const { data: { user }, error } = await supabase.auth.getUser()
-      
+
       if (error || !user) {
-        // User is invalid or logged out
         await supabase.auth.signOut()
         window.location.href = '/auth/login'
         return
       }
 
-      // Check real-time database status
-      if (user.email) {
-        const { data: isActive } = await supabase.rpc('check_gym_active', { p_email: user.email })
-        if (isActive === false) {
-          // Distinguish between deactivated (blocked) and expired subscription.
-          // The updated RPC returns false for both, so we check gym status.
-          const { data: gymStatus } = await supabase
-            .from('gyms')
-            .select('subscription_status, trial_ends_at, subscription_ends_at, is_active')
-            .eq('owner_id', user.id)
-            .single()
+      // Check is_active directly — consistent with getGymIsActive() on the server.
+      // No RPC needed; single-column select is fast and always fresh.
+      const { data: gymRow } = await supabase
+        .from('gyms')
+        .select('is_active')
+        .eq('owner_id', user.id)
+        .single()
 
-          const isDeactivated = gymStatus?.is_active === false
-
-          if (isDeactivated) {
-            await supabase.auth.signOut()
-            window.location.href = '/auth/login?error=blocked'
-          }
-        }
+      if (gymRow?.is_active === false) {
+        await supabase.auth.signOut()
+        window.location.href = '/auth/login?error=blocked'
       }
     }
 

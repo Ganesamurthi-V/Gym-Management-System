@@ -1156,11 +1156,6 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             <Text style={styles.dangerNote}>All actions are irreversible or require confirmation. Proceed with caution.</Text>
             <View style={styles.dangerGrid}>
               {[
-                { label: 'Disable Login', icon: 'user-x', action: 'disable_login', msg: 'This will immediately prevent the gym owner from logging in.' },
-                { label: 'Enable Login', icon: 'user-check', action: 'enable_login', msg: 'This will re-enable gym owner login.' },
-                { label: 'Clear Subscription', icon: 'trash-2', action: 'clear_subscription', msg: 'This will clear all subscription data and reset the gym to trial status.' },
-                { label: 'Ban Account', icon: 'slash', action: 'ban', msg: 'This will ban the gym account. The gym owner will lose all access.' },
-                { label: 'Unban Account', icon: 'check-circle', action: 'unban', msg: 'This will unban the gym account and restore access.' },
                 { label: 'Delete Gym', icon: 'x-octagon', action: 'delete_gym', msg: '⚠️ PERMANENT. This will delete the gym and ALL its data including members, attendance, and payments. This CANNOT be undone.' },
               ].map(({ label, icon, action, msg }) => (
                 <TouchableOpacity key={action} style={[styles.dangerBtn, action === 'delete_gym' && { borderColor: Colors.red, backgroundColor: Colors.redBg }]} disabled={actionLoading} onPress={() => {

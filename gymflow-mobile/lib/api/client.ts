@@ -29,11 +29,13 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (e) {
-      console.warn('Failed to retrieve auth token', e);
+      if (__DEV__) console.warn('Failed to retrieve auth token', e);
     }
 
-    // Log the outgoing request
-    console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.url}`, config.data ? config.data : '');
+    // Never log request bodies — they can contain credentials
+    if (__DEV__) {
+      console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.url}`);
+    }
 
     return config;
   },
@@ -43,20 +45,18 @@ apiClient.interceptors.request.use(
 // Response Interceptor: Global error handling and log response
 apiClient.interceptors.response.use(
   (response) => {
-    console.log(`[API RESPONSE] ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+    if (__DEV__) {
+      console.log(`[API RESPONSE] ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+    }
     return response;
   },
   (error) => {
-    if (axios.isAxiosError(error)) {
-      console.error(`[API ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.url} - Status: ${error.response?.status || 'NETWORK_ERROR'}`);
-      console.error('Error Details:', error.response?.data || error.message);
-      
-      // If we receive a 401 Unauthorized, we might want to log the user out
-      if (error.response?.status === 401) {
-        console.warn('Unauthorized (401) - Token may be invalid or expired');
+    if (__DEV__) {
+      if (axios.isAxiosError(error)) {
+        console.error(`[API ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.url} - Status: ${error.response?.status || 'NETWORK_ERROR'}`);
+      } else {
+        console.error('[API UNKNOWN ERROR]', error);
       }
-    } else {
-      console.error('[API UNKNOWN ERROR]', error);
     }
 
     return Promise.reject(error);

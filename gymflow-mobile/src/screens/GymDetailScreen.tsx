@@ -122,7 +122,11 @@ export default function GymDetailScreen({ route, navigation }: Props) {
   });
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Gym Header */}
       <View style={styles.gymHeader}>
         <View style={styles.gymIconBox}>
@@ -227,7 +231,13 @@ export default function GymDetailScreen({ route, navigation }: Props) {
             style={styles.passwordInput}
             autoCapitalize="none"
           />
-          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setShowPassword(v => !v)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
             <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color={Colors.textMuted} />
           </TouchableOpacity>
         </View>

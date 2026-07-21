@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StatusBar } from 'react-native';
+import { View, ActivityIndicator, StatusBar, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import { TouchableOpacity } from 'react-native';
 
@@ -24,14 +24,27 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function LogoutButton({ onLogout }: { onLogout: () => void }) {
+  function confirmLogout() {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: onLogout },
+    ]);
+  }
   return (
-    <TouchableOpacity onPress={onLogout} style={{ marginRight: 16 }}>
+    <TouchableOpacity
+      onPress={confirmLogout}
+      style={{ marginRight: 16, padding: 4 }}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      accessibilityRole="button"
+      accessibilityLabel="Sign out"
+    >
       <Feather name="log-out" size={18} color={Colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
 function TabNavigator({ onLogout }: { onLogout: () => void }) {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -39,8 +52,8 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
           backgroundColor: Colors.bgCard,
           borderTopColor: Colors.bgCardBorder,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: 8 + insets.bottom,
         },
         tabBarActiveTintColor: Colors.indigo,
         tabBarInactiveTintColor: Colors.textMuted,

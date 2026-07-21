@@ -13,13 +13,16 @@ export default function LogsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Tracks whether we already have data so focus-refetches don't blank the screen
+  const hasDataRef = React.useRef(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    else if (!hasDataRef.current) setLoading(true);
     try {
       const data = await fetchEventLogs();
       setEvents(data);
+      hasDataRef.current = true;
       setError(null);
     } catch (e: any) {
       setError(e.message ?? 'Failed to load event logs');

@@ -26,7 +26,7 @@ function ErrorRow({ error }: { error: DashboardStats['recentErrors'][0] }) {
 }
 
 function MessageRow({ msg }: { msg: DashboardStats['recentMessages'][0] }) {
-  const typeVariant = (type: string) => {
+  const typeVariant = (type: string): 'error' | 'warning' | 'success' | 'info' => {
     if (type === 'error') return 'error';
     if (type === 'warning') return 'warning';
     if (type === 'success') return 'success';
@@ -39,7 +39,7 @@ function MessageRow({ msg }: { msg: DashboardStats['recentMessages'][0] }) {
         <Text style={styles.msgGym}>{msg.gym?.name ?? 'Unknown gym'}</Text>
         <Text style={styles.msgTime}>{new Date(msg.created_at).toLocaleString('en-IN')}</Text>
       </View>
-      <Badge label={msg.type} variant={typeVariant(msg.type) as any} />
+      <Badge label={msg.type} variant={typeVariant(msg.type)} />
     </View>
   );
 }
@@ -49,13 +49,16 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Tracks whether we already have data so focus-refetches don't blank the screen
+  const hasDataRef = React.useRef(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    else if (!hasDataRef.current) setLoading(true);
     try {
       const data = await fetchDashboardStats();
       setStats(data);
+      hasDataRef.current = true;
       setError(null);
     } catch (e: any) {
       setError(e.message ?? 'Failed to load dashboard');

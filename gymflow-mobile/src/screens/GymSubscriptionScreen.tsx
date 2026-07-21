@@ -291,7 +291,8 @@ function FABSpeedDial({ actions, ownerPhone }: { actions: FABAction[]; ownerPhon
     <>
       {open && (
         <TouchableOpacity style={fabStyles.backdrop} onPress={toggle} activeOpacity={1} />
-      )}      <View style={fabStyles.container} pointerEvents="box-none">
+      )}
+      <View style={fabStyles.container} pointerEvents="box-none">
         {open && actions.map((action, i) => {
           const translateY = anim.interpolate({
             inputRange: [0, 1],

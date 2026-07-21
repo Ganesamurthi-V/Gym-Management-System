@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const { data: gyms, error } = await supabase
       .from('gyms')
       .select(`
-        id, name, created_at, owner_id,
+        id, name, created_at, owner_id, is_active,
         members ( count ),
         memberships ( count )
       `)

@@ -55,10 +55,10 @@ function SendMessageTab() {
   useFocusEffect(useCallback(() => { loadGyms(); }, [loadGyms]));
 
   async function handleSend() {
-    if (!selectedGymId || !subject || !body) return;
+    if (!selectedGymId || !subject.trim() || !body.trim()) return;
     setSending(true);
     try {
-      await sendSupportMessage({ gym_id: selectedGymId, subject, body, type });
+      await sendSupportMessage({ gym_id: selectedGymId, subject: subject.trim(), body: body.trim(), type });
       Alert.alert('✓ Sent', 'Message sent to gym owner successfully!');
       setSubject('');
       setBody('');
@@ -73,7 +73,11 @@ function SendMessageTab() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <ScrollView style={styles.tabContent} contentContainerStyle={styles.tabContentInner}>
+      <ScrollView
+        style={styles.tabContent}
+        contentContainerStyle={styles.tabContentInner}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.formCard}>
           <View style={styles.formCardHeader}>
             <View style={styles.formIconBox}>
@@ -146,7 +150,7 @@ function SendMessageTab() {
             label="Send Message"
             onPress={handleSend}
             loading={sending}
-            disabled={!selectedGymId || !subject || !body}
+            disabled={!selectedGymId || !subject.trim() || !body.trim()}
           />
         </View>
       </ScrollView>
@@ -187,9 +191,13 @@ function TicketsTab() {
 
   async function submitResolve() {
     if (!resolvingTicket) return;
+    if (!replySubject.trim() || !replyMessage.trim()) {
+      Alert.alert('Required', 'Reply subject and message cannot be empty');
+      return;
+    }
     setResolving(true);
     try {
-      await resolveTicket({ ticketId: resolvingTicket.id, replySubject, replyMessage });
+      await resolveTicket({ ticketId: resolvingTicket.id, replySubject: replySubject.trim(), replyMessage: replyMessage.trim() });
       Alert.alert('✓ Resolved', 'Ticket resolved and reply sent!');
       setResolvingTicket(null);
       load();
@@ -203,7 +211,18 @@ function TicketsTab() {
   async function handleClearResolved() {
     Alert.alert('Clear Resolved', 'Remove all resolved tickets?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: async () => { await clearTickets(); load(); } },
+      {
+        text: 'Clear',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await clearTickets();
+          } catch {
+            Alert.alert('Error', 'Failed to clear resolved tickets');
+          }
+          load();
+        },
+      },
     ]);
   }
 

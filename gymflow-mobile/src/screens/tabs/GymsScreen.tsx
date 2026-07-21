@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,13 +20,16 @@ export default function GymsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Tracks whether we already have data so focus-refetches don't blank the screen
+  const hasDataRef = React.useRef(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    else if (!hasDataRef.current) setLoading(true);
     try {
       const data = await fetchGyms();
       setGyms(data || []);
+      hasDataRef.current = true;
       setError(null);
     } catch (e: any) {
       setError(e.message ?? 'Failed to load gyms');
@@ -57,9 +60,18 @@ export default function GymsScreen() {
           onChangeText={setSearch}
           placeholder="Search gyms by name..."
           placeholderTextColor={Colors.textMuted}
+          returnKeyType="search"
+          autoCorrect={false}
         />
         {search.length > 0 && (
-          <Feather name="x" size={15} color={Colors.textMuted} onPress={() => setSearch('')} />
+          <TouchableOpacity
+            onPress={() => setSearch('')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
+            <Feather name="x" size={15} color={Colors.textMuted} />
+          </TouchableOpacity>
         )}
       </View>
 
@@ -85,6 +97,8 @@ export default function GymsScreen() {
           )}
           style={styles.list}
           contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.indigo} />
           }

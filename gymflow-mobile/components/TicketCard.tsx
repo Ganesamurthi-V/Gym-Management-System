@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   messageBox: {
-    backgroundColor: '#0f172a',
+    backgroundColor: Colors.bgInput,
     borderRadius: Radius.sm,
     borderWidth: 1,
     borderColor: Colors.bgCardBorder,

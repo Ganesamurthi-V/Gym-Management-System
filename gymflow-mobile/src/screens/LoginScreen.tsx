@@ -30,14 +30,11 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   async function handleLogin() {
     if (!password.trim()) return;
     setLoading(true);
-    console.log('[LoginScreen] Attempting login...');
     try {
       await loginWithPassword(password);
       await saveToken(password);
-      console.log('[LoginScreen] Login successful, navigating...');
       onLoginSuccess();
     } catch (e: any) {
-      console.error('[LoginScreen] Login Error:', e.message);
       Alert.alert('Login Failed', e.message ?? 'Invalid admin password');
     } finally {
       setLoading(false);
@@ -90,6 +87,9 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                 <TouchableOpacity
                   style={styles.eyeBtn}
                   onPress={() => setShowPassword(v => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
                   <Feather
                     name={showPassword ? 'eye-off' : 'eye'}

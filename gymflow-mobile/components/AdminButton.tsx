@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
   button: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
+    minHeight: 44,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',

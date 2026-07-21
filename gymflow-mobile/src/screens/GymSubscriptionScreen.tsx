@@ -20,6 +20,7 @@ import {
   Dimensions,
   RefreshControl,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
@@ -175,6 +176,7 @@ type ConfirmDialogProps = {
   inputPlaceholder?: string;
   inputValue?: string;
   onInputChange?: (v: string) => void;
+  inputKeyboardType?: 'default' | 'number-pad';
 };
 
 function ConfirmDialog({
@@ -188,10 +190,14 @@ function ConfirmDialog({
   inputPlaceholder,
   inputValue,
   onInputChange,
+  inputKeyboardType = 'default',
 }: ConfirmDialogProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={dialogStyles.overlay}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={dialogStyles.overlay}
+      >
         <View style={dialogStyles.box}>
           <Text style={dialogStyles.title}>{title}</Text>
           <Text style={dialogStyles.message}>{message}</Text>
@@ -202,7 +208,9 @@ function ConfirmDialog({
               placeholder={inputPlaceholder}
               placeholderTextColor={Colors.textMuted}
               style={dialogStyles.input}
-              multiline
+              multiline={inputKeyboardType === 'default'}
+              keyboardType={inputKeyboardType}
+              autoFocus
             />
           )}
           <View style={dialogStyles.btnRow}>
@@ -217,7 +225,7 @@ function ConfirmDialog({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -269,8 +277,7 @@ function FABSpeedDial({ actions, ownerPhone }: { actions: FABAction[]; ownerPhon
     <>
       {open && (
         <TouchableOpacity style={fabStyles.backdrop} onPress={toggle} activeOpacity={1} />
-      )}
-      <View style={fabStyles.container} pointerEvents="box-none">
+      )}      <View style={fabStyles.container} pointerEvents="box-none">
         {open && actions.map((action, i) => {
           const translateY = anim.interpolate({
             inputRange: [0, 1],
@@ -338,7 +345,10 @@ function StickyBottomBar({ visible, saving, onSave, onCancel }: {
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [100, 0] });
 
   return (
-    <Animated.View style={[stickyStyles.bar, { transform: [{ translateY }] }]}>
+    <Animated.View
+      style={[stickyStyles.bar, { transform: [{ translateY }] }]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
       <TouchableOpacity style={stickyStyles.cancelBtn} onPress={onCancel} disabled={saving}>
         <Text style={stickyStyles.cancelText}>Discard</Text>
       </TouchableOpacity>
@@ -554,12 +564,14 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
     visible: boolean; title: string; message: string; confirmLabel?: string;
     confirmColor?: string; onConfirm: () => void;
     inputPlaceholder?: string; inputValue?: string; onInputChange?: (v: string) => void;
+    inputKeyboardType?: 'default' | 'number-pad';
   }>({
     visible: false, title: '', message: '', onConfirm: () => {},
   });
 
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [customTrialDays, setCustomTrialDays] = useState('7');
+  // Ref mirror of the dialog input — onConfirm closures capture state from the
+  // render they were created in, so they must read the live value from here
+  const dialogInputRef = useRef('');
 
   // Action loading states
   const [actionLoading, setActionLoading] = useState(false);
@@ -665,9 +677,11 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   function confirmAction(opts: {
     title: string; message: string; confirmLabel?: string; confirmColor?: string;
     inputPlaceholder?: string; inputValue?: string; onInputChange?: (v: string) => void;
+    inputKeyboardType?: 'default' | 'number-pad';
     onConfirm: () => void;
   }) {
     if (opts.inputPlaceholder) {
+      dialogInputRef.current = opts.inputValue ?? '';
       setConfirmDialog({
         visible: true,
         title: opts.title,
@@ -675,8 +689,12 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
         confirmLabel: opts.confirmLabel,
         confirmColor: opts.confirmColor,
         inputPlaceholder: opts.inputPlaceholder,
-        inputValue: '',
-        onInputChange: (v) => setConfirmDialog(prev => ({ ...prev, inputValue: v })),
+        inputValue: opts.inputValue ?? '',
+        inputKeyboardType: opts.inputKeyboardType,
+        onInputChange: (v) => {
+          dialogInputRef.current = v;
+          setConfirmDialog(prev => ({ ...prev, inputValue: v }));
+        },
         onConfirm: opts.onConfirm,
       });
     } else {
@@ -904,7 +922,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             )}
             {gym.plan_type === 'lifetime' && (
               <View style={[styles.daysRemainingBadge, { backgroundColor: Colors.emeraldBg, borderColor: Colors.emeraldBorder }]}>
-                <Feather name="infinity" size={13} color={Colors.emerald} />
+                <Feather name="award" size={13} color={Colors.emerald} />
                 <Text style={[styles.daysRemainingText, { color: Colors.emerald }]}>Lifetime Access</Text>
               </View>
             )}
@@ -948,7 +966,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                   <Feather name="check" size={14} color={Colors.emerald} />
                   <Text style={[styles.approveRejectText, { color: Colors.emerald }]}>Approve</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.rejectBtn]} disabled={actionLoading} onPress={() => { setRejectionReason(''); confirmAction({ title: 'Reject Payment?', message: 'Please provide a reason for rejection. This will be visible to the gym owner.', confirmLabel: 'Reject', confirmColor: Colors.red, inputPlaceholder: 'Rejection reason (required)...', inputValue: rejectionReason, onInputChange: setRejectionReason, onConfirm: () => { const reason = confirmDialog.inputValue || rejectionReason; if (!reason?.trim()) { Alert.alert('Required', 'Please enter a rejection reason'); return; } doAction(() => rejectPayment(gymId, pendingRequest.id, reason)); } }); }}>
+                <TouchableOpacity style={[styles.rejectBtn]} disabled={actionLoading} onPress={() => confirmAction({ title: 'Reject Payment?', message: 'Please provide a reason for rejection. This will be visible to the gym owner.', confirmLabel: 'Reject', confirmColor: Colors.red, inputPlaceholder: 'Rejection reason (required)...', inputValue: '', onConfirm: () => { const reason = dialogInputRef.current.trim(); if (!reason) { Alert.alert('Required', 'Please enter a rejection reason'); return; } doAction(() => rejectPayment(gymId, pendingRequest.id, reason)); } })}>
                   <Feather name="x" size={14} color={Colors.red} />
                   <Text style={[styles.approveRejectText, { color: Colors.red }]}>Reject</Text>
                 </TouchableOpacity>
@@ -1014,7 +1032,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                     <Text style={styles.trialExtBtnText}>+{d} Days</Text>
                   </TouchableOpacity>
                 ))}
-                <TouchableOpacity style={[styles.trialExtBtn, { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder }]} disabled={actionLoading} onPress={() => confirmAction({ title: 'Extend Trial by Custom Days?', message: 'Enter number of days to extend the trial.', confirmLabel: 'Extend', confirmColor: Colors.indigo, inputPlaceholder: 'Number of days (e.g. 10)', inputValue: customTrialDays, onInputChange: setCustomTrialDays, onConfirm: () => doAction(() => extendTrial(gymId, 'custom', parseInt(confirmDialog.inputValue || '7', 10))) })}>
+                <TouchableOpacity style={[styles.trialExtBtn, { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder }]} disabled={actionLoading} onPress={() => confirmAction({ title: 'Extend Trial by Custom Days?', message: 'Enter number of days to extend the trial.', confirmLabel: 'Extend', confirmColor: Colors.indigo, inputPlaceholder: 'Number of days (e.g. 10)', inputValue: '', inputKeyboardType: 'number-pad', onConfirm: () => { const days = parseInt(dialogInputRef.current, 10); if (!Number.isFinite(days) || days <= 0 || days > 365) { Alert.alert('Invalid', 'Enter a number of days between 1 and 365'); return; } doAction(() => extendTrial(gymId, 'custom', days)); } })}>
                   <Text style={[styles.trialExtBtnText, { color: Colors.indigo }]}>Custom</Text>
                 </TouchableOpacity>
               </View>
@@ -1130,7 +1148,27 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 { label: 'Unban Account', icon: 'check-circle', action: 'unban', msg: 'This will unban the gym account and restore access.' },
                 { label: 'Delete Gym', icon: 'x-octagon', action: 'delete_gym', msg: '⚠️ PERMANENT. This will delete the gym and ALL its data including members, attendance, and payments. This CANNOT be undone.' },
               ].map(({ label, icon, action, msg }) => (
-                <TouchableOpacity key={action} style={[styles.dangerBtn, action === 'delete_gym' && { borderColor: Colors.red, backgroundColor: Colors.redBg }]} disabled={actionLoading} onPress={() => confirmAction({ title: `${label}?`, message: msg, confirmLabel: label, confirmColor: Colors.red, onConfirm: () => doAction(async () => { const result = await executeDangerAction(gymId, action as any); if (action === 'delete_gym') { navigation.goBack(); } }) })}>
+                <TouchableOpacity key={action} style={[styles.dangerBtn, action === 'delete_gym' && { borderColor: Colors.red, backgroundColor: Colors.redBg }]} disabled={actionLoading} onPress={() => {
+                  if (action === 'delete_gym') {
+                    confirmAction({
+                      title: 'Delete Gym Permanently?',
+                      message: `${msg}\n\nType the gym name "${gym.name}" below to confirm.`,
+                      confirmLabel: 'Delete Forever',
+                      confirmColor: Colors.red,
+                      inputPlaceholder: gym.name,
+                      inputValue: '',
+                      onConfirm: () => {
+                        if (dialogInputRef.current.trim() !== gym.name) {
+                          Alert.alert('Name Mismatch', 'The name you typed does not match the gym name. Deletion cancelled.');
+                          return;
+                        }
+                        doAction(async () => { await executeDangerAction(gymId, 'delete_gym'); navigation.goBack(); });
+                      },
+                    });
+                    return;
+                  }
+                  confirmAction({ title: `${label}?`, message: msg, confirmLabel: label, confirmColor: Colors.red, onConfirm: () => doAction(async () => { await executeDangerAction(gymId, action as any); }) });
+                }}>
                   <Feather name={icon as any} size={14} color={Colors.red} />
                   <Text style={styles.dangerBtnText}>{label}</Text>
                 </TouchableOpacity>
@@ -1166,6 +1204,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
         inputPlaceholder={confirmDialog.inputPlaceholder}
         inputValue={confirmDialog.inputValue}
         onInputChange={confirmDialog.onInputChange}
+        inputKeyboardType={confirmDialog.inputKeyboardType}
       />
     </View>
   );

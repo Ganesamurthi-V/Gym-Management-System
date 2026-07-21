@@ -74,8 +74,22 @@ function daysRemaining(iso?: string | null): number | null {
 }
 
 function formatCurrency(amount?: number | null): string {
+  // Hermes on Android ships a partial Intl without currency support —
+  // Intl.NumberFormat({ style: 'currency' }) throws a RangeError and blanks
+  // the screen. Format with Indian (lakh/crore) digit grouping manually.
   if (amount == null) return '₹0';
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  const rounded = Math.round(amount);
+  const sign = rounded < 0 ? '-' : '';
+  const digits = String(Math.abs(rounded));
+  let grouped: string;
+  if (digits.length <= 3) {
+    grouped = digits;
+  } else {
+    const last3 = digits.slice(-3);
+    const rest = digits.slice(0, -3);
+    grouped = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
+  }
+  return `${sign}₹${grouped}`;
 }
 
 function getStatusColor(status: string) {

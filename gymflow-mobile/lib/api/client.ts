@@ -16,8 +16,9 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  // Default timeout of 10 seconds
-  timeout: 10000,
+  // Cold serverless starts + Sentry-backed endpoints (logs) can take >10s.
+  // 30s avoids spurious "Network Error" timeouts on otherwise-successful calls.
+  timeout: 30000,
 });
 
 // Request Interceptor: Inject token and log request

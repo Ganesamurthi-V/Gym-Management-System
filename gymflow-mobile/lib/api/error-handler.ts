@@ -7,14 +7,28 @@ import axios, { AxiosError } from 'axios';
 export function parseApiError(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<{ error?: string; message?: string }>;
-    
+
     // If the server provided a JSON response with an "error" or "message" field
     if (axiosError.response?.data) {
       if (axiosError.response.data.error) return axiosError.response.data.error;
       if (axiosError.response.data.message) return axiosError.response.data.message;
     }
 
-    // Network errors, timeouts, etc.
+    // A 401 without a body means the stored token is stale/invalid.
+    if (axiosError.response?.status === 401) {
+      return 'Your session has expired. Please sign in again.';
+    }
+
+    // Request timed out (server took longer than the configured timeout).
+    if (axiosError.code === 'ECONNABORTED') {
+      return 'The server took too long to respond. Check your connection and try again.';
+    }
+
+    // No response received at all — DNS failure, offline, or server unreachable.
+    if (!axiosError.response) {
+      return 'Unable to reach the server. Check your internet connection and try again.';
+    }
+
     if (axiosError.message) {
       return axiosError.message;
     }

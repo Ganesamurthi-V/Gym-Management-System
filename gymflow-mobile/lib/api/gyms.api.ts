@@ -64,17 +64,5 @@ export async function resetGymPassword(userId: string, newPassword: string): Pro
   }
 }
 
-export type GymSubscriptionData = {
-  subscription_status?: string;
-  plan_type?: string;
-  trial_ends_at?: string | null;
-  subscription_ends_at?: string | null;
-};
-
-export async function updateGymSubscription(gymId: string, data: GymSubscriptionData): Promise<void> {
-  try {
-    await apiClient.patch(`/api/gyms/${gymId}/subscription`, data);
-  } catch (error) {
-    throw new Error(parseApiError(error));
-  }
-}
+// Subscription management is handled by the functions in subscription.api.ts,
+// which target the live /api/admin/gyms/[id]/subscription/* routes.

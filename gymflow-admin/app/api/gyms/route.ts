@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error
 
-    const { data: { users } } = await supabase.auth.admin.listUsers()
+    const { data: { users } } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
 
     const gymsWithOwners = gyms.map(gym => {
       const owner = users.find(u => u.id === gym.owner_id)

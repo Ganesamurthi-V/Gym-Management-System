@@ -1,54 +1,37 @@
 /**
  * Input sanitization utilities for admin panel
- * Prevents XSS attacks by cleaning user-provided content
- * 
- * Installation required: npm install dompurify isomorphic-dompurify
- * (For now using basic sanitization, upgrade to DOMPurify in production)
+ * Prevents XSS attacks by stripping HTML tags from user-provided content.
+ *
+ * NOTE: We do NOT HTML-entity-encode the output here because all content is
+ * rendered via React text nodes ({msg.body}), never via dangerouslySetInnerHTML.
+ * React escapes text nodes automatically, so double-encoding would show raw
+ * entities like &quot; on screen. We only strip <tags> for safety.
  */
 
 /**
- * Basic HTML entity encoding to prevent XSS
- * This is a lightweight alternative until DOMPurify is installed
+ * Strip all HTML tags from a string.
+ * Safe to use for React text nodes — React handles escaping automatically.
  */
-function encodeHTML(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/\//g, '&#x2F;')
+function stripTags(str: string): string {
+  return str.replace(/<[^>]*>/g, '')
 }
 
 /**
- * Sanitize text input - strips all HTML tags
+ * Sanitize text input - strips all HTML tags.
  * Use for: subject lines, gym names, short text fields
  */
 export function sanitizeText(input: string): string {
   if (!input) return ''
-  
-  // Remove all HTML tags
-  const withoutTags = input.replace(/<[^>]*>/g, '')
-  
-  // Encode special characters
-  return encodeHTML(withoutTags).trim()
+  return stripTags(input).trim()
 }
 
 /**
- * Sanitize multiline text - preserves line breaks but removes HTML
+ * Sanitize multiline text - strips HTML tags, preserves line breaks.
  * Use for: message bodies, descriptions, notes
  */
 export function sanitizeMultiline(input: string): string {
   if (!input) return ''
-  
-  // Remove all HTML tags but preserve line breaks
-  const withoutTags = input.replace(/<[^>]*>/g, '')
-  
-  // Encode special characters
-  const encoded = encodeHTML(withoutTags)
-  
-  // Normalize line breaks
-  return encoded
+  return stripTags(input)
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .trim()

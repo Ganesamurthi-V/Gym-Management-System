@@ -41,6 +41,7 @@ import {
   type AuditLog,
   type GymActivityEvent,
 } from '@/lib/api';
+import { getSupabaseRealtimeClient } from '@/lib/supabase-realtime';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GymSubscription'>;
@@ -634,6 +635,76 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   }, [gymId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // ── Supabase Realtime subscriptions ───────────────────────────────────────
+  // Listen for live changes to this gym's subscription, audit logs, and admin
+  // messages so the screen updates instantly without the user pulling to refresh.
+  useEffect(() => {
+    const supabase = getSupabaseRealtimeClient();
+
+    const channel = supabase
+      .channel(`admin_mobile_gym_${gymId}`)
+
+      // 1. Gym row updated (subscription status, ban, plan change, etc.)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'gyms',
+          filter: `id=eq.${gymId}`,
+        },
+        () => {
+          if (__DEV__) console.log('[Realtime] gym updated — reloading data');
+          loadData();
+        }
+      )
+
+      // 2. New audit log entry (admin action taken on this gym)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'subscription_audit_logs',
+          filter: `gym_id=eq.${gymId}`,
+        },
+        () => {
+          if (__DEV__) console.log('[Realtime] audit log inserted — reloading data');
+          loadData();
+          // If the Logs tab data is loaded, refresh it too
+          if (logsLoadedRef.current) loadActivityLogs();
+        }
+      )
+
+      // 3. Admin message sent to this gym
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'admin_messages',
+          filter: `gym_id=eq.${gymId}`,
+        },
+        (payload: any) => {
+          if (__DEV__) console.log('[Realtime] admin message received', payload.new);
+          const subject: string = payload.new?.subject ?? 'New message';
+          Alert.alert(
+            '📣 GymFlow Support',
+            subject,
+            [{ text: 'OK', style: 'default' }]
+          );
+        }
+      )
+
+      .subscribe((status) => {
+        if (__DEV__) console.log('[Realtime] channel status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [gymId, loadData, loadActivityLogs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh fired ref moved up to fix rules of hooks
   const autoRefreshFiredRef = React.useRef(false);

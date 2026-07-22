@@ -19,6 +19,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
   const [gymId, setGymId] = useState<string | null>(initialGymId ?? null)
   const [gymName, setGymName] = useState<string | null>(initialGymName ?? null)
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount ?? 0)
+  const [toastMessage, setToastMessage] = useState<{ id: string, title: string, body: string } | null>(null)
   const currentUserId = useRef<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -101,7 +102,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
           table: 'admin_messages',
           filter: `gym_id=eq.${gymId}`,
         },
-        async () => {
+        async (payload: any) => {
           // Re-fetch unread count when an admin message is received or read
           const { count } = await supabase
             .from('admin_messages')
@@ -110,6 +111,20 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
             .is('read_at', null)
             
           setUnreadCount(count ?? 0)
+
+          // Show side notification if it's a new message
+          if (payload.eventType === 'INSERT') {
+            const newMessage = payload.new as any
+            setToastMessage({
+              id: newMessage.id,
+              title: newMessage.subject || 'New Support Message',
+              body: newMessage.body
+            })
+            // Hide toast after 6 seconds
+            setTimeout(() => {
+              setToastMessage(prev => prev?.id === newMessage.id ? null : prev)
+            }, 6000)
+          }
         }
       )
       .subscribe()
@@ -233,6 +248,30 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
             </div>
           </div>
         </>
+      )}
+
+      {/* Real-time Side Notification Toast */}
+      {toastMessage && (
+        <div 
+          onClick={() => {
+            setToastMessage(null)
+            router.push('/account/notifications')
+          }}
+          className="fixed bottom-6 right-6 z-[100] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl p-4 flex gap-4 items-start w-[320px] cursor-pointer hover:bg-slate-50 transition-all animate-pop-in group"
+        >
+          <div className="w-10 h-10 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 relative">
+            <Bell className="w-5 h-5" />
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-900 truncate">{toastMessage.title}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5 line-clamp-2">{toastMessage.body}</p>
+            <div className="flex items-center gap-1 text-[10px] font-bold text-brand-600 mt-2 opacity-80 group-hover:opacity-100 transition-opacity">
+              <span>View message</span>
+              <ChevronRight className="w-3 h-3" />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

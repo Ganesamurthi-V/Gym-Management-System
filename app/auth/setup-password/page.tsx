@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock,
-  ArrowLeft,
+  Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock, ArrowLeft,
 } from 'lucide-react'
 
 // ─── Password Criteria ────────────────────────────────────────────────────────
@@ -17,13 +16,15 @@ interface Criterion {
 }
 
 const PASSWORD_CRITERIA: Criterion[] = [
-  { label: 'At least 8 characters',         test: pw => pw.length >= 8 },
-  { label: 'At most 128 characters',         test: pw => pw.length <= 128 && pw.length > 0 },
-  { label: 'One uppercase letter (A–Z)',     test: pw => /[A-Z]/.test(pw) },
-  { label: 'One lowercase letter (a–z)',     test: pw => /[a-z]/.test(pw) },
-  { label: 'One digit (0–9)',                test: pw => /\d/.test(pw) },
-  { label: 'One special character (!@#…)',   test: pw => /[^A-Za-z0-9]/.test(pw) },
+  { label: 'At least 8 characters',        test: pw => pw.length >= 8 },
+  { label: 'At most 128 characters',        test: pw => pw.length <= 128 && pw.length > 0 },
+  { label: 'One uppercase letter (A–Z)',    test: pw => /[A-Z]/.test(pw) },
+  { label: 'One lowercase letter (a–z)',    test: pw => /[a-z]/.test(pw) },
+  { label: 'One digit (0–9)',               test: pw => /\d/.test(pw) },
+  { label: 'One special character (!@#…)',  test: pw => /[^A-Za-z0-9]/.test(pw) },
 ]
+
+// ─── Password Strength Components ────────────────────────────────────────────
 
 function PasswordStrength({ password }: { password: string }) {
   return (
@@ -33,13 +34,9 @@ function PasswordStrength({ password }: { password: string }) {
         return (
           <div
             key={c.label}
-            className={`flex items-center gap-2 text-xs font-medium transition-colors duration-200 ${
-              ok ? 'text-emerald-600' : 'text-slate-400'
-            }`}
+            className={`flex items-center gap-2 text-xs font-medium transition-colors duration-200 ${ok ? 'text-emerald-600' : 'text-slate-400'}`}
           >
-            <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-              ok ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
-            }`}>
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${ok ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
               <Check className={`w-2.5 h-2.5 transition-opacity duration-200 ${ok ? 'opacity-100' : 'opacity-30'}`} strokeWidth={3} />
             </div>
             {c.label}
@@ -50,37 +47,28 @@ function PasswordStrength({ password }: { password: string }) {
   )
 }
 
-// ─── Strength Bar ─────────────────────────────────────────────────────────────
-
-function strengthScore(password: string): number {
-  return PASSWORD_CRITERIA.filter(c => c.test(password)).length
-}
-
 function StrengthBar({ password }: { password: string }) {
   if (!password) return null
-  const score = strengthScore(password)
-  const pct = Math.round((score / PASSWORD_CRITERIA.length) * 100)
+  const score = PASSWORD_CRITERIA.filter(c => c.test(password)).length
+  const pct   = Math.round((score / PASSWORD_CRITERIA.length) * 100)
 
   let color = 'bg-red-400'
   let label = 'Weak'
-  if (score >= 4) { color = 'bg-amber-400'; label = 'Fair' }
-  if (score >= 5) { color = 'bg-emerald-400'; label = 'Strong' }
+  if (score >= 4) { color = 'bg-amber-400';   label = 'Fair' }
+  if (score >= 5) { color = 'bg-emerald-400';  label = 'Strong' }
   if (score === 6) { color = 'bg-emerald-500'; label = 'Very strong' }
 
   return (
     <div className="mt-2 space-y-1">
       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${color}`}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <p className={`text-[11px] font-bold ${color.replace('bg-', 'text-')}`}>{label}</p>
     </div>
   )
 }
 
-// ─── Error Screen ─────────────────────────────────────────────────────────────
+// ─── Token Error Screen ───────────────────────────────────────────────────────
 
 function TokenErrorScreen({ message }: { message: string }) {
   return (
@@ -106,51 +94,75 @@ function TokenErrorScreen({ message }: { message: string }) {
   )
 }
 
+// ─── Redirecting Screen ───────────────────────────────────────────────────────
+
+function RedirectingScreen() {
+  return (
+    <div className="flex flex-col items-center text-center gap-5 py-4">
+      <div className="relative">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
+          <Check className="w-8 h-8 text-emerald-500" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-black text-[#0F172A]">Account created!</h2>
+        <p className="text-sm text-slate-500 leading-relaxed">
+          Redirecting you to sign in…
+        </p>
+      </div>
+      <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+    </div>
+  )
+}
+
 // ─── Main Setup Password Page ─────────────────────────────────────────────────
 
 export default function SetupPasswordPage() {
-  const router = useRouter()
+  const router  = useRouter()
   const supabase = createClient()
 
+  // Session verification state
   const [sessionChecked, setSessionChecked] = useState(false)
-  const [sessionValid, setSessionValid]     = useState(false)
-  const [tokenError, setTokenError]         = useState('')
+  const [sessionValid,   setSessionValid]   = useState(false)
+  const [tokenError,     setTokenError]     = useState('')
 
-  const [password, setPassword]             = useState('')
+  // Form state
+  const [password,        setPassword]        = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword]     = useState(false)
-  const [showConfirm, setShowConfirm]       = useState(false)
-  const [loading, setLoading]               = useState(false)
-  const [error, setError]                   = useState('')
-  const [mounted, setMounted]               = useState(false)
+  const [showPassword,    setShowPassword]    = useState(false)
+  const [showConfirm,     setShowConfirm]     = useState(false)
+  const [loading,         setLoading]         = useState(false)
+  const [error,           setError]           = useState('')
+  const [redirecting,     setRedirecting]     = useState(false)
+  const [mounted,         setMounted]         = useState(false)
 
   const passwordRef = useRef<HTMLInputElement>(null)
 
   const allCriteriaMet = PASSWORD_CRITERIA.every(c => c.test(password))
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0
-  const canSubmit      = allCriteriaMet && passwordsMatch && !loading
+  const canSubmit      = allCriteriaMet && passwordsMatch && !loading && !redirecting
 
-  // ── On mount: let Supabase exchange the URL hash token, then verify session
+  // ── On mount: exchange URL hash token then verify session ─────────────────
   useEffect(() => {
     setMounted(true)
 
-    // Supabase SSR automatically exchanges the #access_token= hash on navigation.
-    // We just wait a tick then check the resulting session.
+    // Supabase @supabase/ssr exchanges the #access_token hash automatically
+    // when the page is navigated to via the email confirmation link.
+    // We wait a short tick to let that exchange complete, then read the session.
     const timer = setTimeout(async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-      if (error || !session) {
+      if (sessionError || !session) {
         setTokenError(
-          'This confirmation link is invalid or has expired. Please request a new one from the sign-up page.'
+          'This confirmation link is invalid or has already been used. Please request a new one from the sign-up page.'
         )
         setSessionChecked(true)
         return
       }
 
-      // Confirm the user's email is now verified
       if (!session.user.email_confirmed_at) {
         setTokenError(
-          'Your email has not been confirmed yet. Please click the link in your confirmation email.'
+          'Your email address has not been confirmed yet. Please click the verification link in your inbox.'
         )
         setSessionChecked(true)
         return
@@ -158,14 +170,13 @@ export default function SetupPasswordPage() {
 
       setSessionValid(true)
       setSessionChecked(true)
-
-      // Auto-focus password field
       setTimeout(() => passwordRef.current?.focus(), 100)
-    }, 300)
+    }, 400)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Submit handler ────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
@@ -173,42 +184,62 @@ export default function SetupPasswordPage() {
     setLoading(true)
     setError('')
 
-    // 1. Set the real password
+    // ── Step 1: Set the real password ──────────────────────────────────────
     const { error: updateError } = await supabase.auth.updateUser({ password })
     if (updateError) {
-      setError(updateError.message)
+      setError(
+        updateError.message.includes('same password')
+          ? 'Please choose a different password than the temporary one.'
+          : updateError.message
+      )
       setLoading(false)
       return
     }
 
-    // 2. Create the minimal gym record (idempotent)
+    // ── Step 2: Finalize registration (create gym row) ─────────────────────
+    let finalizeRes: Response
     try {
-      const res = await fetch('/api/auth/finalize-registration', {
+      finalizeRes = await fetch('/api/auth/finalize-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        // Non-fatal: the onboarding page can still handle a missing gym row.
-        // Only hard-fail on unexpected server errors; 409 conflict = already created.
-        if (res.status !== 409) {
-          console.warn('finalize-registration warning:', json?.error?.message)
-        }
-      }
-    } catch (networkErr) {
-      // Non-fatal: proceed to onboarding where gym creation is retried
-      console.warn('finalize-registration network error:', networkErr)
+    } catch {
+      setError('Network error. Please check your connection and try again.')
+      setLoading(false)
+      return
     }
 
-    // 3. Get current user email for redirect
-    const { data: { user } } = await supabase.auth.getUser()
-    const emailParam = user?.email ? `&email=${encodeURIComponent(user.email)}` : ''
+    if (!finalizeRes.ok && finalizeRes.status !== 409) {
+      // 409 = gym already exists (idempotent success); anything else is a real error
+      let message = 'Failed to complete registration. Please try again.'
+      try {
+        const json = await finalizeRes.json()
+        if (json?.error?.message) message = json.error.message
+      } catch { /* ignore parse error */ }
+      setError(message)
+      setLoading(false)
+      return
+    }
 
-    // 4. Redirect to onboarding wizard
-    router.push('/onboarding')
+    // ── Step 3: Capture email before signing out ───────────────────────────
+    const { data: { user } } = await supabase.auth.getUser()
+    const userEmail = user?.email ?? ''
+
+    // ── Step 4: Sign out so the user must explicitly log in ────────────────
+    await supabase.auth.signOut()
+
+    // ── Step 5: Show redirect screen then navigate ─────────────────────────
+    setLoading(false)
+    setRedirecting(true)
+
+    setTimeout(() => {
+      const params = new URLSearchParams({ registered: '1' })
+      if (userEmail) params.set('email', userEmail)
+      router.replace(`/auth/login?${params.toString()}`)
+    }, 1000)
   }
 
-  // ── Loading skeleton while session is being checked
+  // ── Loading skeleton while session is being verified ──────────────────────
   if (!sessionChecked) {
     return (
       <div className="min-h-screen bg-[#FAFBFD] flex items-center justify-center">
@@ -224,16 +255,13 @@ export default function SetupPasswordPage() {
     <div className="min-h-screen flex">
       {/* ─── LEFT PANEL ─── */}
       <div className="hidden lg:flex lg:w-[45%] relative bg-[#0B0F1A] flex-col items-center justify-center p-10 xl:p-14 overflow-hidden">
-        {/* Background orbs */}
         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-br from-brand-400/20 to-violet-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />
         <div className="absolute bottom-[-15%] right-[-5%] w-[50%] h-[50%] bg-gradient-to-tr from-cyan-400/15 to-emerald-400/10 rounded-full blur-[80px] animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
 
         <div className={`relative z-10 space-y-8 text-center transition-all duration-700 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-          {/* Lock icon */}
           <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-brand-400/20 to-brand-600/10 border border-brand-400/20 flex items-center justify-center">
             <Lock className="w-12 h-12 text-brand-300" />
           </div>
-
           <div className="space-y-3">
             <h2 className="text-3xl font-black text-white leading-tight">
               Almost there!<br />
@@ -242,24 +270,28 @@ export default function SetupPasswordPage() {
               </span>
             </h2>
             <p className="text-sm text-white/40 max-w-xs leading-relaxed">
-              You&apos;re one step away from your gym management dashboard. Choose a strong password to secure your account.
+              Your email is verified. Choose a strong password to secure your account, then sign in.
             </p>
           </div>
 
           {/* Steps indicator */}
-          <div className="flex items-center gap-3 justify-center">
-            {['Email verified', 'Set password', 'Setup gym'].map((step, i) => (
-              <div key={step} className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {[
+              { label: 'Email verified', done: true,  active: false },
+              { label: 'Set password',   done: false, active: true  },
+              { label: 'Sign in',        done: false, active: false },
+            ].map((step, i) => (
+              <div key={step.label} className="flex items-center gap-2">
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold ${
-                  i === 0
+                  step.done
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : i === 1
+                    : step.active
                     ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
                     : 'bg-white/5 text-white/30 border border-white/10'
                 }`}>
-                  {i === 0 && <Check className="w-3 h-3" strokeWidth={3} />}
-                  {i === 1 && <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />}
-                  {step}
+                  {step.done   && <Check className="w-3 h-3" strokeWidth={3} />}
+                  {step.active && <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />}
+                  {step.label}
                 </div>
                 {i < 2 && <div className="w-4 h-px bg-white/10" />}
               </div>
@@ -267,7 +299,6 @@ export default function SetupPasswordPage() {
           </div>
         </div>
 
-        {/* Logo bottom-left */}
         <div className="absolute bottom-8 left-10 flex items-center gap-3">
           <Image src="/logo_only.png" alt="GymFlow" width={32} height={32} className="object-contain" />
           <span className="text-sm font-black text-white/60">gymflow</span>
@@ -287,12 +318,19 @@ export default function SetupPasswordPage() {
         <div className="flex-1 flex items-center justify-center px-4 xs:px-6 py-8 xs:py-10">
           <div className={`w-full max-w-[440px] transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
 
-            {/* Token error state */}
-            {!sessionValid ? (
+            {/* Token error */}
+            {!sessionValid && (
               <TokenErrorScreen message={tokenError} />
-            ) : (
+            )}
+
+            {/* Redirecting overlay */}
+            {sessionValid && redirecting && (
+              <RedirectingScreen />
+            )}
+
+            {/* Password form */}
+            {sessionValid && !redirecting && (
               <>
-                {/* Heading */}
                 <div className="mb-7 text-center">
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-50 border-2 border-brand-100 mb-4">
                     <Lock className="w-6 h-6 text-brand-500" />
@@ -301,19 +339,16 @@ export default function SetupPasswordPage() {
                   <p className="text-sm text-slate-400 mt-1.5 font-medium">Choose a strong password to protect your account</p>
                 </div>
 
-                {/* Error */}
                 {error && (
-                  <div className="mb-5 flex items-center gap-2.5 p-3.5 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-semibold">
-                    <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="mb-5 flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-semibold">
+                    <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                       <AlertCircle className="w-3 h-3 text-red-500" />
                     </div>
                     {error}
                   </div>
                 )}
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">
-
                   {/* Password */}
                   <div>
                     <label htmlFor="password-sp" className="block text-sm font-bold text-[#0F172A] mb-2">
@@ -333,8 +368,9 @@ export default function SetupPasswordPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => setShowPassword(v => !v)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -371,19 +407,19 @@ export default function SetupPasswordPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowConfirm(!showConfirm)}
+                        onClick={() => setShowConfirm(v => !v)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                        aria-label={showConfirm ? 'Hide password' : 'Show password'}
                       >
                         {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     {confirmPassword.length > 0 && (
                       <p className={`mt-1.5 text-xs font-medium flex items-center gap-1 ${passwordsMatch ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {passwordsMatch ? (
-                          <><Check className="w-3 h-3" strokeWidth={3} /> Passwords match</>
-                        ) : (
-                          <><AlertCircle className="w-3 h-3" /> Passwords do not match</>
-                        )}
+                        {passwordsMatch
+                          ? <><Check className="w-3 h-3" strokeWidth={3} /> Passwords match</>
+                          : <><AlertCircle className="w-3 h-3" /> Passwords do not match</>
+                        }
                       </p>
                     )}
                   </div>
@@ -408,7 +444,6 @@ export default function SetupPasswordPage() {
                   </button>
                 </form>
 
-                {/* Security badge */}
                 <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-300 font-medium">
                   <Shield className="w-3.5 h-3.5" />
                   <span>Secured with end-to-end encryption</span>

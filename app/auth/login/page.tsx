@@ -85,23 +85,27 @@ import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 
 function RegistrationSuccessBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <div className="mb-5 flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl animate-slide-up">
-      <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Check className="w-3 h-3 text-emerald-600" strokeWidth={3} />
+    <div className="mb-5 p-4 bg-emerald-50 border border-emerald-200 rounded-xl animate-slide-up">
+      <div className="flex items-start gap-3">
+        <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Check className="w-3 h-3 text-white" strokeWidth={3} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-emerald-800">Account created successfully.</p>
+          <p className="text-xs text-emerald-700 mt-0.5 leading-relaxed">
+            Your email has been verified. Please sign in using your email and password.
+          </p>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-emerald-400 hover:text-emerald-600 transition-colors flex-shrink-0 mt-0.5"
+          aria-label="Dismiss"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-emerald-800">Account created successfully!</p>
-        <p className="text-xs text-emerald-600 mt-0.5">You can now sign in with your email and password.</p>
-      </div>
-      <button
-        onClick={onDismiss}
-        className="text-emerald-400 hover:text-emerald-600 transition-colors flex-shrink-0"
-        aria-label="Dismiss"
-      >
-        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-        </svg>
-      </button>
     </div>
   )
 }

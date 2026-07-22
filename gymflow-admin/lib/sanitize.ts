@@ -118,13 +118,13 @@ export function sanitizeSupportMessage(raw: any): SanitizedSupportMessage | { er
   }
   
   const subject = sanitizeText(raw.subject)
-  if (!subject || subject.length < 3 || subject.length > 200) {
-    return { error: 'Subject must be between 3 and 200 characters' }
+  if (!subject) {
+    return { error: 'Subject is required' }
   }
   
   const body = sanitizeMultiline(raw.body)
-  if (!body || body.length < 10 || body.length > 5000) {
-    return { error: 'Message body must be between 10 and 5000 characters' }
+  if (!body) {
+    return { error: 'Message body is required' }
   }
   
   const type = sanitizeEnum(raw.type, ['info', 'warning', 'error', 'success'])
@@ -157,13 +157,13 @@ export function sanitizeTicketResolution(raw: any): SanitizedTicketResolution | 
   }
   
   const replySubject = sanitizeText(raw.replySubject)
-  if (!replySubject || replySubject.length < 3 || replySubject.length > 200) {
-    return { error: 'Reply subject must be between 3 and 200 characters' }
+  if (!replySubject) {
+    return { error: 'Reply subject is required' }
   }
   
   const replyMessage = sanitizeMultiline(raw.replyMessage)
-  if (!replyMessage || replyMessage.length < 10 || replyMessage.length > 5000) {
-    return { error: 'Reply message must be between 10 and 5000 characters' }
+  if (!replyMessage) {
+    return { error: 'Reply message is required' }
   }
   
   return { ticketId, status, replySubject, replyMessage }

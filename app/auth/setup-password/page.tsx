@@ -233,6 +233,13 @@ export default function SetupPasswordPage() {
     setRedirecting(true)
 
     setTimeout(() => {
+      // Broadcast success so the original signup tab can redirect too
+      try {
+        const bc = new BroadcastChannel('auth_channel')
+        bc.postMessage({ type: 'registration_complete', email: userEmail })
+        bc.close()
+      } catch (e) { /* ignore if not supported */ }
+
       const params = new URLSearchParams({ registered: '1' })
       if (userEmail) params.set('email', userEmail)
       router.replace(`/auth/login?${params.toString()}`)

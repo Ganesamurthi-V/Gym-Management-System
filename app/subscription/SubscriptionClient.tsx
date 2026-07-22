@@ -94,6 +94,23 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
           }
         }
       )
+      // Also listen for broadcast from admin route (fallback if postgres_changes is slow)
+      .on(
+        'broadcast',
+        { event: 'subscription_reviewed' },
+        (payload: any) => {
+          const { action, rejection_reason: reason } = payload.payload ?? {}
+          if (action === 'rejected') {
+            setLiveRequest(prev => prev ? { ...prev, status: 'rejected', rejection_reason: reason } : prev)
+            toast.error('Your payment request was rejected.')
+            setSuccess(false)
+          } else if (action === 'approved') {
+            setLiveRequest(prev => prev ? { ...prev, status: 'approved' } : prev)
+            setSuccess(true)
+            toast.success('Payment approved! Redirecting...')
+          }
+        }
+      )
       .subscribe()
 
     // Listen to gyms table for this gym (subscription status changes)

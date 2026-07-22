@@ -101,6 +101,19 @@ export async function PATCH(req: NextRequest) {
       log.warn('Failed to send reply message after resolving ticket', { ticketId })
     }
 
+    // Broadcast minimal notification to the client
+    try {
+      log.start('REALTIME_BROADCAST')
+      await supabase.channel(`gym_support_realtime_${ticket.gym_id}`).send({
+        type: 'broadcast',
+        event: 'ticket_update',
+        payload: { id: ticketId, status, gym_id: ticket.gym_id, timestamp: new Date().toISOString() }
+      })
+      log.end('REALTIME_BROADCAST')
+    } catch (err) {
+      log.warn('Failed to broadcast realtime event', { error: String(err) })
+    }
+
     log.info('Ticket resolved', { ticketId })
     log.summary(200)
     return NextResponse.json({ success: true })

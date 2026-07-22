@@ -11,6 +11,7 @@ import {
   fetchGyms, fetchTickets, sendSupportMessage, resolveTicket, clearTickets,
   type Gym, type SupportTicket,
 } from '@/lib/api';
+import { getSupabaseRealtimeClient } from '@/lib/supabase-realtime';
 import { AdminInput } from '@/components/AdminInput';
 import { AdminButton } from '@/components/AdminButton';
 import { TicketCard } from '@/components/TicketCard';
@@ -182,6 +183,22 @@ function TicketsTab() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Listen for realtime ticket broadcasts
+  React.useEffect(() => {
+    const supabase = getSupabaseRealtimeClient();
+    const channel = supabase
+      .channel('admin_support_queue')
+      .on('broadcast', { event: 'new_ticket' }, () => {
+        // Automatically fetch new tickets when one arrives
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
 
   function openResolve(ticket: SupportTicket) {
     setReplySubject(`Re: ${ticket.subject}`);

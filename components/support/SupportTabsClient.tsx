@@ -67,17 +67,20 @@ export default function SupportTabsClient({
 
       // ── admin_messages: new notification from GymFlow team ──
       .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'admin_messages',
-          filter: `gym_id=eq.${gymId}`,
-        },
-        (payload: any) => {
-          const newMsg = payload.new as AdminMessage
-          // Avoid duplicates (page might already have it from SSR)
-          if (messagesRef.current.some((m) => m.id === newMsg.id)) return
+        'broadcast',
+        { event: 'admin_message' },
+        async (payload: any) => {
+          const msgId = payload.payload?.id
+          if (!msgId) return
+
+          // Fetch securely (RLS applied)
+          const { data: newMsg } = await supabase
+            .from('admin_messages')
+            .select('*')
+            .eq('id', msgId)
+            .single()
+
+          if (!newMsg || messagesRef.current.some((m) => m.id === newMsg.id)) return
 
           setMessages((prev) => [newMsg, ...prev])
           setNewMsgIds((prev) => new Set([...prev, newMsg.id]))
@@ -100,21 +103,26 @@ export default function SupportTabsClient({
 
       // ── support_tickets: ticket status updated (open → resolved) ──
       .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'support_tickets',
-          filter: `gym_id=eq.${gymId}`,
-        },
-        (payload: any) => {
-          const updated = payload.new as SupportTicket
+        'broadcast',
+        { event: 'ticket_update' },
+        async (payload: any) => {
+          const ticketId = payload.payload?.id
+          if (!ticketId) return
+
+          // Fetch securely (RLS applied)
+          const { data: updated } = await supabase
+            .from('support_tickets')
+            .select('*')
+            .eq('id', ticketId)
+            .single()
+            
+          if (!updated) return
+
           setTickets((prev) =>
             prev.map((t) => (t.id === updated.id ? updated : t))
           )
           if (updated.status === 'resolved') {
             toast('✅ Your support ticket has been resolved!', { duration: 5000 })
-            // Jump the user to closed tab so they see the resolution
             setActiveTab('closed')
           }
         }
@@ -122,17 +130,15 @@ export default function SupportTabsClient({
 
       // ── support_tickets: new ticket submitted (echoed back for consistency) ──
       .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'support_tickets',
-          filter: `gym_id=eq.${gymId}`,
-        },
-        (payload: any) => {
-          const newTicket = payload.new as SupportTicket
-          if (ticketsRef.current.some((t) => t.id === newTicket.id)) return
-          setTickets((prev) => [newTicket, ...prev])
+        'broadcast',
+        { event: 'new_ticket' },
+        async (payload: any) => {
+          // If we also emitted `new_ticket` to `gym_support_realtime_{gymId}`, we'd handle it here.
+          // But our API emitted it to `admin_support_queue`. 
+          // So this client (gym owner) does not necessarily need to listen to new_tickets 
+          // they just created (the optimistic UI or standard refetch handles it).
+          // But if we wanted to sync multiple tabs for the same gym, we could broadcast it to gym_support_realtime_{gymId} too.
+          // For now, we omit it as it's not strictly necessary for single-user gyms.
         }
       )
 

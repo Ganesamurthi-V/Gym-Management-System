@@ -98,7 +98,7 @@ function EmailSentScreen({ email }: { email: string }) {
       type: 'signup',
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/setup-password`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`,
       },
     })
 
@@ -248,7 +248,7 @@ export default function CreateAccountPage() {
           name: fullName.trim(),
           mobile_number: mobileNumber,
         },
-        emailRedirectTo: `${window.location.origin}/auth/setup-password`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`,
       },
     })
 

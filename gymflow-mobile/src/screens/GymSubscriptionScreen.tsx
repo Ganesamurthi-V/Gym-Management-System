@@ -24,7 +24,7 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
-import DateTimePicker from '@react-native-community/datetimepicker';
+
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import {
   fetchSubscriptionDetail,
@@ -36,8 +36,10 @@ import {
   saveAdminNotes,
   updateSubscriptionDates,
   executeDangerAction,
+  fetchGymActivityLogs,
   type SubscriptionDetailResponse,
   type AuditLog,
+  type GymActivityEvent,
 } from '@/lib/api';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -413,7 +415,6 @@ function DateCard({
   value: Date | null;
   onChange: (d: Date) => void;
 }) {
-  const [show, setShow] = useState(false);
   const displayDate = value ? fmtDate(value.toISOString()) : 'Not Set';
 
   return (
@@ -421,22 +422,7 @@ function DateCard({
       <Text style={dateCardStyles.label}>{label}</Text>
       <View style={dateCardStyles.row}>
         <Text style={[dateCardStyles.value, !value && { color: Colors.textMuted }]}>{displayDate}</Text>
-        <TouchableOpacity style={dateCardStyles.changeBtn} onPress={() => setShow(true)}>
-          <Feather name="calendar" size={12} color={Colors.indigo} />
-          <Text style={dateCardStyles.changeBtnText}>Change</Text>
-        </TouchableOpacity>
       </View>
-      {show && (
-        <DateTimePicker
-          value={value || new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={(_e: any, d?: Date) => {
-            setShow(false);
-            if (d) onChange(d);
-          }}
-        />
-      )}
     </View>
   );
 }
@@ -531,6 +517,7 @@ const TABS = [
   { key: 'overview', label: 'Overview', icon: 'activity' },
   { key: 'billing',  label: 'Billing',  icon: 'credit-card' },
   { key: 'history',  label: 'History',  icon: 'list' },
+  { key: 'logs',     label: 'Logs',     icon: 'terminal' },
   { key: 'settings', label: 'Settings', icon: 'settings' },
 ] as const;
 
@@ -590,6 +577,29 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
   // Action loading states
   const [actionLoading, setActionLoading] = useState(false);
+
+  // ── Gym Activity Logs (Logs tab) ──────────────────────────────────
+  const [activityLogs, setActivityLogs] = useState<GymActivityEvent[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsRefreshing, setLogsRefreshing] = useState(false);
+  const [logsError, setLogsError] = useState<string | null>(null);
+
+  const loadActivityLogs = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setLogsRefreshing(true); else setLogsLoading(true);
+    setLogsError(null);
+    try {
+      const res = await fetchGymActivityLogs(gymId, 60);
+      setActivityLogs(res.events);
+    } catch (e: any) {
+      setLogsError(e.message ?? 'Failed to load activity logs');
+    } finally {
+      setLogsLoading(false);
+      setLogsRefreshing(false);
+    }
+  }, [gymId]);
+
+  // Load logs when the tab is first opened
+  const logsLoadedRef = useRef(false);
 
   // ── Data loading ─────────────────────────────────────────────────
 
@@ -879,7 +889,13 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             <TouchableOpacity
               key={tab.key}
               style={[styles.tabBtn, isActive && styles.tabBtnActive]}
-              onPress={() => setActiveTab(tab.key)}
+              onPress={() => {
+                setActiveTab(tab.key);
+                if (tab.key === 'logs' && !logsLoadedRef.current) {
+                  logsLoadedRef.current = true;
+                  loadActivityLogs();
+                }
+              }}
             >
               <Feather name={tab.icon as any} size={16} color={isActive ? Colors.indigo : Colors.textMuted} />
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
@@ -1100,7 +1116,133 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
         </ScrollView>
       )}
 
-      {/* ─── SETTINGS TAB ───────────────────────────────────────────── */}
+      {/* ─── LOGS TAB ────────────────────────────────────────────── */}
+      {activeTab === 'logs' && (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.content, { paddingBottom: 160 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={logsRefreshing}
+              onRefresh={() => loadActivityLogs(true)}
+              tintColor={Colors.indigo}
+            />
+          }
+        >
+          <View style={styles.card}>
+            <SectionHeader icon="terminal" title="Activity Logs" color={Colors.indigo} />
+            <Text style={logsStyles.hint}>All actions taken in this gym account</Text>
+
+            {logsLoading ? (
+              <View style={logsStyles.center}>
+                <ActivityIndicator color={Colors.indigo} size="small" />
+                <Text style={logsStyles.loadingText}>Loading activity logs…</Text>
+              </View>
+            ) : logsError ? (
+              <View style={logsStyles.errorBox}>
+                <Feather name="alert-circle" size={16} color={Colors.red} />
+                <Text style={logsStyles.errorText}>{logsError}</Text>
+                <TouchableOpacity style={logsStyles.retryBtn} onPress={() => loadActivityLogs()}>
+                  <Text style={logsStyles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : activityLogs.length === 0 ? (
+              <View style={logsStyles.center}>
+                <Feather name="inbox" size={32} color={Colors.bgCardBorder} />
+                <Text style={logsStyles.emptyText}>No activity recorded yet</Text>
+              </View>
+            ) : (
+              activityLogs.map((event, idx) => {
+                const eventColor = (() => {
+                  switch (event.color) {
+                    case 'emerald': return Colors.emerald;
+                    case 'green': return Colors.emerald;
+                    case 'red': return Colors.red;
+                    case 'amber': return Colors.amber;
+                    case 'indigo': return Colors.indigo;
+                    case 'sky': return Colors.sky;
+                    default: return Colors.textMuted;
+                  }
+                })();
+                const eventBg = (() => {
+                  switch (event.color) {
+                    case 'emerald': return Colors.emeraldBg;
+                    case 'green': return Colors.emeraldBg;
+                    case 'red': return Colors.redBg;
+                    case 'amber': return Colors.amberBg;
+                    case 'indigo': return Colors.indigoBg;
+                    case 'sky': return Colors.skyBg;
+                    default: return Colors.bgInput;
+                  }
+                })();
+                const isLast = idx === activityLogs.length - 1;
+                return (
+                  <View key={event.id} style={logsStyles.item}>
+                    {/* Left: icon + connector line */}
+                    <View style={logsStyles.timelineCol}>
+                      <View style={[logsStyles.iconCircle, { backgroundColor: eventBg, borderColor: eventColor + '55' }]}>
+                        <Feather name={event.icon as any} size={12} color={eventColor} />
+                      </View>
+                      {!isLast && <View style={logsStyles.connector} />}
+                    </View>
+                    {/* Right: content */}
+                    <View style={[logsStyles.content, !isLast && { marginBottom: 16 }]}>
+                      <View style={logsStyles.titleRow}>
+                        <Text style={logsStyles.title} numberOfLines={1}>{event.title}</Text>
+                        <Text style={logsStyles.time}>{fmtDateTime(event.timestamp)}</Text>
+                      </View>
+                      {event.subtitle ? (
+                        <Text style={logsStyles.subtitle} numberOfLines={2}>{event.subtitle}</Text>
+                      ) : null}
+                      {event.meta ? (
+                        <View style={[logsStyles.metaBadge, { backgroundColor: eventBg, borderColor: eventColor + '44' }]}>
+                          <Text style={[logsStyles.metaText, { color: eventColor }]}>{event.meta}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+
+          {/* ── Summary counts ── */}
+          {activityLogs.length > 0 && (
+            <View style={styles.card}>
+              <SectionHeader icon="bar-chart-2" title="Activity Summary" color={Colors.purple} />
+              {(['member_added', 'whatsapp_sent', 'subscription_event'] as const).map((type) => {
+                const count = activityLogs.filter(e => e.type === type).length;
+                const labels: Record<string, string> = {
+                  member_added: 'Members Added',
+                  whatsapp_sent: 'WhatsApp Sent',
+                  subscription_event: 'Subscription Events',
+                };
+                const icons: Record<string, string> = {
+                  member_added: 'user-plus',
+                  whatsapp_sent: 'message-circle',
+                  subscription_event: 'shield',
+                };
+                const colors: Record<string, string> = {
+                  member_added: Colors.emerald,
+                  whatsapp_sent: '#25D366',
+                  subscription_event: Colors.indigo,
+                };
+                return (
+                  <View key={type} style={logsStyles.summaryRow}>
+                    <View style={logsStyles.summaryLeft}>
+                      <Feather name={icons[type] as any} size={14} color={colors[type]} />
+                      <Text style={logsStyles.summaryLabel}>{labels[type]}</Text>
+                    </View>
+                    <Text style={[logsStyles.summaryCount, { color: colors[type] }]}>{count}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {/* ─── SETTINGS TAB ────────────────────────────────────────────── */}
       {activeTab === 'settings' && (
         <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.indigo} />}>
           <View style={styles.card}>
@@ -1414,3 +1556,56 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', textAlign: 'center', paddingVertical: 8 },
   moreText: { fontSize: 12, color: Colors.indigo, textAlign: 'center', paddingTop: 8 },
 });
+
+// ─── Logs Tab Styles ───────────────────────────────────────────────────────────
+
+const logsStyles = StyleSheet.create({
+  hint: { fontSize: 11, color: Colors.textMuted, fontStyle: 'italic', marginBottom: Spacing.md },
+
+  center: { alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingVertical: Spacing.xl },
+  loadingText: { fontSize: 12, color: Colors.textMuted },
+  emptyText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic' },
+
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.sm,
+    backgroundColor: Colors.redBg, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.redBorder, padding: Spacing.md,
+  },
+  errorText: { flex: 1, fontSize: 12, color: Colors.red },
+  retryBtn: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: Colors.redBg, borderRadius: Radius.full,
+    borderWidth: 1, borderColor: Colors.redBorder,
+  },
+  retryText: { fontSize: 11, fontWeight: '700', color: Colors.red },
+
+  // Timeline
+  item: { flexDirection: 'row', gap: Spacing.md },
+  timelineCol: { alignItems: 'center', width: 28 },
+  iconCircle: {
+    width: 28, height: 28, borderRadius: 14,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+  },
+  connector: { flex: 1, width: 2, backgroundColor: Colors.bgCardBorder, marginTop: 4, minHeight: 20 },
+  content: { flex: 1, paddingBottom: 4 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 },
+  title: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, flex: 1 },
+  time: { fontSize: 10, color: Colors.textMuted, marginTop: 1, flexShrink: 0 },
+  subtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2, lineHeight: 17 },
+  metaBadge: {
+    alignSelf: 'flex-start', marginTop: 5,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: Radius.full, borderWidth: 1,
+  },
+  metaText: { fontSize: 10, fontWeight: '600' },
+
+  // Summary
+  summaryRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
+  },
+  summaryLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  summaryLabel: { fontSize: 13, color: Colors.textPrimary, fontWeight: '600' },
+  summaryCount: { fontSize: 20, fontWeight: '800' },
+});
+

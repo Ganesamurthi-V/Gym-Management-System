@@ -239,7 +239,7 @@ export default function CreateAccountPage() {
     setLoading(true)
     setError('')
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password: crypto.randomUUID(),
       options: {
@@ -252,8 +252,16 @@ export default function CreateAccountPage() {
       },
     })
 
+    // Detect if Supabase returned a "fake" success due to Email Enumeration Protection.
+    // If the user already exists, Supabase returns error: null but an empty identities array.
+    if (!signUpError && signUpData?.user?.identities?.length === 0) {
+      setError('An account with this email already exists. Try signing in instead.')
+      setLoading(false)
+      return
+    }
+
     if (signUpError) {
-      // Surface a friendly message for common cases
+      // Surface a friendly message for common cases (fallback for when enumeration protection is off)
       if (signUpError.message.toLowerCase().includes('already registered')) {
         setError('An account with this email already exists. Try signing in instead.')
       } else {

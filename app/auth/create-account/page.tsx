@@ -259,18 +259,14 @@ export default function CreateAccountPage() {
     if (!canSubmit || isSubmitting.current) return
 
     isSubmitting.current = true
-    console.log('--- [SignUp Flow] Started ---')
-    console.log('[SignUp Flow] Email being used:', email)
-    console.log('[SignUp Flow] process.env.NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL)
     const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`
-    console.log('[SignUp Flow] Target redirect URL:', redirectUrl)
 
     setLoading(true)
     setError('')
 
-    const signUpPayload = {
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
-      // password: <hidden>
+      password: crypto.randomUUID(),
       options: {
         data: {
           full_name: fullName.trim(),
@@ -279,24 +275,11 @@ export default function CreateAccountPage() {
         },
         emailRedirectTo: redirectUrl,
       },
-    }
-    console.log('[SignUp Flow] Sending signUp request to Supabase with payload:', signUpPayload)
-
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password: crypto.randomUUID(),
-      options: signUpPayload.options,
     })
-
-    console.log('[SignUp Flow] Received response from Supabase:')
-    console.log('[SignUp Flow] -> error:', signUpError)
-    console.log('[SignUp Flow] -> data.user:', signUpData?.user)
-    console.log('[SignUp Flow] -> data.session:', signUpData?.session)
 
     // Detect if Supabase returned a "fake" success due to Email Enumeration Protection.
     // If the user already exists, Supabase returns error: null but an empty identities array.
     if (!signUpError && signUpData?.user?.identities?.length === 0) {
-      console.warn('[SignUp Flow] ⚠️ FAKE SUCCESS DETECTED: The identities array is empty. This usually means the email ALREADY EXISTS and Supabase enumeration protection blocked the email delivery.')
       setError('An account with this email already exists. Try signing in instead.')
       setLoading(false)
       isSubmitting.current = false
@@ -304,7 +287,6 @@ export default function CreateAccountPage() {
     }
 
     if (signUpError) {
-      console.error('[SignUp Flow] ❌ ACTUAL ERROR RETURNED:', signUpError.message)
       // Surface a friendly message for common cases (fallback for when enumeration protection is off)
       if (signUpError.message.toLowerCase().includes('already registered')) {
         setError('An account with this email already exists. Try signing in instead.')
@@ -316,7 +298,6 @@ export default function CreateAccountPage() {
       return
     }
 
-    console.log('[SignUp Flow] ✅ SUCCESS! All checks passed. Supabase should have dispatched the email to', email)
     setLoading(false)
     setEmailSent(true)
     isSubmitting.current = false

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Dumbbell, ArrowRight, Users, TrendingUp, Shield, Zap, Check } from 'lucide-react'
 
 // ─── Animated Grid Background ───────────────────────────────────────────────────
@@ -121,7 +120,6 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
   const [showRegBanner, setShowRegBanner] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     setMounted(true)
@@ -148,51 +146,39 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error, data } = await supabase.auth.signInWithPassword({ email, password })
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
-    if (error) {
-      setError('Invalid email or password')
-      setLoading(false)
-      return
-    }
+      const json = await res.json()
 
-    // Check if user's gym was deactivated even if password was correct
-    if (data?.user) {
-      const { data: gymStatus } = await supabase
-        .from('gyms')
-        .select('is_active')
-        .eq('owner_id', data.user.id)
-        .single()
-
-      if (gymStatus?.is_active === false) {
-        await supabase.auth.signOut()
-        setError('Your access is banned by admin')
+      if (!res.ok) {
+        setError(json.error ?? 'Invalid email or password')
         setLoading(false)
         return
       }
-    }
 
-    // Check if user has completed onboarding
-    const { data: gymData } = await supabase
-      .from('gyms')
-      .select('onboarding_completed')
-      .eq('owner_id', data.user.id)
-      .maybeSingle()
+      // Login succeeded — session cookie is set by the server route.
+      // Determine redirect based on onboarding status.
+      if (json.onboardingCompleted) {
+        const nameFromEmail = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+        setUserName(json.userName || nameFromEmail)
+        setLoginSuccess(true)
 
-    if (gymData?.onboarding_completed) {
-      // Extract name from email for welcome message
-      const nameFromEmail = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-      setUserName(data.user?.user_metadata?.name || nameFromEmail)
-      setLoginSuccess(true)
-
-      // Redirect after the welcome animation
-      setTimeout(() => {
-        router.push('/dashboard')
+        setTimeout(() => {
+          router.push('/dashboard')
+          router.refresh()
+        }, 2800)
+      } else {
+        router.push('/onboarding')
         router.refresh()
-      }, 2800)
-    } else {
-      router.push('/onboarding')
-      router.refresh()
+      }
+    } catch {
+      setError('Network error. Please check your connection.')
+      setLoading(false)
     }
   }
 

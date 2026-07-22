@@ -11,7 +11,7 @@ export default async function OnboardingPage() {
     .from('gyms')
     .select('id, name, onboarding_completed')
     .eq('owner_id', user.id)
-    .single()
+    .maybeSingle()
 
   // Already onboarded — send to dashboard
   if (gym?.onboarding_completed) redirect('/dashboard')

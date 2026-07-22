@@ -187,11 +187,14 @@ export default function SetupPasswordPage() {
     // ── Step 1: Set the real password ──────────────────────────────────────
     const { error: updateError } = await supabase.auth.updateUser({ password })
     if (updateError) {
-      setError(
-        updateError.message.includes('same password')
-          ? 'Please choose a different password than the temporary one.'
-          : updateError.message
-      )
+      let friendlyMessage = updateError.message
+      if (friendlyMessage.includes('same password')) {
+        friendlyMessage = 'Please choose a different password than the temporary one.'
+      } else if (friendlyMessage.includes('sub claim in JWT does not exist')) {
+        friendlyMessage = ' Please return to the sign up page and try again.'
+      }
+      
+      setError(friendlyMessage)
       setLoading(false)
       return
     }

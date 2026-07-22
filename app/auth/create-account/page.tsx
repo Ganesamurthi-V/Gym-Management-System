@@ -223,6 +223,7 @@ export default function CreateAccountPage() {
   const [error, setError]             = useState('')
   const [mounted, setMounted]         = useState(false)
   const [emailSent, setEmailSent]     = useState(false)
+  const isSubmitting                  = useRef(false)
   const supabase = createClient()
 
   useEffect(() => { setMounted(true) }, [])
@@ -255,8 +256,9 @@ export default function CreateAccountPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!canSubmit) return
+    if (!canSubmit || isSubmitting.current) return
 
+    isSubmitting.current = true
     console.log('--- [SignUp Flow] Started ---')
     console.log('[SignUp Flow] Email being used:', email)
     console.log('[SignUp Flow] process.env.NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL)
@@ -297,6 +299,7 @@ export default function CreateAccountPage() {
       console.warn('[SignUp Flow] ⚠️ FAKE SUCCESS DETECTED: The identities array is empty. This usually means the email ALREADY EXISTS and Supabase enumeration protection blocked the email delivery.')
       setError('An account with this email already exists. Try signing in instead.')
       setLoading(false)
+      isSubmitting.current = false
       return
     }
 
@@ -309,12 +312,14 @@ export default function CreateAccountPage() {
         setError(signUpError.message)
       }
       setLoading(false)
+      isSubmitting.current = false
       return
     }
 
     console.log('[SignUp Flow] ✅ SUCCESS! All checks passed. Supabase should have dispatched the email to', email)
     setLoading(false)
     setEmailSent(true)
+    isSubmitting.current = false
   }
 
   return (

@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
 import { invalidateGymCache, invalidateAllGymCaches } from './actions'
+import { computeSubscriptionState } from '@/lib/subscription-utils'
 
 interface Props {
   email: string
@@ -28,6 +29,9 @@ interface Props {
   openingYear?: number | null
   branchCount?: number | null
   subscriptionStatus?: string
+  planType?: string | null
+  trialEndsAt?: string | null
+  subscriptionEndsAt?: string | null
 }
 
 type ModalType = 'gym-name' | 'gym-info' | 'password' | 'delete-data' | 'delete-gym' | null
@@ -47,6 +51,9 @@ export function AccountClient({
   openingYear,
   branchCount,
   subscriptionStatus = 'active',
+  planType,
+  trialEndsAt,
+  subscriptionEndsAt,
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
@@ -54,6 +61,38 @@ export function AccountClient({
   // Editable state
   const [gymName, setGymName] = useState(initialGymName)
   const [activeModal, setActiveModal] = useState<ModalType>(null)
+
+  // Real-time subscription state
+  const [liveSubStatus, setLiveSubStatus] = useState(subscriptionStatus)
+  const [livePlanType, setLivePlanType] = useState(planType)
+  const [liveTrialEndsAt, setLiveTrialEndsAt] = useState(trialEndsAt)
+  const [liveSubEndsAt, setLiveSubEndsAt] = useState(subscriptionEndsAt)
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`gym_account_settings_${gymId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'gyms',
+          filter: `id=eq.${gymId}`,
+        },
+        (payload: any) => {
+          const newGym = payload.new
+          setLiveSubStatus(newGym.subscription_status ?? 'active')
+          setLivePlanType(newGym.plan_type)
+          setLiveTrialEndsAt(newGym.trial_ends_at)
+          setLiveSubEndsAt(newGym.subscription_ends_at)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [gymId, supabase])
 
   // Gym name form
   const [newGymName, setNewGymName] = useState(initialGymName)
@@ -252,6 +291,13 @@ export function AccountClient({
   const deleteDataReady = deleteConfirmText === gymName
   const deleteGymReady  = deleteConfirmText === gymName
 
+  const subState = computeSubscriptionState({
+    subscription_status: liveSubStatus,
+    plan_type: livePlanType,
+    trial_ends_at: liveTrialEndsAt,
+    subscription_ends_at: liveSubEndsAt,
+  })
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
 
@@ -287,7 +333,12 @@ export function AccountClient({
         <div className="flex items-start gap-4">
           <Image src="/logo.png" alt="Logo" width={56} height={56} className="rounded-2xl object-contain flex-shrink-0 shadow-sm border border-slate-100" />
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-slate-900 truncate">{gymName}</h2>
+            <div className="flex items-center gap-2 group cursor-pointer w-fit" onClick={() => openModal('gym-name')}>
+              <h2 className="text-lg font-bold text-slate-900 truncate">{gymName}</h2>
+              <div className="w-6 h-6 rounded-md flex items-center justify-center text-slate-300 hover:bg-slate-100 hover:text-brand-600 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                <Edit3 className="w-3.5 h-3.5" />
+              </div>
+            </div>
             <div className="flex items-center gap-1.5 mt-1">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
               <span className="text-sm text-slate-500">Member since {formatDate(gymCreatedAt)}</span>
@@ -394,6 +445,69 @@ export function AccountClient({
                   className="text-sm text-brand-600 font-semibold hover:underline mt-1">
                   Add gym details →
                 </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Subscription Details Card */}
+      <div className="card relative overflow-hidden border-brand-200">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-50/80 via-white to-brand-50/30 pointer-events-none" />
+        <div className="relative p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-brand-100 rounded-lg flex items-center justify-center">
+              <CreditCard className="w-4 h-4 text-brand-600" />
+            </div>
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-widest">Subscription Details</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Plan</p>
+              <p className="text-sm font-semibold text-slate-800 mt-0.5 capitalize">{livePlanType || 'Default'}</p>
+            </div>
+            <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Status</p>
+              <div className="flex items-center justify-between mt-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    subState.status === 'active' ? 'bg-emerald-500' :
+                    subState.status === 'trial' ? 'bg-blue-500' :
+                    subState.status === 'expiring' ? 'bg-amber-500' :
+                    'bg-red-500'
+                  }`} />
+                  <p className="text-sm font-semibold text-slate-800 capitalize truncate">{subState.status}</p>
+                </div>
+                {subState.daysLeft !== null && subState.daysLeft > 0 && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0 ${
+                    subState.isExpiringSoon ? 'bg-amber-100 text-amber-700' : 'bg-brand-100 text-brand-700'
+                  }`}>
+                    {subState.daysLeft} days left
+                  </span>
+                )}
+                {subState.isExpired && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-100 text-red-700 flex-shrink-0">
+                    Expired
+                  </span>
+                )}
+              </div>
+            </div>
+            {liveTrialEndsAt && (
+              <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Trial Ends At</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatDate(liveTrialEndsAt)}</p>
+              </div>
+            )}
+            {liveSubEndsAt && (
+              <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Next Billing</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatDate(liveSubEndsAt)}</p>
+              </div>
+            )}
+            {!liveTrialEndsAt && !liveSubEndsAt && (
+              <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm sm:col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Access</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5">Lifetime (Never Expires)</p>
               </div>
             )}
           </div>

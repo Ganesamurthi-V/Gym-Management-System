@@ -80,17 +80,29 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
     return () => subscription.unsubscribe()
   }, [supabase, initialEmail, initialGymId, initialGymName, initialUnreadCount])
 
-  // Realtime subscription for unread count via Broadcast (Bypasses missing publication issues)
+  // Sync prop changes from ShellGuard (for instant name updates)
+  useEffect(() => {
+    if (initialGymName && initialGymName !== gymName) {
+      setGymName(initialGymName)
+    }
+  }, [initialGymName, gymName])
+
+  // Realtime subscription for unread count
   useEffect(() => {
     if (!gymId) return
 
     const channel = supabase
-      .channel(`gym_support_${gymId}`)
+      .channel(`gym_support_account_menu_${gymId}`)
       .on(
-        'broadcast',
-        { event: 'refetch_support' },
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'admin_messages',
+          filter: `gym_id=eq.${gymId}`,
+        },
         async () => {
-          // Re-fetch unread count when an admin message is received or ticket updated
+          // Re-fetch unread count when an admin message is received or read
           const { count } = await supabase
             .from('admin_messages')
             .select('*', { count: 'exact', head: true })

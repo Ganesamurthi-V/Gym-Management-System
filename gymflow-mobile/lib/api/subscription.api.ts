@@ -219,3 +219,39 @@ export async function executeDangerAction(
     throw new Error(parseApiError(error));
   }
 }
+
+// ── Gym Activity Logs ─────────────────────────────────────────────
+
+export type GymActivityEvent = {
+  id: string;
+  type: 'member_added' | 'whatsapp_sent' | 'subscription_event';
+  title: string;
+  subtitle?: string;
+  meta?: string;
+  timestamp: string;
+  icon: string;
+  color: string;
+};
+
+export type GymActivityLogsResponse = {
+  events: GymActivityEvent[];
+  total: number;
+};
+
+export async function fetchGymActivityLogs(
+  gymId: string,
+  limit = 60,
+  cursor?: string
+): Promise<GymActivityLogsResponse> {
+  try {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    const { data } = await apiClient.get<GymActivityLogsResponse>(
+      `/api/admin/gyms/${gymId}/logs?${params.toString()}`
+    );
+    return data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, EyeOff, Dumbbell, ArrowRight, Users, TrendingUp, Shield, Zap } from 'lucide-react'
+import { Eye, EyeOff, Dumbbell, ArrowRight, Users, TrendingUp, Shield, Zap, Check } from 'lucide-react'
 
 // ─── Animated Grid Background ───────────────────────────────────────────────────
 
@@ -81,6 +81,31 @@ function StatPill({ value, label }: { value: string; label: string }) {
 
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 
+// ─── Registration Success Banner ────────────────────────────────────────────────
+
+function RegistrationSuccessBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="mb-5 flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl animate-slide-up">
+      <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Check className="w-3 h-3 text-emerald-600" strokeWidth={3} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-emerald-800">Account created successfully!</p>
+        <p className="text-xs text-emerald-600 mt-0.5">You can now sign in with your email and password.</p>
+      </div>
+      <button
+        onClick={onDismiss}
+        className="text-emerald-400 hover:text-emerald-600 transition-colors flex-shrink-0"
+        aria-label="Dismiss"
+      >
+        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 // ─── Main Login Page ────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
@@ -90,6 +115,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [showRegBanner, setShowRegBanner] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -98,6 +124,16 @@ export default function LoginPage() {
     const searchParams = new URLSearchParams(window.location.search)
     if (searchParams.get('error') === 'blocked') {
       setError('Your access is blocked by admin')
+    }
+    // Show success banner when redirected from setup-password
+    if (searchParams.get('registered') === '1') {
+      setShowRegBanner(true)
+      // Prefill email if provided
+      const emailParam = searchParams.get('email')
+      if (emailParam) setEmail(decodeURIComponent(emailParam))
+      // Auto-dismiss after 6s
+      const t = setTimeout(() => setShowRegBanner(false), 6000)
+      return () => clearTimeout(t)
     }
   }, [])
   const [loginSuccess, setLoginSuccess] = useState(false)
@@ -256,6 +292,11 @@ export default function LoginPage() {
                 Access your gym management dashboard
               </p>
             </div>
+
+            {/* Registration success banner */}
+            {showRegBanner && (
+              <RegistrationSuccessBanner onDismiss={() => setShowRegBanner(false)} />
+            )}
 
             {/* Error */}
             {error && (

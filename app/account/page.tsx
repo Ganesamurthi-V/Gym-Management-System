@@ -4,12 +4,14 @@ import { AccountClient } from './AccountClient'
 export const dynamic = 'force-dynamic'
 
 export default async function AccountPage() {
-  const { getAuthUser, getGym } = await import('@/lib/dal')
+  const { getAuthUser, getGym, getGymSubscription } = await import('@/lib/dal')
   const { user } = await getAuthUser()
   if (!user) return null
 
   const { gym } = await getGym(user.id)
   if (!gym) return null
+
+  const { gym: gymSub } = await getGymSubscription(user.id)
 
   const supabase = await createClient()
 
@@ -38,7 +40,10 @@ export default async function AccountPage() {
       gymAddress={ob.address ?? null}
       openingYear={ob.openingYear ?? null}
       branchCount={ob.branchCount ?? null}
-      subscriptionStatus={(gym as any).subscription_status ?? 'active'}
+      subscriptionStatus={gymSub?.subscription_status ?? 'active'}
+      planType={gymSub?.plan_type ?? null}
+      trialEndsAt={gymSub?.trial_ends_at ?? null}
+      subscriptionEndsAt={gymSub?.subscription_ends_at ?? null}
     />
   )
 }

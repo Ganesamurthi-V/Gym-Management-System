@@ -14,6 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchGymDetail, toggleGymStatus, resetGymPassword } from '@/lib/api';
+import { getSupabaseRealtimeClient } from '@/lib/supabase-realtime';
 import { Badge } from '@/components/Badge';
 import { AdminButton } from '@/components/AdminButton';
 import type { RootStackParamList } from '../navigation/types';
@@ -51,6 +52,34 @@ export default function GymDetailScreen({ route, navigation }: Props) {
       })
       .catch(e => Alert.alert('Error', e.message ?? 'Failed to load gym'))
       .finally(() => setLoading(false));
+
+    const supabase = getSupabaseRealtimeClient();
+    const channel = supabase.channel(`gym_detail_${gymId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'gyms', filter: `id=eq.${gymId}` },
+        (payload) => {
+          setDetail((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              gym: {
+                ...prev.gym,
+                name: payload.new.name ?? prev.gym.name,
+                is_active: payload.new.is_active ?? prev.gym.is_active,
+              }
+            };
+          });
+          if (payload.new.is_active !== undefined) {
+            setIsActive(payload.new.is_active);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [gymId]);
 
   async function handleToggleStatus(value: boolean) {

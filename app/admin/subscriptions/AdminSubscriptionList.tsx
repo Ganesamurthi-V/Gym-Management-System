@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   CheckCircle, XCircle, Clock, ExternalLink, ChevronDown,
-  RefreshCw, FileText,
+  RefreshCw, FileText, Wifi, WifiOff, Bell,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import toast from 'react-hot-toast'
 
 interface Request {
   id: string
@@ -41,6 +43,78 @@ export default function AdminSubscriptionList({ requests: initial }: Props) {
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [planMap, setPlanMap] = useState<Record<string, string>>({})
+  const [isConnected, setIsConnected] = useState(false)
+  const requestsRef = useRef(requests)
+  useEffect(() => { requestsRef.current = requests }, [requests])
+
+  // ── Supabase Realtime: live subscription request updates ──────────────────
+  useEffect(() => {
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('admin_subscription_requests_realtime')
+      // Listen for NEW subscription requests from gym owners
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'subscription_requests',
+        },
+        async (payload: any) => {
+          const newRow = payload.new
+          // Skip if we already have this request (e.g. from optimistic UI)
+          if (requestsRef.current.some(r => r.id === newRow.id)) return
+
+          // Fetch the gym name for display
+          const { data: gym } = await supabase
+            .from('gyms')
+            .select('id, name, owner_id')
+            .eq('id', newRow.gym_id)
+            .single()
+
+          const newRequest: Request = {
+            id: newRow.id,
+            status: newRow.status,
+            submitted_at: newRow.submitted_at ?? newRow.created_at,
+            transaction_id: newRow.transaction_id,
+            notes: newRow.notes,
+            rejection_reason: newRow.rejection_reason,
+            uploaded_file_url: newRow.uploaded_file_url,
+            signedUrl: null, // Admin will need to refresh for signed URL or we could fetch it
+            gyms: gym ?? null,
+          }
+
+          setRequests(prev => [newRequest, ...prev])
+          toast('🔔 New subscription request received!', { duration: 5000 })
+        }
+      )
+      // Listen for UPDATES (e.g. another admin tab approved/rejected)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'subscription_requests',
+        },
+        (payload: any) => {
+          const updated = payload.new
+          setRequests(prev =>
+            prev.map(r => r.id === updated.id
+              ? { ...r, status: updated.status, reviewed_at: updated.reviewed_at, rejection_reason: updated.rejection_reason }
+              : r
+            )
+          )
+        }
+      )
+      .subscribe((status: string) => {
+        setIsConnected(status === 'SUBSCRIBED')
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const adminPassword = typeof window !== 'undefined'
     ? (window as any).__ADMIN_PASSWORD ?? ''
@@ -95,9 +169,15 @@ export default function AdminSubscriptionList({ requests: initial }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Subscription Requests</h1>
-        <p className="text-sm text-gray-500 mt-1">Review and approve / reject gym payment proofs.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Subscription Requests</h1>
+          <p className="text-sm text-gray-500 mt-1">Review and approve / reject gym payment proofs.</p>
+        </div>
+        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${isConnected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+          {isConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+          {isConnected ? 'Live' : 'Connecting...'}
+        </div>
       </div>
 
       {/* Pending */}

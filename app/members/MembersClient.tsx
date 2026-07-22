@@ -664,7 +664,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                     <Filter className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold">Advanced Member Filters ✨</h2>
+                    <h2 className="text-xl font-bold">Advanced Member Filters</h2>
                     <p className="text-white/80 text-sm">Filter by status, plan, payment, gender, age & more</p>
                   </div>
                 </div>

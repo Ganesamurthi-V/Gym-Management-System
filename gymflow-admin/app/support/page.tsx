@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2, Wifi, WifiOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getRealtimeClient } from '@/lib/supabase-browser'
 
 type Gym = { id: string; name: string; owner: { email: string } }
 type Ticket = {
@@ -84,11 +85,85 @@ export default function SupportPage() {
     }
   }
 
-  // Poll for new tickets every 30 seconds when on the tickets tab
+  // Realtime connection state
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
+  const ticketsRef = useRef(tickets)
+  useEffect(() => { ticketsRef.current = tickets }, [tickets])
+
+  // ── Supabase Realtime: live ticket updates ──────────────────────────────
+  useEffect(() => {
+    let channel: ReturnType<typeof getRealtimeClient>['channel'] extends (...args: any[]) => infer R ? R : never
+
+    try {
+      const supabase = getRealtimeClient()
+
+      channel = supabase
+        .channel('admin_support_queue_realtime')
+        // Listen for new tickets via broadcast from main app
+        .on(
+          'broadcast',
+          { event: 'new_ticket' },
+          () => {
+            // Re-fetch tickets to get complete data with gym info
+            fetchTickets()
+            toast('🎫 New support ticket received!', { duration: 5000 })
+          }
+        )
+        // Listen for ticket inserts via postgres_changes
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'support_tickets',
+          },
+          () => {
+            // Re-fetch to get the joined gym data
+            fetchTickets()
+          }
+        )
+        // Listen for ticket status updates (e.g. resolved from another tab)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'support_tickets',
+          },
+          (payload: any) => {
+            const updated = payload.new
+            setTickets(prev =>
+              prev.map(t => t.id === updated.id
+                ? { ...t, status: updated.status, resolved_at: updated.resolved_at }
+                : t
+              )
+            )
+          }
+        )
+        .subscribe((status: string) => {
+          setIsRealtimeConnected(status === 'SUBSCRIBED')
+        })
+    } catch {
+      // Realtime not available (missing env vars) — fall back to polling
+      setIsRealtimeConnected(false)
+    }
+
+    return () => {
+      if (channel) {
+        try {
+          const supabase = getRealtimeClient()
+          supabase.removeChannel(channel)
+        } catch { /* ignore cleanup errors */ }
+      }
+    }
+  }, [])
+
+  // Fetch tickets on initial load and when switching to tickets tab
   useEffect(() => {
     if (activeTab !== 'tickets') return
     fetchTickets()
-    const interval = setInterval(fetchTickets, 30_000)
+    // Fallback polling at 60s (in case realtime disconnects temporarily)
+    const interval = setInterval(fetchTickets, 60_000)
     return () => clearInterval(interval)
   }, [activeTab])
 
@@ -190,6 +265,9 @@ export default function SupportPage() {
           {tickets.filter(t => t.status === 'open').length > 0 && activeTab !== 'tickets' && (
             <span className="w-2 h-2 rounded-full bg-red-500"></span>
           )}
+          <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${isRealtimeConnected ? 'text-emerald-400' : 'text-slate-500'}`}>
+            {isRealtimeConnected ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
+          </span>
         </button>
       </div>
 

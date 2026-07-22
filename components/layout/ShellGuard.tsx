@@ -53,6 +53,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
   // Seeded from server-rendered initial values so the first paint is instant.
   const [liveSubStatus, setLiveSubStatus] = useState(initialSubscriptionStatus)
   const [liveDaysLeft, setLiveDaysLeft] = useState(initialTrialDaysLeft)
+  const [liveGymName, setLiveGymName] = useState(initialGym?.name || '')
 
   // Effect 1: Mount-time setup — restore sidebar state
   useEffect(() => {
@@ -133,7 +134,11 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           filter: `id=eq.${initialGym?.id}`,
         },
         (payload: any) => {
-          const { is_active, subscription_status } = payload.new
+          const { is_active, subscription_status, name } = payload.new
+
+          if (name && name !== liveGymName) {
+            setLiveGymName(name)
+          }
 
           if (is_active === false) {
             supabase.auth.signOut().then(() => {
@@ -205,7 +210,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           <div className="flex items-center flex-1 min-w-0 py-2 overflow-hidden">
             <Image 
               src="/logo_landspace_without_bg.png" 
-              alt={`${initialGym?.name || 'GymFlow'} Logo`} 
+              alt={`${liveGymName || 'GymFlow'} Logo`} 
               width={140} 
               height={40} 
               className={`object-contain object-left transition-all duration-200 ${collapsed ? 'opacity-0 w-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto' : 'opacity-100 w-auto'}`} 
@@ -269,16 +274,16 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
           <div className="w-full px-3 xs:px-4 md:px-6 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
-              <Image src="/logo_only.png" alt={`${initialGym?.name || 'GymFlow'} Logo`} width={40} height={40} className="rounded-lg object-contain md:hidden" />
+              <Image src="/logo_only.png" alt={`${liveGymName || 'GymFlow'} Logo`} width={40} height={40} className="rounded-lg object-contain md:hidden" />
             </div>
             
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 md:gap-3">
-              <span className="text-base md:text-xl font-black text-brand-600 tracking-tight uppercase max-w-[200px] md:max-w-[300px] truncate">{initialGym?.name || 'GymFlow'}</span>
+              <span className="text-base md:text-xl font-black text-brand-600 tracking-tight uppercase max-w-[200px] md:max-w-[300px] truncate">{liveGymName || 'GymFlow'}</span>
             </div>
             <AccountMenu 
               initialEmail={initialUser?.email} 
               initialGymId={initialGym?.id}
-              initialGymName={initialGym?.name}
+              initialGymName={liveGymName}
               initialUnreadCount={initialUnreadCount} 
             />
           </div>

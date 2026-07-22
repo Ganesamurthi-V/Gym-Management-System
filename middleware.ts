@@ -7,6 +7,13 @@ import { computeSubscriptionState } from '@/lib/subscription-utils'
 const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/inventory', '/account', '/subscription']
 const AUTH_PREFIX = '/auth'
 
+// These auth pages must never redirect away even when a session exists,
+// because they are part of the email-verification + password-setup flow.
+// /auth/setup-password receives the #access_token hash from Supabase's
+// confirmation email and needs to be reachable while the user is "logged in"
+// (their temporary session from the email link).
+const AUTH_SETUP_PATHS = ['/auth/setup-password']
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -65,7 +72,7 @@ export async function middleware(request: NextRequest) {
     return res
   }
 
-  if (user && pathname.startsWith(AUTH_PREFIX)) {
+  if (user && pathname.startsWith(AUTH_PREFIX) && !AUTH_SETUP_PATHS.some(p => pathname.startsWith(p))) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     const res = NextResponse.redirect(url)

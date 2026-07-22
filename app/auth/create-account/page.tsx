@@ -191,13 +191,16 @@ function EmailSentScreen({ email }: { email: string }) {
       </div>
 
       {/* Back to login */}
-      <a
-        href="/auth/login"
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut()
+          window.location.href = '/auth/login'
+        }}
         className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand-600 font-medium transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         Back to Login
-      </a>
+      </button>
     </div>
   )
 }
@@ -224,6 +227,24 @@ export default function CreateAccountPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  // Listen for the user setting their password in another tab (via email link)
+  useEffect(() => {
+    if (!emailSent) return
+    let bc: BroadcastChannel | undefined
+    try {
+      bc = new BroadcastChannel('auth_channel')
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'registration_complete') {
+          const params = new URLSearchParams({ registered: '1' })
+          if (event.data.email) params.set('email', event.data.email)
+          window.location.href = `/auth/login?${params.toString()}`
+        }
+      }
+    } catch (e) { /* ignore if unsupported */ }
+    
+    return () => { bc?.close() }
+  }, [emailSent])
+
   const canSubmit =
     fullName.trim().length >= 2 &&
     isValidEmail(email) &&
@@ -236,31 +257,51 @@ export default function CreateAccountPage() {
     e.preventDefault()
     if (!canSubmit) return
 
+    console.log('--- [SignUp Flow] Started ---')
+    console.log('[SignUp Flow] Email being used:', email)
+    console.log('[SignUp Flow] process.env.NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL)
+    const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`
+    console.log('[SignUp Flow] Target redirect URL:', redirectUrl)
+
     setLoading(true)
     setError('')
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const signUpPayload = {
       email,
-      password: crypto.randomUUID(),
+      // password: <hidden>
       options: {
         data: {
           full_name: fullName.trim(),
           name: fullName.trim(),
           mobile_number: mobileNumber,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`,
+        emailRedirectTo: redirectUrl,
       },
+    }
+    console.log('[SignUp Flow] Sending signUp request to Supabase with payload:', signUpPayload)
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password: crypto.randomUUID(),
+      options: signUpPayload.options,
     })
+
+    console.log('[SignUp Flow] Received response from Supabase:')
+    console.log('[SignUp Flow] -> error:', signUpError)
+    console.log('[SignUp Flow] -> data.user:', signUpData?.user)
+    console.log('[SignUp Flow] -> data.session:', signUpData?.session)
 
     // Detect if Supabase returned a "fake" success due to Email Enumeration Protection.
     // If the user already exists, Supabase returns error: null but an empty identities array.
     if (!signUpError && signUpData?.user?.identities?.length === 0) {
+      console.warn('[SignUp Flow] ⚠️ FAKE SUCCESS DETECTED: The identities array is empty. This usually means the email ALREADY EXISTS and Supabase enumeration protection blocked the email delivery.')
       setError('An account with this email already exists. Try signing in instead.')
       setLoading(false)
       return
     }
 
     if (signUpError) {
+      console.error('[SignUp Flow] ❌ ACTUAL ERROR RETURNED:', signUpError.message)
       // Surface a friendly message for common cases (fallback for when enumeration protection is off)
       if (signUpError.message.toLowerCase().includes('already registered')) {
         setError('An account with this email already exists. Try signing in instead.')
@@ -271,6 +312,7 @@ export default function CreateAccountPage() {
       return
     }
 
+    console.log('[SignUp Flow] ✅ SUCCESS! All checks passed. Supabase should have dispatched the email to', email)
     setLoading(false)
     setEmailSent(true)
   }

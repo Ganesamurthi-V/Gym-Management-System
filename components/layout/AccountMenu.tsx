@@ -95,15 +95,10 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
     const channel = supabase
       .channel(`gym_support_account_menu_${gymId}`)
       .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'admin_messages',
-          filter: `gym_id=eq.${gymId}`,
-        },
+        'broadcast',
+        { event: 'admin_message' },
         async (payload: any) => {
-          // Re-fetch unread count when an admin message is received or read
+          // Re-fetch unread count
           const { count } = await supabase
             .from('admin_messages')
             .select('*', { count: 'exact', head: true })
@@ -112,18 +107,26 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
             
           setUnreadCount(count ?? 0)
 
-          // Show side notification if it's a new message
-          if (payload.eventType === 'INSERT') {
-            const newMessage = payload.new as any
-            setToastMessage({
-              id: newMessage.id,
-              title: newMessage.subject || 'New Support Message',
-              body: newMessage.body
-            })
-            // Hide toast after 6 seconds
-            setTimeout(() => {
-              setToastMessage(prev => prev?.id === newMessage.id ? null : prev)
-            }, 6000)
+          const msgId = payload.payload?.id
+          if (msgId) {
+            // Fetch the message securely via standard RLS
+            const { data: newMessage } = await supabase
+              .from('admin_messages')
+              .select('id, subject, body')
+              .eq('id', msgId)
+              .single()
+
+            if (newMessage) {
+              setToastMessage({
+                id: newMessage.id,
+                title: newMessage.subject || 'New Support Message',
+                body: newMessage.body
+              })
+              // Hide toast after 6 seconds
+              setTimeout(() => {
+                setToastMessage(prev => prev?.id === newMessage.id ? null : prev)
+              }, 6000)
+            }
           }
         }
       )

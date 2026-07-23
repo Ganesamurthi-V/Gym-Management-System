@@ -495,6 +495,7 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
       .from('gyms')
       .select('id, name')
       .eq('onboarding_completed', true)
+      .in('subscription_status', ['active', 'trial'])
 
     if (gymErr || !gyms) {
       stats.errors.push(`Failed to fetch gyms: ${gymErr?.message}`)
@@ -888,6 +889,11 @@ export async function cancelReminderCycles({
       .select('cycle_key, send_count, status')
       .eq('member_id', memberId)
       .eq('template_name', template)
+      // Ignore transient 'error' rows — consistent with getCycleState() and
+      // resolveDueCycleKey(). Without this filter, a transient failure could be
+      // picked as the "latest" row, causing us to either skip cancellation
+      // (if its status isn't 'cancelled') or cancel the wrong cycle_key.
+      .in('status', ['sent', 'failed', 'cancelled'])
       .order('sent_at', { ascending: false })
       .limit(1)
 

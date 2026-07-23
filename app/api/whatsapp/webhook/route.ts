@@ -222,18 +222,22 @@ export async function POST(req: NextRequest) {
       Sentry.captureException(error)
     })
 
-    // Save error log
+    // Save error log (best-effort — never let a logging failure mask the real error)
     const processingTime = Math.round(performance.now() - startTime)
-    await saveWebhookLog(
-      log.requestId,
-      phoneNumberId,
-      'error',
-      rawPayload ?? { error: 'Failed to parse payload' },
-      signatureValid,
-      false,
-      error instanceof Error ? error.message : String(error),
-      processingTime
-    )
+    try {
+      await saveWebhookLog(
+        log.requestId,
+        phoneNumberId,
+        'error',
+        rawPayload ?? { error: 'Failed to parse payload' },
+        signatureValid,
+        false,
+        error instanceof Error ? error.message : String(error),
+        processingTime
+      )
+    } catch (logErr) {
+      console.error('[WhatsApp Webhook] Failed to save error log:', logErr)
+    }
 
     // Return 500 - Meta will retry
     log.summary(500)

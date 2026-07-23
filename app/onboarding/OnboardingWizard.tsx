@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import usePlacesAutocomplete from 'use-places-autocomplete'
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
+import UPIQRSetup from '@/components/upi/UPIQRSetup'
 
 // --- Types --------------------------------------------------------------------
 
@@ -138,6 +139,7 @@ const STEPS = [
   { title: 'Membership Plans', subtitle: 'Set up your pricing', icon: CreditCard, required: false },
   { title: 'Business Metrics', subtitle: 'Current performance', icon: BarChart2, required: false },
   { title: 'Operations', subtitle: 'How you run your gym', icon: Settings, required: false },
+  { title: 'Payment Settings', subtitle: 'Set up UPI payments', icon: CreditCard, required: false },
   { title: 'Marketing', subtitle: 'Grow your member base', icon: Megaphone, required: false },
   { title: 'AI Personalization', subtitle: 'Customize your experience', icon: Sparkles, required: false },
 ]
@@ -259,7 +261,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }
 
   const handleNext = () => {
-    if (currentStep < 5) navigate(currentStep + 1)
+    if (currentStep < 6) navigate(currentStep + 1)
   }
 
   const handleBack = () => {
@@ -267,7 +269,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }
 
   const handleSkip = () => {
-    if (currentStep < 5) navigate(currentStep + 1)
+    if (currentStep < 6) navigate(currentStep + 1)
   }
 
   const handleComplete = async () => {
@@ -310,7 +312,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
 
   const step = STEPS[currentStep]
   const StepIcon = step.icon
-  const progressPercent = ((currentStep + 1) / 6) * 100
+  const progressPercent = ((currentStep + 1) / 7) * 100
 
   if (success) {
     return (
@@ -401,8 +403,9 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
             {currentStep === 1 && "Define plans you sell to members. You can customize discounts, admission/joining charges, and freeze options."}
             {currentStep === 2 && "Enter your current monthly indicators to initialize your operational dashboard metrics and forecasts."}
             {currentStep === 3 && "Configure daily operating times. This controls automated booking schedules and check-in window logic."}
-            {currentStep === 4 && "Configure lead generation fields. These details initialize automated WhatsApp & payment reminder schedules."}
-            {currentStep === 5 && "Identify key optimization issues to let our AI personalize your dashboard action list recommendations."}
+            {currentStep === 4 && "Upload or scan your UPI QR code so members can pay directly via QR at the counter."}
+            {currentStep === 5 && "Configure lead generation fields. These details initialize automated WhatsApp & payment reminder schedules."}
+            {currentStep === 6 && "Identify key optimization issues to let our AI personalize your dashboard action list recommendations."}
           </p>
         </div>
       </div>
@@ -421,7 +424,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <span className="text-white font-bold text-lg">gymflow</span>
               </div>
               <span className="text-brand-100 text-sm font-medium">
-                Step {currentStep + 1} of 6
+                Step {currentStep + 1} of 7
               </span>
             </div>
 
@@ -489,9 +492,12 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <StepOperations data={data.operations} onChange={updateOperations} />
               )}
               {currentStep === 4 && (
-                <StepMarketing data={data.marketing} onChange={updateMarketing} />
+                <StepPaymentSettings gymId={gymId} />
               )}
               {currentStep === 5 && (
+                <StepMarketing data={data.marketing} onChange={updateMarketing} />
+              )}
+              {currentStep === 6 && (
                 <StepAIPersonalization data={data.aiPersonalization} onChange={updateAI} />
               )}
             </div>
@@ -518,13 +524,13 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
             )}
 
             <div className="flex-1 flex gap-3">
-              {!step.required && currentStep < 5 && (
+              {!step.required && currentStep < 6 && (
                 <button onClick={handleSkip} className="btn-secondary">
                   Skip
                 </button>
               )}
 
-              {currentStep < 5 ? (
+              {currentStep < 6 ? (
                 <button onClick={handleNext} className="btn-primary">
                   Next
                   <ChevronRight className="w-4 h-4" />
@@ -1273,6 +1279,35 @@ function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData
             rows={4}
             placeholder="Anything else you'd like us to know about your gym or goals..."
           />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Step 5: Payment Settings (UPI QR Upload) ---------------------------------
+
+function StepPaymentSettings({ gymId }: { gymId: string | null }) {
+  return (
+    <div className="space-y-4">
+      <div className="card p-5 space-y-4">
+        <div className="flex items-start gap-3 p-3.5 bg-blue-50 rounded-xl border border-blue-100">
+          <CreditCard className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-blue-800">Set up UPI Payments</p>
+            <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
+              Upload or scan your merchant UPI QR code. We'll extract your UPI ID automatically so members can pay via QR at the counter.
+            </p>
+          </div>
+        </div>
+
+        <UPIQRSetup initialConfig={null} />
+
+        <div className="pt-2 border-t border-slate-100">
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Supports all UPI apps: Google Pay, PhonePe, Paytm, BHIM, Amazon Pay, and any bank-generated QR code.
+            You can always update this later from Account Settings.
+          </p>
         </div>
       </div>
     </div>

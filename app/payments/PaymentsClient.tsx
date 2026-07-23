@@ -10,7 +10,7 @@ import { getAllTimePayments } from './actions'
 interface Payment {
   id: string
   member_id: string
-  gym_id: string
+  gym_id?: string
   plan: string
   start_date: string
   end_date: string
@@ -25,7 +25,7 @@ interface Payment {
 interface DuePayment {
   id: string
   member_id: string
-  gym_id: string
+  gym_id?: string
   amount: number
   payment_mode: string
   created_at: string
@@ -152,7 +152,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
     mode: 'all' as ModeFilter
   })
   
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const activePayments = fullPayments ?? payments
   const activeSales = fullSales ?? productSales
@@ -186,15 +186,36 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
     })
   }, [allTransactions, period, modeFilter, search, idSearch, customFrom, customTo])
 
-  const totalCollected = filtered.reduce((s, p) => s + p.amount, 0)
-  const cashTotal  = filtered.filter(p => p.mode === 'cash').reduce((s, p) => s + p.amount, 0)
-  const upiTotal   = filtered.filter(p => p.mode === 'upi').reduce((s, p)  => s + p.amount, 0)
-  const cardTotal  = filtered.filter(p => p.mode === 'card').reduce((s, p) => s + p.amount, 0)
-  const totalPending = localPending.reduce((s, m) => s + m.pending_amount, 0)
+  // Memoize derived computations to avoid re-iterating on every render
+  const { totalCollected, cashTotal, upiTotal, cardTotal, membershipTransactions, inventoryTransactions, dueTransactions } = useMemo(() => {
+    let total = 0, cash = 0, upi = 0, card = 0
+    const membership: typeof filtered = []
+    const inventory: typeof filtered = []
+    const due: typeof filtered = []
 
-  const membershipTransactions = filtered.filter(p => p.type === 'membership')
-  const inventoryTransactions = filtered.filter(p => p.type === 'inventory')
-  const dueTransactions = filtered.filter(p => p.type === 'due')
+    for (const p of filtered) {
+      total += p.amount
+      if (p.mode === 'cash') cash += p.amount
+      else if (p.mode === 'upi') upi += p.amount
+      else if (p.mode === 'card') card += p.amount
+
+      if (p.type === 'membership') membership.push(p)
+      else if (p.type === 'inventory') inventory.push(p)
+      else if (p.type === 'due') due.push(p)
+    }
+
+    return {
+      totalCollected: total,
+      cashTotal: cash,
+      upiTotal: upi,
+      cardTotal: card,
+      membershipTransactions: membership,
+      inventoryTransactions: inventory,
+      dueTransactions: due,
+    }
+  }, [filtered])
+
+  const totalPending = useMemo(() => localPending.reduce((s, m) => s + m.pending_amount, 0), [localPending])
   const displayTransactions = activeTab === 'membership' ? membershipTransactions : activeTab === 'inventory' ? inventoryTransactions : dueTransactions
 
   const modeConfig = {

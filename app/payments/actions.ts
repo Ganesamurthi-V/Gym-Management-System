@@ -5,9 +5,6 @@ import { cacheWrapper } from '@/lib/cache'
 
 export async function getAllTimePayments(gymId: string) {
   // Auth gate — MUST run before cache lookup.
-  // cacheWrapper returns Redis data without re-running the Supabase query,
-  // so an unauthenticated caller could receive a previously-cached payload
-  // if the check were placed inside the wrapper instead.
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,25 +24,28 @@ export async function getAllTimePayments(gymId: string) {
     const [paymentsRes, productSalesRes, duePaymentsRes] = await Promise.all([
       supabase
         .from('memberships')
-        .select('*, member:members(id, name, phone, member_number)')
-        .eq('gym_id', gymId)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('inventory_sales')
-        .select('*')
-        .eq('gym_id', gymId)
-        .order('sold_at', { ascending: false }),
-      supabase
-        .from('due_payments')
-        .select('*, member:members(id, name, phone, member_number)')
+        .select('id, member_id, plan, start_date, end_date, amount, admission_fee, due_amount, payment_mode, created_at, member:members(id, name, phone, member_number)')
         .eq('gym_id', gymId)
         .order('created_at', { ascending: false })
+        .limit(5000),
+      supabase
+        .from('inventory_sales')
+        .select('id, product_name, variant_name, quantity, unit_price, total_price, payment_mode, sold_at')
+        .eq('gym_id', gymId)
+        .order('sold_at', { ascending: false })
+        .limit(2000),
+      supabase
+        .from('due_payments')
+        .select('id, member_id, amount, payment_mode, created_at, member:members(id, name, phone, member_number)')
+        .eq('gym_id', gymId)
+        .order('created_at', { ascending: false })
+        .limit(2000),
     ])
 
     return {
       payments: paymentsRes.data ?? [],
       productSales: productSalesRes.data ?? [],
-      duePayments: duePaymentsRes.data ?? []
+      duePayments: duePaymentsRes.data ?? [],
     }
   })
 }

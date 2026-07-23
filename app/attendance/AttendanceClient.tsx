@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { CheckCircle2, XCircle, Loader2, Sun, Moon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -36,7 +36,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
   const [sessionType, setSessionType] = useState<'morning' | 'evening'>('morning')
   const inputRef = useRef<HTMLInputElement>(null)
   
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const displayDate = format(new Date(today), 'EEEE, dd MMM yyyy')
 
   // Auto focus input on mount, and set session based on time
@@ -76,7 +76,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
     setMessage({ type: null, text: '' })
 
     try {
-      // 1. Find member
+      // 1. Find member — only fetch latest membership end_date
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .select(`
@@ -87,6 +87,8 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
         `)
         .eq('gym_id', gymId)
         .eq('member_number', numId)
+        .order('created_at', { referencedTable: 'memberships', ascending: false })
+        .limit(1, { referencedTable: 'memberships' })
         .single()
 
       if (memberError || !memberData) {

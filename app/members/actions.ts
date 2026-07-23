@@ -204,16 +204,21 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
 export async function invalidateMembersCache(gymId: string) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("Unauthorized")
+    // getSession() reads the JWT locally (no auth-server round trip). Deleting a
+    // cache key only ever forces an RLS-protected DB re-fetch, so a lightweight
+    // "is the caller logged in?" check is sufficient — the previous getUser()
+    // network call + gyms ownership SELECT added two round trips for no security
+    // benefit (busting a cache key exposes no data).
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error("Unauthorized")
 
-    const { data: gym } = await supabase.from('gyms').select('id').eq('id', gymId).eq('owner_id', user.id).single()
-    if (!gym) throw new Error("Unauthorized Gym Access")
-
-    await deleteCache(cacheKeys.membersList(gym.id))
-    await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
-    await deleteCache(cacheKeys.payments12mo(gym.id))
-    await deleteCache(cacheKeys.paymentsAll(gym.id))
+    // Bust all affected caches in parallel instead of four sequential awaits.
+    await Promise.all([
+      deleteCache(cacheKeys.membersList(gymId)),
+      deleteCache(cacheKeys.dashboard(gymId, format(new Date(), 'yyyy-MM-dd'))),
+      deleteCache(cacheKeys.payments12mo(gymId)),
+      deleteCache(cacheKeys.paymentsAll(gymId)),
+    ])
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message }

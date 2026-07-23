@@ -51,14 +51,13 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
     setLoading(true)
     setError('')
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-      const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
-      if (!gym) throw new Error('Gym not found')
+      // member.gym_id is already known — no need to re-auth + re-query the gym,
+      // which added two network round trips to the renewal critical path.
+      const gymId = member.gym_id
       const end_date = calcEndDate(renewForm.start_date, renewForm.plan, renewForm.plan === 'custom' ? parseInt(renewForm.custom_months) || 1 : undefined)
       const { error: err } = await supabase.from('memberships').insert({
         member_id: member.id,
-        gym_id: gym.id,
+        gym_id: gymId,
         plan: renewForm.plan,
         start_date: renewForm.start_date,
         end_date,
@@ -67,16 +66,14 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       })
       if (err) throw err
 
-      const { invalidateMembersCache } = await import('../actions')
-      await invalidateMembersCache(gym.id)
-
       // Auto-send renewal confirmation + cancel old expiry reminder cycles
+      // (fire-and-forget — never blocks the save).
       if (isValidPhone(member.phone)) {
         fetch('/api/whatsapp/automation/renewal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            gymId:           gym.id,
+            gymId,
             gymName:         gymName ?? '',
             memberId:        member.id,
             memberName:      member.name,
@@ -87,6 +84,9 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
           }),
         }).catch(() => {}) // fire-and-forget
       }
+
+      const { invalidateMembersCache } = await import('../actions')
+      await invalidateMembersCache(gymId)
 
       setShowRenewForm(false)
       toast.success('Membership renewed successfully!')
@@ -101,10 +101,14 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
   async function handleDelete() {
     if (!confirm(`Delete ${member.name}? This cannot be undone.`)) return
     try {
-      const { error: e1 } = await supabase.from('attendance').delete().eq('member_id', member.id)
-      if (e1) throw e1
-      const { error: e2 } = await supabase.from('memberships').delete().eq('member_id', member.id)
-      if (e2) throw e2
+      // attendance + memberships deletes are independent (both keyed by
+      // member_id) — run them in parallel, then remove the member row.
+      const [a1, a2] = await Promise.all([
+        supabase.from('attendance').delete().eq('member_id', member.id),
+        supabase.from('memberships').delete().eq('member_id', member.id),
+      ])
+      if (a1.error) throw a1.error
+      if (a2.error) throw a2.error
       const { error: e3 } = await supabase.from('members').delete().eq('id', member.id)
       if (e3) throw e3
       // Bust the Redis members cache so the list page doesn't re-serve the

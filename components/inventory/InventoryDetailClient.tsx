@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/inventory/actions'
@@ -49,7 +49,7 @@ interface Props {
 
 export default function InventoryDetailClient({ product: initialProduct, gymId, sales, siblings }: Props) {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [product, setProduct] = useState(initialProduct)
 
@@ -281,15 +281,17 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
     }
   })
 
-  const filteredSales = sales.filter(sale => {
+  const filteredSales = useMemo(() => sales.filter(sale => {
     const saleDate = new Date(sale.sold_at)
     return saleDate >= dateRange.start && saleDate <= dateRange.end
-  })
+  }), [sales, dateRange])
 
-  const totalSalesRevenue = filteredSales.reduce((s, sale) => s + Number(sale.total_price), 0)
-  const totalUnitsSold = filteredSales.reduce((s, sale) => s + sale.quantity, 0)
+  const { totalSalesRevenue, totalUnitsSold } = useMemo(() => ({
+    totalSalesRevenue: filteredSales.reduce((s, sale) => s + Number(sale.total_price), 0),
+    totalUnitsSold: filteredSales.reduce((s, sale) => s + sale.quantity, 0),
+  }), [filteredSales])
 
-  const activities = [
+  const activities = useMemo(() => [
     {
       id: `created-${product.id}`,
       type: 'creation',
@@ -304,7 +306,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
       title: `Sold ${sale.quantity} unit${sale.quantity > 1 ? 's' : ''} via ${sale.payment_mode.toUpperCase()} for ₹${sale.total_price.toLocaleString('en-IN')}`,
       tag: 'Sale'
     }))
-  ].sort((a, b) => b.date.getTime() - a.date.getTime())
+  ].sort((a, b) => b.date.getTime() - a.date.getTime()), [sales, product.id, product.created_at, product.initial_stock, product.selling_price])
 
   return (
     <div className="w-full flex flex-col gap-4 pb-4 xs:pb-2">

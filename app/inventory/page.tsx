@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { Plus, Package } from 'lucide-react'
 import InventoryFilters from '@/components/inventory/InventoryFilters'
 import { getCachedInventory } from '@/lib/api/inventory'
-import { createClient } from '@/lib/supabase/server'
 
 export default async function InventoryPage(props: { searchParams?: Promise<{ query?: string, category?: string }> }) {
   const searchParams = await props.searchParams;
@@ -16,25 +15,19 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
   const { gym } = await getGym(user.id)
   if (!gym) return null
 
-  const supabase = await createClient()
-
   let items: any[] = []
   try {
     const allItems = await getCachedInventory(gym.id)
-    
-    // Apply filters in memory
+
+    // Apply filters in memory (fast — items are already cached and limited to 500)
     items = allItems.filter(item => {
-      let matches = true
       if (query) {
         const lowerQuery = query.toLowerCase()
-        const matchName = item.product_name?.toLowerCase().includes(lowerQuery)
-        const matchSku = item.sku?.toLowerCase().includes(lowerQuery)
-        if (!matchName && !matchSku) matches = false
+        if (!item.product_name?.toLowerCase().includes(lowerQuery) &&
+            !item.sku?.toLowerCase().includes(lowerQuery)) return false
       }
-      if (category && item.category !== category) {
-        matches = false
-      }
-      return matches
+      if (category && item.category !== category) return false
+      return true
     })
   } catch (e) {
     console.error("Inventory fetch error - did you run the DB migration?", e)
@@ -42,15 +35,14 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 xs:space-y-6">
-      {/* Header */}
       <div className="flex flex-col xs:flex-row xs:items-start sm:items-center justify-between gap-3 xs:gap-4">
         <div>
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Inventory Management</h1>
           <p className="text-sm text-slate-500 mt-1">Manage your products, stock, and pricing</p>
         </div>
         {items.length > 0 && (
-          <Link 
-            href="/inventory/new" 
+          <Link
+            href="/inventory/new"
             className="btn-primary inline-flex items-center gap-2 shadow-md shadow-brand-500/20 self-start xs:self-auto"
           >
             <Plus className="w-4 h-4" />
@@ -110,8 +102,8 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
                       <span className={`inline-flex items-center px-2 xs:px-2.5 py-1 rounded-full text-[10px] xs:text-[11px] uppercase tracking-wide font-bold ${
                         item.initial_stock === 0
                           ? 'bg-red-50 text-red-600 border border-red-100'
-                          : item.initial_stock <= (item.low_stock_threshold || 5) 
-                          ? 'bg-amber-50 text-amber-600 border border-amber-100' 
+                          : item.initial_stock <= (item.low_stock_threshold || 5)
+                          ? 'bg-amber-50 text-amber-600 border border-amber-100'
                           : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                       }`}>
                         {item.initial_stock === 0 ? 'Out' : `${item.initial_stock}`}

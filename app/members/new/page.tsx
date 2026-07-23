@@ -159,17 +159,16 @@ export default function NewMemberPage() {
       const memberNumber = parseInt(form.member_number)
       if (!memberNumber) throw new Error('Member ID is required')
 
-      const { data: existingNum } = await supabase
-        .from('members').select('id').eq('gym_id', gymId).eq('member_number', memberNumber).single()
-      if (existingNum) throw new Error(`${formatMemberId(memberNumber)} is already taken`)
-
-      const finalMemberNumber = memberNumber
-
+      // Note: the redundant pre-insert duplicate-check SELECT was removed. The
+      // debounced availability check already runs while typing, and the DB's
+      // (gym_id, member_number) unique constraint is the authoritative guard —
+      // a duplicate now surfaces as a 23505 error handled below. This removes a
+      // full network round trip from the critical save path.
       const { data: member, error: memberError } = await supabase
         .from('members')
         .insert({
           gym_id: gymId,
-          member_number: finalMemberNumber,
+          member_number: memberNumber,
           name: form.name.trim(),
           phone: form.phone.trim(),
           pending_amount: parseInt(form.pending_amount) || 0,
@@ -189,10 +188,16 @@ export default function NewMemberPage() {
             google_longitude:      googleMeta.google.longitude,
           }),
         })
-        .select()
+        .select('id')
         .single()
 
-      if (memberError) throw memberError
+      if (memberError) {
+        // Unique-constraint violation → member number already taken.
+        if (memberError.code === '23505') {
+          throw new Error(`${formatMemberId(memberNumber)} is already taken`)
+        }
+        throw memberError
+      }
 
       const end_date = calcEndDate(form.start_date, form.plan, form.plan === 'custom' ? parseInt(form.custom_months) || 1 : undefined)
       const { error: membershipError } = await supabase
@@ -212,23 +217,14 @@ export default function NewMemberPage() {
 
       if (membershipError) throw membershipError
 
-      const { invalidateMembersCache } = await import('../actions')
-      await invalidateMembersCache(gymId)
-
-      // Auto-send welcome WhatsApp message (fire-and-forget, non-blocking)
+      // Auto-send welcome WhatsApp message (fire-and-forget, non-blocking).
+      // gymName is resolved server-side by the route, so no blocking SELECT here.
       if (form.phone && form.phone.replace(/\D/g, '').length >= 10) {
-        const { data: gymData } = await supabase
-          .from('gyms')
-          .select('name')
-          .eq('id', gymId)
-          .single()
-
         fetch('/api/whatsapp/automation/welcome', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             gymId,
-            gymName: gymData?.name ?? '',
             memberId: member.id,
             memberName: form.name.trim(),
             phone: form.phone.trim(),
@@ -237,6 +233,11 @@ export default function NewMemberPage() {
           }),
         }).catch(() => {}) // fire-and-forget
       }
+
+      // Bust caches (parallel + JWT-local auth) then navigate. Awaited so the
+      // /members re-render below serves fresh data.
+      const { invalidateMembersCache } = await import('../actions')
+      await invalidateMembersCache(gymId)
 
       toast.success('Member added successfully!')
       router.push('/members')

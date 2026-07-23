@@ -1,77 +1,239 @@
-# GymFlow — Session Handoff
+# Prompt: Optimize Save Performance Across GymFlow
 
-Date: 2026-07-21
-Branch: `main`
-Scope: Fixed the mobile release app's login "Network Error", hardened all API/database calls, redeployed the backend, and rebuilt the release APK.
+You are a senior Staff Software Engineer and Performance Architect.
+
+Analyze the complete save flow for **Members**, **Inventory**, and every other CRUD operation in the GymFlow SaaS application. Saving a record currently takes **5–6 seconds**, which is unacceptable. Your objective is to redesign the architecture so that the user receives a successful response in **under 500ms** (target) and **under 1 second** (maximum under normal conditions).
+
+## Goals
+
+* Make every Create/Update operation feel instant.
+* Reduce API response times.
+* Eliminate unnecessary synchronous work.
+* Improve scalability for thousands of members.
+* Follow production-grade architecture.
 
 ---
 
-## 1. Original problem
+# Phase 1 – Profile the Current Flow
 
-The mobile **release** APK showed a **"Network Error"** on login. The debug build worked. The request was to fix login and audit all API and database calls.
+First, do **not** optimize immediately.
 
-## 2. Root cause
+Profile every step and produce a report showing:
 
-Two compounding issues, both latency-related — not a wrong URL:
+* Client-side processing time
+* Network latency
+* Next.js API execution time
+* Authentication lookup time
+* Every Supabase query duration
+* External API durations (WhatsApp, Email, AI, Storage)
+* Cache operations
+* Revalidation time
+* UI rendering time
 
-1. **Backend was slow in production.** `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` existed locally but were **missing from Vercel production env**. Every request instantiated a real Upstash client that made doomed HTTP calls (with retries) before failing open. Measured production latency:
-   - Auth route: **5–7s** (warm), middleware-only (401) ~0.7–1.6s
-   - Logs route: **13.7s**
-2. **Mobile axios timeout was 10s.** Cold serverless starts + the 13.7s logs call exceeded the timeout, so axios raised a generic `Network Error` even though the server would have responded.
+Identify exactly where the delay occurs.
 
-The login contract itself was correct: mobile POSTs `{password}` to `/api/auth`; backend compares to `ADMIN_PANEL_SECRET`, returns `{ok:true}`; app stores the password as the bearer token; `verifyRequestAuth` accepts `Bearer <ADMIN_PANEL_SECRET>`. Verified in `gymflow-admin/lib/auth.ts:43-53`.
+---
 
-## 3. Backend fixes (gymflow-admin — Vercel project `super-admin`, root dir `gymflow-admin`)
+# Phase 2 – Find Bottlenecks
 
-- **`lib/redis.ts`** — When Upstash env vars are absent, export an in-memory **stub** (`incr/expire/del/scan` return instantly) instead of a real client that makes doomed network calls. Real client now also uses `retry: { retries: 1, backoff: () => 200 }` to cap retry latency. This makes rate-limiting **fail fast** instead of adding seconds per request.
-- **`app/api/gyms/route.ts`** — `supabase.auth.admin.listUsers()` now passes `{ page: 1, perPage: 1000 }`. The default 50-user page meant gym owners beyond the first 50 showed "Unknown Email".
-- **Vercel env** — Added `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to **production** (pulled from `gymflow-admin/.env.local`). Verified Upstash credentials return `PONG`.
-- **Deployed** to production via `vercel deploy --prod`, aliased to `https://admin.gymflow.sbs`.
+Inspect every save operation and identify:
 
-### Post-deploy latency (verified)
-| Endpoint | Before | After |
-|---|---|---|
-| auth (warm) | 5–7s | ~0.9s |
-| dashboard | — | 2.2s |
-| gyms | — | 2.7s |
-| logs | 13.7s | 6.1s |
-| support/tickets | — | 1.8s |
+* Sequential database calls
+* Duplicate queries
+* N+1 queries
+* Unnecessary SELECTs after INSERT
+* Repeated authentication lookups
+* Expensive joins
+* Multiple Supabase client creations
+* Blocking external API calls
+* Slow server actions
+* Excessive logging
+* Unnecessary cache invalidation
+* Full page refreshes
+* Re-rendering entire pages
 
-Login returns `{"ok":true}` at 0.96s; `/api/gyms` returns owner emails correctly (`"owner":{"email":"..."}`).
+Generate a bottleneck report with estimated time savings for each issue.
 
-## 4. Mobile fixes (gymflow-mobile)
+---
 
-- **`lib/api/client.ts`** — axios `timeout` raised **10000 → 30000** ms.
-- **`lib/api/error-handler.ts`** — `parseApiError` now returns user-friendly messages for:
-  - 401 with no body → "Your session has expired. Please sign in again."
-  - `ECONNABORTED` (timeout) → "The server took too long to respond..."
-  - No response (offline/DNS) → "Unable to reach the server. Check your internet connection..."
-- **`lib/api/gyms.api.ts`** — Removed dead `updateGymSubscription()` + `GymSubscriptionData` type. It PATCHed `/api/gyms/[gymId]/subscription`, a route that **does not exist**. Subscription changes go through `subscription.api.ts` → `/api/admin/gyms/[id]/subscription/*` (all those routes verified present).
+# Phase 3 – Redesign the Save Architecture
 
-### Verified mobile→backend path mapping (all exist in backend)
-- `GET /api/gyms`, `GET /api/gyms/[gymId]`, `PATCH /api/gyms/[gymId]/status`, `POST /api/gyms/reset-password`
-- `GET /api/dashboard`, `GET /api/logs`
-- `GET/PATCH /api/support/tickets`, `POST /api/support`, `POST /api/support/tickets/clear`
-- `subscription.api.ts`: activate / danger / dates / detail / expire / notes / payment/approve / payment/reject / trial
+Refactor the save flow into:
 
-## 5. Build & verification
+User Clicks Save
 
-- `npx tsc --noEmit` on gymflow-mobile → **exit 0** (clean).
-- `./gradlew assembleRelease` → **BUILD SUCCESSFUL**.
-- APK: `gymflow-mobile/android/app/build/outputs/apk/release/app-release.apk` (~65.8 MB, built 2026-07-21 18:00).
-- SDK: minSdk 23, compile/target 35.
+↓
 
-## 6. OPEN / UNRESOLVED
+Validate Input
 
-- **Manage Subscription page shows a blank screen** (reported at end of session, NOT yet investigated). Likely candidates to check:
-  - `fetchSubscriptionDetail(gymId)` → `GET /api/admin/gyms/[id]/subscription/detail` — confirm it returns 200 with the expected `SubscriptionDetailResponse` shape.
-  - A render crash on `null`/undefined fields in the detail screen (e.g. `owner`, `usageStats`, `timeline` can be null per the types in `subscription.api.ts`).
-  - Screen-level error boundary / navigation param (`gymId`) missing.
-  - Next step: reproduce with the debug build + Metro logs, or add logging around the detail fetch and the screen's render guards.
-- The APK built here is **unverified end-to-end on a device/emulator** (emulator boot failed earlier this session, exit code 1). Needs a manual install + login smoke test.
+↓
 
-## 7. Notes / gotchas
+Single Database Transaction (or RPC)
 
-- Memory: `graph.gymflow.sbs` (WhatsApp proxy) must stay on the `gym-management-system` Vercel project or sends 401/404. Unrelated to this work but don't move it.
-- The `super-admin` project root dir is `gymflow-admin`; deploy from repo root with `.vercel/project.json` pointing at `super-admin`, or from within `gymflow-admin`.
-- Never log request bodies in the mobile client — they carry the password/token (already handled in `client.ts`).
+↓
+
+Create Background Event (Outbox)
+
+↓
+
+Return Success Immediately
+
+All remaining work must execute asynchronously.
+
+---
+
+# Phase 4 – Implement an Outbox Pattern
+
+Move all non-critical work into background jobs.
+
+Examples include:
+
+* WhatsApp messages
+* Email sending
+* Push notifications
+* Analytics updates
+* Audit logs
+* Cache refreshes
+* Dashboard updates
+* Reports
+* AI processing
+* Activity feeds
+* Webhooks
+
+The API should never wait for these operations.
+
+---
+
+# Phase 5 – Optimize Database Access
+
+Review every query and:
+
+* Replace multiple queries with PostgreSQL RPCs where appropriate.
+* Use transactions for related writes.
+* Remove duplicate queries.
+* Remove unnecessary SELECT-after-INSERT operations.
+* Optimize indexes.
+* Eliminate expensive joins where possible.
+* Batch operations.
+* Use prepared statements when beneficial.
+
+Explain every optimization made.
+
+---
+
+# Phase 6 – Optimize Next.js
+
+Inspect and optimize:
+
+* Server Actions
+* Route Handlers
+* Server Components
+* Client Components
+* React rendering
+* Suspense usage
+* Data fetching
+* Cache invalidation
+* Streaming
+* Hydration
+
+Replace full-page refreshes (`router.refresh()`) with targeted cache invalidation or optimistic updates wherever possible.
+
+---
+
+# Phase 7 – Implement Optimistic UI
+
+After clicking Save:
+
+* Close the modal immediately.
+* Show the new row instantly.
+* Display a subtle "Saving..." state.
+* Confirm with "Saved" when complete.
+* Roll back gracefully if the request fails.
+
+The UI should never appear frozen.
+
+---
+
+# Phase 8 – Parallelize Independent Tasks
+
+Convert sequential work into parallel execution where dependencies allow.
+
+Avoid:
+
+* Sequential network requests
+* Sequential database calls
+* Sequential cache operations
+
+Use parallel execution or background workers where safe.
+
+---
+
+# Phase 9 – Reduce Network Round Trips
+
+Inspect every API request.
+
+Reduce:
+
+* Duplicate fetches
+* Multiple Supabase requests
+* Multiple authentication checks
+* Multiple cache reads
+
+Prefer a single efficient request whenever possible.
+
+---
+
+# Phase 10 – Improve Caching
+
+Review all caching logic.
+
+Ensure:
+
+* Only affected data is invalidated.
+* Dashboard cache is not refreshed on every save.
+* Reports refresh lazily.
+* Member lists update incrementally.
+* Inventory lists update incrementally.
+
+Avoid invalidating unrelated pages.
+
+---
+
+# Phase 11 – Production Performance Metrics
+
+After optimization, provide:
+
+* Before vs After response times
+* Number of database queries
+* Number of API calls
+* Network round trips
+* Background jobs created
+* Estimated scalability improvements
+* Largest performance wins
+
+---
+
+# Constraints
+
+* Do not break existing functionality.
+* Preserve business logic.
+* Preserve security and RLS.
+* Preserve audit logging (move to background if possible).
+* Preserve WhatsApp automation (run asynchronously).
+* Preserve email automation (run asynchronously).
+* Preserve analytics accuracy.
+* Keep the architecture maintainable.
+
+---
+
+# Deliverables
+
+1. Performance audit report.
+2. Root cause analysis.
+3. Refactored architecture.
+4. Updated save flow diagram.
+5. Optimized code implementation.
+6. Performance comparison (before vs after).
+7. Any additional recommendations to reduce latency further.
+
+The objective is to achieve a production-grade architecture where CRUD operations feel instantaneous while all heavy work is processed asynchronously in the background.

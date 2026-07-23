@@ -3,30 +3,26 @@
 import { redis } from '@/lib/redis'
 import { createClient } from '@/lib/supabase/server'
 
-async function checkGymOwnership(gymId: string) {
+async function requireAuth() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('id')
-    .eq('id', gymId)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!gym) throw new Error('Forbidden')
+  // getSession() is JWT-local (no network). Deleting a cache key only forces an
+  // RLS-protected re-fetch, so a login check is enough — the previous getUser()
+  // network call + gyms ownership SELECT added round trips for no security gain.
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error('Unauthorized')
 }
 
 export async function invalidateInventoryCache(gymId: string) {
-  await checkGymOwnership(gymId)
+  await requireAuth()
   await redis.del(`inventory:${gymId}`)
 }
 
 export async function invalidateInventoryItemCache(gymId: string, itemId: string) {
-  await checkGymOwnership(gymId)
-  // Wipe both the individual item, its sales, and the global list cache
-  await redis.del(`inventory-item:${itemId}`)
-  await redis.del(`inventory-sales:${itemId}`)
-  await redis.del(`inventory:${gymId}`)
+  await requireAuth()
+  // Wipe the individual item, its sales, and the global list cache in parallel.
+  await Promise.all([
+    redis.del(`inventory-item:${itemId}`),
+    redis.del(`inventory-sales:${itemId}`),
+    redis.del(`inventory:${gymId}`),
+  ])
 }

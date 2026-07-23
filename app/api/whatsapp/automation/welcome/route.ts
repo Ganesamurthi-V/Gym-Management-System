@@ -18,7 +18,10 @@ import { z } from 'zod'
 
 const schema = z.object({
   gymId:      z.string().uuid(),
-  gymName:    z.string().min(1),
+  // Optional: when the caller omits it, the route resolves the gym name
+  // server-side from the ownership check below. This keeps the client's save
+  // path from having to make an extra blocking SELECT just for the gym name.
+  gymName:    z.string().min(1).optional(),
   memberId:   z.string().uuid(),
   memberName: z.string().min(1),
   phone:      z.string().min(10),
@@ -48,10 +51,11 @@ export async function POST(req: NextRequest) {
 
     const { gymId, gymName, memberId, memberName, phone, plan, startDate } = parsed.data
 
-    // Verify gym ownership
+    // Verify gym ownership AND resolve the gym name in a single query, so the
+    // client never needs a separate blocking SELECT just to pass gymName.
     const { data: gym } = await supabase
       .from('gyms')
-      .select('id')
+      .select('id, name')
       .eq('id', gymId)
       .eq('owner_id', user.id)
       .single()
@@ -60,8 +64,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
     }
 
+    const resolvedGymName = gymName ?? gym.name ?? ''
+
     // Send (idempotent — skips if already sent)
-    await sendWelcomeMessage({ gymId, gymName, memberId, memberName, phone, plan, startDate })
+    await sendWelcomeMessage({ gymId, gymName: resolvedGymName, memberId, memberName, phone, plan, startDate })
 
     return NextResponse.json({ success: true })
   } catch (err) {

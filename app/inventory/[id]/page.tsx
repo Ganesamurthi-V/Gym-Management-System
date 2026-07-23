@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import InventoryDetailClient from '@/components/inventory/InventoryDetailClient'
 import { getCachedInventoryItem, getCachedInventorySales, getCachedInventorySiblings } from '@/lib/api/inventory'
@@ -13,23 +12,15 @@ export default async function InventoryItemPage(props: { params: Promise<{ id: s
   const { gym } = await getGym(user.id)
   if (!gym) return null
 
-  // Fetch product
+  // Fetch product first (needed for siblings query)
   const product = await getCachedInventoryItem(gym.id, id)
+  if (!product) notFound()
 
-  if (!product) {
-    notFound()
-  }
-
-  // Fetch sales for this product
-  let sales: any[] = []
-  try {
-    sales = await getCachedInventorySales(id)
-  } catch (e) {
-    // Migration might not be run yet
-  }
-
-  // Fetch siblings (variants of this product)
-  const siblings = await getCachedInventorySiblings(gym.id, product.product_name)
+  // Fetch sales and siblings in parallel
+  const [sales, siblings] = await Promise.all([
+    getCachedInventorySales(id).catch(() => []),
+    getCachedInventorySiblings(gym.id, product.product_name),
+  ])
 
   return (
     <InventoryDetailClient

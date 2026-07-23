@@ -2,12 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, LogOut, Dumbbell, CalendarCheck, TrendingUp, FileText, IndianRupee, Send, ClipboardList } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, TrendingUp, FileText, IndianRupee, CalendarCheck, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { buildWhatsAppLink, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
+import { buildWhatsAppLink, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyReportPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
@@ -20,16 +19,12 @@ interface Props {
 }
 
 export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Props) {
-  const [sendingBulk, setSendingBulk] = useState(false)
-  const [bulkSent, setBulkSent] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
   const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
   const [fetchingMonth, setFetchingMonth] = useState(false)
 
-  const router = useRouter()
-  
-  // Issue 9 fix: Memoize Supabase client to prevent recreation on every render
+  // Memoize Supabase client to prevent recreation on every render
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
@@ -67,64 +62,62 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
     }
   }, [expiringFilter, gymId, monthMembers, fetchingMonth, supabase])
 
-  // Feature 1: Bulk WhatsApp Reminders
+  // Feature 1: Bulk WhatsApp Reminders — opens a single link with the first member,
+  // since browsers block multiple window.open calls from a single user gesture.
   function handleBulkRemind() {
-    if (expiringMembers.length === 0) return
-    setSendingBulk(true)
-
-    expiringMembers.forEach((member, i) => {
-      if (!member.latest_membership) return
-      setTimeout(() => {
-        window.open(buildWhatsAppLink(member.phone, member.name, member.latest_membership!.end_date), '_blank')
-      }, i * 600)
-    })
-    setTimeout(() => { setSendingBulk(false) }, expiringMembers.length * 600 + 500)
+    const validMembers = expiringMembers.filter(m => m.latest_membership && isValidPhone(m.phone))
+    if (validMembers.length === 0) return
+    
+    // Open the first member's link (only one popup allowed per click)
+    const first = validMembers[0]
+    window.open(buildWhatsAppLink(first.phone, first.name, first.latest_membership!.end_date), '_blank')
   }
 
   // Feature 3: Daily Report PDF
   async function handleDailyPDF() {
     setGeneratingPDF(true)
-    const today = format(new Date(), 'yyyy-MM-dd')
-    const startOfToday = new Date()
-    startOfToday.setHours(0, 0, 0, 0)
-    const endOfToday = new Date()
-    endOfToday.setHours(23, 59, 59, 999)
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      
+      // Use date-only filters for consistent results regardless of client timezone
+      const [membershipsRes, newMembersRes] = await Promise.all([
+        supabase
+          .from('memberships')
+          .select('amount, admission_fee, payment_mode, plan, category, member:members(name, member_number)')
+          .eq('gym_id', gymId)
+          .eq('start_date', today),
+        supabase
+          .from('members')
+          .select('name, member_number, phone, area, gender')
+          .eq('gym_id', gymId)
+          .gte('created_at', `${today}T00:00:00.000Z`)
+          .lt('created_at', `${today}T23:59:59.999Z`)
+      ])
 
-    const [membershipsRes, newMembersRes] = await Promise.all([
-      supabase
-        .from('memberships')
-        .select('amount, admission_fee, payment_mode, plan, category, member:members(name, member_number)')
-        .eq('gym_id', gymId)
-        .gte('created_at', startOfToday.toISOString())
-        .lte('created_at', endOfToday.toISOString()),
-      supabase
-        .from('members')
-        .select('name, member_number, phone, area, gender')
-        .eq('gym_id', gymId)
-        .gte('created_at', startOfToday.toISOString())
-        .lte('created_at', endOfToday.toISOString())
-    ])
+      const payments = (membershipsRes.data ?? []).map((p: any) => ({
+        memberName: p.member?.name ?? 'Unknown',
+        memberNumber: p.member?.member_number ?? 0,
+        plan: p.plan,
+        category: p.category,
+        amount: p.amount,
+        admission_fee: p.admission_fee ?? 0,
+        payment_mode: p.payment_mode,
+      }))
 
-    const payments = (membershipsRes.data ?? []).map((p: any) => ({
-      memberName: p.member?.name ?? 'Unknown',
-      memberNumber: p.member?.member_number ?? 0,
-      plan: p.plan,
-      category: p.category,
-      amount: p.amount,
-      admission_fee: p.admission_fee ?? 0,
-      payment_mode: p.payment_mode,
-    }))
+      const newMembers = (newMembersRes.data ?? []).map((m: any) => ({
+        name: m.name,
+        memberNumber: m.member_number,
+        phone: m.phone,
+        area: m.area || '-',
+        gender: m.gender || '-'
+      }))
 
-    const newMembers = (newMembersRes.data ?? []).map((m: any) => ({
-      name: m.name,
-      memberNumber: m.member_number,
-      phone: m.phone,
-      area: m.area || '-',
-      gender: m.gender || '-'
-    }))
-
-    generateDailyReportPDF({ gymName, date: today, payments, newMembers })
-    setGeneratingPDF(false)
+      generateDailyReportPDF({ gymName, date: today, payments, newMembers })
+    } catch (err) {
+      console.error('PDF generation failed:', err)
+    } finally {
+      setGeneratingPDF(false)
+    }
   }
 
   return (
@@ -162,8 +155,6 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             <ExpiringContent
               expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
               handleBulkRemind={handleBulkRemind}
-              sendingBulk={sendingBulk}
-              bulkSent={bulkSent}
               gymId={gymId}
               expiringFilter={expiringFilter}
               setExpiringFilter={setExpiringFilter}
@@ -213,8 +204,6 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 function ExpiringContent({
   expiringMembers,
   handleBulkRemind,
-  sendingBulk,
-  bulkSent,
   gymId,
   expiringFilter,
   setExpiringFilter,
@@ -222,8 +211,6 @@ function ExpiringContent({
 }: {
   expiringMembers: MemberWithStatus[],
   handleBulkRemind: () => void,
-  sendingBulk: boolean,
-  bulkSent: boolean,
   gymId: string,
   expiringFilter: 'week' | 'month',
   setExpiringFilter: (f: 'week' | 'month') => void,

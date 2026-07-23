@@ -27,6 +27,7 @@ async function getAttendanceLogs(gymId: string, logger: RequestLogger) {
     .gte('date', sevenDaysAgo.toISOString().split('T')[0])
     .order('date', { ascending: false })
     .order('created_at', { ascending: false })
+    .limit(1000)
 
   logger.end('FETCH_LOGS')
   if (error) throw error

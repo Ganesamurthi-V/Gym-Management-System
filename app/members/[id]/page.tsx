@@ -12,11 +12,12 @@ export default async function MemberDetailPage({
 
   const supabase = await createClient()
 
-  // Issue 1 fix: Parallel fetching instead of sequential waterfall
+  // Parallel fetching instead of sequential waterfall. The gym name is joined
+  // into the member query (gym:gyms(name)) to eliminate a separate round-trip.
   const [{ data: member }, { data: memberships }, { data: attendance }] = await Promise.all([
     supabase
       .from('members')
-      .select('id, gym_id, member_number, name, phone, gender, age, date_of_birth, area, pending_amount, created_at, legacy_member_id, is_imported')
+      .select('id, gym_id, member_number, name, phone, gender, age, date_of_birth, area, pending_amount, created_at, legacy_member_id, is_imported, gym:gyms(name)')
       .eq('id', id)
       .single(),
     supabase
@@ -35,12 +36,7 @@ export default async function MemberDetailPage({
 
   if (!member) notFound()
 
-  // Fetch gym name for WhatsApp templates
-  const { data: gym } = await supabase
-    .from('gyms')
-    .select('name')
-    .eq('id', member.gym_id)
-    .single()
+  const gym = Array.isArray(member.gym) ? member.gym[0] : member.gym
 
   const latestMembership = memberships?.[0] ?? null
   const status = latestMembership

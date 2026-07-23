@@ -19,6 +19,7 @@ export default async function DuesPage() {
     .eq('gym_id', gym.id)
     .gt('pending_amount', 0)
     .order('pending_amount', { ascending: false })
+    .limit(500)
 
   const dueMembers = (members ?? [])
     .map(m => {

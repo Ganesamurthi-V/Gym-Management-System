@@ -256,7 +256,7 @@ export default function CreateAccountPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!canSubmit || isSubmitting.current) return
+    if (!canSubmit || isSubmitting.current)  return
 
     isSubmitting.current = true
     const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`

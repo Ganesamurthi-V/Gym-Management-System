@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { MessageCircle, Check, IndianRupee, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, cn } from '@/lib/utils'
@@ -29,7 +29,17 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   const [searchQuery, setSearchQuery] = useState('')
   const [collecting, setCollecting] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+
+  const filteredMembers = useMemo(() => {
+    if (!searchQuery) return members
+    const query = searchQuery.toLowerCase()
+    return members.filter(m =>
+      m.name.toLowerCase().includes(query) ||
+      m.phone.includes(query) ||
+      String(m.member_number).includes(query)
+    )
+  }, [members, searchQuery])
 
   function buildDueWhatsApp(phone: string, name: string, amount: number) {
     const msg = encodeURIComponent(
@@ -145,13 +155,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
       ) : (
         <div className="card overflow-hidden">
           <div className="space-y-3">
-            {members.filter((m) => {
-              if (!searchQuery) return true;
-              const query = searchQuery.toLowerCase();
-              return m.name.toLowerCase().includes(query) || 
-                     m.phone.includes(query) || 
-                     String(m.member_number).includes(query);
-            }).map(member => (
+            {filteredMembers.map(member => (
               <div key={member.id} className="card p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">

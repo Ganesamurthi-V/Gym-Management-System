@@ -126,8 +126,10 @@ export async function kickDrain(delayMinutes = 0): Promise<boolean> {
         'Content-Type': 'application/json',
         // QStash delays delivery by this many seconds.
         ...(delayMinutes > 0 ? { 'Upstash-Delay': `${delayMinutes * 60}s` } : {}),
-        // Collapse duplicate kicks fired within the same interval into one call.
-        'Upstash-Deduplication-Id': `wa-drain-${Math.floor(Date.now() / (DRAIN_INTERVAL_MINUTES * 60_000))}`,
+        // Dedup within the same interval window. Include delayMinutes so an
+        // immediate kick (delay=0) and a reschedule (delay=5) never collide —
+        // otherwise the reschedule is silently dropped and the queue stalls.
+        'Upstash-Deduplication-Id': `wa-drain-d${delayMinutes}-${Math.floor(Date.now() / (DRAIN_INTERVAL_MINUTES * 60_000))}`,
       },
       body: JSON.stringify({ trigger: 'drain' }),
     })

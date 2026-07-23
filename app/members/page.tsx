@@ -24,51 +24,56 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
     const supabase = await createClient()
 
     logger.start('FETCH_MEMBERS')
-    // Issue 4 fix: Fetch members and their latest/oldest memberships separately to avoid
-    // pulling hundreds of renewals per member. This is more efficient than the previous
-    // approach which fetched ALL memberships for every member.
-    const [membersRes, latestMembershipsRes, oldestMembershipsRes] = await Promise.all([
-      supabase
-        .from('members')
-        .select('id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id', { count: 'exact' })
-        .eq('gym_id', gymId)
-        .order('created_at', { ascending: false })
-        .limit(PAGE_SIZE),
-      // Get latest membership per member (most recent created_at)
-      supabase
-        .from('memberships')
-        .select('id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id')
-        .eq('gym_id', gymId)
-        .order('member_id', { ascending: true })
-        .order('created_at', { ascending: false }),
-      // Get oldest membership per member (earliest start_date)
-      supabase
-        .from('memberships')
-        .select('start_date, member_id')
-        .eq('gym_id', gymId)
-        .order('member_id', { ascending: true })
-        .order('start_date', { ascending: true })
-    ])
-    logger.end('FETCH_MEMBERS')
-    
+    // Fetch the current page of members first, then fetch ONLY those members'
+    // memberships. Previously this pulled EVERY membership row for the whole gym
+    // (unbounded) even though only PAGE_SIZE members are displayed — a full-table
+    // scan that grew linearly with the gym's entire renewal history.
+    const membersRes = await supabase
+      .from('members')
+      .select('id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id', { count: 'exact' })
+      .eq('gym_id', gymId)
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE)
+
     const members = membersRes.data ?? []
     const count = membersRes.count ?? 0
-    
+    const memberIds = members.map(m => m.id)
+
     // Build lookup maps for O(1) access
     const latestByMember = new Map<string, any>()
     const oldestByMember = new Map<string, any>()
-    
-    for (const m of latestMembershipsRes.data ?? []) {
-      if (!latestByMember.has(m.member_id)) {
-        latestByMember.set(m.member_id, m)
+
+    if (memberIds.length > 0) {
+      const [latestMembershipsRes, oldestMembershipsRes] = await Promise.all([
+        // Latest membership per member (most recent created_at)
+        supabase
+          .from('memberships')
+          .select('id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id')
+          .in('member_id', memberIds)
+          .order('member_id', { ascending: true })
+          .order('created_at', { ascending: false }),
+        // Oldest membership per member (earliest start_date)
+        supabase
+          .from('memberships')
+          .select('start_date, member_id')
+          .in('member_id', memberIds)
+          .order('member_id', { ascending: true })
+          .order('start_date', { ascending: true })
+      ])
+
+      for (const m of latestMembershipsRes.data ?? []) {
+        if (!latestByMember.has(m.member_id)) {
+          latestByMember.set(m.member_id, m)
+        }
+      }
+
+      for (const m of oldestMembershipsRes.data ?? []) {
+        if (!oldestByMember.has(m.member_id)) {
+          oldestByMember.set(m.member_id, m)
+        }
       }
     }
-    
-    for (const m of oldestMembershipsRes.data ?? []) {
-      if (!oldestByMember.has(m.member_id)) {
-        oldestByMember.set(m.member_id, m)
-      }
-    }
+    logger.end('FETCH_MEMBERS')
 
     logger.start('AGGREGATION')
     const result: MemberWithStatus[] = members.map(m => {

@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast'
 import GooglePlacesAutocomplete from '@/components/location/GooglePlacesAutocomplete'
 import type { NormalizedPlaceResult } from '@/services/location/normalizeGooglePlace'
 import { invalidateGymCache } from '@/app/account/actions'
+import UPIPaymentModal from '@/components/upi/UPIPaymentModal'
 
 type Step = 'personal' | 'membership' | 'preview'
 
@@ -44,6 +45,10 @@ export default function NewMemberPage() {
   const [newPlan, setNewPlan] = useState<MembershipPlan>({
     planName: 'Custom', category: 'both', duration: 'monthly', price: 1500, joiningFee: 0
   })
+
+  // UPI payment modal state
+  const [showUPIModal, setShowUPIModal] = useState(false)
+  const [upiConfig, setUpiConfig] = useState<{ upi_id: string; merchant_name: string; merchant_code?: string | null; currency?: string } | null>(null)
 
   const [form, setForm] = useState({
     name: '',
@@ -87,6 +92,14 @@ export default function NewMemberPage() {
       // Fetch plans from onboarding_data
       const plans = (gym.onboarding_data as any)?.plans || []
       setGymPlans(plans)
+
+      // Fetch UPI config for the payment modal
+      const { data: upiData } = await supabase
+        .from('gym_upi_config')
+        .select('upi_id, merchant_name, merchant_code, currency')
+        .eq('gym_id', gym.id)
+        .maybeSingle()
+      if (upiData) setUpiConfig(upiData)
 
       const defaultPlan = plans.find((p: MembershipPlan) => p.duration === 'monthly' && p.category === 'both') 
                        || plans.find((p: MembershipPlan) => p.duration === 'monthly')
@@ -147,6 +160,13 @@ export default function NewMemberPage() {
     e.preventDefault()
     if (!form.amount) { setError('Membership Fee is required'); return }
     setError('')
+
+    // If UPI is selected, show the UPI payment modal instead of going to preview
+    if (form.payment_mode === 'upi') {
+      setShowUPIModal(true)
+      return
+    }
+
     setStep('preview')
   }
 
@@ -719,6 +739,19 @@ export default function NewMemberPage() {
           </div>
         </div>
       )}
+
+      {/* UPI Payment Modal */}
+      <UPIPaymentModal
+        open={showUPIModal}
+        onClose={() => setShowUPIModal(false)}
+        onCollectManually={() => {
+          setShowUPIModal(false)
+          setStep('preview')
+        }}
+        merchantConfig={upiConfig}
+        amount={totalAmount}
+        memberName={form.name.trim()}
+      />
 
     </div>
   )

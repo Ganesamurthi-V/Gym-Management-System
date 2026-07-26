@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Activity, Users, Dumbbell, MapPin } from 'lucide-react'
+import { Users, Dumbbell } from 'lucide-react'
 import AdminDashboardRealtime from './AdminDashboardRealtime'
 
 export const revalidate = 0 // Always fetch fresh metrics for the admin
@@ -11,8 +11,6 @@ export default async function AdminPage() {
   const [
     { count: totalGyms },
     { count: totalMembers },
-    { count: totalGeoAliases },
-    { count: pendingGeoReviews },
     { count: pendingSubscriptions },
     { count: trialGyms },
     { count: activeGyms },
@@ -20,8 +18,6 @@ export default async function AdminPage() {
   ] = await Promise.all([
     supabase.from('gyms').select('*', { count: 'exact', head: true }),
     supabase.from('members').select('*', { count: 'exact', head: true }),
-    supabase.from('geo_gym_aliases').select('*', { count: 'exact', head: true }),
-    supabase.from('geo_review_queue').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('subscription_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('gyms').select('*', { count: 'exact', head: true }).eq('subscription_status', 'trial'),
     supabase.from('gyms').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active'),
@@ -31,8 +27,6 @@ export default async function AdminPage() {
   const stats = [
     { label: 'Total Registered Gyms', value: totalGyms ?? 0, icon: Dumbbell, color: 'text-blue-600', bg: 'bg-blue-100' },
     { label: 'Total Members (Platform)', value: totalMembers ?? 0, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-    { label: 'Learned Geo Aliases', value: totalGeoAliases ?? 0, icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    { label: 'Pending Geo Reviews', value: pendingGeoReviews ?? 0, icon: Activity, color: 'text-amber-600', bg: 'bg-amber-100' },
   ]
 
   return (

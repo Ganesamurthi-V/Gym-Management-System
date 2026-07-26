@@ -483,7 +483,7 @@ export default function ImportPage() {
 
     const { rows: pipelineRows } = await runImportPipeline(mappedRows, {
       supabase,
-      onStage: stage => { if (stage === "areas") setParseStage(4); if (stage === "ids") setParseStage(5); },
+      onStage: stage => { if (stage === "ids") setParseStage(5); },
     });
 
     setUnmappedPlans([]);
@@ -692,7 +692,7 @@ export default function ImportPage() {
     setParseStage(4);
     const { rows: pipelineRows } = await runImportPipeline(parsed, {
       supabase,
-      onStage: stage => { if (stage === "areas") setParseStage(4); if (stage === "ids") setParseStage(5); },
+      onStage: stage => { if (stage === "ids") setParseStage(5); },
     });
 
     setParsing(false);

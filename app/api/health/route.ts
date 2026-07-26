@@ -24,13 +24,8 @@ export async function GET() {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
     
-    // Ping the geo_localities table with a limit of 1 just to see if DB responds.
-    // It's a global table with public read access (auth.uid() IS NOT NULL normally, 
-    // but a count with exact shouldn't require reading actual rows or we can use an RPC).
-    // An even safer ping is just fetching the Supabase version or hitting an open RPC if we had one.
-    // We will just do a lightweight query. Even if it returns a 401 Unauthorized because
-    // of RLS, it means the database is up and responding!
-    
+    // Lightweight connectivity check — query the gyms table with a limit of 1.
+    // Even if it returns a 401/RLS error, it means the DB is up and responding.
     const { error } = await supabase.from('gyms').select('id').limit(1)
 
     // PGRST116 (0 rows) or PGRST301 (RLS) means the DB is perfectly healthy and rejected us normally.

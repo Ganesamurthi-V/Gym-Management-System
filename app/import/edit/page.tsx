@@ -6,7 +6,6 @@ import Link from "next/link";
 import { ArrowLeft, Check, AlertTriangle, Search, Loader2, MapPin, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { calcEndDate } from "@/lib/utils";
-import { searchLocalities } from "@/lib/geo/matchArea";
 import type { ImportedRow } from "../page";
 import WizardHeader from "@/components/import/WizardHeader";
 
@@ -182,13 +181,8 @@ export default function ImportEditPage() {
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, _id_conflict: inDB || inFile, _id_missing: false } : r));
   }
 
-  const handleAreaSearch = useCallback((idx: number, query: string) => {
-    clearTimeout(searchTimers.current[idx]);
-    if (query.length < 2) { setAreaSuggestions(prev => ({ ...prev, [idx]: [] })); return; }
-    searchTimers.current[idx] = setTimeout(async () => {
-      const results = await searchLocalities(query);
-      setAreaSuggestions(prev => ({ ...prev, [idx]: results }));
-    }, 200);
+  const handleAreaSearch = useCallback((_idx: number, _query: string) => {
+    // Area suggestions removed — plain text input only
   }, []);
 
   function isRowChanged(row: ImportedRow): boolean {

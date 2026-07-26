@@ -1,5 +1,5 @@
 import React from "react";
-import { Upload, MapPin, Shuffle, ShieldAlert, Eye, Rocket, CheckCircle2, Map } from "lucide-react";
+import { Upload, MapPin, Shuffle, Eye, CheckCircle2, Hash } from "lucide-react";
 
 interface WizardHeaderProps {
   currentStep: 1 | 2 | 3 | 4 | 5 | 6;
@@ -10,7 +10,7 @@ export default function WizardHeader({ currentStep }: WizardHeaderProps) {
     { id: 1, label: "Upload File", desc: "Choose CSV or Excel file", icon: Upload },
     { id: 2, label: "Map Fields", desc: "Match your columns", icon: MapPin },
     { id: 3, label: "Map Plans", desc: "Link membership plans", icon: Shuffle },
-    { id: 4, label: "Review Areas", desc: "Resolve locations", icon: Map },
+    { id: 4, label: "Assign IDs", desc: "Auto-assign member IDs", icon: Hash },
     { id: 5, label: "Preview", desc: "Review before import", icon: Eye },
     { id: 6, label: "Complete", desc: "View results", icon: CheckCircle2 },
   ];

@@ -135,12 +135,41 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
       {/* Stats Grid — 2 cols mobile, 3 cols tablet, 6 cols desktop */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
-        <StatCard icon={<Users className="w-4 h-4 text-emerald-600" />} label="Active" value={stats.total_active} bg="bg-emerald-50" href="/members?filter=active" />
-        <StatCard icon={<CheckSquare className="w-4 h-4 text-brand-600" />} label="Attendance" value={stats.today_attendance} bg="bg-brand-50" href="/attendance" />
-        <StatCard icon={<Clock className="w-4 h-4 text-amber-600" />} label="Expiring" value={stats.expiring_this_week} bg="bg-amber-50" href="/members?filter=expiring" />
-        <StatCard icon={<AlertTriangle className="w-4 h-4 text-red-500" />} label="Expired" value={stats.expired_count} bg="bg-red-50" href="/members?filter=expired" />
-        <StatCardCurrency icon={<IndianRupee className="w-4 h-4 text-cyan-600" />} label="Today's Collection" value={stats.today_collection} bg="bg-cyan-50" />
-        <StatCardCurrency icon={<AlertTriangle className="w-4 h-4 text-red-500" />} label="Total Dues" value={stats.total_dues} bg="bg-red-50" href="/dues" danger />
+        <StatCard
+          icon={<Users className="w-4 h-4" style={{ color: '#16A34A' }} />}
+          label="Active" value={stats.total_active}
+          iconBg="#DCFCE7" cardBg="#F0FDF4" borderColor="#22C55E" valueColor="#15803D"
+          href="/members?filter=active"
+        />
+        <StatCard
+          icon={<CheckSquare className="w-4 h-4" style={{ color: '#2563EB' }} />}
+          label="Attendance" value={stats.today_attendance}
+          iconBg="#DBEAFE" cardBg="#EFF6FF" borderColor="#3B82F6" valueColor="#1D4ED8"
+          href="/attendance"
+        />
+        <StatCard
+          icon={<Clock className="w-4 h-4" style={{ color: '#D97706' }} />}
+          label="Expiring" value={stats.expiring_this_week}
+          iconBg="#FEF3C7" cardBg="#FFFBEB" borderColor="#F59E0B" valueColor="#B45309"
+          href="/members?filter=expiring"
+        />
+        <StatCard
+          icon={<AlertTriangle className="w-4 h-4" style={{ color: '#DC2626' }} />}
+          label="Expired" value={stats.expired_count}
+          iconBg="#FEE2E2" cardBg="#FEF2F2" borderColor="#EF4444" valueColor="#B91C1C"
+          href="/members?filter=expired"
+        />
+        <StatCardCurrency
+          icon={<IndianRupee className="w-4 h-4" style={{ color: '#0891B2' }} />}
+          label="Today's Collection" value={stats.today_collection}
+          iconBg="#CFFAFE" cardBg="#ECFEFF" borderColor="#06B6D4" valueColor="#0E7490"
+        />
+        <StatCardCurrency
+          icon={<AlertTriangle className="w-4 h-4" style={{ color: '#EA580C' }} />}
+          label="Total Dues" value={stats.total_dues}
+          iconBg="#FFEDD5" cardBg="#FFF7ED" borderColor="#F97316" valueColor="#C2410C"
+          href="/dues" danger
+        />
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: '420px' }}>
@@ -252,11 +281,21 @@ function ExpiringContent({
   )
 }
 
-function StatCard({ icon, label, value, bg, href }: { icon: React.ReactNode; label: string; value: number; bg: string; href?: string }) {
+function StatCard({ icon, label, value, iconBg, cardBg, borderColor, valueColor, href }: {
+  icon: React.ReactNode; label: string; value: number;
+  iconBg: string; cardBg: string; borderColor: string; valueColor: string;
+  href?: string
+}) {
   const content = (
-    <div className="card p-3 xs:p-3.5 md:p-4 hover:shadow-md transition-shadow">
-      <div className={`w-7 h-7 xs:w-8 xs:h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}>{icon}</div>
-      <p className="text-xl xs:text-2xl font-bold text-slate-900 leading-none">{value}</p>
+    <div
+      className="card p-3 xs:p-3.5 md:p-4 hover:shadow-md transition-all"
+      style={{ backgroundColor: cardBg, borderColor: borderColor, borderWidth: 1 }}
+    >
+      <div
+        className="w-7 h-7 xs:w-8 xs:h-8 rounded-xl flex items-center justify-center mb-2"
+        style={{ backgroundColor: iconBg }}
+      >{icon}</div>
+      <p className="text-xl xs:text-2xl font-bold leading-none" style={{ color: valueColor }}>{value}</p>
       <p className="text-[10px] xs:text-xs text-slate-500 mt-1 leading-tight">{label}</p>
     </div>
   )
@@ -264,11 +303,21 @@ function StatCard({ icon, label, value, bg, href }: { icon: React.ReactNode; lab
   return content
 }
 
-function StatCardCurrency({ icon, label, value, bg, href, danger }: { icon: React.ReactNode; label: string; value: number; bg: string; href?: string; danger?: boolean }) {
+function StatCardCurrency({ icon, label, value, iconBg, cardBg, borderColor, valueColor, href, danger }: {
+  icon: React.ReactNode; label: string; value: number;
+  iconBg: string; cardBg: string; borderColor: string; valueColor: string;
+  href?: string; danger?: boolean
+}) {
   const content = (
-    <div className="card p-3 xs:p-3.5 md:p-4 hover:shadow-md transition-shadow">
-      <div className={`w-7 h-7 xs:w-8 xs:h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}>{icon}</div>
-      <p className={`text-sm xs:text-base md:text-lg font-bold leading-none ${danger && value > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+    <div
+      className="card p-3 xs:p-3.5 md:p-4 hover:shadow-md transition-all"
+      style={{ backgroundColor: cardBg, borderColor: borderColor, borderWidth: 1 }}
+    >
+      <div
+        className="w-7 h-7 xs:w-8 xs:h-8 rounded-xl flex items-center justify-center mb-2"
+        style={{ backgroundColor: iconBg }}
+      >{icon}</div>
+      <p className="text-sm xs:text-base md:text-lg font-bold leading-none" style={{ color: danger && value > 0 ? '#DC2626' : valueColor }}>
         {formatCurrency(value)}
       </p>
       <p className="text-[10px] xs:text-xs text-slate-500 mt-1 leading-tight">{label}</p>

@@ -2,6 +2,31 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { generateRequestId, REQUEST_ID_HEADER } from '@/lib/logger'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
+import {
+  GRAPH_HOSTNAME,
+  isAllowedGraphRoute,
+  unauthorizedResponse,
+  rateLimitedResponse,
+  SECURITY_HEADERS,
+} from '@/lib/graph-domain'
+
+// ─── Rate limiter for graph domain (in-memory, per-instance) ─────────────────
+// For a more robust solution use Upstash Redis, but in-memory is sufficient for
+// a single Vercel function instance with Meta as the sole caller.
+const graphRateMap = new Map<string, { count: number; resetAt: number }>()
+const GRAPH_RATE_LIMIT = 120      // requests per window
+const GRAPH_RATE_WINDOW_MS = 60_000 // 1 minute
+
+function checkGraphRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = graphRateMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    graphRateMap.set(ip, { count: 1, resetAt: now + GRAPH_RATE_WINDOW_MS })
+    return true
+  }
+  entry.count++
+  return entry.count <= GRAPH_RATE_LIMIT
+}
 
 // Pages that require auth check — everything else passes through immediately
 const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/inventory', '/account', '/subscription']
@@ -9,13 +34,44 @@ const AUTH_PREFIX = '/auth'
 
 // These auth pages must never redirect away even when a session exists,
 // because they are part of the email-verification + password-setup flow.
-// /auth/setup-password receives the #access_token hash from Supabase's
-// confirmation email and needs to be reachable while the user is "logged in"
-// (their temporary session from the email link).
 const AUTH_SETUP_PATHS = ['/auth/setup-password']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const hostname = request.headers.get('host') ?? ''
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ── GRAPH DOMAIN ISOLATION ────────────────────────────────────────────────────
+  // graph.gymflow.sbs serves ONLY whitelisted API routes — no frontend pages,
+  // no static assets, no React pages, no internal APIs.
+  // ══════════════════════════════════════════════════════════════════════════════
+  if (hostname.includes(GRAPH_HOSTNAME)) {
+    // Rate limit by IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      ?? request.headers.get('x-real-ip')
+      ?? 'unknown'
+
+    if (!checkGraphRateLimit(ip)) {
+      return rateLimitedResponse() as unknown as NextResponse
+    }
+
+    // Only allow whitelisted routes
+    if (isAllowedGraphRoute(pathname)) {
+      // Pass through — the route handler applies its own security (endpoint whitelist, etc.)
+      const res = NextResponse.next()
+      // Strip server identity headers
+      res.headers.delete('x-powered-by')
+      res.headers.delete('server')
+      return res
+    }
+
+    // Everything else on graph domain → 401 (never render frontend)
+    return unauthorizedResponse() as unknown as NextResponse
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ── NORMAL APP DOMAIN (app.gymflow.sbs) ────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
 
   // ── Stamp every request with a unique ID ──────────────────────────────────
   // Re-use an existing ID (e.g. from upstream proxy) or generate a fresh one.

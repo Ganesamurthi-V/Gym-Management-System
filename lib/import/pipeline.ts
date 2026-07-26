@@ -10,11 +10,8 @@
  * ADD NEW PIPELINE STAGES HERE — both import flows pick them up automatically.
  */
 
-import { normalizePlan } from "./normalizers";
 import type { ImportedRow } from "@/app/import/page";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-const BATCH_SIZE = 50;
 
 export interface PipelineOptions {
   supabase: SupabaseClient;

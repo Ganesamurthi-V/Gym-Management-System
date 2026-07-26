@@ -337,9 +337,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         <div className="space-y-8">
           {/* Logo row */}
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-brand-500/20 rounded-xl flex items-center justify-center border border-brand-500/30">
-              <Dumbbell className="w-5 h-5 text-brand-400" />
-            </div>
+            <img src="/logo_only.png" alt="Gymflow Logo" className="w-9 h-9 object-contain" />
             <span className="text-white font-bold text-xl tracking-tight">gymflow</span>
           </div>
 
@@ -418,9 +416,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
             {/* Logo row */}
             <div className="flex items-center justify-between h-14">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Dumbbell className="w-4 h-4 text-white" />
-                </div>
+                <img src="/logo_only.png" alt="Gymflow Logo" className="w-8 h-8 object-contain" />
                 <span className="text-white font-bold text-lg">gymflow</span>
               </div>
               <span className="text-brand-100 text-sm font-medium">

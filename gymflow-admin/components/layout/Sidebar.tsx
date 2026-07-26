@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Building2, ScrollText, Bug,
-  HeadphonesIcon, LogOut, Shield, ChevronRight
+  HeadphonesIcon, LogOut, Shield, ChevronRight, CreditCard
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/gyms', label: 'Gyms', icon: Building2 },
+  { href: '/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/logs', label: 'Event Logs', icon: ScrollText },
   { href: '/errors', label: 'Errors', icon: Bug },
   { href: '/support', label: 'Support', icon: HeadphonesIcon },

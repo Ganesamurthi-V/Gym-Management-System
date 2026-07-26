@@ -4,10 +4,9 @@ import GymsClient from './GymsClient'
 export default async function GymsPage() {
   const supabase = createAdminClient()
 
-  // Single query — fetch gyms with member count via Supabase aggregate
   const { data: gyms, error } = await supabase
     .from('gyms')
-    .select('id, name, created_at, is_active, members(count)')
+    .select('id, name, created_at, is_active, subscription_status, plan_type, members(count)')
     .order('created_at', { ascending: false })
 
   const normalized = (gyms ?? []).map(g => ({
@@ -15,6 +14,8 @@ export default async function GymsPage() {
     name: g.name,
     created_at: g.created_at,
     is_active: g.is_active,
+    subscription_status: g.subscription_status ?? 'unknown',
+    plan_type: g.plan_type ?? null,
     memberCount: (g.members as any)?.[0]?.count ?? 0,
   }))
 

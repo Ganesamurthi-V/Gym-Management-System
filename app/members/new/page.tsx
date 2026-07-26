@@ -151,6 +151,7 @@ export default function NewMemberPage() {
     e.preventDefault()
     if (!form.member_number) { setError('Member ID is required'); return }
     if (numError || checkingNum) return
+    if (!form.phone.trim()) { setError('Phone Number is required'); return }
     if (!form.name.trim()) { setError('Full Name is required'); return }
     setError('')
     setStep('membership')
@@ -471,9 +472,9 @@ export default function NewMemberPage() {
 
               {/* Phone */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Phone Number</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Phone Number *</label>
                 <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)}
-                  className="input-field" placeholder="9876543210" maxLength={10} />
+                  className="input-field" placeholder="9876543210" maxLength={10} required />
                 {form.phone && !isValidPhone(form.phone) && (
                   <p className="text-xs text-amber-600 font-medium mt-1.5 leading-tight">⚠️ Invalid number</p>
                 )}

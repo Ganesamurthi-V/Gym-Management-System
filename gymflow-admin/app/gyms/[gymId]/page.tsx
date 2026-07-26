@@ -4,6 +4,7 @@ import { ArrowLeft, Mail, User, ShieldCheck, Database, CalendarClock, BadgeCheck
 import Link from 'next/link'
 import PasswordResetForm from './PasswordResetForm'
 import GymStatusToggle from './GymStatusToggle'
+import SubscriptionPanel from './SubscriptionPanel'
 
 export default async function GymDetailPage({ params }: { params: Promise<{ gymId: string }> }) {
   const { gymId } = await params
@@ -109,6 +110,9 @@ export default async function GymDetailPage({ params }: { params: Promise<{ gymI
           <GymStatusToggle gymId={gym.id} isActive={gym.is_active} gymName={gym.name} />
         </div>
       </div>
+
+      {/* Subscription Management */}
+      <SubscriptionPanel gymId={gym.id} gymName={gym.name} />
     </div>
   )
 }

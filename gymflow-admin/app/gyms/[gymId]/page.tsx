@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Mail, User, ShieldCheck, Database, CalendarClock, BadgeCheck } from 'lucide-react'
+import { ArrowLeft, Mail, User, ShieldCheck, Database, CalendarClock, BadgeCheck, Phone } from 'lucide-react'
 import Link from 'next/link'
 import PasswordResetForm from './PasswordResetForm'
 import GymStatusToggle from './GymStatusToggle'
@@ -85,6 +85,21 @@ export default async function GymDetailPage({ params }: { params: Promise<{ gymI
                 <Mail className="w-4 h-4 text-slate-400" />
                 <span>{owner?.email ?? 'No email found'}</span>
               </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Phone Number</p>
+              <div className="flex items-center gap-2 text-slate-300">
+                <Phone className="w-4 h-4 text-slate-400" />
+                <span>{owner?.user_metadata?.mobile_number || owner?.phone || 'Not provided'}</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Owner Name</p>
+              <p className="text-sm text-slate-300">
+                {owner?.user_metadata?.full_name || owner?.user_metadata?.name || 'Not provided'}
+              </p>
             </div>
 
             <div>

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Check, AlertTriangle, Edit2, Search, Trash2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { searchLocalities, matchAreaBatch } from '@/lib/geo/matchArea'
 import { formatMemberId } from '@/types'
 
 interface MemberRow {
@@ -73,32 +72,11 @@ export function EditMembersClient({ members, gymId }: Props) {
     return () => document.removeEventListener('wheel', onWheel)
   }, [])
 
-  // Normalize all existing area values on mount
-  useEffect(() => {
-    const withArea = members.filter(m => m.area)
-    if (withArea.length === 0) return
-    const BATCH = 50
-    async function run() {
-      const inputs = withArea.map(m => ({ raw: m.area!, gymId }))
-      const results: AreaMeta[] = []
-      for (let i = 0; i < inputs.length; i += BATCH) {
-        const batch = await matchAreaBatch(inputs.slice(i, i + BATCH))
-        batch.forEach(r => results.push({ confidence: r.confidence_score, matched_by: r.matched_by }))
-      }
-      const meta: Record<string, AreaMeta> = {}
-      withArea.forEach((m, i) => { meta[m.id] = results[i] })
-      setAreaMeta(meta)
-    }
-    run()
-  }, [])
+  // Area field is plain text — no normalization needed
+  useEffect(() => {}, [])
 
-  const handleAreaSearch = useCallback((memberId: string, query: string) => {
-    clearTimeout(searchTimers.current[memberId])
-    if (query.length < 2) { setAreaSuggestions(prev => ({ ...prev, [memberId]: [] })); return }
-    searchTimers.current[memberId] = setTimeout(async () => {
-      const results = await searchLocalities(query)
-      setAreaSuggestions(prev => ({ ...prev, [memberId]: results }))
-    }, 200)
+  const handleAreaSearch = useCallback((_memberId: string, _query: string) => {
+    // Area suggestions removed — plain text input only
   }, [])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)

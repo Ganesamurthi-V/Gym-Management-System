@@ -8,7 +8,6 @@ import { ArrowLeft, Check, Edit2, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Member } from '@/types'
 import { formatMemberId, parseMemberId } from '@/types'
-import GooglePlacesAutocomplete from '@/components/location/GooglePlacesAutocomplete'
 
 type Step = 'form' | 'preview'
 
@@ -255,10 +254,12 @@ export function EditMemberClient({ member }: Props) {
 
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Area / Locality</label>
-            <GooglePlacesAutocomplete
+            <input
+              type="text"
               value={form.area}
-              onChange={(val) => update('area', val)}
-              onClear={() => update('area', '')}
+              onChange={(e) => update('area', e.target.value)}
+              className="input-field"
+              placeholder="e.g. Anna Nagar, T. Nagar"
             />
           </div>
 

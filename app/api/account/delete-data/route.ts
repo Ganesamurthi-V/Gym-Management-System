@@ -44,9 +44,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: membersError.message } }, { status: 500 })
     }
 
-    // Delete area aliases (correct table name is geo_gym_aliases)
-    await supabase.from('geo_gym_aliases').delete().eq('gym_id', gym_id)
-
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'An unexpected error occurred'

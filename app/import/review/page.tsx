@@ -11,7 +11,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { searchLocalities } from "@/lib/geo/matchArea";
 import type { ImportedRow } from "../page";
 
 interface ReviewRow extends ImportedRow {
@@ -143,10 +142,8 @@ export default function ImportReviewPage() {
     done: rows.filter(r => r._review_done).length,
   }), [rows]);
 
-  async function handleAreaSearch(idx: number, query: string) {
-    if (query.length < 2) { setSuggestions(p => ({ ...p, [idx]: [] })); return; }
-    const results = await searchLocalities(query);
-    setSuggestions(p => ({ ...p, [idx]: results }));
+  async function handleAreaSearch(_idx: number, _query: string) {
+    // Area suggestions removed — plain text input only
   }
 
   function updateArea(idx: number, value: string) {

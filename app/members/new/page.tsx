@@ -10,8 +10,6 @@ import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
-import GooglePlacesAutocomplete from '@/components/location/GooglePlacesAutocomplete'
-import type { NormalizedPlaceResult } from '@/services/location/normalizeGooglePlace'
 import { invalidateGymCache } from '@/app/account/actions'
 import UPIPaymentModal from '@/components/upi/UPIPaymentModal'
 
@@ -33,7 +31,6 @@ export default function NewMemberPage() {
   const [step, setStep] = useState<Step>('personal')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [googleMeta, setGoogleMeta] = useState<NormalizedPlaceResult | null>(null)
   const [nextMemberNumber, setNextMemberNumber] = useState<number | null>(null)
   const [numError, setNumError] = useState('')
   const [checkingNum, setCheckingNum] = useState(false)
@@ -197,17 +194,6 @@ export default function NewMemberPage() {
           ...(form.age && { age: parseInt(form.age) }),
           ...(form.date_of_birth && { date_of_birth: form.date_of_birth }),
           ...(form.area.trim() && { area: form.area.trim() }),
-          // Google Places supplementary metadata (never used as canonical ID)
-          ...(googleMeta && {
-            google_place_id:       googleMeta.google.placeId       || null,
-            google_formatted_addr: googleMeta.google.formattedAddress || null,
-            google_locality_raw:   googleMeta.google.locality       || null,
-            google_city_raw:       googleMeta.google.city           || null,
-            google_state_raw:      googleMeta.google.state          || null,
-            google_postal_code:    googleMeta.google.postalCode     || null,
-            google_latitude:       googleMeta.google.latitude,
-            google_longitude:      googleMeta.google.longitude,
-          }),
         })
         .select('id')
         .single()
@@ -522,23 +508,13 @@ export default function NewMemberPage() {
               {/* Area */}
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Area / Locality</label>
-                <GooglePlacesAutocomplete
+                <input
+                  type="text"
                   value={form.area}
-                  gymId={gymId ?? undefined}
-                  onChange={(val, normalized) => {
-                    update('area', val)
-                    if (normalized) setGoogleMeta(normalized)
-                  }}
-                  onClear={() => { update('area', ''); setGoogleMeta(null) }}
+                  onChange={(e) => update('area', e.target.value)}
+                  className="input-field"
+                  placeholder="e.g. Anna Nagar, T. Nagar"
                 />
-                {form.area && googleMeta && (
-                  <p className="text-xs text-emerald-600 font-medium mt-1.5 flex items-center gap-1">
-                    <Check className="w-4 h-4" />
-                    {googleMeta.confidence_score >= 0.9
-                      ? `Matched: ${googleMeta.canonical_area}`
-                      : `Suggested: ${googleMeta.canonical_area}`}
-                  </p>
-                )}
               </div>
             </div>
 

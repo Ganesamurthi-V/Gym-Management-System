@@ -428,7 +428,7 @@ const STAGES = [
   { id: 1, emoji: "📂", label: "Reading file" },
   { id: 2, emoji: "🔍", label: "Detecting columns" },
   { id: 3, emoji: "⚡", label: "Processing rows" },
-  { id: 4, emoji: "🗺️", label: "Normalizing areas", note: "can take 5–10 min" },
+  { id: 4, emoji: "🆔", label: "Assigning member IDs" },
   { id: 5, emoji: "✅", label: "Finalizing" },
 ];
 
@@ -462,8 +462,7 @@ export default function ImportPage() {
     sessionStorage.setItem("import_rows", JSON.stringify(pipelineRows));
     sessionStorage.setItem("import_rows_original", JSON.stringify(pipelineRows.map(r => ({ ...r }))));
     sessionStorage.setItem("import_has_id_col", hasIdCol ? "1" : "0");
-    const needsReview = pipelineRows.some(r => r.area && ((r._area_confidence ?? 1) < 0.90 || r._area_matched_by === "unresolved"));
-    router.push(needsReview ? "/import/review" : "/import/edit");
+    router.push("/import/edit");
   }
 
   async function applyPlanMappingAndProceed() {

@@ -51,16 +51,12 @@ export async function POST(req: NextRequest) {
       .order('member_number', { ascending: false })
       .limit(1)
 
-    console.log('[IMPORT] gym_id      :', gym.id)
-    console.log('[IMPORT] maxRow      :', JSON.stringify(maxRow), '| maxErr:', maxErr?.message ?? 'none')
-
     const maxExisting = maxRow?.[0]?.member_number
       ? parseInt(String(maxRow[0].member_number))
       : 0
 
-    console.log('[IMPORT] maxExisting :', maxExisting, '→ nextId starts at', maxExisting + 1)
-
-    // ── Step 2: assign sequential IDs above the current max ───────────────────
+    // ── Step 2: assign IDs — use client-supplied member_number when valid,
+    //    otherwise auto-assign above the current max ───────────────────────────
     let nextId = maxExisting + 1
     const usedInBatch = new Set<number>()
 
@@ -72,27 +68,29 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 3: build insert payload ─────────────────────────────────────────
-    // Phones are normalized to E.164 (91XXXXXXXXXX); unparseable numbers are
-    // stored as the INVALID_NUMBER sentinel so those members still import but
-    // are automatically excluded from every WhatsApp send. Every imported row
-    // is flagged is_imported so the welcome template is suppressed for them.
-    const insertRows = rows.map((r) => ({
-      gym_id:           gym.id,
-      name:             String(r.name  ?? '').trim().slice(0, 255),
-      phone:            normalizePhoneForImport(r.phone).phone,
-      age:              parseInt(r.age as string) || null,
-      gender:           ['male', 'female', 'other'].includes(r.gender as string) ? r.gender : null,
-      date_of_birth:    /^\d{4}-\d{2}-\d{2}$/.test(String(r.date_of_birth ?? '')) ? r.date_of_birth : null,
-      area:             r.area ? String(r.area).slice(0, 100) : null,
-      member_number:    claimNext(),
-      legacy_member_id: r.legacy_member_id ? String(r.legacy_member_id).slice(0, 50) : null,
-      is_imported:      true,
-    }))
+    const insertRows = rows.map((r) => {
+      // Use the member_number the client pipeline already resolved (conflict-free)
+      // Only fall back to claimNext() if the row has no valid number.
+      const clientNum = parseInt(String(r.member_number ?? ''))
+      const memberNumber = (!isNaN(clientNum) && clientNum > 0)
+        ? clientNum
+        : claimNext()
+      // Track to prevent intra-batch collisions
+      usedInBatch.add(memberNumber)
 
-    const assignedIds = insertRows.map(r => r.member_number)
-    console.log('[IMPORT] rows        :', insertRows.length)
-    console.log('[IMPORT] ids assigned:', assignedIds.join(', '))
-    console.log('[IMPORT] duplicates? :', assignedIds.length !== new Set(assignedIds).size)
+      return {
+        gym_id:           gym.id,
+        name:             String(r.name  ?? '').trim().slice(0, 255),
+        phone:            normalizePhoneForImport(r.phone).phone,
+        age:              parseInt(r.age as string) || null,
+        gender:           ['male', 'female', 'other'].includes(r.gender as string) ? r.gender : null,
+        date_of_birth:    /^\d{4}-\d{2}-\d{2}$/.test(String(r.date_of_birth ?? '')) ? r.date_of_birth : null,
+        area:             r.area ? String(r.area).slice(0, 100) : null,
+        member_number:    memberNumber,
+        legacy_member_id: r.legacy_member_id ? String(r.legacy_member_id).slice(0, 50) : null,
+        is_imported:      true,
+      }
+    })
 
     // ── Step 4: insert ────────────────────────────────────────────────────────
     const { data, error: insertErr } = await supabase
@@ -101,15 +99,12 @@ export async function POST(req: NextRequest) {
       .select('id')
 
     if (insertErr) {
-      console.error('[IMPORT] INSERT FAILED:', insertErr.code, insertErr.message, insertErr.details)
       const mapped = mapSupabaseError(insertErr)
       return NextResponse.json(
         { success: false, error: { code: mapped.code, message: mapped.message } },
         { status: mapped.status },
       )
     }
-
-    console.log('[IMPORT] inserted    :', data?.length ?? 0, 'rows')
 
     await Promise.all([
       deleteCache(cacheKeys.membersList(gym.id)),
@@ -118,9 +113,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      // member_ids are returned in the SAME order as the input rows so the
-      // caller can link memberships by index — robust against duplicate or
-      // normalized phone numbers (the old phone re-query could not be).
       data: { imported_count: data?.length ?? 0, member_ids: (data ?? []).map(d => d.id) },
       meta: { duration_ms: Date.now() - startTime },
     })

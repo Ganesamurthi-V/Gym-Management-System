@@ -34,31 +34,28 @@ CREATE TABLE gyms (
 ### 1.2 `members`
 
 ```sql
-CREATE TABLE members (
-  id              UUID PRIMARY KEY REFERENCES auth.users(id),
-  gym_id          UUID NOT NULL REFERENCES gyms(id),
-  name            TEXT NOT NULL,
-  email           TEXT,
-  phone           TEXT,
-  photo_url       TEXT,
-  date_of_birth   DATE,
-  gender          TEXT CHECK (gender IN ('male','female','other')),
-  blood_group     TEXT,
-  emergency_name  TEXT,
-  emergency_phone TEXT,
-  medical_notes   TEXT,
-  member_code     TEXT UNIQUE,               -- Human-readable ID (GF-0001)
-  biometric_code  TEXT,                      -- For biometric device enrollment
-  is_active       BOOLEAN DEFAULT TRUE,
-  deleted_at      TIMESTAMPTZ,               -- Soft delete
-  joined_at       DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS members (
+  id                UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id            UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_number     INTEGER     NOT NULL,
+  name              TEXT        NOT NULL,
+  phone             TEXT        NOT NULL,
+  gender            TEXT        CHECK (gender IN ('male', 'female', 'other')),
+  area              TEXT,
+  age               INTEGER     CHECK (age > 0 AND age < 120),
+  date_of_birth     DATE,                    -- Used for automated birthday_wishes WhatsApp messages
+  pending_amount    INTEGER     NOT NULL DEFAULT 0,
+  legacy_member_id  TEXT        DEFAULT NULL, -- Original ID from an external/legacy system, preserved during import
+  is_imported       BOOLEAN     NOT NULL DEFAULT false, -- True for members created via Excel/CSV import; suppresses welcome template
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(gym_id, member_number)
 );
 
-CREATE INDEX idx_members_gym_id ON members(gym_id);
-CREATE INDEX idx_members_phone ON members(phone);
-CREATE INDEX idx_members_member_code ON members(member_code);
+CREATE INDEX IF NOT EXISTS idx_members_gym_id ON members(gym_id);
+CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
+CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_number);
+CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_members_gym_dues ON members(gym_id, pending_amount) WHERE pending_amount > 0;
 ```
 
 ### 1.3 `membership_plans`
@@ -465,9 +462,22 @@ CREATE TABLE referrals (
 ## 8. Key RLS Policies
 
 ```sql
--- Members can only read their own data
-CREATE POLICY "member_self" ON members
-  FOR SELECT USING (id = auth.uid());
+-- Gym owners can view, insert, update, and delete their members
+CREATE POLICY "Gym owners can view their members"
+  ON members FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert members"
+  ON members FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update members"
+  ON members FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can delete members"
+  ON members FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
 
 -- Members can read their own membership
 CREATE POLICY "membership_self" ON memberships

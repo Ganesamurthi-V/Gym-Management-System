@@ -75,7 +75,7 @@ export const TEMPLATE_SPECS: Record<TemplateId, TemplateSpec> = {
     name: '_birthday_wishes',
     language: 'en',
     header: 'image',
-    body: ['memberName', 'gymName'],
+    body: ['gymName', 'memberName'],
   },
 }
 

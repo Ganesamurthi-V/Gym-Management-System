@@ -16,6 +16,12 @@
 
 export const GRAPH_HOSTNAME = 'graph.gymflow.sbs'
 
+/** The bare domain — should redirect to the app subdomain, never serve frontend directly. */
+export const BARE_HOSTNAME = 'gymflow.sbs'
+
+/** The canonical app domain. */
+export const APP_HOSTNAME = 'app.gymflow.sbs'
+
 // ─── Allowed API route prefixes on graph.gymflow.sbs ──────────────────────────
 // Only these routes are reachable. Everything else → 401.
 

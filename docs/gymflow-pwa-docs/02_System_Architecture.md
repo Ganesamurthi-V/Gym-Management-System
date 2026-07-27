@@ -98,9 +98,6 @@ Check local JWT (Supabase session)
 Auth Screen
 ├── Email + Password
 │     └── POST /auth/v1/token?grant_type=password
-├── Phone OTP
-│     ├── POST /auth/v1/otp  (send OTP)
-│     └── POST /auth/v1/verify (verify code)
 └── Magic Link (Future)
        │
        ▼
@@ -192,7 +189,7 @@ All realtime channels require a valid JWT. Channels are joined on app foreground
 ## 8. Push Notification Architecture
 
 ```
-Admin Portal triggers event (e.g. payment due)
+Web app triggers event (e.g. payment due)
           │
           ▼
 Supabase Edge Function (push-dispatcher)

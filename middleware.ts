@@ -4,28 +4,29 @@ import { generateRequestId, REQUEST_ID_HEADER } from '@/lib/logger'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import {
   GRAPH_HOSTNAME,
+  BARE_HOSTNAME,
+  APP_HOSTNAME,
   isAllowedGraphRoute,
   unauthorizedResponse,
   rateLimitedResponse,
   SECURITY_HEADERS,
 } from '@/lib/graph-domain'
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
 
-// ─── Rate limiter for graph domain (in-memory, per-instance) ─────────────────
-// For a more robust solution use Upstash Redis, but in-memory is sufficient for
-// a single Vercel function instance with Meta as the sole caller.
-const graphRateMap = new Map<string, { count: number; resetAt: number }>()
-const GRAPH_RATE_LIMIT = 120      // requests per window
-const GRAPH_RATE_WINDOW_MS = 60_000 // 1 minute
-
-function checkGraphRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const entry = graphRateMap.get(ip)
-  if (!entry || now > entry.resetAt) {
-    graphRateMap.set(ip, { count: 1, resetAt: now + GRAPH_RATE_WINDOW_MS })
-    return true
-  }
-  entry.count++
-  return entry.count <= GRAPH_RATE_LIMIT
+// ─── Rate limiter for graph domain (Upstash Redis — persistent across instances)
+let _graphLimiter: Ratelimit | null = null
+function getGraphLimiter(): Ratelimit | null {
+  if (_graphLimiter) return _graphLimiter
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return null
+  _graphLimiter = new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.slidingWindow(120, '1 m'),
+    prefix: 'ratelimit:graph_proxy',
+  })
+  return _graphLimiter
 }
 
 // Pages that require auth check — everything else passes through immediately
@@ -38,7 +39,20 @@ const AUTH_SETUP_PATHS = ['/auth/setup-password']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const hostname = request.headers.get('host') ?? ''
+  const hostname = request.headers.get('host')?.replace(/:\d+$/, '') ?? ''
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ── BARE DOMAIN REDIRECT ──────────────────────────────────────────────────────
+  // gymflow.sbs (no subdomain) should never serve the app directly — redirect
+  // to the canonical app subdomain to prevent content duplication and ensure
+  // all auth cookies are scoped correctly.
+  // ══════════════════════════════════════════════════════════════════════════════
+  if (hostname === BARE_HOSTNAME || hostname === `www.${BARE_HOSTNAME}`) {
+    const url = request.nextUrl.clone()
+    url.host = APP_HOSTNAME
+    url.port = ''
+    return NextResponse.redirect(url, 301)
+  }
 
   // ══════════════════════════════════════════════════════════════════════════════
   // ── GRAPH DOMAIN ISOLATION ────────────────────────────────────────────────────
@@ -46,20 +60,22 @@ export async function middleware(request: NextRequest) {
   // no static assets, no React pages, no internal APIs.
   // ══════════════════════════════════════════════════════════════════════════════
   if (hostname.includes(GRAPH_HOSTNAME)) {
-    // Rate limit by IP
+    // Rate limit by IP (Upstash Redis — persistent across serverless instances)
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
       ?? request.headers.get('x-real-ip')
       ?? 'unknown'
 
-    if (!checkGraphRateLimit(ip)) {
-      return rateLimitedResponse() as unknown as NextResponse
+    const limiter = getGraphLimiter()
+    if (limiter) {
+      const { success } = await limiter.limit(ip)
+      if (!success) {
+        return rateLimitedResponse() as unknown as NextResponse
+      }
     }
 
     // Only allow whitelisted routes
     if (isAllowedGraphRoute(pathname)) {
-      // Pass through — the route handler applies its own security (endpoint whitelist, etc.)
       const res = NextResponse.next()
-      // Strip server identity headers
       res.headers.delete('x-powered-by')
       res.headers.delete('server')
       return res

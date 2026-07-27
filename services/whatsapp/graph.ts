@@ -402,10 +402,10 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
           headerImageComponent(),
           {
             type: 'body',
-            // Approved body order is [memberName, gymName] → {{1}}, {{2}}.
+            // Approved body order is [gymName, memberName] → {{1}}, {{2}}.
             parameters: [
-              txt(ctx.memberName),
-              txt(ctx.gymName)
+              txt(ctx.gymName),
+              txt(ctx.memberName)
             ],
           }
         ],

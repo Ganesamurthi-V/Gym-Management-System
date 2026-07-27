@@ -15,11 +15,6 @@ Legend: ✅ Pass | ❌ Fail | ⚠️ Partial | — Not Applicable
 | Login with invalid password | Error message shown, no redirect | |
 | Login with wrong email | "Account not found" message | |
 | 5 wrong password attempts | Account locked, "try again in 15 min" | |
-| Phone OTP — send SMS | SMS received within 30 seconds | |
-| Phone OTP — valid code | Login success | |
-| Phone OTP — invalid code | "Incorrect code" error | |
-| Phone OTP — expired code | "Code expired, resend" shown | |
-| OTP resend before 30 seconds | Resend button disabled / countdown shown | |
 | Unregistered phone | "No account found" shown | |
 | Session persists after browser close | Still logged in on reopen | |
 | Session expires → auto-refresh | Continues working without prompt | |

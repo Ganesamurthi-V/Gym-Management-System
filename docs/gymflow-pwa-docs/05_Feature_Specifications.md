@@ -326,7 +326,7 @@
 ### 12.1 My Referral Code
 - Unique code displayed (e.g. "GF-GANE42").
 - Share button: copies link or opens native share sheet.
-- Link: `https://member.gymflow.in/join?ref=GF-GANE42`
+- Link: `https://member.gymflow.sbs/join?ref=GF-GANE42`
 
 ### 12.2 Referral Status
 - List of referrals: name (partial, for privacy), status (pending / joined / rewarded), date.
@@ -338,7 +338,7 @@
 
 ---
 
-## 13. AI Coach (Premium)
+## 13. AI Coach (Premium) (implement this in v2)
 
 ### 13.1 Chat Interface
 - Standard chat UI (messages bubble layout).

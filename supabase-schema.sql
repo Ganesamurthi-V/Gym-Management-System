@@ -1,144 +1,566 @@
--- Enable UUID extension
+-- ============================================================
+-- GymFlow — Consolidated Schema
+-- Single-file fresh install: tables, indexes, RLS, functions,
+-- triggers, realtime publications, and storage buckets.
+-- All conflicts resolved. Safe to run on a brand-new Supabase project.
+-- ============================================================
+
+-- ============================================================
+-- EXTENSIONS
+-- ============================================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
 
--- ================================================
+-- ============================================================
 -- TABLES
--- ================================================
+-- ============================================================
 
--- Gyms table
+-- ── gyms ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS gyms (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id                      UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name                    TEXT        NOT NULL,
+  owner_id                UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- Basic info
+  city                    TEXT,
+  gst_number              TEXT,
+  phone                   TEXT,
+  is_active               BOOLEAN     NOT NULL DEFAULT true,
+
+  -- Onboarding
+  onboarding_completed    BOOLEAN     DEFAULT false,
+  onboarding_data         JSONB,
+
+  -- Subscription
+  trial_started_at        TIMESTAMPTZ,
+  trial_ends_at           TIMESTAMPTZ,
+  subscription_status     TEXT        NOT NULL DEFAULT 'trial'
+                                      CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled', 'suspended')),
+  plan_type               TEXT        NOT NULL DEFAULT 'trial'
+                                      CHECK (plan_type IN ('trial', 'monthly', 'quarterly', 'yearly', 'lifetime')),
+  subscription_started_at TIMESTAMPTZ,
+  subscription_ends_at    TIMESTAMPTZ,
+
+  -- Admin fields
+  admin_notes             TEXT,
+  is_vip                  BOOLEAN     NOT NULL DEFAULT false,
+  is_payment_verified     BOOLEAN     NOT NULL DEFAULT false,
+  whatsapp_enabled        BOOLEAN     NOT NULL DEFAULT true,
+  priority_support        BOOLEAN     NOT NULL DEFAULT false,
+  auto_renewal_eligible   BOOLEAN     NOT NULL DEFAULT false,
+  lifetime_offer          BOOLEAN     NOT NULL DEFAULT false,
+  login_disabled          BOOLEAN     NOT NULL DEFAULT false,
+  last_payment_amount     INTEGER,
+  last_payment_method     TEXT,
+  last_transaction_id     TEXT,
+  last_payment_date       TIMESTAMPTZ,
+  last_payment_status     TEXT        DEFAULT 'none'
+                                      CHECK (last_payment_status IN ('none', 'paid', 'pending', 'failed')),
+
+  created_at              TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Members table
+-- ── members ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS members (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  member_number INTEGER NOT NULL,
-  name TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  gender TEXT CHECK (gender IN ('male', 'female', 'other')),
-  area TEXT,
-  pending_amount INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
+  id                  UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id              UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_number       INTEGER     NOT NULL,
+  name                TEXT        NOT NULL,
+  phone               TEXT        NOT NULL,
+  gender              TEXT        CHECK (gender IN ('male', 'female', 'other')),
+  area                TEXT,
+  age                 INTEGER     CHECK (age > 0 AND age < 120),
+  date_of_birth       DATE,
+  pending_amount      INTEGER     NOT NULL DEFAULT 0,
+  legacy_member_id    TEXT        DEFAULT NULL,
+  is_imported         BOOLEAN     NOT NULL DEFAULT false,
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(gym_id, member_number)
 );
 
--- Memberships table (one per payment/renewal)
+COMMENT ON COLUMN members.legacy_member_id IS
+  'Original member ID from an external/legacy system, preserved during import. '
+  'The canonical GymFlow ID is derived from member_number as GF + zero-padded 4 digits.';
+
+COMMENT ON COLUMN members.date_of_birth IS
+  'Used for automated birthday_wishes WhatsApp messages';
+
+COMMENT ON COLUMN members.is_imported IS
+  'True for members created via Excel/CSV import. Suppresses the _gymflow_welcome_member template; all other automations behave identically.';
+
+-- ── memberships ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS memberships (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ================================================
--- TABLES
--- ================================================
-
--- Gyms table
-CREATE TABLE IF NOT EXISTS gyms (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id     UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  gym_id        UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  plan          TEXT        NOT NULL CHECK (plan IN ('monthly', 'quarterly', 'annual')),
+  category      TEXT        CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both',
+  start_date    DATE        NOT NULL,
+  end_date      DATE        NOT NULL,
+  amount        INTEGER     NOT NULL DEFAULT 0,
+  admission_fee INTEGER     NOT NULL DEFAULT 0,
+  due_amount    INTEGER     NOT NULL DEFAULT 0,
+  payment_mode  TEXT        NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Members table
-CREATE TABLE IF NOT EXISTS members (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  member_number INTEGER NOT NULL,
-  name TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  gender TEXT CHECK (gender IN ('male', 'female', 'other')),
-  area TEXT,
-  pending_amount INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(gym_id, member_number)
-);
-
--- Memberships table (one per payment/renewal)
-CREATE TABLE IF NOT EXISTS memberships (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  plan TEXT NOT NULL CHECK (plan IN ('monthly', 'quarterly', 'annual')),
-  category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both',
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  amount INTEGER NOT NULL DEFAULT 0,
-  admission_fee INTEGER NOT NULL DEFAULT 0,
-  due_amount INTEGER NOT NULL DEFAULT 0,
-  payment_mode TEXT NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Due Payments table
+-- ── due_payments ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS due_payments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  amount INTEGER NOT NULL,
-  payment_mode TEXT NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id        UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id     UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  amount        INTEGER     NOT NULL,
+  payment_mode  TEXT        NOT NULL CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Attendance table
+-- ── attendance ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS attendance (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  session TEXT CHECK (session IN ('morning', 'evening')) DEFAULT 'morning',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  check_out_time TIMESTAMPTZ,
+  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id       UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  gym_id          UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  date            DATE        NOT NULL DEFAULT CURRENT_DATE,
+  session         TEXT        CHECK (session IN ('morning', 'evening')) DEFAULT 'morning',
+  check_out_time  TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(member_id, date, session)
 );
 
-
--- Admin Messages table (Super admin support)
+-- ── admin_messages ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS admin_messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  subject TEXT NOT NULL,
-  body TEXT NOT NULL,
-  sent_by TEXT NOT NULL DEFAULT 'super_admin',
-  type TEXT NOT NULL DEFAULT 'info' CHECK (type IN ('info', 'warning', 'error', 'success')),
-  read_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  is_cleared_by_owner BOOLEAN DEFAULT false,
-  is_cleared_by_admin BOOLEAN DEFAULT false
+  id                    UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id                UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  subject               TEXT        NOT NULL,
+  body                  TEXT        NOT NULL,
+  sent_by               TEXT        NOT NULL DEFAULT 'super_admin',
+  type                  TEXT        NOT NULL DEFAULT 'info' CHECK (type IN ('info', 'warning', 'error', 'success')),
+  read_at               TIMESTAMPTZ,
+  is_cleared_by_owner   BOOLEAN     DEFAULT false,
+  is_cleared_by_admin   BOOLEAN     DEFAULT false,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
--- INDEXES (for performance)
+-- ── support_tickets ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id                    UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id                UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  subject               TEXT        NOT NULL,
+  message               TEXT        NOT NULL,
+  type                  TEXT        NOT NULL CHECK (type IN ('query', 'issue', 'bug', 'high_priority')),
+  status                TEXT        NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  is_cleared_by_owner   BOOLEAN     DEFAULT false,
+  is_cleared_by_admin   BOOLEAN     DEFAULT false,
+  resolved_at           TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Covering index for the RLS subquery pattern used on every protected table:
--- EXISTS (SELECT 1 FROM gyms WHERE id = table.gym_id AND owner_id = auth.uid())
+-- ── gym_plan_prices ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS gym_plan_prices (
+  gym_id                  UUID    PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
+  monthly                 INTEGER NOT NULL DEFAULT 1500,
+  quarterly               INTEGER NOT NULL DEFAULT 4000,
+  annual                  INTEGER NOT NULL DEFAULT 10000,
+  joining_fee_monthly     INTEGER NOT NULL DEFAULT 0,
+  joining_fee_quarterly   INTEGER NOT NULL DEFAULT 0,
+  joining_fee_annual      INTEGER NOT NULL DEFAULT 0,
+  created_at              TIMESTAMPTZ DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── inventory ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS inventory (
+  id                    UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id                UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  product_name          TEXT        NOT NULL,
+  brand                 TEXT,
+  category              TEXT,
+  sku                   TEXT,
+  description           TEXT,
+  variant_name          TEXT        NOT NULL,
+  cost_price            NUMERIC     NOT NULL,
+  selling_price         NUMERIC     NOT NULL,
+  member_price          NUMERIC,
+  initial_stock         INTEGER     NOT NULL DEFAULT 0,
+  low_stock_threshold   INTEGER,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── inventory_units ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS inventory_units (
+  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id        UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  inventory_id  UUID        NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+  barcode       TEXT        NOT NULL,
+  status        TEXT        NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'sold', 'expired', 'lost')),
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(gym_id, barcode)
+);
+
+-- ── inventory_sales ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS inventory_sales (
+  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id        UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  inventory_id  UUID        REFERENCES inventory(id) ON DELETE SET NULL,
+  product_name  TEXT        NOT NULL,
+  variant_name  TEXT        NOT NULL,
+  quantity      INTEGER     NOT NULL DEFAULT 1,
+  unit_price    NUMERIC     NOT NULL,
+  total_price   NUMERIC     NOT NULL,
+  payment_mode  TEXT        NOT NULL DEFAULT 'cash' CHECK (payment_mode IN ('cash', 'upi', 'card')),
+  sold_at       TIMESTAMPTZ DEFAULT NOW(),
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── workout_programs ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS workout_programs (
+  id                UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id            UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  name              TEXT        NOT NULL,
+  summary           TEXT,
+  notes             TEXT,
+  duration          INTEGER     NOT NULL,
+  frequency         INTEGER,
+  difficulty        TEXT,
+  goal              TEXT,
+  category          TEXT,
+  equipment         TEXT,
+  target_audience   TEXT,
+  experience_level  TEXT,
+  schedule          JSONB       NOT NULL,
+  is_draft          BOOLEAN     DEFAULT false,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── subscription_requests ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS subscription_requests (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id            UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  uploaded_file_url TEXT        NOT NULL,
+  transaction_id    TEXT,
+  notes             TEXT,
+  status            TEXT        NOT NULL DEFAULT 'pending'
+                                CHECK (status IN ('pending', 'approved', 'rejected')),
+  rejection_reason  TEXT,
+  submitted_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reviewed_at       TIMESTAMPTZ,
+  reviewed_by       TEXT
+);
+
+-- ── platform_settings ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS platform_settings (
+  id              INT     PRIMARY KEY DEFAULT 1,
+  upi_id          TEXT    NOT NULL DEFAULT '',
+  upi_name        TEXT    NOT NULL DEFAULT 'GymFlow',
+  price_monthly   INT     NOT NULL DEFAULT 2999,
+  price_yearly    INT     NOT NULL DEFAULT 29999,
+  CHECK (id = 1)
+);
+
+INSERT INTO platform_settings DEFAULT VALUES
+  ON CONFLICT (id) DO NOTHING;
+
+-- ── subscription_audit_logs ──────────────────────────────────
+CREATE TABLE IF NOT EXISTS subscription_audit_logs (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id        UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  prev_status   TEXT,
+  new_status    TEXT,
+  prev_plan     TEXT,
+  new_plan      TEXT,
+  prev_expiry   TIMESTAMPTZ,
+  new_expiry    TIMESTAMPTZ,
+  action        TEXT        NOT NULL,
+  performed_by  TEXT        NOT NULL DEFAULT 'admin',
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── gym_usage_stats ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS gym_usage_stats (
+  gym_id              UUID    PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
+  total_members       INTEGER NOT NULL DEFAULT 0,
+  total_attendance    INTEGER NOT NULL DEFAULT 0,
+  total_payments      INTEGER NOT NULL DEFAULT 0,
+  total_revenue       BIGINT  NOT NULL DEFAULT 0,
+  whatsapp_sent       INTEGER NOT NULL DEFAULT 0,
+  reports_generated   INTEGER NOT NULL DEFAULT 0,
+  storage_used_kb     BIGINT  NOT NULL DEFAULT 0,
+  last_active_at      TIMESTAMPTZ,
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── gym_upi_config ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS gym_upi_config (
+  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id          UUID        NOT NULL UNIQUE REFERENCES gyms(id) ON DELETE CASCADE,
+  upi_id          TEXT        NOT NULL,
+  merchant_name   TEXT        NOT NULL,
+  merchant_code   TEXT,
+  currency        TEXT        NOT NULL DEFAULT 'INR',
+  raw_params      JSONB       NOT NULL DEFAULT '{}',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── whatsapp_messages ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS whatsapp_messages (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id          TEXT        NOT NULL UNIQUE,
+  gym_id              UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  phone_number_id     TEXT        NOT NULL,
+  from_number         TEXT        NOT NULL,
+  to_number           TEXT        NOT NULL,
+  direction           TEXT        NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+  message_type        TEXT        NOT NULL,
+  content             TEXT,
+  media_id            TEXT,
+  media_type          TEXT,
+  media_url           TEXT,
+  caption             TEXT,
+  status              TEXT        CHECK (status IN ('sent', 'delivered', 'read', 'failed', 'deleted')),
+  conversation_id     TEXT,
+  context_message_id  TEXT,
+  metadata            JSONB       DEFAULT '{}'::JSONB,
+  error_code          INTEGER,
+  error_message       TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE whatsapp_messages IS 'Stores all WhatsApp messages (inbound and outbound)';
+
+-- ── whatsapp_webhook_logs ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS whatsapp_webhook_logs (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id          TEXT        NOT NULL,
+  phone_number_id     TEXT        NOT NULL,
+  event_type          TEXT        NOT NULL CHECK (event_type IN ('message', 'status', 'error', 'unknown')),
+  payload             JSONB       NOT NULL,
+  signature_valid     BOOLEAN     NOT NULL DEFAULT false,
+  processed           BOOLEAN     NOT NULL DEFAULT false,
+  error               TEXT,
+  processing_time_ms  INTEGER,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE whatsapp_webhook_logs IS 'Logs all webhook events for debugging and monitoring';
+
+-- ── gym_whatsapp_config ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS gym_whatsapp_config (
+  id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id                  UUID        NOT NULL UNIQUE REFERENCES gyms(id) ON DELETE CASCADE,
+  phone_number_id         TEXT        NOT NULL UNIQUE,
+  phone_number            TEXT        NOT NULL,
+  business_account_id     TEXT        NOT NULL,
+  enabled                 BOOLEAN     NOT NULL DEFAULT true,
+  auto_reply_enabled      BOOLEAN     NOT NULL DEFAULT false,
+  auto_reply_message      TEXT,
+  metadata                JSONB       DEFAULT '{}'::JSONB,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE gym_whatsapp_config IS 'WhatsApp Business configuration per gym';
+
+-- ── whatsapp_automation_logs ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS whatsapp_automation_logs (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id          UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id       UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  phone_number    TEXT        NOT NULL,
+  template_name   TEXT        NOT NULL,
+  cycle_key       TEXT        NOT NULL,
+  send_count      INTEGER     NOT NULL DEFAULT 1,
+  message_id      TEXT,
+  status          TEXT        NOT NULL DEFAULT 'sent',
+  error_message   TEXT,
+  sent_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  trigger_date    DATE,
+  metadata        JSONB       DEFAULT '{}'::JSONB
+);
+
+COMMENT ON TABLE whatsapp_automation_logs IS
+  'Tracks every automated WhatsApp template message. Used for idempotency and schedule enforcement.';
+
+-- ── whatsapp_send_queue ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS whatsapp_send_queue (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id        UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id     UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  template_name TEXT        NOT NULL,
+  context       JSONB       NOT NULL DEFAULT '{}'::JSONB,
+  cycle_key     TEXT        NOT NULL,
+  trigger_date  DATE,
+  log_row_id    UUID,
+  status        TEXT        NOT NULL DEFAULT 'pending',
+  scheduled_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  attempts      INTEGER     NOT NULL DEFAULT 0,
+  max_attempts  INTEGER     NOT NULL DEFAULT 3,
+  locked_at     TIMESTAMPTZ,
+  last_error    TEXT,
+  message_id    TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_at       TIMESTAMPTZ
+);
+
+COMMENT ON TABLE whatsapp_send_queue IS
+  'Throttled outbound queue for automated WhatsApp sends (5 per 5 minutes, drained via QStash).';
+
+-- ============================================================
+-- INDEXES
+-- ============================================================
+
+-- gyms
 CREATE INDEX IF NOT EXISTS idx_gyms_id_owner ON gyms(id, owner_id);
+CREATE INDEX IF NOT EXISTS idx_gyms_subscription_status ON gyms(subscription_status);
+CREATE INDEX IF NOT EXISTS idx_gyms_trial_ends_at ON gyms(trial_ends_at) WHERE subscription_status = 'trial';
 
+-- members
 CREATE INDEX IF NOT EXISTS idx_members_gym_id ON members(gym_id);
 CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
+CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_number);
+CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_members_gym_dues ON members(gym_id, pending_amount) WHERE pending_amount > 0;
+
+-- memberships
 CREATE INDEX IF NOT EXISTS idx_memberships_gym_id ON memberships(gym_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_member_id ON memberships(member_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_end_date ON memberships(end_date);
 CREATE INDEX IF NOT EXISTS idx_memberships_start_date ON memberships(gym_id, start_date);
 CREATE INDEX IF NOT EXISTS idx_memberships_member_created ON memberships(member_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memberships_gym_end_date ON memberships(gym_id, end_date);
+
+-- attendance
 CREATE INDEX IF NOT EXISTS idx_attendance_gym_id ON attendance(gym_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance(member_id);
-
--- Issue 10 fix: Add composite indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_attendance_member_date ON attendance(member_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_attendance_gym_date ON attendance(gym_id, date);
 
--- Issue 11 fix: Add partial index for dues aggregation
-CREATE INDEX IF NOT EXISTS idx_members_gym_dues ON members(gym_id, pending_amount) WHERE pending_amount > 0;
-
+-- due_payments
 CREATE INDEX IF NOT EXISTS idx_due_payments_gym_id ON due_payments(gym_id);
+
+-- admin_messages
+CREATE INDEX IF NOT EXISTS idx_admin_messages_gym_id ON admin_messages(gym_id);
+CREATE INDEX IF NOT EXISTS idx_admin_messages_created_at ON admin_messages(created_at DESC);
+
+-- support_tickets
+CREATE INDEX IF NOT EXISTS idx_support_tickets_gym_id ON support_tickets(gym_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(created_at DESC);
+
+-- inventory
+CREATE INDEX IF NOT EXISTS idx_inventory_gym_id ON inventory(gym_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_category ON inventory(gym_id, category);
+CREATE INDEX IF NOT EXISTS idx_inventory_sku ON inventory(gym_id, sku);
+
+-- inventory_units
+CREATE INDEX IF NOT EXISTS idx_inventory_units_gym_id ON inventory_units(gym_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_units_inventory_id ON inventory_units(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_units_barcode ON inventory_units(gym_id, barcode);
+
+-- inventory_sales
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_gym_id ON inventory_sales(gym_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_inventory_id ON inventory_sales(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_sold_at ON inventory_sales(gym_id, sold_at DESC);
+
+-- workout_programs
+CREATE INDEX IF NOT EXISTS idx_workout_programs_gym_id ON workout_programs(gym_id);
+CREATE INDEX IF NOT EXISTS idx_workout_programs_created ON workout_programs(gym_id, created_at DESC);
+
+-- subscription_requests
+CREATE INDEX IF NOT EXISTS idx_sub_requests_gym_id ON subscription_requests(gym_id);
+CREATE INDEX IF NOT EXISTS idx_sub_requests_status ON subscription_requests(status);
+
+-- subscription_audit_logs
+CREATE INDEX IF NOT EXISTS idx_audit_logs_gym_id ON subscription_audit_logs(gym_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON subscription_audit_logs(gym_id, created_at DESC);
+
+-- gym_upi_config
+CREATE INDEX IF NOT EXISTS idx_gym_upi_config_gym_id ON gym_upi_config(gym_id);
+
+-- whatsapp_messages
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_message_id ON whatsapp_messages(message_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_gym_id ON whatsapp_messages(gym_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_phone_number_id ON whatsapp_messages(phone_number_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_from_number ON whatsapp_messages(from_number);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_direction ON whatsapp_messages(direction);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_created_at ON whatsapp_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_status ON whatsapp_messages(status) WHERE status IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_conversation_id ON whatsapp_messages(conversation_id) WHERE conversation_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_gym_created ON whatsapp_messages(gym_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_gym_from ON whatsapp_messages(gym_id, from_number, created_at DESC);
+
+-- whatsapp_webhook_logs
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_request_id ON whatsapp_webhook_logs(request_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_phone_number_id ON whatsapp_webhook_logs(phone_number_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_event_type ON whatsapp_webhook_logs(event_type);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_created_at ON whatsapp_webhook_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_processed ON whatsapp_webhook_logs(processed);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_signature_valid ON whatsapp_webhook_logs(signature_valid);
+
+-- gym_whatsapp_config
+CREATE INDEX IF NOT EXISTS idx_gym_whatsapp_config_gym_id ON gym_whatsapp_config(gym_id);
+CREATE INDEX IF NOT EXISTS idx_gym_whatsapp_config_phone_number_id ON gym_whatsapp_config(phone_number_id);
+CREATE INDEX IF NOT EXISTS idx_gym_whatsapp_config_enabled ON gym_whatsapp_config(enabled);
+
+-- whatsapp_automation_logs
+CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_member_id ON whatsapp_automation_logs(member_id);
+CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_gym_id ON whatsapp_automation_logs(gym_id);
+CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_template ON whatsapp_automation_logs(template_name);
+CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_cycle_key ON whatsapp_automation_logs(cycle_key);
+CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_sent_at ON whatsapp_automation_logs(sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_member_template_sent ON whatsapp_automation_logs(member_id, template_name, sent_at DESC);
+-- Partial unique index: prevents duplicate sends (status='sent' only; cancelled/failed/skipped allowed same-day)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wa_auto_logs_daily_dedup_sent
+  ON whatsapp_automation_logs(member_id, template_name, (timezone('UTC', sent_at)::date))
+  WHERE status = 'sent';
+
+-- whatsapp_send_queue
+CREATE INDEX IF NOT EXISTS idx_wa_queue_due ON whatsapp_send_queue(scheduled_at) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_wa_queue_gym ON whatsapp_send_queue(gym_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wa_queue_active_dedup
+  ON whatsapp_send_queue(member_id, template_name, cycle_key)
+  WHERE status IN ('pending', 'sending');
+
+-- ============================================================
+-- ROW LEVEL SECURITY — ENABLE
+-- ============================================================
+
+ALTER TABLE gyms                    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE members                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memberships             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE due_payments            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_messages          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_tickets         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_plan_prices         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_units         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_sales         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workout_programs        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_requests   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_usage_stats         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_upi_config          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_messages       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_webhook_logs   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_whatsapp_config     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_automation_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_send_queue     ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- ROW LEVEL SECURITY — POLICIES
+-- ============================================================
+
+-- ── gyms ─────────────────────────────────────────────────────
+CREATE POLICY "Users can view their own gym"
+  ON gyms FOR SELECT
+  USING (owner_id = auth.uid());
 
 CREATE POLICY "Users can insert their own gym"
   ON gyms FOR INSERT
@@ -148,381 +570,104 @@ CREATE POLICY "Users can update their own gym"
   ON gyms FOR UPDATE
   USING (owner_id = auth.uid());
 
--- MEMBERS policies
+-- ── members ──────────────────────────────────────────────────
 CREATE POLICY "Gym owners can view their members"
   ON members FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can insert members"
   ON members FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid())
-  );
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can update members"
   ON members FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can delete members"
   ON members FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
 
--- MEMBERSHIPS policies
+-- ── memberships ──────────────────────────────────────────────
 CREATE POLICY "Gym owners can view memberships"
   ON memberships FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can insert memberships"
   ON memberships FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid())
-  );
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
 
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
-  );
+CREATE POLICY "Gym owners can update memberships"
+  ON memberships FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
 
-CREATE POLICY "Gym owners can update attendance"
-  ON attendance FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
-  );
+CREATE POLICY "Gym owners can delete memberships"
+  ON memberships FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
+
+-- ── due_payments ─────────────────────────────────────────────
+CREATE POLICY "Gym owners can view due payments"
+  ON due_payments FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert due payments"
+  ON due_payments FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update due payments"
+  ON due_payments FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can delete due payments"
+  ON due_payments FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+
+-- ── attendance ───────────────────────────────────────────────
+CREATE POLICY "Gym owners can view attendance"
+  ON attendance FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can insert attendance"
   ON attendance FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
-  );
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update attendance"
+  ON attendance FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can delete attendance"
   ON attendance FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid()));
 
--- ADMIN_MESSAGES policies
+-- ── admin_messages ───────────────────────────────────────────
 CREATE POLICY "Gym owners can read their admin messages"
   ON admin_messages FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can mark messages as read"
   ON admin_messages FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid()));
 
--- ================================================
--- MIGRATIONS (run these if upgrading existing DB)
--- ================================================
+-- ── support_tickets ──────────────────────────────────────────
+CREATE POLICY "Gym owners can view their support tickets"
+  ON support_tickets FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
 
--- [Migration 1] Add gender and area to members
-ALTER TABLE members ADD COLUMN IF NOT EXISTS gender TEXT CHECK (gender IN ('male', 'female', 'other'));
-ALTER TABLE members ADD COLUMN IF NOT EXISTS area TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS pending_amount INTEGER NOT NULL DEFAULT 0;
+CREATE POLICY "Gym owners can insert support tickets"
+  ON support_tickets FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
 
--- [Migration 2] Add member_number to members
-ALTER TABLE members ADD COLUMN IF NOT EXISTS member_number INTEGER;
+CREATE POLICY "Gym owners can update their support tickets"
+  ON support_tickets FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
 
--- Assign sequential numbers to existing members (per gym, ordered by join date)
-WITH numbered AS (
-  SELECT id, ROW_NUMBER() OVER (PARTITION BY gym_id ORDER BY created_at) AS rn
-  FROM members
-)
-UPDATE members SET member_number = numbered.rn
-FROM numbered WHERE members.id = numbered.id;
-
--- Make member_number required and unique per gym
-ALTER TABLE members ALTER COLUMN member_number SET NOT NULL;
-ALTER TABLE members ADD CONSTRAINT IF NOT EXISTS members_gym_id_member_number_key UNIQUE (gym_id, member_number);
-
--- [Migration 3] Add admission_fee to memberships
-ALTER TABLE memberships ADD COLUMN IF NOT EXISTS admission_fee INTEGER NOT NULL DEFAULT 0;
-
--- [Migration 4] Add performance indexes
-CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
-CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_number);
-CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at DESC);
-
--- [Migration 5] Add age to members
-ALTER TABLE members ADD COLUMN IF NOT EXISTS age INTEGER CHECK (age > 0 AND age < 120);
-
--- [Migration 5b] Add date_of_birth to members (drives birthday_wishes WhatsApp automation)
-ALTER TABLE members ADD COLUMN IF NOT EXISTS date_of_birth DATE;
-
--- [Migration 7] Add profile info to gyms
-ALTER TABLE gyms ADD COLUMN IF NOT EXISTS city TEXT;
-ALTER TABLE gyms ADD COLUMN IF NOT EXISTS gst_number TEXT;
-ALTER TABLE gyms ADD COLUMN IF NOT EXISTS phone TEXT;
-
-
--- ================================================
--- GEO NORMALIZATION ENGINE (Migration 6)
--- Run this entire block in Supabase SQL Editor
--- ================================================
-
--- Enable pg_trgm for fast fuzzy text search
--- Install in extensions schema to avoid extension_in_public warning
-CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
-
--- geo_localities: canonical place database
-CREATE TABLE IF NOT EXISTS geo_localities (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  name_normalized TEXT NOT NULL,
-  name_phonetic TEXT,
-  district TEXT,
-  state TEXT NOT NULL DEFAULT 'Tamil Nadu',
-  country TEXT NOT NULL DEFAULT 'India',
-  locality_type TEXT,
-  population INTEGER,
-  latitude NUMERIC(9,6),
-  longitude NUMERIC(9,6),
-  geonames_id INTEGER,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(name_normalized, state)
-);
-
-CREATE INDEX IF NOT EXISTS idx_geo_localities_name_norm ON geo_localities(name_normalized);
-CREATE INDEX IF NOT EXISTS idx_geo_localities_state ON geo_localities(state);
-CREATE INDEX IF NOT EXISTS idx_geo_localities_district ON geo_localities(district);
-CREATE INDEX IF NOT EXISTS idx_geo_localities_trgm ON geo_localities USING gin(name_normalized extensions.gin_trgm_ops);
-
--- geo_aliases: alternate spellings → canonical locality
-CREATE TABLE IF NOT EXISTS geo_aliases (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  alias_raw TEXT NOT NULL,
-  alias_normalized TEXT NOT NULL,
-  locality_id UUID NOT NULL REFERENCES geo_localities(id) ON DELETE CASCADE,
-  alias_type TEXT NOT NULL DEFAULT 'common',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(alias_normalized)
-);
-
-CREATE INDEX IF NOT EXISTS idx_geo_aliases_norm ON geo_aliases(alias_normalized);
-CREATE INDEX IF NOT EXISTS idx_geo_aliases_locality ON geo_aliases(locality_id);
-
--- geo_gym_aliases: gym-specific learned aliases
-CREATE TABLE IF NOT EXISTS geo_gym_aliases (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  alias_raw TEXT NOT NULL,
-  alias_normalized TEXT NOT NULL,
-  canonical_name TEXT NOT NULL,
-  created_by UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(alias_normalized, gym_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_geo_gym_aliases_gym ON geo_gym_aliases(gym_id);
-CREATE INDEX IF NOT EXISTS idx_geo_gym_aliases_norm ON geo_gym_aliases(alias_normalized);
-
--- geo_normalization_log: audit trail
-CREATE TABLE IF NOT EXISTS geo_normalization_log (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID REFERENCES gyms(id) ON DELETE SET NULL,
-  raw_input TEXT NOT NULL,
-  normalized_value TEXT,
-  canonical_locality_id UUID REFERENCES geo_localities(id) ON DELETE SET NULL,
-  confidence_score NUMERIC(5,4),
-  matched_by TEXT,
-  geo_hierarchy JSONB,
-  requires_review BOOLEAN NOT NULL DEFAULT false,
-  import_session_id TEXT,
-  member_id UUID REFERENCES members(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_geo_log_gym ON geo_normalization_log(gym_id);
-CREATE INDEX IF NOT EXISTS idx_geo_log_raw ON geo_normalization_log(raw_input);
-CREATE INDEX IF NOT EXISTS idx_geo_log_review ON geo_normalization_log(requires_review) WHERE requires_review = true;
-CREATE INDEX IF NOT EXISTS idx_geo_log_created ON geo_normalization_log(created_at DESC);
-
--- geo_review_queue: unresolved matches waiting for admin decision
-CREATE TABLE IF NOT EXISTS geo_review_queue (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID REFERENCES gyms(id) ON DELETE CASCADE,
-  raw_input TEXT NOT NULL,
-  top_suggestion TEXT,
-  top_confidence NUMERIC(5,4),
-  all_suggestions JSONB,
-  status TEXT NOT NULL DEFAULT 'pending',
-  resolved_to TEXT,
-  resolved_by UUID REFERENCES auth.users(id),
-  resolved_at TIMESTAMPTZ,
-  log_id UUID REFERENCES geo_normalization_log(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_geo_queue_gym ON geo_review_queue(gym_id);
-CREATE INDEX IF NOT EXISTS idx_geo_queue_status ON geo_review_queue(status) WHERE status = 'pending';
-
--- RLS
-ALTER TABLE geo_localities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE geo_aliases ENABLE ROW LEVEL SECURITY;
-ALTER TABLE geo_gym_aliases ENABLE ROW LEVEL SECURITY;
-ALTER TABLE geo_normalization_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE geo_review_queue ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can read localities"
-  ON geo_localities FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY "Authenticated users can read aliases"
-  ON geo_aliases FOR SELECT USING (auth.uid() IS NOT NULL);
-
--- INSERT/UPDATE/DELETE on geo_localities and geo_aliases is intentionally blocked for regular users.
--- In Postgres RLS, when ENABLE ROW LEVEL SECURITY is on and no matching policy exists for an
--- operation, the default is DENY. There are intentionally no INSERT/UPDATE/DELETE policies here.
--- Use the service role (admin client) for bulk seed operations only.
--- Do NOT add a permissive mutation policy thinking you are filling a gap - this is by design.
-
-CREATE POLICY "Gym owners can manage their own gym aliases"
-  ON geo_gym_aliases FOR ALL
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = geo_gym_aliases.gym_id AND owner_id = auth.uid())
-    AND created_by = auth.uid()
-  );
-
-CREATE POLICY "Gym owners can view their normalization logs"
-  ON geo_normalization_log FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = geo_normalization_log.gym_id AND owner_id = auth.uid()));
-
-CREATE POLICY "Gym owners can insert normalization logs"
-  ON geo_normalization_log FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = geo_normalization_log.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can view their review queue"
-  ON geo_review_queue FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()));
-
-CREATE POLICY "Gym owners can manage their review queue"
-  ON geo_review_queue FOR ALL
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = geo_review_queue.gym_id AND owner_id = auth.uid()));
-
--- ── Helper functions (called by API routes via supabase.rpc) ─────────────────
-
--- Trigram similarity search
-CREATE OR REPLACE FUNCTION search_localities_trigram(
-  query_text TEXT,
-  result_limit INTEGER DEFAULT 10
-)
-RETURNS TABLE(
-  id UUID,
-  name TEXT,
-  name_normalized TEXT,
-  name_phonetic TEXT,
-  district TEXT,
-  state TEXT,
-  trgm_score FLOAT
-)
-LANGUAGE sql STABLE
-SET search_path = public, extensions
-AS $$
-  SELECT
-    id, name, name_normalized, name_phonetic, district, state,
-    similarity(name_normalized, query_text)::FLOAT AS trgm_score
-  FROM geo_localities
-  WHERE similarity(name_normalized, query_text) > 0.15
-    AND is_active = true
-  ORDER BY trgm_score DESC
-  LIMIT result_limit;
-$$;
-
--- Autocomplete search (prefix + trigram)
-CREATE OR REPLACE FUNCTION search_localities_autocomplete(
-  query_text TEXT,
-  prefix_text TEXT,
-  result_limit INTEGER DEFAULT 8
-)
-RETURNS TABLE(
-  id UUID,
-  name TEXT,
-  district TEXT,
-  state TEXT
-)
-LANGUAGE sql STABLE
-SET search_path = public, extensions
-AS $$
-  SELECT id, name, district, state
-  FROM geo_localities
-  WHERE (
-    name_normalized ILIKE prefix_text || '%'
-    OR similarity(name_normalized, query_text) > 0.20
-  )
-  AND is_active = true
-  ORDER BY
-    CASE WHEN name_normalized ILIKE prefix_text || '%' THEN 1 ELSE 2 END,
-    similarity(name_normalized, query_text) DESC
-  LIMIT result_limit;
-$$;
-
--- ── Security hardening ────────────────────────────────────────────────────
--- Revoke EXECUTE on rls_auto_enable from anon and authenticated roles
--- Fixes: anon_security_definer_function_executable warning
-REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon, authenticated;
-
--- Create the gym plan prices table
-CREATE TABLE IF NOT EXISTS gym_plan_prices (
-  gym_id    UUID PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
-  monthly   INTEGER NOT NULL DEFAULT 1500,
-  quarterly INTEGER NOT NULL DEFAULT 4000,
-  annual    INTEGER NOT NULL DEFAULT 10000,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- RLS: only the gym owner can read their own prices
-ALTER TABLE gym_plan_prices ENABLE ROW LEVEL SECURITY;
-
+-- ── gym_plan_prices ──────────────────────────────────────────
 CREATE POLICY "Owner can read own plan prices"
   ON gym_plan_prices FOR SELECT
-  USING (
-    gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid())
-  );
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
 
-
--- ================================================
--- [Migration 8] Onboarding system
--- ================================================
-
-ALTER TABLE gyms ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
-ALTER TABLE gyms ADD COLUMN IF NOT EXISTS onboarding_data JSONB;
-
--- Update existing gyms to mark onboarding as completed (they were created before this feature)
-UPDATE gyms SET onboarding_completed = TRUE WHERE onboarding_completed IS NULL OR onboarding_completed = FALSE;
-
--- RLS already covers gyms table
-
--- Allow gym owners to update onboarding_data and onboarding_completed on their own gym
--- (covered by the existing "Users can update their own gym" policy)
-
--- ================================================
--- [Migration 9] Joining fees per plan in gym_plan_prices
--- ================================================
-
-ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_monthly   INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_quarterly  INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE gym_plan_prices ADD COLUMN IF NOT EXISTS joining_fee_annual     INTEGER NOT NULL DEFAULT 0;
-
--- Allow owners to write their own plan prices
 DO $$ BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can upsert own plan prices'
+    SELECT 1 FROM pg_policies WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can upsert own plan prices'
   ) THEN
     CREATE POLICY "Owner can upsert own plan prices"
       ON gym_plan_prices FOR INSERT
@@ -532,8 +677,7 @@ END $$;
 
 DO $$ BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can update own plan prices'
+    SELECT 1 FROM pg_policies WHERE tablename = 'gym_plan_prices' AND policyname = 'Owner can update own plan prices'
   ) THEN
     CREATE POLICY "Owner can update own plan prices"
       ON gym_plan_prices FOR UPDATE
@@ -541,104 +685,172 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- ================================================
--- [Migration 10] Google Places hybrid geo metadata
--- Stores supplementary Google data alongside existing canonical area columns.
--- The canonical area columns (area, _area_confidence, etc.) remain unchanged.
--- ================================================
-
--- Add Google Places metadata columns to members table
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_place_id       TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_formatted_addr TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_locality_raw   TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_city_raw       TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_state_raw      TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_postal_code    TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_latitude       NUMERIC(10, 7);
-ALTER TABLE members ADD COLUMN IF NOT EXISTS google_longitude      NUMERIC(10, 7);
-
--- Index for place_id lookups (deduplication, analytics)
-CREATE INDEX IF NOT EXISTS idx_members_google_place_id ON members(google_place_id) WHERE google_place_id IS NOT NULL;
-
--- NOTE: google_place_id is supplementary metadata only.
--- The canonical area is still stored in members.area (free text, normalized by GymFlow pipeline).
--- Do NOT use google_place_id as a foreign key or canonical identifier.
-
--- Migration: Add legacy_member_id column to members table
--- Run this in your Supabase SQL editor or via the Supabase CLI.
---
--- Purpose:
---   When importing members from external systems (e.g. old gym software),
---   the original ID (e.g. "C1006", "MEM-042") is preserved here.
---   The new canonical ID format is GF-prefixed: GF0001, GF0042, etc.,
---   derived from the integer member_number column.
-
-ALTER TABLE members
-  ADD COLUMN IF NOT EXISTS legacy_member_id TEXT DEFAULT NULL;
-
-COMMENT ON COLUMN members.legacy_member_id IS
-  'Original member ID from an external/legacy system, preserved during import. '
-  'The canonical GymFlow ID is derived from member_number as GF + zero-padded 4 digits.';
-
--- ================================================
--- INVENTORY
--- ================================================
-
-CREATE TABLE IF NOT EXISTS inventory (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  product_name TEXT NOT NULL,
-  brand TEXT,
-  category TEXT,
-  sku TEXT,
-  description TEXT,
-  variant_name TEXT NOT NULL,
-  cost_price NUMERIC NOT NULL,
-  selling_price NUMERIC NOT NULL,
-  member_price NUMERIC,
-  initial_stock INTEGER NOT NULL DEFAULT 0,
-  low_stock_threshold INTEGER,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_gym_id ON inventory(gym_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_category ON inventory(gym_id, category);
-CREATE INDEX IF NOT EXISTS idx_inventory_sku ON inventory(gym_id, sku);
-
--- ROW LEVEL SECURITY (RLS)
-ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
-
--- INVENTORY policies
+-- ── inventory ────────────────────────────────────────────────
 CREATE POLICY "Gym owners can view their inventory"
   ON inventory FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can insert inventory"
   ON inventory FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid())
-  );
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can update inventory"
   ON inventory FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
 
 CREATE POLICY "Gym owners can delete inventory"
   ON inventory FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid())
-  );
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
 
--- ================================================
+-- ── inventory_units ──────────────────────────────────────────
+CREATE POLICY "Gym owners can view their inventory units"
+  ON inventory_units FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert inventory units"
+  ON inventory_units FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update inventory units"
+  ON inventory_units FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can delete inventory units"
+  ON inventory_units FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid()));
+
+-- ── inventory_sales ──────────────────────────────────────────
+CREATE POLICY "Gym owners can view their inventory sales"
+  ON inventory_sales FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert inventory sales"
+  ON inventory_sales FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update inventory sales"
+  ON inventory_sales FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can delete inventory sales"
+  ON inventory_sales FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+
+-- ── workout_programs ─────────────────────────────────────────
+CREATE POLICY "Gym owners can view their programs"
+  ON workout_programs FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert programs"
+  ON workout_programs FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update programs"
+  ON workout_programs FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can delete programs"
+  ON workout_programs FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+-- ── subscription_requests ────────────────────────────────────
+DROP POLICY IF EXISTS "gym owner read own requests" ON subscription_requests;
+CREATE POLICY "gym owner read own requests"
+  ON subscription_requests FOR SELECT
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+DROP POLICY IF EXISTS "gym owner insert own requests" ON subscription_requests;
+CREATE POLICY "gym owner insert own requests"
+  ON subscription_requests FOR INSERT
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ── gym_usage_stats ──────────────────────────────────────────
+CREATE POLICY "Gym owners can view own usage stats"
+  ON gym_usage_stats FOR SELECT
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ── gym_upi_config ───────────────────────────────────────────
+CREATE POLICY "Gym owners can view their UPI config"
+  ON gym_upi_config FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert their UPI config"
+  ON gym_upi_config FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update their UPI config"
+  ON gym_upi_config FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can delete their UPI config"
+  ON gym_upi_config FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid()));
+
+-- ── whatsapp_messages ────────────────────────────────────────
+CREATE POLICY whatsapp_messages_select_policy ON whatsapp_messages
+  FOR SELECT
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+CREATE POLICY whatsapp_messages_insert_policy ON whatsapp_messages
+  FOR INSERT
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+CREATE POLICY whatsapp_messages_update_policy ON whatsapp_messages
+  FOR UPDATE
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ── whatsapp_webhook_logs ────────────────────────────────────
+-- Only service role can access webhook logs (no authenticated user policy needed)
+CREATE POLICY whatsapp_webhook_logs_admin_policy ON whatsapp_webhook_logs
+  FOR ALL
+  USING (auth.uid() IS NOT NULL AND auth.jwt() ->> 'role' = 'service_role');
+
+-- ── gym_whatsapp_config ──────────────────────────────────────
+CREATE POLICY gym_whatsapp_config_select_policy ON gym_whatsapp_config
+  FOR SELECT
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+CREATE POLICY gym_whatsapp_config_update_policy ON gym_whatsapp_config
+  FOR UPDATE
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ── whatsapp_automation_logs ─────────────────────────────────
+CREATE POLICY wa_auto_logs_select ON whatsapp_automation_logs
+  FOR SELECT
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ── whatsapp_send_queue ──────────────────────────────────────
+CREATE POLICY wa_queue_select ON whatsapp_send_queue
+  FOR SELECT
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ============================================================
 -- FUNCTIONS
--- ================================================
+-- ============================================================
 
+-- ── check_gym_active (latest version: handles cancelled/suspended) ──
+CREATE OR REPLACE FUNCTION check_gym_active(p_email TEXT)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT
+    CASE
+      WHEN g.is_active = false                   THEN false
+      WHEN g.subscription_status = 'expired'     THEN false
+      WHEN g.subscription_status = 'cancelled'   THEN false
+      WHEN g.subscription_status = 'suspended'   THEN false
+      WHEN g.subscription_status = 'trial'
+           AND g.trial_ends_at < now()           THEN false
+      WHEN g.subscription_status = 'active'
+           AND g.subscription_ends_at IS NOT NULL
+           AND g.subscription_ends_at < now()    THEN false
+      ELSE true
+    END
+  FROM auth.users u
+  JOIN gyms g ON g.owner_id = u.id
+  WHERE u.email = p_email
+  LIMIT 1;
+$$;
+
+-- ── increment_inventory_stock (with ownership check) ─────────
 CREATE OR REPLACE FUNCTION increment_inventory_stock(p_inventory_id UUID, amount INTEGER)
 RETURNS VOID AS $$
 DECLARE
@@ -648,227 +860,79 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM gyms WHERE id = v_gym_id AND owner_id = auth.uid()) THEN
     RAISE EXCEPTION 'Access denied';
   END IF;
-
   UPDATE inventory
   SET initial_stock = GREATEST(0, initial_stock + amount),
       updated_at = NOW()
   WHERE id = p_inventory_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = '';
 
--- ================================================
--- INVENTORY SALES (Revenue Tracking)
--- ================================================
-
-CREATE TABLE IF NOT EXISTS inventory_sales (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  inventory_id UUID REFERENCES inventory(id) ON DELETE SET NULL,
-  product_name TEXT NOT NULL,
-  variant_name TEXT NOT NULL,
-  quantity INTEGER NOT NULL DEFAULT 1,
-  unit_price NUMERIC NOT NULL,
-  total_price NUMERIC NOT NULL,
-  payment_mode TEXT NOT NULL DEFAULT 'cash' CHECK (payment_mode IN ('cash', 'upi', 'card')),
-  sold_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_sales_gym_id ON inventory_sales(gym_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_sales_inventory_id ON inventory_sales(inventory_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_sales_sold_at ON inventory_sales(gym_id, sold_at DESC);
-
--- ROW LEVEL SECURITY (RLS)
-ALTER TABLE inventory_sales ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Gym owners can view their inventory sales"
-  ON inventory_sales FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can insert inventory sales"
-  ON inventory_sales FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can delete inventory sales"
-  ON inventory_sales FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
-
-CREATE POLICY "Gym owners can update inventory sales"
-  ON inventory_sales FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
-
--- ================================================
--- WORKOUT PROGRAMS
--- ================================================
-
-CREATE TABLE IF NOT EXISTS workout_programs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  summary TEXT,
-  notes TEXT,
-  duration INTEGER NOT NULL,
-  frequency INTEGER,
-  difficulty TEXT,
-  goal TEXT,
-  category TEXT,
-  equipment TEXT,
-  target_audience TEXT,
-  experience_level TEXT,
-  schedule JSONB NOT NULL,
-  is_draft BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_workout_programs_gym_id ON workout_programs(gym_id);
-CREATE INDEX IF NOT EXISTS idx_workout_programs_created ON workout_programs(gym_id, created_at DESC);
-
--- ROW LEVEL SECURITY (RLS)
-ALTER TABLE workout_programs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Gym owners can view their programs"
-  ON workout_programs FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can insert programs"
-  ON workout_programs FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can update programs"
-  ON workout_programs FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can delete programs"
-  ON workout_programs FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
-  );
-
--- ================================================
--- [Migration 11] Add Category to Memberships
--- ================================================
-
-ALTER TABLE memberships ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN ('strength', 'cardio', 'both')) DEFAULT 'both';
-
-
--- ================================================
--- [Migration 14] Add check_out_time to Attendance
--- ================================================
-
-ALTER TABLE attendance ADD COLUMN IF NOT EXISTS check_out_time TIMESTAMPTZ;
-
--- ================================================
--- [Migration 15] Gym Deactivation
--- ================================================
-
--- Create an RPC function to safely check a gym's active status by email
-CREATE OR REPLACE FUNCTION check_gym_active(p_email TEXT)
-RETURNS BOOLEAN AS $$
+-- ── sell_inventory_item (atomic, prevents oversell) ──────────
+CREATE OR REPLACE FUNCTION sell_inventory_item(
+  p_inventory_id UUID,
+  p_quantity     INTEGER,
+  p_unit_price   NUMERIC,
+  p_payment_mode TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
-  v_owner_id UUID;
-  v_is_active BOOLEAN;
+  v_product  inventory%ROWTYPE;
+  v_price    NUMERIC;
+  v_total    NUMERIC;
+  v_mode     TEXT;
+  v_sale_id  UUID;
 BEGIN
-  -- Find the user ID for this email from auth.users
-  SELECT id INTO v_owner_id FROM auth.users WHERE email = p_email LIMIT 1;
-  
-  IF v_owner_id IS NULL THEN
-    RETURN false;
+  IF p_quantity IS NULL OR p_quantity < 1 THEN
+    RAISE EXCEPTION 'INVALID_QUANTITY';
   END IF;
 
-  -- Find the gym for this user
-  SELECT is_active INTO v_is_active FROM public.gyms WHERE owner_id = v_owner_id LIMIT 1;
-  
-  IF v_is_active IS NULL THEN
-    RETURN false;
+  v_mode := CASE WHEN p_payment_mode IN ('cash', 'upi', 'card') THEN p_payment_mode ELSE 'cash' END;
+
+  SELECT * INTO v_product FROM inventory WHERE id = p_inventory_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'PRODUCT_NOT_FOUND';
   END IF;
-  
-  RETURN v_is_active;
+
+  IF NOT EXISTS (SELECT 1 FROM gyms WHERE id = v_product.gym_id AND owner_id = auth.uid()) THEN
+    RAISE EXCEPTION 'ACCESS_DENIED';
+  END IF;
+
+  IF v_product.initial_stock < p_quantity THEN
+    RAISE EXCEPTION 'INSUFFICIENT_STOCK:%', v_product.initial_stock;
+  END IF;
+
+  v_price := COALESCE(p_unit_price, v_product.selling_price);
+  v_total := v_price * p_quantity;
+
+  INSERT INTO inventory_sales (
+    gym_id, inventory_id, product_name, variant_name,
+    quantity, unit_price, total_price, payment_mode
+  ) VALUES (
+    v_product.gym_id, p_inventory_id, v_product.product_name, v_product.variant_name,
+    p_quantity, v_price, v_total, v_mode
+  )
+  RETURNING id INTO v_sale_id;
+
+  UPDATE inventory
+  SET initial_stock = initial_stock - p_quantity,
+      updated_at = NOW()
+  WHERE id = p_inventory_id;
+
+  RETURN jsonb_build_object(
+    'sale_id',         v_sale_id,
+    'product_name',    v_product.product_name,
+    'quantity',        p_quantity,
+    'total_price',     v_total,
+    'remaining_stock', v_product.initial_stock - p_quantity
+  );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
--- ================================================
--- [Migration 16] Support Tickets
--- ================================================
-
-CREATE TABLE IF NOT EXISTS support_tickets (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
-  subject TEXT NOT NULL,
-  message TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('query', 'issue', 'bug', 'high_priority')),
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  resolved_at TIMESTAMPTZ,
-  is_cleared_by_owner BOOLEAN DEFAULT false,
-  is_cleared_by_admin BOOLEAN DEFAULT false
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_support_tickets_gym_id ON support_tickets(gym_id);
-CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
-CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(created_at DESC);
-
--- ROW LEVEL SECURITY (RLS)
-ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Gym owners can view their support tickets"
-  ON support_tickets FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can insert support tickets"
-  ON support_tickets FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY "Gym owners can update their support tickets"
-  ON support_tickets FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
-
-
--- ================================================
--- [Migration 17] Enable Realtime for Support & Messages
--- ================================================
-
--- Add tables to the supabase_realtime publication to enable WebSocket broadcasting
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM pg_publication_tables 
-    WHERE pubname = 'supabase_realtime' AND tablename = 'admin_messages'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE admin_messages;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM pg_publication_tables 
-    WHERE pubname = 'supabase_realtime' AND tablename = 'support_tickets'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE support_tickets;
-  END IF;
-END $$;
-
-
--- ================================================
--- [Migration 12] Dashboard RPC
--- ================================================
-
+-- ── get_gym_dashboard ─────────────────────────────────────────
 CREATE OR REPLACE FUNCTION get_gym_dashboard(p_gym_id UUID, p_today DATE)
 RETURNS JSON AS $$
 DECLARE
@@ -880,25 +944,20 @@ DECLARE
   v_total_dues NUMERIC;
   v_expiring_members JSON;
 BEGIN
-  -- 1. Attendance today
   SELECT COUNT(*) INTO v_today_attendance
   FROM attendance
   WHERE gym_id = p_gym_id AND date = p_today;
 
-  -- 2. Today's collection
   SELECT COALESCE(SUM(amount + admission_fee), 0) INTO v_today_collection
   FROM memberships
   WHERE gym_id = p_gym_id AND start_date = p_today;
 
-  -- 3. Total dues
   SELECT COALESCE(SUM(pending_amount), 0) INTO v_total_dues
   FROM members
   WHERE gym_id = p_gym_id AND pending_amount > 0;
 
-  -- 4. Member Statuses & Expiring Members
-  -- We use a CTE to get the latest membership for each member
   WITH latest_memberships AS (
-    SELECT 
+    SELECT
       m.id AS member_id,
       m.name,
       m.phone,
@@ -911,13 +970,13 @@ BEGIN
     WHERE m.gym_id = p_gym_id
   ),
   member_statuses AS (
-    SELECT 
+    SELECT
       member_id,
       name,
       phone,
       member_number,
       end_date,
-      CASE 
+      CASE
         WHEN end_date IS NULL THEN 'expired'
         WHEN end_date < p_today THEN 'expired'
         WHEN end_date >= p_today AND end_date <= (p_today + INTERVAL '7 days')::DATE THEN 'expiring'
@@ -927,7 +986,7 @@ BEGIN
     FROM latest_memberships
     WHERE rn = 1
   )
-  SELECT 
+  SELECT
     COUNT(*) FILTER (WHERE status IN ('active', 'expiring'))::INT,
     COUNT(*) FILTER (WHERE status = 'expiring')::INT,
     COUNT(*) FILTER (WHERE status = 'expired')::INT,
@@ -942,12 +1001,12 @@ BEGIN
           'days_remaining', days_remaining,
           'latest_membership', json_build_object('end_date', end_date)
         ) ORDER BY days_remaining ASC
-      ) FILTER (WHERE status = 'expiring'), 
+      ) FILTER (WHERE status = 'expiring'),
       '[]'::json
     )
-  INTO 
-    v_total_active, 
-    v_expiring_this_week, 
+  INTO
+    v_total_active,
+    v_expiring_this_week,
     v_expired_count,
     v_expiring_members
   FROM member_statuses;
@@ -964,12 +1023,9 @@ BEGIN
     'expiringMembers', v_expiring_members
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = '';
 
--- ================================================
--- [Migration 13] Reports RPC
--- ================================================
-
+-- ── get_gym_reports ───────────────────────────────────────────
 CREATE OR REPLACE FUNCTION get_gym_reports(p_gym_id UUID, p_today DATE)
 RETURNS JSON AS $$
 DECLARE
@@ -990,14 +1046,8 @@ DECLARE
   v_expiring_members JSON;
   v_attendance_today_count INT;
 BEGIN
-  -- 1. Generate 6-month ranges
-  -- We'll use a temporary table or just CTEs within queries. 
-  -- Since we need it across multiple queries, let's create a temp table to make it cleaner,
-  -- or just calculate the boundaries.
-  
-  -- Monthly Revenue (months)
   WITH month_ranges AS (
-    SELECT 
+    SELECT
       (date_trunc('month', p_today - (i || ' months')::interval))::date AS start_dt,
       (date_trunc('month', p_today - (i || ' months')::interval) + interval '1 month - 1 day')::date AS end_dt,
       to_char(p_today - (i || ' months')::interval, 'Mon YYYY') AS label,
@@ -1013,11 +1063,11 @@ BEGIN
       'card', COALESCE(rev.card, 0),
       'transactions', COALESCE(rev.transactions, 0),
       'newMembers', COALESCE(rev.new_members, 0)
-    ) ORDER BY mr.idx DESC -- We want oldest first (idx 5 down to 0)
+    ) ORDER BY mr.idx DESC
   ), '[]'::json) INTO v_months
   FROM month_ranges mr
   LEFT JOIN LATERAL (
-    SELECT 
+    SELECT
       SUM(amount + admission_fee) AS total,
       SUM(amount + admission_fee) FILTER (WHERE payment_mode = 'cash') AS cash,
       SUM(amount + admission_fee) FILTER (WHERE payment_mode = 'upi') AS upi,
@@ -1028,9 +1078,8 @@ BEGIN
     WHERE gym_id = p_gym_id AND start_date >= mr.start_dt AND start_date <= mr.end_dt
   ) rev ON true;
 
-  -- Monthly Inventory Sales
   WITH month_ranges AS (
-    SELECT 
+    SELECT
       (date_trunc('month', p_today - (i || ' months')::interval))::date AS start_dt,
       (date_trunc('month', p_today - (i || ' months')::interval) + interval '1 month - 1 day')::date AS end_dt,
       to_char(p_today - (i || ' months')::interval, 'Mon YYYY') AS label,
@@ -1046,14 +1095,13 @@ BEGIN
   ), '[]'::json) INTO v_inventory_sales
   FROM month_ranges mr
   LEFT JOIN LATERAL (
-    SELECT 
+    SELECT
       SUM(total_price) AS total,
       SUM(quantity) AS quantity
     FROM inventory_sales
     WHERE gym_id = p_gym_id AND sold_at >= mr.start_dt AND sold_at <= (mr.end_dt + interval '1 day - 1 second')
   ) inv ON true;
 
-  -- Recent Inventory Sales (Last 20)
   SELECT COALESCE(json_agg(row_to_json(inv_sales)), '[]'::json) INTO v_recent_inventory_sales
   FROM (
     SELECT total_price, quantity, product_name, variant_name, payment_mode, sold_at
@@ -1063,8 +1111,6 @@ BEGIN
     LIMIT 20
   ) inv_sales;
 
-  -- Latest Memberships & Member Statuses
-  -- Using a CTE for latest membership per member
   WITH latest_memberships AS (
     SELECT DISTINCT ON (m.id)
       m.id AS member_id,
@@ -1082,10 +1128,10 @@ BEGIN
     WHERE m.gym_id = p_gym_id
     ORDER BY m.id, ms.created_at DESC
   )
-  SELECT 
+  SELECT
     COUNT(*) FILTER (WHERE end_date < p_today),
     COUNT(*) FILTER (WHERE end_date >= p_today),
-    COUNT(*) FILTER (WHERE end_date < p_today), -- Churn is same as expired currently
+    COUNT(*) FILTER (WHERE end_date < p_today),
     json_build_object(
       'monthly', COUNT(*) FILTER (WHERE plan = 'monthly'),
       'quarterly', COUNT(*) FILTER (WHERE plan = 'quarterly'),
@@ -1115,7 +1161,7 @@ BEGIN
         ) ORDER BY end_date ASC
       ) FILTER (WHERE end_date IS NOT NULL), '[]'::json
     )
-  INTO 
+  INTO
     v_expired_count,
     v_active_count,
     v_churn_count,
@@ -1125,9 +1171,8 @@ BEGIN
     v_expiring_members
   FROM latest_memberships;
 
-  -- New Members By Month (Using same 6 month logic)
   WITH month_ranges AS (
-    SELECT 
+    SELECT
       (date_trunc('month', p_today - (i || ' months')::interval))::date AS start_dt,
       (date_trunc('month', p_today - (i || ' months')::interval) + interval '1 month - 1 day')::date AS end_dt,
       to_char(p_today - (i || ' months')::interval, 'Mon YYYY') AS label,
@@ -1147,7 +1192,6 @@ BEGIN
     WHERE gym_id = p_gym_id AND created_at >= mr.start_dt AND created_at <= (mr.end_dt + interval '1 day - 1 second')
   ) mem ON true;
 
-  -- Attendance By Day (Last 3 months)
   WITH day_names (idx, name) AS (
     VALUES (0, 'Sun'), (1, 'Mon'), (2, 'Tue'), (3, 'Wed'), (4, 'Thu'), (5, 'Fri'), (6, 'Sat')
   )
@@ -1165,12 +1209,10 @@ BEGIN
       AND EXTRACT(DOW FROM date) = dn.idx
   ) att ON true;
 
-  -- Attendance Today Count
   SELECT COUNT(*) INTO v_attendance_today_count
   FROM attendance
   WHERE gym_id = p_gym_id AND date = p_today;
 
-  -- Top 5 Areas (Changed to Top 10 in JS previously, let's keep Top 10)
   SELECT COALESCE(json_agg(area_agg), '[]'::json) INTO v_top_areas
   FROM (
     SELECT json_build_object('area', area, 'count', COUNT(*)) AS area_agg
@@ -1181,8 +1223,7 @@ BEGIN
     LIMIT 10
   ) a;
 
-  -- Dues Analytics
-  SELECT 
+  SELECT
     COALESCE(json_agg(
       json_build_object(
         'name', name,
@@ -1191,13 +1232,12 @@ BEGIN
       )
     ), '[]'::json),
     COALESCE(SUM(pending_amount), 0)
-  INTO 
+  INTO
     v_members_with_dues,
     v_total_dues_amount
   FROM members
   WHERE gym_id = p_gym_id AND pending_amount > 0;
 
-  -- Return final JSON
   RETURN json_build_object(
     'months', v_months,
     'inventorySales', v_inventory_sales,
@@ -1216,6 +1256,266 @@ BEGIN
     'expiringMembers', v_expiring_members,
     'attendanceTodayCount', COALESCE(v_attendance_today_count, 0)
   );
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = '';
 
+-- ── increment_gym_usage_stat ──────────────────────────────────
+CREATE OR REPLACE FUNCTION increment_gym_usage_stat(
+  p_gym_id  UUID,
+  p_field   TEXT,
+  p_amount  INTEGER DEFAULT 1
+) RETURNS VOID AS $$
+BEGIN
+  IF p_field NOT IN (
+    'total_members', 'total_attendance', 'total_payments',
+    'total_revenue', 'whatsapp_sent', 'reports_generated', 'storage_used_kb'
+  ) THEN
+    RAISE EXCEPTION 'Unknown field: %', p_field;
+  END IF;
+
+  INSERT INTO gym_usage_stats (gym_id, updated_at)
+  VALUES (p_gym_id, now())
+  ON CONFLICT (gym_id) DO NOTHING;
+
+  EXECUTE format(
+    'UPDATE gym_usage_stats SET %I = %I + $1, last_active_at = now(), updated_at = now() WHERE gym_id = $2',
+    p_field, p_field
+  ) USING p_amount, p_gym_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ── record_whatsapp_sent ──────────────────────────────────────
+CREATE OR REPLACE FUNCTION record_whatsapp_sent(p_gym_id UUID, p_count INTEGER DEFAULT 1)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO gym_usage_stats (gym_id, whatsapp_sent, updated_at)
+  VALUES (p_gym_id, p_count, now())
+  ON CONFLICT (gym_id) DO UPDATE
+  SET
+    whatsapp_sent  = gym_usage_stats.whatsapp_sent + p_count,
+    last_active_at = now(),
+    updated_at     = now();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ── log_subscription_action ───────────────────────────────────
+CREATE OR REPLACE FUNCTION log_subscription_action(
+  p_gym_id       UUID,
+  p_action       TEXT,
+  p_prev_status  TEXT DEFAULT NULL,
+  p_new_status   TEXT DEFAULT NULL,
+  p_prev_plan    TEXT DEFAULT NULL,
+  p_new_plan     TEXT DEFAULT NULL,
+  p_prev_expiry  TIMESTAMPTZ DEFAULT NULL,
+  p_new_expiry   TIMESTAMPTZ DEFAULT NULL,
+  p_performed_by TEXT DEFAULT 'admin',
+  p_notes        TEXT DEFAULT NULL
+) RETURNS UUID AS $$
+DECLARE
+  v_log_id UUID;
+BEGIN
+  INSERT INTO subscription_audit_logs (
+    gym_id, action, prev_status, new_status,
+    prev_plan, new_plan, prev_expiry, new_expiry,
+    performed_by, notes
+  )
+  VALUES (
+    p_gym_id, p_action, p_prev_status, p_new_status,
+    p_prev_plan, p_new_plan, p_prev_expiry, p_new_expiry,
+    p_performed_by, p_notes
+  )
+  RETURNING id INTO v_log_id;
+  RETURN v_log_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ── delete_old_whatsapp_webhook_logs ──────────────────────────
+CREATE OR REPLACE FUNCTION delete_old_whatsapp_webhook_logs()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM whatsapp_webhook_logs
+  WHERE created_at < NOW() - INTERVAL '7 days';
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- TRIGGERS
+-- ============================================================
+
+-- ── whatsapp_messages updated_at ─────────────────────────────
+CREATE OR REPLACE FUNCTION update_whatsapp_messages_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS whatsapp_messages_updated_at ON whatsapp_messages;
+CREATE TRIGGER whatsapp_messages_updated_at
+  BEFORE UPDATE ON whatsapp_messages
+  FOR EACH ROW
+  EXECUTE FUNCTION update_whatsapp_messages_updated_at();
+
+DROP TRIGGER IF EXISTS gym_whatsapp_config_updated_at ON gym_whatsapp_config;
+CREATE TRIGGER gym_whatsapp_config_updated_at
+  BEFORE UPDATE ON gym_whatsapp_config
+  FOR EACH ROW
+  EXECUTE FUNCTION update_whatsapp_messages_updated_at();
+
+-- ── usage stats: memberships ─────────────────────────────────
+CREATE OR REPLACE FUNCTION sync_usage_on_membership_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO gym_usage_stats (gym_id, total_payments, total_revenue, updated_at)
+  VALUES (NEW.gym_id, 1, NEW.amount + NEW.admission_fee, now())
+  ON CONFLICT (gym_id) DO UPDATE
+  SET
+    total_payments = gym_usage_stats.total_payments + 1,
+    total_revenue  = gym_usage_stats.total_revenue + EXCLUDED.total_revenue,
+    last_active_at = now(),
+    updated_at     = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_usage_on_membership ON memberships;
+CREATE TRIGGER trg_usage_on_membership
+  AFTER INSERT ON memberships
+  FOR EACH ROW EXECUTE FUNCTION sync_usage_on_membership_insert();
+
+-- ── usage stats: members ─────────────────────────────────────
+CREATE OR REPLACE FUNCTION sync_usage_on_member_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO gym_usage_stats (gym_id, total_members, updated_at)
+  VALUES (NEW.gym_id, 1, now())
+  ON CONFLICT (gym_id) DO UPDATE
+  SET
+    total_members  = gym_usage_stats.total_members + 1,
+    last_active_at = now(),
+    updated_at     = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_usage_on_member ON members;
+CREATE TRIGGER trg_usage_on_member
+  AFTER INSERT ON members
+  FOR EACH ROW EXECUTE FUNCTION sync_usage_on_member_insert();
+
+-- ── usage stats: attendance ──────────────────────────────────
+CREATE OR REPLACE FUNCTION sync_usage_on_attendance_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO gym_usage_stats (gym_id, total_attendance, updated_at)
+  VALUES (NEW.gym_id, 1, now())
+  ON CONFLICT (gym_id) DO UPDATE
+  SET
+    total_attendance = gym_usage_stats.total_attendance + 1,
+    last_active_at   = now(),
+    updated_at       = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_usage_on_attendance ON attendance;
+CREATE TRIGGER trg_usage_on_attendance
+  AFTER INSERT ON attendance
+  FOR EACH ROW EXECUTE FUNCTION sync_usage_on_attendance_insert();
+
+-- ============================================================
+-- VIEWS
+-- ============================================================
+
+CREATE OR REPLACE VIEW whatsapp_conversations AS
+SELECT
+  gym_id,
+  from_number AS contact_number,
+  MAX(created_at) AS last_message_at,
+  COUNT(*) AS message_count,
+  COUNT(*) FILTER (WHERE direction = 'inbound') AS inbound_count,
+  COUNT(*) FILTER (WHERE direction = 'outbound') AS outbound_count,
+  COUNT(*) FILTER (WHERE status = 'read') AS read_count,
+  COUNT(*) FILTER (WHERE status = 'failed') AS failed_count
+FROM whatsapp_messages
+WHERE direction = 'inbound'
+GROUP BY gym_id, from_number
+ORDER BY last_message_at DESC;
+
+COMMENT ON VIEW whatsapp_conversations IS 'Aggregated view of conversations by contact';
+
+-- ============================================================
+-- REALTIME PUBLICATIONS
+-- ============================================================
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'gyms') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE gyms;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'subscription_requests') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE subscription_requests;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'admin_messages') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE admin_messages;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'support_tickets') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE support_tickets;
+  END IF;
+END $$;
+
+-- ============================================================
+-- STORAGE BUCKETS
+-- ============================================================
+
+INSERT INTO storage.buckets (id, name, public)
+  VALUES ('payment-proofs', 'payment-proofs', false)
+  ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "gym owner upload payment proof" ON storage.objects;
+CREATE POLICY "gym owner upload payment proof"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'payment-proofs'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+DROP POLICY IF EXISTS "gym owner read own payment proofs" ON storage.objects;
+CREATE POLICY "gym owner read own payment proofs"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'payment-proofs'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ============================================================
+-- SEED: Backfill usage stats for existing gyms
+-- ============================================================
+
+INSERT INTO gym_usage_stats (gym_id, total_members, total_attendance, total_payments, total_revenue, updated_at)
+SELECT
+  g.id,
+  COUNT(DISTINCT m.id)::INTEGER,
+  COUNT(DISTINCT a.id)::INTEGER,
+  COUNT(DISTINCT ms.id)::INTEGER,
+  COALESCE(SUM(ms.amount + ms.admission_fee), 0)::BIGINT,
+  now()
+FROM gyms g
+LEFT JOIN members m ON m.gym_id = g.id
+LEFT JOIN attendance a ON a.gym_id = g.id
+LEFT JOIN memberships ms ON ms.gym_id = g.id
+GROUP BY g.id
+ON CONFLICT (gym_id) DO NOTHING;
+
+-- ============================================================
+-- REVOKE EXECUTE from anon where appropriate
+-- ============================================================
+
+REVOKE EXECUTE ON FUNCTION get_gym_dashboard(UUID, DATE) FROM anon;
+REVOKE EXECUTE ON FUNCTION get_gym_reports(UUID, DATE) FROM anon;
+REVOKE EXECUTE ON FUNCTION increment_inventory_stock(UUID, INTEGER) FROM anon;
+
+-- ============================================================
+-- END OF SCHEMA
+-- ============================================================

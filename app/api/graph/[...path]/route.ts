@@ -90,6 +90,14 @@ const STRIP_RESPONSE_HEADERS = new Set([
 async function proxy(req: NextRequest, path: string[]): Promise<Response> {
   const pathStr = path.join('/')
 
+  // ── Path traversal protection ─────────────────────────────────────────────
+  // Reject any path containing ".." or encoded traversal sequences to prevent
+  // bypassing the endpoint whitelist via URL normalization.
+  if (pathStr.includes('..') || pathStr.includes('%2e') || pathStr.includes('%2E')) {
+    logger.warn('graph_proxy_blocked', { method: req.method, path: `/${pathStr}`, reason: 'path_traversal' })
+    return forbiddenResponse('Invalid path.')
+  }
+
   // ── Endpoint whitelist ────────────────────────────────────────────────────
   // Only allow requests to Meta Graph endpoints we actually use.
   // Version-only paths (e.g. "v25.0/123456789") without an endpoint are allowed

@@ -31,12 +31,13 @@ GymFlow Member PWA is a client-side Progressive Web App that communicates exclus
         └───────────────────────────────────┘
                          │
         ┌────────────────▼──────────────────┐
-        │         GymFlow Admin Portal       │
-        │   (Next.js 15 · same Supabase)    │
+        │     GymFlow Owner App (Main)       │
+        │  app.gymflow.sbs · Next.js 15     │
+        │    (same Supabase project)         │
         └───────────────────────────────────┘
 ```
 
-The main web app and Member PWA share the same Supabase project. RLS policies ensure members can only access their own gym's data, and only their own records within that gym.
+The main GymFlow owner app (`app.gymflow.sbs`) and the Member PWA share the same Supabase project. RLS policies ensure members can only access their own gym's data, and only their own records within that gym.
 
 ---
 

@@ -92,8 +92,8 @@
 - New QR fetched every 4 minutes (auto-refresh timer).
 - QR shown even offline (last valid QR payload cached in Dexie.js `metadata` table).
 
-### 3.3 Validation (Admin side)
-- Admin scans QR → `validate-qr` Edge Function validates JWT signature → records attendance (source: 'qr').
+### 3.3 Validation (Owner App side)
+- Gym owner scans QR via the GymFlow owner app (`app.gymflow.sbs`) → `validate-qr` Edge Function validates JWT signature → records attendance (source: 'qr').
 - If expired QR: show "QR expired — ask member to refresh."
 - Attendance insert is idempotent: duplicate scan on same day for same session_type is a no-op.
 
@@ -132,7 +132,7 @@
 
 **Edge cases:**
 - Same-day duplicate punch (biometric or QR): idempotent — only one attendance record per `(member_id, date, session_type)`.
-- Backdated attendance added by admin: `get_attendance_streak()` recalculates correctly from DB.
+- Backdated attendance added by gym owner: `get_attendance_streak()` recalculates correctly from DB.
 
 ---
 
@@ -280,7 +280,7 @@
 | Challenge started | Challenge `starts_at` date | /rewards/challenges |
 | Badge earned | Badge trigger fires | /rewards/badges |
 | XP milestone / level up | `member_xp.level` increments | /rewards |
-| System | Admin message | /notifications |
+| System | Gym owner message | /notifications |
 
 ---
 
@@ -294,12 +294,12 @@
 ### 11.2 Emergency Contact
 - Name and phone.
 - Stored in `members.emergency_name` and `members.emergency_phone`.
-- Displayed to gym staff in admin when viewing member profile.
+- Displayed to gym owner/trainer when viewing member profile in the owner app.
 
 ### 11.3 Medical Notes
 - Free text input.
 - Stored in `members.medical_notes`.
-- Visible to trainer when viewing member profile in admin portal.
+- Visible to trainer when viewing member profile in the owner app.
 
 ### 11.4 Settings
 - Push notification preferences: toggle per notification type (maps to a JSONB preferences field; future table migration in v1.1).
@@ -308,7 +308,7 @@
 
 ### 11.5 Privacy
 - "Download my data" — exports member's own data as JSON (profile, attendance, workouts, payments).
-- "Delete account" — sends deletion request to gym admin via in-app notification; cannot self-delete in v1.
+- "Delete account" — sends deletion request to gym owner via in-app notification; cannot self-delete in v1.
 
 ### 11.6 Logout
 - Confirmation dialog.

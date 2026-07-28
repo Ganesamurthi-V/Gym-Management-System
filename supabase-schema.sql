@@ -737,6 +737,24 @@ CREATE POLICY "Gym owners can delete inventory sales"
   USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
 
 -- ── workout_programs ─────────────────────────────────────────
+-- RLS is enabled above; without these policies every owner query is denied.
+CREATE POLICY "Gym owners can view their programs"
+  ON workout_programs FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert programs"
+  ON workout_programs FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update programs"
+  ON workout_programs FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can delete programs"
+  ON workout_programs FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+-- ── workout_programs ─────────────────────────────────────────
 CREATE POLICY "Gym owners can view their programs"
   ON workout_programs FOR SELECT
   USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));

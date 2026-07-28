@@ -1,6 +1,9 @@
 -- ================================================
 -- WORKOUT PROGRAMS
 -- ================================================
+-- Idempotent: safe to re-run. Policies are dropped before creation because
+-- CREATE POLICY has no IF NOT EXISTS form, and re-running previously aborted
+-- this migration with "policy already exists".
 
 CREATE TABLE IF NOT EXISTS workout_programs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -28,24 +31,28 @@ CREATE INDEX IF NOT EXISTS idx_workout_programs_created ON workout_programs(gym_
 -- ROW LEVEL SECURITY (RLS)
 ALTER TABLE workout_programs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Gym owners can view their programs" ON workout_programs;
 CREATE POLICY "Gym owners can view their programs"
   ON workout_programs FOR SELECT
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Gym owners can insert programs" ON workout_programs;
 CREATE POLICY "Gym owners can insert programs"
   ON workout_programs FOR INSERT
   WITH CHECK (
     EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Gym owners can update programs" ON workout_programs;
 CREATE POLICY "Gym owners can update programs"
   ON workout_programs FOR UPDATE
   USING (
     EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Gym owners can delete programs" ON workout_programs;
 CREATE POLICY "Gym owners can delete programs"
   ON workout_programs FOR DELETE
   USING (

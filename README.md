@@ -358,6 +358,28 @@ All tables use **Row Level Security** scoped to `gym_id → owner_id = auth.uid(
 
 ---
 
+A VAPID key (Voluntary Application Server Identification) is used for Web Push Notifications. It lets your server send push notifications to browsers/PWAs without needing a third-party push service account.
+
+It's a public/private key pair:
+
+NEXT_PUBLIC_VAPID_PUBLIC_KEY — shared with the browser so it can subscribe to push
+VAPID_PRIVATE_KEY — stays on your server to sign outgoing push messages
+How to generate it:
+
+Run this in any terminal where Node.js is installed:
+
+bash
+
+npx web-push generate-vapid-keys
+It will output something like:
+
+
+Public Key:
+BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkGs-GDq6QAa...
+
+Private Key:
+UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKc-ls
+
 ## License
 
 Private. Built for gym owners, by fitness enthusiasts.

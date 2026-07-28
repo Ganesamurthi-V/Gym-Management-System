@@ -2,23 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Calendar, Target, Clock, Dumbbell, MoreVertical } from 'lucide-react'
-
-interface Program {
-  id: string
-  name: string
-  summary: string
-  duration: number
-  frequency: number
-  difficulty: string
-  goal: string
-  category: string
-  is_draft: boolean
-  created_at: string
-}
+import { Plus, Search, Calendar, Target, Clock, Dumbbell } from 'lucide-react'
+import type { WorkoutProgramSummary } from '@/types'
 
 interface Props {
-  programs: Program[]
+  programs: WorkoutProgramSummary[]
 }
 
 export default function ProgramsList({ programs }: Props) {
@@ -110,9 +98,11 @@ export default function ProgramsList({ programs }: Props) {
                   }`}>
                     {program.is_draft ? 'Draft' : 'Published'}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">
-                    {program.category}
-                  </span>
+                  {program.category && (
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">
+                      {program.category}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -140,7 +130,7 @@ export default function ProgramsList({ programs }: Props) {
                   <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1">
                     <Target className="w-3.5 h-3.5" /> Level
                   </span>
-                  <span className="text-sm font-bold text-slate-700">{program.difficulty}</span>
+                  <span className="text-sm font-bold text-slate-700">{program.difficulty || '-'}</span>
                 </div>
               </div>
             </Link>

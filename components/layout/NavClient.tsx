@@ -20,7 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dues',       href: '/dues',         icon: AlertIcon },
   { label: 'Attendance', href: '/attendance',   icon: CalendarIcon },
   { label: 'Inventory',  href: '/inventory',    icon: BoxIcon },
-  { label: 'Programs',   href: '#', icon: ActivityIcon, comingSoon: true },
+  { label: 'Programs',   href: '/programs',    icon: ActivityIcon },
   { label: 'Reports',    href: '#',      icon: ChartIcon, comingSoon: true },
 ]
 

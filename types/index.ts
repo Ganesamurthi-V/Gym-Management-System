@@ -76,6 +76,50 @@ export interface MemberWithStatus extends Member {
   join_date?: string
 }
 
+/** Day keys used by the workout program schedule JSONB column. */
+export type ProgramDay = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
+
+export interface ProgramExercise {
+  id: string
+  name: string
+  type: string
+  target: string
+  notes: string
+  /** Per-week set definitions, keyed by week number (1-based). */
+  progressions: Record<number, Record<string, string>[]>
+}
+
+/** Every day key is always present; a rest day is an empty array. */
+export type ProgramSchedule = Record<ProgramDay, ProgramExercise[]>
+
+export interface WorkoutProgram {
+  id: string
+  gym_id: string
+  name: string
+  summary: string | null
+  notes: string | null
+  /** Program length in weeks. */
+  duration: number
+  /** Training days per week. */
+  frequency: number | null
+  difficulty: string | null
+  goal: string | null
+  category: string | null
+  equipment: string | null
+  target_audience: string | null
+  experience_level: string | null
+  schedule: ProgramSchedule
+  is_draft: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** Columns selected for the programs list view. */
+export type WorkoutProgramSummary = Pick<
+  WorkoutProgram,
+  'id' | 'name' | 'summary' | 'duration' | 'frequency' | 'difficulty' | 'goal' | 'category' | 'is_draft' | 'created_at'
+>
+
 export interface DashboardStats {
   total_active: number
   expiring_this_week: number

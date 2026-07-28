@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 import { Plus, Search, Trash2, Copy, GripVertical, Settings2, PlayCircle, ChevronDown, Check, Video, X, Dumbbell } from 'lucide-react'
 
 // --- Mock Data ---
@@ -196,11 +197,15 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
   const [isPublishing, setIsPublishing] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   
-  // State: day -> array of exercises
-  const [exercises, setExercises] = useState<Record<string, ExerciseInstance[]>>(
-    initialSchedule || {
-      Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: []
-    }
+  // State: day -> array of exercises.
+  // Every day key is guaranteed to exist because the render path indexes
+  // exercises[day] directly; a stored schedule missing a day would crash.
+  const [exercises, setExercises] = useState<Record<string, ExerciseInstance[]>>(() =>
+    DAYS.reduce((acc, day) => {
+      const entries = initialSchedule?.[day]
+      acc[day] = Array.isArray(entries) ? entries : []
+      return acc
+    }, {} as Record<string, ExerciseInstance[]>)
   )
 
   // Search state
@@ -209,7 +214,18 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
 
   const durationWeeks = parseInt(programData.duration) || 4
 
+  const totalExercises = DAYS.reduce((sum, day) => sum + (exercises[day]?.length ?? 0), 0)
+
   const handleSave = async (isDraft: boolean) => {
+    if (isPublishing || isSavingDraft) return
+
+    // The API rejects publishing an empty schedule; catch it here so the user
+    // gets immediate feedback instead of a round-trip error.
+    if (!isDraft && totalExercises === 0) {
+      toast.error('Add at least one exercise before publishing')
+      return
+    }
+
     try {
       if (isDraft) setIsSavingDraft(true)
       else setIsPublishing(true)
@@ -227,15 +243,16 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
         body: JSON.stringify(payload)
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to save program')
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message ?? 'Failed to save program')
+      }
 
-      alert(`Program successfully ${isDraft ? 'saved as draft' : 'published'}!`)
+      toast.success(isDraft ? 'Program saved as draft' : 'Program published')
       router.push('/programs')
       router.refresh()
     } catch (err: any) {
-      alert(err.message)
-    } finally {
+      toast.error(err?.message ?? 'Failed to save program')
       setIsSavingDraft(false)
       setIsPublishing(false)
     }

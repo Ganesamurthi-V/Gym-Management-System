@@ -31,8 +31,8 @@ File: `/public/manifest.json`
   "start_url": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
-  "background_color": "#0F0F13",
-  "theme_color": "#6366F1",
+  "background_color": "#FFFFFF",
+  "theme_color": "#2563EB",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en",
@@ -93,8 +93,13 @@ File: `/public/manifest.json`
       media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
 
 <!-- Theme colour -->
-<meta name="theme-color" content="#6366F1" />
-<meta name="msapplication-TileColor" content="#6366F1" />
+<!-- Light shell, matching the main web app (app/layout.tsx viewport.themeColor) -->
+<meta name="theme-color" content="#2563EB" />
+<meta name="msapplication-TileColor" content="#2563EB" />
+<meta name="color-scheme" content="light" />
+
+<!-- Auth routes override to the dark shell — see 04_UI_UX_Guidelines §0.1 -->
+<!-- <meta name="theme-color" content="#020617" /> -->
 
 <!-- Viewport -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -526,10 +531,16 @@ const AICoach         = dynamic(() => import('./AICoach'), { ssr: false });
 ### 9.5 Font Loading
 
 ```css
+/* Sora — same family the main web app loads, so the two share a cache entry.
+   Prefer next/font over a raw @font-face so hashing and preload match. */
+import { Sora } from 'next/font/google'
+const sora = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap' })
+
+/* Equivalent raw declaration if self-hosting: */
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Sora';
   font-display: swap;     /* Never blocks rendering */
-  src: url('/fonts/inter-variable.woff2') format('woff2');
+  src: url('/fonts/sora-variable.woff2') format('woff2');
 }
 ```
 

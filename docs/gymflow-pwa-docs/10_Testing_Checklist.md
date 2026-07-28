@@ -29,7 +29,9 @@ Legend: ✅ Pass | ❌ Fail | ⚠️ Partial | — Not Applicable
 | Welcome message — afternoon (12:00–17:59) | "Good Afternoon, [Name]" | |
 | Welcome message — evening (18:00–23:59) | "Good Evening, [Name]" | |
 | Gym logo displayed | Gym's logo from Supabase Storage | |
-| Brand colour applied | UI CSS variables match gym's brand_color | |
+| Brand colour applied | UI CSS variables match gym's brand_color (default `#2563EB`) | |
+| Theme matches main web app | Light shell, blue brand, Sora — side-by-side check against the owner web app | |
+| Auth screens use the dark shell | slate-950 bg + orbs + grid, matching web app login | |
 | Membership > 14 days: green status | Green/brand gradient indicator | |
 | Membership 7–14 days: amber status | Amber/warning indicator | |
 | Membership < 7 days: red status | Red/error indicator | |
@@ -293,8 +295,13 @@ Run `lighthouse https://member.gymflow.sbs` in Chrome DevTools:
 | Screen reader: TalkBack (Android) | All interactive elements announced | |
 | Keyboard navigation (desktop) | All elements reachable via Tab | |
 | Focus ring visible on all interactive elements | `--focus-ring` box-shadow present | |
-| Colour contrast: body text | ≥ 4.5:1 (`--color-text-primary` on `--color-bg`) | |
-| Colour contrast: secondary text | ≥ 4.5:1 (`--color-text-secondary` on `--color-bg`) | |
+| Colour contrast: body text | ≥ 4.5:1 (`--color-text-primary` #0F172A on white ≈ 17.9:1) | |
+| Colour contrast: secondary text | ≥ 4.5:1 (`--color-text-secondary` #475569 on white ≈ 7.4:1) | |
+| Colour contrast: white on brand | ≥ 4.5:1 (white on `--color-brand` #2563EB ≈ 5.2:1) | |
+| Colour contrast: status triads | ≥ 4.5:1 (each `-700` text on its `-50` bg) | |
+| `--color-text-muted` not used for body copy | Only timestamps, placeholders, inactive nav labels | |
+| Focus ring meets WCAG 2.4.11 | Verify `--color-brand-400` ring on white; escalate to `brand-500` if it fails | |
+| Custom `brand_color` contrast guard | Gym-supplied colour darkened until it clears 4.5:1 on white | |
 | Touch targets ≥ 44×44px | No small tappable areas (workout sets: 56px min) | |
 | Font size 200%: layout intact | No overflow, no broken layouts | |
 | `prefers-reduced-motion` respected | All CSS animations collapsed to 0.01ms | |

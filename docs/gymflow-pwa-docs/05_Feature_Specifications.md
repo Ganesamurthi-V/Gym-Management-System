@@ -39,9 +39,11 @@
 - Plan name, expiry date, days remaining.
 - Progress bar showing days consumed vs total.
 - Colour coding based on days remaining:
-  - **> 14 days:** green (`--gradient-brand-h`)
-  - **7–14 days:** amber (`--color-warning` fill + `--color-warning-border`)
-  - **< 7 days:** red (`--gradient-error` fill + `--shadow-error`)
+  - **> 14 days:** brand blue (`--gradient-brand-h` fill, white text) — `.progress-fill--active`
+  - **7–14 days:** amber (`--color-expiring-bg` + `--color-expiring-border` + `--color-expiring-text`) — `.progress-fill--expiring`
+  - **< 7 days:** red (`--color-expired-bg` + `--color-expired-border` + `--color-expired-text`) — `.progress-fill--expired`
+
+  > Status vocabulary is `active` / `expiring` / `expired`, matching the main web app's `.status-*` classes. The v2.x `warning` / `error` naming is deprecated for membership state.
 - Tap → navigate to Membership screen.
 - If expired: banner "Membership expired. Renew now" with CTA.
 
@@ -257,7 +259,7 @@
 ## 10. Notifications
 
 ### 10.1 In-App Notification Centre
-- Bell icon in top-right of Home with unread count badge (red dot, `--color-error`).
+- Bell icon in top-right of Home with unread count badge (red dot, `--color-text-error`).
 - List: newest first.
 - Each row: icon by type, title, body preview, relative timestamp, unread dot indicator.
 - Tap row → mark `is_read = true` + navigate to `data.link` deep link.

@@ -23,7 +23,7 @@ CREATE TABLE gyms (
   email         TEXT,
   city          TEXT,
   state         TEXT,
-  brand_color   TEXT DEFAULT '#6366F1',       -- Primary colour for theming
+  brand_color   TEXT DEFAULT '#2563EB',       -- Primary colour for theming (matches web app brand-500)
   brand_color_2 TEXT DEFAULT '#8B5CF6',       -- Accent colour
   timezone      TEXT DEFAULT 'Asia/Kolkata',
   created_at    TIMESTAMPTZ DEFAULT NOW(),

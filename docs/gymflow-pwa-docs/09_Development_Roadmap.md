@@ -38,7 +38,8 @@
 | next-pwa configuration | Workbox, basic caching strategies | 3h |
 | Vercel deployment + CI | GitHub Actions, preview URLs | 2h |
 | iOS Safari meta tags | apple-touch-icon, status bar | 1h |
-| `design-tokens.css` integration | Import tokens, confirm CSS variables render | 1h |
+| `design-tokens.css` integration | Generate tokens from `04_UI_UX_Guidelines` v3.0; confirm CSS variables render | 1h |
+| Port web app theme | Copy `brand` / `cyan` / `surface` / `screens` / Sora blocks from the main app's `tailwind.config.js`; copy its `@layer components` (`.btn-*`, `.card`, `.input-field`, `.status-*`, `.skeleton`, `.tap-target`) | 2h |
 
 **Dependencies:** Supabase project access, domain `member.gymflow.sbs` configured.
 
@@ -196,7 +197,7 @@ These run throughout development, not as separate milestones:
 
 | Track | Owner | Notes |
 |---|---|---|
-| UI component library | Dev | Build shadcn/custom components as needed; follow `design-tokens.css` v2.0 |
+| UI component library | Dev | Start from the main web app's `globals.css` component layer; follow `04_UI_UX_Guidelines` **v3.0** (light theme, blue brand, Sora). Do not copy patterns from `gymflow-admin` — that is the dark super-admin system |
 | TanStack Query patterns | Dev | Establish consistent fetch + mutation patterns in M0/M1; reuse across all milestones |
 | Supabase RLS policies | Dev | Write and test RLS for each table as it is built |
 | Figma designs | Design | Screens designed 1 sprint ahead of dev |
@@ -231,6 +232,6 @@ These run throughout development, not as separate milestones:
 | Class booking | Medium | New tables + admin side |
 | Barcode on membership card | Medium | Alternate scan method |
 | Apple Health / Health Connect sync | Low | iOS steps + heart rate |
-| Dark/light mode toggle | Low | Currently dark-mode only |
+| Dark mode toggle | Low | Currently light-mode only, matching the main web app; auth screens are already dark and can seed the dark token set |
 | Multi-language support (Tamil, Hindi) | Medium | i18n routing |
 | Push notification preferences table | Medium | Replace JSONB field with proper `notification_preferences` table |

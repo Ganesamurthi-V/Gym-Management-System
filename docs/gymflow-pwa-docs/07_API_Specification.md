@@ -1,10 +1,12 @@
 # GymFlow Member PWA — API Specification
 
-**Version:** 1.0  
-**Base URL:** `https://[project-ref].supabase.co`  
+**Version:** 1.1
+**Base URL:** `https://[project-ref].supabase.co`
 **Auth:** All endpoints require `Authorization: Bearer <access_token>` unless marked `[public]`.
 
 > The GymFlow Member PWA uses Supabase PostgREST for CRUD, Supabase Auth for auth, and custom Edge Functions for business logic. This document covers all API surfaces the PWA touches.
+>
+> **v1 auth method:** Email + Password only. OTP endpoints are not used in v1.
 
 ---
 
@@ -43,35 +45,7 @@ Content-Type: application/json
 { "error": "invalid_grant", "error_description": "Invalid login credentials" }
 ```
 
-### 1.2 Phone OTP — Send
-
-```
-POST /auth/v1/otp
-Content-Type: application/json
-
-{
-  "phone": "+919876543210"
-}
-```
-
-**Response 200:** `{}`
-
-### 1.3 Phone OTP — Verify
-
-```
-POST /auth/v1/verify
-Content-Type: application/json
-
-{
-  "phone": "+919876543210",
-  "token": "123456",
-  "type": "sms"
-}
-```
-
-**Response 200:** Same shape as 1.1.
-
-### 1.4 Refresh Token
+### 1.2 Refresh Token
 
 ```
 POST /auth/v1/token?grant_type=refresh_token
@@ -80,24 +54,32 @@ Content-Type: application/json
 { "refresh_token": "rt_..." }
 ```
 
-### 1.5 Sign Out
+**Response 200:** Same shape as 1.1.
+
+### 1.3 Sign Out
 
 ```
 POST /auth/v1/logout
 Authorization: Bearer <access_token>
 ```
 
+**Response 204:** No content. Client must clear all local caches after this call.
+
 ---
 
 ## 2. PostgREST Data Endpoints
 
-Base: `https://[project-ref].supabase.co/rest/v1`  
-All responses are JSON arrays (even single records unless using `.single()`).
+Base: `https://[project-ref].supabase.co/rest/v1`
+All responses are JSON arrays. Use `&limit=1` with `.single()` on the client for single-record fetches.
 
 ### 2.1 Member Profile
 
 ```
-GET /rest/v1/members?id=eq.{member_id}&select=*,gyms(name,logo_url,brand_color,brand_color_2,timezone)
+GET /rest/v1/members
+  ?auth_user_id=eq.{auth.uid()}
+  &select=id,name,email,phone,photo_url,member_code,member_number,gender,date_of_birth,blood_group,
+          emergency_name,emergency_phone,medical_notes,gym_id,
+          gyms(name,logo_url,brand_color,brand_color_2,timezone)
 ```
 
 **Response:**
@@ -109,6 +91,13 @@ GET /rest/v1/members?id=eq.{member_id}&select=*,gyms(name,logo_url,brand_color,b
   "phone": "+91...",
   "photo_url": "https://...",
   "member_code": "GF-00142",
+  "member_number": 142,
+  "gender": "male",
+  "date_of_birth": "1995-06-14",
+  "blood_group": "O+",
+  "emergency_name": "Murugan M",
+  "emergency_phone": "+9198...",
+  "medical_notes": null,
   "gym_id": "uuid",
   "gyms": {
     "name": "FitZone Pondicherry",
@@ -123,12 +112,14 @@ GET /rest/v1/members?id=eq.{member_id}&select=*,gyms(name,logo_url,brand_color,b
 ### 2.2 Update Member Profile
 
 ```
-PATCH /rest/v1/members?id=eq.{member_id}
+PATCH /rest/v1/members?auth_user_id=eq.{auth.uid()}
 Content-Type: application/json
 
 {
   "emergency_name": "Murugan M",
-  "emergency_phone": "+9198..."
+  "emergency_phone": "+9198...",
+  "blood_group": "O+",
+  "medical_notes": "Mild lower back pain"
 }
 ```
 
@@ -145,7 +136,17 @@ GET /rest/v1/memberships
   &limit=1
 ```
 
-### 2.4 Payment History
+### 2.4 Available Plans for Renewal
+
+```
+GET /rest/v1/membership_plans
+  ?gym_id=eq.{gym_id}
+  &is_active=eq.true
+  &select=id,name,duration_days,price,features
+  &order=price.asc
+```
+
+### 2.5 Payment History
 
 ```
 GET /rest/v1/payments
@@ -154,7 +155,7 @@ GET /rest/v1/payments
   &select=id,amount,payment_mode,status,invoice_number,paid_at,memberships(membership_plans(name))
 ```
 
-### 2.5 Attendance
+### 2.6 Attendance
 
 ```
 GET /rest/v1/attendance
@@ -162,10 +163,19 @@ GET /rest/v1/attendance
   &date=gte.{month_start}
   &date=lte.{month_end}
   &order=date.desc
-  &select=id,date,check_in_at,source
+  &select=id,date,check_in_at,source,session_type
 ```
 
-### 2.6 Workout Plan (active)
+### 2.7 Attendance Streak (RPC)
+
+```
+POST /rest/v1/rpc/get_attendance_streak
+{ "p_member_id": "uuid" }
+```
+
+**Response:** `42` (integer)
+
+### 2.8 Workout Plan (active)
 
 ```
 GET /rest/v1/workout_plans
@@ -176,7 +186,7 @@ GET /rest/v1/workout_plans
   &limit=1
 ```
 
-### 2.7 Workout Sessions
+### 2.9 Workout Sessions
 
 ```
 GET /rest/v1/workout_sessions
@@ -184,9 +194,7 @@ GET /rest/v1/workout_sessions
   &order=started_at.desc
   &select=*,workout_session_sets(*)
   &limit=20
-```
 
-```
 POST /rest/v1/workout_sessions
 {
   "member_id": "uuid",
@@ -195,17 +203,18 @@ POST /rest/v1/workout_sessions
   "day_id": "uuid",
   "started_at": "2026-07-27T08:00:00+05:30"
 }
-```
 
-```
 PATCH /rest/v1/workout_sessions?id=eq.{session_id}
 {
   "completed_at": "2026-07-27T09:05:00+05:30",
-  "duration_min": 65
+  "duration_min": 65,
+  "exercises_done": 8,
+  "sets_done": 24,
+  "volume_kg": 4320.00
 }
 ```
 
-### 2.8 Workout Session Sets
+### 2.10 Workout Session Sets
 
 ```
 POST /rest/v1/workout_session_sets
@@ -220,16 +229,14 @@ POST /rest/v1/workout_session_sets
 }
 ```
 
-### 2.9 Progress Measurements
+### 2.11 Progress Measurements
 
 ```
 GET /rest/v1/progress_measurements
   ?member_id=eq.{member_id}
   &order=measured_at.desc
   &select=*
-```
 
-```
 POST /rest/v1/progress_measurements
 {
   "member_id": "uuid",
@@ -240,59 +247,98 @@ POST /rest/v1/progress_measurements
 }
 ```
 
-### 2.10 Notifications
+### 2.12 Diet Plan (active)
+
+```
+GET /rest/v1/diet_plans
+  ?member_id=eq.{member_id}
+  &is_active=eq.true
+  &select=*,diet_meals(*)
+  &order=created_at.desc
+  &limit=1
+```
+
+### 2.13 Water Intake
+
+```
+-- Get today's intake
+GET /rest/v1/water_intake_logs
+  ?member_id=eq.{member_id}
+  &logged_date=eq.{today}
+  &select=glasses
+
+-- Upsert on each glass tap
+POST /rest/v1/water_intake_logs
+  ?on_conflict=member_id,logged_date
+Content-Type: application/json
+
+{
+  "member_id": "uuid",
+  "gym_id": "uuid",
+  "plan_id": "uuid",
+  "logged_date": "2026-07-27",
+  "glasses": 3
+}
+```
+
+Note: the client increments `glasses` locally and sends the new total (not a delta). Use `on_conflict=member_id,logged_date` with `Prefer: resolution=merge-duplicates` header.
+
+### 2.14 Notifications
 
 ```
 GET /rest/v1/notifications
   ?member_id=eq.{member_id}
   &order=sent_at.desc
   &limit=50
-```
 
-```
+-- Mark one as read
+PATCH /rest/v1/notifications?id=eq.{notification_id}
+{ "is_read": true }
+
+-- Mark all as read
 PATCH /rest/v1/notifications?member_id=eq.{member_id}&is_read=eq.false
 { "is_read": true }
 ```
 
-### 2.11 XP & Level
+### 2.15 XP & Level
 
 ```
 GET /rest/v1/member_xp
   ?member_id=eq.{member_id}
   &gym_id=eq.{gym_id}
-  &select=total_xp,level
-```
+  &select=total_xp,level,longest_streak
 
-```
 GET /rest/v1/xp_transactions
   ?member_id=eq.{member_id}
   &order=created_at.desc
   &limit=20
 ```
 
-### 2.12 Badges
+### 2.16 Badges
 
 ```
--- All badges (earned + unearned)
+-- All badges (for locked/unlocked grid)
 GET /rest/v1/badges?select=*
 
 -- Member's earned badges
 GET /rest/v1/member_badges
   ?member_id=eq.{member_id}
-  &select=*,badges(code,name,description,icon_url)
+  &select=*,badges(code,name,description,icon_url,xp_reward)
+  &order=earned_at.desc
 ```
 
-### 2.13 Leaderboard
+### 2.17 Leaderboard (RPC)
 
 ```
--- Leaderboard is a DB view or RPC for performance
 POST /rest/v1/rpc/get_leaderboard
 {
   "p_gym_id": "uuid",
-  "p_type": "weekly_xp",  -- weekly_xp | monthly_xp | alltime_xp | weekly_attendance
+  "p_type": "weekly_xp",
   "p_limit": 50
 }
 ```
+
+`p_type` values: `weekly_xp` | `monthly_xp` | `alltime_xp` | `weekly_attendance` | `monthly_attendance` | `alltime_attendance`
 
 **Response:**
 ```json
@@ -302,13 +348,14 @@ POST /rest/v1/rpc/get_leaderboard
 ]
 ```
 
-### 2.14 Challenges
+### 2.18 Challenges
 
 ```
 GET /rest/v1/challenges
   ?gym_id=eq.{gym_id}
   &ends_at=gte.{today}
   &select=*
+  &order=starts_at.asc
 
 GET /rest/v1/challenge_participants
   ?member_id=eq.{member_id}
@@ -321,18 +368,7 @@ POST /rest/v1/challenge_participants
 }
 ```
 
-### 2.15 Diet Plan
-
-```
-GET /rest/v1/diet_plans
-  ?member_id=eq.{member_id}
-  &is_active=eq.true
-  &select=*,diet_meals(*)
-  &order=created_at.desc
-  &limit=1
-```
-
-### 2.16 Referrals
+### 2.19 Referrals
 
 ```
 GET /rest/v1/referrals
@@ -365,12 +401,12 @@ Authorization: Bearer <access_token>
 **Response:**
 ```json
 {
-  "qr_payload": "eyJ...",   // Signed JWT payload
+  "qr_payload": "eyJ...",
   "expires_at": "2026-07-27T08:04:00.000Z"
 }
 ```
 
-The QR payload is a short-lived signed JWT containing `{ member_id, gym_id }`. The Admin Portal validates this signature on scan.
+The QR payload is a short-lived signed JWT: `{ member_id, gym_id, exp: now+5min }`. The Admin Portal validates this signature on scan via a separate `validate-qr` Edge Function.
 
 ### 3.2 Push Subscription — Register
 
@@ -405,7 +441,7 @@ Content-Type: application/json
 
 ### 3.4 Award XP (Internal)
 
-Called by other Edge Functions and DB triggers. Not called directly by PWA.
+Called by DB triggers and other Edge Functions. Not called directly by the PWA.
 
 ```
 POST /functions/v1/award-xp
@@ -421,7 +457,9 @@ Authorization: Bearer <service_role_key>
 }
 ```
 
-### 3.5 AI Coach Chat
+### 3.5 AI Coach Chat (v2 only)
+
+> Not available in v1. Returns 403 if `gym.ai_coach_enabled = false`.
 
 ```
 POST /functions/v1/ai-coach
@@ -450,7 +488,7 @@ Using `supabase-js` Realtime:
 
 ```typescript
 // Notifications channel
-const channel = supabase
+const notifChannel = supabase
   .channel(`notifications:${memberId}`)
   .on('postgres_changes', {
     event: 'INSERT',
@@ -459,10 +497,11 @@ const channel = supabase
     filter: `member_id=eq.${memberId}`
   }, (payload) => {
     showInAppNotification(payload.new);
+    invalidateNotificationsCache();
   })
   .subscribe();
 
-// Attendance channel (for real-time check-in confirmation)
+// Attendance channel (real-time check-in confirmation after QR scan)
 const attendanceChannel = supabase
   .channel(`attendance:${memberId}`)
   .on('postgres_changes', {
@@ -472,11 +511,11 @@ const attendanceChannel = supabase
     filter: `member_id=eq.${memberId}`
   }, (payload) => {
     invalidateAttendanceCache();
-    awardCheckInXP();
+    showToast('Check-in recorded!');
   })
   .subscribe();
 
-// XP channel (for level-up detection)
+// XP channel (level-up detection)
 const xpChannel = supabase
   .channel(`xp:${memberId}`)
   .on('postgres_changes', {
@@ -485,10 +524,28 @@ const xpChannel = supabase
     table: 'member_xp',
     filter: `member_id=eq.${memberId}`
   }, (payload) => {
-    if (payload.new.level > payload.old.level) triggerLevelUpCelebration();
+    if (payload.new.level > payload.old.level) {
+      triggerLevelUpCelebration(payload.new.level);
+    }
+    invalidateXpCache();
+  })
+  .subscribe();
+
+// Announcements channel
+const announcementsChannel = supabase
+  .channel(`announcements:${gymId}`)
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'notifications',
+    filter: `gym_id=eq.${gymId}&type=eq.announcement`
+  }, (payload) => {
+    showAnnouncementBanner(payload.new);
   })
   .subscribe();
 ```
+
+All channels joined on app foreground; closed/paused via Page Visibility API on background.
 
 ---
 
@@ -507,10 +564,10 @@ const xpChannel = supabase
 | 404 | Not found | Show empty state |
 | 409 | Conflict | Handle duplicate (idempotent) |
 | 422 | Validation failed | Show field errors |
-| 429 | Rate limited | Show "please wait" |
+| 429 | Rate limited | Show "please wait X seconds" with `Retry-After` value |
 | 500 | Server error | Show retry option |
 
-### Standard Error Body (Supabase)
+### Standard Error Body (Supabase PostgREST)
 
 ```json
 {
@@ -524,15 +581,20 @@ const xpChannel = supabase
 ### Client-side Error Handling
 
 ```typescript
-async function apiCall<T>(fn: () => Promise<T>): Promise<T> {
+async function apiCall<T>(fn: () => Promise<T>, cacheKey?: string): Promise<T> {
   try {
     return await fn();
-  } catch (err) {
+  } catch (err: any) {
     if (err.status === 401) {
-      await supabase.auth.refreshSession();
-      return await fn(); // retry once
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+        throw err;
+      }
+      return await fn(); // retry once after refresh
     }
-    if (!navigator.onLine) {
+    if (!navigator.onLine && cacheKey) {
       return await readFromIndexedDB(cacheKey);
     }
     throw err;
@@ -546,11 +608,10 @@ async function apiCall<T>(fn: () => Promise<T>): Promise<T> {
 
 | Endpoint Type | Limit |
 |---|---|
-| Auth (OTP send) | 5 per hour per phone |
-| Auth (password) | 10 per hour per IP |
-| PostgREST reads | 1000 per minute per user |
+| Auth (password sign-in) | 10 per hour per IP |
+| PostgREST reads | 1,000 per minute per user |
 | PostgREST writes | 100 per minute per user |
 | Edge Functions | 500 per hour per user |
-| AI Coach | 20 messages per hour per member |
+| AI Coach (v2) | 20 messages per hour per member |
 
-Rate limit errors return HTTP 429 with `Retry-After` header.
+Rate limit errors return HTTP 429 with a `Retry-After` header. The PWA shows a toast: "Too many requests. Try again in X seconds."

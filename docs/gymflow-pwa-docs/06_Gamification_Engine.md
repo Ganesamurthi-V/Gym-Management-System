@@ -1,6 +1,6 @@
 # GymFlow Member PWA — Gamification Engine
 
-**Version:** 1.0  
+**Version:** 1.1  
 
 ---
 
@@ -103,7 +103,7 @@ SELECT get_attendance_streak(member_id) FROM members WHERE id = :id;
 
 ### 3.4 Longest Streak
 
-Stored in `member_xp.longest_streak` (additional column). Updated any time current streak > previous longest. Never decrements.
+Stored in `member_xp.longest_streak` column (defined in the `member_xp` table in the Database Schema). Updated inside the `award_xp()` DB function: `GREATEST(member_xp.longest_streak, get_attendance_streak(p_member_id))`. Never decrements.
 
 ---
 

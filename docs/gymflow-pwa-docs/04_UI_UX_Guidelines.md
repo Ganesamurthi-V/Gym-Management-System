@@ -1,6 +1,6 @@
 # GymFlow Member PWA — UI/UX Guidelines
 
-**Version:** 2.0
+**Version:** 2.1
 **Design tokens file:** `design-tokens.css`
 
 > This document is the single source of truth for visual design decisions in the GymFlow Member PWA. All token names reference `design-tokens.css` v2.0. Never hardcode colours, spacing, radii, shadows, or durations — consume tokens exclusively.

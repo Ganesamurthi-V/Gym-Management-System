@@ -1,6 +1,6 @@
 # GymFlow Member PWA — PWA Technical Specification
 
-**Version:** 1.0  
+**Version:** 1.1  
 
 ---
 

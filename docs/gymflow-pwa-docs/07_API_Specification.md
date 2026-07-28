@@ -103,7 +103,7 @@ GET /rest/v1/members
     "name": "FitZone Pondicherry",
     "logo_url": "https://...",
     "brand_color": "#2563EB",
-    "brand_color_2": "#8B5CF6",
+    "brand_color_2": "#06B6D4",
     "timezone": "Asia/Kolkata"
   }
 }]
@@ -406,7 +406,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-The QR payload is a short-lived signed JWT: `{ member_id, gym_id, exp: now+5min }`. The Admin Portal validates this signature on scan via a separate `validate-qr` Edge Function.
+The QR payload is a short-lived signed JWT: `{ member_id, gym_id, exp: now+5min }`. The GymFlow Owner App validates this signature on scan via a separate `validate-qr` Edge Function.
 
 ### 3.2 Push Subscription — Register
 
@@ -531,14 +531,15 @@ const xpChannel = supabase
   })
   .subscribe();
 
-// Announcements channel
+// Announcements channel (dedicated gym-scoped table)
+// Supabase postgres_changes supports one server-side filter per binding.
 const announcementsChannel = supabase
   .channel(`announcements:${gymId}`)
   .on('postgres_changes', {
     event: 'INSERT',
     schema: 'public',
-    table: 'notifications',
-    filter: `gym_id=eq.${gymId}&type=eq.announcement`
+    table: 'announcements',
+    filter: `gym_id=eq.${gymId}`
   }, (payload) => {
     showAnnouncementBanner(payload.new);
   })

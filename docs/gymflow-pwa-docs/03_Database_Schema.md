@@ -24,7 +24,7 @@ CREATE TABLE gyms (
   city          TEXT,
   state         TEXT,
   brand_color   TEXT DEFAULT '#2563EB',       -- Primary colour for theming (matches web app brand-500)
-  brand_color_2 TEXT DEFAULT '#8B5CF6',       -- Accent colour
+  brand_color_2 TEXT DEFAULT '#06B6D4',       -- Accent colour (matches web app cyan-500)
   timezone      TEXT DEFAULT 'Asia/Kolkata',
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   updated_at    TIMESTAMPTZ DEFAULT NOW()
@@ -717,3 +717,92 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 ```
+
+
+---
+
+## 10. Normative v1.2 Schema Corrections
+
+This section supersedes conflicting snippets above and must be applied by migrations rather than by recreating production tables.
+
+### 10.1 Identity and announcements
+
+`member_code` is a human-readable, gym-scoped display code. Add `UNIQUE (gym_id, member_code)`; it is not a global identifier and must never be used for authorization. QR and API operations use signed `member_id` and `gym_id` UUIDs.
+
+Gym-wide announcements use their own table because `notifications.member_id` is intentionally `NOT NULL` for private member notifications:
+
+```sql
+CREATE TABLE announcements (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id      UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  body        TEXT,
+  data        JSONB NOT NULL DEFAULT '{}'::jsonb,
+  starts_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at  TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_announcements_gym_created ON announcements(gym_id, created_at DESC);
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+```
+
+`badges` must include the trigger metadata used by the engine:
+
+```sql
+ALTER TABLE badges ADD COLUMN trigger_type TEXT NOT NULL DEFAULT 'manual'
+  CHECK (trigger_type IN (
+    'manual', 'attendance_count', 'attendance_streak', 'workout_count',
+    'measurement_count', 'referral_count', 'challenge_complete', 'renewal'
+  ));
+```
+
+### 10.2 Non-linear level calculation
+
+The threshold table in `06_Gamification_Engine.md` is authoritative. Replace the linear `FLOOR(total_xp / 500) + 1` expression with:
+
+```sql
+CREATE OR REPLACE FUNCTION calculate_member_level(p_total_xp INT)
+RETURNS INT
+LANGUAGE sql
+IMMUTABLE
+STRICT
+SET search_path = public, pg_temp
+AS $$
+  SELECT CASE
+    WHEN p_total_xp >= 100000 THEN 10
+    WHEN p_total_xp >= 60000  THEN 9
+    WHEN p_total_xp >= 35000  THEN 8
+    WHEN p_total_xp >= 20000  THEN 7
+    WHEN p_total_xp >= 12000  THEN 6
+    WHEN p_total_xp >= 7000   THEN 5
+    WHEN p_total_xp >= 3500   THEN 4
+    WHEN p_total_xp >= 1500   THEN 3
+    WHEN p_total_xp >= 500    THEN 2
+    ELSE 1
+  END
+$$;
+```
+
+`award_xp` must call `calculate_member_level(member_xp.total_xp + p_amount)`, be `SECURITY DEFINER SET search_path = public, pg_temp`, validate positive amounts, and be callable only by trusted server-side roles:
+
+```sql
+REVOKE ALL ON FUNCTION award_xp(UUID, UUID, INT, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION award_xp(UUID, UUID, INT, TEXT, TEXT, UUID) TO service_role;
+```
+
+### 10.3 RLS completeness
+
+Every PWA table must have RLS enabled before client access. Owner policies remain in place. Member policies are additive and derive identity from `members.auth_user_id = auth.uid()`; clients must never be allowed to choose another member or gym ID.
+
+Required member access matrix:
+
+| Table | Member access |
+|---|---|
+| `gyms`, `membership_plans`, `workout_days`, `workout_exercises`, `diet_meals`, `badges`, `challenges`, `announcements` | SELECT only when the row belongs to the authenticated member's gym (or badge is global) |
+| `members`, `memberships`, `payments`, `attendance`, `workout_plans`, `diet_plans`, `notifications`, `member_xp`, `xp_transactions`, `member_badges` | SELECT only for the authenticated member |
+| `members`, `notifications` | UPDATE only the authenticated member's row; expose sensitive updates through column grants or RPCs |
+| `workout_sessions`, `workout_session_sets`, `progress_measurements`, `progress_photos`, `water_intake_logs`, `challenge_participants`, `referrals`, `push_subscriptions` | SELECT/INSERT/UPDATE/DELETE only where ownership resolves to the authenticated member |
+
+`get_leaderboard` is the only cross-member read. It must be `SECURITY DEFINER SET search_path = public, pg_temp`, first verify that the caller has a `members` row in `p_gym_id`, expose only `member_id`, display name, photo, rank and score, and revoke execution from `anon`. The definer role must not be user-controlled. This prevents RLS from collapsing the result to one row without allowing cross-gym enumeration.
+
+Realtime does not bypass RLS. Add `notifications`, `attendance`, `member_xp`, and `announcements` to the `supabase_realtime` publication only after the policies above are active.

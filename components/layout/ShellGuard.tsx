@@ -104,17 +104,26 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         return
       }
 
-      // Check is_active directly — consistent with getGymIsActive() on the server.
-      // No RPC needed; single-column select is fast and always fresh.
+      // Re-fetch all authorization and subscription fields on foreground so
+      // missed socket events converge before the user continues working.
       const { data: gymRow } = await supabase
         .from('gyms')
-        .select('is_active')
+        .select('name, is_active, subscription_status, plan_type, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at')
         .eq('owner_id', user.id)
         .single()
 
-      if (gymRow?.is_active === false) {
+      if (!gymRow || gymRow.is_active === false) {
         await supabase.auth.signOut()
         window.location.href = '/auth/login?error=blocked'
+        return
+      }
+
+      if (gymRow.name) setLiveGymName(gymRow.name)
+      const refreshedState = computeSubscriptionState(gymRow)
+      setLiveSubStatus(refreshedState.status)
+      setLiveDaysLeft(refreshedState.daysLeft ?? 0)
+      if (refreshedState.isExpired && pathname !== '/subscription') {
+        window.location.href = '/subscription'
       }
     }
 
@@ -161,6 +170,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
           // If subscription was just activated while the user is on the paywall
           if (
+            !newState.isExpiringSoon &&
             (subscription_status === 'active' || subscription_status === 'trial') &&
             pathname === '/subscription'
           ) {

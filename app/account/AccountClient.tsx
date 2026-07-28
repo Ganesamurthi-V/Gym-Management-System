@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Settings, Copy, Lock, Trash2, AlertTriangle, Eye, EyeOff,
@@ -13,6 +13,7 @@ import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
 import { invalidateGymCache, invalidateAllGymCaches } from './actions'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
+import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 
 interface Props {
   email: string
@@ -68,31 +69,31 @@ export function AccountClient({
   const [liveTrialEndsAt, setLiveTrialEndsAt] = useState(trialEndsAt)
   const [liveSubEndsAt, setLiveSubEndsAt] = useState(subscriptionEndsAt)
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`gym_account_settings_${gymId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'gyms',
-          filter: `id=eq.${gymId}`,
-        },
-        (payload: any) => {
-          const newGym = payload.new
-          setLiveSubStatus(newGym.subscription_status ?? 'active')
-          setLivePlanType(newGym.plan_type)
-          setLiveTrialEndsAt(newGym.trial_ends_at)
-          setLiveSubEndsAt(newGym.subscription_ends_at)
-        }
-      )
-      .subscribe()
+  const syncGymSubscription = useCallback(async () => {
+    const { data: gymRow } = await supabase
+      .from('gyms')
+      .select('subscription_status, plan_type, trial_ends_at, subscription_ends_at')
+      .eq('id', gymId)
+      .single()
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    if (!gymRow) return
+    setLiveSubStatus(gymRow.subscription_status ?? 'active')
+    setLivePlanType(gymRow.plan_type)
+    setLiveTrialEndsAt(gymRow.trial_ends_at)
+    setLiveSubEndsAt(gymRow.subscription_ends_at)
   }, [gymId, supabase])
+
+  useRealtimeChannel({
+    channelName: `owner_account_gym_${gymId}`,
+    subscriptions: [
+      {
+        type: 'postgres_changes',
+        filter: { event: 'UPDATE', schema: 'public', table: 'gyms', filter: `id=eq.${gymId}` },
+        callback: syncGymSubscription,
+      },
+    ],
+    onResync: syncGymSubscription,
+  })
 
   // Gym name form
   const [newGymName, setNewGymName] = useState(initialGymName)

@@ -8,7 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchGyms, type Gym } from '@/lib/api';
-import { getSupabaseRealtimeClient } from '@/lib/supabase-realtime';
+import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import { GymRow } from '@/components/GymRow';
 import type { RootStackParamList } from '../../navigation/types';
 
@@ -42,33 +42,10 @@ export default function GymsScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  React.useEffect(() => {
-    const supabase = getSupabaseRealtimeClient();
-    const channel = supabase.channel('gyms_screen')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'gyms' },
-        (payload: any) => {
-          setGyms((prev) => {
-            if (payload.eventType === 'UPDATE') {
-              return prev.map(g => g.id === payload.new.id ? { ...g, ...payload.new } : g);
-            }
-            if (payload.eventType === 'DELETE') {
-              return prev.filter(g => g.id !== payload.old.id);
-            }
-            if (payload.eventType === 'INSERT') {
-              return [payload.new as Gym, ...prev];
-            }
-            return prev;
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  useRealtimeInvalidation({
+    channelName: 'admin:gyms',
+    onInvalidate: load,
+  });
 
   const filtered = search.trim()
     ? gyms.filter(g => g.name.toLowerCase().includes(search.toLowerCase()))

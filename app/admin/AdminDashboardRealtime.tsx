@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
 import { Clock, CheckCircle, XCircle, AlertCircle, Wifi, WifiOff } from 'lucide-react'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
 
 interface SubStats {
   pendingSubscriptions: number
@@ -15,97 +15,18 @@ interface SubStats {
 
 export default function AdminDashboardRealtime({ initial }: { initial: SubStats }) {
   const [stats, setStats] = useState(initial)
-  const [isConnected, setIsConnected] = useState(false)
+  const router = useRouter()
+  const refreshFromServer = useCallback(() => router.refresh(), [router])
 
   useEffect(() => {
-    const supabase = createClient()
+    setStats(initial)
+  }, [initial])
 
-    const channel = supabase
-      .channel('admin_dashboard_realtime')
-      // Listen for subscription_requests changes (new requests, approvals, rejections)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscription_requests',
-        },
-        (payload: any) => {
-          if (payload.eventType === 'INSERT' && payload.new?.status === 'pending') {
-            setStats(prev => ({ ...prev, pendingSubscriptions: prev.pendingSubscriptions + 1 }))
-            toast('🔔 New subscription request!', { duration: 4000 })
-          } else if (payload.eventType === 'UPDATE') {
-            const oldStatus = payload.old?.status
-            const newStatus = payload.new?.status
-            if (oldStatus === 'pending' && newStatus !== 'pending') {
-              // Request was reviewed — decrement pending count
-              setStats(prev => ({
-                ...prev,
-                pendingSubscriptions: Math.max(0, prev.pendingSubscriptions - 1),
-              }))
-            }
-          }
-        }
-      )
-      // Listen for gyms table changes (subscription status transitions)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'gyms',
-        },
-        (payload: any) => {
-          const oldStatus = payload.old?.subscription_status
-          const newStatus = payload.new?.subscription_status
-
-          if (oldStatus === newStatus) return
-
-          setStats(prev => {
-            const next = { ...prev }
-
-            // Decrement old status counter
-            if (oldStatus === 'trial') next.trialGyms = Math.max(0, next.trialGyms - 1)
-            else if (oldStatus === 'active') next.activeGyms = Math.max(0, next.activeGyms - 1)
-            else if (oldStatus === 'expired') next.expiredGyms = Math.max(0, next.expiredGyms - 1)
-
-            // Increment new status counter
-            if (newStatus === 'trial') next.trialGyms += 1
-            else if (newStatus === 'active') next.activeGyms += 1
-            else if (newStatus === 'expired') next.expiredGyms += 1
-
-            return next
-          })
-        }
-      )
-      // Listen for new gym registrations
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'gyms',
-        },
-        (payload: any) => {
-          const status = payload.new?.subscription_status
-          setStats(prev => {
-            const next = { ...prev }
-            if (status === 'trial') next.trialGyms += 1
-            else if (status === 'active') next.activeGyms += 1
-            else if (status === 'expired') next.expiredGyms += 1
-            return next
-          })
-          toast('🏋️ New gym registered!', { duration: 4000 })
-        }
-      )
-      .subscribe((status: string) => {
-        setIsConnected(status === 'SUBSCRIBED')
-      })
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
+  const gymsRealtime = useRealtimeInvalidation({
+    channelName: 'admin:gyms',
+    onInvalidate: refreshFromServer,
+  })
+  const isConnected = gymsRealtime.isConnected
 
   const subStats = [
     { label: 'Pending Payment Reviews', value: stats.pendingSubscriptions, Icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-100', urgent: stats.pendingSubscriptions > 0 },

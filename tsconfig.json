@@ -39,6 +39,7 @@
     "node_modules",
     "gymflow-admin",
     "gymflow-mobile",
+    "gymflow-member",
     "landing-page",
     "demo"
   ]

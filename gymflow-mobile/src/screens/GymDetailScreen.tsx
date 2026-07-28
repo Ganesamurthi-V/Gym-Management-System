@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchGymDetail, toggleGymStatus, resetGymPassword } from '@/lib/api';
-import { getSupabaseRealtimeClient } from '@/lib/supabase-realtime';
+import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import { Badge } from '@/components/Badge';
 import { AdminButton } from '@/components/AdminButton';
 import type { RootStackParamList } from '../navigation/types';
@@ -44,43 +44,24 @@ export default function GymDetailScreen({ route, navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
 
-  useEffect(() => {
-    fetchGymDetail(gymId)
-      .then(data => {
-        setDetail(data);
-        setIsActive(data.gym.is_active);
-      })
-      .catch(e => Alert.alert('Error', e.message ?? 'Failed to load gym'))
-      .finally(() => setLoading(false));
-
-    const supabase = getSupabaseRealtimeClient();
-    const channel = supabase.channel(`gym_detail_${gymId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'gyms', filter: `id=eq.${gymId}` },
-        (payload) => {
-          setDetail((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              gym: {
-                ...prev.gym,
-                name: payload.new.name ?? prev.gym.name,
-                is_active: payload.new.is_active ?? prev.gym.is_active,
-              }
-            };
-          });
-          if (payload.new.is_active !== undefined) {
-            setIsActive(payload.new.is_active);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+  const loadDetail = useCallback(async () => {
+    try {
+      const data = await fetchGymDetail(gymId);
+      setDetail(data);
+      setIsActive(data.gym.is_active);
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Failed to load gym');
+    } finally {
+      setLoading(false);
+    }
   }, [gymId]);
+
+  useEffect(() => { void loadDetail(); }, [loadDetail]);
+
+  useRealtimeInvalidation({
+    channelName: 'admin:gyms',
+    onInvalidate: loadDetail,
+  });
 
   async function handleToggleStatus(value: boolean) {
     setTogglingStatus(true);

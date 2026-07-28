@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Insert subscription_request row (store path, not public URL — bucket is private)
-  const { data: insertedRow, error: insertError } = await supabase
+  const { error: insertError } = await supabase
     .from('subscription_requests')
     .insert({
       gym_id: gym.id,
@@ -84,28 +84,9 @@ export async function POST(req: NextRequest) {
       transaction_id: transactionId,
       notes,
     })
-    .select('id')
-    .single()
 
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
-  }
-
-  // Broadcast to admin channel so the admin subscription list updates in real-time
-  // This is a belt-and-suspenders approach alongside postgres_changes —
-  // broadcast is instant even if RLS on the admin side would block postgres_changes.
-  try {
-    await supabase.channel('admin_subscription_requests_realtime').send({
-      type: 'broadcast',
-      event: 'new_subscription_request',
-      payload: {
-        id: insertedRow?.id,
-        gym_id: gym.id,
-        timestamp: new Date().toISOString(),
-      },
-    })
-  } catch {
-    // Non-critical — postgres_changes will still fire
   }
 
   return NextResponse.json({ success: true })

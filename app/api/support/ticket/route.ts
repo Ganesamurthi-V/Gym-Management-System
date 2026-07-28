@@ -46,18 +46,6 @@ export async function POST(req: NextRequest) {
 
     if (insertError) throw insertError
 
-    // Broadcast minimal notification to the admin clients
-    try {
-      await supabase.channel('admin_support_queue').send({
-        type: 'broadcast',
-        event: 'new_ticket',
-        payload: { gym_id: gym.id, timestamp: new Date().toISOString() }
-      })
-    } catch (err) {
-      console.warn('Failed to broadcast new_ticket event', err)
-    }
-
-
     return NextResponse.json({ success: true })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to submit ticket' }, { status: 500 })

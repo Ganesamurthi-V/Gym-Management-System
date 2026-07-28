@@ -54,7 +54,7 @@ The main GymFlow owner app (`app.gymflow.sbs`) and the Member PWA share the same
 | State | Zustand | Lightweight global state for offline-first |
 | Data Fetching | TanStack Query v5 | Cache, background sync, optimistic updates |
 | Backend | Supabase (hosted) | Auth, DB, Storage, Realtime, RLS |
-| PWA | next-pwa / Workbox | Service worker, caching, install prompt |
+| PWA | Serwist (`@serwist/next`) | Maintained Workbox-compatible service worker integration for precaching, offline fallback, and safe runtime asset caches |
 | Push Notifications | Web Push API + Supabase Edge Functions | Push via VAPID keys |
 | QR Code | qrcode.js | Digital membership card |
 | Charts | Recharts | Progress and attendance visualizations |
@@ -186,7 +186,7 @@ Realtime is used sparingly to avoid battery drain on mobile.
 |---|---|---|
 | `notifications:{member_id}` | INSERT | Show in-app banner |
 | `attendance:{gym_id}:{member_id}` | INSERT | Update attendance count |
-| `announcements:{gym_id}` | INSERT | Show announcement badge |
+| `announcements:{gym_id}` | INSERT | Show announcement badge from the dedicated `announcements` table |
 | `xp:{member_id}` | UPDATE | Trigger level-up celebration if level changed |
 
 All realtime channels require a valid JWT. Channels are joined on app foreground and paused/closed on background (Page Visibility API).
@@ -226,9 +226,9 @@ The PWA is gym-agnostic at the code level. A member's `gym_id` is embedded in th
 
 ```sql
 -- Example RLS policy
-CREATE POLICY "members_own_data" ON attendance
+CREATE POLICY "members_own_attendance" ON attendance
   FOR SELECT USING (
-    member_id = auth.uid()
+    member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid())
   );
 ```
 
@@ -267,7 +267,7 @@ NEXT_PUBLIC_APP_URL=https://member.gymflow.sbs
 
 | Component | Platform | Notes |
 |---|---|---|
-| Member PWA | Vercel | Auto-deploy from `main` branch |
+| Member PWA | Vercel | Separate project rooted at `gymflow-member/`; auto-deploy from `main` branch |
 | Backend | Supabase Cloud | Shared with Admin Portal |
 | Edge Functions | Supabase Edge | Push dispatcher, QR validator |
 | Static Assets | Vercel Edge Network | Global CDN |

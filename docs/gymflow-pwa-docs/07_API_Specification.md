@@ -102,7 +102,7 @@ GET /rest/v1/members
   "gyms": {
     "name": "FitZone Pondicherry",
     "logo_url": "https://...",
-    "brand_color": "#6366F1",
+    "brand_color": "#2563EB",
     "brand_color_2": "#8B5CF6",
     "timezone": "Asia/Kolkata"
   }

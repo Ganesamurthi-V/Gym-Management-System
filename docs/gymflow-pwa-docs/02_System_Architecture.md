@@ -43,11 +43,14 @@ The main GymFlow owner app (`app.gymflow.sbs`) and the Member PWA share the same
 
 ## 2. Technology Stack
 
+> **Design lineage:** the Member PWA is a sibling of the **main GymFlow web app** (`app/`), not of the super-admin surfaces (`gymflow-admin`, `gymflow-mobile`). It inherits the web app's light theme, blue `#2563EB` brand, and Sora typeface. See `04_UI_UX_Guidelines.md` §0.
+
+
 | Layer | Technology | Rationale |
 |---|---|---|
-| Framework | Next.js 15 App Router | SSG/ISR for performance, PWA-ready |
+| Framework | Next.js 15 App Router | SSG/ISR for performance, PWA-ready; same framework and version family as the main web app |
 | Language | TypeScript | Type safety across the entire codebase |
-| Styling | Tailwind CSS + shadcn/ui | Consistent design system |
+| Styling | Tailwind CSS + `design-tokens.css` | Shares the main web app's Tailwind theme (`brand`, `cyan`, `surface`, `screens`, Sora) so classes are interchangeable between codebases. shadcn/ui optional — the web app does not use it, so any shadcn component must be restyled to `04_UI_UX_Guidelines` v3.0 tokens before use |
 | State | Zustand | Lightweight global state for offline-first |
 | Data Fetching | TanStack Query v5 | Cache, background sync, optimistic updates |
 | Backend | Supabase (hosted) | Auth, DB, Storage, Realtime, RLS |

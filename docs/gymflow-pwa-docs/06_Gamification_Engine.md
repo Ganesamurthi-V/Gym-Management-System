@@ -304,8 +304,9 @@ Rewards
 ### 7.2 Badge Grid
 
 - 4-column grid on mobile.
-- Earned: full colour + glow.
-- Locked: greyscale + lock icon.
+- Earned: full colour on a `--color-badge-bg` tile with `--color-badge-border` and `--shadow-badge`.
+  On the light theme, badges are distinguished by a **tinted fill and coloured border**, not a neon glow — see `04_UI_UX_Guidelines` §2.6.
+- Locked: greyscale + lock icon on `--color-locked-bg` with `--color-locked-border`.
 - Tap earned badge → detail sheet (name, description, when earned, XP given).
 - Tap locked badge → show how to earn it.
 

@@ -4,7 +4,7 @@
 **Database:** PostgreSQL 15 via Supabase
 **Schema:** `public`
 
-> This schema extends the existing GymFlow Admin Portal database. Member PWA reads from and writes to the same tables. New tables added for PWA-specific features are marked **[PWA NEW]**. Columns added to existing tables for PWA are marked **[PWA ADD]**.
+> This schema extends the existing GymFlow owner app (`app.gymflow.sbs`) database. Member PWA reads from and writes to the same tables. New tables added for PWA-specific features are marked **[PWA NEW]**. Columns added to existing tables for PWA are marked **[PWA ADD]**.
 
 ---
 

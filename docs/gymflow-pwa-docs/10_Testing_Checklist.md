@@ -338,6 +338,6 @@ Conduct with 3–5 real gym members before launch.
 | Find a badge | "Have you earned any badges? What do they mean?" | Navigates to rewards/badges, taps one |
 | Log your weight | "Log your weight as 72kg." | Measurement saved, appears in chart |
 | Track water intake | "Log 4 glasses of water from your diet plan." | 4 glasses shown in tracker |
-| Receive a push notification | Admin sends test push | Notification received and tappable |
+| Receive a push notification | Gym owner sends test push | Notification received and tappable |
 | Install app (Android) | "Add this to your home screen." | App installed, opens standalone |
 | Use app offline | Turn off WiFi + mobile data | Card and cached data visible |

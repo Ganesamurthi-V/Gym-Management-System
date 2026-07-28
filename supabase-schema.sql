@@ -1450,20 +1450,176 @@ COMMENT ON VIEW whatsapp_conversations IS 'Aggregated view of conversations by c
 -- ============================================================
 
 DO $$
+DECLARE
+  v_table TEXT;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'gyms') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE gyms;
+  FOREACH v_table IN ARRAY ARRAY[
+    'gyms',
+    'subscription_requests',
+    'admin_messages',
+    'support_tickets',
+    'whatsapp_messages',
+    'whatsapp_automation_logs',
+    'whatsapp_send_queue'
+  ]
+  LOOP
+    IF to_regclass(format('public.%I', v_table)) IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_publication_tables
+         WHERE pubname = 'supabase_realtime'
+           AND schemaname = 'public'
+           AND tablename = v_table
+       ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', v_table);
+    END IF;
+  END LOOP;
+END
+$$;
+
+-- Admin web/mobile use custom application sessions rather than Supabase Auth.
+-- Database triggers therefore emit payload-free public invalidation hints;
+-- clients treat them as untrusted and re-fetch through authenticated APIs.
+-- https://supabase.com/docs/guides/realtime/broadcast#broadcast-from-the-database
+CREATE OR REPLACE FUNCTION public.broadcast_admin_realtime_invalidation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_topic TEXT;
+BEGIN
+  FOREACH v_topic IN ARRAY TG_ARGV
+  LOOP
+    BEGIN
+      PERFORM realtime.send('{}'::jsonb, 'invalidate', v_topic, false);
+    EXCEPTION WHEN OTHERS THEN
+      -- Never roll back authoritative data because Realtime is unavailable.
+      RAISE WARNING 'Realtime invalidation failed for topic %: %', v_topic, SQLERRM;
+    END;
+  END LOOP;
+  RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.broadcast_admin_realtime_invalidation()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_gyms ON public.gyms;
+CREATE TRIGGER trg_realtime_admin_gyms
+  AFTER INSERT OR UPDATE OR DELETE ON public.gyms
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation(
+    'admin:gyms', 'admin:subscriptions'
+  );
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_subscription_requests ON public.subscription_requests;
+CREATE TRIGGER trg_realtime_admin_subscription_requests
+  AFTER INSERT OR UPDATE OR DELETE ON public.subscription_requests
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation(
+    'admin:subscriptions', 'admin:gyms'
+  );
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_support_tickets ON public.support_tickets;
+CREATE TRIGGER trg_realtime_admin_support_tickets
+  AFTER INSERT OR UPDATE OR DELETE ON public.support_tickets
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation('admin:support');
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_messages ON public.admin_messages;
+CREATE TRIGGER trg_realtime_admin_messages
+  AFTER INSERT OR UPDATE OR DELETE ON public.admin_messages
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation('admin:support');
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_subscription_audit ON public.subscription_audit_logs;
+CREATE TRIGGER trg_realtime_admin_subscription_audit
+  AFTER INSERT OR UPDATE OR DELETE ON public.subscription_audit_logs
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation('admin:activity');
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_whatsapp_logs ON public.whatsapp_automation_logs;
+CREATE TRIGGER trg_realtime_admin_whatsapp_logs
+  AFTER INSERT OR UPDATE OR DELETE ON public.whatsapp_automation_logs
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation('admin:activity');
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_whatsapp_messages ON public.whatsapp_messages;
+CREATE TRIGGER trg_realtime_admin_whatsapp_messages
+  AFTER INSERT OR UPDATE OR DELETE ON public.whatsapp_messages
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation('admin:activity');
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_whatsapp_queue ON public.whatsapp_send_queue;
+CREATE TRIGGER trg_realtime_admin_whatsapp_queue
+  AFTER INSERT OR UPDATE OR DELETE ON public.whatsapp_send_queue
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation('admin:activity');
+
+DROP TRIGGER IF EXISTS trg_realtime_admin_member_activity ON public.members;
+CREATE TRIGGER trg_realtime_admin_member_activity
+  AFTER INSERT ON public.members
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_admin_realtime_invalidation('admin:activity');
+
+DROP POLICY IF EXISTS "gym owners receive tenant realtime invalidations"
+  ON realtime.messages;
+CREATE POLICY "gym owners receive tenant realtime invalidations"
+  ON realtime.messages
+  FOR SELECT
+  TO authenticated
+  USING (
+    realtime.messages.extension = 'broadcast'
+    AND split_part((SELECT realtime.topic()), ':', 1) = 'gym'
+    AND split_part((SELECT realtime.topic()), ':', 3) IN ('support', 'subscription')
+    AND EXISTS (
+      SELECT 1
+      FROM public.gyms
+      WHERE public.gyms.id::text = split_part((SELECT realtime.topic()), ':', 2)
+        AND public.gyms.owner_id = (SELECT auth.uid())
+    )
+  );
+
+CREATE OR REPLACE FUNCTION public.broadcast_owner_delete_invalidation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_record JSONB;
+  v_gym_id TEXT;
+  v_scope TEXT;
+  v_topic TEXT;
+BEGIN
+  v_record := to_jsonb(OLD);
+  v_gym_id := COALESCE(v_record ->> 'gym_id', v_record ->> 'id');
+  IF v_gym_id IS NULL THEN
+    RETURN NULL;
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'subscription_requests') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE subscription_requests;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'admin_messages') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE admin_messages;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'support_tickets') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE support_tickets;
-  END IF;
-END $$;
+
+  FOREACH v_scope IN ARRAY TG_ARGV
+  LOOP
+    v_topic := format('gym:%s:%s', v_gym_id, v_scope);
+    BEGIN
+      PERFORM realtime.send('{}'::jsonb, 'invalidate', v_topic, true);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Private Realtime invalidation failed for topic %: %', v_topic, SQLERRM;
+    END;
+  END LOOP;
+  RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.broadcast_owner_delete_invalidation()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_realtime_owner_deleted_admin_message ON public.admin_messages;
+CREATE TRIGGER trg_realtime_owner_deleted_admin_message
+  AFTER DELETE ON public.admin_messages
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_owner_delete_invalidation('support');
+
+DROP TRIGGER IF EXISTS trg_realtime_owner_deleted_support_ticket ON public.support_tickets;
+CREATE TRIGGER trg_realtime_owner_deleted_support_ticket
+  AFTER DELETE ON public.support_tickets
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_owner_delete_invalidation('support');
+
+DROP TRIGGER IF EXISTS trg_realtime_owner_deleted_subscription_request ON public.subscription_requests;
+CREATE TRIGGER trg_realtime_owner_deleted_subscription_request
+  AFTER DELETE ON public.subscription_requests
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_owner_delete_invalidation('subscription');
 
 -- ============================================================
 -- STORAGE BUCKETS
@@ -1519,3 +1675,151 @@ REVOKE EXECUTE ON FUNCTION increment_inventory_stock(UUID, INTEGER) FROM anon;
 -- ============================================================
 -- END OF SCHEMA
 -- ============================================================
+
+-- Member PWA M0: auth identity linkage and read-only self access.
+-- This migration is additive and does not alter existing owner policies.
+
+BEGIN;
+
+ALTER TABLE public.members
+  ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS email TEXT,
+  ADD COLUMN IF NOT EXISTS photo_url TEXT,
+  ADD COLUMN IF NOT EXISTS member_code TEXT,
+  ADD COLUMN IF NOT EXISTS blood_group TEXT,
+  ADD COLUMN IF NOT EXISTS emergency_name TEXT,
+  ADD COLUMN IF NOT EXISTS emergency_phone TEXT,
+  ADD COLUMN IF NOT EXISTS medical_notes TEXT;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'members_blood_group_check'
+      AND conrelid = 'public.members'::regclass
+  ) THEN
+    ALTER TABLE public.members
+      ADD CONSTRAINT members_blood_group_check
+      CHECK (blood_group IS NULL OR blood_group IN ('A+','A-','B+','B-','AB+','AB-','O+','O-'));
+  END IF;
+END
+$$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_members_auth_user_id_unique
+  ON public.members(auth_user_id)
+  WHERE auth_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_members_email_lower
+  ON public.members(LOWER(email))
+  WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_members_gym_member_code_unique
+  ON public.members(gym_id, member_code)
+  WHERE member_code IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.generate_member_code()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_number TEXT := NEW.member_number::TEXT;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.member_code := 'GF-' || LPAD(v_number, GREATEST(5, LENGTH(v_number)), '0');
+  ELSIF NEW.member_number IS DISTINCT FROM OLD.member_number
+     OR NEW.member_code IS NULL
+     OR BTRIM(NEW.member_code) = '' THEN
+    NEW.member_code := 'GF-' || LPAD(v_number, GREATEST(5, LENGTH(v_number)), '0');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_generate_member_code ON public.members;
+CREATE TRIGGER trg_generate_member_code
+  BEFORE INSERT OR UPDATE OF member_number, member_code ON public.members
+  FOR EACH ROW EXECUTE FUNCTION public.generate_member_code();
+
+UPDATE public.members
+SET member_code = 'GF-' || LPAD(
+  member_number::TEXT,
+  GREATEST(5, LENGTH(member_number::TEXT)),
+  '0'
+)
+WHERE member_code IS NULL OR BTRIM(member_code) = '';
+
+-- auth_user_id is an authorization boundary. Existing owner RLS permits row
+-- updates, so only trusted server workflows may create or change this link.
+CREATE OR REPLACE FUNCTION public.guard_member_auth_user_link()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_auth_role TEXT := COALESCE(auth.role(), '');
+  v_link_changed BOOLEAN;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    v_link_changed := NEW.auth_user_id IS NOT NULL;
+  ELSE
+    v_link_changed := NEW.auth_user_id IS DISTINCT FROM OLD.auth_user_id;
+  END IF;
+
+  IF v_link_changed
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role')
+     AND v_auth_role <> 'service_role' THEN
+    RAISE EXCEPTION 'member auth identity can only be linked by a trusted server workflow'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_guard_member_auth_user_link_insert ON public.members;
+CREATE TRIGGER trg_guard_member_auth_user_link_insert
+  BEFORE INSERT ON public.members
+  FOR EACH ROW EXECUTE FUNCTION public.guard_member_auth_user_link();
+
+DROP TRIGGER IF EXISTS trg_guard_member_auth_user_link_update ON public.members;
+CREATE TRIGGER trg_guard_member_auth_user_link_update
+  BEFORE UPDATE OF auth_user_id ON public.members
+  FOR EACH ROW EXECUTE FUNCTION public.guard_member_auth_user_link();
+
+ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Members can view their own profile" ON public.members;
+CREATE POLICY "Members can view their own profile"
+  ON public.members FOR SELECT
+  TO authenticated
+  USING (auth_user_id = (SELECT auth.uid()));
+
+-- A definer helper avoids recursive RLS evaluation between members and gyms.
+-- It returns only the caller's own tenant ID and accepts no user-controlled ID.
+CREATE OR REPLACE FUNCTION public.current_member_gym_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT gym_id
+  FROM public.members
+  WHERE auth_user_id = auth.uid()
+  LIMIT 1
+$$;
+REVOKE ALL ON FUNCTION public.current_member_gym_id() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_member_gym_id() TO authenticated;
+
+-- Needed for the member shell to read its own gym branding. This does not
+-- expose gyms outside the linked member's tenant.
+DROP POLICY IF EXISTS "Members can view their gym" ON public.gyms;
+CREATE POLICY "Members can view their gym"
+  ON public.gyms FOR SELECT
+  TO authenticated
+  USING (id = public.current_member_gym_id());
+
+COMMENT ON COLUMN public.members.auth_user_id IS
+  'Supabase Auth identity for Member PWA access. Set only by trusted owner/server workflows.';
+COMMENT ON COLUMN public.members.member_code IS
+  'Human-readable gym-scoped display code; never use for authorization.';
+
+COMMIT;

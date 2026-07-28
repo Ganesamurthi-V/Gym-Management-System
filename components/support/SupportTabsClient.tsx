@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Bell, Info, AlertTriangle, ShieldCheck, Bug, Ticket as TicketIcon, X, Trash2, Wifi, WifiOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
+import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
+import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
 
 type AdminMessage = {
   id: string;
@@ -40,116 +42,90 @@ export default function SupportTabsClient({
   const [messages, setMessages] = useState<AdminMessage[]>(initialMessages)
   const [tickets, setTickets] = useState<SupportTicket[]>(initialTickets)
   const [isClearing, setIsClearing] = useState(false)
-  const [isConnected, setIsConnected] = useState(false)
   // IDs of messages that just arrived in real-time (for "NEW" highlight)
   const [newMsgIds, setNewMsgIds] = useState<Set<string>>(new Set())
 
   const supabase = createClient()
 
-  // Keep a ref to latest state so realtime closures can read current values
-  const messagesRef = useRef(messages)
-  const ticketsRef = useRef(tickets)
-  useEffect(() => { messagesRef.current = messages }, [messages])
-  useEffect(() => { ticketsRef.current = tickets }, [tickets])
-
-  // ── Sync when SSR props change (e.g. hard refresh) ────────────────────────
+  // ── Sync when SSR props change (e.g. router refresh) ─────────────────────
   useEffect(() => {
     setMessages(initialMessages)
     setTickets(initialTickets)
   }, [initialMessages, initialTickets])
 
-  // ── Supabase Realtime ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const channel = supabase
-      .channel(`gym_support_realtime_${gymId}`, {
-        config: { broadcast: { ack: false } },
-      })
+  const syncSupport = useCallback(async () => {
+    const [messagesResult, ticketsResult] = await Promise.all([
+      supabase
+        .from('admin_messages')
+        .select('*')
+        .eq('gym_id', gymId)
+        .eq('is_cleared_by_owner', false)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('support_tickets')
+        .select('*')
+        .eq('gym_id', gymId)
+        .eq('is_cleared_by_owner', false)
+        .order('created_at', { ascending: false }),
+    ])
 
-      // ── admin_messages: new notification from GymFlow team ──
-      .on(
-        'broadcast',
-        { event: 'admin_message' },
-        async (payload: any) => {
-          const msgId = payload.payload?.id
-          if (!msgId) return
+    if (messagesResult.data) setMessages(messagesResult.data)
+    if (ticketsResult.data) setTickets(ticketsResult.data)
+  }, [gymId, supabase])
 
-          // Fetch securely (RLS applied)
-          const { data: newMsg } = await supabase
-            .from('admin_messages')
-            .select('*')
-            .eq('id', msgId)
-            .single()
+  const { isConnected: rowChangesConnected } = useRealtimeChannel({
+    channelName: `owner_support_${gymId}`,
+    subscriptions: [
+      {
+        type: 'postgres_changes',
+        filter: { event: 'INSERT', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
+        callback: async (payload) => {
+          await syncSupport()
+          if (!payload.new?.id) return
 
-          if (!newMsg || messagesRef.current.some((m) => m.id === newMsg.id)) return
-
-          setMessages((prev) => [newMsg, ...prev])
-          setNewMsgIds((prev) => new Set([...prev, newMsg.id]))
-
-          // Remove "NEW" highlight after 8 s
-          setTimeout(() => {
-            setNewMsgIds((prev) => {
-              const next = new Set(prev)
-              next.delete(newMsg.id)
+          const messageId = payload.new.id as string
+          setNewMsgIds((previous) => new Set([...previous, messageId]))
+          window.setTimeout(() => {
+            setNewMsgIds((previous) => {
+              const next = new Set(previous)
+              next.delete(messageId)
               return next
             })
-          }, 8000)
-
-          toast('📣 New message from GymFlow Support!', {
-            duration: 6000,
-            style: { fontWeight: '600' },
-          })
-        }
-      )
-
-      // ── support_tickets: ticket status updated (open → resolved) ──
-      .on(
-        'broadcast',
-        { event: 'ticket_update' },
-        async (payload: any) => {
-          const ticketId = payload.payload?.id
-          if (!ticketId) return
-
-          // Fetch securely (RLS applied)
-          const { data: updated } = await supabase
-            .from('support_tickets')
-            .select('*')
-            .eq('id', ticketId)
-            .single()
-            
-          if (!updated) return
-
-          setTickets((prev) =>
-            prev.map((t) => (t.id === updated.id ? updated : t))
-          )
-          if (updated.status === 'resolved') {
-            toast('✅ Your support ticket has been resolved!', { duration: 5000 })
+          }, 8_000)
+          toast('New message from GymFlow Support!', { duration: 6_000, style: { fontWeight: '600' } })
+        },
+      },
+      {
+        type: 'postgres_changes',
+        filter: { event: 'UPDATE', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
+        callback: syncSupport,
+      },
+      {
+        type: 'postgres_changes',
+        filter: { event: 'INSERT', schema: 'public', table: 'support_tickets', filter: `gym_id=eq.${gymId}` },
+        callback: syncSupport,
+      },
+      {
+        type: 'postgres_changes',
+        filter: { event: 'UPDATE', schema: 'public', table: 'support_tickets', filter: `gym_id=eq.${gymId}` },
+        callback: async (payload) => {
+          await syncSupport()
+          if (payload.new?.status === 'resolved') {
+            toast('Your support ticket has been resolved!', { duration: 5_000 })
             setActiveTab('closed')
           }
-        }
-      )
+        },
+      },
+    ],
+    onResync: syncSupport,
+  })
 
-      // ── support_tickets: new ticket submitted (echoed back for consistency) ──
-      .on(
-        'broadcast',
-        { event: 'new_ticket' },
-        async (payload: any) => {
-          // If we also emitted `new_ticket` to `gym_support_realtime_{gymId}`, we'd handle it here.
-          // But our API emitted it to `admin_support_queue`. 
-          // So this client (gym owner) does not necessarily need to listen to new_tickets 
-          // they just created (the optimistic UI or standard refetch handles it).
-          // But if we wanted to sync multiple tabs for the same gym, we could broadcast it to gym_support_realtime_{gymId} too.
-          // For now, we omit it as it's not strictly necessary for single-user gyms.
-        }
-      )
-
-      .subscribe((status: string) => {
-        setIsConnected(status === 'SUBSCRIBED')
-      })
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [gymId]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { isConnected: deleteInvalidationConnected } = useRealtimeInvalidation({
+    channelName: `gym:${gymId}:support`,
+    privateChannel: true,
+    onInvalidate: syncSupport,
+  })
+  const isConnected = rowChangesConnected && deleteInvalidationConnected
 
   // ── Clear helpers ─────────────────────────────────────────────────────────
   const handleClear = async (type: 'admin_messages' | 'support_tickets', id?: string) => {

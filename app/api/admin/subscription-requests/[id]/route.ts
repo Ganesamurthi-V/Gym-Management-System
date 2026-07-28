@@ -91,46 +91,5 @@ export async function POST(
       .eq('id', id)
   }
 
-  // ── Realtime broadcasts ─────────────────────────────────────────────────
-  // 1. Notify the gym owner's subscription page via their dedicated channel.
-  //    The SubscriptionClient listens on `gym-{gym_id}-requests` for request
-  //    status changes and `gym-{gym_id}-subclient` for gym row changes.
-  //    postgres_changes already fires for both tables, but an explicit broadcast
-  //    provides a fallback if RLS filtering blocks the change event.
-  try {
-    await supabase.channel(`gym-${request.gym_id}-requests`).send({
-      type: 'broadcast',
-      event: 'subscription_reviewed',
-      payload: {
-        request_id: id,
-        gym_id: request.gym_id,
-        action,
-        plan_type: action === 'approve' ? plan_type : undefined,
-        rejection_reason: action === 'reject' ? (rejection_reason ?? '') : undefined,
-        timestamp: now.toISOString(),
-      },
-    })
-  } catch {
-    // Non-critical — postgres_changes on subscription_requests + gyms will still fire
-  }
-
-  // 2. Notify other admin tabs that the request was processed.
-  //    The AdminSubscriptionList listens on postgres_changes UPDATE events,
-  //    but broadcast ensures instant sync across multiple admin sessions.
-  try {
-    await supabase.channel('admin_subscription_requests_realtime').send({
-      type: 'broadcast',
-      event: 'subscription_request_reviewed',
-      payload: {
-        request_id: id,
-        gym_id: request.gym_id,
-        action,
-        timestamp: now.toISOString(),
-      },
-    })
-  } catch {
-    // Non-critical
-  }
-
   return NextResponse.json({ success: true })
 }

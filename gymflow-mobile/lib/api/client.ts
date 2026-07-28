@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { getToken } from '../auth';
 
-import { Platform } from 'react-native';
 import { ADMIN_API_BASE as ENV_ADMIN_API_BASE } from '@env';
 
 // Default to the production admin backend instead of localhost

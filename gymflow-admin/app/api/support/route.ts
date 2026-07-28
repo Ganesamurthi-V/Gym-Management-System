@@ -57,19 +57,6 @@ export async function POST(req: NextRequest) {
 
   await invalidatePattern(`gym:${gymId}:admin_messages`)
 
-  // Broadcast minimal notification to the client
-  try {
-    log.start('REALTIME_BROADCAST')
-    await supabase.channel(`gym_support_realtime_${gymId}`).send({
-      type: 'broadcast',
-      event: 'admin_message',
-      payload: { id: data.id, gym_id: gymId, timestamp: new Date().toISOString() }
-    })
-    log.end('REALTIME_BROADCAST')
-  } catch (err) {
-    log.warn('Failed to broadcast realtime event', { error: String(err) })
-  }
-
   log.info('Support message sent', { gymId, type })
   log.summary(200)
   return NextResponse.json({ ok: true, message: data })

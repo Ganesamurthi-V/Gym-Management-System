@@ -3,12 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 /**
  * Browser-side Supabase client for the admin panel.
  *
- * Used exclusively for Supabase Realtime subscriptions (broadcast + postgres_changes).
- * This uses the ANON key — same key that gym owners use — which is safe to expose
- * client-side. RLS policies still apply, and the admin panel only uses this for
- * receiving realtime events (not for data mutations).
- *
- * Data mutations continue to go through API routes that use the service role key.
+ * Used exclusively for payload-free Supabase Realtime broadcast invalidations.
+ * The admin panel uses a custom cookie session rather than Supabase Auth, so
+ * this anonymous client MUST NOT consume global postgres_changes or trust
+ * broadcast payloads as data. Invalidation handlers re-fetch through protected
+ * admin API routes that use the service role only on the server.
  */
 let browserClient: ReturnType<typeof createClient> | null = null
 

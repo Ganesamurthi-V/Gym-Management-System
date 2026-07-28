@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, User, Settings, Lock, Bell, ChevronRight } from 'lucide-react'
+import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
+import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
 
 interface AccountMenuProps {
   initialEmail?: string | null
@@ -88,54 +90,69 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
     }
   }, [initialGymName, gymName])
 
-  // Realtime subscription for unread count
-  useEffect(() => {
+  const syncUnreadCount = useCallback(async () => {
     if (!gymId) return
-
-    const channel = supabase
-      .channel(`gym_support_account_menu_${gymId}`)
-      .on(
-        'broadcast',
-        { event: 'admin_message' },
-        async (payload: any) => {
-          // Re-fetch unread count
-          const { count } = await supabase
-            .from('admin_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('gym_id', gymId)
-            .is('read_at', null)
-            
-          setUnreadCount(count ?? 0)
-
-          const msgId = payload.payload?.id
-          if (msgId) {
-            // Fetch the message securely via standard RLS
-            const { data: newMessage } = await supabase
-              .from('admin_messages')
-              .select('id, subject, body')
-              .eq('id', msgId)
-              .single()
-
-            if (newMessage) {
-              setToastMessage({
-                id: newMessage.id,
-                title: newMessage.subject || 'New Support Message',
-                body: newMessage.body
-              })
-              // Hide toast after 6 seconds
-              setTimeout(() => {
-                setToastMessage(prev => prev?.id === newMessage.id ? null : prev)
-              }, 6000)
-            }
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    const { count } = await supabase
+      .from('admin_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('gym_id', gymId)
+      .is('read_at', null)
+    setUnreadCount(count ?? 0)
   }, [gymId, supabase])
+
+  useRealtimeChannel({
+    channelName: `owner_account_messages_${gymId ?? 'disabled'}`,
+    enabled: Boolean(gymId),
+    subscriptions: [
+      {
+        type: 'postgres_changes',
+        filter: {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'admin_messages',
+          filter: `gym_id=eq.${gymId ?? '00000000-0000-0000-0000-000000000000'}`,
+        },
+        callback: async (payload) => {
+          await syncUnreadCount()
+          if (!payload.new?.id) return
+
+          const { data: newMessage } = await supabase
+            .from('admin_messages')
+            .select('id, subject, body')
+            .eq('id', payload.new.id)
+            .single()
+
+          if (!newMessage) return
+          setToastMessage({
+            id: newMessage.id,
+            title: newMessage.subject || 'New Support Message',
+            body: newMessage.body,
+          })
+          window.setTimeout(() => {
+            setToastMessage((previous) => previous?.id === newMessage.id ? null : previous)
+          }, 6_000)
+        },
+      },
+      {
+        type: 'postgres_changes',
+        filter: {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'admin_messages',
+          filter: `gym_id=eq.${gymId ?? '00000000-0000-0000-0000-000000000000'}`,
+        },
+        callback: syncUnreadCount,
+      },
+    ],
+    onResync: syncUnreadCount,
+  })
+
+  useRealtimeInvalidation({
+    channelName: `gym:${gymId ?? 'disabled'}:support`,
+    enabled: Boolean(gymId),
+    privateChannel: true,
+    onInvalidate: syncUnreadCount,
+  })
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

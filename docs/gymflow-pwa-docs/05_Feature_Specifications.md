@@ -86,7 +86,7 @@
 - Member name (H2).
 - Member code (monospace font `--font-mono`, e.g. "GF-00142") from `members.member_code`.
 - Plan name + expiry date.
-- QR code (256×256px minimum).
+- QR code (256×256px minimum, dark modules on a solid white tile).
 
 ### 3.2 QR Code
 - Payload: signed JWT containing `{ member_id, gym_id, exp: now+5min }`.
@@ -278,7 +278,7 @@
 | Payment due | When pending payment created | /payments |
 | Workout assigned | New plan linked to member | /workout |
 | Diet plan updated | Plan modified | /diet |
-| Gym announcement | Admin publishes announcement | /home |
+| Gym announcement | Gym owner publishes announcement | /home |
 | Challenge started | Challenge `starts_at` date | /rewards/challenges |
 | Badge earned | Badge trigger fires | /rewards/badges |
 | XP milestone / level up | `member_xp.level` increments | /rewards |

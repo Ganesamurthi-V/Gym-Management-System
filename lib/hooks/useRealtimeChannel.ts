@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 
+export type RealtimeConnectionState = 'disabled' | 'connecting' | 'connected' | 'error'
 type PostgresChangeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*'
+type RealtimeCallback = (payload: any) => void | Promise<void>
 
 interface PostgresChangeFilter {
   event: PostgresChangeEvent
@@ -17,78 +19,111 @@ interface BroadcastFilter {
   event: string
 }
 
-type ChannelSubscription =
-  | { type: 'postgres_changes'; filter: PostgresChangeFilter; callback: (payload: any) => void }
-  | { type: 'broadcast'; filter: BroadcastFilter; callback: (payload: any) => void }
+export type ChannelSubscription =
+  | { type: 'postgres_changes'; filter: PostgresChangeFilter; callback: RealtimeCallback }
+  | { type: 'broadcast'; filter: BroadcastFilter; callback: RealtimeCallback }
 
 interface UseRealtimeChannelOptions {
-  /** Unique channel name */
+  /** Unique per mounted consumer; never put credentials in a channel name. */
   channelName: string
-  /** List of subscriptions (postgres_changes or broadcast) */
   subscriptions: ChannelSubscription[]
-  /** Whether the channel should be active (default: true) */
   enabled?: boolean
+  /** Securely re-fetch authoritative state after subscribe/reconnect/foreground. */
+  onResync?: () => void | Promise<void>
 }
 
 /**
- * useRealtimeChannel — reusable hook for Supabase Realtime subscriptions.
+ * Lifecycle-safe Supabase channel for authenticated owner clients.
  *
- * Manages channel lifecycle (subscribe/unsubscribe) and exposes connection state.
- * Supports both `postgres_changes` and `broadcast` event types.
- *
- * Security: Uses the browser client (anon key + RLS). No service role key
- * is ever exposed to the client. postgres_changes respect RLS policies on
- * the subscribed tables.
+ * postgres_changes remain subject to table RLS. Callbacks are kept in refs so
+ * state changes do not create duplicate channels, while filter changes still
+ * recreate the subscription. Re-syncing closes the fetch/subscribe race and
+ * converges after a dropped socket or backgrounded tab.
  */
 export function useRealtimeChannel({
   channelName,
   subscriptions,
   enabled = true,
+  onResync,
 }: UseRealtimeChannelOptions) {
-  const [isConnected, setIsConnected] = useState(false)
+  const [connectionState, setConnectionState] = useState<RealtimeConnectionState>(
+    enabled ? 'connecting' : 'disabled',
+  )
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const subscriptionsRef = useRef(subscriptions)
+  const onResyncRef = useRef(onResync)
+
+  subscriptionsRef.current = subscriptions
+  onResyncRef.current = onResync
+
+  const subscriptionKey = JSON.stringify(
+    subscriptions.map((subscription) => ({
+      type: subscription.type,
+      filter: subscription.filter,
+    })),
+  )
 
   useEffect(() => {
-    if (!enabled || subscriptions.length === 0) return
+    if (!enabled || subscriptionsRef.current.length === 0) {
+      setConnectionState('disabled')
+      return
+    }
 
     const supabase = createClient()
-
+    let cancelled = false
     let channel = supabase.channel(channelName)
 
-    for (const sub of subscriptions) {
-      if (sub.type === 'postgres_changes') {
+    subscriptionsRef.current.forEach((subscription, index) => {
+      const invokeLatest = (payload: any) => {
+        const callback = subscriptionsRef.current[index]?.callback
+        if (callback) void callback(payload)
+      }
+
+      if (subscription.type === 'postgres_changes') {
         channel = channel.on(
           'postgres_changes',
           {
-            event: sub.filter.event,
-            schema: sub.filter.schema ?? 'public',
-            table: sub.filter.table,
-            ...(sub.filter.filter ? { filter: sub.filter.filter } : {}),
+            event: subscription.filter.event,
+            schema: subscription.filter.schema ?? 'public',
+            table: subscription.filter.table,
+            ...(subscription.filter.filter ? { filter: subscription.filter.filter } : {}),
           },
-          sub.callback
+          invokeLatest,
         )
-      } else if (sub.type === 'broadcast') {
-        channel = channel.on(
-          'broadcast',
-          { event: sub.filter.event },
-          sub.callback
-        )
+      } else {
+        channel = channel.on('broadcast', { event: subscription.filter.event }, invokeLatest)
       }
-    }
-
-    channel.subscribe((status: string) => {
-      setIsConnected(status === 'SUBSCRIBED')
     })
 
+    setConnectionState('connecting')
+    channel.subscribe((status: string) => {
+      if (cancelled) return
+      if (status === 'SUBSCRIBED') {
+        setConnectionState('connected')
+        void onResyncRef.current?.()
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setConnectionState('error')
+      } else if (status === 'CLOSED') {
+        setConnectionState('connecting')
+      }
+    })
     channelRef.current = channel
 
-    return () => {
-      supabase.removeChannel(channel)
-      channelRef.current = null
-      setIsConnected(false)
+    const handleForeground = () => {
+      if (document.visibilityState === 'visible') void onResyncRef.current?.()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelName, enabled])
+    document.addEventListener('visibilitychange', handleForeground)
 
-  return { isConnected }
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', handleForeground)
+      if (channelRef.current === channel) channelRef.current = null
+      void supabase.removeChannel(channel)
+    }
+  }, [channelName, enabled, subscriptionKey])
+
+  return {
+    connectionState,
+    isConnected: connectionState === 'connected',
+  }
 }

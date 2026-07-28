@@ -1074,7 +1074,7 @@ Chart infrastructure:
 
 - Full-screen card at elevation 2, `--radius-xl` (16px)
 - Background `--gradient-brand` (brand-500 → brand-600, 135°) with a `--glass-brand-bg` frosted inner panel — this is the app's single most branded surface and stays vivid even though the page around it is white
-- QR code: minimum 200×200px, **dark modules on a solid white tile** with `--space-6` quiet-zone padding. Do not invert; scanners expect dark-on-light and the v2.x white-on-dark spec risked read failures on cheap gym scanners
+- QR code: minimum 256×256px, **dark modules on a solid white tile** with `--space-6` quiet-zone padding. Do not invert; scanners expect dark-on-light and the v2.x white-on-dark spec risked read failures on cheap gym scanners
 - Auto-brightness: set full brightness on card enter via the Screen Wake Lock API; restore on exit
 - Member code in `--font-mono` at `--font-size-code`, white on the gradient
 
@@ -1296,3 +1296,129 @@ The realignment. Every row here is a change made to match the main web app.
 4. Update `manifest.json`: `theme_color` → `#2563EB`, `background_color` → `#FFFFFF`.
 5. Update the DB default for `gyms.brand_color` from `#6366F1` to `#2563EB` (see `03_Database_Schema.md`).
 6. Re-audit every screen mockup produced against v2.x — they were composed on dark and will need contrast rework, not just a background swap.
+
+
+---
+
+## 19. Normative Implementation Tokens (v3.1)
+
+This section completes values referenced earlier in this document. These definitions are normative for `design-tokens.css`; component code must not invent alternatives. Font sizes and layout dimensions use `rem` so browser zoom remains functional. Borders and shadows may use physical pixels where sub-rem values are required.
+
+```css
+:root {
+  /* Typography */
+  --font-size-micro: 0.625rem;
+  --font-size-caption: 0.75rem;
+  --font-size-body-sm: 0.875rem;
+  --font-size-label: 0.875rem;
+  --font-size-button: 0.875rem;
+  --font-size-code: 0.875rem;
+  --font-size-body: 1rem;
+  --font-size-h4: 1.125rem;
+  --font-size-h3: 1.25rem;
+  --font-size-h2: 1.5rem;
+  --font-size-h1: 1.875rem;
+  --font-size-stat: 1.875rem;
+  --font-size-display: 2.25rem;
+  --font-size-hero: 3rem;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Intermediate spacing values used by components */
+  --space-3: 0.375rem;
+  --space-5: 0.625rem;
+  --space-7: 0.875rem;
+  --gap-sm: var(--space-4);
+  --badge-padding-x: var(--space-4);
+  --badge-padding-y: var(--space-2);
+  --bottom-nav-height: 4rem;
+
+  /* Gradients */
+  --gradient-button: linear-gradient(to right, var(--color-brand-500), var(--color-brand-600));
+  --gradient-button-hover: linear-gradient(to right, var(--color-brand-600), var(--color-brand-700));
+  --gradient-brand: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
+  --gradient-brand-h: linear-gradient(to right, var(--color-brand-500), var(--color-brand-600));
+  --gradient-xp: linear-gradient(to right, #F59E0B, #D97706);
+  --gradient-streak: linear-gradient(to right, #F97316, #EA580C);
+  --gradient-error: linear-gradient(to right, #EF4444, #DC2626);
+
+  /* Generic warning aliases */
+  --color-warning-bg: var(--color-expiring-bg);
+  --color-warning-border: var(--color-expiring-border);
+  --color-warning-text: var(--color-expiring-text);
+
+  /* Motion */
+  --duration-instant: 1ms;
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-dialog: 250ms;
+  --duration-drawer: 300ms;
+  --duration-page: 350ms;
+  --duration-slow: 400ms;
+  --duration-slower: 500ms;
+  --duration-shimmer: 1400ms;
+  --ease-linear: linear;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --ease-snap: cubic-bezier(0.2, 0, 0, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-hover: color var(--duration-normal) var(--ease-standard), background-color var(--duration-normal) var(--ease-standard), border-color var(--duration-normal) var(--ease-standard), box-shadow var(--duration-normal) var(--ease-standard);
+  --transition-color: color var(--duration-normal) var(--ease-standard), background-color var(--duration-normal) var(--ease-standard), border-color var(--duration-normal) var(--ease-standard);
+  --transition-press: transform var(--duration-fast) var(--ease-snap);
+  --transition-card: border-color var(--duration-normal) var(--ease-standard), box-shadow var(--duration-normal) var(--ease-standard), transform var(--duration-fast) var(--ease-snap);
+  --transition-dialog: opacity var(--duration-dialog) var(--ease-decelerate), transform var(--duration-dialog) var(--ease-decelerate);
+  --transition-drawer: transform var(--duration-drawer) var(--ease-emphasized);
+  --transition-fade: opacity var(--duration-normal) var(--ease-standard);
+  --transition-page: opacity var(--duration-page) var(--ease-decelerate), transform var(--duration-page) var(--ease-decelerate);
+
+  /* Elevation aliases */
+  --elevation-0-bg: var(--color-bg);
+  --elevation-0-border: none;
+  --elevation-0-shadow: none;
+  --elevation-1-bg: var(--color-surface);
+  --elevation-1-border: var(--border-default);
+  --elevation-1-shadow: var(--shadow-sm);
+  --elevation-2-bg: var(--color-surface-2);
+  --elevation-2-border: var(--border-default);
+  --elevation-2-shadow: var(--shadow-md);
+  --elevation-3-bg: var(--color-surface-3);
+  --elevation-3-border: var(--border-subtle);
+  --elevation-3-shadow: var(--shadow-lg);
+  --elevation-4-bg: var(--color-surface-4);
+  --elevation-4-border: none;
+  --elevation-4-shadow: var(--shadow-float);
+
+  /* Colour-vision-safe chart series; pair colour with shape/label */
+  --chart-series-1: #2563EB;
+  --chart-series-2: #D97706;
+  --chart-series-3: #059669;
+  --chart-series-4: #C026D3;
+  --chart-series-5: #DC2626;
+  --chart-series-6: #0891B2;
+  --chart-series-7: #7C3AED;
+  --chart-series-8: #334155;
+
+  /* brand-500 is used for the PWA ring because it clears 3:1 on white. */
+  --focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--color-brand-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+The PWA intentionally uses `brand-500` for its focus ring instead of inheriting the web app's lower-contrast `brand-400`; this is an accessibility correction that should also be applied upstream.

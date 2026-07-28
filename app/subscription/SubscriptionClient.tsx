@@ -11,6 +11,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
+import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
+import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
 
 interface GymInfo {
   id: string
@@ -62,94 +64,104 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
 
   const [liveRequest, setLiveRequest] = useState(latestRequest)
   const [liveSubState, setLiveSubState] = useState(subState)
+  const previousSubStateRef = useRef(subState)
+  const redirectScheduledRef = useRef(false)
 
-  // ── Realtime listeners ────────────────────────
   useEffect(() => {
+    setLiveRequest(latestRequest)
+    setLiveSubState(subState)
+    previousSubStateRef.current = subState
+  }, [latestRequest, subState])
+
+  const syncSubscription = useCallback(async () => {
     const supabase = createClient()
-    
-    // Listen to subscription_requests for this gym
-    const reqChannel = supabase
-      .channel(`gym-${gym.id}-requests`)
-      .on(
-        'postgres_changes',
-        {
+    const [requestResult, gymResult] = await Promise.all([
+      supabase
+        .from('subscription_requests')
+        .select('id, status, submitted_at, rejection_reason')
+        .eq('gym_id', gym.id)
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('gyms')
+        .select('subscription_status, plan_type, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at')
+        .eq('id', gym.id)
+        .single(),
+    ])
+
+    if (!requestResult.error) setLiveRequest(requestResult.data)
+    if (gymResult.data) {
+      const nextState = computeSubscriptionState(gymResult.data)
+      const previousState = previousSubStateRef.current
+      previousSubStateRef.current = nextState
+      setLiveSubState(nextState)
+
+      const isAccessible = !nextState.isExpired
+        && !nextState.isExpiringSoon
+        && (nextState.status === 'active' || nextState.status === 'trial')
+      const accessWasBlocked = previousState.isExpired
+        || previousState.isExpiringSoon
+        || (previousState.status !== 'active' && previousState.status !== 'trial')
+
+      if (isAccessible && accessWasBlocked && !redirectScheduledRef.current) {
+        redirectScheduledRef.current = true
+        toast.success(
+          nextState.status === 'active'
+            ? 'Your subscription has been activated! Redirecting...'
+            : 'Your trial has been extended! Redirecting...',
+        )
+        window.setTimeout(() => { window.location.href = '/dashboard' }, 1_500)
+      }
+    }
+  }, [gym.id])
+
+  useRealtimeChannel({
+    channelName: `owner_subscription_${gym.id}`,
+    subscriptions: [
+      {
+        type: 'postgres_changes',
+        filter: {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'subscription_requests',
+          filter: `gym_id=eq.${gym.id}`,
+        },
+        callback: syncSubscription,
+      },
+      {
+        type: 'postgres_changes',
+        filter: {
           event: 'UPDATE',
           schema: 'public',
           table: 'subscription_requests',
           filter: `gym_id=eq.${gym.id}`,
         },
-        (payload: any) => {
-          const { status, rejection_reason } = payload.new
-          
-          setLiveRequest(prev => prev ? { ...prev, status, rejection_reason } : payload.new)
-          
-          if (status === 'rejected') {
-            toast.error('Your payment request was rejected.')
-            setSuccess(false) // If they were on the success screen, drop them back to plans
-          } else if (status === 'approved') {
-            // The gym channel listener will handle the redirect once the gyms
-            // row is updated. Show success state here immediately.
-            setSuccess(true)
-            toast.success('Payment approved! Redirecting...')
-          }
-        }
-      )
-      // Also listen for broadcast from admin route (fallback if postgres_changes is slow)
-      .on(
-        'broadcast',
-        { event: 'subscription_reviewed' },
-        (payload: any) => {
-          const { action, rejection_reason: reason } = payload.payload ?? {}
-          if (action === 'rejected') {
-            setLiveRequest(prev => prev ? { ...prev, status: 'rejected', rejection_reason: reason } : prev)
+        callback: async (payload) => {
+          await syncSubscription()
+          if (payload.eventType !== 'UPDATE') return
+          if (payload.new?.status === 'rejected') {
             toast.error('Your payment request was rejected.')
             setSuccess(false)
-          } else if (action === 'approved') {
-            setLiveRequest(prev => prev ? { ...prev, status: 'approved' } : prev)
+          } else if (payload.new?.status === 'approved') {
             setSuccess(true)
-            toast.success('Payment approved! Redirecting...')
           }
-        }
-      )
-      .subscribe()
-
-    // Listen to gyms table for this gym (subscription status changes)
-    const gymChannel = supabase
-      .channel(`gym-${gym.id}-subclient`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'gyms',
-          filter: `id=eq.${gym.id}`,
         },
-        (payload: any) => {
-          const newState = computeSubscriptionState(payload.new)
-          setLiveSubState(newState)
+      },
+      {
+        type: 'postgres_changes',
+        filter: { event: 'UPDATE', schema: 'public', table: 'gyms', filter: `id=eq.${gym.id}` },
+        callback: syncSubscription,
+      },
+    ],
+    onResync: syncSubscription,
+  })
 
-          // If the admin activated the subscription while the user is on this
-          // page, redirect them immediately. We use window.location so the
-          // server re-renders the shell with the fresh active state.
-          if (!newState.isExpired && (newState.status === 'active' || newState.status === 'trial')) {
-            toast.success(
-              newState.status === 'active'
-                ? 'Your subscription has been activated! Redirecting...'
-                : 'Your trial has been extended! Redirecting...'
-            )
-            setTimeout(() => {
-              window.location.href = '/dashboard'
-            }, 1500)
-          }
-        }
-      )
-      .subscribe()
-
-    return () => { 
-      supabase.removeChannel(reqChannel)
-      supabase.removeChannel(gymChannel)
-    }
-  }, [gym.id])
+  useRealtimeInvalidation({
+    channelName: `gym:${gym.id}:subscription`,
+    privateChannel: true,
+    onInvalidate: syncSubscription,
+  })
 
   const isPending  = liveRequest?.status === 'pending'
   const isApproved = liveRequest?.status === 'approved'

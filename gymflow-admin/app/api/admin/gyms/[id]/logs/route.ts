@@ -69,15 +69,42 @@ export async function GET(
     const waEvents = (waLogs ?? []).map((w) => ({
       id: `wa-${w.id}`,
       type: 'whatsapp_sent' as const,
-      title: `WhatsApp: ${w.template_name.replace(/_/g, ' ')}`,
-      subtitle: w.status === 'sent' ? 'Delivered' : w.status === 'failed' ? `Failed: ${w.error_message ?? 'unknown'}` : 'Skipped',
+      title: `WhatsApp automation: ${w.template_name.replace(/_/g, ' ')}`,
+      subtitle: w.status === 'sent' ? 'Queued successfully' : w.status === 'failed' ? `Failed: ${w.error_message ?? 'unknown'}` : w.status,
       meta: w.phone_number ?? undefined,
       timestamp: w.sent_at,
       icon: 'message-circle',
       color: w.status === 'sent' ? 'green' : w.status === 'failed' ? 'red' : 'amber',
     }))
 
-    // ── 3. Subscription audit events ─────────────────────────────────────────
+    // ── 3. WhatsApp delivery/read status changes ───────────────────────────
+    let waMessagesQuery = supabase
+      .from('whatsapp_messages')
+      .select('id, message_type, direction, status, from_number, to_number, error_message, created_at, updated_at')
+      .eq('gym_id', gymId)
+      .order('updated_at', { ascending: false })
+      .limit(limit)
+
+    if (cursor) waMessagesQuery = waMessagesQuery.lt('updated_at', cursor)
+
+    const { data: waMessages } = await waMessagesQuery
+    const waMessageEvents = (waMessages ?? []).map((message) => {
+      const status = message.status ?? 'received'
+      return {
+        id: `wa-message-${message.id}`,
+        type: 'whatsapp_sent' as const,
+        title: `WhatsApp ${message.direction}: ${message.message_type}`,
+        subtitle: status === 'failed'
+          ? `Failed: ${message.error_message ?? 'unknown error'}`
+          : `Status: ${status}`,
+        meta: message.direction === 'outbound' ? message.to_number : message.from_number,
+        timestamp: message.updated_at ?? message.created_at,
+        icon: 'message-circle',
+        color: status === 'failed' ? 'red' : status === 'read' ? 'emerald' : 'green',
+      }
+    })
+
+    // ── 4. Subscription audit events ────────────────────────────────────────
     let auditQuery = supabase
       .from('subscription_audit_logs')
       .select('id, action, performed_by, notes, created_at, prev_status, new_status, prev_plan, new_plan')
@@ -101,7 +128,7 @@ export async function GET(
     }))
 
     // ── Merge & sort ─────────────────────────────────────────────────────────
-    const all = [...memberEvents, ...waEvents, ...auditEvents]
+    const all = [...memberEvents, ...waEvents, ...waMessageEvents, ...auditEvents]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, limit * 2) // cap final list
 

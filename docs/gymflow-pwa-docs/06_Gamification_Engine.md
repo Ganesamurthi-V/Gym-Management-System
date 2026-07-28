@@ -117,7 +117,9 @@ Each badge has:
 - `description` — how to earn it
 - `icon_url` — SVG/PNG icon in Supabase Storage
 - `xp_reward` — XP awarded on first earn
-- `trigger_type` — how the badge is checked (see 4.3)
+- `trigger_type` — one of the trigger types in §4.3; persisted in `badges.trigger_type`
+
+The streak catalogue includes all milestones promised in §3.3: `streak_7`, `streak_14`, `streak_30`, `streak_60`, `streak_100`, and `streak_365`.
 
 ### 4.2 Badge Catalogue
 
@@ -127,8 +129,11 @@ Each badge has:
 |---|---|---|
 | `first_checkin` | First Step | Attend gym for the first time |
 | `streak_7` | Week Warrior | 7-day attendance streak |
+| `streak_14` | Fortnight Fighter | 14-day attendance streak |
 | `streak_30` | Monthly Machine | 30-day streak |
+| `streak_60` | Iron Discipline | 60-day streak |
 | `streak_100` | Century Club | 100-day streak |
+| `streak_365` | Year-Round Legend | 365-day streak |
 | `visits_10` | Getting Started | 10 total visits |
 | `visits_50` | Regular | 50 total visits |
 | `visits_100` | Centurion | 100 total visits |
@@ -327,7 +332,7 @@ On level up (detected via Realtime subscription on `member_xp`):
 | Scenario | Handling |
 |---|---|
 | Member checks in twice same day | Second attendance insert ignored (unique constraint); XP awarded only once |
-| Backdated attendance by admin | XP and streak recalculated from DB function — correct |
+| Backdated attendance by gym owner | XP and streak recalculated from DB function — correct |
 | Member deleted and re-added | New `member_id` → XP resets to 0 |
 | Gym disables gamification (future flag) | Hide XP bar, badges, leaderboard; XP transactions still record |
 | Challenge end date passes with member in progress | Show as "Expired — X% complete"; no XP if not at 100% |

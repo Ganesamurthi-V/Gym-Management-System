@@ -1,11 +1,10 @@
 /**
  * Supabase Realtime client for the admin mobile app.
  *
- * This client is used ONLY for real-time subscriptions (postgres_changes).
- * All REST API calls still go through the admin API via `apiClient` (axios).
- *
- * We use the anon key which is safe for read subscriptions — Supabase RLS
- * and postgres_changes filters handle row-level access control.
+ * This anonymous client receives only payload-free public broadcast
+ * invalidations. Admin mobile uses a separate API JWT, not Supabase Auth, so it
+ * must not consume global postgres_changes or trust broadcast payloads as data.
+ * Every event causes a debounced re-fetch through the authenticated admin API.
  */
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';

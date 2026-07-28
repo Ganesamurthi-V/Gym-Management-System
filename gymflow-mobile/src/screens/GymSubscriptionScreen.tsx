@@ -17,7 +17,6 @@ import {
   Modal,
   Animated,
   Linking,
-  Dimensions,
   RefreshControl,
   Platform,
   KeyboardAvoidingView,
@@ -26,7 +25,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
 
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import {
   fetchSubscriptionDetail,
   activateSubscription,
@@ -42,12 +41,10 @@ import {
   type AuditLog,
   type GymActivityEvent,
 } from '@/lib/api';
-import { getSupabaseRealtimeClient } from '@/lib/supabase-realtime';
+import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GymSubscription'>;
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Design tokens (matching the reference image) ─────────────────────────────
 
@@ -131,12 +128,6 @@ function fmtDateTime(iso?: string | null, fallback = '—'): string {
   });
 }
 
-function daysRemaining(iso?: string | null): number | null {
-  if (!iso) return null;
-  const diff = new Date(iso).getTime() - Date.now();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
 function formatCurrency(amount?: number | null): string {
   if (amount == null) return '₹0';
   const rounded = Math.round(amount);
@@ -163,25 +154,6 @@ function getStatusColor(status: string) {
     case 'suspended': return D.amber;
     default: return D.textMuted;
   }
-}
-
-function getStatusBg(status: string) {
-  switch (status) {
-    case 'active': return D.emeraldBg;
-    case 'expiring': return D.amberBg;
-    case 'trial': return D.amberBg;
-    case 'expired': return D.redBg;
-    case 'cancelled': return D.redBg;
-    case 'suspended': return D.amberBg;
-    default: return D.input;
-  }
-}
-
-function getDaysBadgeColor(days: number | null): string {
-  if (days === null) return D.emerald;
-  if (days > 14) return D.emerald;
-  if (days > 0) return D.amber;
-  return D.red;
 }
 
 // ─── Confirmation Dialog ────────────────────────────────────────────────────────
@@ -268,7 +240,7 @@ const dialogStyles = StyleSheet.create({
 
 type FABAction = { icon: string; label: string; onPress: () => void; color?: string };
 
-function FABSpeedDial({ actions, ownerPhone }: { actions: FABAction[]; ownerPhone?: string }) {
+function FABSpeedDial({ actions }: { actions: FABAction[] }) {
   const [open, setOpen] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -335,7 +307,7 @@ function StickyBottomBar({ visible, saving, onSave, onCancel }: {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(anim, { toValue: visible ? 1 : 0, useNativeDriver: true }).start();
-  }, [visible]);
+  }, [visible, anim]);
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [100, 0] });
 
   return (
@@ -375,7 +347,7 @@ const stickyStyles = StyleSheet.create({
 
 // ─── DateCard ──────────────────────────────────────────────────────────────────
 
-function DateCard({ label, value, onChange }: { label: string; value: Date | null; onChange: (d: Date) => void }) {
+function DateCard({ label, value }: { label: string; value: Date | null; onChange: (d: Date) => void }) {
   const displayDate = value ? fmtDate(value.toISOString()) : 'Not Set';
   return (
     <View style={dateCardStyles.card}>
@@ -601,29 +573,21 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [gymId]);
+  }, [gymId, navigation]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  useEffect(() => {
-    const supabase = getSupabaseRealtimeClient();
-    const channel = supabase
-      .channel(`admin_mobile_gym_${gymId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'gyms', filter: `id=eq.${gymId}` },
-        () => { loadData(); }
-      )
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'subscription_audit_logs', filter: `gym_id=eq.${gymId}` },
-        () => { loadData(); if (logsLoadedRef.current) loadActivityLogs(); }
-      )
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_messages', filter: `gym_id=eq.${gymId}` },
-        (payload: any) => {
-          const subject: string = payload.new?.subject ?? 'New message';
-          Alert.alert('📣 GymFlow Support', subject, [{ text: 'OK', style: 'default' }]);
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [gymId, loadData, loadActivityLogs]);
+  useRealtimeInvalidation({
+    channelName: 'admin:gyms',
+    onInvalidate: loadData,
+  });
+  useRealtimeInvalidation({
+    channelName: 'admin:activity',
+    onInvalidate: async () => {
+      await loadData();
+      if (logsLoadedRef.current) await loadActivityLogs();
+    },
+  });
 
   const autoRefreshFiredRef = React.useRef(false);
 
@@ -1402,7 +1366,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       <StickyBottomBar visible={dirty} saving={saving} onSave={handleSave} onCancel={handleDiscard} />
 
       {/* ─── FAB ─────────────────────────────────────────── */}
-      <FABSpeedDial actions={fabActions} ownerPhone={gym.phone || owner?.phone} />
+      <FABSpeedDial actions={fabActions} />
 
       {/* ─── Confirm Dialog ──────────────────────────────── */}
       <ConfirmDialog

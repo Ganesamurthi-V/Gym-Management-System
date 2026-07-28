@@ -1,7 +1,7 @@
 # GymFlow Member PWA — Development Roadmap
 
 **Version:** 1.1
-**Target MVP:** 9 weeks from kickoff (OTP login removed from M0; saves ~4h)
+**Target MVP:** 10 weeks from kickoff (OTP login removed from M0; saves ~4h)
 
 ---
 
@@ -35,7 +35,7 @@
 | Protected route middleware | `middleware.ts` — redirect to /login if no session | 2h |
 | Bottom navigation shell (5 tabs) | Home, Workout, Progress, Rewards, Profile | 3h |
 | Web App Manifest | Icons, colours, shortcuts | 2h |
-| next-pwa configuration | Workbox, basic caching strategies | 3h |
+| Serwist service worker configuration | Maintained Workbox-compatible integration, static asset caches, secure offline fallback | 3h |
 | Vercel deployment + CI | GitHub Actions, preview URLs | 2h |
 | iOS Safari meta tags | apple-touch-icon, status bar | 1h |
 | `design-tokens.css` integration | Generate tokens from `04_UI_UX_Guidelines` v3.0; confirm CSS variables render | 1h |
@@ -145,7 +145,7 @@
 | `award_xp` Edge Function | Calls DB `award_xp()` function; checks weekly measurement cap | 4h |
 | DB triggers for XP events | Attendance INSERT → 50 XP; workout session complete → 100 XP | 6h |
 | `longest_streak` update in `award_xp` | Already in DB function; verify via tests | 1h |
-| Badge catalogue seed data | 25 badges, icon placeholders (emoji until assets ready) | 3h |
+| Badge catalogue seed data | 28 badges, icon placeholders (emoji until assets ready) | 3h |
 | Badge trigger Edge Function | Runs on attendance/workout/referral events | 8h |
 | `member_xp` Realtime subscription | Level-up detection; trigger celebration | 3h |
 | Rewards tab — level/XP hero card | Level badge, XP bar with `--gradient-xp` glow | 4h |

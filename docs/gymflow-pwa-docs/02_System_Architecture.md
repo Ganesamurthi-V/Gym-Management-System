@@ -1,7 +1,7 @@
 # GymFlow Member PWA — System Architecture
 
-**Version:** 1.0  
-**Status:** Planning  
+**Version:** 1.1
+**Status:** Planning
 
 ---
 
@@ -83,6 +83,9 @@ The main web app and Member PWA share the same Supabase project. RLS policies en
 
 ## 4. Authentication Flow
 
+**Supported in v1: Email + Password only.**
+Magic Link is planned for v1.1+.
+
 ```
 Member opens PWA
        │
@@ -96,9 +99,8 @@ Check local JWT (Supabase session)
        │ No  →
        ▼
 Auth Screen
-├── Email + Password
-│     └── POST /auth/v1/token?grant_type=password
-└── Magic Link (Future)
+└── Email + Password
+      └── POST /auth/v1/token?grant_type=password
        │
        ▼
 Supabase returns access_token + refresh_token
@@ -181,6 +183,7 @@ Realtime is used sparingly to avoid battery drain on mobile.
 | `notifications:{member_id}` | INSERT | Show in-app banner |
 | `attendance:{gym_id}:{member_id}` | INSERT | Update attendance count |
 | `announcements:{gym_id}` | INSERT | Show announcement badge |
+| `xp:{member_id}` | UPDATE | Trigger level-up celebration if level changed |
 
 All realtime channels require a valid JWT. Channels are joined on app foreground and paused/closed on background (Page Visibility API).
 
@@ -251,7 +254,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=BM...
 VAPID_PRIVATE_KEY=...          # Server only (Edge Functions)
-NEXT_PUBLIC_APP_URL=https://member.gymflow.in
+NEXT_PUBLIC_APP_URL=https://member.gymflow.sbs
 ```
 
 ---

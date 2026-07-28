@@ -1,10 +1,10 @@
 # GymFlow Member PWA — Database Schema
 
-**Version:** 1.0  
-**Database:** PostgreSQL 15 via Supabase  
-**Schema:** `public`  
+**Version:** 1.1
+**Database:** PostgreSQL 15 via Supabase
+**Schema:** `public`
 
-> This schema extends the existing GymFlow Admin Portal database. Member PWA reads from and writes to the same tables. New tables added for PWA-specific features are marked **[PWA NEW]**.
+> This schema extends the existing GymFlow Admin Portal database. Member PWA reads from and writes to the same tables. New tables added for PWA-specific features are marked **[PWA NEW]**. Columns added to existing tables for PWA are marked **[PWA ADD]**.
 
 ---
 
@@ -33,29 +33,56 @@ CREATE TABLE gyms (
 
 ### 1.2 `members`
 
+The `members` table is the primary identity record. It is linked to a Supabase Auth user via `auth_user_id`. Fields required by the PWA (profile photo, member code, emergency contact, medical notes, blood group) are added as **[PWA ADD]** columns.
+
 ```sql
 CREATE TABLE IF NOT EXISTS members (
   id                UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
   gym_id            UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  auth_user_id      UUID        UNIQUE REFERENCES auth.users(id) ON DELETE SET NULL, -- [PWA ADD] Links to Supabase Auth
   member_number     INTEGER     NOT NULL,
   name              TEXT        NOT NULL,
   phone             TEXT        NOT NULL,
+  email             TEXT,                    -- [PWA ADD] Used for email+password auth
+  photo_url         TEXT,                    -- [PWA ADD] Profile photo in Supabase Storage
+  member_code       TEXT,                    -- [PWA ADD] Display code e.g. "GF-00142"; generated on insert
   gender            TEXT        CHECK (gender IN ('male', 'female', 'other')),
   area              TEXT,
   age               INTEGER     CHECK (age > 0 AND age < 120),
-  date_of_birth     DATE,                    -- Used for automated birthday_wishes WhatsApp messages
+  date_of_birth     DATE,
+  blood_group       TEXT        CHECK (blood_group IN ('A+','A-','B+','B-','AB+','AB-','O+','O-')), -- [PWA ADD]
+  emergency_name    TEXT,                    -- [PWA ADD] Emergency contact name
+  emergency_phone   TEXT,                    -- [PWA ADD] Emergency contact phone
+  medical_notes     TEXT,                    -- [PWA ADD] Free text, visible to trainer in admin
   pending_amount    INTEGER     NOT NULL DEFAULT 0,
-  legacy_member_id  TEXT        DEFAULT NULL, -- Original ID from an external/legacy system, preserved during import
-  is_imported       BOOLEAN     NOT NULL DEFAULT false, -- True for members created via Excel/CSV import; suppresses welcome template
+  legacy_member_id  TEXT        DEFAULT NULL,
+  is_imported       BOOLEAN     NOT NULL DEFAULT false,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(gym_id, member_number)
 );
 
 CREATE INDEX IF NOT EXISTS idx_members_gym_id ON members(gym_id);
 CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
+CREATE INDEX IF NOT EXISTS idx_members_email ON members(email);            -- [PWA ADD]
+CREATE INDEX IF NOT EXISTS idx_members_auth_user_id ON members(auth_user_id); -- [PWA ADD]
 CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_number);
 CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_members_gym_dues ON members(gym_id, pending_amount) WHERE pending_amount > 0;
+
+-- Auto-generate member_code on insert if not provided
+CREATE OR REPLACE FUNCTION generate_member_code()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.member_code IS NULL THEN
+    NEW.member_code := 'GF-' || LPAD(NEW.member_number::TEXT, 5, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_generate_member_code
+  BEFORE INSERT ON members
+  FOR EACH ROW EXECUTE FUNCTION generate_member_code();
 ```
 
 ### 1.3 `membership_plans`
@@ -194,16 +221,19 @@ CREATE TABLE workout_exercises (
 
 ```sql
 CREATE TABLE workout_sessions (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id    UUID NOT NULL REFERENCES members(id),
-  gym_id       UUID NOT NULL REFERENCES gyms(id),
-  plan_id      UUID REFERENCES workout_plans(id),
-  day_id       UUID REFERENCES workout_days(id),
-  started_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-  duration_min INT,
-  notes        TEXT,
-  created_at   TIMESTAMPTZ DEFAULT NOW()
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  member_id     UUID NOT NULL REFERENCES members(id),
+  gym_id        UUID NOT NULL REFERENCES gyms(id),
+  plan_id       UUID REFERENCES workout_plans(id),
+  day_id        UUID REFERENCES workout_days(id),
+  started_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at  TIMESTAMPTZ,
+  duration_min  INT,
+  exercises_done INT DEFAULT 0,              -- Count completed at session end
+  sets_done      INT DEFAULT 0,             -- Total sets completed
+  volume_kg      NUMERIC(10,2) DEFAULT 0,   -- Estimated volume: sum(reps_done * weight_kg per set)
+  notes         TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_workout_sessions_member ON workout_sessions(member_id, started_at DESC);
@@ -218,7 +248,7 @@ CREATE TABLE workout_session_sets (
   exercise_id  UUID NOT NULL REFERENCES workout_exercises(id),
   set_number   INT NOT NULL,
   reps_done    INT,
-  weight_done  TEXT,
+  weight_done  TEXT,                         -- e.g. "20kg"; parsed client-side for volume calc
   completed    BOOLEAN DEFAULT FALSE,
   completed_at TIMESTAMPTZ,
   created_at   TIMESTAMPTZ DEFAULT NOW()
@@ -261,7 +291,7 @@ CREATE TABLE progress_photos (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   member_id   UUID NOT NULL REFERENCES members(id),
   gym_id      UUID NOT NULL REFERENCES gyms(id),
-  photo_url   TEXT NOT NULL,
+  photo_url   TEXT NOT NULL,                  -- Supabase Storage path: member-photos/{member_id}/...
   photo_type  TEXT DEFAULT 'progress'
               CHECK (photo_type IN ('before','progress','after')),
   taken_at    DATE DEFAULT CURRENT_DATE,
@@ -310,6 +340,26 @@ CREATE TABLE diet_meals (
 );
 ```
 
+### 5.3 `water_intake_logs` **[PWA NEW]**
+
+Tracks daily water intake glasses logged by the member from the diet plan screen.
+
+```sql
+CREATE TABLE water_intake_logs (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  member_id   UUID NOT NULL REFERENCES members(id),
+  gym_id      UUID NOT NULL REFERENCES gyms(id),
+  plan_id     UUID REFERENCES diet_plans(id),
+  logged_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  glasses     INT NOT NULL DEFAULT 0,         -- Tap-to-increment; 1 glass = 250ml
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (member_id, logged_date)             -- One row per member per day; UPDATE on re-tap
+);
+
+CREATE INDEX idx_water_intake_member ON water_intake_logs(member_id, logged_date DESC);
+```
+
 ---
 
 ## 6. Gamification Tables
@@ -318,12 +368,13 @@ CREATE TABLE diet_meals (
 
 ```sql
 CREATE TABLE member_xp (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id   UUID NOT NULL REFERENCES members(id),
-  gym_id      UUID NOT NULL REFERENCES gyms(id),
-  total_xp    INT NOT NULL DEFAULT 0,
-  level       INT NOT NULL DEFAULT 1,
-  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  member_id       UUID NOT NULL REFERENCES members(id),
+  gym_id          UUID NOT NULL REFERENCES gyms(id),
+  total_xp        INT NOT NULL DEFAULT 0,
+  level           INT NOT NULL DEFAULT 1,
+  longest_streak  INT NOT NULL DEFAULT 0,     -- Never decrements; updated when current streak exceeds it
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (member_id, gym_id)
 );
 ```
@@ -335,9 +386,9 @@ CREATE TABLE xp_transactions (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   member_id   UUID NOT NULL REFERENCES members(id),
   gym_id      UUID NOT NULL REFERENCES gyms(id),
-  amount      INT NOT NULL,                   -- Can be negative
+  amount      INT NOT NULL,                   -- Always positive (no deductions)
   reason      TEXT NOT NULL,
-  ref_type    TEXT,                           -- 'attendance', 'workout', 'challenge' etc.
+  ref_type    TEXT,                           -- 'attendance', 'workout_sessions', 'challenges' etc.
   ref_id      UUID,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -420,12 +471,13 @@ CREATE TABLE notifications (
   type        TEXT NOT NULL CHECK (type IN ('membership','payment','workout','diet','announcement','challenge','reward','system')),
   title       TEXT NOT NULL,
   body        TEXT,
-  data        JSONB,                          -- Arbitrary payload for deep-linking
+  data        JSONB,                          -- Arbitrary payload; must contain { "link": "/screen-path" }
   is_read     BOOLEAN DEFAULT FALSE,
   sent_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_notifications_member ON notifications(member_id, sent_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications(member_id, is_read) WHERE is_read = FALSE;
 ```
 
 ### 7.2 `push_subscriptions` **[PWA NEW]**
@@ -479,38 +531,71 @@ CREATE POLICY "Gym owners can delete members"
   ON members FOR DELETE
   USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
 
+-- Members can read and update their own record
+CREATE POLICY "members_self_read" ON members
+  FOR SELECT USING (auth_user_id = auth.uid());
+
+CREATE POLICY "members_self_update" ON members
+  FOR UPDATE USING (auth_user_id = auth.uid())
+  WITH CHECK (auth_user_id = auth.uid());
+
 -- Members can read their own membership
 CREATE POLICY "membership_self" ON memberships
-  FOR SELECT USING (member_id = auth.uid());
+  FOR SELECT USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
 
 -- Members can read/insert their own attendance
 CREATE POLICY "attendance_self_read" ON attendance
-  FOR SELECT USING (member_id = auth.uid());
+  FOR SELECT USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
 
--- Members can insert their own workout sessions
+-- Members can insert and update their own workout sessions
 CREATE POLICY "workout_session_self" ON workout_sessions
-  FOR ALL USING (member_id = auth.uid());
+  FOR ALL USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
+
+-- Members can insert their own session sets
+CREATE POLICY "workout_session_sets_self" ON workout_session_sets
+  FOR ALL USING (
+    session_id IN (
+      SELECT id FROM workout_sessions
+      WHERE member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid())
+    )
+  );
 
 -- Members can read gym info for their gym
 CREATE POLICY "gym_member_read" ON gyms
   FOR SELECT USING (
-    id IN (SELECT gym_id FROM members WHERE id = auth.uid())
+    id IN (SELECT gym_id FROM members WHERE auth_user_id = auth.uid())
   );
 
 -- Members can read workout plans assigned to them
 CREATE POLICY "workout_plan_self" ON workout_plans
   FOR SELECT USING (
-    member_id = auth.uid() OR member_id IS NULL
+    member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid())
+    OR member_id IS NULL
   );
 
 -- Members can read notifications addressed to them
 CREATE POLICY "notifications_self" ON notifications
-  FOR SELECT USING (member_id = auth.uid());
+  FOR SELECT USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
 
 -- Members can update is_read on their own notifications
 CREATE POLICY "notifications_self_update" ON notifications
-  FOR UPDATE USING (member_id = auth.uid())
-  WITH CHECK (member_id = auth.uid());
+  FOR UPDATE USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()))
+  WITH CHECK (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
+
+-- Members can read/write their own progress data
+CREATE POLICY "progress_measurements_self" ON progress_measurements
+  FOR ALL USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
+
+CREATE POLICY "progress_photos_self" ON progress_photos
+  FOR ALL USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
+
+-- Members can read/write their water intake
+CREATE POLICY "water_intake_self" ON water_intake_logs
+  FOR ALL USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
+
+-- Members can read their own XP
+CREATE POLICY "member_xp_self" ON member_xp
+  FOR SELECT USING (member_id = (SELECT id FROM members WHERE auth_user_id = auth.uid()));
 ```
 
 ---
@@ -536,7 +621,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
--- Award XP and update member_xp total
+-- Award XP and update member_xp total + longest_streak
 CREATE OR REPLACE FUNCTION award_xp(
   p_member_id UUID,
   p_gym_id UUID,
@@ -545,17 +630,90 @@ CREATE OR REPLACE FUNCTION award_xp(
   p_ref_type TEXT DEFAULT NULL,
   p_ref_id UUID DEFAULT NULL
 ) RETURNS VOID AS $$
+DECLARE
+  v_current_streak INT;
 BEGIN
   INSERT INTO xp_transactions (member_id, gym_id, amount, reason, ref_type, ref_id)
   VALUES (p_member_id, p_gym_id, p_amount, p_reason, p_ref_type, p_ref_id);
 
-  INSERT INTO member_xp (member_id, gym_id, total_xp)
-  VALUES (p_member_id, p_gym_id, p_amount)
+  -- Compute current streak to update longest_streak
+  v_current_streak := get_attendance_streak(p_member_id);
+
+  INSERT INTO member_xp (member_id, gym_id, total_xp, longest_streak)
+  VALUES (p_member_id, p_gym_id, p_amount, v_current_streak)
   ON CONFLICT (member_id, gym_id)
   DO UPDATE SET
-    total_xp = member_xp.total_xp + p_amount,
-    level = GREATEST(1, FLOOR((member_xp.total_xp + p_amount) / 500) + 1)::INT,
-    updated_at = NOW();
+    total_xp       = member_xp.total_xp + p_amount,
+    level          = GREATEST(1, FLOOR((member_xp.total_xp + p_amount) / 500) + 1)::INT,
+    longest_streak = GREATEST(member_xp.longest_streak, v_current_streak),
+    updated_at     = NOW();
 END;
 $$ LANGUAGE plpgsql;
+
+-- Leaderboard RPC
+CREATE OR REPLACE FUNCTION get_leaderboard(
+  p_gym_id UUID,
+  p_type TEXT,   -- 'weekly_xp' | 'monthly_xp' | 'alltime_xp' | 'weekly_attendance' | 'monthly_attendance' | 'alltime_attendance'
+  p_limit INT DEFAULT 50
+)
+RETURNS TABLE (rank BIGINT, member_id UUID, name TEXT, photo_url TEXT, value BIGINT) AS $$
+DECLARE
+  v_period_start TIMESTAMPTZ;
+BEGIN
+  IF p_type LIKE 'weekly_%' THEN
+    v_period_start := DATE_TRUNC('week', NOW() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata';
+  ELSIF p_type LIKE 'monthly_%' THEN
+    v_period_start := DATE_TRUNC('month', NOW() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata';
+  END IF;
+
+  IF p_type IN ('weekly_xp', 'monthly_xp') THEN
+    RETURN QUERY
+      SELECT
+        RANK() OVER (ORDER BY SUM(x.amount) DESC) AS rank,
+        m.id, m.name, m.photo_url,
+        SUM(x.amount)::BIGINT AS value
+      FROM xp_transactions x
+      JOIN members m ON m.id = x.member_id
+      WHERE x.gym_id = p_gym_id AND x.created_at >= v_period_start
+      GROUP BY m.id, m.name, m.photo_url
+      ORDER BY value DESC
+      LIMIT p_limit;
+  ELSIF p_type = 'alltime_xp' THEN
+    RETURN QUERY
+      SELECT
+        RANK() OVER (ORDER BY mx.total_xp DESC) AS rank,
+        m.id, m.name, m.photo_url,
+        mx.total_xp::BIGINT AS value
+      FROM member_xp mx
+      JOIN members m ON m.id = mx.member_id
+      WHERE mx.gym_id = p_gym_id
+      ORDER BY value DESC
+      LIMIT p_limit;
+  ELSIF p_type IN ('weekly_attendance', 'monthly_attendance') THEN
+    RETURN QUERY
+      SELECT
+        RANK() OVER (ORDER BY COUNT(*) DESC) AS rank,
+        m.id, m.name, m.photo_url,
+        COUNT(*)::BIGINT AS value
+      FROM attendance a
+      JOIN members m ON m.id = a.member_id
+      WHERE a.gym_id = p_gym_id AND a.date >= v_period_start::DATE
+      GROUP BY m.id, m.name, m.photo_url
+      ORDER BY value DESC
+      LIMIT p_limit;
+  ELSIF p_type = 'alltime_attendance' THEN
+    RETURN QUERY
+      SELECT
+        RANK() OVER (ORDER BY COUNT(*) DESC) AS rank,
+        m.id, m.name, m.photo_url,
+        COUNT(*)::BIGINT AS value
+      FROM attendance a
+      JOIN members m ON m.id = a.member_id
+      WHERE a.gym_id = p_gym_id
+      GROUP BY m.id, m.name, m.photo_url
+      ORDER BY value DESC
+      LIMIT p_limit;
+  END IF;
+END;
+$$ LANGUAGE plpgsql STABLE;
 ```

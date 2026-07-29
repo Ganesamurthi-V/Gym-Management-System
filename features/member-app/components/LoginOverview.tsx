@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Users, LogIn, CalendarRange, MailQuestion, Ban, Clock } from 'lucide-react'
 import type { LoginOverviewSummary, RecentLogin } from '@/types/member-app'
-import { ONLINE_THRESHOLD_MINUTES } from '../services/memberAppService'
+import { ONLINE_THRESHOLD_MINUTES } from '@/types/member-app'
 import { Badge, Card, EmptyState, SectionHeader, StatCard, TableWrap, Td, Th, Tr } from './ui'
 
 function formatDateTime(iso: string): string {

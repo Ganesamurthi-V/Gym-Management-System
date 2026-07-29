@@ -9,7 +9,7 @@ import {
 import type {
   InvitationStatus, MemberBulkAction, MemberPortalRow, MemberRowAction, PortalStatus,
 } from '@/types/member-app'
-import { runMemberBulkAction, runMemberRowAction } from '../services/memberAppService'
+import { memberRowAction, memberBulkAction } from '@/app/member-app/actions'
 import { useAsyncAction } from '../hooks/useMemberAppActions'
 import { useFilteredRows, useRowSelection, useTableFilters } from '../hooks/useMemberAppFilters'
 import { Badge, Card, EmptyState, SearchInput, SectionHeader, TableWrap, Td, Th, Tr, ChipFilter } from './ui'
@@ -102,13 +102,13 @@ export default function MemberPortalTable({ rows: initialRows }: { rows: MemberP
   }
 
   async function handleRowAction(row: MemberPortalRow, action: MemberRowAction) {
-    const result = await run(`${row.memberId}:${action}`, () => runMemberRowAction(action, row.memberId))
+    const result = await run(`${row.memberId}:${action}`, () => memberRowAction(action, row.memberId))
     if (result?.success) applyLocal(row.memberId, action)
   }
 
   async function handleBulk(action: MemberBulkAction) {
     const ids = [...selection.selected]
-    const result = await run(action, () => runMemberBulkAction(action, ids))
+    const result = await run(action, () => memberBulkAction(action, ids))
     if (!result?.success) return
 
     if (action === 'bulk_enable_portal') ids.forEach(id => applyLocal(id, 'enable_portal'))

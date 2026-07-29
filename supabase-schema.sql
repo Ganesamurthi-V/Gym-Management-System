@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS members (
   pending_amount      INTEGER     NOT NULL DEFAULT 0,
   legacy_member_id    TEXT        DEFAULT NULL,
   is_imported         BOOLEAN     NOT NULL DEFAULT false,
+  -- Portal management (Member App module)
+  portal_enabled      BOOLEAN     NOT NULL DEFAULT false,
+  portal_suspended    BOOLEAN     NOT NULL DEFAULT false,
+  invitation_status   TEXT        NOT NULL DEFAULT 'not_sent'
+                                  CHECK (invitation_status IN ('not_sent','pending','delivered','activated','expired')),
+  invitation_sent_at  TIMESTAMPTZ,
+  portal_activated_at TIMESTAMPTZ,
+  last_portal_login   TIMESTAMPTZ,
   created_at          TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(gym_id, member_number)
 );
@@ -279,6 +287,42 @@ CREATE TABLE IF NOT EXISTS subscription_audit_logs (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ── member_portal_activity ────────────────────────────────────
+-- Append-only event log for portal-related actions (owner or member).
+CREATE TABLE IF NOT EXISTS member_portal_activity (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id      UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id   UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  activity    TEXT        NOT NULL CHECK (activity IN (
+    'portal_activated', 'logged_in', 'password_reset',
+    'membership_renewed', 'membership_expired',
+    'invitation_resent', 'portal_disabled', 'portal_enabled'
+  )),
+  performed_by TEXT       NOT NULL DEFAULT 'system',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── member_app_settings ──────────────────────────────────────
+-- One row per gym. Portal configuration managed from the Owner Portal.
+CREATE TABLE IF NOT EXISTS member_app_settings (
+  gym_id              UUID        PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
+  portal_name         TEXT        NOT NULL DEFAULT '',
+  brand_logo_url      TEXT        NOT NULL DEFAULT '',
+  primary_colour      TEXT        NOT NULL DEFAULT '#2563EB',
+  support_email       TEXT        NOT NULL DEFAULT '',
+  support_phone       TEXT        NOT NULL DEFAULT '',
+  privacy_policy_url  TEXT        NOT NULL DEFAULT '',
+  terms_url           TEXT        NOT NULL DEFAULT '',
+  invitation_expiry   TEXT        NOT NULL DEFAULT '7d'
+    CHECK (invitation_expiry IN ('24h','48h','7d','30d')),
+  default_language    TEXT        NOT NULL DEFAULT 'en'
+    CHECK (default_language IN ('en','ta','hi')),
+  timezone            TEXT        NOT NULL DEFAULT 'Asia/Kolkata',
+  maintenance_mode    BOOLEAN     NOT NULL DEFAULT false,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ── gym_usage_stats ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS gym_usage_stats (
   gym_id              UUID    PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
@@ -425,6 +469,12 @@ CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
 CREATE INDEX IF NOT EXISTS idx_members_member_number ON members(gym_id, member_number);
 CREATE INDEX IF NOT EXISTS idx_members_gym_created ON members(gym_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_members_gym_dues ON members(gym_id, pending_amount) WHERE pending_amount > 0;
+CREATE INDEX IF NOT EXISTS idx_members_portal_status ON members(gym_id, portal_enabled, invitation_status);
+CREATE INDEX IF NOT EXISTS idx_members_last_portal_login ON members(gym_id, last_portal_login DESC NULLS LAST) WHERE last_portal_login IS NOT NULL;
+
+-- member_portal_activity
+CREATE INDEX IF NOT EXISTS idx_portal_activity_gym ON member_portal_activity(gym_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_portal_activity_member ON member_portal_activity(member_id, created_at DESC);
 
 -- memberships
 CREATE INDEX IF NOT EXISTS idx_memberships_gym_id ON memberships(gym_id);
@@ -543,6 +593,8 @@ ALTER TABLE inventory               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_units         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_sales         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workout_programs        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_portal_activity  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_app_settings     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_requests   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_usage_stats         ENABLE ROW LEVEL SECURITY;
@@ -770,6 +822,28 @@ CREATE POLICY "Gym owners can update programs"
 CREATE POLICY "Gym owners can delete programs"
   ON workout_programs FOR DELETE
   USING (EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid()));
+
+-- ── member_portal_activity ───────────────────────────────────
+CREATE POLICY "Gym owners can view portal activity"
+  ON member_portal_activity FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_portal_activity.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can insert portal activity"
+  ON member_portal_activity FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = member_portal_activity.gym_id AND owner_id = auth.uid()));
+
+-- ── member_app_settings ──────────────────────────────────────
+CREATE POLICY "Gym owners can view their app settings"
+  ON member_app_settings FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_app_settings.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can upsert their app settings"
+  ON member_app_settings FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = member_app_settings.gym_id AND owner_id = auth.uid()));
+
+CREATE POLICY "Gym owners can update their app settings"
+  ON member_app_settings FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_app_settings.gym_id AND owner_id = auth.uid()));
 
 -- ── subscription_requests ────────────────────────────────────
 DROP POLICY IF EXISTS "gym owner read own requests" ON subscription_requests;

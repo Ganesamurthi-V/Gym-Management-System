@@ -7,8 +7,8 @@ import {
 } from 'lucide-react'
 import type { MaintenanceStatus, ServiceHealth } from '@/types/member-app'
 import {
-  clearMemberAppCache, resendFailedInvitations, retryFailedNotifications, setMaintenanceMode,
-} from '../services/memberAppService'
+  clearMemberAppCache, resendFailedInvitations, retryFailedNotifications, toggleMaintenanceMode,
+} from '@/app/member-app/actions'
 import { useAsyncAction } from '../hooks/useMemberAppActions'
 import { Badge, Card, SectionHeader, StatusDot, Toggle } from './ui'
 import type { BadgeTone } from './ui'
@@ -52,7 +52,6 @@ function StatusRow({
 }
 
 export default function MaintenancePanel({
-  gymId,
   maintenance,
 }: {
   gymId: string
@@ -69,7 +68,7 @@ export default function MaintenancePanel({
   )
 
   async function applyMaintenance(next: boolean) {
-    const result = await run('toggle_maintenance', () => setMaintenanceMode(gymId, next))
+    const result = await run('toggle_maintenance', () => toggleMaintenanceMode(next))
     if (result?.success) setStatus(prev => ({ ...prev, maintenanceMode: next }))
     setConfirmOpen(false)
   }
@@ -167,7 +166,7 @@ export default function MaintenancePanel({
             icon={<Trash2 className="w-4 h-4" />}
             pending={isPending('clear_cache')}
             disabled={isBusy}
-            onClick={() => run('clear_cache', () => clearMemberAppCache(gymId))}
+            onClick={() => run('clear_cache', () => clearMemberAppCache())}
           />
 
           <ActionButton
@@ -175,7 +174,7 @@ export default function MaintenancePanel({
             icon={<Send className="w-4 h-4" />}
             pending={isPending('resend_invitations')}
             disabled={isBusy}
-            onClick={() => run('resend_invitations', () => resendFailedInvitations(gymId))}
+            onClick={() => run('resend_invitations', () => resendFailedInvitations())}
           />
 
           <ActionButton
@@ -183,7 +182,7 @@ export default function MaintenancePanel({
             icon={<RefreshCw className="w-4 h-4" />}
             pending={isPending('retry_notifications')}
             disabled={isBusy}
-            onClick={() => run('retry_notifications', () => retryFailedNotifications(gymId))}
+            onClick={() => run('retry_notifications', () => retryFailedNotifications())}
           />
         </div>
       </Card>

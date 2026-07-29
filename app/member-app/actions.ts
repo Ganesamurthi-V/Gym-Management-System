@@ -91,19 +91,27 @@ export async function memberRowAction(
 
     case 'send_invitation':
     case 'resend_invitation': {
-      const { error } = await supabase.from('members')
-        .update({
-          portal_enabled: true,
-          invitation_status: 'pending',
-          invitation_sent_at: new Date().toISOString(),
-        })
-        .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
+      // Call the invitation API route which creates Auth user, links it,
+      // and sends the WhatsApp template with the activation link.
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/member-app/invite`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memberId }),
+        },
+      )
+      const json = await res.json().catch(() => null)
+
+      if (!res.ok || !json?.success) {
+        return { success: false, message: json?.error?.message ?? 'Failed to send invitation' }
+      }
+
       if (action === 'resend_invitation') {
         await logActivity(gymId, memberId, 'invitation_resent')
       }
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: action === 'send_invitation' ? 'Invitation sent' : 'Invitation resent' }
+      return { success: true, message: json.data?.whatsappSent ? 'Invitation sent via WhatsApp' : 'Invitation created (WhatsApp delivery pending)' }
     }
 
     case 'suspend_access': {

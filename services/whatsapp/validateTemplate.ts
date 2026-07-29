@@ -125,6 +125,21 @@ export function validateTemplatePayload(
     }
   }
 
+  // ── Button (dynamic URL) ────────────────────────────────────────────────────
+  if (spec.button === 'url') {
+    const button = findComponent(p, 'button')
+    if (!button) {
+      errors.push('URL button component is required but was not sent.')
+    } else {
+      const first = (button.parameters ?? [])[0] as any
+      if (first?.type !== 'text') {
+        errors.push(`URL button parameter must be text (got type "${first?.type}").`)
+      } else if (!isMeaningful(first?.text)) {
+        errors.push('URL button parameter (token) is null, undefined, or empty.')
+      }
+    }
+  }
+
   return { valid: errors.length === 0, errors }
 }
 

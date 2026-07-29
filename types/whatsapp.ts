@@ -177,6 +177,7 @@ export type TemplateId =
   | 'membership_expired'
   | 'payment_due_reminder'
   | '_birthday_wishes'
+  | 'member_app_invitation'
 
 export interface TemplateContext {
   /** 10-digit or E.164 */
@@ -191,6 +192,8 @@ export interface TemplateContext {
   /** Rupees */
   dueAmount?: number
   memberId?: string
+  /** Secure token for the member_app_invitation dynamic URL button. */
+  invitationToken?: string
 }
 
 export interface SendResult {

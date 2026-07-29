@@ -30,7 +30,7 @@ function getGraphLimiter(): Ratelimit | null {
 }
 
 // Pages that require auth check — everything else passes through immediately
-const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/inventory', '/programs', '/account', '/subscription']
+const PROTECTED_PREFIXES = ['/dashboard', '/members', '/payments', '/attendance', '/reports', '/dues', '/import', '/inventory', '/programs', '/member-app', '/account', '/subscription']
 const AUTH_PREFIX = '/auth'
 
 // These auth pages must never redirect away even when a session exists,

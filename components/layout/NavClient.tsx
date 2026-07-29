@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Inventory',  href: '/inventory',    icon: BoxIcon },
   { label: 'Programs',   href: '/programs',    icon: ActivityIcon },
   { label: 'Reports',    href: '#',      icon: ChartIcon, comingSoon: true },
+  { label: 'Member App', href: '/member-app', icon: SmartphoneIcon },
 ]
 
 // ── Desktop sidebar nav ───────────────────────────────────────────────────────
@@ -257,6 +258,15 @@ function ActivityIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 8h-3l-2.5 5.5L4 2 2.5 8H1" />
+    </svg>
+  )
+}
+
+function SmartphoneIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="4" y="1.5" width="8" height="13" rx="1.5" />
+      <path d="M7 12.5h2" strokeLinecap="round" />
     </svg>
   )
 }

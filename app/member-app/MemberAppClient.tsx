@@ -1,42 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  LayoutDashboard, Users, MailQuestion, Activity, LogIn,
-  MessageCircle, Trophy, BarChart3, Wrench, Settings,
-} from 'lucide-react'
+import { LayoutDashboard, Users, MailQuestion, Trophy } from 'lucide-react'
 import type { MemberAppData } from '@/types/member-app'
 import OverviewCards from '@/features/member-app/components/OverviewCards'
 import MemberPortalTable from '@/features/member-app/components/MemberPortalTable'
 import InvitationActivity from '@/features/member-app/components/InvitationActivity'
-import MemberActivityLog from '@/features/member-app/components/MemberActivityLog'
-import LoginOverview from '@/features/member-app/components/LoginOverview'
-import WhatsAppTemplates from '@/features/member-app/components/WhatsAppTemplates'
 import GamificationPanel from '@/features/member-app/components/GamificationPanel'
-import AnalyticsCharts from '@/features/member-app/components/AnalyticsCharts'
-import MaintenancePanel from '@/features/member-app/components/MaintenancePanel'
-import PortalSettings from '@/features/member-app/components/PortalSettings'
 
-/**
- * Tab ids are additive: new surfaces (Push Notifications, Announcements,
- * QR Check-In, Feedback, Devices, Feature Flags, Releases, Crash Analytics)
- * slot into TABS and the switch below without touching existing sections.
- */
-type TabId =
-  | 'overview' | 'portal' | 'invitations' | 'activity' | 'logins'
-  | 'templates' | 'gamification' | 'analytics' | 'maintenance' | 'settings'
+type TabId = 'overview' | 'portal' | 'invitations' | 'gamification'
 
 const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview',     label: 'Overview',      icon: LayoutDashboard },
   { id: 'portal',       label: 'Portal Access', icon: Users },
   { id: 'invitations',  label: 'Invitations',   icon: MailQuestion },
-  { id: 'activity',     label: 'Activity',      icon: Activity },
-  { id: 'logins',       label: 'Logins',        icon: LogIn },
-  { id: 'templates',    label: 'Templates',     icon: MessageCircle },
   { id: 'gamification', label: 'Gamification',  icon: Trophy },
-  { id: 'analytics',    label: 'Analytics',     icon: BarChart3 },
-  { id: 'maintenance',  label: 'Maintenance',   icon: Wrench },
-  { id: 'settings',     label: 'Settings',      icon: Settings },
 ]
 
 export default function MemberAppClient({
@@ -50,6 +28,7 @@ export default function MemberAppClient({
 }) {
   const [tab, setTab] = useState<TabId>('overview')
   const data = initialData
+  void gymId // retained for future use
 
   return (
     <div className="max-w-8xl mx-auto space-y-5 sm:space-y-6">
@@ -99,24 +78,13 @@ export default function MemberAppClient({
         {tab === 'overview' && (
           <div className="space-y-4 sm:space-y-6">
             <MemberPortalTable rows={data.portalRows} />
-            <MemberActivityLog activity={data.activity} />
           </div>
         )}
         {tab === 'portal' && <MemberPortalTable rows={data.portalRows} />}
         {tab === 'invitations' && <InvitationActivity invitations={data.invitations} />}
-        {tab === 'activity' && <MemberActivityLog activity={data.activity} />}
-        {tab === 'logins' && (
-          <LoginOverview summary={data.loginSummary} recentLogins={data.recentLogins} />
-        )}
-        {tab === 'templates' && <WhatsAppTemplates templates={data.templates} />}
         {tab === 'gamification' && (
           <GamificationPanel summary={data.gamification} leaderboard={data.leaderboard} />
         )}
-        {tab === 'analytics' && <AnalyticsCharts analytics={data.analytics} />}
-        {tab === 'maintenance' && (
-          <MaintenancePanel gymId={gymId} maintenance={data.maintenance} />
-        )}
-        {tab === 'settings' && <PortalSettings gymId={gymId} settings={data.settings} />}
       </div>
     </div>
   )

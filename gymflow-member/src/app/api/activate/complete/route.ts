@@ -1,14 +1,17 @@
 /**
  * POST /api/activate/complete
  *
- * Completes member portal activation:
- * 1. Validates the invitation token
- * 2. Updates the Auth user's email and password
- * 3. Clears the invitation token (single-use)
- * 4. Updates the member row: invitation_status='activated', portal_activated_at=now()
- * 5. Logs the portal_activated activity
+ * Step 1 of activation — member submits email + password:
+ *  1. Validates invitation token (exists, not expired, not used)
+ *  2. Validates form (email unique, password policy)
+ *  3. Updates the Auth user with the chosen email + password
+ *  4. Sets email_confirm = false so Supabase sends a verification email
+ *  5. Stores pending activation metadata
  *
- * Uses SUPABASE_SERVICE_ROLE_KEY — this is a public endpoint (member isn't logged in yet).
+ * The account is NOT yet active. The member must click the email verification
+ * link, which triggers the Supabase auth callback → /activate/success.
+ *
+ * Uses SUPABASE_SERVICE_ROLE_KEY — public endpoint.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -21,6 +24,8 @@ function getServiceSupabase() {
   return createClient(url, key)
 }
 
+const TOKEN_EXPIRY_HOURS = 24
+
 export async function POST(req: NextRequest) {
   try {
     let body: { token: string; email: string; password: string }
@@ -30,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const { token, email, password } = body
 
-    // Validate inputs
+    // ── Input validation ──────────────────────────────────────────────────────
     if (!token || token.length < 20) {
       return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 400 })
     }
@@ -47,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getServiceSupabase()
 
-    // Find the auth user with this token
+    // ── Find auth user by token ───────────────────────────────────────────────
     const { data: usersData, error: listErr } = await supabase.auth.admin.listUsers({
       perPage: 1000,
     })
@@ -63,18 +68,29 @@ export async function POST(req: NextRequest) {
     if (!authUser) {
       return NextResponse.json({
         success: false,
-        error: 'This activation link is invalid or has already been used.',
+        error: 'This invitation link is invalid or has already been used.',
       }, { status: 404 })
+    }
+
+    // ── Check expiry ──────────────────────────────────────────────────────────
+    const invitedAt = authUser.user_metadata?.invited_at
+    if (invitedAt) {
+      const elapsed = Date.now() - new Date(invitedAt).getTime()
+      if (elapsed > TOKEN_EXPIRY_HOURS * 60 * 60 * 1000) {
+        return NextResponse.json({
+          success: false,
+          error: 'This invitation link has expired. Please ask your gym to send a new one.',
+        }, { status: 410 })
+      }
     }
 
     const memberId = authUser.user_metadata?.member_id
     const gymId = authUser.user_metadata?.gym_id
-
     if (!memberId || !gymId) {
       return NextResponse.json({ success: false, error: 'Incomplete invitation data' }, { status: 400 })
     }
 
-    // Check if email is already taken by another user
+    // ── Check email uniqueness ────────────────────────────────────────────────
     const existingUser = usersData.users.find(
       u => u.email === trimmedEmail && u.id !== authUser.id
     )
@@ -85,54 +101,48 @@ export async function POST(req: NextRequest) {
       }, { status: 409 })
     }
 
-    // Update the Auth user: set email, password, confirm email, and clear token
+    // ── Update Auth user — set email + password, DON'T confirm email ──────────
+    // Setting email_confirm: false means Supabase will send the confirmation
+    // email automatically when the email is changed.
     const { error: updateErr } = await supabase.auth.admin.updateUserById(authUser.id, {
       email: trimmedEmail,
       password,
-      email_confirm: true, // Auto-confirm since they activated via secure link
+      email_confirm: false, // Triggers verification email from Supabase
       user_metadata: {
         ...authUser.user_metadata,
-        invitation_token: null, // Single-use: clear the token
-        activated_at: new Date().toISOString(),
+        pending_email: trimmedEmail,
+        activation_step: 'email_verification_pending',
       },
     })
 
     if (updateErr) {
       console.error('[activate/complete] auth update failed:', updateErr.message)
+      if (updateErr.message.includes('already been registered')) {
+        return NextResponse.json({
+          success: false,
+          error: 'This email is already registered. Please use a different one.',
+        }, { status: 409 })
+      }
       return NextResponse.json({
         success: false,
-        error: updateErr.message.includes('already been registered')
-          ? 'This email is already in use.'
-          : 'Failed to set up your account. Please try again.',
+        error: 'Failed to set up your account. Please try again.',
       }, { status: 500 })
     }
 
-    // Update member row: mark as activated, store email
-    const { error: memberErr } = await supabase
+    // ── Store email on member row (pending state) ─────────────────────────────
+    await supabase
       .from('members')
       .update({
-        invitation_status: 'activated',
-        portal_activated_at: new Date().toISOString(),
-        last_portal_login: null,
         email: trimmedEmail,
+        invitation_status: 'delivered', // Intermediate: email sent, awaiting verification
       })
       .eq('id', memberId)
       .eq('gym_id', gymId)
 
-    if (memberErr) {
-      console.error('[activate/complete] member update failed:', memberErr.message)
-      // Non-fatal — the auth account is already set up
-    }
-
-    // Log activity
-    await supabase.from('member_portal_activity').insert({
-      gym_id: gymId,
-      member_id: memberId,
-      activity: 'portal_activated',
-      performed_by: 'member',
+    return NextResponse.json({
+      success: true,
+      message: 'Verification email sent. Please check your inbox and click the verification link.',
     })
-
-    return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[activate/complete] error:', err)
     return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 })

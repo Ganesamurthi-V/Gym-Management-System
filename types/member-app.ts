@@ -13,6 +13,9 @@
  *   and webhook or queue internal IDs.
  */
 
+/** "Online" threshold for the recent-logins table (minutes). */
+export const ONLINE_THRESHOLD_MINUTES = 15
+
 import type { TemplateId } from '@/types/whatsapp'
 
 // ─────────────────────────────────────────────────────────────────────────────

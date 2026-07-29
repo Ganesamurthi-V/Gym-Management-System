@@ -5,7 +5,7 @@ import { Loader2, Save, Upload } from 'lucide-react'
 import type {
   InvitationExpiry, PortalLanguage, PortalSettingsData,
 } from '@/types/member-app'
-import { savePortalSettings } from '../services/memberAppService'
+import { saveSettings } from '@/app/member-app/actions'
 import { useAsyncAction, useComingSoon } from '../hooks/useMemberAppActions'
 import { Card, SectionHeader } from './ui'
 
@@ -72,7 +72,6 @@ function isValidOptionalUrl(value: string): boolean {
 }
 
 export default function PortalSettings({
-  gymId,
   settings: initialSettings,
 }: {
   gymId: string
@@ -111,7 +110,7 @@ export default function PortalSettings({
     setErrors(found)
     if (Object.keys(found).length > 0) return
 
-    await run('save_settings', () => savePortalSettings(gymId, form))
+    await run('save_settings', () => saveSettings(form))
   }
 
   return (

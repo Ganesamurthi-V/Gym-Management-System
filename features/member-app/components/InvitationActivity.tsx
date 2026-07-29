@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, MailQuestion, RefreshCw } from 'lucide-react'
 import type { InvitationActivity as InvitationRow, InvitationStatus } from '@/types/member-app'
-import { runMemberRowAction } from '../services/memberAppService'
+import { memberRowAction } from '@/app/member-app/actions'
 import { useAsyncAction } from '../hooks/useMemberAppActions'
 import { useFilteredRows, useTableFilters } from '../hooks/useMemberAppFilters'
 import {
@@ -58,7 +58,7 @@ export default function InvitationActivity({ invitations }: { invitations: Invit
   })
 
   async function handleResend(row: InvitationRow) {
-    const result = await run(row.id, () => runMemberRowAction('resend_invitation', row.memberId))
+    const result = await run(row.id, () => memberRowAction('resend_invitation', row.memberId))
     if (result?.success) {
       setRows(prev => prev.map(r =>
         r.id === row.id ? { ...r, status: 'pending', sentOn: new Date().toISOString() } : r,

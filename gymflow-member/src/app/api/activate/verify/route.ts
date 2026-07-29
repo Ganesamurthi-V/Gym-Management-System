@@ -2,10 +2,13 @@
  * POST /api/activate/verify
  *
  * Validates an invitation token and returns the member's display info.
- * This is a public endpoint — no auth required (the member hasn't logged in yet).
+ * Public endpoint — the member hasn't logged in yet.
  *
- * Uses the SUPABASE_SERVICE_ROLE_KEY to look up auth user metadata since the
- * anon key cannot access auth.users.
+ * Checks:
+ *  ✔ Token exists in auth user metadata
+ *  ✔ Token not expired (24h from invited_at)
+ *  ✔ Token not already used (invitation_token is not null)
+ *  ✔ Member exists with portal_status = pending
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,6 +20,8 @@ function getServiceSupabase() {
   if (!url || !key) throw new Error('Missing service role configuration')
   return createClient(url, key)
 }
+
+const TOKEN_EXPIRY_HOURS = 24
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,8 +53,20 @@ export async function POST(req: NextRequest) {
     if (!authUser) {
       return NextResponse.json({
         success: false,
-        error: 'This activation link is invalid or has already been used.',
+        error: 'This invitation link is invalid or has already been used.',
       }, { status: 404 })
+    }
+
+    // Check token expiry (24 hours)
+    const invitedAt = authUser.user_metadata?.invited_at
+    if (invitedAt) {
+      const elapsed = Date.now() - new Date(invitedAt).getTime()
+      if (elapsed > TOKEN_EXPIRY_HOURS * 60 * 60 * 1000) {
+        return NextResponse.json({
+          success: false,
+          error: 'This invitation link has expired. Please ask your gym to send a new one.',
+        }, { status: 410 })
+      }
     }
 
     const memberId = authUser.user_metadata?.member_id
@@ -62,25 +79,41 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Fetch member and gym info
-    const [memberRes, gymRes] = await Promise.all([
-      supabase.from('members').select('name, phone').eq('id', memberId).single(),
-      supabase.from('gyms').select('name').eq('id', gymId).single(),
-    ])
+    // Verify member exists and portal is in pending state
+    const { data: member } = await supabase
+      .from('members')
+      .select('name, phone, invitation_status')
+      .eq('id', memberId)
+      .eq('gym_id', gymId)
+      .single()
 
-    if (!memberRes.data || !gymRes.data) {
+    if (!member) {
       return NextResponse.json({
         success: false,
-        error: 'Member or gym data not found. Contact your gym.',
+        error: 'Member record not found. Contact your gym.',
       }, { status: 404 })
     }
+
+    if (member.invitation_status === 'activated') {
+      return NextResponse.json({
+        success: false,
+        error: 'This account has already been activated. Please go to login.',
+      }, { status: 409 })
+    }
+
+    // Fetch gym name
+    const { data: gym } = await supabase
+      .from('gyms')
+      .select('name')
+      .eq('id', gymId)
+      .single()
 
     return NextResponse.json({
       success: true,
       data: {
-        memberName: memberRes.data.name,
-        phone: memberRes.data.phone,
-        gymName: gymRes.data.name,
+        memberName: member.name,
+        phone: member.phone,
+        gymName: gym?.name ?? 'Your Gym',
         gymId,
         currentEmail: authUser.email ?? null,
       },

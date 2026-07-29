@@ -6,7 +6,7 @@ import { cacheWrapper } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { getMemberAppData } from '@/features/member-app/services/memberAppService'
 import MemberAppClient from './MemberAppClient'
-import MemberAppSkeleton from './loading'
+import MemberAppSkeleton from '@/features/member-app/components/MemberAppSkeleton'
 
 /**
  * Member App Management — operational dashboard for the separate
@@ -41,7 +41,6 @@ export default async function MemberAppPage() {
   logger.info('Payload ready', {
     portalRows: data.portalRows.length,
     invitations: data.invitations.length,
-    activity: data.activity.length,
   })
   logger.summary(200)
 

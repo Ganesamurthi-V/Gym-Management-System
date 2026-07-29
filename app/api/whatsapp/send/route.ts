@@ -30,6 +30,7 @@ const TEMPLATE_IDS: TemplateId[] = [
   'membership_expired',
   'payment_due_reminder',
   '_birthday_wishes',
+  'member_app_invitation',
 ]
 
 const sendSchema = z.object({
@@ -44,6 +45,8 @@ const sendSchema = z.object({
     expiryDate:     z.string().optional(),
     daysRemaining:  z.number().optional(),
     dueAmount:      z.number().optional(),
+    memberId:       z.string().optional(),
+    invitationToken: z.string().optional(),
   }),
 })
 

@@ -21,6 +21,8 @@ import type { TemplateId } from '@/types/whatsapp'
 
 export type HeaderKind = 'image'
 
+export type ButtonKind = 'url'
+
 export interface TemplateSpec {
   /** Exact approved template name (must equal the TemplateId). */
   name: TemplateId
@@ -34,6 +36,11 @@ export interface TemplateSpec {
    * COUNT and that each rendered value is a non-empty string.
    */
   body: string[]
+  /**
+   * If the approved template has a dynamic URL button, set to 'url'.
+   * The validator will then enforce a button component with one text parameter.
+   */
+  button?: ButtonKind
 }
 
 /**
@@ -76,6 +83,13 @@ export const TEMPLATE_SPECS: Record<TemplateId, TemplateSpec> = {
     language: 'en',
     header: 'image',
     body: ['gymName', 'memberName'],
+  },
+  member_app_invitation: {
+    name: 'member_app_invitation',
+    language: 'en',
+    header: 'image',
+    body: ['gymName', 'memberName'],
+    button: 'url',
   },
 }
 

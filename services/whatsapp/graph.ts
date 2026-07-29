@@ -411,6 +411,35 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         ],
       },
     },
+    member_app_invitation: {
+      ...base,
+      template: {
+        name: 'member_app_invitation',
+        language: { code: 'en' },
+        // Header: approved image (logo_member.png served via headerImageComponent).
+        // Body: [gymName, memberName] → {{1}}, {{2}}.
+        // Button: dynamic URL https://member.gymflow.sbs/activate/{{1}} — only
+        //         the token is sent as the button parameter.
+        components: [
+          headerImageComponent(),
+          {
+            type: 'body',
+            parameters: [
+              txt(ctx.gymName),
+              txt(ctx.memberName),
+            ],
+          },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: '0',
+            parameters: [
+              txt(ctx.invitationToken ?? ''),
+            ],
+          },
+        ],
+      },
+    },
   }
 
   const payload = templates[templateId]

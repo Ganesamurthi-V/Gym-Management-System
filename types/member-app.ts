@@ -261,15 +261,8 @@ export interface MemberAppData {
   overview: MemberAppOverview
   portalRows: MemberPortalRow[]
   invitations: InvitationActivity[]
-  activity: MemberActivityEvent[]
-  loginSummary: LoginOverviewSummary
-  recentLogins: RecentLogin[]
-  templates: WhatsAppTemplateStatus[]
   gamification: GamificationSummary
   leaderboard: LeaderboardEntry[]
-  analytics: MemberAppAnalytics
-  maintenance: MaintenanceStatus
-  settings: PortalSettingsData
 }
 
 /** Result shape returned by every mock/real mutation in the service layer. */

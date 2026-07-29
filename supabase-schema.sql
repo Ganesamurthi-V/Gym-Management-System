@@ -302,27 +302,6 @@ CREATE TABLE IF NOT EXISTS member_portal_activity (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── member_app_settings ──────────────────────────────────────
--- One row per gym. Portal configuration managed from the Owner Portal.
-CREATE TABLE IF NOT EXISTS member_app_settings (
-  gym_id              UUID        PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
-  portal_name         TEXT        NOT NULL DEFAULT '',
-  brand_logo_url      TEXT        NOT NULL DEFAULT '',
-  primary_colour      TEXT        NOT NULL DEFAULT '#2563EB',
-  support_email       TEXT        NOT NULL DEFAULT '',
-  support_phone       TEXT        NOT NULL DEFAULT '',
-  privacy_policy_url  TEXT        NOT NULL DEFAULT '',
-  terms_url           TEXT        NOT NULL DEFAULT '',
-  invitation_expiry   TEXT        NOT NULL DEFAULT '7d'
-    CHECK (invitation_expiry IN ('24h','48h','7d','30d')),
-  default_language    TEXT        NOT NULL DEFAULT 'en'
-    CHECK (default_language IN ('en','ta','hi')),
-  timezone            TEXT        NOT NULL DEFAULT 'Asia/Kolkata',
-  maintenance_mode    BOOLEAN     NOT NULL DEFAULT false,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 -- ── gym_usage_stats ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS gym_usage_stats (
   gym_id              UUID    PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
@@ -594,7 +573,6 @@ ALTER TABLE inventory_units         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_sales         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workout_programs        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_portal_activity  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE member_app_settings     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_requests   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_usage_stats         ENABLE ROW LEVEL SECURITY;
@@ -831,19 +809,6 @@ CREATE POLICY "Gym owners can view portal activity"
 CREATE POLICY "Gym owners can insert portal activity"
   ON member_portal_activity FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = member_portal_activity.gym_id AND owner_id = auth.uid()));
-
--- ── member_app_settings ──────────────────────────────────────
-CREATE POLICY "Gym owners can view their app settings"
-  ON member_app_settings FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_app_settings.gym_id AND owner_id = auth.uid()));
-
-CREATE POLICY "Gym owners can upsert their app settings"
-  ON member_app_settings FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = member_app_settings.gym_id AND owner_id = auth.uid()));
-
-CREATE POLICY "Gym owners can update their app settings"
-  ON member_app_settings FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_app_settings.gym_id AND owner_id = auth.uid()));
 
 -- ── subscription_requests ────────────────────────────────────
 DROP POLICY IF EXISTS "gym owner read own requests" ON subscription_requests;

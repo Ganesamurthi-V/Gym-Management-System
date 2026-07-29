@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, ShieldCheck, User, Phone, Building2 } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, MailCheck, ShieldCheck, User, Phone, Building2 } from 'lucide-react'
 
 interface MemberInfo {
   memberName: string
@@ -12,7 +12,7 @@ interface MemberInfo {
   currentEmail: string | null
 }
 
-type Status = 'loading' | 'ready' | 'submitting' | 'success' | 'error' | 'invalid'
+type Status = 'loading' | 'ready' | 'submitting' | 'email_sent' | 'success' | 'error' | 'invalid'
 
 export default function ActivateClient({ token }: { token: string }) {
   const [status, setStatus] = useState<Status>('loading')
@@ -90,7 +90,8 @@ export default function ActivateClient({ token }: { token: string }) {
         return
       }
 
-      setStatus('success')
+      // Email verification sent — show intermediate state
+      setStatus('email_sent')
     } catch {
       setError('Something went wrong. Please check your connection and try again.')
       setStatus('ready')
@@ -125,7 +126,7 @@ export default function ActivateClient({ token }: { token: string }) {
     )
   }
 
-  // Success state
+  // Success state — account fully activated (redirected here after email verification)
   if (status === 'success') {
     return (
       <main className="flex min-h-dvh items-center justify-center px-4">
@@ -146,6 +147,54 @@ export default function ActivateClient({ token }: { token: string }) {
           >
             Go to Login
           </a>
+        </div>
+      </main>
+    )
+  }
+
+  // Email sent — waiting for verification
+  if (status === 'email_sent') {
+    return (
+      <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md text-center">
+          <div className="mb-6 flex flex-col items-center">
+            <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} priority className="mb-4 rounded-2xl shadow-md" />
+          </div>
+
+          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100">
+              <MailCheck className="h-8 w-8 text-brand-600" />
+            </div>
+
+            <h1 className="text-xl font-bold text-brand-900">Check Your Email</h1>
+
+            <p className="mt-3 text-sm leading-relaxed text-slate-700">
+              We&apos;ve sent a verification email to:
+            </p>
+            <p className="mt-1 text-sm font-bold text-slate-900">{email}</p>
+
+            <div className="mt-5 rounded-xl border border-brand-100 bg-white p-4 text-left">
+              <p className="text-xs font-bold uppercase tracking-widest text-brand-600 mb-2">Next Steps</p>
+              <ol className="space-y-2 text-sm text-slate-600">
+                <li className="flex gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">1</span>
+                  Open the email from GymFlow
+                </li>
+                <li className="flex gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">2</span>
+                  Click the &quot;Verify Email&quot; button
+                </li>
+                <li className="flex gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">3</span>
+                  Your account will be activated automatically
+                </li>
+              </ol>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-400">
+              Didn&apos;t receive the email? Check your spam folder or contact your gym.
+            </p>
+          </div>
         </div>
       </main>
     )

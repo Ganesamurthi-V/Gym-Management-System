@@ -14,6 +14,8 @@ import Image from 'next/image'
 import { invalidateGymCache, invalidateAllGymCaches } from './actions'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
+import UPIQRSetup from '@/components/upi/UPIQRSetup'
+import type { UPIConfig } from './upi-actions'
 
 interface Props {
   email: string
@@ -33,6 +35,7 @@ interface Props {
   planType?: string | null
   trialEndsAt?: string | null
   subscriptionEndsAt?: string | null
+  upiConfig?: UPIConfig | null
 }
 
 type ModalType = 'gym-name' | 'gym-info' | 'password' | 'delete-data' | 'delete-gym' | null
@@ -55,6 +58,7 @@ export function AccountClient({
   planType,
   trialEndsAt,
   subscriptionEndsAt,
+  upiConfig: initialUpiConfig = null,
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
@@ -513,6 +517,23 @@ export function AccountClient({
             )}
           </div>
         </div>
+      </div>
+
+      {/* UPI QR Code Setup */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-violet-100 rounded-lg flex items-center justify-center">
+            <svg className="w-4 h-4 text-violet-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75zM6.75 16.5h.75v.75h-.75zM16.5 6.75h.75v.75h-.75zM13.5 13.5h.75v.75h-.75zM13.5 19.5h.75v.75h-.75zM19.5 13.5h.75v.75h-.75zM19.5 19.5h.75v.75h-.75zM16.125 16.125h.75v.75h-.75z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-violet-600 uppercase tracking-widest">UPI Payment QR Code</p>
+            <p className="text-xs text-slate-400 mt-0.5">Upload your merchant QR to generate dynamic payment codes for members</p>
+          </div>
+        </div>
+        <UPIQRSetup initialConfig={initialUpiConfig} />
       </div>
 
       {/* Settings Actions */}

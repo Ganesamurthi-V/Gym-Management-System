@@ -25,6 +25,13 @@ export default async function AccountPage() {
     supabase.from('attendance').select('id', { count: 'exact', head: true }).eq('gym_id', gym.id),
   ])
 
+  // Fetch UPI merchant config (null if not configured)
+  const { data: upiConfig } = await supabase
+    .from('gym_upi_config')
+    .select('*')
+    .eq('gym_id', gym.id)
+    .maybeSingle()
+
   return (
     <AccountClient
       email={user.email ?? ''}
@@ -44,6 +51,7 @@ export default async function AccountPage() {
       planType={gymSub?.plan_type ?? null}
       trialEndsAt={gymSub?.trial_ends_at ?? null}
       subscriptionEndsAt={gymSub?.subscription_ends_at ?? null}
+      upiConfig={upiConfig ?? null}
     />
   )
 }

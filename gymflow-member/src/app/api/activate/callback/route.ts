@@ -1,20 +1,16 @@
 /**
  * GET /api/activate/callback
  *
- * Supabase email verification redirect handler.
+ * Supabase magic link redirect handler.
  *
- * When the member clicks "Verify Email" in the confirmation email, Supabase
- * redirects to this URL with auth tokens in the hash/params. This route:
+ * When the member clicks "Activate Account" in the magic link email, Supabase
+ * redirects here with one of:
+ *   - ?code=xxx (PKCE flow)
+ *   - ?token_hash=xxx&type=magiclink (implicit/token-hash flow)
+ *   - ?token_hash=xxx&type=email (email OTP flow)
  *
- *  1. Exchanges the code for a session (verifies the email)
- *  2. Looks up the member via auth_user_id
- *  3. Completes activation: invitation_status='activated', portal_activated_at=NOW()
- *  4. Clears the invitation token (single-use)
- *  5. Logs portal_activated activity
- *  6. Redirects to /activate/success
- *
- * Supabase Auth settings must configure the email confirmation redirect URL to:
- *   https://member.gymflow.sbs/api/activate/callback
+ * This route exchanges the token for a session, completes the activation,
+ * and redirects to /activate/success.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -57,35 +53,48 @@ export async function GET(req: NextRequest) {
               cookieStore.set(name, value, options)
             })
           } catch {
-            // Route handler context
+            // Route handler context — cookies may not be writable
           }
         },
       },
     })
 
-    // Exchange the auth code or verify token_hash
+    let verified = false
+
+    // Method 1: PKCE code exchange
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code)
       if (error) {
         console.error('[activate/callback] code exchange failed:', error.message)
         return NextResponse.redirect(errorUrl)
       }
-    } else if (tokenHash && type === 'email') {
+      verified = true
+    }
+
+    // Method 2: token_hash verification (handles both 'magiclink' and 'email' types)
+    if (!verified && tokenHash) {
+      // Supabase sends type=magiclink for magic links, type=email for email OTP
+      const otpType = type === 'email' ? 'email' : 'magiclink'
       const { error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
-        type: 'email',
+        type: otpType,
       })
       if (error) {
-        console.error('[activate/callback] OTP verify failed:', error.message)
+        console.error(`[activate/callback] OTP verify failed (type=${otpType}):`, error.message)
         return NextResponse.redirect(errorUrl)
       }
-    } else {
+      verified = true
+    }
+
+    if (!verified) {
+      console.error('[activate/callback] no code or token_hash in URL')
       return NextResponse.redirect(errorUrl)
     }
 
     // Get the now-authenticated user
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      console.error('[activate/callback] no user after verification')
       return NextResponse.redirect(errorUrl)
     }
 
@@ -93,17 +102,18 @@ export async function GET(req: NextRequest) {
     const gymId = user.user_metadata?.gym_id
 
     if (!memberId || !gymId) {
-      return NextResponse.redirect(redirectUrl) // Still show success, account is verified
+      // Account verified but no member linkage — still show success
+      return NextResponse.redirect(redirectUrl)
     }
 
     // Use service-role to complete the activation
     const serviceSupabase = getServiceSupabase()
 
-    // Mark invitation as used — clear token, set activation step complete
+    // Clear invitation token (single-use) and mark step complete
     await serviceSupabase.auth.admin.updateUserById(user.id, {
       user_metadata: {
         ...user.user_metadata,
-        invitation_token: null, // Single-use: clear it
+        invitation_token: null,
         activation_step: 'completed',
         activated_at: new Date().toISOString(),
       },

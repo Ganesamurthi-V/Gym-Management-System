@@ -59,7 +59,7 @@ function formatDateTime(iso: string | null): string {
   })
 }
 
-export default function MemberPortalTable({ rows: initialRows }: { rows: MemberPortalRow[] }) {
+export default function MemberPortalTable({ rows: initialRows, onMutationComplete }: { rows: MemberPortalRow[]; onMutationComplete?: (rows?: MemberPortalRow[]) => void }) {
   const [rows, setRows] = useState(initialRows)
   const [page, setPage] = useState(1)
   const filters = useTableFilters<PortalStatus>()
@@ -103,7 +103,22 @@ export default function MemberPortalTable({ rows: initialRows }: { rows: MemberP
 
   async function handleRowAction(row: MemberPortalRow, action: MemberRowAction) {
     const result = await run(`${row.memberId}:${action}`, () => memberRowAction(action, row.memberId))
-    if (result?.success) applyLocal(row.memberId, action)
+    if (result?.success) {
+      applyLocal(row.memberId, action)
+      // Notify parent to update overview cards and trigger server refresh
+      onMutationComplete?.(rows.map(r => {
+        if (r.memberId !== row.memberId) return r
+        switch (action) {
+          case 'enable_portal':  return { ...r, portalStatus: 'enabled' as const, suspended: false }
+          case 'disable_portal': return { ...r, portalStatus: 'disabled' as const }
+          case 'send_invitation':
+          case 'resend_invitation': return { ...r, invitationStatus: 'pending' as const, portalStatus: 'enabled' as const }
+          case 'suspend_access':    return { ...r, suspended: true, portalStatus: 'disabled' as const }
+          case 'reactivate_access': return { ...r, suspended: false, portalStatus: 'enabled' as const }
+          default: return r
+        }
+      }))
+    }
   }
 
   async function handleBulk(action: MemberBulkAction) {
@@ -115,6 +130,7 @@ export default function MemberPortalTable({ rows: initialRows }: { rows: MemberP
     if (action === 'bulk_send_invitation') ids.forEach(id => applyLocal(id, 'send_invitation'))
     if (action === 'bulk_suspend') ids.forEach(id => applyLocal(id, 'suspend_access'))
     selection.clear()
+    onMutationComplete?.()
   }
 
   return (
@@ -348,7 +364,7 @@ function RowMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-52 bg-white rounded-xl shadow-lg border border-surface-border py-1"
+          className="absolute right-0 z-50 mt-1 w-52 bg-white rounded-xl shadow-lg border border-surface-border py-1"
         >
           {items.map(item => (
             <button

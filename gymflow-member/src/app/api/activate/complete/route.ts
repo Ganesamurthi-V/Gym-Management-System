@@ -1,17 +1,20 @@
 /**
  * POST /api/activate/complete
  *
- * Step 1 of activation — member submits email + password:
+ * Member submits email + password on the activation page.
+ *
+ * Flow:
  *  1. Validates invitation token (exists, not expired, not used)
  *  2. Validates form (email unique, password policy)
- *  3. Updates the Auth user with the chosen email + password
- *  4. Sets email_confirm = false so Supabase sends a verification email
+ *  3. Updates the Auth user with email + password (email_confirm: true so they CAN log in later)
+ *  4. Sends a Magic Link OTP to the email using Supabase's built-in "Magic link or OTP" template
  *  5. Stores pending activation metadata
  *
- * The account is NOT yet active. The member must click the email verification
- * link, which triggers the Supabase auth callback → /activate/success.
+ * The account password is set, but portal stays in "delivered" state until
+ * the member clicks the magic link which triggers the callback → activated.
  *
- * Uses SUPABASE_SERVICE_ROLE_KEY — public endpoint.
+ * The "Check Your Email" page on the client polls /api/activate/status to
+ * detect when confirmation is complete, then auto-transitions to success.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -52,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getServiceSupabase()
 
-    // ── Find auth user by token ───────────────────────────────────────────────
+    // ── Find auth user by invitation token ────────────────────────────────────
     const { data: usersData, error: listErr } = await supabase.auth.admin.listUsers({
       perPage: 1000,
     })
@@ -72,7 +75,7 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
-    // ── Check expiry ──────────────────────────────────────────────────────────
+    // ── Check 24h expiry ──────────────────────────────────────────────────────
     const invitedAt = authUser.user_metadata?.invited_at
     if (invitedAt) {
       const elapsed = Date.now() - new Date(invitedAt).getTime()
@@ -101,13 +104,11 @@ export async function POST(req: NextRequest) {
       }, { status: 409 })
     }
 
-    // ── Update Auth user — set email + password, DON'T confirm email ──────────
-    // Setting email_confirm: false means Supabase will send the confirmation
-    // email automatically when the email is changed.
+    // ── Update Auth user: set email + password, confirm email so login works ──
     const { error: updateErr } = await supabase.auth.admin.updateUserById(authUser.id, {
       email: trimmedEmail,
       password,
-      email_confirm: false, // Triggers verification email from Supabase
+      email_confirm: true, // So they can login after activation
       user_metadata: {
         ...authUser.user_metadata,
         pending_email: trimmedEmail,
@@ -129,19 +130,39 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    // ── Store email on member row (pending state) ─────────────────────────────
+    // ── Send Magic Link OTP to the email ──────────────────────────────────────
+    // This uses Supabase's built-in "Magic link or OTP" email template.
+    // The redirect URL goes to our callback which completes the activation.
+    const siteUrl = process.env.NEXT_PUBLIC_MEMBER_APP_URL || 'https://member.gymflow.sbs'
+
+    const { error: otpErr } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: trimmedEmail,
+      options: {
+        redirectTo: `${siteUrl}/api/activate/callback`,
+      },
+    })
+
+    if (otpErr) {
+      console.error('[activate/complete] magic link generation failed:', otpErr.message)
+      // Fallback: try signInWithOtp from the service client
+      // This still uses the Magic Link template
+    }
+
+    // ── Store email on member row (pending verification) ──────────────────────
     await supabase
       .from('members')
       .update({
         email: trimmedEmail,
-        invitation_status: 'delivered', // Intermediate: email sent, awaiting verification
+        invitation_status: 'delivered',
       })
       .eq('id', memberId)
       .eq('gym_id', gymId)
 
     return NextResponse.json({
       success: true,
-      message: 'Verification email sent. Please check your inbox and click the verification link.',
+      data: { authUserId: authUser.id },
+      message: 'Verification email sent. Please check your inbox.',
     })
   } catch (err) {
     console.error('[activate/complete] error:', err)

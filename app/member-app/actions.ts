@@ -91,27 +91,113 @@ export async function memberRowAction(
 
     case 'send_invitation':
     case 'resend_invitation': {
-      // Call the invitation API route which creates Auth user, links it,
-      // and sends the WhatsApp template with the activation link.
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/member-app/invite`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memberId }),
-        },
-      )
-      const json = await res.json().catch(() => null)
-
-      if (!res.ok || !json?.success) {
-        return { success: false, message: json?.error?.message ?? 'Failed to send invitation' }
+      // Perform the invitation directly using service-role (same logic as the API route)
+      const serviceUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (!serviceUrl || !serviceKey) {
+        return { success: false, message: 'Server not configured for invitations (missing service key)' }
       }
+
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+      const serviceSupabase = createServiceClient(serviceUrl, serviceKey)
+      const { randomBytes } = await import('crypto')
+
+      // Fetch member details
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('id, name, phone, email, auth_user_id')
+        .eq('id', memberId)
+        .eq('gym_id', gymId)
+        .single()
+
+      if (!memberData?.phone) {
+        return { success: false, message: 'Member has no phone number' }
+      }
+
+      let authUserId = memberData.auth_user_id
+
+      // Create Auth identity if needed
+      if (!authUserId) {
+        const email = memberData.email || `member-${memberId.slice(0, 8)}@gymflow.sbs`
+        const tempPassword = randomBytes(16).toString('base64url')
+
+        const { data: authData, error: authCreateErr } = await serviceSupabase.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { member_id: memberId, gym_id: gymId, role: 'member' },
+        })
+
+        if (authCreateErr || !authData.user) {
+          if (authCreateErr?.message?.includes('already been registered')) {
+            const { data: existingUsers } = await serviceSupabase.auth.admin.listUsers()
+            const existing = existingUsers?.users?.find(u => u.email === email)
+            if (existing) authUserId = existing.id
+            else return { success: false, message: 'Failed to create member account' }
+          } else {
+            return { success: false, message: authCreateErr?.message ?? 'Failed to create member account' }
+          }
+        } else {
+          authUserId = authData.user.id
+        }
+
+        // Link auth_user_id
+        await serviceSupabase
+          .from('members')
+          .update({ auth_user_id: authUserId })
+          .eq('id', memberId)
+          .eq('gym_id', gymId)
+      }
+
+      // Generate invitation token
+      const token = randomBytes(32).toString('base64url')
+      await serviceSupabase.auth.admin.updateUserById(authUserId!, {
+        user_metadata: {
+          invitation_token: token,
+          invited_at: new Date().toISOString(),
+          gym_id: gymId,
+          member_id: memberId,
+          role: 'member',
+        },
+      })
+
+      // Update portal status
+      await serviceSupabase
+        .from('members')
+        .update({
+          portal_enabled: true,
+          invitation_status: 'pending',
+          invitation_sent_at: new Date().toISOString(),
+        })
+        .eq('id', memberId)
+        .eq('gym_id', gymId)
+
+      // Send WhatsApp
+      const { sendWhatsAppTemplate } = await import('@/lib/whatsapp/sender')
+      const { data: gymData } = await supabase.from('gyms').select('name').eq('id', gymId).single()
+      const gymName = gymData?.name ?? 'Your Gym'
+
+      const sendResult = await sendWhatsAppTemplate('member_app_invitation', {
+        phone: memberData.phone,
+        gymName,
+        memberName: memberData.name,
+        invitationToken: token,
+      })
 
       if (action === 'resend_invitation') {
         await logActivity(gymId, memberId, 'invitation_resent')
       }
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: json.data?.whatsappSent ? 'Invitation sent via WhatsApp' : 'Invitation created (WhatsApp delivery pending)' }
+
+      if (sendResult.success) {
+        return { success: true, message: 'Invitation sent via WhatsApp' }
+      } else {
+        // WhatsApp failed but the token is created — member can still use the direct link
+        return {
+          success: true,
+          message: `Portal activated. WhatsApp delivery failed: ${sendResult.error ?? 'unknown'}. Activation link: https://member.gymflow.sbs/activate/${token}`,
+        }
+      }
     }
 
     case 'suspend_access': {

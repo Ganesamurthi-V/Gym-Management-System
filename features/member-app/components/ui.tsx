@@ -125,7 +125,7 @@ export function StatusDot({ tone }: { tone: BadgeTone }) {
 
 export function TableWrap({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto -mx-6 px-6">
+    <div className="overflow-visible -mx-6 px-6">
       <table className="w-full text-sm min-w-[720px]">{children}</table>
     </div>
   )

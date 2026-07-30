@@ -416,12 +416,15 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
       template: {
         name: 'member_app_invitation',
         language: { code: 'en' },
-        // Header: approved image (logo_member.png served via headerImageComponent).
+        // Header: uses logo_members.png (different from the shared landscape logo).
         // Body: [gymName, memberName] → {{1}}, {{2}}.
         // Button: dynamic URL https://member.gymflow.sbs/activate/{{1}} — only
         //         the token is sent as the button parameter.
         components: [
-          headerImageComponent(),
+          {
+            type: 'header',
+            parameters: [{ type: 'image', image: { link: (process.env.NEXT_PUBLIC_APP_URL || 'https://app.gymflow.sbs') + '/logo_members.png' } }],
+          },
           {
             type: 'body',
             parameters: [

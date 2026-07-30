@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { LayoutDashboard, Users, MailQuestion, Trophy } from 'lucide-react'
-import type { MemberAppData } from '@/types/member-app'
+import type { MemberAppData, MemberAppOverview, MemberPortalRow, InvitationActivity as InvitationRow } from '@/types/member-app'
+import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import OverviewCards from '@/features/member-app/components/OverviewCards'
 import MemberPortalTable from '@/features/member-app/components/MemberPortalTable'
 import InvitationActivity from '@/features/member-app/components/InvitationActivity'
@@ -17,6 +19,43 @@ const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ classN
   { id: 'gamification', label: 'Gamification',  icon: Trophy },
 ]
 
+/**
+ * Derives overview stats from the current portal rows so the cards update
+ * immediately after mutations without waiting for a server round-trip.
+ */
+function deriveOverview(rows: MemberPortalRow[]): MemberAppOverview {
+  const now = Date.now()
+  const todayStart = new Date().setHours(0, 0, 0, 0)
+  const weekAgo = now - 7 * 86_400_000
+  const monthAgo = now - 30 * 86_400_000
+
+  let active = 0
+  let pending = 0
+  let todayLogins = 0
+  let weeklyActive = 0
+  let monthlyActive = 0
+
+  for (const row of rows) {
+    if (row.portalStatus === 'enabled' && !row.suspended) active++
+    if (row.invitationStatus === 'pending') pending++
+    if (row.lastLogin) {
+      const t = new Date(row.lastLogin).getTime()
+      if (t >= todayStart) todayLogins++
+      if (t >= weekAgo) weeklyActive++
+      if (t >= monthAgo) monthlyActive++
+    }
+  }
+
+  return {
+    appStatus: 'Online',
+    activeMembers: active,
+    pendingInvitations: pending,
+    todaysLogins: todayLogins,
+    weeklyActiveUsers: weeklyActive,
+    monthlyActiveUsers: monthlyActive,
+  }
+}
+
 export default function MemberAppClient({
   gymId,
   gymName,
@@ -26,9 +65,69 @@ export default function MemberAppClient({
   gymName: string
   initialData: MemberAppData
 }) {
+  const router = useRouter()
   const [tab, setTab] = useState<TabId>('overview')
-  const data = initialData
-  void gymId // retained for future use
+  const [portalRows, setPortalRows] = useState<MemberPortalRow[]>(initialData.portalRows)
+  const [invitations, setInvitations] = useState<InvitationRow[]>(initialData.invitations)
+  const [overview, setOverview] = useState<MemberAppOverview>(initialData.overview)
+
+  // Keep overview in sync with portal rows
+  useEffect(() => {
+    setOverview(deriveOverview(portalRows))
+  }, [portalRows])
+
+  // Sync from server when initialData changes (after router.refresh())
+  useEffect(() => {
+    setPortalRows(initialData.portalRows)
+    setInvitations(initialData.invitations)
+    setOverview(initialData.overview)
+  }, [initialData])
+
+  // Realtime: subscribe to member table changes for this gym
+  const handleRealtimeChange = useCallback(() => {
+    // Server re-fetch to get fresh data (busts the 60s cache via revalidate)
+    router.refresh()
+  }, [router])
+
+  useRealtimeChannel({
+    channelName: `owner_member_app_${gymId}`,
+    subscriptions: [
+      {
+        type: 'postgres_changes',
+        filter: {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'members',
+          filter: `gym_id=eq.${gymId}`,
+        },
+        callback: handleRealtimeChange,
+      },
+      {
+        type: 'postgres_changes',
+        filter: {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'members',
+          filter: `gym_id=eq.${gymId}`,
+        },
+        callback: handleRealtimeChange,
+      },
+    ],
+    onResync: handleRealtimeChange,
+  })
+
+  /**
+   * Called by child components after a successful mutation.
+   * Updates local state immediately for responsiveness, then triggers
+   * a background server refresh so the cache and overview update.
+   */
+  const onMutationComplete = useCallback((updatedRows?: MemberPortalRow[]) => {
+    if (updatedRows) {
+      setPortalRows(updatedRows)
+    }
+    // Trigger server re-render to update invitations + any other derived state
+    router.refresh()
+  }, [router])
 
   return (
     <div className="max-w-8xl mx-auto space-y-5 sm:space-y-6">
@@ -42,8 +141,8 @@ export default function MemberAppClient({
         </p>
       </div>
 
-      {/* Overview cards stay visible across tabs as the module's vitals row. */}
-      <OverviewCards overview={data.overview} />
+      {/* Overview cards — always visible, derived from current state */}
+      <OverviewCards overview={overview} />
 
       {/* Tabs */}
       <div className="border-b border-surface-border overflow-x-auto">
@@ -77,13 +176,13 @@ export default function MemberAppClient({
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === 'overview' && (
           <div className="space-y-4 sm:space-y-6">
-            <MemberPortalTable rows={data.portalRows} />
+            <MemberPortalTable rows={portalRows} onMutationComplete={onMutationComplete} />
           </div>
         )}
-        {tab === 'portal' && <MemberPortalTable rows={data.portalRows} />}
-        {tab === 'invitations' && <InvitationActivity invitations={data.invitations} />}
+        {tab === 'portal' && <MemberPortalTable rows={portalRows} onMutationComplete={onMutationComplete} />}
+        {tab === 'invitations' && <InvitationActivity invitations={invitations} />}
         {tab === 'gamification' && (
-          <GamificationPanel summary={data.gamification} leaderboard={data.leaderboard} />
+          <GamificationPanel summary={initialData.gamification} leaderboard={initialData.leaderboard} />
         )}
       </div>
     </div>

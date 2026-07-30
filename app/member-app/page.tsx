@@ -2,19 +2,18 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getAuthUser, getGym } from '@/lib/dal'
 import { apiLogger } from '@/lib/logger'
-import { cacheWrapper } from '@/lib/cache'
-import { cacheKeys } from '@/lib/cache-keys'
 import { getMemberAppData } from '@/features/member-app/services/memberAppService'
 import MemberAppClient from './MemberAppClient'
 import MemberAppSkeleton from '@/features/member-app/components/MemberAppSkeleton'
 
 /**
- * Member App Management — operational dashboard for the separate
- * `gymflow-member/` application.
+ * Member App Management — operational dashboard.
  *
- * Data is cached in Redis for 60 seconds. Mutations in actions.ts invalidate
- * the cache so the next navigation reflects changes immediately.
+ * No Redis caching here — router.refresh() must always get fresh data so
+ * the overview cards and table update immediately after mutations.
  */
+export const revalidate = 0
+
 export default async function MemberAppPage() {
   const logger = apiLogger('MEMBER_APP')
 
@@ -29,15 +28,9 @@ export default async function MemberAppPage() {
   if (!gym) redirect('/onboarding')
 
   logger.start('LOAD_MEMBER_APP_DATA')
-  const data = await cacheWrapper(
-    cacheKeys.memberApp(gym.id),
-    60,
-    () => getMemberAppData(gym.id, gym.name),
-    logger,
-  )
+  const data = await getMemberAppData(gym.id, gym.name)
   logger.end('LOAD_MEMBER_APP_DATA')
 
-  // Counts only — never log member names, phone numbers or other PII.
   logger.info('Payload ready', {
     portalRows: data.portalRows.length,
     invitations: data.invitations.length,

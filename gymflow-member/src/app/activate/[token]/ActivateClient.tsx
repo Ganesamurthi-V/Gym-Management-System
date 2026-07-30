@@ -152,52 +152,9 @@ export default function ActivateClient({ token }: { token: string }) {
     )
   }
 
-  // Email sent — waiting for verification
+  // Email sent — waiting for verification (REALTIME POLLING)
   if (status === 'email_sent') {
-    return (
-      <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md text-center">
-          <div className="mb-6 flex flex-col items-center">
-            <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} priority className="mb-4 rounded-2xl shadow-md" />
-          </div>
-
-          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100">
-              <MailCheck className="h-8 w-8 text-brand-600" />
-            </div>
-
-            <h1 className="text-xl font-bold text-brand-900">Check Your Email</h1>
-
-            <p className="mt-3 text-sm leading-relaxed text-slate-700">
-              We&apos;ve sent a verification email to:
-            </p>
-            <p className="mt-1 text-sm font-bold text-slate-900">{email}</p>
-
-            <div className="mt-5 rounded-xl border border-brand-100 bg-white p-4 text-left">
-              <p className="text-xs font-bold uppercase tracking-widest text-brand-600 mb-2">Next Steps</p>
-              <ol className="space-y-2 text-sm text-slate-600">
-                <li className="flex gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">1</span>
-                  Open the email from GymFlow
-                </li>
-                <li className="flex gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">2</span>
-                  Click the &quot;Verify Email&quot; button
-                </li>
-                <li className="flex gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">3</span>
-                  Your account will be activated automatically
-                </li>
-              </ol>
-            </div>
-
-            <p className="mt-4 text-xs text-slate-400">
-              Didn&apos;t receive the email? Check your spam folder or contact your gym.
-            </p>
-          </div>
-        </div>
-      </main>
-    )
+    return <EmailSentScreen email={email} token={token} onActivated={() => setStatus('success')} />
   }
 
   // Ready state — show form
@@ -333,6 +290,111 @@ export default function ActivateClient({ token }: { token: string }) {
           </form>
         </div>
       </section>
+    </main>
+  )
+}
+
+/**
+ * "Check Your Email" screen with realtime polling.
+ * Polls /api/activate/status every 3 seconds. When the callback route
+ * completes activation (user clicked the magic link), this auto-transitions
+ * to the success state without any manual refresh.
+ */
+function EmailSentScreen({
+  email,
+  token,
+  onActivated,
+}: {
+  email: string
+  token: string
+  onActivated: () => void
+}) {
+  const [polling, setPolling] = useState(true)
+
+  useEffect(() => {
+    if (!polling) return
+
+    let cancelled = false
+    const POLL_INTERVAL = 3000
+
+    async function check() {
+      try {
+        const res = await fetch('/api/activate/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+        const json = await res.json()
+        if (!cancelled && json.activated) {
+          setPolling(false)
+          onActivated()
+        }
+      } catch {
+        // Network error — keep polling
+      }
+    }
+
+    // Initial check
+    void check()
+
+    const interval = setInterval(check, POLL_INTERVAL)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [token, polling, onActivated])
+
+  return (
+    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md text-center">
+        <div className="mb-6 flex flex-col items-center">
+          <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} priority className="mb-4 rounded-2xl shadow-md" />
+        </div>
+
+        <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100">
+            <MailCheck className="h-8 w-8 text-brand-600" />
+          </div>
+
+          <h1 className="text-xl font-bold text-brand-900">Check Your Email</h1>
+
+          <p className="mt-3 text-sm leading-relaxed text-slate-700">
+            We&apos;ve sent a verification email to:
+          </p>
+          <p className="mt-1 text-sm font-bold text-slate-900">{email}</p>
+
+          <div className="mt-5 rounded-xl border border-brand-100 bg-white p-4 text-left">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-600 mb-2">Next Steps</p>
+            <ol className="space-y-2 text-sm text-slate-600">
+              <li className="flex gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">1</span>
+                Open the email from GymFlow
+              </li>
+              <li className="flex gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">2</span>
+                Click the &quot;Activate Account&quot; button
+              </li>
+              <li className="flex gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 flex-shrink-0">3</span>
+                This page will update automatically
+              </li>
+            </ol>
+          </div>
+
+          {/* Realtime indicator */}
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
+            </span>
+            <span className="text-xs font-medium text-brand-600">Waiting for confirmation...</span>
+          </div>
+
+          <p className="mt-4 text-xs text-slate-400">
+            Didn&apos;t receive the email? Check your spam folder or contact your gym.
+          </p>
+        </div>
+      </div>
     </main>
   )
 }

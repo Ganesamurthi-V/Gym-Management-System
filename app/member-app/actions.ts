@@ -80,13 +80,48 @@ export async function memberRowAction(
     }
 
     case 'disable_portal': {
-      const { error } = await supabase.from('members')
-        .update({ portal_enabled: false })
+      // Delete all portal data: activity logs, auth user, and reset member portal columns
+      const serviceUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+      // Fetch member's auth_user_id before wiping
+      const { data: memberForDelete } = await supabase
+        .from('members')
+        .select('auth_user_id')
         .eq('id', memberId)
+        .eq('gym_id', gymId)
+        .single()
+
+      // Delete portal activity logs for this member
+      await supabase
+        .from('member_portal_activity')
+        .delete()
+        .eq('member_id', memberId)
+        .eq('gym_id', gymId)
+
+      // Delete the Supabase Auth user if exists
+      if (memberForDelete?.auth_user_id && serviceUrl && serviceKey) {
+        const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+        const serviceSupabase = createServiceClient(serviceUrl, serviceKey)
+        await serviceSupabase.auth.admin.deleteUser(memberForDelete.auth_user_id)
+      }
+
+      // Reset all portal columns on the member row
+      const { error } = await supabase.from('members')
+        .update({
+          portal_enabled: false,
+          portal_suspended: false,
+          invitation_status: 'not_sent',
+          invitation_sent_at: null,
+          portal_activated_at: null,
+          last_portal_login: null,
+          auth_user_id: null,
+        })
+        .eq('id', memberId)
+
       if (error) return { success: false, message: error.message }
-      await logActivity(gymId, memberId, 'portal_disabled')
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: 'Portal disabled' }
+      return { success: true, message: 'Portal disabled and all member app data deleted' }
     }
 
     case 'send_invitation':

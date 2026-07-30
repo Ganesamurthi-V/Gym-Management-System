@@ -154,7 +154,7 @@ export default function ActivateClient({ token }: { token: string }) {
 
   // Email sent — waiting for verification (REALTIME POLLING)
   if (status === 'email_sent') {
-    return <EmailSentScreen email={email} token={token} onActivated={() => setStatus('success')} />
+    return <EmailSentScreen email={email} token={token} onActivated={() => setStatus('success')} onChangeEmail={() => { setStatus('ready'); setPassword(''); setConfirmPassword('') }} />
   }
 
   // Ready state — show form
@@ -304,10 +304,12 @@ function EmailSentScreen({
   email,
   token,
   onActivated,
+  onChangeEmail,
 }: {
   email: string
   token: string
   onActivated: () => void
+  onChangeEmail: () => void
 }) {
   const [polling, setPolling] = useState(true)
 
@@ -393,6 +395,14 @@ function EmailSentScreen({
           <p className="mt-4 text-xs text-slate-400">
             Didn&apos;t receive the email? Check your spam folder or contact your gym.
           </p>
+
+          <button
+            type="button"
+            onClick={onChangeEmail}
+            className="mt-3 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline transition-colors"
+          >
+            Entered wrong email? Click here to change it.
+          </button>
         </div>
       </div>
     </main>

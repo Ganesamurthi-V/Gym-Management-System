@@ -111,10 +111,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Update Auth user: set the chosen email + password ─────────────────────
+    // NOT setting email_confirm here — account stays unconfirmed until the
+    // member clicks the magic link. The callback route confirms them.
     const { error: updateErr } = await serviceSupabase.auth.admin.updateUserById(authUser.id, {
       email: trimmedEmail,
       password,
-      email_confirm: true,
       user_metadata: {
         ...authUser.user_metadata,
         pending_email: trimmedEmail,

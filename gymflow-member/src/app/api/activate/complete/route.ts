@@ -6,15 +6,13 @@
  * Flow:
  *  1. Validates invitation token (exists, not expired, not used)
  *  2. Validates form (email unique, password policy)
- *  3. Updates the Auth user with email + password (email_confirm: true so they CAN log in later)
- *  4. Sends a Magic Link OTP to the email using Supabase's built-in "Magic link or OTP" template
+ *  3. Updates the Auth user with email + password (email_confirm: true)
+ *  4. Sends a magic link email using signInWithOtp (uses Supabase's
+ *     "Magic link or OTP" email template configured in the dashboard)
  *  5. Stores pending activation metadata
  *
- * The account password is set, but portal stays in "delivered" state until
- * the member clicks the magic link which triggers the callback → activated.
- *
- * The "Check Your Email" page on the client polls /api/activate/status to
- * detect when confirmation is complete, then auto-transitions to success.
+ * The password is already set so the member can log in with email+password
+ * AFTER they click the magic link and the callback activates their account.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -24,6 +22,14 @@ function getServiceSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) throw new Error('Missing service role configuration')
+  return createClient(url, key)
+}
+
+/** Anon client — needed for signInWithOtp which actually sends the email. */
+function getAnonSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) throw new Error('Missing Supabase configuration')
   return createClient(url, key)
 }
 
@@ -53,10 +59,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Password must contain at least one number' }, { status: 400 })
     }
 
-    const supabase = getServiceSupabase()
+    const serviceSupabase = getServiceSupabase()
 
     // ── Find auth user by invitation token ────────────────────────────────────
-    const { data: usersData, error: listErr } = await supabase.auth.admin.listUsers({
+    const { data: usersData, error: listErr } = await serviceSupabase.auth.admin.listUsers({
       perPage: 1000,
     })
 
@@ -104,11 +110,11 @@ export async function POST(req: NextRequest) {
       }, { status: 409 })
     }
 
-    // ── Update Auth user: set email + password, confirm email so login works ──
-    const { error: updateErr } = await supabase.auth.admin.updateUserById(authUser.id, {
+    // ── Update Auth user: set the chosen email + password ─────────────────────
+    const { error: updateErr } = await serviceSupabase.auth.admin.updateUserById(authUser.id, {
       email: trimmedEmail,
       password,
-      email_confirm: true, // So they can login after activation
+      email_confirm: true,
       user_metadata: {
         ...authUser.user_metadata,
         pending_email: trimmedEmail,
@@ -130,27 +136,32 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    // ── Send Magic Link OTP to the email ──────────────────────────────────────
-    // This uses Supabase's built-in "Magic link or OTP" email template.
-    // The redirect URL goes to our callback which completes the activation.
+    // ── Send the magic link email ─────────────────────────────────────────────
+    // signInWithOtp actually SENDS the email using the "Magic link or OTP"
+    // template configured in Supabase Dashboard → Authentication → Emails.
+    // generateLink() only returns the URL without sending anything.
     const siteUrl = process.env.NEXT_PUBLIC_MEMBER_APP_URL || 'https://member.gymflow.sbs'
+    const anonSupabase = getAnonSupabase()
 
-    const { error: otpErr } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
+    const { error: otpErr } = await anonSupabase.auth.signInWithOtp({
       email: trimmedEmail,
       options: {
-        redirectTo: `${siteUrl}/api/activate/callback`,
+        // This makes it a magic link (not OTP code)
+        shouldCreateUser: false, // User already exists
+        emailRedirectTo: `${siteUrl}/api/activate/callback`,
       },
     })
 
     if (otpErr) {
-      console.error('[activate/complete] magic link generation failed:', otpErr.message)
-      // Fallback: try signInWithOtp from the service client
-      // This still uses the Magic Link template
+      console.error('[activate/complete] magic link send failed:', otpErr.message)
+      return NextResponse.json({
+        success: false,
+        error: `Failed to send verification email: ${otpErr.message}`,
+      }, { status: 500 })
     }
 
     // ── Store email on member row (pending verification) ──────────────────────
-    await supabase
+    await serviceSupabase
       .from('members')
       .update({
         email: trimmedEmail,

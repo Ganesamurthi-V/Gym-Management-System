@@ -221,52 +221,6 @@ gymflow/
 
 ---
 
-## Environment Variables
-
-```bash
-# ─── Core ───
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-NEXT_PUBLIC_APP_URL=https://app.gymflow.sbs
-
-# ─── Caching & Rate Limiting ───
-UPSTASH_REDIS_REST_URL=your_upstash_redis_url
-UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token
-
-# ─── WhatsApp Cloud API ───
-WHATSAPP_VERIFY_TOKEN=your_webhook_verify_token
-WHATSAPP_APP_SECRET=your_app_secret
-WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
-WHATSAPP_ACCESS_TOKEN=your_access_token
-WHATSAPP_API_VERSION=v25.0
-WHATSAPP_BASE_URL=https://graph.gymflow.sbs/api/graph
-GRAPH_API_BASE_URL=https://graph.facebook.com
-
-# ─── Queue (QStash) ───
-QSTASH_TOKEN=your_qstash_token
-QSTASH_CURRENT_SIGNING_KEY=your_signing_key
-QSTASH_NEXT_SIGNING_KEY=your_next_key
-
-# ─── Admin ───
-ADMIN_EMAIL=your_admin_email
-ADMIN_PASSWORD=generate_with_openssl_rand_hex_32
-ADMIN_PANEL_SECRET=different_from_admin_password
-
-# ─── Cron ───
-CRON_SECRET=your_cron_secret
-
-# ─── Monitoring ───
-NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
-SENTRY_AUTH_TOKEN=your_sentry_auth_token
-
-# ─── Optional ───
-TRIAL_DURATION_DAYS=14
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
-```
-
----
-
 ## Setup Instructions
 
 ### 1. Create Supabase Project

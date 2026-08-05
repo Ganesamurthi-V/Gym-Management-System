@@ -38,7 +38,6 @@ type GymsRow = {
   name: string
   city: string | null
   phone: string | null
-  onboarding_data: Json | null
   created_at: string
 }
 

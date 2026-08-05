@@ -37,26 +37,19 @@ export type MemberWithGym = {
  * Redirects to login if the session is missing or not linked to a member.
  */
 export async function getMemberWithGym(): Promise<MemberWithGym> {
-  const { supabase } = await requireMemberSession()
+  const { supabase, user } = await requireMemberSession()
 
   const { data: member, error: memberErr } = await supabase
     .from('members')
-    .select(`
-      id, gym_id, auth_user_id, member_number, member_code,
-      name, phone, email, photo_url, gender, area, age, date_of_birth,
-      blood_group, emergency_name, emergency_phone, medical_notes,
-      pending_amount, legacy_member_id, is_imported,
-      portal_enabled, portal_suspended, invitation_status,
-      portal_activated_at, last_portal_login, created_at
-    `)
-    .eq('auth_user_id', (await supabase.auth.getUser()).data.user!.id)
+    .select('*')
+    .eq('auth_user_id', user.id)
     .single()
 
   if (memberErr || !member) redirect('/auth/login')
 
   const { data: gym, error: gymErr } = await supabase
     .from('gyms')
-    .select('id, name, city, phone, onboarding_data, created_at')
+    .select('id, name, city, phone, created_at')
     .eq('id', member.gym_id)
     .single()
 

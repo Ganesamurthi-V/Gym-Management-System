@@ -18,7 +18,6 @@ type State = 'checking' | 'processing' | 'success' | 'error'
  */
 export default function ActivateErrorPage() {
   const [state, setState] = useState<State>('checking')
-  const [message, setMessage] = useState('')
 
   useEffect(() => {
     const hash = window.location.hash
@@ -86,7 +85,6 @@ export default function ActivateErrorPage() {
     void processHashTokens()
   }, [])
 
-  // Checking for hash tokens
   if (state === 'checking' || state === 'processing') {
     return (
       <main className="flex min-h-dvh items-center justify-center px-4">
@@ -134,7 +132,7 @@ export default function ActivateErrorPage() {
           </h1>
 
           <p className="mt-3 text-sm leading-relaxed text-red-700">
-            {message || 'The email verification link is invalid or has expired. This can happen if the link was already used or if too much time has passed.'}
+            The email verification link is invalid or has expired. This can happen if the link was already used or if too much time has passed.
           </p>
 
           <p className="mt-3 text-sm text-red-600">

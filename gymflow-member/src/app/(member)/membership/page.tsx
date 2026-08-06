@@ -10,7 +10,9 @@ import { formatDate, formatPlan, formatCurrency } from '@/lib/member-utils'
 export const revalidate = 0
 
 export default async function MembershipPage() {
-  const { member } = await getMemberWithGym()
+  const data = await getMemberWithGym()
+  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load membership data.</p></div>
+  const { member } = data
   const memberships = await getMemberMemberships(member.id)
   const { status, daysLeft, latest } = computeMembershipState(memberships)
 

@@ -5,7 +5,9 @@ import MembershipCardClient from './MembershipCardClient'
 export const revalidate = 0
 
 export default async function MembershipCardPage() {
-  const { member, gym } = await getMemberWithGym()
+  const data = await getMemberWithGym()
+  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load card.</p></div>
+  const { member, gym } = data
   const memberships = await getMemberMemberships(member.id)
   const { status, latest } = computeMembershipState(memberships)
 

@@ -21,7 +21,7 @@ export default function MemberError({
       </div>
       <h2 className="text-lg font-bold text-slate-900">Something went wrong</h2>
       <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-500">
-        We couldn't load this page. This usually means a temporary connection issue.
+        We couldn&apos;t load this page. This usually means a temporary connection issue.
       </p>
       <button
         onClick={reset}

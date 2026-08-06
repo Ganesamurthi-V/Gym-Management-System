@@ -33,11 +33,13 @@ type MembersRow = {
 }
 
 // ─── gyms ─────────────────────────────────────────────────────────────────────
+// NOTE: the live `gyms` table has NO `city` / `phone` columns — it stores a
+// single free-text `location`. Selecting non-existent columns makes PostgREST
+// fail the whole request with 42703, so only real columns may be listed here.
 type GymsRow = {
   id: string
   name: string
-  city: string | null
-  phone: string | null
+  location: string | null
   created_at: string
 }
 

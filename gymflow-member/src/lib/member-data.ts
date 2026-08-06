@@ -47,15 +47,31 @@ export async function getMemberWithGym(): Promise<MemberWithGym | null> {
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
-  if (memberErr || !member) return null
+  if (memberErr || !member) {
+    console.error('[getMemberWithGym] member query failed', {
+      authUserId: user.id,
+      code: memberErr?.code,
+      message: memberErr?.message,
+    })
+    return null
+  }
 
+  // Only real columns — `gyms` has no city/phone (it has `location`).
+  // Listing a missing column returns PostgREST 42703 and kills the request.
   const { data: gym, error: gymErr } = await supabase
     .from('gyms')
-    .select('id, name, city, phone, created_at')
+    .select('id, name, location, created_at')
     .eq('id', member.gym_id)
     .maybeSingle()
 
-  if (gymErr || !gym) return null
+  if (gymErr || !gym) {
+    console.error('[getMemberWithGym] gym query failed', {
+      gymId: member.gym_id,
+      code: gymErr?.code,
+      message: gymErr?.message,
+    })
+    return null
+  }
 
   return { member: member as Member, gym: gym as Gym }
 }

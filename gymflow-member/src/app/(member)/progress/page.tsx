@@ -10,7 +10,9 @@ import { formatDate, formatPlan } from '@/lib/member-utils'
 export const revalidate = 0
 
 export default async function ProgressPage() {
-  const { member } = await getMemberWithGym()
+  const data = await getMemberWithGym()
+  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load progress data.</p></div>
+  const { member } = data
 
   const [memberships, attendance] = await Promise.all([
     getMemberMemberships(member.id),

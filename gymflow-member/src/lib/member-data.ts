@@ -34,26 +34,28 @@ export type MemberWithGym = {
 
 /**
  * Returns the logged-in member's own row and their gym's branding info.
- * Redirects to login if the session is missing or not linked to a member.
+ * Returns null if the member can't be found (avoids redirect loops).
  */
-export async function getMemberWithGym(): Promise<MemberWithGym> {
-  const { supabase, user } = await requireMemberSession()
+export async function getMemberWithGym(): Promise<MemberWithGym | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
   const { data: member, error: memberErr } = await supabase
     .from('members')
     .select('*')
     .eq('auth_user_id', user.id)
-    .single()
+    .maybeSingle()
 
-  if (memberErr || !member) redirect('/auth/login')
+  if (memberErr || !member) return null
 
   const { data: gym, error: gymErr } = await supabase
     .from('gyms')
     .select('id, name, city, phone, created_at')
     .eq('id', member.gym_id)
-    .single()
+    .maybeSingle()
 
-  if (gymErr || !gym) redirect('/auth/login')
+  if (gymErr || !gym) return null
 
   return { member: member as Member, gym: gym as Gym }
 }

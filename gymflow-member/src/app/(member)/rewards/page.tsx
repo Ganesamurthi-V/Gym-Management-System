@@ -4,7 +4,9 @@ import { getMemberWithGym, getMemberAttendance } from '@/lib/member-data'
 export const revalidate = 0
 
 export default async function RewardsPage() {
-  const { member } = await getMemberWithGym()
+  const data = await getMemberWithGym()
+  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load rewards.</p></div>
+  const { member } = data
   const { thisMonthCount, thisWeekCount, totalCount } = await getMemberAttendance(member.id)
 
   // Simple milestone badges based on real attendance data

@@ -24,7 +24,9 @@ function buildMonthCalendar(year: number, month: number, checkedInDates: Set<str
 }
 
 export default async function AttendancePage() {
-  const { member } = await getMemberWithGym()
+  const data = await getMemberWithGym()
+  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load attendance data.</p></div>
+  const { member } = data
   const { records, thisMonthCount, thisWeekCount, totalCount, checkedInDates } = await getMemberAttendance(member.id)
 
   const now = new Date()

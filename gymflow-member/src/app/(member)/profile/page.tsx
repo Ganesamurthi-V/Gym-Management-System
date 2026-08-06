@@ -31,7 +31,9 @@ function InfoRow({
 }
 
 export default async function ProfilePage() {
-  const { member, gym } = await getMemberWithGym()
+  const data = await getMemberWithGym()
+  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load profile.</p></div>
+  const { member, gym } = data
 
   const memberCode = member.member_code ?? `GF${String(member.member_number).padStart(5, '0')}`
 

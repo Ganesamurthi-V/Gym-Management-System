@@ -4,7 +4,9 @@ import { getMemberWithGym, getGymWorkoutPrograms } from '@/lib/member-data'
 export const revalidate = 0
 
 export default async function WorkoutPage() {
-  const { member, gym } = await getMemberWithGym()
+  const data = await getMemberWithGym()
+  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load workout programs.</p></div>
+  const { member, gym } = data
   const programs = await getGymWorkoutPrograms(member.gym_id)
 
   return (

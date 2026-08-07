@@ -1,13 +1,22 @@
 import { Trophy, Star, Flame, Zap } from 'lucide-react'
-import { getMemberWithGym, getMemberAttendance } from '@/lib/member-data'
+import { getAttendancePageData } from '@/lib/member-data'
+import { startPageTimer } from '@/lib/perf'
 
-export const revalidate = 0
+// Dynamic via the auth cookie; see the note in home/page.tsx on why a
+// route-level `revalidate` cannot be used for per-user pages.
 
 export default async function RewardsPage() {
-  const data = await getMemberWithGym()
-  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load rewards.</p></div>
-  const { member } = data
-  const { thisMonthCount, thisWeekCount, totalCount } = await getMemberAttendance(member.id)
+  const done = startPageTimer('rewards')
+
+  // member + gym + attendance fetched in parallel (one round trip, not two)
+  const data = await getAttendancePageData()
+  if (!data) {
+    done()
+    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load rewards.</p></div>
+  }
+  const { thisMonthCount, thisWeekCount, totalCount } = data.attendance
+
+  done()
 
   // Simple milestone badges based on real attendance data
   const badges = [

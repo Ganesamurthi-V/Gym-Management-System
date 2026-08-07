@@ -1,7 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 
-export async function createClient() {
+/**
+ * Request-scoped Supabase server client.
+ *
+ * Wrapped in React `cache()` so the client is built **once per request** and
+ * shared by every caller. Previously each DAL helper and each page called
+ * `createClient()` itself, so a single navigation constructed 4-6 clients, each
+ * re-reading `cookies()` and re-initialising Supabase's internal auth state.
+ *
+ * `cache()` is per-request in the App Router, so there is no cross-request or
+ * cross-user leakage — two concurrent users each get a client bound to their
+ * own cookie jar.
+ */
+export const createClient = cache(async () => {
   const cookieStore = await cookies()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -27,4 +40,4 @@ export async function createClient() {
       },
     },
   })
-}
+})

@@ -35,8 +35,14 @@ const nextConfig = {
     // already call invalidateMembersCache() / router.refresh(), so stale
     // RSC payloads will not be served after data-mutating user actions.
     staleTimes: {
-      dynamic: 30,   // cache dynamic route RSC payloads 30s client-side
-      static: 180,   // cache static route RSC payloads 3min client-side
+      // Raised from 30s. These pages are per-owner and read the auth cookie, so
+      // they can never live in the shared server-side Full Route Cache — the
+      // browser-scoped Router Cache is the only safe place to cache them.
+      // Re-opening an already-visited tab within this window renders instantly
+      // with ZERO server round trip. Mutations already call
+      // invalidateMembersCache() / router.refresh(), so writes still show up.
+      dynamic: 180,  // cache dynamic route RSC payloads 3min client-side
+      static: 300,   // cache static route RSC payloads 5min client-side
     },
     serverActions: {
       bodySizeLimit: '2mb',

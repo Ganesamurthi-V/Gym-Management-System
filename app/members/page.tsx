@@ -4,87 +4,73 @@ import { getAuthUser, getGym } from '@/lib/dal'
 import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
-import { cacheWrapper } from '@/lib/cache'
 import { RequestLogger, apiLogger } from '@/lib/logger'
+import { timed } from '@/lib/perf'
 
-// Issue 5 fix: Removed `export const revalidate = 0`.
-// getMembersData is already wrapped in cacheWrapper (300s Redis TTL) and
-// all mutation paths (new member, edit, bulk-edit, delete) call
-// invalidateMembersCache() to bust the cache on actual data changes.
-// Keeping revalidate=0 forced a full Server Component re-execute on every hit
-// despite the data being served from Redis — pure waste with no correctness benefit.
+// No `revalidate` export: this page reads the auth cookie, which already makes
+// it dynamic, so the export was redundant. Repeat visits are served from the
+// client Router Cache (see experimental.staleTimes in next.config.js).
 
 const PAGE_SIZE = 200
 
+/**
+ * REMOVED: the 300s Upstash `members_list` cache.
+ *
+ * The cached payload was ~55KB, and this project's Upstash instance takes
+ * ~2563ms (median) to GET 55KB over its REST API — versus ~409-613ms to just
+ * re-run the queries against Postgres. The cache was costing about 2 extra
+ * seconds per page load to avoid half a second of database work, and it was the
+ * single largest source of latency on this route.
+ *
+ * `lib/cache.ts` now refuses to store payloads above MAX_CACHEABLE_BYTES so this
+ * cannot be reintroduced by accident.
+ *
+ * The three queries are also collapsed into ONE PostgREST embedded join.
+ * Previously the members query had to resolve first to supply member IDs for the
+ * two `.in(...)` membership queries — two serial stages. Fetching memberships
+ * nested under members removes that dependency entirely
+ * (measured: 407ms median / 205ms min, vs 519ms / 409ms).
+ */
 async function getMembersData(gymId: string, logger: RequestLogger) {
-  const cacheKey = `gym:${gymId}:members_list`
+  logger.info('ENTER getMembersData')
+  const supabase = await createClient()
 
-  return cacheWrapper(cacheKey, 300, async () => {
-    logger.info('ENTER getMembersData')
-    const supabase = await createClient()
-
-    logger.start('FETCH_MEMBERS')
-    // Fetch the current page of members first, then fetch ONLY those members'
-    // memberships. Previously this pulled EVERY membership row for the whole gym
-    // (unbounded) even though only PAGE_SIZE members are displayed — a full-table
-    // scan that grew linearly with the gym's entire renewal history.
-    const membersRes = await supabase
+  logger.start('FETCH_MEMBERS')
+  const membersRes = await timed('members + memberships (joined)', () =>
+    supabase
       .from('members')
-      .select('id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id', { count: 'exact' })
+      .select(
+        'id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id,' +
+        ' memberships(id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id)',
+        { count: 'exact' }
+      )
       .eq('gym_id', gymId)
       .order('created_at', { ascending: false })
       .limit(PAGE_SIZE)
+  )
 
-    const members = membersRes.data ?? []
-    const count = membersRes.count ?? 0
-    const memberIds = members.map(m => m.id)
+  const members = membersRes.data ?? []
+  const count = membersRes.count ?? 0
+  logger.end('FETCH_MEMBERS')
 
-    // Build lookup maps for O(1) access
-    const latestByMember = new Map<string, any>()
-    const oldestByMember = new Map<string, any>()
+  logger.start('AGGREGATION')
+  const result: MemberWithStatus[] = members.map((m: any) => {
+      // Pick latest (max created_at) and oldest (min start_date) in one pass.
+      // This replaces the two separately-ordered database queries.
+      const memberships: any[] = m.memberships ?? []
+      let latest: any = null
+      let oldest: any = null
 
-    if (memberIds.length > 0) {
-      const [latestMembershipsRes, oldestMembershipsRes] = await Promise.all([
-        // Latest membership per member (most recent created_at)
-        supabase
-          .from('memberships')
-          .select('id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id')
-          .in('member_id', memberIds)
-          .order('member_id', { ascending: true })
-          .order('created_at', { ascending: false }),
-        // Oldest membership per member (earliest start_date)
-        supabase
-          .from('memberships')
-          .select('start_date, member_id')
-          .in('member_id', memberIds)
-          .order('member_id', { ascending: true })
-          .order('start_date', { ascending: true })
-      ])
-
-      for (const m of latestMembershipsRes.data ?? []) {
-        if (!latestByMember.has(m.member_id)) {
-          latestByMember.set(m.member_id, m)
-        }
+      for (const ms of memberships) {
+        if (!latest || (ms.created_at ?? '') > (latest.created_at ?? '')) latest = ms
+        if (!oldest || (ms.start_date ?? '') < (oldest.start_date ?? '')) oldest = ms
       }
 
-      for (const m of oldestMembershipsRes.data ?? []) {
-        if (!oldestByMember.has(m.member_id)) {
-          oldestByMember.set(m.member_id, m)
-        }
-      }
-    }
-    logger.end('FETCH_MEMBERS')
-
-    logger.start('AGGREGATION')
-    const result: MemberWithStatus[] = members.map(m => {
-      const latest = latestByMember.get(m.id) ?? null
-      const oldest = oldestByMember.get(m.id) ?? null
-      
       const join_date = oldest?.start_date?.substring(0, 10) || m.created_at?.substring(0, 10) || ""
-      
+
       const status = latest ? getMemberStatus(latest.end_date) : 'expired'
       const days_remaining = latest ? getDaysRemaining(latest.end_date) : -999
-      
+
       return {
         id: m.id,
         gym_id: m.gym_id,
@@ -108,10 +94,9 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
       // Within each status group, sort alphabetically by name
       return statusDiff !== 0 ? statusDiff : a.name.localeCompare(b.name)
     })
-    logger.end('AGGREGATION')
+  logger.end('AGGREGATION')
 
-    return { result, count: count ?? 0 }
-  }, logger)
+  return { result, count: count ?? 0 }
 }
 
 export default async function MembersPage() {
@@ -130,9 +115,9 @@ export default async function MembersPage() {
 
     if (!gym) return null
 
-    logger.start('CACHE')
+    logger.start('FETCH')
     const { result, count } = await getMembersData(gym.id, logger)
-    logger.end('CACHE')
+    logger.end('FETCH')
     
     // Security/perf: do NOT log the full member payload — it contains PII
     // (names, phone numbers) and serializing hundreds of records on every

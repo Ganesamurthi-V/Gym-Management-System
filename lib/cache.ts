@@ -26,16 +26,55 @@ export async function getCache<T>(key: string): Promise<T | null> {
 }
 
 /**
- * Set a value in the Redis cache with a TTL (Time To Live) in seconds.
+ * Maximum payload we are willing to put in Upstash.
+ *
+ * Upstash is a REST-over-HTTPS cache, so a GET pays full request overhead plus
+ * transfer time. Measured against this project's actual Upstash instance:
+ *
+ *     0.5KB →  103ms        30KB →   723ms
+ *       5KB →  511ms        55KB →  2563ms
+ *      15KB →  511ms       200KB →  8405ms
+ *
+ * For comparison, re-running the members-page queries against Postgres returns
+ * the same data in ~409-613ms. So above roughly 15KB the "cache" is SLOWER than
+ * the database it is caching — the 55KB members_list key was costing 2.5s per
+ * page load to avoid ~0.5s of Postgres work.
+ *
+ * Anything larger than this is therefore not stored: the read path falls through
+ * to Postgres, which is faster. Keeping the guard here (rather than only fixing
+ * the two offending call sites) means a future large payload cannot silently
+ * reintroduce the regression.
  */
-export async function setCache<T>(key: string, data: T, ttlSeconds: number): Promise<void> {
+export const MAX_CACHEABLE_BYTES = 16 * 1024
+
+/**
+ * Set a value in the Redis cache with a TTL (Time To Live) in seconds.
+ *
+ * Silently skips payloads above MAX_CACHEABLE_BYTES — see the note above.
+ * Returns whether the value was actually stored.
+ */
+export async function setCache<T>(key: string, data: T, ttlSeconds: number): Promise<boolean> {
   const redis = getRedisClient()
-  if (!redis) return
+  if (!redis) return false
 
   try {
+    const bytes = Buffer.byteLength(JSON.stringify(data ?? null), 'utf8')
+    if (bytes > MAX_CACHEABLE_BYTES) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(
+          `[Cache] SKIP SET ${key} — ${(bytes / 1024).toFixed(1)}KB exceeds the ` +
+          `${(MAX_CACHEABLE_BYTES / 1024).toFixed(0)}KB limit. Upstash reads get slower than ` +
+          `Postgres above ~15KB, so this is served from the database instead.`
+        )
+      }
+      return false
+    }
+
     await redis.set(key, data, { ex: ttlSeconds })
+    return true
   } catch (error) {
     console.warn(`[Cache Error] Failed to set key ${key}:`, error)
+    return false
   }
 }
 

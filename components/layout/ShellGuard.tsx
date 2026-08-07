@@ -96,9 +96,14 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       // Skip check entirely when tab is in the background.
       if (document.hidden) return
 
-      const { data: { user }, error } = await supabase.auth.getUser()
+      // getClaims() verifies the JWT signature locally against the project's
+      // published JWKS (~1ms) instead of calling the Auth server (~173ms).
+      // Revocation is still caught: the gyms query below returns no row for a
+      // revoked or banned session, and that branch signs the user out.
+      const { data: claims, error } = await supabase.auth.getClaims()
+      const userId = claims?.claims?.sub
 
-      if (error || !user) {
+      if (error || !userId) {
         await supabase.auth.signOut()
         window.location.href = '/auth/login'
         return
@@ -109,7 +114,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       const { data: gymRow } = await supabase
         .from('gyms')
         .select('name, is_active, subscription_status, plan_type, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at')
-        .eq('owner_id', user.id)
+        .eq('owner_id', userId)
         .single()
 
       if (!gymRow || gymRow.is_active === false) {

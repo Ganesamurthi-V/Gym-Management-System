@@ -1,13 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
-import { redis } from '@/lib/redis'
+import { getCache, setCache } from '@/lib/cache'
 
 // Cache expiry in seconds (10 minutes).
 const CACHE_EXPIRY = 600
 
+// NOTE: these helpers previously used the raw `redis` client, which bypassed the
+// MAX_CACHEABLE_BYTES guard in lib/cache.ts. An inventory list of 500 items
+// serialises to well over that limit, and Upstash reads become slower than
+// Postgres above ~15KB (see the measurements in lib/cache.ts). Going through
+// getCache/setCache means oversized lists simply are not stored, and the read
+// path falls through to the database — which is faster.
+
 export async function getCachedInventory(gymId: string) {
   const cacheKey = `inventory:${gymId}`
 
-  const cachedData = await redis.get<any[]>(cacheKey)
+  const cachedData = await getCache<any[]>(cacheKey)
   if (cachedData) return cachedData
 
   const supabase = await createClient()
@@ -24,14 +31,14 @@ export async function getCachedInventory(gymId: string) {
   }
 
   const items = data || []
-  await redis.set(cacheKey, items, { ex: CACHE_EXPIRY })
+  await setCache(cacheKey, items, CACHE_EXPIRY)
   return items
 }
 
 export async function getCachedInventoryItem(gymId: string, itemId: string) {
   const cacheKey = `inventory-item:${itemId}`
 
-  const cachedData = await redis.get<any>(cacheKey)
+  const cachedData = await getCache<any>(cacheKey)
   if (cachedData) return cachedData
 
   const supabase = await createClient()
@@ -44,14 +51,14 @@ export async function getCachedInventoryItem(gymId: string, itemId: string) {
 
   if (error || !data) return null
 
-  await redis.set(cacheKey, data, { ex: CACHE_EXPIRY })
+  await setCache(cacheKey, data, CACHE_EXPIRY)
   return data
 }
 
 export async function getCachedInventorySales(itemId: string) {
   const cacheKey = `inventory-sales:${itemId}`
 
-  const cachedData = await redis.get<any[]>(cacheKey)
+  const cachedData = await getCache<any[]>(cacheKey)
   if (cachedData) return cachedData
 
   const supabase = await createClient()
@@ -63,7 +70,7 @@ export async function getCachedInventorySales(itemId: string) {
     .limit(200)
 
   const sales = data || []
-  await redis.set(cacheKey, sales, { ex: CACHE_EXPIRY })
+  await setCache(cacheKey, sales, CACHE_EXPIRY)
   return sales
 }
 

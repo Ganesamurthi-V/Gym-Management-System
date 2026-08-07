@@ -1,19 +1,22 @@
-import { getAuthUser, getGymSubscription, getSubscriptionState } from '@/lib/dal'
+import { getAuthUser, getGymCore, getSubscriptionState } from '@/lib/dal'
 import { createClient } from '@/lib/supabase/server'
 import SubscriptionClient from './SubscriptionClient'
 import { redirect } from 'next/navigation'
+import { startPageTimer } from '@/lib/perf'
 
-export const dynamic = 'force-dynamic'
+// No `dynamic = 'force-dynamic'`: this page reads the auth cookie, which
+// already makes it dynamic. The export was redundant.
 
 export default async function SubscriptionPage() {
+  const done = startPageTimer('subscription')
   const { user } = await getAuthUser()
   if (!user) redirect('/auth/login')
 
-  // Always fetch a fresh subscription row — this page is only visited when
-  // the user may be expired/on trial, and stale state is what caused the
-  // "stuck on expired page after reactivation" bug. getGymSubscription()
-  // bypasses Redis entirely so a hard refresh always reflects the real state.
-  const { gym } = await getGymSubscription(user.id)
+  // getGymCore is never Redis-cached, so this page still always reflects the
+  // real subscription state — which is what fixed the "stuck on expired page
+  // after reactivation" bug. It now also carries the gym NAME, removing the
+  // extra sequential getGym() round trip this page used to make at the end.
+  const { gym } = await getGymCore(user.id)
   if (!gym) redirect('/onboarding')
 
   const subState = getSubscriptionState(gym)
@@ -42,15 +45,13 @@ export default async function SubscriptionPage() {
       .single(),
   ])
 
-  // Also fetch gym name for display (from the cached identity row is fine — it's just for display)
-  const { getGym } = await import('@/lib/dal')
-  const { gym: gymIdentity } = await getGym(user.id)
+  done()
 
   return (
     <SubscriptionClient
       gym={{
         id: gymId,
-        name: gymIdentity?.name ?? '',
+        name: gym.name,
         subscriptionStatus: gym.subscription_status ?? 'trial',
         trialEndsAt: gym.trial_ends_at ?? null,
         subscriptionEndsAt: gym.subscription_ends_at ?? null,

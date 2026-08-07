@@ -1,15 +1,24 @@
-import { getMemberWithGym, getMemberMemberships, computeMembershipState } from '@/lib/member-data'
+import { getMembershipPageData } from '@/lib/member-data'
 import { formatDate } from '@/lib/member-utils'
+import { startPageTimer } from '@/lib/perf'
 import MembershipCardClient from './MembershipCardClient'
 
-export const revalidate = 0
+// Dynamic via the auth cookie; see the note in home/page.tsx on why a
+// route-level `revalidate` cannot be used for per-user pages.
 
 export default async function MembershipCardPage() {
-  const data = await getMemberWithGym()
-  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load card.</p></div>
-  const { member, gym } = data
-  const memberships = await getMemberMemberships(member.id)
-  const { status, latest } = computeMembershipState(memberships)
+  const done = startPageTimer('membership/card')
+
+  // member + gym + memberships fetched in parallel (one round trip, not three)
+  const data = await getMembershipPageData()
+  if (!data) {
+    done()
+    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load card.</p></div>
+  }
+  const { member, gym, state } = data
+  const { status, latest } = state
+
+  done()
 
   const memberCode = member.member_code ?? `GF${String(member.member_number).padStart(5, '0')}`
 

@@ -1,8 +1,10 @@
 import { CalendarCheck, CalendarDays, Flame, TrendingUp } from 'lucide-react'
-import { getMemberWithGym, getMemberAttendance } from '@/lib/member-data'
+import { getAttendancePageData } from '@/lib/member-data'
 import { formatDateShort } from '@/lib/member-utils'
+import { startPageTimer } from '@/lib/perf'
 
-export const revalidate = 0
+// Dynamic via the auth cookie; see the note in home/page.tsx on why a
+// route-level `revalidate` cannot be used for per-user pages.
 
 // Days of the week header
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -24,10 +26,17 @@ function buildMonthCalendar(year: number, month: number, checkedInDates: Set<str
 }
 
 export default async function AttendancePage() {
-  const data = await getMemberWithGym()
-  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load attendance data.</p></div>
-  const { member } = data
-  const { records, thisMonthCount, thisWeekCount, totalCount, checkedInDates } = await getMemberAttendance(member.id)
+  const done = startPageTimer('attendance')
+
+  // member + gym + attendance fetched in parallel (one round trip, not two)
+  const data = await getAttendancePageData()
+  if (!data) {
+    done()
+    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load attendance data.</p></div>
+  }
+  const { records, thisMonthCount, thisWeekCount, totalCount, checkedInDates } = data.attendance
+
+  done()
 
   const now = new Date()
   const cells = buildMonthCalendar(now.getFullYear(), now.getMonth(), checkedInDates)

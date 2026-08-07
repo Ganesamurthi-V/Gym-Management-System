@@ -52,7 +52,17 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react'],
-    staleTimes: { dynamic: 30, static: 180 },
+    // Client-side Router Cache lifetime for prefetched/visited routes.
+    //
+    // This is the correct caching layer for this app: the member pages are
+    // per-user and read the auth cookie, so they can never be stored in the
+    // shared server-side Full Route Cache (a route-level `revalidate` would be
+    // a no-op, or a data-leak risk if forced). The Router Cache lives in the
+    // user's own browser tab, so caching there is both safe and effective.
+    //
+    // `dynamic: 180` means re-opening an already-visited tab within 3 minutes
+    // renders instantly from memory with ZERO server round trip.
+    staleTimes: { dynamic: 180, static: 300 },
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,

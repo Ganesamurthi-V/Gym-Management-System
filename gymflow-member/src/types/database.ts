@@ -111,7 +111,19 @@ export type Database = {
         Row: MembersRow
         Insert: Omit<MembersRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
         Update: Partial<Omit<MembersRow, 'id' | 'created_at'>>
-        Relationships: []
+        // Declaring the FK lets PostgREST embedded selects such as
+        // `.select('*, gyms!inner(...)')` resolve to a typed result instead of
+        // a SelectQueryError. This mirrors the real
+        // `members.gym_id -> gyms.id` constraint; it does not change the schema.
+        Relationships: [
+          {
+            foreignKeyName: 'members_gym_id_fkey'
+            columns: ['gym_id']
+            isOneToOne: false
+            referencedRelation: 'gyms'
+            referencedColumns: ['id']
+          },
+        ]
       }
       gyms: {
         Row: GymsRow

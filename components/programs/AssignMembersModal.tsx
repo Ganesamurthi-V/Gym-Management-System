@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Loader2, Search, UserPlus, Users, X } from 'lucide-react'
+import { Check, Loader2, Search, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 
@@ -18,7 +18,7 @@ interface Props {
   onClose: () => void
 }
 
-type Mode = 'idle' | 'specific' | 'all'
+type Mode = 'idle' | 'assign_specific' | 'assign_all' | 'deassign'
 
 export default function AssignMembersModal({ programId, programName, onClose }: Props) {
   const [mode, setMode] = useState<Mode>('idle')
@@ -38,14 +38,12 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
       try {
         const supabase = createClient()
 
-        // Fetch gym members
         const { data: memberData } = await supabase
           .from('members')
           .select('id, name, phone, member_number')
           .order('name', { ascending: true })
           .limit(500)
 
-        // Fetch current assignments for this program
         const res = await fetch(`/api/programs/assignments?programId=${programId}`)
         const json = await res.json()
 
@@ -73,9 +71,14 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
     })
   }, [])
 
-  const selectAll = useCallback(() => {
+  const selectAllUnassigned = useCallback(() => {
     const unassigned = members.filter(m => !assignedIds.has(m.id))
     setSelectedIds(new Set(unassigned.map(m => m.id)))
+  }, [members, assignedIds])
+
+  const selectAllAssigned = useCallback(() => {
+    const assigned = members.filter(m => assignedIds.has(m.id))
+    setSelectedIds(new Set(assigned.map(m => m.id)))
   }, [members, assignedIds])
 
   const deselectAll = useCallback(() => {
@@ -87,7 +90,7 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
     setSubmitting(true)
 
     try {
-      const payload = mode === 'all'
+      const payload = mode === 'assign_all'
         ? { programId, mode: 'all', memberIds: [] }
         : { programId, mode: 'specific', memberIds: [...selectedIds] }
 
@@ -112,6 +115,32 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
     }
   }
 
+  async function handleDeassign() {
+    if (submitting || selectedIds.size === 0) return
+    setSubmitting(true)
+
+    try {
+      const res = await fetch('/api/programs/assignments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ programId, memberIds: [...selectedIds] }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error ?? 'Failed to remove assignments')
+      }
+
+      toast.success(json.message)
+      onClose()
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to remove members')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const filtered = members.filter(m => {
     if (!search.trim()) return true
     const q = search.toLowerCase()
@@ -125,7 +154,7 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
   const unassignedFiltered = filtered.filter(m => !assignedIds.has(m.id))
   const assignedFiltered = filtered.filter(m => assignedIds.has(m.id))
 
-  const canSubmit = mode === 'all' || selectedIds.size > 0
+  const resetToIdle = () => { setMode('idle'); setSelectedIds(new Set()); setSearch('') }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -134,11 +163,15 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-50 text-brand-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <UserPlus className="w-5 h-5" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              mode === 'deassign' ? 'bg-red-50 text-red-600' : 'bg-brand-50 text-brand-600'
+            }`}>
+              {mode === 'deassign' ? <UserMinus className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Assign Members</h3>
+              <h3 className="text-lg font-bold text-slate-900">
+                {mode === 'deassign' ? 'Remove Members' : 'Assign Members'}
+              </h3>
               <p className="text-sm text-slate-500 mt-0.5 line-clamp-1">{programName}</p>
             </div>
           </div>
@@ -161,15 +194,15 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
               <p className="text-sm text-slate-500">Loading members...</p>
             </div>
           ) : mode === 'idle' ? (
-            /* Mode selection */
+            /* ─── Mode selection ─────────────────────────────────────────── */
             <div className="space-y-3">
               <p className="text-sm text-slate-600 mb-4">
-                Choose how you want to assign this program:
+                What would you like to do?
               </p>
 
               <button
                 type="button"
-                onClick={() => { setMode('all'); }}
+                onClick={() => setMode('assign_all')}
                 className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition-all text-left group"
               >
                 <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
@@ -185,7 +218,7 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
 
               <button
                 type="button"
-                onClick={() => setMode('specific')}
+                onClick={() => setMode('assign_specific')}
                 className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition-all text-left group"
               >
                 <div className="w-10 h-10 bg-brand-50 text-brand-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-brand-100 transition-colors">
@@ -200,6 +233,24 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
               </button>
 
               {assignedIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMode('deassign')}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-red-100 hover:border-red-300 hover:bg-red-50/50 transition-all text-left group"
+                >
+                  <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-red-100 transition-colors">
+                    <UserMinus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Remove Assigned Members</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Deassign members from this program ({assignedIds.size} currently assigned)
+                    </p>
+                  </div>
+                </button>
+              )}
+
+              {assignedIds.size > 0 && (
                 <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
                   <p className="text-xs font-semibold text-slate-500">
                     Currently assigned: <span className="text-brand-600">{assignedIds.size} member{assignedIds.size === 1 ? '' : 's'}</span>
@@ -207,8 +258,9 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
                 </div>
               )}
             </div>
-          ) : mode === 'all' ? (
-            /* Confirm assign all */
+
+          ) : mode === 'assign_all' ? (
+            /* ─── Confirm assign all ─────────────────────────────────────── */
             <div className="text-center py-6">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Users className="w-7 h-7" />
@@ -219,10 +271,86 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
                 Members already assigned will not be duplicated.
               </p>
             </div>
-          ) : (
-            /* Specific member selection */
+
+          ) : mode === 'deassign' ? (
+            /* ─── De-assign: select members to remove ─────────────────────── */
             <>
-              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search assigned members..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-500">
+                  {selectedIds.size} selected for removal
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllAssigned}
+                    className="text-xs font-semibold text-red-600 hover:text-red-700"
+                  >
+                    Select all
+                  </button>
+                  {selectedIds.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={deselectAll}
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1 max-h-[40dvh] overflow-y-auto -mx-1 px-1">
+                {assignedFiltered.length === 0 && (
+                  <p className="text-sm text-slate-400 text-center py-6">
+                    {search ? 'No matching assigned members' : 'No members assigned yet'}
+                  </p>
+                )}
+
+                {assignedFiltered.map(m => (
+                  <label
+                    key={m.id}
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
+                      selectedIds.has(m.id)
+                        ? 'bg-red-50 border border-red-200'
+                        : 'hover:bg-slate-50 border border-transparent'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(m.id)}
+                      onChange={() => toggleSelect(m.id)}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                      selectedIds.has(m.id)
+                        ? 'bg-red-500 border-red-500 text-white'
+                        : 'border-slate-300'
+                    }`}>
+                      {selectedIds.has(m.id) && <X className="w-3 h-3" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate">{m.name}</p>
+                      <p className="text-xs text-slate-400">GF{String(m.member_number).padStart(4, '0')} · {m.phone}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </>
+
+          ) : (
+            /* ─── Assign specific members ─────────────────────────────────── */
+            <>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
@@ -234,7 +362,6 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
                 />
               </div>
 
-              {/* Select all / deselect all */}
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-500">
                   {selectedIds.size} selected
@@ -243,7 +370,7 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={selectAll}
+                    onClick={selectAllUnassigned}
                     className="text-xs font-semibold text-brand-600 hover:text-brand-700"
                   >
                     Select all
@@ -260,7 +387,6 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
                 </div>
               </div>
 
-              {/* Member list */}
               <div className="space-y-1 max-h-[40dvh] overflow-y-auto -mx-1 px-1">
                 {unassignedFiltered.length === 0 && assignedFiltered.length === 0 && (
                   <p className="text-sm text-slate-400 text-center py-6">No members found</p>
@@ -295,7 +421,6 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
                   </label>
                 ))}
 
-                {/* Already assigned section */}
                 {assignedFiltered.length > 0 && (
                   <>
                     <div className="pt-3 pb-1 px-1">
@@ -327,26 +452,42 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
           <div className="flex gap-3 p-5 border-t border-slate-100 flex-shrink-0">
             <button
               type="button"
-              onClick={() => { setMode('idle'); setSelectedIds(new Set()); setSearch('') }}
+              onClick={resetToIdle}
               disabled={submitting}
               className="flex-1 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors disabled:opacity-50"
             >
               Back
             </button>
-            <button
-              type="button"
-              onClick={handleAssign}
-              disabled={submitting || !canSubmit}
-              className="flex-1 py-2.5 rounded-xl bg-brand-500 text-white font-bold text-sm hover:bg-brand-600 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
-            >
-              {submitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Assigning...</>
-              ) : mode === 'all' ? (
-                <><Users className="w-4 h-4" /> Assign All</>
-              ) : (
-                <><UserPlus className="w-4 h-4" /> Assign {selectedIds.size}</>
-              )}
-            </button>
+
+            {mode === 'deassign' ? (
+              <button
+                type="button"
+                onClick={handleDeassign}
+                disabled={submitting || selectedIds.size === 0}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Removing...</>
+                ) : (
+                  <><UserMinus className="w-4 h-4" /> Remove {selectedIds.size}</>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAssign}
+                disabled={submitting || (mode === 'assign_specific' && selectedIds.size === 0)}
+                className="flex-1 py-2.5 rounded-xl bg-brand-500 text-white font-bold text-sm hover:bg-brand-600 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Assigning...</>
+                ) : mode === 'assign_all' ? (
+                  <><Users className="w-4 h-4" /> Assign All</>
+                ) : (
+                  <><UserPlus className="w-4 h-4" /> Assign {selectedIds.size}</>
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>

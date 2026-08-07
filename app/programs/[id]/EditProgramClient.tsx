@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
-import { Trash2, ArrowLeft, AlertTriangle, Loader2, X } from 'lucide-react'
+import { Trash2, ArrowLeft, AlertTriangle, Loader2, X, UserPlus } from 'lucide-react'
+import AssignMembersModal from '@/components/programs/AssignMembersModal'
 import ProgramSetupForm, { ProgramSetupData } from '@/components/programs/ProgramSetupForm'
 import ExerciseBuilder, { ExerciseInstance } from '@/components/programs/ExerciseBuilder'
 import type { ProgramDay, WorkoutProgram } from '@/types'
@@ -33,6 +34,7 @@ export default function EditProgramClient({ program }: { program: WorkoutProgram
   const [step, setStep] = useState(1)
   const [isDeleting, setIsDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [assignOpen, setAssignOpen] = useState(false)
 
   const [programData, setProgramData] = useState<ProgramSetupData>({
     name: program.name,
@@ -104,14 +106,24 @@ export default function EditProgramClient({ program }: { program: WorkoutProgram
           </p>
         </div>
 
-        <button
-          onClick={() => setConfirmOpen(true)}
-          disabled={isDeleting}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold text-sm transition-colors disabled:opacity-50 self-start sm:self-auto"
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete Program
-        </button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setAssignOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-50 text-brand-700 rounded-xl hover:bg-brand-100 font-bold text-sm transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            Assign Members
+          </button>
+
+          <button
+            onClick={() => setConfirmOpen(true)}
+            disabled={isDeleting}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold text-sm transition-colors disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Program
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col w-full">
@@ -130,6 +142,14 @@ export default function EditProgramClient({ program }: { program: WorkoutProgram
           />
         )}
       </div>
+
+      {assignOpen && (
+        <AssignMembersModal
+          programId={program.id}
+          programName={program.name}
+          onClose={() => setAssignOpen(false)}
+        />
+      )}
 
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">

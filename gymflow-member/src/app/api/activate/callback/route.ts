@@ -1,23 +1,33 @@
 /**
  * GET /api/activate/callback
  *
- * Supabase redirects here after the member clicks the magic link.
- * The actual token verification happens at Supabase's /auth/v1/verify endpoint
- * BEFORE redirecting here. By the time this route is hit, the user already has
- * a valid session via cookies. We just need to read it and complete activation.
+ * Supabase redirects here after the member opens the verification link.
+ *
+ * ── What actually arrives here ───────────────────────────────────────────────
+ * Verified against the live project: Supabase's /auth/v1/verify responds 303 to
+ *
+ *     https://member.gymflow.sbs/api/activate/callback#access_token=...
+ *
+ * The tokens are in the URL **fragment**, which is never sent to the server. So
+ * on the normal path this route has nothing to read and must hand off to a
+ * client page that can see `window.location.hash`.
+ *
+ * Failures arrive the same way: `#error=access_denied&error_code=otp_expired`.
+ *
+ * This route therefore only handles the query-param flows (`code` /
+ * `token_hash`, used if the project is switched to PKCE or a custom template)
+ * and otherwise forwards to /activate/verifying, which reads the fragment.
+ *
+ * It used to forward to /activate/error on every fragment-based sign-in, so a
+ * completely successful activation showed a URL that said "error". It also
+ * redirected to /activate/success when the auth user had no member linkage,
+ * reporting success for an activation that never happened.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-
-function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Missing service role configuration')
-  return createClient(url, key)
-}
+import { getServiceSupabase } from '@/lib/activation-token'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -25,15 +35,26 @@ export async function GET(req: NextRequest) {
   const tokenHash = searchParams.get('token_hash')
   const type = searchParams.get('type')
   const errorDescription = searchParams.get('error_description')
+  const errorCode = searchParams.get('error_code')
 
   const baseUrl = req.nextUrl.origin
   const successUrl = `${baseUrl}/activate/success`
-  const errorUrl = `${baseUrl}/activate/error`
+  const verifyingUrl = `${baseUrl}/activate/verifying`
 
-  // If Supabase sent an error param, redirect to error page
-  if (errorDescription) {
-    console.error('[activate/callback] Supabase error:', errorDescription)
-    return NextResponse.redirect(errorUrl)
+  const failUrl = (reason: string) =>
+    `${baseUrl}/activate/verifying?failed=${encodeURIComponent(reason)}`
+
+  // Supabase reported the failure as query params (non-fragment templates).
+  if (errorDescription || errorCode) {
+    console.error('[activate/callback] Supabase error:', errorCode, errorDescription)
+    return NextResponse.redirect(failUrl(errorCode ?? 'verification_failed'))
+  }
+
+  // Nothing readable server-side → the tokens (or the error) are in the
+  // fragment. Forward to the client page, which can read it. The browser
+  // carries the original fragment across this redirect.
+  if (!code && !tokenHash) {
+    return NextResponse.redirect(verifyingUrl)
   }
 
   try {
@@ -50,7 +71,7 @@ export async function GET(req: NextRequest) {
               cookieStore.set(name, value, options)
             })
           } catch {
-            // May not be writable in route handler
+            // Not writable in some route-handler contexts.
           }
         },
       },
@@ -58,17 +79,15 @@ export async function GET(req: NextRequest) {
 
     let user = null
 
-    // Try code exchange (PKCE flow)
     if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
       if (error) {
         console.error('[activate/callback] code exchange failed:', error.message)
-        return NextResponse.redirect(errorUrl)
+        return NextResponse.redirect(failUrl('exchange_failed'))
       }
       user = data.user
     }
 
-    // Try token_hash verification (magic link / email OTP)
     if (!user && tokenHash) {
       const verifyType = (type === 'magiclink' || type === 'email') ? type : 'magiclink'
       const { data, error } = await supabase.auth.verifyOtp({
@@ -77,62 +96,62 @@ export async function GET(req: NextRequest) {
       })
       if (error) {
         console.error(`[activate/callback] verifyOtp failed (${verifyType}):`, error.message)
-        return NextResponse.redirect(errorUrl)
+        return NextResponse.redirect(failUrl(error.message.includes('expired') ? 'otp_expired' : 'verify_failed'))
       }
       user = data.user
     }
 
-    // If no code/token_hash, try reading existing session (Supabase may have
-    // already set cookies during the /auth/v1/verify redirect chain)
     if (!user) {
-      const { data: { user: sessionUser } } = await supabase.auth.getUser()
-      user = sessionUser
+      return NextResponse.redirect(failUrl('no_session'))
     }
 
-    if (!user) {
-      console.error('[activate/callback] no user found after all verification attempts')
-      return NextResponse.redirect(errorUrl)
-    }
-
-    // Complete activation
     const memberId = user.user_metadata?.member_id
     const gymId = user.user_metadata?.gym_id
 
-    if (memberId && gymId) {
-      const serviceSupabase = getServiceSupabase()
-
-      // Confirm the email now that the magic link was clicked
-      await serviceSupabase.auth.admin.updateUserById(user.id, {
-        email_confirm: true,
-        user_metadata: {
-          ...user.user_metadata,
-          invitation_token: null,
-          activation_step: 'completed',
-          activated_at: new Date().toISOString(),
-        },
-      })
-
-      await serviceSupabase
-        .from('members')
-        .update({
-          invitation_status: 'activated',
-          portal_activated_at: new Date().toISOString(),
-          portal_enabled: true,
-        })
-        .eq('id', memberId)
-        .eq('gym_id', gymId)
-
-      await serviceSupabase.from('member_portal_activity').insert({
-        gym_id: gymId,
-        member_id: memberId,
-        activity: 'portal_activated',
-        performed_by: 'member',
-      })
+    // Previously this fell through to the success page when the linkage was
+    // missing, so the member saw "Account Activated!" while nothing was written.
+    if (!memberId || !gymId) {
+      console.error('[activate/callback] auth user has no member linkage', { userId: user.id })
+      return NextResponse.redirect(failUrl('no_member_linkage'))
     }
+
+    const service = getServiceSupabase()
+
+    await service.auth.admin.updateUserById(user.id, {
+      email_confirm: true,
+      user_metadata: {
+        ...user.user_metadata,
+        invitation_token: null,
+        activation_step: 'completed',
+        activated_at: new Date().toISOString(),
+      },
+    })
+
+    const { error: memberErr } = await service
+      .from('members')
+      .update({
+        invitation_status: 'activated',
+        portal_activated_at: new Date().toISOString(),
+        portal_enabled: true,
+      })
+      .eq('id', memberId)
+      .eq('gym_id', gymId)
+
+    if (memberErr) {
+      console.error('[activate/callback] member update failed:', memberErr.message)
+      return NextResponse.redirect(failUrl('activation_write_failed'))
+    }
+
+    await service.from('member_portal_activity').insert({
+      gym_id: gymId,
+      member_id: memberId,
+      activity: 'portal_activated',
+      performed_by: 'member',
+    })
 
     return NextResponse.redirect(successUrl)
   } catch (err) {
     console.error('[activate/callback] error:', err)
-    return NextResponse.redirect(errorUrl)
+    return NextResponse.redirect(failUrl('unexpected_error'))
   }
 }

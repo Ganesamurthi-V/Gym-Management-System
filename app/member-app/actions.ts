@@ -48,6 +48,129 @@ async function invalidateMemberAppCache(gymId: string) {
   await deleteCache(cacheKeys.memberApp(gymId))
 }
 
+/**
+ * Issues a real invitation for one member: ensures an Auth identity exists,
+ * mints a fresh token, stamps portal status, and sends the WhatsApp template.
+ *
+ * Extracted so the bulk path uses the SAME logic. Previously
+ * `bulk_send_invitation` only set `invitation_status = 'pending'` — it created no
+ * token and sent no message, so the table showed members as invited while no
+ * invitation existed. Anyone who reached /activate then failed verification
+ * because there was nothing to verify against.
+ */
+async function issueInvitation(gymId: string, memberId: string): Promise<ActionResult> {
+  const serviceUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceUrl || !serviceKey) {
+    return { success: false, message: 'Server not configured for invitations (missing service key)' }
+  }
+
+  const supabase = await createClient()
+  const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+  const serviceSupabase = createServiceClient(serviceUrl, serviceKey)
+  const { randomBytes } = await import('crypto')
+  const { generateInvitationToken } = await import('@/lib/member-invitation')
+
+  const { data: memberData } = await supabase
+    .from('members')
+    .select('id, name, phone, email, auth_user_id, portal_suspended')
+    .eq('id', memberId)
+    .eq('gym_id', gymId)
+    .single()
+
+  if (!memberData) return { success: false, message: 'Member not found' }
+  if (!memberData.phone) return { success: false, message: 'Member has no phone number' }
+  if (memberData.portal_suspended) {
+    return { success: false, message: 'Access is suspended for this member — reactivate before inviting' }
+  }
+
+  let authUserId = memberData.auth_user_id
+
+  if (!authUserId) {
+    const email = memberData.email || `member-${memberId.slice(0, 8)}@gymflow.sbs`
+    const tempPassword = randomBytes(16).toString('base64url')
+
+    const { data: authData, error: authCreateErr } = await serviceSupabase.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { member_id: memberId, gym_id: gymId, role: 'member' },
+    })
+
+    if (authCreateErr || !authData.user) {
+      if (authCreateErr?.message?.includes('already been registered')) {
+        // Page through users instead of reading only the first page.
+        let found: string | null = null
+        for (let page = 1; page <= 50 && !found; page++) {
+          const { data: list } = await serviceSupabase.auth.admin.listUsers({ page, perPage: 1000 })
+          if (!list) break
+          found = list.users.find((u) => u.email === email)?.id ?? null
+          if (list.users.length < 1000) break
+        }
+        if (found) authUserId = found
+        else return { success: false, message: 'Failed to create member account' }
+      } else {
+        return { success: false, message: authCreateErr?.message ?? 'Failed to create member account' }
+      }
+    } else {
+      authUserId = authData.user.id
+    }
+
+    await serviceSupabase
+      .from('members')
+      .update({ auth_user_id: authUserId })
+      .eq('id', memberId)
+      .eq('gym_id', gymId)
+  }
+
+  // Token embeds the member id so the member app can resolve it with a direct
+  // lookup instead of scanning every auth user. See lib/member-invitation.ts.
+  const token = generateInvitationToken(memberId)
+
+  // Replacing user_metadata deliberately resets any half-finished activation
+  // (pending_email / activation_step) from a previous attempt.
+  await serviceSupabase.auth.admin.updateUserById(authUserId!, {
+    user_metadata: {
+      invitation_token: token,
+      invited_at: new Date().toISOString(),
+      gym_id: gymId,
+      member_id: memberId,
+      role: 'member',
+    },
+  })
+
+  await serviceSupabase
+    .from('members')
+    .update({
+      portal_enabled: true,
+      invitation_status: 'pending',
+      invitation_sent_at: new Date().toISOString(),
+      portal_activated_at: null,
+    })
+    .eq('id', memberId)
+    .eq('gym_id', gymId)
+
+  const { sendWhatsAppTemplate } = await import('@/lib/whatsapp/sender')
+  const { data: gymData } = await supabase.from('gyms').select('name').eq('id', gymId).single()
+
+  const sendResult = await sendWhatsAppTemplate('member_app_invitation', {
+    phone: memberData.phone,
+    gymName: gymData?.name ?? 'Your Gym',
+    memberName: memberData.name,
+    invitationToken: token,
+  })
+
+  if (sendResult.success) {
+    return { success: true, message: 'Invitation sent via WhatsApp' }
+  }
+
+  // The token is live either way — surface the direct link as a fallback.
+  return {
+    success: true,
+    message: `Invitation created. WhatsApp delivery failed: ${sendResult.error ?? 'unknown'}. Activation link: https://member.gymflow.sbs/activate/${token}`,
+  }
+}
+
 // ─── Row Actions ─────────────────────────────────────────────────────────────
 
 export async function memberRowAction(
@@ -126,113 +249,16 @@ export async function memberRowAction(
 
     case 'send_invitation':
     case 'resend_invitation': {
-      // Perform the invitation directly using service-role (same logic as the API route)
-      const serviceUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      if (!serviceUrl || !serviceKey) {
-        return { success: false, message: 'Server not configured for invitations (missing service key)' }
-      }
+      const result = await issueInvitation(gymId, memberId)
+      if (!result.success) return result
 
-      const { createClient: createServiceClient } = await import('@supabase/supabase-js')
-      const serviceSupabase = createServiceClient(serviceUrl, serviceKey)
-      const { randomBytes } = await import('crypto')
-
-      // Fetch member details
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('id, name, phone, email, auth_user_id')
-        .eq('id', memberId)
-        .eq('gym_id', gymId)
-        .single()
-
-      if (!memberData?.phone) {
-        return { success: false, message: 'Member has no phone number' }
-      }
-
-      let authUserId = memberData.auth_user_id
-
-      // Create Auth identity if needed
-      if (!authUserId) {
-        const email = memberData.email || `member-${memberId.slice(0, 8)}@gymflow.sbs`
-        const tempPassword = randomBytes(16).toString('base64url')
-
-        const { data: authData, error: authCreateErr } = await serviceSupabase.auth.admin.createUser({
-          email,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: { member_id: memberId, gym_id: gymId, role: 'member' },
-        })
-
-        if (authCreateErr || !authData.user) {
-          if (authCreateErr?.message?.includes('already been registered')) {
-            const { data: existingUsers } = await serviceSupabase.auth.admin.listUsers()
-            const existing = existingUsers?.users?.find(u => u.email === email)
-            if (existing) authUserId = existing.id
-            else return { success: false, message: 'Failed to create member account' }
-          } else {
-            return { success: false, message: authCreateErr?.message ?? 'Failed to create member account' }
-          }
-        } else {
-          authUserId = authData.user.id
-        }
-
-        // Link auth_user_id
-        await serviceSupabase
-          .from('members')
-          .update({ auth_user_id: authUserId })
-          .eq('id', memberId)
-          .eq('gym_id', gymId)
-      }
-
-      // Generate invitation token
-      const token = randomBytes(32).toString('base64url')
-      await serviceSupabase.auth.admin.updateUserById(authUserId!, {
-        user_metadata: {
-          invitation_token: token,
-          invited_at: new Date().toISOString(),
-          gym_id: gymId,
-          member_id: memberId,
-          role: 'member',
-        },
-      })
-
-      // Update portal status
-      await serviceSupabase
-        .from('members')
-        .update({
-          portal_enabled: true,
-          invitation_status: 'pending',
-          invitation_sent_at: new Date().toISOString(),
-        })
-        .eq('id', memberId)
-        .eq('gym_id', gymId)
-
-      // Send WhatsApp
-      const { sendWhatsAppTemplate } = await import('@/lib/whatsapp/sender')
-      const { data: gymData } = await supabase.from('gyms').select('name').eq('id', gymId).single()
-      const gymName = gymData?.name ?? 'Your Gym'
-
-      const sendResult = await sendWhatsAppTemplate('member_app_invitation', {
-        phone: memberData.phone,
-        gymName,
-        memberName: memberData.name,
-        invitationToken: token,
-      })
-
-      if (action === 'resend_invitation') {
-        await logActivity(gymId, memberId, 'invitation_resent')
-      }
+      // NOTE: 'invitation_sent' would be the accurate value for a first send,
+      // but the member_portal_activity CHECK constraint only permits
+      // 'invitation_resent'. Using anything else fails the INSERT at runtime, so
+      // both cases log the allowed value until a migration extends the enum.
+      await logActivity(gymId, memberId, 'invitation_resent')
       await invalidateMemberAppCache(gymId)
-
-      if (sendResult.success) {
-        return { success: true, message: 'Invitation sent via WhatsApp' }
-      } else {
-        // WhatsApp failed but the token is created — member can still use the direct link
-        return {
-          success: true,
-          message: `Portal activated. WhatsApp delivery failed: ${sendResult.error ?? 'unknown'}. Activation link: https://member.gymflow.sbs/activate/${token}`,
-        }
-      }
+      return result
     }
 
     case 'suspend_access': {
@@ -309,16 +335,41 @@ export async function memberBulkAction(
     }
 
     case 'bulk_send_invitation': {
-      const { error } = await supabase.from('members')
-        .update({
-          portal_enabled: true,
-          invitation_status: 'pending',
-          invitation_sent_at: new Date().toISOString(),
-        })
-        .in('id', memberIds)
-      if (error) return { success: false, message: error.message }
+      // This used to only flip invitation_status to 'pending' — no token was
+      // minted and no WhatsApp message was sent, so the table reported members
+      // as invited when no invitation existed. It now runs the real invitation
+      // for each member and reports per-member outcomes.
+      const results = await Promise.all(
+        memberIds.map(async (id) => ({ id, result: await issueInvitation(gymId, id) })),
+      )
+
+      const sent = results.filter((r) => r.result.success)
+      const failed = results.filter((r) => !r.result.success)
+
+      if (sent.length > 0) {
+        // See the note in memberRowAction: the CHECK constraint only allows
+        // 'invitation_resent' for invitation events.
+        await supabase.from('member_portal_activity').insert(
+          sent.map(({ id }) => ({
+            gym_id: gymId,
+            member_id: id,
+            activity: 'invitation_resent' as const,
+            performed_by: 'owner',
+          })),
+        )
+      }
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: `Invitation sent to ${count} member${count === 1 ? '' : 's'}` }
+
+      if (failed.length === 0) {
+        return { success: true, message: `Invitation sent to ${sent.length} member${sent.length === 1 ? '' : 's'}` }
+      }
+      if (sent.length === 0) {
+        return { success: false, message: `No invitations sent. ${failed[0].result.message}` }
+      }
+      return {
+        success: true,
+        message: `Invited ${sent.length} of ${count}. ${failed.length} skipped: ${failed[0].result.message}`,
+      }
     }
 
     case 'bulk_suspend': {

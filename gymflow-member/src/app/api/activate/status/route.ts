@@ -1,76 +1,93 @@
 /**
  * POST /api/activate/status
  *
- * Polled by the "Check Your Email" page to detect when the member has
- * clicked the verification link and the account is activated.
+ * Polled by the "Check Your Email" page to detect when the member has clicked
+ * the verification link.
  *
- * Returns { activated: true } once the member_portal_activity row shows
- * 'portal_activated' or the member's invitation_status is 'activated'.
+ * ── The bug this route used to have ──────────────────────────────────────────
+ * It resolved the token by scanning auth users and then did:
  *
- * Public endpoint — uses the invitation token for authorization.
+ *     if (!authUser) return { activated: true }   // "token cleared => done"
+ *
+ * That inference is wrong. A token is missing for several reasons, and only one
+ * of them is success:
+ *   - activation genuinely completed (token cleared)   → activated
+ *   - the token never existed / was mistyped           → NOT activated
+ *   - the invitation was revoked or re-sent            → NOT activated
+ *   - the user list scan missed it (>1000 users)       → NOT activated
+ *   - Supabase returned a transient error              → unknown
+ *
+ * Because the waiting screen polls immediately on mount, any of those made the
+ * page flip straight to "Account Activated!" and send the member to a login they
+ * could not complete. Verified against the live project: `verify` returned 404
+ * "invalid" for a random token while `status` returned activated=true for the
+ * same token.
+ *
+ * Activation is now only ever reported when positively confirmed against the
+ * member row, and every other case returns an explicit state the UI can act on.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import {
+  getServiceSupabase,
+  resolveInvitationToken,
+  isMemberActivated,
+} from '@/lib/activation-token'
 
-function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Missing service role configuration')
-  return createClient(url, key)
-}
+type State = 'waiting' | 'activated' | 'invalid' | 'expired' | 'unknown'
+
+const json = (state: State, extra: Record<string, unknown> = {}) =>
+  NextResponse.json(
+    { activated: state === 'activated', state, ...extra },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 
 export async function POST(req: NextRequest) {
   try {
-    let body: { token: string }
+    let body: { token?: string; memberId?: string }
     try { body = await req.json() } catch {
-      return NextResponse.json({ activated: false }, { status: 400 })
+      return json('invalid')
     }
 
-    const { token } = body
-    if (!token || token.length < 20) {
-      return NextResponse.json({ activated: false })
-    }
+    const token = body.token
+    if (!token || token.length < 20) return json('invalid')
 
     const supabase = getServiceSupabase()
+    const resolved = await resolveInvitationToken(supabase, token)
 
-    // Find auth user by token
-    const { data: usersData } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-    if (!usersData) return NextResponse.json({ activated: false })
-
-    const authUser = usersData.users.find(
-      u => u.user_metadata?.invitation_token === token
-    )
-
-    // If the token is cleared, it means activation completed (token is single-use)
-    if (!authUser) {
-      // Token was cleared → activation completed
-      return NextResponse.json({ activated: true })
+    if (resolved.ok) {
+      // Token still live. Activation is complete only if the DB says so.
+      if (resolved.authUser.user_metadata?.activation_step === 'completed') {
+        return json('activated')
+      }
+      if (await isMemberActivated(supabase, resolved.memberId)) {
+        return json('activated')
+      }
+      return json('waiting')
     }
 
-    // Check if the activation_step is 'completed'
-    if (authUser.user_metadata?.activation_step === 'completed') {
-      return NextResponse.json({ activated: true })
+    // Token no longer resolves. Do NOT assume success — confirm it.
+    //
+    // `memberId` is supplied by the client from the /complete response, which is
+    // how we can still verify activation after the token has been cleared. It is
+    // only ever used as a lookup key for a read of that member's own status, so
+    // a forged value reveals nothing beyond a boolean the member already knows.
+    if (resolved.reason === 'lookup_failed') {
+      // Infrastructure hiccup — tell the client to keep waiting, never to proceed.
+      return json('unknown')
     }
 
-    // Also check member row directly
-    const memberId = authUser.user_metadata?.member_id
-    const gymId = authUser.user_metadata?.gym_id
-    if (memberId && gymId) {
-      const { data: member } = await supabase
-        .from('members')
-        .select('invitation_status')
-        .eq('id', memberId)
-        .eq('gym_id', gymId)
-        .single()
-
-      if (member?.invitation_status === 'activated') {
-        return NextResponse.json({ activated: true })
+    if (body.memberId) {
+      if (await isMemberActivated(supabase, body.memberId)) {
+        return json('activated')
       }
     }
 
-    return NextResponse.json({ activated: false })
-  } catch {
-    return NextResponse.json({ activated: false })
+    if (resolved.reason === 'expired') return json('expired')
+    return json('invalid')
+  } catch (err) {
+    console.error('[activate/status] error:', err)
+    // Never report success on an exception.
+    return json('unknown')
   }
 }

@@ -21,6 +21,7 @@ import { apiLogger } from '@/lib/logger'
 import { randomBytes } from 'crypto'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
+import { generateInvitationToken } from '@/lib/member-invitation'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,9 +32,8 @@ function getServiceSupabase() {
   return createServiceClient(url, key)
 }
 
-function generateToken(): string {
-  return randomBytes(32).toString('base64url')
-}
+// Token generation lives in lib/member-invitation.ts so the member app can
+// resolve tokens with a direct lookup instead of scanning every auth user.
 
 export async function POST(req: NextRequest) {
   const log = apiLogger('MEMBER_APP_INVITE')
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate a secure invitation token and store it as user metadata
-    const token = generateToken()
+    const token = generateInvitationToken(memberId)
     log.start('SET_TOKEN')
     await serviceSupabase.auth.admin.updateUserById(authUserId!, {
       user_metadata: {

@@ -199,101 +199,22 @@ export async function getLeaderboard(gymId: string): Promise<LeaderboardEntry[]>
 
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
-export async function runMemberRowAction(
-  action: MemberRowAction,
-  memberId: string,
-): Promise<ActionResult> {
-  const supabase = await createClient()
-
-  switch (action) {
-    case 'enable_portal': {
-      const { error } = await supabase.from('members')
-        .update({ portal_enabled: true, portal_suspended: false })
-        .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: 'Portal enabled' }
-    }
-    case 'disable_portal': {
-      const { error } = await supabase.from('members')
-        .update({ portal_enabled: false })
-        .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: 'Portal disabled' }
-    }
-    case 'send_invitation':
-    case 'resend_invitation': {
-      const { error } = await supabase.from('members')
-        .update({
-          portal_enabled: true,
-          invitation_status: 'pending',
-          invitation_sent_at: new Date().toISOString(),
-        })
-        .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: action === 'send_invitation' ? 'Invitation sent' : 'Invitation resent' }
-    }
-    case 'suspend_access': {
-      const { error } = await supabase.from('members')
-        .update({ portal_suspended: true })
-        .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: 'Access suspended' }
-    }
-    case 'reactivate_access': {
-      const { error } = await supabase.from('members')
-        .update({ portal_suspended: false })
-        .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: 'Access reactivated' }
-    }
-    case 'reset_password':
-      return { success: true, message: 'Password reset link sent' }
-    case 'force_logout':
-      return { success: true, message: 'Member signed out of all devices' }
-    default:
-      return { success: false, message: 'Unknown action' }
-  }
-}
-
-export async function runMemberBulkAction(
-  action: MemberBulkAction,
-  memberIds: string[],
-): Promise<ActionResult> {
-  const supabase = await createClient()
-  const count = memberIds.length
-
-  switch (action) {
-    case 'bulk_enable_portal': {
-      const { error } = await supabase.from('members')
-        .update({ portal_enabled: true, portal_suspended: false })
-        .in('id', memberIds)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: `Portal enabled for ${count} member${count === 1 ? '' : 's'}` }
-    }
-    case 'bulk_send_invitation': {
-      const { error } = await supabase.from('members')
-        .update({
-          portal_enabled: true,
-          invitation_status: 'pending',
-          invitation_sent_at: new Date().toISOString(),
-        })
-        .in('id', memberIds)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: `Invitation sent to ${count} member${count === 1 ? '' : 's'}` }
-    }
-    case 'bulk_suspend': {
-      const { error } = await supabase.from('members')
-        .update({ portal_suspended: true })
-        .in('id', memberIds)
-      if (error) return { success: false, message: error.message }
-      return { success: true, message: `${count} member${count === 1 ? '' : 's'} suspended` }
-    }
-    case 'bulk_export':
-      return { success: true, message: `Exported ${count} member${count === 1 ? '' : 's'}` }
-    default:
-      return { success: false, message: 'Unknown action' }
-  }
-}
+/**
+ * REMOVED: runMemberRowAction / runMemberBulkAction.
+ *
+ * These were a second, incomplete copy of the mutation logic in
+ * `app/member-app/actions.ts`. Nothing imported them (the UI calls
+ * `memberRowAction` / `memberBulkAction`), and their invitation branches were
+ * actively wrong: they set `invitation_status = 'pending'` without creating an
+ * auth identity, minting a token, or sending WhatsApp — producing members that
+ * looked invited but had no usable invitation. Their `disable_portal` also only
+ * flipped a flag, skipping the auth-user and activity-log cleanup the real
+ * action performs.
+ *
+ * Deleted rather than fixed so there is exactly one implementation of these
+ * mutations and no chance of the broken copy being wired up later.
+ * Use `app/member-app/actions.ts`.
+ */
 
 // ─── Aggregate loader ────────────────────────────────────────────────────────
 

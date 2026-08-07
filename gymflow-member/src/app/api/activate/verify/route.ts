@@ -5,121 +5,121 @@
  * Public endpoint — the member hasn't logged in yet.
  *
  * Checks:
- *  ✔ Token exists in auth user metadata
+ *  ✔ Token resolves to an auth user and matches exactly
  *  ✔ Token not expired (24h from invited_at)
- *  ✔ Token not already used (invitation_token is not null)
- *  ✔ Member exists with portal_status = pending
+ *  ✔ Member exists and belongs to the token's gym
+ *  ✔ Portal not disabled or suspended by the owner
+ *  ✔ Not already activated
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import {
+  getServiceSupabase,
+  resolveInvitationToken,
+  isPlaceholderEmail,
+} from '@/lib/activation-token'
 
-function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Missing service role configuration')
-  return createClient(url, key)
-}
+const NO_STORE = { 'Cache-Control': 'no-store' } as const
 
-const TOKEN_EXPIRY_HOURS = 24
+const fail = (error: string, status: number, code?: string) =>
+  NextResponse.json({ success: false, error, code }, { status, headers: NO_STORE })
 
 export async function POST(req: NextRequest) {
   try {
     let body: { token: string }
     try { body = await req.json() } catch {
-      return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 })
+      return fail('Invalid request', 400)
     }
 
     const { token } = body
-    if (!token || token.length < 20) {
-      return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 400 })
-    }
+    if (!token || token.length < 20) return fail('Invalid token', 400)
 
     const supabase = getServiceSupabase()
+    const resolved = await resolveInvitationToken(supabase, token)
 
-    // Find the auth user with this invitation token in their metadata
-    const { data: usersData, error: listErr } = await supabase.auth.admin.listUsers({
-      perPage: 1000,
-    })
-
-    if (listErr || !usersData) {
-      return NextResponse.json({ success: false, error: 'Unable to verify token' }, { status: 500 })
-    }
-
-    const authUser = usersData.users.find(
-      u => u.user_metadata?.invitation_token === token
-    )
-
-    if (!authUser) {
-      return NextResponse.json({
-        success: false,
-        error: 'This invitation link is invalid or has already been used.',
-      }, { status: 404 })
-    }
-
-    // Check token expiry (24 hours)
-    const invitedAt = authUser.user_metadata?.invited_at
-    if (invitedAt) {
-      const elapsed = Date.now() - new Date(invitedAt).getTime()
-      if (elapsed > TOKEN_EXPIRY_HOURS * 60 * 60 * 1000) {
-        return NextResponse.json({
-          success: false,
-          error: 'This invitation link has expired. Please ask your gym to send a new one.',
-        }, { status: 410 })
+    if (!resolved.ok) {
+      switch (resolved.reason) {
+        case 'expired':
+          return fail(
+            'This invitation link has expired. Please ask your gym to send a new one.',
+            410, 'expired',
+          )
+        case 'incomplete':
+          return fail(
+            'Incomplete invitation data. Contact your gym for a new link.',
+            400, 'incomplete',
+          )
+        case 'lookup_failed':
+          // Distinguished from "invalid" so the UI can offer a retry instead of
+          // telling the member their link is dead because of our outage.
+          return fail(
+            'We could not verify your link right now. Please try again in a moment.',
+            503, 'lookup_failed',
+          )
+        default:
+          return fail(
+            'This invitation link is invalid or has already been used.',
+            404, 'not_found',
+          )
       }
     }
 
-    const memberId = authUser.user_metadata?.member_id
-    const gymId = authUser.user_metadata?.gym_id
+    const { authUser, memberId, gymId } = resolved
 
-    if (!memberId || !gymId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Incomplete invitation data. Contact your gym for a new link.',
-      }, { status: 400 })
-    }
-
-    // Verify member exists and portal is in pending state
-    const { data: member } = await supabase
+    // Fetch member and gym together — one round trip instead of two.
+    const { data: member, error: memberErr } = await supabase
       .from('members')
-      .select('name, phone, invitation_status')
+      .select('name, phone, email, invitation_status, portal_enabled, portal_suspended, gyms!inner(name)')
       .eq('id', memberId)
       .eq('gym_id', gymId)
-      .single()
+      .maybeSingle()
 
+    if (memberErr) {
+      return fail('We could not verify your link right now. Please try again in a moment.', 503, 'lookup_failed')
+    }
     if (!member) {
-      return NextResponse.json({
-        success: false,
-        error: 'Member record not found. Contact your gym.',
-      }, { status: 404 })
+      return fail('Member record not found. Contact your gym.', 404, 'not_found')
+    }
+
+    // The owner can revoke access between sending the invite and the member
+    // opening it. Previously neither flag was checked, so a disabled or
+    // suspended member could still activate a working account.
+    if (member.portal_suspended) {
+      return fail('Your portal access is currently suspended. Please contact your gym.', 403, 'suspended')
+    }
+    if (member.portal_enabled === false) {
+      return fail('Your gym has disabled portal access. Please contact your gym.', 403, 'disabled')
     }
 
     if (member.invitation_status === 'activated') {
-      return NextResponse.json({
-        success: false,
-        error: 'This account has already been activated. Please go to login.',
-      }, { status: 409 })
+      return fail('This account has already been activated. Please go to login.', 409, 'already_activated')
     }
 
-    // Fetch gym name
-    const { data: gym } = await supabase
-      .from('gyms')
-      .select('name')
-      .eq('id', gymId)
-      .single()
+    const gymRow = (member as unknown as { gyms?: { name?: string } | null }).gyms
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        memberName: member.name,
-        phone: member.phone,
-        gymName: gym?.name ?? 'Your Gym',
-        gymId,
-        currentEmail: authUser.email ?? null,
+    // Only prefill a real address. The owner app assigns a synthetic
+    // `member-<id8>@gymflow.sbs` placeholder when creating the auth identity;
+    // prefilling that meant a member who tapped straight through sent the
+    // verification email to a mailbox that does not exist, then waited forever.
+    const candidateEmail = member.email ?? authUser.email ?? null
+    const prefillEmail = isPlaceholderEmail(candidateEmail) ? null : candidateEmail
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          memberId,
+          memberName: member.name,
+          phone: member.phone,
+          gymName: gymRow?.name ?? 'Your Gym',
+          gymId,
+          currentEmail: prefillEmail,
+        },
       },
-    })
+      { headers: NO_STORE },
+    )
   } catch (err) {
     console.error('[activate/verify] error:', err)
-    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 })
+    return fail('Server error', 500)
   }
 }

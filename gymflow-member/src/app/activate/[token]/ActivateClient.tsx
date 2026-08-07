@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, MailCheck, ShieldCheck, User, Phone, Building2 } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, MailCheck, RefreshCw, ShieldCheck, User, Phone, Building2 } from 'lucide-react'
+import { saveActivation, clearActivation } from '@/lib/activation-store'
 
 interface MemberInfo {
+  memberId: string
   memberName: string
   phone: string
   gymName: string
@@ -22,6 +24,7 @@ export default function ActivateClient({ token }: { token: string }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [initialCooldown, setInitialCooldown] = useState(0)
 
   // Load member info from the token
   useEffect(() => {
@@ -90,7 +93,16 @@ export default function ActivateClient({ token }: { token: string }) {
         return
       }
 
+      // Remember the in-flight activation so the page the member lands on after
+      // opening their email can offer a resend if the link was already consumed.
+      saveActivation({
+        token,
+        memberId: json.data?.memberId ?? memberInfo?.memberId ?? '',
+        email: trimmedEmail,
+      })
+
       // Email verification sent — show intermediate state
+      setInitialCooldown(Number(json.data?.retryAfterSeconds ?? 0))
       setStatus('email_sent')
     } catch {
       setError('Something went wrong. Please check your connection and try again.')
@@ -154,7 +166,21 @@ export default function ActivateClient({ token }: { token: string }) {
 
   // Email sent — waiting for verification (REALTIME POLLING)
   if (status === 'email_sent') {
-    return <EmailSentScreen email={email} token={token} onActivated={() => setStatus('success')} onChangeEmail={() => { setStatus('ready'); setPassword(''); setConfirmPassword('') }} />
+    return (
+      <EmailSentScreen
+        email={email}
+        token={token}
+        memberId={memberInfo?.memberId ?? ''}
+        initialCooldown={initialCooldown}
+        onActivated={() => setStatus('success')}
+        onChangeEmail={() => {
+          clearActivation()
+          setStatus('ready')
+          setPassword('')
+          setConfirmPassword('')
+        }}
+      />
+    )
   }
 
   // Ready state — show form
@@ -303,48 +329,112 @@ export default function ActivateClient({ token }: { token: string }) {
 function EmailSentScreen({
   email,
   token,
+  memberId,
+  initialCooldown,
   onActivated,
   onChangeEmail,
 }: {
   email: string
   token: string
+  memberId: string
+  initialCooldown: number
   onActivated: () => void
   onChangeEmail: () => void
 }) {
-  const [polling, setPolling] = useState(true)
+  const [linkState, setLinkState] = useState<'waiting' | 'expired' | 'invalid'>('waiting')
+  const [resending, setResending] = useState(false)
+  const [resendMsg, setResendMsg] = useState('')
+  const [cooldown, setCooldown] = useState(initialCooldown)
+
+  // `onActivated` is recreated on every parent render. Holding it in a ref keeps
+  // the polling effect's dependency list stable — previously the effect tore down
+  // and recreated the interval on every render AND re-fired its immediate check,
+  // producing a burst of requests instead of one poll every 3s.
+  const onActivatedRef = useRef(onActivated)
+  useEffect(() => { onActivatedRef.current = onActivated }, [onActivated])
 
   useEffect(() => {
-    if (!polling) return
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
 
+  useEffect(() => {
     let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
+
     const POLL_INTERVAL = 3000
+    const MAX_DURATION_MS = 15 * 60 * 1000 // stop after 15 min instead of polling forever
+    const startedAt = Date.now()
 
     async function check() {
+      if (cancelled) return
+
       try {
         const res = await fetch('/api/activate/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token, memberId }),
         })
         const json = await res.json()
-        if (!cancelled && json.activated) {
-          setPolling(false)
-          onActivated()
+        if (cancelled) return
+
+        if (json.activated === true) {
+          clearActivation()
+          onActivatedRef.current()
+          return
         }
+
+        // The endpoint now distinguishes these instead of reporting success for
+        // anything it cannot resolve.
+        if (json.state === 'expired') { setLinkState('expired'); return }
+        if (json.state === 'invalid') { setLinkState('invalid'); return }
+        // 'unknown' means a transient lookup failure — keep waiting.
       } catch {
-        // Network error — keep polling
+        // Network error — keep waiting.
+      }
+
+      if (!cancelled && Date.now() - startedAt < MAX_DURATION_MS) {
+        timer = setTimeout(check, POLL_INTERVAL)
       }
     }
 
-    // Initial check
     void check()
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [token, memberId])
 
-    const interval = setInterval(check, POLL_INTERVAL)
-    return () => {
-      cancelled = true
-      clearInterval(interval)
+  async function handleResend() {
+    setResending(true)
+    setResendMsg('')
+    try {
+      const res = await fetch('/api/activate/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      const json = await res.json()
+
+      if (json?.alreadyActivated) {
+        clearActivation()
+        onActivatedRef.current()
+        return
+      }
+
+      if (!res.ok || !json.success) {
+        setResendMsg(json?.error ?? 'Could not resend. Please try again.')
+        if (json?.retryAfterSeconds) setCooldown(Number(json.retryAfterSeconds))
+        return
+      }
+
+      setResendMsg('A new link is on its way. Open it on this device if you can.')
+      setCooldown(60)
+      setLinkState('waiting')
+    } catch {
+      setResendMsg('Network error. Please try again.')
+    } finally {
+      setResending(false)
     }
-  }, [token, polling, onActivated])
+  }
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
@@ -383,18 +473,46 @@ function EmailSentScreen({
             </ol>
           </div>
 
-          {/* Realtime indicator */}
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
-            </span>
-            <span className="text-xs font-medium text-brand-600">Waiting for confirmation...</span>
-          </div>
+          {/* Realtime indicator / link state */}
+          {linkState === 'waiting' ? (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
+              </span>
+              <span className="text-xs font-medium text-brand-600">Waiting for confirmation...</span>
+            </div>
+          ) : (
+            <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-xs text-amber-800">
+              {linkState === 'expired'
+                ? 'This invitation has expired. Ask your gym to send a new invitation.'
+                : 'This invitation is no longer valid. Ask your gym to send a new one.'}
+            </div>
+          )}
 
           <p className="mt-4 text-xs text-slate-400">
-            Didn&apos;t receive the email? Check your spam folder or contact your gym.
+            Didn&apos;t receive it? Check your spam folder. Some email apps open links
+            automatically, which can use up the link before you tap it — if that
+            happens, send a new one.
           </p>
+
+          {/* Resend — the recovery path for a link consumed by an email scanner */}
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resending || cooldown > 0 || linkState !== 'waiting'}
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {resending
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
+              : cooldown > 0
+                ? `Resend available in ${cooldown}s`
+                : <><RefreshCw className="h-3.5 w-3.5" /> Resend verification email</>}
+          </button>
+
+          {resendMsg && (
+            <p className="mt-2 text-xs font-medium text-slate-600" role="status">{resendMsg}</p>
+          )}
 
           <button
             type="button"

@@ -1,25 +1,25 @@
 import { BarChart3, CalendarCheck, TrendingUp, Award } from 'lucide-react'
-import {
-  getMemberWithGym,
-  getMemberMemberships,
-  getMemberAttendance,
-  computeMembershipState,
-} from '@/lib/member-data'
+import { getProgressPageData } from '@/lib/member-data'
 import { formatDate, formatPlan } from '@/lib/member-utils'
+import { startPageTimer } from '@/lib/perf'
 
-export const revalidate = 0
+// Dynamic via the auth cookie; see the note in home/page.tsx on why a
+// route-level `revalidate` cannot be used for per-user pages.
 
 export default async function ProgressPage() {
-  const data = await getMemberWithGym()
-  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load progress data.</p></div>
-  const { member } = data
+  const done = startPageTimer('progress')
 
-  const [memberships, attendance] = await Promise.all([
-    getMemberMemberships(member.id),
-    getMemberAttendance(member.id),
-  ])
+  // member + gym + memberships + attendance all in parallel (one round trip).
+  // Previously the member query had to resolve first to supply member.id.
+  const data = await getProgressPageData()
+  if (!data) {
+    done()
+    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load progress data.</p></div>
+  }
+  const { memberships, attendance, state } = data
+  const { status, latest } = state
 
-  const { status, latest } = computeMembershipState(memberships)
+  done()
 
   const stats = [
     { label: 'Total check-ins',  value: attendance.totalCount,    icon: CalendarCheck, colour: 'text-brand-600',   bg: 'bg-brand-50' },

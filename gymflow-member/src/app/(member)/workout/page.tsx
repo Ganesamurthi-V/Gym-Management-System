@@ -1,13 +1,22 @@
 import { Dumbbell, Calendar, Target, Users } from 'lucide-react'
-import { getMemberWithGym, getGymWorkoutPrograms } from '@/lib/member-data'
+import { getWorkoutPageData } from '@/lib/member-data'
+import { startPageTimer } from '@/lib/perf'
 
-export const revalidate = 0
+// Dynamic via the auth cookie; see the note in home/page.tsx on why a
+// route-level `revalidate` cannot be used for per-user pages.
 
 export default async function WorkoutPage() {
-  const data = await getMemberWithGym()
-  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load workout programs.</p></div>
-  const { member, gym } = data
-  const programs = await getGymWorkoutPrograms(member.gym_id)
+  const done = startPageTimer('workout')
+
+  // member + gym + programs fetched in parallel (one round trip, not three)
+  const data = await getWorkoutPageData()
+  if (!data) {
+    done()
+    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load workout programs.</p></div>
+  }
+  const { gym, programs } = data
+
+  done()
 
   return (
     <div className="page-container py-6">

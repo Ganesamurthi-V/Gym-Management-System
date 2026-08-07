@@ -1,4 +1,5 @@
 import { BottomNav } from './BottomNav'
+import { MemberDataWarmer } from './MemberDataWarmer'
 
 export function MemberShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -7,6 +8,8 @@ export function MemberShell({ children }: Readonly<{ children: React.ReactNode }
         {children}
       </main>
       <BottomNav />
+      {/* Warms the Router Cache + client data cache after paint. Renders nothing. */}
+      <MemberDataWarmer />
     </div>
   )
 }

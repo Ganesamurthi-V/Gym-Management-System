@@ -24,6 +24,12 @@ export function BottomNav() {
             <Link
               key={href}
               href={href}
+              // Explicitly prefetch every tab. Next.js only prefetches dynamic
+              // routes when `prefetch` is set to `true`, so the default was a
+              // no-op here and each tap paid a full cold server round trip.
+              // With this, the RSC payload is already in the Router Cache by
+              // the time the user taps.
+              prefetch
               aria-current={active ? 'page' : undefined}
               className={`flex min-h-12 min-w-12 flex-1 flex-col items-center justify-center gap-1 px-1 transition-colors ${active ? 'font-semibold text-brand-600' : 'text-slate-400'}`}
             >

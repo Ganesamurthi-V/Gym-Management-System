@@ -3,25 +3,33 @@ import {
   Activity, CreditCard, Dumbbell, QrCode,
   AlertCircle, CheckCircle2, Clock,
 } from 'lucide-react'
-import {
-  getMemberWithGym,
-  getMemberMemberships,
-  computeMembershipState,
-  recordMemberLogin,
-} from '@/lib/member-data'
+import { getMembershipPageData, recordMemberLogin } from '@/lib/member-data'
 import { formatDate } from '@/lib/member-utils'
+import { startPageTimer } from '@/lib/perf'
 
-export const revalidate = 0
+// No `revalidate` export: this page reads the auth cookie, which already makes
+// it dynamic. A route-level `revalidate` cannot cache per-user responses in the
+// shared Full Route Cache, so it would be a no-op here. Repeat navigations are
+// served instantly from the client Router Cache instead — see
+// `experimental.staleTimes` in next.config.mjs and the prefetching BottomNav.
 
 export default async function HomePage() {
-  const data = await getMemberWithGym()
-  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load your profile. Please try logging out and back in.</p></div>
-  const { member, gym } = data
-  const memberships = await getMemberMemberships(member.id)
-  const { status, daysLeft, latest } = computeMembershipState(memberships)
+  const done = startPageTimer('home')
 
-  // Stamp login — fire and forget, never blocks render
-  void recordMemberLogin(member.id, member.gym_id)
+  // member + gym + memberships fetched in parallel (one round trip, not three)
+  const data = await getMembershipPageData()
+  if (!data) {
+    done()
+    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load your profile. Please try logging out and back in.</p></div>
+  }
+  const { member, gym, state } = data
+  const { status, daysLeft, latest } = state
+
+  // Stamp login. Runs via after() once the response is flushed, and is
+  // throttled to once per 30 min, so it costs the page nothing.
+  recordMemberLogin(member.id, member.gym_id, member.last_portal_login)
+
+  done()
 
   const firstName = member.name.split(' ')[0]
 

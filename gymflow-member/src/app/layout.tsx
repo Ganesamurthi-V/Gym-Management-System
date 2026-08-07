@@ -3,6 +3,7 @@ import { Sora } from 'next/font/google'
 import NextTopLoader from 'nextjs-toploader'
 import { Toaster } from 'react-hot-toast'
 import { SessionLifecycle } from '@/components/auth/SessionLifecycle'
+import { QueryProvider } from '@/components/providers/QueryProvider'
 import './globals.css'
 
 const sora = Sora({
@@ -49,8 +50,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           showSpinner={false}
           shadow="0 0 10px #2563EB,0 0 5px #2563EB"
         />
-        <SessionLifecycle />
-        {children}
+        <QueryProvider>
+          <SessionLifecycle />
+          {children}
+        </QueryProvider>
         <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
       </body>
     </html>

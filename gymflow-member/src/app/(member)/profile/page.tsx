@@ -3,9 +3,11 @@ import {
 } from 'lucide-react'
 import { getMemberWithGym } from '@/lib/member-data'
 import { formatDate } from '@/lib/member-utils'
+import { startPageTimer } from '@/lib/perf'
 import { LogoutButton } from '@/components/auth/LogoutButton'
 
-export const revalidate = 0
+// Dynamic via the auth cookie; see the note in home/page.tsx on why a
+// route-level `revalidate` cannot be used for per-user pages.
 
 function InfoRow({
   icon: Icon,
@@ -31,9 +33,17 @@ function InfoRow({
 }
 
 export default async function ProfilePage() {
+  const done = startPageTimer('profile')
+
+  // Single joined query for member + gym
   const data = await getMemberWithGym()
-  if (!data) return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load profile.</p></div>
+  if (!data) {
+    done()
+    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load profile.</p></div>
+  }
   const { member, gym } = data
+
+  done()
 
   const memberCode = member.member_code ?? `GF${String(member.member_number).padStart(5, '0')}`
 

@@ -38,6 +38,10 @@ export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {
           <Link
             key={label}
             href={href}
+            // Next.js only prefetches DYNAMIC routes when prefetch is explicitly
+            // true, so the default was a no-op here and every click paid a full
+            // cold server round trip. Skipped for the coming-soon '#' entry.
+            prefetch={comingSoon ? false : true}
             onClick={e => {
               e.stopPropagation()
               if (comingSoon) e.preventDefault()

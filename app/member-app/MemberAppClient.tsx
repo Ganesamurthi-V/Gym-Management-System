@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LayoutDashboard, Users, MailQuestion, Trophy } from 'lucide-react'
+import { Users, MailQuestion, Trophy } from 'lucide-react'
 import type { MemberAppData, MemberAppOverview, MemberPortalRow, InvitationActivity as InvitationRow } from '@/types/member-app'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import OverviewCards from '@/features/member-app/components/OverviewCards'
@@ -10,10 +10,9 @@ import MemberPortalTable from '@/features/member-app/components/MemberPortalTabl
 import InvitationActivity from '@/features/member-app/components/InvitationActivity'
 import GamificationPanel from '@/features/member-app/components/GamificationPanel'
 
-type TabId = 'overview' | 'portal' | 'invitations' | 'gamification'
+type TabId = 'portal' | 'invitations' | 'gamification'
 
 const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: 'overview',     label: 'Overview',      icon: LayoutDashboard },
   { id: 'portal',       label: 'Portal Access', icon: Users },
   { id: 'invitations',  label: 'Invitations',   icon: MailQuestion },
   { id: 'gamification', label: 'Gamification',  icon: Trophy },
@@ -66,7 +65,7 @@ export default function MemberAppClient({
   initialData: MemberAppData
 }) {
   const router = useRouter()
-  const [tab, setTab] = useState<TabId>('overview')
+  const [tab, setTab] = useState<TabId>('portal')
   const [portalRows, setPortalRows] = useState<MemberPortalRow[]>(initialData.portalRows)
   const [invitations, setInvitations] = useState<InvitationRow[]>(initialData.invitations)
   const [overview, setOverview] = useState<MemberAppOverview>(initialData.overview)
@@ -174,11 +173,6 @@ export default function MemberAppClient({
 
       {/* Panel */}
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === 'overview' && (
-          <div className="space-y-4 sm:space-y-6">
-            <MemberPortalTable rows={portalRows} onMutationComplete={onMutationComplete} />
-          </div>
-        )}
         {tab === 'portal' && <MemberPortalTable rows={portalRows} onMutationComplete={onMutationComplete} />}
         {tab === 'invitations' && <InvitationActivity invitations={invitations} />}
         {tab === 'gamification' && (

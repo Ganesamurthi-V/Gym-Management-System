@@ -103,6 +103,16 @@ type MemberPortalActivityRow = {
   created_at: string
 }
 
+// ─── program_assignments ──────────────────────────────────────────────────────
+type ProgramAssignmentsRow = {
+  id: string
+  gym_id: string
+  program_id: string
+  member_id: string
+  assigned_at: string
+  assigned_by: string | null
+}
+
 // ─── Database type ────────────────────────────────────────────────────────────
 export type Database = {
   public: {
@@ -152,6 +162,12 @@ export type Database = {
       member_portal_activity: {
         Row: MemberPortalActivityRow
         Insert: Omit<MemberPortalActivityRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: never
+        Relationships: []
+      }
+      program_assignments: {
+        Row: ProgramAssignmentsRow
+        Insert: Omit<ProgramAssignmentsRow, 'id' | 'assigned_at'> & { id?: string; assigned_at?: string }
         Update: never
         Relationships: []
       }

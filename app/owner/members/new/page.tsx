@@ -10,7 +10,7 @@ import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
-import { invalidateGymCache } from '@/app/account/actions'
+import { invalidateGymCache } from '@/app/owner/account/actions'
 import UPIPaymentModal from '@/components/upi/UPIPaymentModal'
 
 type Step = 'personal' | 'membership' | 'preview'
@@ -247,7 +247,7 @@ export default function NewMemberPage() {
       await invalidateMembersCache(gymId)
 
       toast.success('Member added successfully!')
-      router.push('/members')
+      router.push('/owner/members')
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Something went wrong')
@@ -371,7 +371,7 @@ export default function NewMemberPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <Link href="/members"
+          <Link href="/owner/members"
             className="flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 font-semibold text-sm rounded-2xl border border-red-200 hover:bg-red-100 transition-all"
           >
             <X className="w-4 h-4" />
@@ -399,7 +399,7 @@ export default function NewMemberPage() {
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          <Link href="/owner/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Members
           </Link>

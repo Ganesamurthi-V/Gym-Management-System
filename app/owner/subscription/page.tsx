@@ -17,13 +17,13 @@ export default async function SubscriptionPage() {
   // after reactivation" bug. It now also carries the gym NAME, removing the
   // extra sequential getGym() round trip this page used to make at the end.
   const { gym } = await getGymCore(user.id)
-  if (!gym) redirect('/onboarding')
+  if (!gym) redirect('/owner/onboarding')
 
   const subState = getSubscriptionState(gym)
 
   // If the gym is already fully active (not expiring soon), skip the paywall
   if (!subState.isExpired && subState.status === 'active' && !subState.isExpiringSoon) {
-    redirect('/dashboard')
+    redirect('/owner/dashboard')
   }
 
   const supabase = await createClient()

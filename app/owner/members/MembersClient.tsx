@@ -333,19 +333,19 @@ function MembersContent({ members, gymId, totalCount }: Props) {
             <Download className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
-          <Link href="/import" className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/import" className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Upload className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Import</span>
           </Link>
-          <Link href="/members/bulk-edit" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/members/bulk-edit" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Edit2 className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span>Edit Members</span>
           </Link>
-          <Link href="/members/attendance" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/members/attendance" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Calendar className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span>Attendance Log</span>
           </Link>
-          <Link href="/members/new" className="flex items-center gap-1.5 px-2.5 xs:px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
+          <Link href="/owner/members/new" className="flex items-center gap-1.5 px-2.5 xs:px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
             <Plus className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden xs:inline">Add Member</span>
             <span className="xs:hidden">Add</span>
@@ -457,7 +457,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
         {filtered.length === 0 ? (
           <div className="card p-10 text-center">
             <p className="text-slate-400 text-sm">No members found</p>
-            <Link href="/members/new" className="text-brand-600 text-sm font-semibold mt-1 inline-block">+ Add first member</Link>
+            <Link href="/owner/members/new" className="text-brand-600 text-sm font-semibold mt-1 inline-block">+ Add first member</Link>
           </div>
         ) : filtered.map((member) => {
           const { label, cls } = statusConfig[member.status]
@@ -513,7 +513,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                     </div>
                   )
                 )}
-                <Link href={`/members/${member.id}`} className="w-8 h-8 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center">
+                <Link href={`/owner/members/${member.id}`} className="w-8 h-8 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center">
                   <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -542,7 +542,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
               <tr>
                 <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
                   No members found.{' '}
-                  <Link href="/members/new" className="text-brand-600 font-semibold hover:underline">Add first member</Link>
+                  <Link href="/owner/members/new" className="text-brand-600 font-semibold hover:underline">Add first member</Link>
                 </td>
               </tr>
             ) : filtered.map((member) => {
@@ -620,7 +620,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                           </div>
                         )
                       )}
-                      <Link href={`/members/${member.id}`} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                      <Link href={`/owner/members/${member.id}`} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                         <ChevronRight className="w-4 h-4" />
                       </Link>
                     </div>

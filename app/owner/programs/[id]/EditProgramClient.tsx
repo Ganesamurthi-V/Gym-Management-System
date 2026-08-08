@@ -70,7 +70,7 @@ export default function EditProgramClient({ program }: { program: WorkoutProgram
 
       toast.success('Program deleted')
       setConfirmOpen(false)
-      router.push('/programs')
+      router.push('/owner/programs')
       router.refresh()
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to delete program')
@@ -83,7 +83,7 @@ export default function EditProgramClient({ program }: { program: WorkoutProgram
       <div className="mb-6 flex-shrink-0 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <Link
-            href="/programs"
+            href="/owner/programs"
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-brand-600 transition-colors mb-3"
           >
             <ArrowLeft className="w-4 h-4" />

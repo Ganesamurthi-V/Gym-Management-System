@@ -49,7 +49,7 @@ export default async function AttendanceLogPage() {
     const { gym } = await getGym(user.id)
     logger.end('QUERY gyms')
 
-    if (!gym) redirect('/onboarding')
+    if (!gym) redirect('/owner/onboarding')
 
     const logs = await getAttendanceLogs(gym.id, logger)
     logger.summary(200)

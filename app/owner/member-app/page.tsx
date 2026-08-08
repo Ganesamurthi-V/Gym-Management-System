@@ -25,7 +25,7 @@ export default async function MemberAppPage() {
   logger.start('QUERY gyms')
   const { gym } = await getGym(user.id)
   logger.end('QUERY gyms')
-  if (!gym) redirect('/onboarding')
+  if (!gym) redirect('/owner/onboarding')
 
   logger.start('LOAD_MEMBER_APP_DATA')
   const data = await getMemberAppData(gym.id, gym.name)

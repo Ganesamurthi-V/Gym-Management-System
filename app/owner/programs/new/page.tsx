@@ -30,7 +30,7 @@ export default function CreateProgramPage() {
     <div className="w-full flex flex-col">
       <div className="mb-6 flex-shrink-0">
         <Link
-          href="/programs"
+          href="/owner/programs"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-brand-600 transition-colors mb-3"
         >
           <ArrowLeft className="w-4 h-4" />

@@ -41,3 +41,13 @@ export const createClient = cache(async () => {
     },
   })
 })
+
+/**
+ * Alias used by the migrated member-app code.
+ *
+ * The standalone member PWA named this helper `getServerClient`. Exporting the
+ * same request-scoped instance under both names means there is still exactly
+ * ONE client per request shared by owner and member code — importing from two
+ * different names would otherwise be easy to mistake for two separate clients.
+ */
+export const getServerClient = createClient

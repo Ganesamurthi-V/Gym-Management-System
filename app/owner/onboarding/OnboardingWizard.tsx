@@ -303,7 +303,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
       }
       localStorage.removeItem(STORAGE_KEY)
       setSuccess(true)
-      setTimeout(() => router.push('/dashboard'), 2800)
+      setTimeout(() => router.push('/owner/dashboard'), 2800)
     } catch {
       setError('Network error. Please check your connection and try again.')
       setSubmitting(false)

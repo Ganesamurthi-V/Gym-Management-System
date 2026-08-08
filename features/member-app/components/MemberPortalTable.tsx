@@ -9,7 +9,7 @@ import {
 import type {
   InvitationStatus, MemberBulkAction, MemberPortalRow, MemberRowAction, PortalStatus,
 } from '@/types/member-app'
-import { memberRowAction, memberBulkAction } from '@/app/member-app/actions'
+import { memberRowAction, memberBulkAction } from '@/app/owner/member-app/actions'
 import { useAsyncAction } from '../hooks/useMemberAppActions'
 import { useFilteredRows, useRowSelection, useTableFilters } from '../hooks/useMemberAppFilters'
 import { Badge, Card, EmptyState, SearchInput, SectionHeader, TableWrap, Td, Th, Tr, ChipFilter } from './ui'
@@ -216,7 +216,7 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
                     />
                   </Td>
                   <Td>
-                    <Link href={`/members/${row.memberId}`} className="font-semibold text-slate-900 hover:text-brand-600 transition-colors">
+                    <Link href={`/owner/members/${row.memberId}`} className="font-semibold text-slate-900 hover:text-brand-600 transition-colors">
                       {row.memberName}
                     </Link>
                     <p className="text-xs text-slate-400 mt-0.5">

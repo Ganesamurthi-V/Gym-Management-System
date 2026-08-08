@@ -19,8 +19,19 @@ export const GRAPH_HOSTNAME = 'graph.gymflow.sbs'
 /** The bare domain — should redirect to the app subdomain, never serve frontend directly. */
 export const BARE_HOSTNAME = 'gymflow.sbs'
 
-/** The canonical app domain. */
+/** The canonical app domain — serves BOTH /owner/* and /m/* after the merge. */
 export const APP_HOSTNAME = 'app.gymflow.sbs'
+
+/**
+ * The retired member-app domain.
+ *
+ * The member PWA used to be a separate deployment on this host with its routes
+ * at the domain root (`/home`, `/workout`, ...). It is now `app.gymflow.sbs/m/*`.
+ * Activation links already delivered over WhatsApp, installed PWAs and browser
+ * bookmarks still point here, so while the DNS record remains attached to this
+ * project the middleware maps those URLs onto the unified app instead of 404ing.
+ */
+export const LEGACY_MEMBER_HOSTNAME = 'member.gymflow.sbs'
 
 // ─── Allowed API route prefixes on graph.gymflow.sbs ──────────────────────────
 // Only these routes are reachable. Everything else → 401.

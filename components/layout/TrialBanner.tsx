@@ -60,7 +60,7 @@ export default function TrialBanner({ mode, daysLeft }: TrialBannerProps) {
         <s.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${s.iconClass}`} />
         <span className="truncate">
           {message}{' '}
-          <Link href="/subscription" className={s.link}>
+          <Link href="/owner/subscription" className={s.link}>
             Renew now →
           </Link>
         </span>

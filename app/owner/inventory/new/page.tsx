@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Box, Tag, Image as ImageIcon, Package, Info, ImagePlus, ShieldAlert, BadgeIndianRupee, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { invalidateInventoryCache } from '@/app/inventory/actions'
+import { invalidateInventoryCache } from '@/app/owner/inventory/actions'
 
 interface VariantForm {
   variantName: string
@@ -107,7 +107,7 @@ export default function NewInventoryPage() {
 
       await invalidateInventoryCache(gym.id)
 
-      router.push('/inventory')
+      router.push('/owner/inventory')
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to save product')
@@ -119,7 +119,7 @@ export default function NewInventoryPage() {
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/inventory" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
+        <Link href="/owner/inventory" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
@@ -357,7 +357,7 @@ export default function NewInventoryPage() {
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-          <Link href="/inventory" className="btn-secondary px-6">
+          <Link href="/owner/inventory" className="btn-secondary px-6">
             Cancel
           </Link>
           <button type="submit" disabled={loading} className="btn-primary px-8">

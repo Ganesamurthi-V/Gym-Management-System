@@ -105,7 +105,7 @@ export function EditMemberClient({ member }: Props) {
         console.warn('Cache invalidation failed after member update:', cacheResult.error)
       }
       toast.success('Member details updated successfully!')
-      router.push(`/members/${member.id}`)
+      router.push(`/owner/members/${member.id}`)
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to save')
@@ -180,7 +180,7 @@ export function EditMemberClient({ member }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <div className="flex items-center gap-3">
-        <Link href={`/members/${member.id}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+        <Link href={`/owner/members/${member.id}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />Member Details
         </Link>
         <span className="text-slate-300">/</span>

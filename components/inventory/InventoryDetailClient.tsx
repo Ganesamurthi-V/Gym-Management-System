@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/inventory/actions'
+import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/owner/inventory/actions'
 import { format } from 'date-fns'
 import {
   Package, Pencil, Trash2, ShoppingCart, X, Loader2,
@@ -204,7 +204,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
       if (!res.ok) throw new Error(data.error)
 
       await invalidateInventoryCache(gymId)
-      router.push('/inventory')
+      router.push('/owner/inventory')
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to delete')
@@ -313,7 +313,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
       {/* Header */}
       <div className="flex-none flex flex-col xs:flex-row xs:items-center justify-between gap-3">
         <div className="flex items-center gap-2 xs:gap-3">
-          <Link href="/inventory" className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all flex-shrink-0">
+          <Link href="/owner/inventory" className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all flex-shrink-0">
             <ArrowLeft className="w-4 h-4 xs:w-5 xs:h-5" />
           </Link>
           <div className="min-w-0">
@@ -398,7 +398,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
               {siblings.map(sib => (
                 <Link 
                   key={sib.id} 
-                  href={`/inventory/${sib.id}`}
+                  href={`/owner/inventory/${sib.id}`}
                   className={`block p-3 rounded-xl border transition-all ${sib.id === product.id ? 'border-blue-200 bg-blue-50/50' : 'border-slate-100 hover:border-blue-100 hover:bg-slate-50'}`}
                 >
                   <div className="flex items-center justify-between">

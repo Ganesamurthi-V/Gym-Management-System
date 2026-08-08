@@ -4,11 +4,28 @@ import { redirect } from 'next/navigation'
 import ShellGuard from './ShellGuard'
 import { getAuthUser, getGymCore, getUnreadAdminMessages, getSubscriptionState } from '@/lib/dal'
 import { PATHNAME_HEADER, needsSubscriptionGuard } from '@/lib/protected-routes'
+import { roleFromClaims } from '@/lib/auth/roles'
+import { MEMBER_HOME } from '@/lib/member/redirect'
 import { startPageTimer } from '@/lib/perf'
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const done = startPageTimer('AppShell')
   const { user } = await getAuthUser()
+
+  /**
+   * ─── ROLE SAFETY NET ───────────────────────────────────────────────────────
+   *
+   * The middleware already keeps members out of `/owner/*`, but this repeats the
+   * check server-side, inside the layout that renders the owner chrome, so a
+   * member can never be shown owner UI even if a request reaches here without
+   * passing through the middleware matcher.
+   *
+   * Free: `getAuthUser()` builds its `User` from the verified JWT claims that
+   * were already parsed, so this is a property read — no query, no round trip.
+   */
+  if (user && roleFromClaims(user) === 'member') {
+    redirect(MEMBER_HOME)
+  }
 
   let gym = null
   let isActive = true
@@ -65,7 +82,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
        */
       const pathname = (await headers()).get(PATHNAME_HEADER) ?? ''
       if (subState.isExpired && needsSubscriptionGuard(pathname)) {
-        redirect('/subscription')
+        redirect('/owner/subscription')
       }
     } else {
       // No gym row for this owner. The middleware version of this guard called
@@ -74,7 +91,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
       // letting a gym-less session through.
       const pathname = (await headers()).get(PATHNAME_HEADER) ?? ''
       if (needsSubscriptionGuard(pathname)) {
-        redirect('/subscription')
+        redirect('/owner/subscription')
       }
     }
   }

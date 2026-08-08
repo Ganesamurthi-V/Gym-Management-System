@@ -11,6 +11,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
+import { activationUrl } from '@/lib/member/redirect'
 import type {
   ActionResult,
   MemberActivityType,
@@ -167,7 +168,7 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
   // The token is live either way — surface the direct link as a fallback.
   return {
     success: true,
-    message: `Invitation created. WhatsApp delivery failed: ${sendResult.error ?? 'unknown'}. Activation link: https://member.gymflow.sbs/activate/${token}`,
+    message: `Invitation created. WhatsApp delivery failed: ${sendResult.error ?? 'unknown'}. Activation link: ${activationUrl(token)}`,
   }
 }
 

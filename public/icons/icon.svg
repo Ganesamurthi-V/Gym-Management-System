@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">GymFlow</title>
+  <rect width="512" height="512" rx="112" fill="#2563EB"/>
+  <path d="M116 204v104M156 176v160M356 176v160M396 204v104M156 256h200" fill="none" stroke="#fff" stroke-width="34" stroke-linecap="round"/>
+  <path d="M214 222l42 34-42 34M298 222l-42 34 42 34" fill="none" stroke="#22D3EE" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

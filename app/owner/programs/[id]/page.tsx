@@ -18,7 +18,7 @@ export default async function EditProgramPage(props: { params: Promise<{ id: str
   if (!user) redirect('/auth/login')
 
   const { gym } = await getGym(user.id)
-  if (!gym) redirect('/onboarding')
+  if (!gym) redirect('/owner/onboarding')
 
   const supabase = await createClient()
 

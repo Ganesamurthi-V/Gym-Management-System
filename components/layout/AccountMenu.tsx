@@ -202,7 +202,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
             </div>
 
             <div className="p-2">
-              <Link href="/account" onClick={() => setIsOpen(false)}
+              <Link href="/owner/account" onClick={() => setIsOpen(false)}
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -214,7 +214,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
-              <Link href="/account" onClick={() => setIsOpen(false)}
+              <Link href="/owner/account" onClick={() => setIsOpen(false)}
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -226,7 +226,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
-              <Link href="/account" onClick={() => setIsOpen(false)}
+              <Link href="/owner/account" onClick={() => setIsOpen(false)}
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -238,7 +238,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
 
-              <Link href="/account/notifications" onClick={() => setIsOpen(false)}
+              <Link href="/owner/account/notifications" onClick={() => setIsOpen(false)}
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -275,7 +275,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
         <div 
           onClick={() => {
             setToastMessage(null)
-            router.push('/account/notifications')
+            router.push('/owner/account/notifications')
           }}
           className="fixed bottom-6 right-6 z-[100] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl p-4 flex gap-4 items-start w-[320px] cursor-pointer hover:bg-slate-50 transition-all animate-pop-in group"
         >

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/inventory/actions'
+import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/owner/inventory/actions'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 
 export async function POST(req: NextRequest) {

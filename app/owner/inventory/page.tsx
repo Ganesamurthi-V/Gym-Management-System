@@ -42,7 +42,7 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
         </div>
         {items.length > 0 && (
           <Link
-            href="/inventory/new"
+            href="/owner/inventory/new"
             className="btn-primary inline-flex items-center gap-2 shadow-md shadow-brand-500/20 self-start xs:self-auto"
           >
             <Plus className="w-4 h-4" />
@@ -60,7 +60,7 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
           <p className="text-slate-500 max-w-sm mb-8 text-sm leading-relaxed">
             Start tracking your gym's products, supplements, and merchandise by adding your first item.
           </p>
-          <Link href="/inventory/new" className="btn-primary flex items-center gap-2">
+          <Link href="/owner/inventory/new" className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Add First Product
           </Link>
@@ -88,7 +88,7 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
                           <Package className="w-4 h-4 xs:w-5 xs:h-5 text-slate-400 group-hover:text-brand-500 transition-colors" />
                         </div>
                         <div className="min-w-0">
-                          <Link href={`/inventory/${item.id}`} className="font-bold text-slate-900 hover:text-brand-600 transition-colors block truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
+                          <Link href={`/owner/inventory/${item.id}`} className="font-bold text-slate-900 hover:text-brand-600 transition-colors block truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
                             {item.product_name}
                           </Link>
                           <p className="text-xs font-semibold text-slate-500 mt-0.5">{item.variant_name}</p>

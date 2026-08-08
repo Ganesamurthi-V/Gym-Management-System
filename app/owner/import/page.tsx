@@ -462,7 +462,7 @@ export default function ImportPage() {
     sessionStorage.setItem("import_rows", JSON.stringify(pipelineRows));
     sessionStorage.setItem("import_rows_original", JSON.stringify(pipelineRows.map(r => ({ ...r }))));
     sessionStorage.setItem("import_has_id_col", hasIdCol ? "1" : "0");
-    router.push("/import/edit");
+    router.push("/owner/import/edit");
   }
 
   async function applyPlanMappingAndProceed() {
@@ -776,7 +776,7 @@ export default function ImportPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <WizardHeader currentStep={2} />
 
-        <Link href="/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
+        <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
           <ArrowLeft className="w-4 h-4" /> Back to Members
         </Link>
 
@@ -875,7 +875,7 @@ export default function ImportPage() {
     return (
       <section className="max-w-7xl mx-auto space-y-6">
         <WizardHeader currentStep={3} />
-        <Link href="/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors w-fit">
+        <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors w-fit">
           <ArrowLeft className="w-4 h-4" /> Back to Members
         </Link>
         <div className="text-center bg-white/30 backdrop-blur-lg border border-slate-200 rounded-2xl p-6 shadow-xl">
@@ -931,7 +931,7 @@ export default function ImportPage() {
       <WizardHeader currentStep={1} />
 
       {/* Back link */}
-      <Link href="/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
+      <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" /> Back to Members
       </Link>
 

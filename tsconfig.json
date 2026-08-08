@@ -41,6 +41,8 @@
     "gymflow-mobile",
     "gymflow-member",
     "landing-page",
-    "demo"
+    "demo",
+    "public/sw.js",
+    "app/sw.ts"
   ]
 }

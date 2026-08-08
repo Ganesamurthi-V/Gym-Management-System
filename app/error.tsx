@@ -43,7 +43,7 @@ export default function ErrorBoundary({
           </button>
           
           <Link
-            href="/dashboard"
+            href="/owner/dashboard"
             className="w-full flex items-center justify-center gap-2 bg-gray-50 text-gray-700 border border-gray-200 py-3 px-4 rounded-xl font-medium hover:bg-gray-100 transition-colors"
           >
             <Home className="w-4 h-4" />

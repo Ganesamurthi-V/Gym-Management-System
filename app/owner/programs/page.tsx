@@ -18,7 +18,7 @@ export default async function ProgramsPage() {
   if (!user) redirect('/auth/login')
 
   const { gym } = await getGym(user.id)
-  if (!gym) redirect('/onboarding')
+  if (!gym) redirect('/owner/onboarding')
 
   const supabase = await createClient()
 

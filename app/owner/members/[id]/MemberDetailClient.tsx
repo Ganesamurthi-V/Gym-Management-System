@@ -116,7 +116,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       const { invalidateMembersCache } = await import('../actions')
       await invalidateMembersCache(member.gym_id)
       toast.success('Member deleted successfully')
-      router.push('/members')
+      router.push('/owner/members')
       router.refresh()
     } catch (err: any) {
       toast.error('Failed to delete member: ' + (err.message || 'Unknown error'))
@@ -129,14 +129,14 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
     <div className="max-w-4xl mx-auto space-y-4 xs:space-y-5">
       <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
         <div className="flex items-center gap-2 md:gap-3">
-          <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          <Link href="/owner/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Members
           </Link>
           <span className="text-slate-300">/</span>
           <h1 className="text-lg xs:text-xl font-bold text-slate-900">Member Details</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/members/${member.id}/edit`}
+          <Link href={`/owner/members/${member.id}/edit`}
             className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-700 px-3 py-2 rounded-lg hover:bg-brand-50 transition-all font-semibold">
             <Edit2 className="w-4 h-4" />Edit
           </Link>

@@ -70,7 +70,7 @@ export default function ImportEditPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem("import_rows");
-    if (!stored) { router.push("/import"); return; }
+    if (!stored) { router.push("/owner/import"); return; }
     const parsed: ImportedRow[] = JSON.parse(stored);
     setRows(parsed);
     const origStored = sessionStorage.getItem("import_rows_original");
@@ -228,7 +228,7 @@ export default function ImportEditPage() {
   function goBackToReview() {
     // Persist current edits so they survive the round-trip
     sessionStorage.setItem("import_rows", JSON.stringify(rows));
-    router.push("/import/review");
+    router.push("/owner/import/review");
   }
 
   function handlePreview() {
@@ -355,7 +355,7 @@ export default function ImportEditPage() {
             <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full animate-fill-bar" />
           </div>
           <div className="mt-8">
-            <Link href="/members" className="btn-primary inline-flex items-center justify-center gap-2 px-8 py-3.5 shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30">
+            <Link href="/owner/members" className="btn-primary inline-flex items-center justify-center gap-2 px-8 py-3.5 shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30">
               View Members →
             </Link>
           </div>
@@ -379,7 +379,7 @@ export default function ImportEditPage() {
               <ArrowLeft className="w-4 h-4" />Review Areas
             </button>
           ) : (
-            <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+            <Link href="/owner/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
               <ArrowLeft className="w-4 h-4" />Import
             </Link>
           )}

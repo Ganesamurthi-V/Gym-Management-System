@@ -12,6 +12,16 @@ module.exports = {
         '3xl': '1920px', // large monitors / TV-sized displays
       },
       colors: {
+        // Achievement rarity tiers — driven by CSS custom properties declared
+        // in app/design-tokens.css so the member gamification UI can theme them
+        // without a Tailwind rebuild.
+        rarity: {
+          common: 'var(--color-rarity-common)',
+          rare: 'var(--color-rarity-rare)',
+          epic: 'var(--color-rarity-epic)',
+          legendary: 'var(--color-rarity-legendary)',
+          mythic: 'var(--color-rarity-mythic)',
+        },
         brand: {
           50:  '#EFF6FF',
           100: '#DBEAFE',

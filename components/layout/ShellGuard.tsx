@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import TrialBanner from './TrialBanner'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 
-const SHELL_EXCLUDED = ['/auth/', '/onboarding', '/subscription']
+const SHELL_EXCLUDED = ['/auth/', '/owner/onboarding', '/owner/subscription']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
 
 function DumbbellIcon({ className }: { className?: string }) {
@@ -80,7 +80,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       // expired trials/subscriptions. Expired accounts stay logged in and go
       // to the subscription page; only deactivated accounts are signed out.
       if (initialSubscriptionStatus === 'expired') {
-        window.location.href = '/subscription'
+        window.location.href = '/owner/subscription'
       } else {
         const supabase = createClient()
         supabase.auth.signOut().then(() => {
@@ -127,8 +127,8 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       const refreshedState = computeSubscriptionState(gymRow)
       setLiveSubStatus(refreshedState.status)
       setLiveDaysLeft(refreshedState.daysLeft ?? 0)
-      if (refreshedState.isExpired && pathname !== '/subscription') {
-        window.location.href = '/subscription'
+      if (refreshedState.isExpired && pathname !== '/owner/subscription') {
+        window.location.href = '/owner/subscription'
       }
     }
 
@@ -168,8 +168,8 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           setLiveDaysLeft(newState.daysLeft ?? 0)
 
           // Hard redirect cases
-          if (newState.isExpired && pathname !== '/subscription') {
-            window.location.href = '/subscription'
+          if (newState.isExpired && pathname !== '/owner/subscription') {
+            window.location.href = '/owner/subscription'
             return
           }
 
@@ -177,7 +177,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           if (
             !newState.isExpiringSoon &&
             (subscription_status === 'active' || subscription_status === 'trial') &&
-            pathname === '/subscription'
+            pathname === '/owner/subscription'
           ) {
             toast.success(
               subscription_status === 'active'
@@ -185,7 +185,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
                 : 'Your trial has been reset. Redirecting...'
             )
             setTimeout(() => {
-              window.location.href = '/dashboard'
+              window.location.href = '/owner/dashboard'
             }, 1500)
           }
         }
@@ -257,7 +257,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         {/* ── Add Member button ── */}
         <div className={`flex-shrink-0 transition-all duration-200 ${collapsed ? 'px-2 pb-4 group-hover/sidebar:px-3' : 'px-3 pb-4'}`}>
           <a
-            href="/members/new"
+            href="/owner/members/new"
             onClick={e => e.stopPropagation()}
             title={collapsed ? 'Add Member' : undefined}
             className={`

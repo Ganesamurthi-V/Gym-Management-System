@@ -1,8 +1,19 @@
+import withSerwistInit from '@serwist/next'
+import { withSentryConfig } from '@sentry/nextjs'
+
+/**
+ * ── WHY THIS FILE IS NOW ESM ─────────────────────────────────────────────────
+ * `@serwist/next` ships ESM only (`"type": "module"`, `.mjs` entry points), so
+ * it cannot be `require()`d from a CommonJS `next.config.js`. The config was
+ * converted to `.mjs` during the unified-app migration; everything else in it is
+ * carried over unchanged.
+ */
+
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
   {
     key: 'Strict-Transport-Security',
     value: 'max-age=63072000; includeSubDomains; preload',
@@ -11,19 +22,48 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
+      // Hardening carried over from the member app's stricter policy. None of
+      // these are new restrictions on anything the app actually does.
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://fonts.googleapis.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: https:",
+      // `blob:` is required by the member membership-card QR renderer.
+      "img-src 'self' blob: data: https:",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io",
-      "font-src 'self' https://fonts.gstatic.com",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "frame-ancestors 'none'",
       "worker-src 'self' blob:",
+      // Required so the browser is allowed to fetch manifest-owner.json /
+      // manifest-member.json for PWA installation.
+      "manifest-src 'self'",
     ].join('; '),
   },
 ]
 
+/**
+ * Service worker for the unified PWA.
+ *
+ * ONE service worker serves both experiences because they share an origin. It
+ * only ever caches same-origin static assets (script/style/font/image) and the
+ * offline shell — never navigations, never Supabase responses. See app/sw.ts.
+ */
+const withSerwist = withSerwistInit({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  disable: process.env.NODE_ENV === 'development',
+  additionalPrecacheEntries: [
+    {
+      url: '/offline.html',
+      revision: process.env.VERCEL_GIT_COMMIT_SHA ?? 'development',
+    },
+  ],
+})
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
   },
@@ -48,6 +88,7 @@ const nextConfig = {
       bodySizeLimit: '2mb',
       allowedOrigins: [
         'localhost:3000',
+        'localhost:3004',
         process.env.NEXT_PUBLIC_APP_URL,
       ].filter(Boolean),
     },
@@ -91,40 +132,23 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
-
-
-// Injected content via Sentry wizard below
-
-const { withSentryConfig } = require("@sentry/nextjs");
-
-module.exports = withSentryConfig(module.exports, {
+// Serwist is applied first (inner) so Sentry's webpack wrapper composes over it.
+export default withSentryConfig(withSerwist(nextConfig), {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-  org: "gym-flow",
-  project: "gymflow-production",
+  org: 'gym-flow',
+  project: 'gymflow-production',
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
 
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
   // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
 
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  // tunnelRoute: "/monitoring",
-
   webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-    // See the following for more information:
-    // https://docs.sentry.io/product/crons/
-    // https://vercel.com/docs/cron-jobs
+    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet
+    // work with App Router route handlers.)
     automaticVercelMonitors: true,
 
     // Tree-shaking options for reducing bundle size
@@ -133,4 +157,4 @@ module.exports = withSentryConfig(module.exports, {
       removeDebugLogging: true,
     },
   },
-});
+})

@@ -111,7 +111,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
             ? 'Your subscription has been activated! Redirecting...'
             : 'Your trial has been extended! Redirecting...',
         )
-        window.setTimeout(() => { window.location.href = '/dashboard' }, 1_500)
+        window.setTimeout(() => { window.location.href = '/owner/dashboard' }, 1_500)
       }
     }
   }, [gym.id])
@@ -224,7 +224,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
           <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto" />
           <h2 className="text-xl font-bold text-slate-900">Your subscription is active</h2>
           <p className="text-sm text-slate-500">You have full access to all GymFlow features.</p>
-          <Link href="/dashboard" className="inline-flex items-center justify-center w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors">
+          <Link href="/owner/dashboard" className="inline-flex items-center justify-center w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors">
             Go to Dashboard
           </Link>
         </div>

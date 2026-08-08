@@ -143,25 +143,25 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           icon={<Users className="w-4 h-4" style={{ color: '#16A34A' }} />}
           label="Active" value={stats.total_active}
           iconBg="#DCFCE7" cardBg="#F0FDF4" borderColor="#22C55E" valueColor="#15803D"
-          href="/members?filter=active"
+          href="/owner/members?filter=active"
         />
         <StatCard
           icon={<CheckSquare className="w-4 h-4" style={{ color: '#2563EB' }} />}
           label="Attendance" value={stats.today_attendance}
           iconBg="#DBEAFE" cardBg="#EFF6FF" borderColor="#3B82F6" valueColor="#1D4ED8"
-          href="/attendance"
+          href="/owner/attendance"
         />
         <StatCard
           icon={<Clock className="w-4 h-4" style={{ color: '#D97706' }} />}
           label="Expiring" value={stats.expiring_this_week}
           iconBg="#FEF3C7" cardBg="#FFFBEB" borderColor="#F59E0B" valueColor="#B45309"
-          href="/members?filter=expiring"
+          href="/owner/members?filter=expiring"
         />
         <StatCard
           icon={<AlertTriangle className="w-4 h-4" style={{ color: '#DC2626' }} />}
           label="Expired" value={stats.expired_count}
           iconBg="#FEE2E2" cardBg="#FEF2F2" borderColor="#EF4444" valueColor="#B91C1C"
-          href="/members?filter=expired"
+          href="/owner/members?filter=expired"
         />
         <StatCardCurrency
           icon={<IndianRupee className="w-4 h-4" style={{ color: '#0891B2' }} />}
@@ -172,7 +172,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           icon={<AlertTriangle className="w-4 h-4" style={{ color: '#EA580C' }} />}
           label="Total Dues" value={stats.total_dues}
           iconBg="#FFEDD5" cardBg="#FFF7ED" borderColor="#F97316" valueColor="#C2410C"
-          href="/dues" danger
+          href="/owner/dues" danger
         />
       </div>
 
@@ -203,15 +203,15 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             Quick Actions
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-2.5 flex-1 lg:justify-center">
-            <Link href="/members/new" className="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
+            <Link href="/owner/members/new" className="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><Plus className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">Add New Member</span>
             </Link>
-            <Link href="/attendance" className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
+            <Link href="/owner/attendance" className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><CalendarCheck className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">Mark Attendance</span>
             </Link>
-            <Link href="/members/attendance" className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-indigo-200 active:scale-95 transition-all">
+            <Link href="/owner/members/attendance" className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-indigo-200 active:scale-95 transition-all">
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">Attendance Log</span>
             </Link>
@@ -221,7 +221,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><FileText className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">{generatingPDF ? 'Generating...' : 'Daily Report PDF'}</span>
             </button>
-            <Link href="/dues" className="col-span-2 lg:col-span-1 flex items-center gap-2 bg-white text-red-600 rounded-xl p-3 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
+            <Link href="/owner/dues" className="col-span-2 lg:col-span-1 flex items-center gap-2 bg-white text-red-600 rounded-xl p-3 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
               <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0"><IndianRupee className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">View Fee Dues</span>
               {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">{formatCurrency(stats.total_dues)}</span>}
@@ -266,7 +266,7 @@ function ExpiringContent({
         </div>
         <div className="flex items-center gap-2">
           {/* Bulk WhatsApp Remind removed per user request */}
-          <Link href="/members?filter=expiring" className="text-brand-600 text-sm font-semibold">See all</Link>
+          <Link href="/owner/members?filter=expiring" className="text-brand-600 text-sm font-semibold">See all</Link>
         </div>
       </div>
       {expiringMembers.length === 0 ? (

@@ -77,6 +77,13 @@
   --color-warning-border: var(--color-expiring-border);
   --color-warning-text: var(--color-expiring-text);
 
+  /* ─── Achievement Rarity ─────────────────────────────────────────────────── */
+  --color-rarity-common: #94A3B8;
+  --color-rarity-rare: #3B82F6;
+  --color-rarity-epic: #8B5CF6;
+  --color-rarity-legendary: #F59E0B;
+  --color-rarity-mythic: #EC4899;
+
   --color-xp: #d97706;
   --color-xp-bg: #fffbeb;
   --color-xp-border: #fde68a;

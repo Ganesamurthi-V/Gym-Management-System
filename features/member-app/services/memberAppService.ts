@@ -179,22 +179,69 @@ export async function getInvitationActivity(gymId: string): Promise<InvitationAc
     }))
 }
 
-// ─── Section 7 — Gamification (placeholder — no backing table yet) ───────────
+// ─── Section 7 — Gamification (computed from attendance + memberships) ────────
 
+/**
+ * Aggregates gamification stats for all members in the gym by calling the
+ * `get_gym_leaderboard` RPC and summing across all entries. Previously this
+ * was a placeholder returning all zeros.
+ */
 export async function getGamificationSummary(gymId: string): Promise<GamificationSummary> {
-  void gymId
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.rpc('get_gym_leaderboard', {
+    p_gym_id: gymId,
+    p_limit: 200,
+  })
+
+  if (error || !data || data.length === 0) {
+    return {
+      totalXpEarned: 0,
+      badgesUnlocked: 0,
+      activeStreaks: 0,
+      challengesCompleted: 0,
+      leaderboardsEnabled: true,
+    }
+  }
+
+  let totalXp = 0
+  let totalBadges = 0
+  let activeStreaks = 0
+
+  for (const row of data) {
+    totalXp += row.xp ?? 0
+    totalBadges += row.badges ?? 0
+    if ((row.streak ?? 0) > 0) activeStreaks++
+  }
+
   return {
-    totalXpEarned: 0,
-    badgesUnlocked: 0,
-    activeStreaks: 0,
-    challengesCompleted: 0,
-    leaderboardsEnabled: false,
+    totalXpEarned: totalXp,
+    badgesUnlocked: totalBadges,
+    activeStreaks,
+    challengesCompleted: 0, // No challenges system yet
+    leaderboardsEnabled: true,
   }
 }
 
 export async function getLeaderboard(gymId: string): Promise<LeaderboardEntry[]> {
-  void gymId
-  return []
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.rpc('get_gym_leaderboard', {
+    p_gym_id: gymId,
+    p_limit: 10,
+  })
+
+  if (error || !data) return []
+
+  return (data as Array<{ member_id: string; member_name: string; xp: number; badges: number }>).map(
+    (row, idx) => ({
+      rank: idx + 1,
+      memberId: row.member_id,
+      memberName: row.member_name,
+      xp: row.xp,
+      badges: row.badges,
+    }),
+  )
 }
 
 // ─── Mutations ───────────────────────────────────────────────────────────────

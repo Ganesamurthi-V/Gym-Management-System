@@ -23,7 +23,7 @@ export default function InventoryFilters() {
     if (q) params.set('query', q)
     if (c) params.set('category', c)
     const qs = params.toString()
-    router.push(qs ? `/inventory?${qs}` : '/inventory')
+    router.push(qs ? `/owner/inventory?${qs}` : '/owner/inventory')
   }, [router])
 
   // Debounce search input

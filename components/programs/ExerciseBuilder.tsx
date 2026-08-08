@@ -249,7 +249,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
       }
 
       toast.success(isDraft ? 'Program saved as draft' : 'Program published')
-      router.push('/programs')
+      router.push('/owner/programs')
       router.refresh()
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to save program')

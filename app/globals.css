@@ -1,3 +1,7 @@
+/* Design tokens shared by the owner console and the member PWA.
+   Must stay the first rule in the file — postcss-import hoists @import. */
+@import './design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,6 +9,11 @@
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: var(--color-brand-muted);
+    color: var(--color-brand-900);
   }
 
   html, body {
@@ -163,5 +172,48 @@
   /* Container helpers for xxl screens */
   .content-xxl {
     @apply max-w-7xl mx-auto 3xl:max-w-8xl;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MEMBER PWA ADDITIONS
+   ──────────────────────────────────────────────────────────────────────────────
+   Merged in from the standalone member app (gymflow-member/src/app/globals.css)
+   during the unified-app migration.
+
+   Only the rules the member UI needs and the owner console did NOT already
+   define are reproduced here. Shared class names (.btn-primary, .card,
+   .status-*, .glass, .skeleton, .tap-target, .no-scrollbar, .pb-safe-bottom,
+   .pt-safe-top) are intentionally NOT redefined — the owner definitions above
+   are visually equivalent, and redeclaring them would change owner styling.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* Member pages are a single centred phone-width column. */
+  .page-container {
+    @apply mx-auto w-full max-w-lg px-4 xs:px-5 sm:px-6;
+  }
+
+  /* Invalid form field — used by the member login + activation forms. */
+  .input-field[aria-invalid='true'] {
+    border-color: var(--color-expired-border);
+    box-shadow: var(--focus-ring-error);
+  }
+}
+
+/* Ambient background orbs on the member auth / activation screens. */
+@keyframes float-orb {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(0, -12px, 0) scale(1.04); }
+}
+.animate-float-orb { animation: float-orb 8s ease-in-out infinite; }
+
+/* Member shell relies on these tokens for bottom-nav clearance. Declared as a
+   fallback so the layout never collapses if design-tokens.css fails to load. */
+@supports not (height: 1px) {
+  :root {
+    --bottom-nav-height: 4rem;
+    --pwa-safe-bottom: 0px;
+    --pwa-safe-top: 0px;
   }
 }

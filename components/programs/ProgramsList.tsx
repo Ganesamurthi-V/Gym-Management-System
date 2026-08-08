@@ -30,7 +30,7 @@ export default function ProgramsList({ programs }: Props) {
           <h1 className="text-2xl font-bold text-slate-900">Workout Programs</h1>
           <p className="text-sm font-semibold text-slate-500 mt-1">Manage and assign workout templates</p>
         </div>
-        <Link href="/programs/new" className="btn-primary w-full sm:w-auto px-6 whitespace-nowrap">
+        <Link href="/owner/programs/new" className="btn-primary w-full sm:w-auto px-6 whitespace-nowrap">
           <Plus className="w-4 h-4" />
           Create Program
         </Link>
@@ -76,7 +76,7 @@ export default function ProgramsList({ programs }: Props) {
               : "Create your first workout program template to easily assign structured routines to your members."}
           </p>
           {!(search || filter !== 'all') && (
-            <Link href="/programs/new" className="btn-primary w-auto px-6">
+            <Link href="/owner/programs/new" className="btn-primary w-auto px-6">
               Create First Program
             </Link>
           )}
@@ -85,7 +85,7 @@ export default function ProgramsList({ programs }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredPrograms.map((program) => (
             <Link 
-              href={`/programs/${program.id}`} 
+              href={`/owner/programs/${program.id}`} 
               key={program.id}
               className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-brand-300 hover:shadow-md transition-all group relative flex flex-col"
             >

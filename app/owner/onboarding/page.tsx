@@ -14,7 +14,7 @@ export default async function OnboardingPage() {
     .maybeSingle()
 
   // Already onboarded — send to dashboard
-  if (gym?.onboarding_completed) redirect('/dashboard')
+  if (gym?.onboarding_completed) redirect('/owner/dashboard')
 
   return <OnboardingWizard gymId={gym?.id ?? null} gymName={gym?.name ?? ''} />
 }

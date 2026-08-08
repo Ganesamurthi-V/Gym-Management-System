@@ -8,7 +8,7 @@ export default async function EditMembersPage() {
   if (!user) redirect('/auth/login')
 
   const { gym } = await getGym(user.id)
-  if (!gym) redirect('/dashboard')
+  if (!gym) redirect('/owner/dashboard')
 
   const supabase = await createClient()
 

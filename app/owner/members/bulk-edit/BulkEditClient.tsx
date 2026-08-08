@@ -104,7 +104,7 @@ export function EditMembersClient({ members, gymId }: Props) {
         const { invalidateMembersCache } = await import('../actions')
         await invalidateMembersCache(gymId)
       }
-      router.push('/members')
+      router.push('/owner/members')
       router.refresh()
     } catch (err: any) {
       setError('Failed to delete: ' + (err.message || 'Unknown error'))
@@ -211,7 +211,7 @@ export function EditMembersClient({ members, gymId }: Props) {
         }
       }
 
-      router.push('/members')
+      router.push('/owner/members')
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to save changes')
@@ -321,7 +321,7 @@ export function EditMembersClient({ members, gymId }: Props) {
     <div className="space-y-4 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          <Link href="/owner/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Members
           </Link>
           <span className="text-slate-300">/</span>

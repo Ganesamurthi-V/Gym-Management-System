@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, MailQuestion, RefreshCw } from 'lucide-react'
 import type { InvitationActivity as InvitationRow, InvitationStatus } from '@/types/member-app'
-import { memberRowAction } from '@/app/member-app/actions'
+import { memberRowAction } from '@/app/owner/member-app/actions'
 import { useAsyncAction } from '../hooks/useMemberAppActions'
 import { useFilteredRows, useTableFilters } from '../hooks/useMemberAppFilters'
 import {
@@ -143,7 +143,7 @@ export default function InvitationActivity({ invitations }: { invitations: Invit
                     Resend
                   </button>
                   <Link
-                    href={`/members/${row.memberId}`}
+                    href={`/owner/members/${row.memberId}`}
                     className="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
                   >
                     View Member

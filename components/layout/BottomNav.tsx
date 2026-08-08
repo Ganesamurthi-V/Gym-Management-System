@@ -6,10 +6,10 @@
 // import { cn } from '@/lib/utils'
 
 // const NAV_ITEMS = [
-//   { href: '/dashboard', label: 'Home', icon: Home },
-//   { href: '/members', label: 'Members', icon: Users },
-//   { href: '/payments', label: 'Payments', icon: CreditCard },
-//   { href: '/reports', label: 'Reports', icon: BarChart2 },
+//   { href: '/owner/dashboard', label: 'Home', icon: Home },
+//   { href: '/owner/members', label: 'Members', icon: Users },
+//   { href: '/owner/payments', label: 'Payments', icon: CreditCard },
+//   { href: '/owner/reports', label: 'Reports', icon: BarChart2 },
 // ]
 
 // export function BottomNav() {

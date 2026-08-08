@@ -84,7 +84,7 @@ export default function ImportReviewPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem("import_rows");
-    if (!stored) { router.push("/import"); return; }
+    if (!stored) { router.push("/owner/import"); return; }
 
     // Restore previously reviewed state if coming back from edit page
     const reviewState = sessionStorage.getItem("import_review_state");
@@ -274,14 +274,14 @@ export default function ImportReviewPage() {
     persistReviewState();
 
     setSaveMsg(`Saved ${aliasRows.length} alias${aliasRows.length !== 1 ? "es" : ""}. Proceeding…`);
-    setTimeout(() => router.push("/import/edit"), 800);
+    setTimeout(() => router.push("/owner/import/edit"), 800);
   }
 
   const unresolvedCount = rows.filter(r => r._area_matched_by === "unresolved" || (r._area_confidence ?? 0) === 0).length;
 
   function goBack() {
     persistReviewState();
-    router.push("/import");
+    router.push("/owner/import");
   }
 
   return (
@@ -289,7 +289,7 @@ export default function ImportReviewPage() {
       <WizardHeader currentStep={4} />
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+        <Link href="/owner/import" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />Import
         </Link>
         <span className="text-slate-300">/</span>

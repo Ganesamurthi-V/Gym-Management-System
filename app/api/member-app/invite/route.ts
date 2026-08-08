@@ -22,6 +22,7 @@ import { randomBytes } from 'crypto'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { generateInvitationToken } from '@/lib/member-invitation'
+import { activationUrl } from '@/lib/member/redirect'
 
 export const dynamic = 'force-dynamic'
 
@@ -210,7 +211,7 @@ export async function POST(req: NextRequest) {
         data: {
           memberId,
           whatsappSent: false,
-          activationUrl: `https://member.gymflow.sbs/activate/${token}`,
+          activationUrl: activationUrl(token),
         },
         meta: { request_id: log.requestId },
       })
@@ -223,7 +224,7 @@ export async function POST(req: NextRequest) {
       data: {
         memberId,
         whatsappSent: true,
-        activationUrl: `https://member.gymflow.sbs/activate/${token}`,
+        activationUrl: activationUrl(token),
       },
       meta: { request_id: log.requestId },
     })

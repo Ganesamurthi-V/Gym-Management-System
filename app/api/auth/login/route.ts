@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { roleFromClaims, homeForRole } from '@/lib/auth/roles'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -29,13 +30,24 @@ export const dynamic = 'force-dynamic'
 /**
  * POST /api/auth/login
  *
- * Server-side login endpoint with dual rate limiting (IP + email).
- * Wraps Supabase signInWithPassword so we can enforce stricter limits
- * than Supabase's defaults before any auth attempt reaches the DB.
+ * Single sign-in endpoint for BOTH experiences of the unified app.
+ *
+ * Server-side login with dual rate limiting (IP + email). Wraps Supabase
+ * signInWithPassword so we can enforce stricter limits than Supabase's defaults
+ * before any auth attempt reaches the DB.
+ *
+ * ── WHY MEMBERS GO THROUGH HERE TOO ─────────────────────────────────────────
+ * The standalone member PWA called `signInWithPassword` directly from the
+ * browser, so it was protected only by a localStorage attempt counter that any
+ * client can clear. Now that both products share one origin, member sign-in
+ * runs through the same Upstash IP + email limiters the owner console uses.
+ * The client-side lockout is still applied on top as extra friction.
  *
  * Body: { email: string, password: string }
- * Returns: { success: true } on success (session cookie is set by Supabase SSR)
- *          { error: string } on failure
+ * Returns on success — the session cookie is set by Supabase SSR:
+ *   { success: true, role: 'owner' | 'member', redirectTo: string,
+ *     onboardingCompleted?: boolean, userName?: string | null }
+ * On failure: { error: string, code?: string }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -99,29 +111,73 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    // ── Check if gym is deactivated ────────────────────────────────────────
-    const { data: gymStatus } = await supabase
-      .from('gyms')
-      .select('is_active')
-      .eq('owner_id', data.user.id)
-      .single()
+    // ── Branch on role ─────────────────────────────────────────────────────
+    // Same helper the middleware uses, so the endpoint and the router can never
+    // disagree about which experience an account belongs to.
+    const role = roleFromClaims({ user_metadata: data.user.user_metadata })
 
-    if (gymStatus?.is_active === false) {
-      await supabase.auth.signOut()
-      return NextResponse.json({ error: 'Your access has been suspended by admin' }, { status: 403 })
+    if (role === 'member') {
+      // Confirm the account is actually linked to a member row. An auth user
+      // marked `role: 'member'` whose `members` row was deleted must not be
+      // handed a session that every member page would then reject.
+      const { data: member } = await supabase
+        .from('members')
+        .select('id, portal_suspended')
+        .eq('auth_user_id', data.user.id)
+        .maybeSingle()
+
+      if (!member) {
+        await supabase.auth.signOut()
+        return NextResponse.json(
+          {
+            error: 'This account is not linked to a GymFlow member profile. Contact your gym.',
+            code: 'NOT_MEMBER',
+          },
+          { status: 403 }
+        )
+      }
+
+      if (member.portal_suspended) {
+        await supabase.auth.signOut()
+        return NextResponse.json(
+          { error: 'Your app access is currently suspended. Please contact your gym.', code: 'SUSPENDED' },
+          { status: 403 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        role,
+        redirectTo: homeForRole(role),
+        userName: (data.user.user_metadata?.name as string | undefined) ?? null,
+      })
     }
 
-    // ── Check onboarding status ────────────────────────────────────────────
-    const { data: gymData } = await supabase
+    // ── Owner ──────────────────────────────────────────────────────────────
+    // One SELECT covers both the deactivation gate and the onboarding branch;
+    // these used to be two separate round trips against the same row.
+    const { data: gymRow } = await supabase
       .from('gyms')
-      .select('onboarding_completed')
+      .select('is_active, onboarding_completed')
       .eq('owner_id', data.user.id)
       .maybeSingle()
 
+    if (gymRow?.is_active === false) {
+      await supabase.auth.signOut()
+      return NextResponse.json(
+        { error: 'Your access has been suspended by admin', code: 'BLOCKED' },
+        { status: 403 }
+      )
+    }
+
+    const onboardingCompleted = gymRow?.onboarding_completed ?? false
+
     return NextResponse.json({
       success: true,
-      onboardingCompleted: gymData?.onboarding_completed ?? false,
-      userName: data.user.user_metadata?.name ?? null,
+      role,
+      onboardingCompleted,
+      redirectTo: onboardingCompleted ? homeForRole(role) : '/owner/onboarding',
+      userName: (data.user.user_metadata?.name as string | undefined) ?? null,
     })
   } catch {
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })

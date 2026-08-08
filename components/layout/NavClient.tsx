@@ -14,15 +14,15 @@ type NavItem = {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard',  href: '/dashboard',   icon: SquaresIcon },
-  { label: 'Members',    href: '/members',      icon: UsersIcon },
-  { label: 'Payments',   href: '/payments',     icon: RupeeIcon },
-  { label: 'Dues',       href: '/dues',         icon: AlertIcon },
-  { label: 'Attendance', href: '/attendance',   icon: CalendarIcon },
-  { label: 'Inventory',  href: '/inventory',    icon: BoxIcon },
-  { label: 'Programs',   href: '/programs',    icon: ActivityIcon },
+  { label: 'Dashboard',  href: '/owner/dashboard',   icon: SquaresIcon },
+  { label: 'Members',    href: '/owner/members',      icon: UsersIcon },
+  { label: 'Payments',   href: '/owner/payments',     icon: RupeeIcon },
+  { label: 'Dues',       href: '/owner/dues',         icon: AlertIcon },
+  { label: 'Attendance', href: '/owner/attendance',   icon: CalendarIcon },
+  { label: 'Inventory',  href: '/owner/inventory',    icon: BoxIcon },
+  { label: 'Programs',   href: '/owner/programs',    icon: ActivityIcon },
   { label: 'Reports',    href: '#',      icon: ChartIcon, comingSoon: true },
-  { label: 'Member App', href: '/member-app', icon: SmartphoneIcon },
+  { label: 'Member App', href: '/owner/member-app', icon: SmartphoneIcon },
 ]
 
 // ── Desktop sidebar nav ───────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ export function MobileNav() {
         </nav>
         <div className="px-3 xs:px-4 pb-6 xs:pb-8 pt-2 pb-safe-bottom">
           <Link
-            href="/members/new"
+            href="/owner/members/new"
             onClick={() => setOpen(false)}
             className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-2xl shadow-sm active:scale-[0.98] transition-all"
           >

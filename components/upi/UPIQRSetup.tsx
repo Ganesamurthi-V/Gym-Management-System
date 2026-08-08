@@ -4,8 +4,8 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Upload, Camera, CheckCircle2, XCircle, Loader2, QrCode, Trash2 } from 'lucide-react'
 import { parseUPIQRCode } from '@/lib/upi'
 import type { UPIParsedData } from '@/lib/upi'
-import { saveUPIConfig, deleteUPIConfig } from '@/app/account/upi-actions'
-import type { UPIConfig } from '@/app/account/upi-actions'
+import { saveUPIConfig, deleteUPIConfig } from '@/app/owner/account/upi-actions'
+import type { UPIConfig } from '@/app/owner/account/upi-actions'
 
 interface Props {
   /** Pre-loaded config (null if not set up yet) */

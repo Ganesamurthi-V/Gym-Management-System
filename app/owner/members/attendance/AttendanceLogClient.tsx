@@ -231,7 +231,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          <Link href="/owner/members" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />Back to Members
           </Link>
           <span className="text-slate-300">/</span>
@@ -389,7 +389,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
                         <td className="px-5 py-3.5">
                           {mem ? (
                             <div className="flex flex-col">
-                              <Link href={`/members/${mem.id}`} className="font-semibold text-brand-600 hover:text-brand-700 hover:underline">
+                              <Link href={`/owner/members/${mem.id}`} className="font-semibold text-brand-600 hover:text-brand-700 hover:underline">
                                 {mem.name}
                               </Link>
                               <span className="text-xs text-slate-400 font-mono">

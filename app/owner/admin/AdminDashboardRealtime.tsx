@@ -46,7 +46,7 @@ export default function AdminDashboardRealtime({ initial }: { initial: SubStats 
           </div>
         </div>
         <Link
-          href="/admin/subscriptions"
+          href="/owner/admin/subscriptions"
           className="text-sm font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1"
         >
           Manage Requests →

@@ -34,12 +34,12 @@ export function Hero() {
 
       // Using fromTo directly on the element ensures it never breaks on backward scroll
       gsap.fromTo(cardEl,
-        { rotationY: -12, rotationX: 5, rotationZ: 1.5, scale: 1.20 },
+        { rotationY: -12, rotationX: 5, rotationZ: 1.5, scale: 1 },
         {
           rotationY: 0,
           rotationX: 0,
           rotationZ: 0,
-          scale: 1.20,
+          scale: 1,
           ease: 'power2.out',
           scrollTrigger: {
             trigger: containerRef.current,
@@ -205,8 +205,8 @@ export function Hero() {
 
         {/* ── Right — 3D Tilted Dashboard Image ─────────────────────────── */}
         <div
-          className="hero-mockup relative flex items-center justify-center lg:justify-end lg:-mt-24 lg:-translate-x-12 xl:-translate-x-20"
-          style={{ perspective: '1400px', paddingTop: '10px', paddingBottom: '0px' }}
+          className="hero-mockup relative flex items-center justify-center lg:justify-end"
+          style={{ perspective: '1400px' }}
         >
           {/* Outer glow behind the card */}
           <div
@@ -220,7 +220,7 @@ export function Hero() {
           {/* 3D Tilted card — ref for scroll animation */}
           <div
             ref={cardRef}
-            className="relative z-10 w-full max-w-[1040px] xl:max-w-[1200px]"
+            className="relative z-10 w-full max-w-[540px] xl:max-w-[580px]"
             style={{
               transformStyle: 'preserve-3d',
               willChange: 'transform',
@@ -275,6 +275,7 @@ export function Hero() {
                 borderTop: 'none',
                 boxShadow: '0 32px 80px rgba(15,23,42,0.18), 0 8px 24px rgba(37,99,235,0.12)',
                 background: '#F1F5F9',
+                maxHeight: '340px',
               }}
             >
               <img src="/hero.png" alt="GymFlow Dashboard" width="2880" height="1532" fetchPriority="high" decoding="async" className="w-full h-auto block rounded-b-[16px]" />

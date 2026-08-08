@@ -11,6 +11,7 @@ import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
 
 import { loadMoreMembersAction, exportMembersToExcelAction } from './actions'
+import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 
 interface Props {
   members: MemberWithStatus[]
@@ -31,6 +32,9 @@ export function MembersClient({ members, gymId, totalCount }: Props) {
 function MembersContent({ members, gymId, totalCount }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Auto-refresh when members/memberships change in this gym (realtime).
+  useGymRealtime(gymId, ['members', 'memberships'])
   const [search, setSearch] = useState('')
   const [idSearch, setIdSearch] = useState('')
   const deferredSearch = useDeferredValue(search)

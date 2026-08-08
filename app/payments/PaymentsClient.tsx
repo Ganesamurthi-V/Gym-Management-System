@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
 import { getAllTimePayments } from './actions'
+import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 
 interface Payment {
   id: string
@@ -128,6 +129,9 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
 export function PaymentsClient({ payments, productSales = [], duePayments = [], pendingMembers, gymId, gymName }: Props) {
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
+
+  // Auto-refresh when memberships, inventory sales, or due payments change.
+  useGymRealtime(gymId, ['memberships', 'inventory_sales', 'due_payments'])
   const [search, setSearch]   = useState('')
   const [idSearch, setIdSearch] = useState('')
   const [customFrom, setCustomFrom] = useState('')

@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, Loader2, Sun, Moon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
+import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 
 interface Props {
   gymId: string
@@ -29,6 +30,8 @@ type MessageState = {
 }
 
 export function AttendanceClient({ gymId, gymName, today, totalPresent: initialPresent }: Props) {
+  // Auto-refresh when attendance records are added/modified.
+  useGymRealtime(gymId, ['attendance'])
   const [memberId, setMemberId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<MessageState>({ type: null, text: '' })

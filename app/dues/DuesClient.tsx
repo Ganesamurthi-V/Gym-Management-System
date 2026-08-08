@@ -5,6 +5,7 @@ import { MessageCircle, Check, IndianRupee, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 
 interface DueMember {
   id: string
@@ -24,6 +25,9 @@ interface Props {
 export function DuesClient({ members: initialMembers, gymId, totalDues }: Props) {
   const [members, setMembers] = useState(initialMembers)
   const [paying, setPaying] = useState<string | null>(null)
+
+  // Auto-refresh when due payments are recorded or members' pending amounts change.
+  useGymRealtime(gymId, ['members', 'due_payments'])
   const [payAmount, setPayAmount] = useState('')
   const [payMode, setPayMode] = useState<string>('cash')
   const [searchQuery, setSearchQuery] = useState('')

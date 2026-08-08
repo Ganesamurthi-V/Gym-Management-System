@@ -10,6 +10,7 @@ import { buildWhatsAppLink, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyReportPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
 import { format } from 'date-fns'
+import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 
 interface Props {
   gymName: string
@@ -23,6 +24,9 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
   const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
   const [fetchingMonth, setFetchingMonth] = useState(false)
+
+  // Auto-refresh dashboard when memberships or attendance changes.
+  useGymRealtime(gymId, ['members', 'memberships', 'attendance'])
 
   // Memoize Supabase client to prevent recreation on every render
   const supabase = useMemo(() => createClient(), [])

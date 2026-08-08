@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { prefetchMemberBundle } from '@/lib/queries/member'
+import { useMemberRealtime } from '@/lib/hooks/useMemberRealtime'
 
 /** Routes reachable from the bottom nav and the home quick-actions. */
 const WARM_ROUTES = [
@@ -30,6 +31,11 @@ const WARM_ROUTES = [
 export function MemberDataWarmer() {
   const router = useRouter()
   const queryClient = useQueryClient()
+
+  // Subscribe to Supabase Realtime for the member's own data.
+  // When memberships, attendance, program assignments, or profile changes
+  // happen, both TanStack Query and Server Components auto-refresh.
+  useMemberRealtime()
 
   useEffect(() => {
     let cancelled = false

@@ -182,6 +182,10 @@ export type Database = {
         Args: { p_member_id: string }
         Returns: void
       }
+      get_member_gamification: {
+        Args: { p_member_id: string }
+        Returns: unknown
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

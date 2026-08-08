@@ -54,7 +54,7 @@ export function useMemberRealtime() {
       }, 1500)
     }
 
-    const tables = ['memberships', 'attendance', 'program_assignments', 'members']
+    const tables = ['memberships', 'attendance', 'program_assignments', 'members', 'member_portal_activity']
 
     let channel = supabase.channel('member-realtime')
 

@@ -123,7 +123,7 @@ export default async function AttendancePage() {
                 </div>
                 {r.check_out_time && (
                   <p className="text-xs text-slate-400">
-                    Out {new Date(r.check_out_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    Out {new Date(r.check_out_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}
                   </p>
                 )}
               </div>

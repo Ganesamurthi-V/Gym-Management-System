@@ -257,31 +257,65 @@ export const getMemberAttendance = cache(async (): Promise<AttendanceSummary> =>
   }
 })
 
-// ─── Workout programs ─────────────────────────────────────────────────────────
+// ─── Workout programs (assigned to THIS member only) ──────────────────────────
 
 /**
- * Returns published workout programs for the member's gym.
+ * Returns published workout programs that are ASSIGNED to the logged-in member.
  *
- * The "Members can view their gym programs" RLS policy already restricts rows
- * to `gym_id = current_member_gym_id() AND is_draft = false`, so no filter is
- * needed and this can run in parallel with the member query.
+ * Previously this returned every non-draft program in the gym. Now it reads
+ * through `program_assignments`, which the gym owner populates from the
+ * "Assign Members" button on each program. The RLS policy "Members can view
+ * their own assignments" ensures only the caller's rows are visible, so no
+ * explicit member_id filter is needed — making this safe to run in parallel
+ * with the member query (same pattern as memberships/attendance).
+ *
+ * Programs assigned to "all" still work: the owner's bulk-assign writes a row
+ * per member into `program_assignments`, so the same query covers both cases.
  */
-export const getGymWorkoutPrograms = cache(async (): Promise<WorkoutProgram[]> => {
+export const getAssignedWorkoutPrograms = cache(async (): Promise<WorkoutProgram[]> => {
   const supabase = await getServerClient()
 
-  const { data, error } = await timed('workout_programs', () =>
+  // Fetch the program IDs assigned to the current member.
+  const { data: assignments, error: assignErr } = await timed('program_assignments', () =>
+    supabase
+      .from('program_assignments')
+      .select('program_id'),
+  )
+
+  if (assignErr) {
+    console.error('[getAssignedWorkoutPrograms] assignments query failed', {
+      code: assignErr.code,
+      message: assignErr.message,
+    })
+    return []
+  }
+
+  const programIds = (assignments ?? []).map((a: { program_id: string }) => a.program_id)
+  if (programIds.length === 0) return []
+
+  // Fetch the full program rows for those IDs.
+  // RLS on workout_programs already restricts to the member's gym + non-draft.
+  const { data, error } = await timed('workout_programs (assigned)', () =>
     supabase
       .from('workout_programs')
       .select(PROGRAM_COLUMNS)
+      .in('id', programIds)
       .order('created_at', { ascending: false }),
   )
 
   if (error) {
-    console.error('[getGymWorkoutPrograms] failed', { code: error.code, message: error.message })
+    console.error('[getAssignedWorkoutPrograms] programs query failed', {
+      code: error.code,
+      message: error.message,
+    })
     return []
   }
   return (data ?? []) as WorkoutProgram[]
 })
+
+// Keep the old helper available for the /api/member/bundle route which may
+// still want all gym programs. Aliased so nothing breaks.
+export const getGymWorkoutPrograms = getAssignedWorkoutPrograms
 
 // ─── Page bundles (parallel fetch — one round trip per page) ──────────────────
 //
@@ -321,11 +355,11 @@ export const getProgressPageData = cache(async () => {
   return { ...core, memberships, attendance, state: computeMembershipState(memberships) }
 })
 
-/** Workout: member + gym + published programs. */
+/** Workout: member + gym + assigned programs. */
 export const getWorkoutPageData = cache(async () => {
   const [core, programs] = await Promise.all([
     getMemberWithGym(),
-    getGymWorkoutPrograms(),
+    getAssignedWorkoutPrograms(),
   ])
   if (!core) return null
   return { ...core, programs }

@@ -8,6 +8,13 @@ module.exports = {
         '3xl': '1920px',
       },
       colors: {
+        rarity: {
+          common: 'var(--color-rarity-common)',
+          rare: 'var(--color-rarity-rare)',
+          epic: 'var(--color-rarity-epic)',
+          legendary: 'var(--color-rarity-legendary)',
+          mythic: 'var(--color-rarity-mythic)',
+        },
         brand: {
           50: '#EFF6FF',
           100: '#DBEAFE',

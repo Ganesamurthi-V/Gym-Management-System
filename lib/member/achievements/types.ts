@@ -30,6 +30,12 @@ export interface Achievement {
   /** Threshold value for unlock (check-ins, streak days, XP, etc.) */
   requirement: number
   icon: string // emoji
+  /** Path to badge image in /public/badges/ (e.g. '/badges/century_club.webp') */
+  badgeImage?: string
+  /** Optional scale override for badges with extra internal whitespace (e.g. '1.4') */
+  badgeScale?: number
+  /** Optional pixel size override for the badge image (default: 52px) */
+  badgeSize?: number
   unlocked: boolean
   unlockedAt?: string // ISO timestamp
   /** Current progress toward requirement. Omit if not measurable. */

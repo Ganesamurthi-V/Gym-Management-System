@@ -4,75 +4,78 @@ import { Lock } from 'lucide-react'
 import type { Achievement, AchievementRarity } from '@/lib/member/achievements/types'
 
 /**
- * Rarity-themed achievement card matching the reference design:
- * - Round badge icon with rarity-colored gradient background
+ * Rarity-themed achievement card with badge images.
+ *
+ * - Round badge image with rarity-colored ring/glow when earned
+ * - Grayscale + lock overlay when not yet earned
  * - Name + description
  * - Progress bar with fraction text (when locked & measurable)
  * - Rarity label in color
- * - Lock icon overlay when not yet earned
- * - Mythic cards get a subtle border glow when earned
  */
 
 const BADGE_STYLES: Record<AchievementRarity, {
-  gradient: string
+  ring: string
   border: string
   glow: string
   labelText: string
   barColor: string
 }> = {
   mythic: {
-    gradient: 'from-pink-400 to-fuchsia-600',
+    ring: 'ring-pink-400/60',
     border: 'border-pink-200',
-    glow: 'shadow-pink-100',
+    glow: 'shadow-lg shadow-pink-200/50',
     labelText: 'text-pink-600',
     barColor: 'bg-gradient-to-r from-pink-400 to-fuchsia-500',
   },
   legendary: {
-    gradient: 'from-amber-400 to-orange-500',
+    ring: 'ring-amber-400/60',
     border: 'border-amber-200',
-    glow: 'shadow-amber-100',
+    glow: 'shadow-lg shadow-amber-200/50',
     labelText: 'text-amber-600',
     barColor: 'bg-gradient-to-r from-amber-400 to-orange-500',
   },
   epic: {
-    gradient: 'from-violet-400 to-purple-600',
+    ring: 'ring-violet-400/60',
     border: 'border-violet-200',
-    glow: 'shadow-violet-100',
+    glow: 'shadow-lg shadow-violet-200/50',
     labelText: 'text-violet-600',
     barColor: 'bg-gradient-to-r from-violet-400 to-purple-500',
   },
   rare: {
-    gradient: 'from-blue-400 to-indigo-500',
+    ring: 'ring-blue-400/60',
     border: 'border-blue-200',
-    glow: 'shadow-blue-100',
+    glow: 'shadow-md shadow-blue-100/50',
     labelText: 'text-blue-600',
     barColor: 'bg-gradient-to-r from-blue-400 to-indigo-500',
   },
   common: {
-    gradient: 'from-slate-300 to-slate-400',
+    ring: 'ring-slate-300/60',
     border: 'border-slate-200',
-    glow: 'shadow-slate-100',
+    glow: 'shadow-sm',
     labelText: 'text-slate-500',
     barColor: 'bg-slate-400',
   },
 }
 
 export default function AchievementCard({ achievement }: { achievement: Achievement }) {
-  const { unlocked, rarity, name, description, icon, progress, requirement } = achievement
+  const { unlocked, rarity, name, description, icon, badgeImage, badgeSize, progress, requirement } = achievement
   const style = BADGE_STYLES[rarity]
 
   const showProgress = !unlocked && progress !== undefined && requirement > 0
   const progressPct = showProgress ? Math.min(100, Math.round((progress! / requirement) * 100)) : 0
+
+  // Badge pixel size: controlled per-achievement via badgeSize in definitions.ts
+  // Default is 52px. Set to any pixel value (e.g. 60, 70, 80) to make a badge bigger.
+  const size = badgeSize ?? 52
 
   return (
     <div
       className={`
         relative rounded-2xl border bg-white p-3.5 transition-all
         ${unlocked
-          ? `${style.border} shadow-md ${style.glow}`
+          ? `${style.border} ${style.glow}`
           : 'border-slate-100 shadow-sm'
         }
-        ${unlocked && rarity === 'mythic' ? 'ring-1 ring-pink-200/50' : ''}
       `}
       role="article"
       aria-label={`${name}. ${unlocked ? 'Earned' : 'Locked'}. ${rarity} rarity.`}
@@ -84,23 +87,31 @@ export default function AchievementCard({ achievement }: { achievement: Achievem
         </div>
       )}
 
-      {/* Badge icon */}
+      {/* Badge + text */}
       <div className="flex items-start gap-3">
-        <div
-          className={`
-            relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl
-            ${unlocked
-              ? `bg-gradient-to-br ${style.gradient} shadow-sm`
-              : 'bg-slate-100'
-            }
-          `}
-        >
-          <span className={`text-lg ${unlocked ? '' : 'grayscale opacity-40'}`}>
-            {icon}
-          </span>
-          {/* Earned ring effect */}
-          {unlocked && (
-            <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${style.gradient} opacity-20 blur-[2px]`} />
+        {/* Badge — size controlled per-achievement via badgeSize in definitions.ts */}
+        <div className="h-[52px] w-[52px] shrink-0 flex items-center justify-center overflow-visible">
+          {badgeImage ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={badgeImage}
+              alt={name}
+              width={size}
+              height={size}
+              className={`object-contain ${!unlocked ? 'grayscale opacity-40' : ''}`}
+              style={{ width: `${size}px`, height: `${size}px`, maxWidth: 'none' }}
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div
+              className={`
+                flex h-[52px] w-[52px] items-center justify-center rounded-xl text-xl
+                ${unlocked ? 'bg-slate-50' : 'bg-slate-100 grayscale opacity-40'}
+              `}
+            >
+              {icon}
+            </div>
           )}
         </div>
 

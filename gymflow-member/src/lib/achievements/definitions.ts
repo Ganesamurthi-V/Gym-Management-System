@@ -21,7 +21,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   // ─── Attendance ─────────────────────────────────────────────────────────────
   {
     id: 'att-welcome',
-    name: 'Welcome Aboard',
+    name: 'Portal Initiate',           // badge: First_Spark — blue lightning bolt, "first spark of energy"
     description: 'Activated Member Portal',
     category: 'attendance',
     rarity: 'common',
@@ -30,7 +30,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'att-first-checkin',
-    name: 'First Check-in',
+    name: 'First Spark',               // badge: First_Spark — blue electric bolt, the very first jolt of activity
     description: '1 check-in',
     category: 'attendance',
     rarity: 'common',
@@ -39,7 +39,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'att-week-warrior',
-    name: 'Week Warrior',
+    name: 'Blue Flame',                // badge: Week_Warrior — neon blue fire with sparkle stars
     description: '5 check-ins in one week',
     category: 'attendance',
     rarity: 'rare',
@@ -48,7 +48,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'att-month-hustler',
-    name: 'Month Hustler',
+    name: 'Calendar Crusher',          // badge: Month_Hustler — 3D calendar with a check mark
     description: '10 check-ins in one month',
     category: 'attendance',
     rarity: 'rare',
@@ -57,7 +57,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'att-consistency-king',
-    name: 'Consistency King',
+    name: 'Star Shield',               // badge: consistency_king — purple hexagon with shield + star
     description: '50 total check-ins',
     category: 'attendance',
     rarity: 'epic',
@@ -66,7 +66,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'att-century-club',
-    name: 'Century Club',
+    name: 'Golden Orbit',              // badge: century_club — gold hexagon with circular star medallion
     description: '100 total check-ins',
     category: 'attendance',
     rarity: 'legendary',
@@ -75,7 +75,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'att-iron-veteran',
-    name: 'Iron Veteran',
+    name: 'Crimson Centurion',         // badge: iron_veteran — hot-pink Spartan warrior helmet
     description: '250 total check-ins',
     category: 'attendance',
     rarity: 'mythic',
@@ -86,7 +86,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   // ─── Streak ─────────────────────────────────────────────────────────────────
   {
     id: 'str-3day',
-    name: '3-Day Spark',
+    name: 'Voltage Rush',              // badge: First_Spark (shared bolt visual) — blue lightning, first burst of streaking energy
     description: '3-day streak',
     category: 'streak',
     rarity: 'common',
@@ -95,7 +95,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'str-7day',
-    name: '7-Day Fire',
+    name: 'Inferno Protocol',          // badge: Week_Warrior — deep blue fire, intensity ramping up
     description: '7-day streak',
     category: 'streak',
     rarity: 'rare',
@@ -104,7 +104,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'str-14day',
-    name: '14-Day Unstoppable',
+    name: 'Violet Surge',              // badge: 14_days_unstopable — vivid purple lightning bolt, raw power
     description: '14-day streak',
     category: 'streak',
     rarity: 'epic',
@@ -113,7 +113,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'str-30day',
-    name: '30-Day Beast',
+    name: 'Wildfire',                  // badge: 30_days_beast — blazing orange/gold flame, unstoppable heat
     description: '30-day streak',
     category: 'streak',
     rarity: 'legendary',
@@ -122,7 +122,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'str-90day',
-    name: '90-Day Legend',
+    name: 'Crown of Ninety',           // badge: 90_days_legend — hot-pink hexagon with crown + "90"
     description: '90-day streak',
     category: 'streak',
     rarity: 'mythic',
@@ -133,7 +133,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   // ─── Workout (pendingBackend — no workout sessions table yet) ───────────────
   {
     id: 'wrk-first',
-    name: 'First Workout',
+    name: 'Iron Touch',                // badge: perfect_week — orange dumbbell, very first iron lifted
     description: 'Complete 1 workout',
     category: 'workout',
     rarity: 'common',
@@ -143,7 +143,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'wrk-warrior',
-    name: 'Workout Warrior',
+    name: 'Grind Ascendant',           // badge: Rising_Star — blue star with ascending arrows, rising through the grind
     description: 'Complete 25 workouts',
     category: 'workout',
     rarity: 'rare',
@@ -153,7 +153,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'wrk-machine',
-    name: 'Training Machine',
+    name: 'Bullseye Protocol',         // badge: Goal_Chaser — blue dartboard dead-center, precision machine
     description: 'Complete 50 workouts',
     category: 'workout',
     rarity: 'epic',
@@ -163,7 +163,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'wrk-legend',
-    name: 'Workout Legend',
+    name: 'Solaris',                   // badge: elite_member — brilliant gold star radiating light
     description: 'Complete 100 workouts',
     category: 'workout',
     rarity: 'legendary',
@@ -173,7 +173,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'wrk-250club',
-    name: '250 Club',
+    name: 'Eternal Iron',              // badge: Unbreakable — magenta infinity symbol, endless reps
     description: 'Complete 250 workouts',
     category: 'workout',
     rarity: 'mythic',
@@ -185,7 +185,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   // ─── Membership ─────────────────────────────────────────────────────────────
   {
     id: 'mem-welcome',
-    name: 'Welcome Aboard',
+    name: 'The Arrival',               // att-welcome shares the portal activation milestone
     description: 'Activate Member Portal',
     category: 'membership',
     rarity: 'common',
@@ -194,7 +194,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'mem-first-renewal',
-    name: 'First Renewal',
+    name: 'Pack Bond',                 // badge: Team_Player — blue group silhouette with heart, showing you're in
     description: 'Renew membership once',
     category: 'membership',
     rarity: 'rare',
@@ -203,7 +203,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'mem-committed',
-    name: 'Committed Member',
+    name: 'Twin Allegiance',           // badge: comitted_member — purple dual-person silhouette, side by side
     description: '3 renewals',
     category: 'membership',
     rarity: 'epic',
@@ -212,7 +212,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'mem-loyalist',
-    name: 'Gym Loyalist',
+    name: 'Crest of Honor',            // badge: gym_loyalist — golden shield-with-banner crest
     description: '6 renewals',
     category: 'membership',
     rarity: 'legendary',
@@ -221,7 +221,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'mem-one-year',
-    name: 'One Year Strong',
+    name: 'Day 365',                   // badge: one_year_strong — hot-pink calendar showing "88" (stylised year milestone)
     description: '1 year continuous membership',
     category: 'membership',
     rarity: 'mythic',
@@ -232,7 +232,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   // ─── XP ─────────────────────────────────────────────────────────────────────
   {
     id: 'xp-start',
-    name: 'Getting Started',
+    name: 'Spark Seeker',              // early XP milestone, echoes the lightning-bolt starter energy
     description: 'Earn 100 XP',
     category: 'xp',
     rarity: 'common',
@@ -241,7 +241,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'xp-rising',
-    name: 'Rising Strong',
+    name: 'Ascent Protocol',           // badge: Rising_Star — blue star + upward arrows, XP climbing fast
     description: 'Earn 250 XP',
     category: 'xp',
     rarity: 'rare',
@@ -250,7 +250,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'xp-power',
-    name: 'Power Player',
+    name: 'Apex Voltage',              // badge: 14_days_unstopable (purple bolt) — surge of raw XP power
     description: 'Earn 1,000 XP',
     category: 'xp',
     rarity: 'epic',
@@ -259,7 +259,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'xp-elite',
-    name: 'Elite Member',
+    name: 'Gold Standard',             // badge: elite_member — gleaming gold star, the definitive elite mark
     description: 'Earn 2,500 XP',
     category: 'xp',
     rarity: 'legendary',
@@ -268,7 +268,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'xp-hall',
-    name: 'Hall of Fame',
+    name: 'Luminary',                  // badge: hall_of_fame — deep magenta star outline, permanently etched
     description: 'Earn 10,000 XP',
     category: 'xp',
     rarity: 'mythic',
@@ -279,7 +279,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   // ─── Special ────────────────────────────────────────────────────────────────
   {
     id: 'spc-early-bird',
-    name: 'Early Bird',
+    name: 'Dawn Striker',              // "before 7 AM" = striking at dawn, energetic early-bird vibe
     description: '10 check-ins before 7:00 AM',
     category: 'special',
     rarity: 'rare',
@@ -288,7 +288,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'spc-perfect-week',
-    name: 'Perfect Week',
+    name: 'Iron Week',                 // badge: perfect_week — glowing orange dumbbell, every session nailed
     description: 'Complete every scheduled workout in a week',
     category: 'special',
     rarity: 'epic',
@@ -298,7 +298,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'spc-challenge',
-    name: 'Challenge Champion',
+    name: 'Conquest Cup',              // badge: challenge_champion — blazing orange trophy with star
     description: 'Win a gym challenge',
     category: 'special',
     rarity: 'legendary',
@@ -308,7 +308,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
   },
   {
     id: 'spc-unbreakable',
-    name: 'Unbreakable',
+    name: 'Infinity Forged',           // badge: Unbreakable — magenta infinity loop, 180-day streak that never breaks
     description: '180-day attendance streak',
     category: 'special',
     rarity: 'mythic',

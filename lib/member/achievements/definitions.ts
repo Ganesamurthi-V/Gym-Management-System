@@ -8,7 +8,9 @@
  *
  * ── BADGE SIZE CONTROL ──────────────────────────────────────────────────────
  * Each achievement has a `badgeScale` number that controls its rendered size.
- * The base is 52px. Scale 1.0 = 52px, 1.2 = 62px, 1.5 = 78px, etc.
+ * The base is 65
+px. Scale 1.0 = 65
+px, 1.2 = 62px, 1.5 = 78px, etc.
  * Adjust each value individually until all badges look visually uniform.
  *
  * IMPORTANT: `pendingBackend: true` means the underlying data source does not
@@ -35,7 +37,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 0,
     icon: '👋',
     badgeImage: '/badges/First_Spark.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'att-first-checkin',
@@ -46,7 +48,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 1,
     icon: '✅',
     badgeImage: '/badges/Goal_Chaser.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'att-week-warrior',
@@ -57,7 +59,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 5,
     icon: '⚡',
     badgeImage: '/badges/Week_Warrior.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'att-month-hustler',
@@ -68,7 +70,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 10,
     icon: '🔥',
     badgeImage: '/badges/Month_Hustler.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'att-consistency-king',
@@ -79,7 +81,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 50,
     icon: '👑',
     badgeImage: '/badges/consistency_king.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'att-century-club',
@@ -90,7 +92,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 100,
     icon: '💯',
     badgeImage: '/badges/century_club.webp',
-    badgeSize: 90,
+    badgeSize: 70,
   },
   {
     id: 'att-iron-veteran',
@@ -114,7 +116,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 3,
     icon: '⚡',
     badgeImage: '/badges/First_Spark.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'str-7day',
@@ -125,7 +127,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 7,
     icon: '🔥',
     badgeImage: '/badges/Rising_Star.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'str-14day',
@@ -136,7 +138,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 14,
     icon: '💪',
     badgeImage: '/badges/14_days_unstopable.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'str-30day',
@@ -147,7 +149,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 30,
     icon: '🦁',
     badgeImage: '/badges/30_days_beast.webp',
-    badgeSize: 58,
+    badgeSize: 70,
   },
   {
     id: 'str-90day',
@@ -158,7 +160,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 90,
     icon: '🏆',
     badgeImage: '/badges/90_days_legend.webp',
-    badgeSize: 90,
+    badgeSize: 65,
   },
 
   // ─── Workout (pendingBackend — no workout sessions table yet) ───────────────
@@ -171,7 +173,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 1,
     icon: '🏋️',
     badgeImage: '/badges/Goal_Chaser.webp',
-    badgeSize: 52,
+    badgeSize: 65,
     pendingBackend: true,
   },
   {
@@ -183,7 +185,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 25,
     icon: '⚔️',
     badgeImage: '/badges/Week_Warrior.webp',
-    badgeSize: 52,
+    badgeSize: 65,
     pendingBackend: true,
   },
   {
@@ -195,7 +197,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 50,
     icon: '🤖',
     badgeImage: '/badges/consistency_king.webp',
-    badgeSize: 52,
+    badgeSize: 65,
     pendingBackend: true,
   },
   {
@@ -207,7 +209,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 100,
     icon: '🌟',
     badgeImage: '/badges/century_club.webp',
-    badgeSize: 52,
+    badgeSize: 65,
     pendingBackend: true,
   },
   {
@@ -219,7 +221,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 250,
     icon: '💎',
     badgeImage: '/badges/iron_veteran.webp',
-    badgeSize: 52,
+    badgeSize: 65,
     pendingBackend: true,
   },
 
@@ -233,7 +235,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 0,
     icon: '🎉',
     badgeImage: '/badges/First_Spark.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'mem-first-renewal',
@@ -244,7 +246,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 1,
     icon: '🔄',
     badgeImage: '/badges/Rising_Star.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'mem-committed',
@@ -255,7 +257,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 3,
     icon: '🤝',
     badgeImage: '/badges/comitted_member.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'mem-loyalist',
@@ -266,7 +268,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 6,
     icon: '🏅',
     badgeImage: '/badges/gym_loyalist.webp',
-    badgeSize: 110,
+    badgeSize: 70,
   },
   {
     id: 'mem-one-year',
@@ -277,7 +279,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 365,
     icon: '🎂',
     badgeImage: '/badges/one_year_strong.webp',
-    badgeSize: 80,
+    badgeSize: 65,
   },
 
   // ─── XP ─────────────────────────────────────────────────────────────────────
@@ -290,7 +292,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 100,
     icon: '⭐',
     badgeImage: '/badges/First_Spark.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'xp-rising',
@@ -301,7 +303,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 250,
     icon: '📈',
     badgeImage: '/badges/Rising_Star.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'xp-power',
@@ -312,7 +314,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 1000,
     icon: '💥',
     badgeImage: '/badges/Team_Player.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'xp-elite',
@@ -323,7 +325,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 2500,
     icon: '🏆',
     badgeImage: '/badges/elite_member.webp',
-    badgeSize: 82,
+    badgeSize: 70,
   },
   {
     id: 'xp-hall',
@@ -334,7 +336,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 10000,
     icon: '🏛️',
     badgeImage: '/badges/hall_of_fame.webp',
-    badgeSize: 70,
+    badgeSize: 60,
   },
 
   // ─── Special ────────────────────────────────────────────────────────────────
@@ -347,7 +349,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 10,
     icon: '🌅',
     badgeImage: '/badges/Rising_Star.webp',
-    badgeSize: 52,
+    badgeSize: 65,
   },
   {
     id: 'spc-perfect-week',
@@ -358,7 +360,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 1,
     icon: '🎯',
     badgeImage: '/badges/perfect_week.webp',
-    badgeSize: 52,
+    badgeSize: 65,
     pendingBackend: true,
   },
   {
@@ -370,7 +372,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 1,
     icon: '🥇',
     badgeImage: '/badges/challenge_champion.webp',
-    badgeSize: 52,
+    badgeSize: 65,
     pendingBackend: true,
   },
   {
@@ -382,6 +384,6 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDef[] = [
     requirement: 180,
     icon: '🛡️',
     badgeImage: '/badges/Unbreakable.webp',
-    badgeSize: 70,
+    badgeSize: 65,
   },
 ]

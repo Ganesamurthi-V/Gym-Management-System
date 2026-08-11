@@ -381,11 +381,27 @@ export default function LoginPage() {
         setUserName(json.userName || nameFromEmail)
         setLoginSuccess(true)
 
+        // Prefetch the dashboard + key owner routes IMMEDIATELY while the
+        // welcome animation plays (~2.8s). By the time the animation finishes,
+        // the RSC payload (including all DB data) is already in the router
+        // cache, so navigation renders instantly with zero network wait.
+        const target = json.redirectTo ?? '/owner/dashboard'
+        router.prefetch(target)
+        router.prefetch('/owner/members')
+        router.prefetch('/owner/payments')
+        router.prefetch('/owner/attendance')
+
+        // For dynamic routes, prefetch only fetches the loading shell.
+        // Warm the full page by fetching it as RSC (same way router.push does)
+        // so all DB queries run during the animation, not after navigation.
+        fetch(target, { headers: { 'RSC': '1', 'Next-Router-Prefetch': '1' }, credentials: 'same-origin' }).catch(() => {})
+        fetch('/owner/members', { headers: { 'RSC': '1', 'Next-Router-Prefetch': '1' }, credentials: 'same-origin' }).catch(() => {})
+
         setTimeout(() => {
-          router.push(json.redirectTo ?? '/owner/dashboard')
-          router.refresh()
+          router.push(target)
         }, 2800)
       } else {
+        router.prefetch(json.redirectTo ?? '/owner/onboarding')
         router.push(json.redirectTo ?? '/owner/onboarding')
         router.refresh()
       }

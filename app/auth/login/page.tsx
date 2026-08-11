@@ -199,6 +199,8 @@ export default function LoginPage() {
   const [showRegBanner, setShowRegBanner] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
   const [userName, setUserName] = useState('')
+  const [memberLoginSuccess, setMemberLoginSuccess] = useState(false)
+  const [memberName, setMemberName] = useState('')
 
   // Member-only client-side lockout (carried over from the standalone PWA).
   // The server enforces the real IP + email rate limits; this is extra friction.
@@ -367,8 +369,29 @@ export default function LoginPage() {
       // ── Member ────────────────────────────────────────────────────────────
       if (resolvedRole === 'member') {
         const next = safeMemberRedirect(new URLSearchParams(window.location.search).get('next'))
-        router.replace(next)
-        router.refresh()
+
+        // Show welcome screen + prefetch all member data in background
+        const nameFromEmail = email
+          .split('@')[0]
+          .replace(/[._-]/g, ' ')
+          .replace(/\b\w/g, (c: string) => c.toUpperCase())
+        setMemberName(json.userName || nameFromEmail)
+        setMemberLoginSuccess(true)
+
+        // Prefetch member routes + bundle API while animation plays
+        router.prefetch(next)
+        router.prefetch('/m/home')
+        router.prefetch('/m/workout')
+        router.prefetch('/m/rewards')
+        router.prefetch('/m/membership')
+
+        // Fetch the member bundle API (all member data) + RSC pages
+        fetch('/api/member/bundle', { credentials: 'same-origin' }).catch(() => {})
+        fetch(next, { headers: { 'RSC': '1', 'Next-Router-Prefetch': '1' }, credentials: 'same-origin' }).catch(() => {})
+
+        setTimeout(() => {
+          router.replace(next)
+        }, 2500)
         return
       }
 
@@ -415,6 +438,15 @@ export default function LoginPage() {
   }
 
   // ─── Welcome Animation Overlay ───
+  if (memberLoginSuccess) {
+    return (
+      <WelcomeTransition
+        userName={memberName}
+        subtitle="Loading your fitness journey..."
+      />
+    )
+  }
+
   if (loginSuccess) {
     return <WelcomeTransition userName={userName} />
   }

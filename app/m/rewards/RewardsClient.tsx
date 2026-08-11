@@ -59,12 +59,16 @@ export default function RewardsClient({
       {/* ─── Level Hero Card ─────────────────────────────────────────────── */}
       <div className="mb-5 rounded-2xl bg-gradient-to-br from-violet-50 via-white to-brand-50 border border-violet-100 p-5">
         <div className="flex items-center gap-4">
-          {/* Level badge */}
-          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-400 to-brand-500 opacity-20 animate-pulse" style={{ animationDuration: '3s' }} />
-            <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-brand-600 shadow-lg shadow-violet-200">
-              <span className="text-2xl">🏆</span>
-            </div>
+          {/* Level badge — uses /public/level/level_N.webp images */}
+          <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getLevelBadge(level)}
+              alt={`Level ${level}`}
+              width={96}
+              height={96}
+              className="relative h-[96px] w-[96px] object-contain drop-shadow-md"
+            />
           </div>
 
           {/* Level info */}
@@ -168,4 +172,15 @@ function RarityHeader({ rarity, count }: { rarity: AchievementRarity; count: num
       <span className="text-xs font-bold text-slate-300">({count})</span>
     </div>
   )
+}
+
+/**
+ * Maps member level (1-10+) to the corresponding badge image.
+ * Images: /public/level/level_1.webp through level_9.webp, level_!0.webp (level 10).
+ * Levels above 10 use the level 10 badge.
+ */
+function getLevelBadge(level: number): string {
+  if (level >= 10) return '/level/level_!0.webp'
+  if (level < 1) return '/level/level_1.webp'
+  return `/level/level_${level}.webp`
 }

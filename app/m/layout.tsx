@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   description: 'Your gym membership, workouts, and progress — all in one place.',
   manifest: '/manifest-member.json',
   icons: {
-    icon: '/icons/icon.svg',
-    apple: '/icons/apple-touch-icon.png',
+    icon: '/logo_only.png',
+    apple: '/logo_only.png',
   },
   appleWebApp: {
     capable: true,

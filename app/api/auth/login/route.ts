@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
       // handed a session that every member page would then reject.
       const { data: member } = await supabase
         .from('members')
-        .select('id, portal_suspended')
+        .select('id, name, portal_suspended')
         .eq('auth_user_id', data.user.id)
         .maybeSingle()
 
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
         success: true,
         role,
         redirectTo: homeForRole(role),
-        userName: (data.user.user_metadata?.name as string | undefined) ?? null,
+        userName: member.name ?? (data.user.user_metadata?.name as string | undefined) ?? null,
       })
     }
 

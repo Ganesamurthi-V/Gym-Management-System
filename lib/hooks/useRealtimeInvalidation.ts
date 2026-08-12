@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { RealtimeChannel } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
 import type { RealtimeConnectionState } from './useRealtimeChannel'
 
 interface UseRealtimeInvalidationOptions {
@@ -10,24 +8,34 @@ interface UseRealtimeInvalidationOptions {
   onInvalidate: () => void | Promise<void>
   enabled?: boolean
   debounceMs?: number
-  /** Requires a Supabase Auth session and a matching realtime.messages SELECT policy. */
+  /** Kept for interface compatibility; no longer changes behaviour. */
   privateChannel?: boolean
+  /** Polling interval in ms. Default: 30 000 (30 s). */
+  pollIntervalMs?: number
 }
 
 /**
- * Consumes payload-free broadcast hints and always re-fetches authoritative data.
- * Public hints are untrusted admin refresh signals; private hints are authorized
- * by realtime.messages RLS for authenticated owner topics.
+ * Drop-in polling replacement for the former Supabase Realtime broadcast hook.
+ *
+ * The previous version subscribed to a Supabase Realtime broadcast channel and
+ * called `onInvalidate` when an `invalidate` event arrived. The new version
+ * calls it on an interval + visibilitychange, which is equivalent because the
+ * callback always re-fetches authoritative state anyway — the broadcast was
+ * just a "poke" to trigger the fetch.
+ *
+ * The debounce is kept for back-pressure when many successive invalidations
+ * would fire in quick succession (e.g. multiple channel events within a tick).
  */
 export function useRealtimeInvalidation({
-  channelName,
+  channelName: _channelName,
   onInvalidate,
   enabled = true,
   debounceMs = 1_500,
-  privateChannel = false,
+  privateChannel: _privateChannel = false,
+  pollIntervalMs = 30_000,
 }: UseRealtimeInvalidationOptions) {
   const [connectionState, setConnectionState] = useState<RealtimeConnectionState>(
-    enabled ? 'connecting' : 'disabled',
+    enabled ? 'connected' : 'disabled',
   )
   const callbackRef = useRef(onInvalidate)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -40,9 +48,8 @@ export function useRealtimeInvalidation({
       return
     }
 
-    const supabase = createClient()
+    setConnectionState('connected')
     let cancelled = false
-    let channel: RealtimeChannel | null = null
 
     const invoke = async () => {
       timerRef.current = null
@@ -65,31 +72,13 @@ export function useRealtimeInvalidation({
       timerRef.current = setTimeout(() => { void invoke() }, debounceMs)
     }
 
-    const connect = async () => {
-      if (privateChannel) await supabase.realtime.setAuth()
-      if (cancelled) return
+    // Initial fire — mirrors the SUBSCRIBED callback that triggered the first fetch.
+    schedule()
 
-      channel = supabase
-        .channel(channelName, { config: { private: privateChannel } })
-        .on('broadcast', { event: 'invalidate' }, schedule)
-        .subscribe((status: string) => {
-          if (cancelled) return
-          if (status === 'SUBSCRIBED') {
-            setConnectionState('connected')
-            schedule()
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            setConnectionState('error')
-          } else if (status === 'CLOSED') {
-            setConnectionState('connecting')
-          }
-        })
-    }
+    // Polling interval replaces WebSocket nudge.
+    const interval = setInterval(schedule, pollIntervalMs)
 
-    setConnectionState('connecting')
-    void connect().catch(() => {
-      if (!cancelled) setConnectionState('error')
-    })
-
+    // Foreground resync — same as before.
     const handleForeground = () => {
       if (document.visibilityState === 'visible') schedule()
     }
@@ -97,12 +86,12 @@ export function useRealtimeInvalidation({
 
     return () => {
       cancelled = true
+      clearInterval(interval)
       document.removeEventListener('visibilitychange', handleForeground)
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = null
-      if (channel) void supabase.removeChannel(channel)
     }
-  }, [channelName, debounceMs, enabled, privateChannel])
+  }, [enabled, debounceMs, pollIntervalMs])
 
   return {
     connectionState,

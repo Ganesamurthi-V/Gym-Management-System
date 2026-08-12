@@ -246,25 +246,18 @@ export default function ImportReviewPage() {
     setSaving(true);
     setSaveMsg("");
 
-    const aliasRows = rows.filter(r => r._save_alias && r._area_override && r._original_area);
-    for (const r of aliasRows) {
-      try {
-        // gym_id is intentionally NOT sent — the route must resolve the gym
-        // from the authenticated session rather than trust a client-supplied id.
-        await fetch("/api/geo/save-alias", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ raw_input: r._original_area, canonical_name: r._area_override ?? r.area }),
-        });
-      } catch { /* best-effort */ }
-    }
+    // NOTE: The geo alias save-alias calls were removed. The underlying geo
+    // tables (geo_aliases, geo_gym_aliases, geo_localities) were dropped in
+    // migration 20260723_drop_geo_pipeline.sql. The route never existed (the
+    // directory was empty) and the calls always failed silently. If geo alias
+    // learning is re-implemented in future, add the route at that time.
 
     // Strip review-only fields before writing back to sessionStorage
     const updated = rows.map(({ _idx, _original_area, _area_override, _save_alias, _review_done, ...rest }) => rest);
     sessionStorage.setItem("import_rows", JSON.stringify(updated));
     persistReviewState();
 
-    setSaveMsg(`Saved ${aliasRows.length} alias${aliasRows.length !== 1 ? "es" : ""}. Proceeding…`);
+    setSaveMsg("Proceeding…");
     setTimeout(() => router.push("/owner/import/edit"), 800);
   }
 

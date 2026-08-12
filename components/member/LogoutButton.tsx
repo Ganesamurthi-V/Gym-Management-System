@@ -4,7 +4,7 @@ import { LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { createClient } from '@/lib/supabase/client'
+import { signOutViaApi } from '@/lib/auth/client-auth'
 
 export function LogoutButton() {
   const router = useRouter()
@@ -13,9 +13,8 @@ export function LogoutButton() {
   async function logout() {
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signOut({ scope: 'local' })
-      if (error) throw error
+      const signedOut = await signOutViaApi('local')
+      if (!signedOut) throw new Error('Sign-out request failed')
 
       if ('caches' in window) {
         const cacheNames = await caches.keys()

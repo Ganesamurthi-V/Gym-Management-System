@@ -1,24 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin, adminServerError } from '@/lib/api/adminAuth'
+import { validatePasswordStrength } from '@/lib/auth/password'
 
 export const dynamic = 'force-dynamic'
 
 const ROUTE = 'POST /api/gyms/reset-password'
-
-/**
- * Validates password strength server-side.
- * Mirrors the criteria enforced on the client setup-password page.
- */
-function validatePasswordStrength(password: string): string | null {
-  if (password.length < 8) return 'Password must be at least 8 characters'
-  if (password.length > 128) return 'Password must be at most 128 characters'
-  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter'
-  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter'
-  if (!/\d/.test(password)) return 'Password must contain at least one digit'
-  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special character'
-  return null
-}
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req, ROUTE)

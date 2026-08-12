@@ -5,7 +5,10 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
+// Still needed for the Realtime gym-status channel below; all auth calls in this
+// component now go through /api/auth/*. Realtime moves server-side in Phase 4.
 import { createClient } from '@/lib/supabase/client'
+import { signOutViaApi } from '@/lib/auth/client-auth'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 
@@ -68,8 +71,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     if (isShellless) return
 
     if (!initialUser) {
-      const supabase = createClient()
-      supabase.auth.signOut().then(() => {
+      signOutViaApi().then(() => {
         window.location.href = '/auth/login'
       })
       return
@@ -82,8 +84,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       if (initialSubscriptionStatus === 'expired') {
         window.location.href = '/owner/subscription'
       } else {
-        const supabase = createClient()
-        supabase.auth.signOut().then(() => {
+        signOutViaApi().then(() => {
           window.location.href = '/auth/login?error=blocked'
         })
       }
@@ -96,25 +97,21 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       // Skip check entirely when tab is in the background.
       if (document.hidden) return
 
-      // getClaims() verifies the JWT signature locally against the project's
-      // published JWKS (~1ms) instead of calling the Auth server (~173ms).
-      // Revocation is still caught: the API route below returns 401 for a
-      // revoked or banned session, and that branch signs the user out.
-      const { data: claims, error } = await supabase.auth.getClaims()
-      const userId = claims?.claims?.sub
-
-      if (error || !userId) {
-        await supabase.auth.signOut()
-        window.location.href = '/auth/login'
-        return
-      }
-
-      // Re-fetch all authorization and subscription fields on foreground so
-      // missed socket events converge before the user continues working.
-      const res = await fetch('/api/account/status')
+      // One request now covers both the session check and the authorization
+      // refresh. This used to call `supabase.auth.getClaims()` first as a cheap
+      // local JWT check before hitting the API — but /api/account/status is
+      // wrapped in withAuth, which calls getUser() server-side and answers 401
+      // for a missing, expired, or revoked session. The pre-check was therefore
+      // redundant with the very next line, and dropping it removes both a round
+      // trip and the browser's direct dependency on Supabase.
+      const res = await fetch('/api/account/status', {
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+      })
       if (!res.ok) {
         if (res.status === 401) {
-          await supabase.auth.signOut()
+          await signOutViaApi()
           window.location.href = '/auth/login'
         }
         return
@@ -123,7 +120,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       const gymRow = json.data
 
       if (!gymRow || gymRow.is_active === false) {
-        await supabase.auth.signOut()
+        await signOutViaApi()
         window.location.href = '/auth/login?error=blocked'
         return
       }
@@ -160,7 +157,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           }
 
           if (is_active === false) {
-            supabase.auth.signOut().then(() => {
+            signOutViaApi().then(() => {
               window.location.href = '/auth/login?error=blocked'
             })
             return

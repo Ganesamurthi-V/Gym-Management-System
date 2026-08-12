@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { AlertTriangle, CheckCircle2, Loader2, MailWarning, RefreshCw } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { loadActivation, clearActivation } from '@/lib/member/activation-store'
 
 type State = 'processing' | 'success' | 'consumed' | 'error'
@@ -107,16 +106,26 @@ export default function VerifyingPage() {
 
       // ── Success path: establish the session, then finalise activation ─────
       try {
-        const supabase = createClient()
-        const { data: { user }, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
+        // Hand the fragment tokens to our own server, which establishes the
+        // session as HttpOnly cookies. This replaced a browser-side
+        // `supabase.auth.setSession(...)`: the tokens are validated by Supabase
+        // server-side, and the resulting session is no longer readable by page
+        // JavaScript.
+        const sessionRes = await fetch('/api/auth/set-session', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
         })
+        const sessionJson = await sessionRes.json().catch(() => null)
 
-        if (error || !user) {
+        if (!sessionRes.ok || !sessionJson?.userId) {
           if (cancelled) return
           setState('error')
-          setDetail(error?.message ?? 'session_failed')
+          setDetail(sessionJson?.error ?? 'session_failed')
           setCanResend(Boolean(stash))
           return
         }
@@ -124,7 +133,7 @@ export default function VerifyingPage() {
         const res = await fetch('/api/activate/finalize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
+          body: JSON.stringify({ userId: sessionJson.userId }),
         })
         const json = await res.json()
 

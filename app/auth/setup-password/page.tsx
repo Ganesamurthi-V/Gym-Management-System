@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { fetchSession, signOutViaApi, updatePasswordViaApi } from '@/lib/auth/client-auth'
 import {
   Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock, ArrowLeft,
 } from 'lucide-react'
@@ -143,12 +144,24 @@ export default function SetupPasswordPage() {
   const canSubmit      = allCriteriaMet && passwordsMatch && !loading && !redirecting
 
   // ── On mount: exchange URL hash token then verify session ─────────────────
+  //
+  // NOTE — this is the one place the Supabase browser client is still required.
+  // The confirmation email lands here as
+  //   /auth/setup-password#access_token=…&refresh_token=…
+  // and a URL *fragment* is never transmitted to the server, so no API route can
+  // see those tokens. `@supabase/ssr`'s browser client reads the fragment and
+  // writes the session into cookies, which is what makes the server endpoints
+  // below (update-password, session, signout) work at all.
+  //
+  // Eliminating this would mean pointing `emailRedirectTo` at a server route
+  // that receives `?code=` or `?token_hash=` instead — a change to the Supabase
+  // email template, which also invalidates links already sitting in inboxes.
+  // Tracked as follow-up; see docs/GymFlow_API_Gateway_Migration.md.
   useEffect(() => {
     setMounted(true)
 
-    // Supabase @supabase/ssr exchanges the #access_token hash automatically
-    // when the page is navigated to via the email confirmation link.
-    // We wait a short tick to let that exchange complete, then read the session.
+    // Wait a short tick to let that fragment exchange complete, then read the
+    // session from the client that performed it.
     const timer = setTimeout(async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
@@ -184,17 +197,12 @@ export default function SetupPasswordPage() {
     setLoading(true)
     setError('')
 
-    // ── Step 1: Set the real password ──────────────────────────────────────
-    const { error: updateError } = await supabase.auth.updateUser({ password })
-    if (updateError) {
-      let friendlyMessage = updateError.message
-      if (friendlyMessage.includes('same password')) {
-        friendlyMessage = 'Please choose a different password than the temporary one.'
-      } else if (friendlyMessage.includes('sub claim in JWT does not exist')) {
-        friendlyMessage = ' Please return to the sign up page and try again.'
-      }
-      
-      setError(friendlyMessage)
+    // ── Step 1: Set the real password (server-side) ────────────────────────
+    // The endpoint applies the same criteria shown in the checklist above and
+    // returns the friendly wording for the "same password" / stale-JWT cases.
+    const updateResult = await updatePasswordViaApi(password)
+    if (!updateResult.ok) {
+      setError(updateResult.error)
       setLoading(false)
       return
     }
@@ -225,11 +233,11 @@ export default function SetupPasswordPage() {
     }
 
     // ── Step 3: Capture email before signing out ───────────────────────────
-    const { data: { user } } = await supabase.auth.getUser()
-    const userEmail = user?.email ?? ''
+    const session = await fetchSession()
+    const userEmail = session.email ?? ''
 
     // ── Step 4: Sign out so the user must explicitly log in ────────────────
-    await supabase.auth.signOut()
+    await signOutViaApi()
 
     // ── Step 5: Show redirect screen then navigate ─────────────────────────
     setLoading(false)

@@ -17,7 +17,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
-import { createClient } from '@/lib/supabase/client'
+import { signOutViaApi } from '@/lib/auth/client-auth'
 import { clearLoginFailures, getLoginThrottle, recordLoginFailure } from '@/lib/member/lockout'
 import { safeMemberRedirect } from '@/lib/member/redirect'
 import type { AppRole } from '@/lib/auth/roles'
@@ -227,11 +227,7 @@ export default function LoginPage() {
        * means a dead session is still in the cookie jar — clear it here so the
        * next attempt starts clean.
        */
-      try {
-        void createClient().auth.signOut({ scope: 'local' })
-      } catch {
-        /* Supabase env missing — nothing to clear. */
-      }
+      void signOutViaApi('local')
     }
 
     if (params.get('registered') === '1') {

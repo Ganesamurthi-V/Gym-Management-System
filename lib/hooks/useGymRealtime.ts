@@ -5,20 +5,18 @@ import { useRouter } from 'next/navigation'
 import { useRealtimeChannel, type ChannelSubscription } from './useRealtimeChannel'
 
 /**
- * Subscribes to Supabase Realtime postgres_changes on the specified tables,
- * filtered to the owner's gym, and calls `router.refresh()` when an event
- * arrives. This re-runs the Server Component tree — fetching fresh data from
- * Postgres — without a full page reload, keeping all client state intact.
+ * Polls for gym-scoped data changes and triggers a Server Component refresh.
  *
- * Previously every page showed stale server-rendered data until the owner
- * manually refreshed the browser. Now changes made by the owner (in another
- * tab or device), by cron jobs (subscription expiry), by admin actions, or by
- * members (attendance, activations) are reflected within ~1-2 seconds.
+ * ─── WHAT CHANGED (Phase 4) ─────────────────────────────────────────────────
+ * Previously subscribed to Supabase Realtime `postgres_changes` and called
+ * `router.refresh()` on every row event. Now it polls via `useRealtimeChannel`,
+ * which calls `onResync` (= `router.refresh()`) on an interval + foreground.
  *
- * The subscription uses the `gym_id=eq.{gymId}` filter, which combined with
- * the table's RLS policy means only events for THIS owner's gym are delivered.
+ * The `tables` and `gymId` args are kept for call-site compatibility; they are
+ * semantically inert because the refresh loads whatever the Server Component
+ * fetches, which is already scoped to the user's gym by RLS + withAuth.
  *
- * Usage:
+ * Usage (unchanged at call sites):
  *   useGymRealtime(gymId, ['members', 'memberships', 'attendance'])
  */
 export function useGymRealtime(
@@ -33,6 +31,8 @@ export function useGymRealtime(
     router.refresh()
   }, [router])
 
+  // Subscriptions kept for interface compatibility; useRealtimeChannel only
+  // calls onResync now.
   const subscriptions: ChannelSubscription[] = tables.flatMap((table) => [
     {
       type: 'postgres_changes' as const,

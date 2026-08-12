@@ -31,7 +31,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // `blob:` is required by the member membership-card QR renderer.
       "img-src 'self' blob: data: https:",
-      "connect-src 'self' https://*.supabase.co https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io",
+      "connect-src 'self' https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io",
       "font-src 'self' data: https://fonts.gstatic.com",
       "frame-ancestors 'none'",
       "worker-src 'self' blob:",
@@ -111,13 +111,6 @@ const nextConfig = {
         ...config.optimization.splitChunks,
         cacheGroups: {
           ...config.optimization.splitChunks?.cacheGroups,
-          // Isolate supabase into its own chunk — rarely changes
-          supabase: {
-            test: /[\\/]node_modules[\\/]@supabase[\\/]/,
-            name: 'supabase',
-            chunks: 'all',
-            priority: 20,
-          },
           // date-fns into its own chunk
           dateFns: {
             test: /[\\/]node_modules[\\/]date-fns[\\/]/,

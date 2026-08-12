@@ -182,13 +182,13 @@ export async function middleware(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
-  // Private vars preferred; the NEXT_PUBLIC_ fallback keeps existing deployments
-  // working until Phase 6 removes them. Read inline rather than via
-  // lib/supabase/env.ts because that module is `server-only`, which does not
-  // resolve cleanly in the Edge runtime middleware bundle.
+  // Private vars — never inlined into the browser bundle. See lib/supabase/env.ts.
+  // Read inline rather than via lib/supabase/env.ts because that module is
+  // `server-only`, which does not resolve cleanly in the Edge runtime middleware
+  // bundle.
   const supabase = createServerClient(
-    (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)!,
-    (process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),

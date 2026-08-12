@@ -26,29 +26,100 @@ function currentMinLevel(): number {
 
 // ─── Fields that must never appear in logs ────────────────────────────────────
 
-const REDACTED_KEYS = new Set([
+/**
+ * Substrings that mark a key as sensitive.
+ *
+ * Matching is by SUBSTRING, not exact equality. The previous implementation used
+ * an exact-match Set, so only the literal names below were caught — variants
+ * such as `refresh_token`, `supabase_access_token`, `serviceRoleKey` or
+ * `apiKey` were logged in full.
+ *
+ * Deliberately NOT included: a bare `key`. It would redact useful debug fields
+ * like `cacheKey` while adding nothing (the genuinely secret variants are all
+ * covered by the specific entries below).
+ */
+const SENSITIVE_KEY_PATTERNS = [
   'authorization',
-  'access_token',
-  'accesstoken',
-  'token',
-  'secret',
+  'authheader',
+  'bearer',
   'password',
-  'app_secret',
-  'verify_token',
-  'x-hub-signature-256',
-])
+  'passwd',
+  'secret',
+  'token',
+  'apikey',
+  'credential',
+  'cookie',
+  'servicerole',
+  'privatekey',
+  'signature',
+  'sessionid',
+  'otp',
+] as const
 
 /**
- * Recursively scrub sensitive keys from an object before logging.
- * Works one level deep — deep nesting is uncommon in log payloads.
+ * Keys that merely DESCRIBE a secret rather than containing one.
+ *
+ * `lib/whatsapp/verifyWebhook.ts` intentionally logs `tokenLength` /
+ * `expectedLength` to debug verification mismatches without revealing the token.
+ * Substring matching would otherwise redact those and lose the diagnostic for no
+ * security gain — a length is not a credential.
  */
-function redact(obj: Record<string, unknown>): Record<string, unknown> {
+const SAFE_METADATA_SUFFIX = /(length|count|exists|present|provided|configured|type|mode)$/i
+
+/** Boolean-style predicates (`hasToken`, `isAuthorized`) carry no secret value. */
+const SAFE_PREDICATE_PREFIX = /^(has|is|should|can|was|did)[A-Z_]/
+
+function isSensitiveKey(key: string): boolean {
+  if (SAFE_PREDICATE_PREFIX.test(key)) return false
+  if (SAFE_METADATA_SUFFIX.test(key)) return false
+  // Normalise separators so `x-api-key`, `api_key` and `apiKey` all collapse to
+  // `xapikey` / `apikey` and match the same pattern. Without this, header-style
+  // hyphenated names slipped through.
+  const normalised = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return SENSITIVE_KEY_PATTERNS.some(pattern => normalised.includes(pattern))
+}
+
+/** Depth cap — guards against pathological payloads, not expected in practice. */
+const MAX_REDACT_DEPTH = 6
+
+/**
+ * Recursively scrub sensitive keys from a value before logging.
+ *
+ * The previous version claimed to work "one level deep" but in fact did not
+ * recurse at all, so a nested payload such as `{ user: { password: 'x' } }` was
+ * logged verbatim. This walks plain objects and arrays, and is safe against
+ * circular references.
+ */
+function redactValue(value: unknown, depth: number, seen: WeakSet<object>): unknown {
+  if (value === null || typeof value !== 'object') return value
+  if (depth >= MAX_REDACT_DEPTH) return '[TRUNCATED]'
+
+  // Circular reference — emit a marker rather than recursing forever.
+  if (seen.has(value as object)) return '[CIRCULAR]'
+  seen.add(value as object)
+
+  if (Array.isArray(value)) {
+    return value.map(item => redactValue(item, depth + 1, seen))
+  }
+
+  // Leave exotic objects (Error, Date, Map, ...) alone: JSON.stringify already
+  // handles them, and walking their internals would produce noise.
+  const proto = Object.getPrototypeOf(value)
+  if (proto !== Object.prototype && proto !== null) return value
+
   const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    out[k] = REDACTED_KEYS.has(k.toLowerCase()) ? '[REDACTED]' : v
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    out[k] = isSensitiveKey(k) ? '[REDACTED]' : redactValue(v, depth + 1, seen)
   }
   return out
 }
+
+function redact(obj: Record<string, unknown>): Record<string, unknown> {
+  return redactValue(obj, 0, new WeakSet()) as Record<string, unknown>
+}
+
+/** Exported for tests — the redaction rules are security-relevant. */
+export const __redactForTests = { redact, isSensitiveKey }
 
 // ─── Logger implementation ────────────────────────────────────────────────────
 

@@ -4,8 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, AlertTriangle, Search, Loader2, MapPin, Trash2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { calcEndDate } from "@/lib/utils";
+import { clearImportStorage } from "@/lib/import/storage";
 import type { ImportedRow } from "../page";
 import WizardHeader from "@/components/import/WizardHeader";
 
@@ -19,7 +18,6 @@ const EDIT_FIELDS: (keyof ImportedRow)[] = [
 
 export default function ImportEditPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [originalRows, setOriginalRows] = useState<ImportedRow[]>([]);
@@ -76,24 +74,25 @@ export default function ImportEditPage() {
     const origStored = sessionStorage.getItem("import_rows_original");
     setOriginalRows(origStored ? JSON.parse(origStored) : parsed.map(r => ({ ...r })));
     setHasIdCol(sessionStorage.getItem("import_has_id_col") === "1");
-    // Load DB nums for live uniqueness validation, but ONLY for numbers present in the file
+    // Load DB nums for live uniqueness validation, but ONLY for numbers present
+    // in the file. Served by /api/import/next-member-id, which resolves the gym
+    // from the session and returns which of the requested numbers already exist.
+    // Previously this queried `gyms` and `members` directly from the browser.
     async function loadDbNums() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: gym } = await supabase.from("gyms").select("id").eq("owner_id", user.id).single();
-      if (!gym) return;
-      
       const fileNums = parsed.map(r => parseInt(r.member_number)).filter(n => !isNaN(n));
       if (fileNums.length === 0) return;
 
-      // Chunk the IN query if there are thousands of rows, but typically CSVs are < 1000
-      const { data } = await supabase
-        .from("members")
-        .select("member_number")
-        .eq("gym_id", gym.id)
-        .in("member_number", fileNums) as { data: { member_number: number }[] | null };
-        
-      setDbNums(new Set((data ?? []).map(m => m.member_number)));
+      try {
+        const res = await fetch(
+          `/api/import/next-member-id?${new URLSearchParams({ requested: fileNums.join(',') })}`
+        );
+        if (!res.ok) return;
+        const json = await res.json() as { conflicts?: number[] };
+        setDbNums(new Set(json.conflicts ?? []));
+      } catch {
+        // Best-effort: without this set the UI simply shows no duplicate
+        // warnings; the server still re-assigns IDs safely on save.
+      }
     }
     loadDbNums();
   }, []);
@@ -244,17 +243,14 @@ export default function ImportEditPage() {
     setError("");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { data: gym } = await supabase.from("gyms").select("id").eq("owner_id", user.id).single();
-      if (!gym) throw new Error("Gym not found");
-
       const toInsert = validRows;
       const skipped = skippedRows.length;
 
-      // ── Insert members via server route (safe ID assignment server-side) ────
-      // We send the rows WITHOUT member_number — the server re-assigns them
-      // all above the current MAX to guarantee no constraint violation.
+      // ── Insert members AND their memberships via the server route ──────────
+      // The route resolves the gym from the session, re-assigns member numbers
+      // above the current MAX to guarantee no constraint violation, and creates
+      // the matching memberships in the same request. The browser previously did
+      // the membership insert itself with a client-supplied gym_id.
       const res = await fetch("/api/import/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -266,30 +262,14 @@ export default function ImportEditPage() {
         throw new Error(result.error?.message || "Member insert failed");
       }
 
-      // ── Link memberships by index ─────────────────────────────────────────
-      // The server returns the inserted member IDs in the same order as the
-      // rows we sent. Zip them together — this is robust against normalized
-      // (E.164 / INVALID_NUMBER) and duplicate phone numbers, which the old
-      // "re-query members by phone" approach could not distinguish.
+      // The server returns the inserted member IDs in the same order as the rows
+      // we sent, so downstream steps can zip them back together. This is robust
+      // against normalized (E.164 / INVALID_NUMBER) and duplicate phone numbers,
+      // which the old "re-query members by phone" approach could not distinguish.
       const memberIds: string[] = result.data?.member_ids ?? [];
       if (memberIds.length !== toInsert.length) {
         throw new Error("Import mismatch: server returned a different member count");
       }
-
-      // ── Insert memberships ───────────────────────────────────────────────────
-      const membershipsToInsert = toInsert.map((row, i) => {
-        const memberId = memberIds[i];
-        const end_date = calcEndDate(row.start_date, row.plan as any);
-        return {
-          member_id: memberId, gym_id: gym.id, plan: row.plan, category: row.category || 'both',
-          start_date: row.start_date, end_date,
-          amount: parseInt(row.amount) || 0, payment_mode: row.payment_mode,
-          created_at: row.start_date + "T00:00:00Z",
-        };
-      });
-
-      const { error: msErr } = await supabase.from("memberships").insert(membershipsToInsert);
-      if (msErr) throw new Error(msErr.message);
 
       // ── Immediately fire expiry/expired reminders for the imported batch ───
       // Fire-and-forget: the "Import Complete" screen must not wait on sends.
@@ -311,22 +291,22 @@ export default function ImportEditPage() {
         });
 
         for (const [raw_input, canonical_name] of aliasesToSave.entries()) {
+          // gym_id is intentionally NOT sent — the route must resolve the gym
+          // from the authenticated session rather than trust a client value.
           await fetch("/api/geo/save-alias", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              raw_input,
-              canonical_name,
-              gym_id: gym.id
-            })
+            body: JSON.stringify({ raw_input, canonical_name })
           }).catch(() => {});
         }
       } catch (e) {
         console.error("Failed to auto-learn aliases", e);
       }
 
-      sessionStorage.removeItem("import_rows");
-      sessionStorage.removeItem("import_rows_original");
+      // Clear EVERY wizard key, not just the two row copies. The previous code
+      // left `import_review_state` behind — a full third copy of every imported
+      // member's name, phone, age and DOB, readable for the rest of the session.
+      clearImportStorage();
       setDoneResult({ success: toInsert.length, skipped });
       setStep("done");
     } catch (err: any) {

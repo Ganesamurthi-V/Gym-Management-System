@@ -11,7 +11,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
-import { invalidateGymCache, invalidateAllGymCaches } from './actions'
+import { invalidateAllGymCaches } from './actions'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import UPIQRSetup from '@/components/upi/UPIQRSetup'
@@ -74,18 +74,16 @@ export function AccountClient({
   const [liveSubEndsAt, setLiveSubEndsAt] = useState(subscriptionEndsAt)
 
   const syncGymSubscription = useCallback(async () => {
-    const { data: gymRow } = await supabase
-      .from('gyms')
-      .select('subscription_status, plan_type, trial_ends_at, subscription_ends_at')
-      .eq('id', gymId)
-      .single()
+    const res = await fetch('/api/account/status')
+    const json = await res.json()
+    if (!res.ok || !json.data) return
+    const gymRow = json.data
 
-    if (!gymRow) return
     setLiveSubStatus(gymRow.subscription_status ?? 'active')
     setLivePlanType(gymRow.plan_type)
     setLiveTrialEndsAt(gymRow.trial_ends_at)
     setLiveSubEndsAt(gymRow.subscription_ends_at)
-  }, [gymId, supabase])
+  }, [])
 
   useRealtimeChannel({
     channelName: `owner_account_gym_${gymId}`,
@@ -166,12 +164,15 @@ export function AccountClient({
     }
     setIsSaving(true)
     setMessage(null)
-    const { error } = await supabase.from('gyms').update({ name: trimmed }).eq('id', gymId)
-    if (error) {
-      setMessage({ type: 'error', text: error.message })
+    const res = await fetch('/api/account/gym', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: trimmed }),
+    })
+    const result = await res.json()
+    if (!res.ok) {
+      setMessage({ type: 'error', text: result.error?.message || 'Failed to update' })
     } else {
-      // Issue 3 fix: bust the 120s Redis gym cache so getGym() returns fresh data.
-      await invalidateGymCache()
       setGymName(trimmed)
       setMessage({ type: 'success', text: 'Gym name updated successfully.' })
       setTimeout(() => { closeModal(); showToast('Gym name updated') }, 1200)
@@ -185,16 +186,7 @@ export function AccountClient({
     setIsSaving(true)
     setMessage(null)
 
-    // Merge new values into existing onboarding_data JSONB
-    const { data: current } = await supabase
-      .from('gyms')
-      .select('onboarding_data')
-      .eq('id', gymId)
-      .single()
-
-    const existing = (current?.onboarding_data ?? {}) as Record<string, unknown>
-    const merged = {
-      ...existing,
+    const onboardingPatch = {
       gymType:     gymInfo.gymType     || null,
       city:        gymInfo.gymCity     || null,
       phone:       gymInfo.gymPhone    || null,
@@ -203,16 +195,16 @@ export function AccountClient({
       branchCount: gymInfo.branchCount ? parseInt(gymInfo.branchCount) : 1,
     }
 
-    const { error } = await supabase
-      .from('gyms')
-      .update({ onboarding_data: merged })
-      .eq('id', gymId)
+    const res = await fetch('/api/account/gym', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ onboarding_data: onboardingPatch }),
+    })
+    const result = await res.json()
 
-    if (error) {
-      setMessage({ type: 'error', text: error.message })
+    if (!res.ok) {
+      setMessage({ type: 'error', text: result.error?.message || 'Failed to update' })
     } else {
-      // Issue 3 fix: bust the 120s Redis gym cache so getGym() returns fresh data.
-      await invalidateGymCache()
       closeModal()
       showToast('Gym info saved')
       router.refresh()

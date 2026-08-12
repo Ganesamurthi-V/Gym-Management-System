@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin, adminServerError } from '@/lib/api/adminAuth'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest) {
-  try {
-    const authHeader = req.headers.get('authorization')
-    const token = authHeader?.split(' ')[1]
-    const validPassword = process.env.ADMIN_PASSWORD 
-    
-    if (token !== validPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+const ROUTE = 'GET /api/gyms'
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req, ROUTE)
+  if (!auth.ok) return auth.response
+
+  try {
+    const supabase = createAdminClient()
 
     const { data: gyms, error } = await supabase
       .from('gyms')
@@ -26,10 +21,12 @@ export async function GET(req: NextRequest) {
     if (error) throw error
 
     // Fetch members count for each
-    const { data: members, error: mErr } = await supabase
+    const { data: members, error: membersError } = await supabase
       .from('members')
       .select('gym_id')
-    
+
+    if (membersError) throw membersError
+
     const memberCounts = members?.reduce((acc: any, m: any) => {
       acc[m.gym_id] = (acc[m.gym_id] || 0) + 1
       return acc
@@ -43,9 +40,12 @@ export async function GET(req: NextRequest) {
       memberCount: memberCounts[g.id] || 0,
     }))
 
-    console.log('[GET /api/gyms] Result:', JSON.stringify(result, null, 2))
-    return NextResponse.json(result)
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    // NOTE: the previous `console.log` dumped every gym name + owner_id on each
+    // request. Removed — this is cross-tenant data and does not belong in logs.
+    return NextResponse.json(result, {
+      headers: { 'Cache-Control': 'private, no-store' },
+    })
+  } catch (err: unknown) {
+    return adminServerError(ROUTE, err)
   }
 }

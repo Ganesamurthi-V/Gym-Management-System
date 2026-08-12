@@ -1,29 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin, adminServerError } from '@/lib/api/adminAuth'
+import { isValidUUID } from '@/lib/api/withAuth'
 
 export const dynamic = 'force-dynamic'
 
+const ROUTE = 'PATCH /api/gyms/[id]/status'
+
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req, ROUTE)
+  if (!auth.ok) return auth.response
+
   try {
-    const params = await props.params;
-    const authHeader = req.headers.get('authorization')
-    const token = authHeader?.split(' ')[1]
-    const validPassword = process.env.ADMIN_PASSWORD
-    
-    if (token !== validPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const params = await props.params
+
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
     }
 
-    const { is_active } = await req.json()
+    let body: { is_active?: unknown }
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
+
+    const { is_active } = body
 
     if (typeof is_active !== 'boolean') {
       return NextResponse.json({ error: 'Invalid is_active value' }, { status: 400 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = createAdminClient()
 
     const { data, error } = await supabase
       .from('gyms')
@@ -34,8 +42,11 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
     if (error) throw error
 
-    return NextResponse.json({ success: true, gym: data })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json(
+      { success: true, gym: data },
+      { headers: { 'Cache-Control': 'private, no-store' } }
+    )
+  } catch (err: unknown) {
+    return adminServerError(ROUTE, err)
   }
 }

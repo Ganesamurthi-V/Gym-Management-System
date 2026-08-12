@@ -6,6 +6,8 @@ import { mapSupabaseError } from '@/lib/utils/errorMapper'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { normalizePhoneForImport } from '@/lib/import/normalizers'
+import { calcEndDate } from '@/lib/utils'
+import type { Plan } from '@/types'
 import { format } from 'date-fns'
 
 const MAX_IMPORT_ROWS = 500
@@ -106,14 +108,69 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const memberIds = (data ?? []).map(d => d.id)
+
+    // ── Step 5: insert the matching memberships ───────────────────────────────
+    // Previously the browser did this with `supabase.from('memberships').insert()`
+    // and supplied gym_id itself. Doing it here keeps gym_id server-derived and
+    // removes the last direct database write from the import UI. Rows and
+    // memberIds are index-aligned because the insert above preserves input order.
+    const membershipRows = memberIds.map((memberId, i) => {
+      const r = rows[i] ?? {}
+      const startDate = String(r.start_date ?? '').slice(0, 10)
+      const plan = String(r.plan ?? 'monthly')
+      const validStart = /^\d{4}-\d{2}-\d{2}$/.test(startDate) && !isNaN(Date.parse(startDate))
+      const start = validStart ? startDate : format(new Date(), 'yyyy-MM-dd')
+
+      return {
+        member_id: memberId,
+        gym_id: gym.id,
+        plan,
+        category: r.category ? String(r.category) : 'both',
+        start_date: start,
+        end_date: calcEndDate(start, plan as Plan),
+        amount: parseInt(String(r.amount ?? '')) || 0,
+        payment_mode: ['cash', 'upi', 'card'].includes(String(r.payment_mode))
+          ? String(r.payment_mode)
+          : 'cash',
+        created_at: `${start}T00:00:00Z`,
+      }
+    })
+
+    if (membershipRows.length > 0) {
+      const { error: membershipErr } = await supabase.from('memberships').insert(membershipRows)
+      if (membershipErr) {
+        // The members are already committed. Report the partial state clearly
+        // rather than implying the whole import failed.
+        const mapped = mapSupabaseError(membershipErr)
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'MEMBERSHIPS_FAILED',
+              message: `Imported ${memberIds.length} members, but their memberships could not be created (${mapped.message}).`,
+            },
+            data: { imported_count: memberIds.length, member_ids: memberIds, memberships_created: false },
+          },
+          { status: mapped.status },
+        )
+      }
+    }
+
     await Promise.all([
       deleteCache(cacheKeys.membersList(gym.id)),
+      deleteCache(cacheKeys.payments12mo(gym.id)),
+      deleteCache(cacheKeys.paymentsAll(gym.id)),
       deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
     ])
 
     return NextResponse.json({
       success: true,
-      data: { imported_count: data?.length ?? 0, member_ids: (data ?? []).map(d => d.id) },
+      data: {
+        imported_count: memberIds.length,
+        member_ids: memberIds,
+        memberships_created: membershipRows.length,
+      },
       meta: { duration_ms: Date.now() - startTime },
     })
   } catch (err: unknown) {

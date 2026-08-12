@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2, Sun, Moon } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
 import type { Member, Membership, Attendance, MemberStatus, Plan, PaymentMode } from '@/types'
 import { formatMemberId } from '@/types'
@@ -36,7 +35,6 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const supabase = createClient()
 
   const latestMembership = memberships[0] ?? null
 
@@ -51,20 +49,23 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
     setLoading(true)
     setError('')
     try {
-      // member.gym_id is already known — no need to re-auth + re-query the gym,
-      // which added two network round trips to the renewal critical path.
       const gymId = member.gym_id
       const end_date = calcEndDate(renewForm.start_date, renewForm.plan, renewForm.plan === 'custom' ? parseInt(renewForm.custom_months) || 1 : undefined)
-      const { error: err } = await supabase.from('memberships').insert({
-        member_id: member.id,
-        gym_id: gymId,
-        plan: renewForm.plan,
-        start_date: renewForm.start_date,
-        end_date,
-        amount: parseInt(renewForm.amount),
-        payment_mode: renewForm.payment_mode,
+      
+      const res = await fetch('/api/memberships', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          member_id: member.id,
+          plan: renewForm.plan,
+          start_date: renewForm.start_date,
+          end_date,
+          amount: parseInt(renewForm.amount),
+          payment_mode: renewForm.payment_mode,
+        }),
       })
-      if (err) throw err
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error?.message || 'Failed to renew')
 
       // Auto-send renewal confirmation + cancel old expiry reminder cycles
       // (fire-and-forget — never blocks the save).
@@ -85,9 +86,6 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
         }).catch(() => {}) // fire-and-forget
       }
 
-      const { invalidateMembersCache } = await import('../actions')
-      await invalidateMembersCache(gymId)
-
       setShowRenewForm(false)
       toast.success('Membership renewed successfully!')
       router.refresh()
@@ -101,20 +99,10 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
   async function handleDelete() {
     if (!confirm(`Delete ${member.name}? This cannot be undone.`)) return
     try {
-      // attendance + memberships deletes are independent (both keyed by
-      // member_id) — run them in parallel, then remove the member row.
-      const [a1, a2] = await Promise.all([
-        supabase.from('attendance').delete().eq('member_id', member.id),
-        supabase.from('memberships').delete().eq('member_id', member.id),
-      ])
-      if (a1.error) throw a1.error
-      if (a2.error) throw a2.error
-      const { error: e3 } = await supabase.from('members').delete().eq('id', member.id)
-      if (e3) throw e3
-      // Bust the Redis members cache so the list page doesn't re-serve the
-      // just-deleted member from stale cache after navigation.
-      const { invalidateMembersCache } = await import('../actions')
-      await invalidateMembersCache(member.gym_id)
+      const res = await fetch(`/api/members/${member.id}`, { method: 'DELETE' })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error?.message || 'Failed to delete')
+      
       toast.success('Member deleted successfully')
       router.push('/owner/members')
       router.refresh()

@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { CheckCircle2, XCircle, Loader2, Sun, Moon } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
@@ -39,7 +38,6 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
   const [sessionType, setSessionType] = useState<'morning' | 'evening'>('morning')
   const inputRef = useRef<HTMLInputElement>(null)
   
-  const supabase = useMemo(() => createClient(), [])
   const displayDate = format(new Date(today), 'EEEE, dd MMM yyyy')
 
   // Auto focus input on mount, and set session based on time
@@ -79,123 +77,79 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
     setMessage({ type: null, text: '' })
 
     try {
-      // 1. Find member — only fetch latest membership end_date
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select(`
-          id, 
-          name,
-          member_number,
-          memberships(end_date)
-        `)
-        .eq('gym_id', gymId)
-        .eq('member_number', numId)
-        .order('created_at', { referencedTable: 'memberships', ascending: false })
-        .limit(1, { referencedTable: 'memberships' })
-        .single()
+      const res = await fetch('/api/attendance/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_number: numId, session: sessionType, date: today }),
+      })
+      const json = await res.json()
 
-      if (memberError || !memberData) {
-        setMessage({ type: 'error', text: 'Member ID not found. Please try again.' })
+      if (!res.ok) {
+        if (res.status === 404) {
+          setMessage({ type: 'error', text: 'Member ID not found. Please try again.' })
+        } else {
+          setMessage({ type: 'error', text: json.error?.message || 'Something went wrong.' })
+        }
         return
       }
 
-      const memberships = memberData.memberships as { end_date: string }[] ?? []
-      const latestEndDate = memberships.reduce((max, ms) => ms.end_date > max ? ms.end_date : max, '')
-      const expiryText = latestEndDate ? format(new Date(latestEndDate), 'dd MMM yyyy') : 'No active plan'
-      const formattedId = `GF${String(memberData.member_number).padStart(4, '0')}`
+      const { action, member, expiry_date, check_in_time, check_out_time, duration_minutes } = json.data
+      const formattedId = `GF${String(member.member_number).padStart(4, '0')}`
+      const expiryText = expiry_date ? format(new Date(expiry_date), 'dd MMM yyyy') : 'No active plan'
 
       const memberInfo = {
-        name: memberData.name,
+        name: member.name,
         memberId: formattedId,
-        expiryDate: expiryText
+        expiryDate: expiryText,
       }
 
-      // 2. Check today's attendance for the specific session
-      const { data: attData, error: attError } = await supabase
-        .from('attendance')
-        .select('id, created_at, check_out_time')
-        .eq('gym_id', gymId)
-        .eq('member_id', memberData.id)
-        .eq('date', today)
-        .eq('session', sessionType)
-        .maybeSingle()
-
-      if (!attData) {
-        // Check In
-        const now = new Date()
-        const { error: insertError } = await supabase
-          .from('attendance')
-          .insert({
-            gym_id: gymId,
-            member_id: memberData.id,
-            date: today,
-            session: sessionType,
-            created_at: now.toISOString()
-          })
-
-        if (insertError) throw insertError
-        
+      if (action === 'check_in') {
         setTotalPresent(p => p + 1)
-        setMessage({ 
-          type: 'success', 
-          text: `Checked IN successfully.`, 
+        setMessage({
+          type: 'success',
+          text: 'Checked IN successfully.',
           memberInfo,
-          attendanceInfo: { checkInTime: format(now, 'hh:mm a') }
+          attendanceInfo: { checkInTime: format(new Date(check_in_time), 'hh:mm a') },
         })
-      } else {
-        // Record exists
-        const checkInDate = new Date(attData.created_at)
+      } else if (action === 'check_out') {
+        const diffMins = duration_minutes ?? 0
+        const hrs = Math.floor(diffMins / 60)
+        const mins = diffMins % 60
+        let durationStr = ''
+        if (hrs > 0) durationStr += `${hrs}hr `
+        durationStr += `${mins}min`
 
-        if (!attData.check_out_time) {
-          // Check Out
-          const now = new Date()
-          const { error: updateError } = await supabase
-            .from('attendance')
-            .update({ check_out_time: now.toISOString() })
-            .eq('id', attData.id)
+        setMessage({
+          type: 'success',
+          text: 'Checked OUT successfully.',
+          memberInfo,
+          attendanceInfo: {
+            checkInTime: format(new Date(check_in_time), 'hh:mm a'),
+            checkOutTime: format(new Date(check_out_time), 'hh:mm a'),
+            duration: durationStr.trim(),
+          },
+        })
+      } else if (action === 'already_out') {
+        const checkInDate = new Date(check_in_time)
+        const checkOutDate = new Date(check_out_time)
+        const diffMs = checkOutDate.getTime() - checkInDate.getTime()
+        const diffMins = Math.floor(diffMs / 60000)
+        const hrs = Math.floor(diffMins / 60)
+        const mins = diffMins % 60
+        let durationStr = ''
+        if (hrs > 0) durationStr += `${hrs}hr `
+        durationStr += `${mins}min`
 
-          if (updateError) throw updateError
-          
-          const diffMs = now.getTime() - checkInDate.getTime()
-          const diffMins = Math.floor(diffMs / 60000)
-          const hrs = Math.floor(diffMins / 60)
-          const mins = diffMins % 60
-          let durationStr = ''
-          if (hrs > 0) durationStr += `${hrs}hr `
-          durationStr += `${mins}min`
-
-          setMessage({ 
-            type: 'success', 
-            text: `Checked OUT successfully.`, 
-            memberInfo,
-            attendanceInfo: {
-              checkInTime: format(checkInDate, 'hh:mm a'),
-              checkOutTime: format(now, 'hh:mm a'),
-              duration: durationStr.trim()
-            }
-          })
-        } else {
-          // Already checked out
-          const checkOutDate = new Date(attData.check_out_time)
-          const diffMs = checkOutDate.getTime() - checkInDate.getTime()
-          const diffMins = Math.floor(diffMs / 60000)
-          const hrs = Math.floor(diffMins / 60)
-          const mins = diffMins % 60
-          let durationStr = ''
-          if (hrs > 0) durationStr += `${hrs}hr `
-          durationStr += `${mins}min`
-
-          setMessage({ 
-            type: 'info', 
-            text: `Already checked out today.`, 
-            memberInfo,
-            attendanceInfo: {
-              checkInTime: format(checkInDate, 'hh:mm a'),
-              checkOutTime: format(checkOutDate, 'hh:mm a'),
-              duration: durationStr.trim()
-            }
-          })
-        }
+        setMessage({
+          type: 'info',
+          text: 'Already checked out today.',
+          memberInfo,
+          attendanceInfo: {
+            checkInTime: format(checkInDate, 'hh:mm a'),
+            checkOutTime: format(checkOutDate, 'hh:mm a'),
+            duration: durationStr.trim(),
+          },
+        })
       }
     } catch (err: any) {
       console.error(err)

@@ -600,13 +600,19 @@ export default async function AdminSubscriptionsPage() {
 
 **File:** `app/api/admin/subscription-requests/[id]/route.ts`
 
+> ⚠️ **Do not hand-roll the admin token check.** An earlier version of this doc
+> showed `if (token !== process.env.ADMIN_PASSWORD)`. That pattern grants access
+> when `ADMIN_PASSWORD` is unset AND no header is sent, because
+> `undefined !== undefined` is `false`. Always use `requireAdmin()` from
+> `lib/api/adminAuth.ts`, which fails closed, compares in constant time, and
+> rate-limits per IP. See `__tests__/security/adminAuth.test.ts`.
+
 ```ts
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  // ADMIN_PASSWORD check — same pattern as /api/gyms/route.ts
-  const token = req.headers.get('authorization')?.split(' ')[1]
-  if (token !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+import { requireAdmin, adminServerError } from '@/lib/api/adminAuth'
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req, 'POST /api/admin/subscription-requests/[id]')
+  if (!auth.ok) return auth.response
 
   const body = await req.json()
   const { action, plan_type, rejection_reason } = body

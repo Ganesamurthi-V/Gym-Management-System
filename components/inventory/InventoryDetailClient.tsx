@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/owner/inventory/actions'
 import { format } from 'date-fns'
 import {
@@ -49,7 +48,6 @@ interface Props {
 
 export default function InventoryDetailClient({ product: initialProduct, gymId, sales, siblings }: Props) {
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
 
   const [product, setProduct] = useState(initialProduct)
 
@@ -107,9 +105,10 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
     setLoading(true)
     setError('')
     try {
-      const { error: updateError } = await supabase
-        .from('inventory')
-        .update({
+      const res = await fetch(`/api/inventory/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           product_name: editForm.product_name,
           brand: editForm.brand || null,
           category: editForm.category || null,
@@ -121,11 +120,10 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           member_price: editForm.member_price ? parseFloat(editForm.member_price) : null,
           initial_stock: parseInt(editForm.initial_stock, 10),
           low_stock_threshold: editForm.low_stock_threshold ? parseInt(editForm.low_stock_threshold, 10) : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', product.id)
-
-      if (updateError) throw updateError
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error?.message || 'Failed to update')
 
       setProduct(prev => ({
         ...prev,
@@ -239,24 +237,27 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
     setLoading(true)
     setError('')
     try {
-      const { error: insertError } = await supabase
-        .from('inventory')
-        .insert({
-          gym_id: gymId,
-          product_name: product.product_name,
-          brand: product.brand,
-          category: product.category,
-          description: product.description,
-          variant_name: addVariantForm.variant_name,
-          sku: addVariantForm.sku || null,
-          cost_price: parseFloat(addVariantForm.cost_price),
-          selling_price: parseFloat(addVariantForm.selling_price),
-          member_price: addVariantForm.member_price ? parseFloat(addVariantForm.member_price) : null,
-          initial_stock: parseInt(addVariantForm.initial_stock, 10),
-          low_stock_threshold: addVariantForm.low_stock_threshold ? parseInt(addVariantForm.low_stock_threshold, 10) : null
-        })
-
-      if (insertError) throw insertError
+      const res = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variants: [{
+            product_name: product.product_name,
+            brand: product.brand,
+            category: product.category,
+            description: product.description,
+            variant_name: addVariantForm.variant_name,
+            sku: addVariantForm.sku || null,
+            cost_price: parseFloat(addVariantForm.cost_price),
+            selling_price: parseFloat(addVariantForm.selling_price),
+            member_price: addVariantForm.member_price ? parseFloat(addVariantForm.member_price) : null,
+            initial_stock: parseInt(addVariantForm.initial_stock, 10),
+            low_stock_threshold: addVariantForm.low_stock_threshold ? parseInt(addVariantForm.low_stock_threshold, 10) : null,
+          }],
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error?.message || 'Failed to add variant')
 
       setShowAddVariantModal(false)
       setAddVariantForm({

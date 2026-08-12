@@ -11,10 +11,8 @@
  */
 
 import type { ImportedRow } from "@/app/owner/import/page";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface PipelineOptions {
-  supabase: SupabaseClient;
   /** Callback to report progress stage (optional) */
   onStage?: (stage: "prices" | "ids") => void;
 }
@@ -30,33 +28,38 @@ export interface PipelineResult {
  */
 export async function runImportPipeline(
   parsed: ImportedRow[],
-  options: PipelineOptions
+  options: PipelineOptions = {}
 ): Promise<PipelineResult> {
-  const { supabase, onStage } = options;
-
-  // ── Resolve gym ───────────────────────────────────────────────────────────
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: gym } = user
-    ? await supabase.from("gyms").select("id").eq("owner_id", user.id).single()
-    : { data: null };
+  const { onStage } = options;
 
   // ── Stage 1: Plan price auto-fill ─────────────────────────────────────────
+  // Fetched through our own API instead of querying `gyms` + `gym_plan_prices`
+  // directly from the browser. `hasGym` stands in for the old gym lookup: the
+  // route resolves the gym from the session, so a non-2xx response means there
+  // is no usable gym context and ID assignment is skipped exactly as before.
   onStage?.("prices");
   let planPrices: Record<string, number> = {};
-  if (gym) {
-    const { data: priceRow } = await supabase
-      .from("gym_plan_prices")
-      .select("monthly, quarterly, annual")
-      .eq("gym_id", gym.id)
-      .single();
-    if (priceRow) {
-      planPrices = {
-        monthly:   priceRow.monthly   ?? 0,
-        quarterly: priceRow.quarterly ?? 0,
-        annual:    priceRow.annual    ?? 0,
-      };
+  let hasGym = false;
+
+  try {
+    const res = await fetch("/api/import/plan-prices");
+    if (res.ok) {
+      hasGym = true;
+      const json = await res.json();
+      const prices = json?.data?.plan_prices;
+      if (prices) {
+        planPrices = {
+          monthly:   prices.monthly   ?? 0,
+          quarterly: prices.quarterly ?? 0,
+          annual:    prices.annual    ?? 0,
+        };
+      }
     }
+  } catch {
+    // Network failure — fall through with empty prices, same as a gym with no
+    // gym_plan_prices row. Rows keep whatever amount the file supplied.
   }
+
   parsed.forEach(r => {
     const rawAmt = parseInt(r.amount);
     if (!r.amount || isNaN(rawAmt) || rawAmt === 0) {
@@ -75,7 +78,7 @@ export async function runImportPipeline(
   let nextId = 1
   let conflictingNums = new Set<number>()
 
-  if (gym) {
+  if (hasGym) {
     const idRes = await fetch(
       `/api/import/next-member-id?${new URLSearchParams({
         ...(requestedNums.length > 0 && { requested: requestedNums.join(',') }),

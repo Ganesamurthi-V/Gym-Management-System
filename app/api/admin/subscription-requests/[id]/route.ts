@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/api/adminAuth'
 
 /**
  * POST /api/admin/subscription-requests/[id]
@@ -14,10 +15,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const token = req.headers.get('authorization')?.split(' ')[1]
-  if (!token || token !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // Hardened guard: fails closed when ADMIN_PASSWORD is unset, requires a
+  // non-empty bearer token, compares in constant time, and rate-limits by IP.
+  const auth = await requireAdmin(req, 'POST /api/admin/subscription-requests/[id]')
+  if (!auth.ok) return auth.response
 
   const { id } = await params
 

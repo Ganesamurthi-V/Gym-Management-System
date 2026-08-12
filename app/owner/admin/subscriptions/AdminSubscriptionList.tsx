@@ -43,6 +43,7 @@ export default function AdminSubscriptionList({ requests: initial }: Props) {
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [planMap, setPlanMap] = useState<Record<string, string>>({})
+  const [actionError, setActionError] = useState<string | null>(null)
   const router = useRouter()
   const refreshFromServer = useCallback(() => router.refresh(), [router])
 
@@ -55,46 +56,65 @@ export default function AdminSubscriptionList({ requests: initial }: Props) {
     onInvalidate: refreshFromServer,
   })
 
+  /**
+   * Authorization note
+   * ------------------
+   * These calls previously sent `Authorization: Bearer ${prompt('Admin
+   * password')}` — the long-lived ADMIN_PASSWORD was typed into the page, held
+   * in component state, and attached to every request header (visible in the
+   * DevTools Network tab). It is now omitted entirely: the route authorises the
+   * request from the existing HttpOnly Supabase session, whose email must match
+   * ADMIN_EMAIL — the same gate `app/owner/admin/layout.tsx` applies before this
+   * page renders. `credentials: 'same-origin'` ensures the session cookie is
+   * sent; no secret ever reaches client JavaScript.
+   */
+  async function postAction(
+    id: string,
+    body: Record<string, unknown>
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
+    const res = await fetch(`/api/admin/subscription-requests/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body),
+    })
+
+    if (res.ok) return { ok: true }
+
+    const message =
+      res.status === 401 || res.status === 403
+        ? 'Not authorised. Sign in as the platform admin and try again.'
+        : res.status === 429
+          ? 'Too many requests. Please wait a moment and retry.'
+          : 'Request failed. Please try again.'
+    return { ok: false, message }
+  }
+
   async function approve(id: string) {
     const plan = planMap[id] ?? 'monthly'
     setLoading(id)
-    const res = await fetch(`/api/admin/subscription-requests/${id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${prompt('Admin password')}`,
-      },
-      body: JSON.stringify({ action: 'approve', plan_type: plan }),
-    })
-    if (res.ok) {
+    const result = await postAction(id, { action: 'approve', plan_type: plan })
+    if (result.ok) {
       setRequests(prev =>
         prev.map(r => r.id === id ? { ...r, status: 'approved' } : r)
       )
     } else {
-      alert('Failed to approve. Check password.')
+      setActionError(result.message)
     }
     setLoading(null)
   }
 
   async function reject(id: string) {
     setLoading(id)
-    const password = prompt('Admin password')
-    const res = await fetch(`/api/admin/subscription-requests/${id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${password}`,
-      },
-      body: JSON.stringify({ action: 'reject', rejection_reason: rejectReason }),
-    })
-    if (res.ok) {
+    const result = await postAction(id, { action: 'reject', rejection_reason: rejectReason })
+    if (result.ok) {
       setRequests(prev =>
         prev.map(r => r.id === id ? { ...r, status: 'rejected', rejection_reason: rejectReason } : r)
       )
       setRejectId(null)
       setRejectReason('')
     } else {
-      alert('Failed to reject. Check password.')
+      setActionError(result.message)
     }
     setLoading(null)
   }
@@ -114,6 +134,23 @@ export default function AdminSubscriptionList({ requests: initial }: Props) {
           {isConnected ? 'Live' : 'Connecting...'}
         </div>
       </div>
+
+      {actionError && (
+        <div
+          role="alert"
+          className="flex items-start justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+        >
+          <p className="text-sm font-medium text-red-700">{actionError}</p>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            aria-label="Dismiss error"
+            className="text-red-500 hover:text-red-700 text-sm font-semibold shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Pending */}
       <section className="space-y-3">

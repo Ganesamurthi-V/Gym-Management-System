@@ -4,7 +4,6 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Check, AlertTriangle, Edit2, Search, Trash2, MapPin } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { formatMemberId } from '@/types'
 
 interface MemberRow {
@@ -45,7 +44,6 @@ const cls = 'px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outlin
 
 export function EditMembersClient({ members, gymId }: Props) {
   const router = useRouter()
-  const supabase = createClient()
 
   const [step, setStep] = useState<Step>('edit')
   const [search, setSearch] = useState('')
@@ -97,12 +95,13 @@ export function EditMembersClient({ members, gymId }: Props) {
     try {
       const ids = Array.from(selected)
       if (ids.length > 0) {
-        const { error: e3 } = await supabase.from('members').delete().in('id', ids)
-        if (e3) throw e3
-        // Bust the Redis members cache so the list page reflects the deletions
-        // instead of re-serving stale cached rows after navigation.
-        const { invalidateMembersCache } = await import('../actions')
-        await invalidateMembersCache(gymId)
+        const res = await fetch('/api/members/bulk', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        })
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error?.message || 'Failed to delete')
       }
       router.push('/owner/members')
       router.refresh()
@@ -171,31 +170,32 @@ export function EditMembersClient({ members, gymId }: Props) {
       // succeeds, so we never cancel a cycle for a row that failed to save.
       const duesCleared: { memberId: string; phone: string }[] = []
 
-      for (const { original, edited } of changes) {
+      const updates = changes.map(({ original, edited }) => {
         const newPending = parseInt(edited.pending_amount) || 0
-        const { error: err } = await supabase
-          .from('members')
-          .update({
-            member_number: parseInt(edited.member_number) || original.member_number,
-            name: edited.name.trim(),
-            phone: edited.phone.trim(),
-            gender: edited.gender || null,
-            age: edited.age ? parseInt(edited.age) : null,
-            area: edited.area.trim() || null,
-            pending_amount: newPending,
-          })
-          .eq('id', original.id)
-        if (err) throw new Error(`Failed to update ${original.name}: ${err.message}`)
-
         const phone = edited.phone.trim()
         if ((original.pending_amount ?? 0) > 0 && newPending === 0 && phone.replace(/\D/g, '').length >= 10) {
           duesCleared.push({ memberId: original.id, phone })
         }
-      }
-      const { invalidateMembersCache } = await import('../actions')
-      const cacheResult = await invalidateMembersCache(gymId)
-      if (!cacheResult.success) {
-        console.warn('Cache invalidation failed after member update:', cacheResult.error)
+        return {
+          id: original.id,
+          member_number: parseInt(edited.member_number) || original.member_number,
+          name: edited.name.trim(),
+          phone: edited.phone.trim(),
+          gender: edited.gender || null,
+          age: edited.age ? parseInt(edited.age) : null,
+          area: edited.area.trim() || null,
+          pending_amount: newPending,
+        }
+      })
+
+      const res = await fetch('/api/members/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      })
+      const result = await res.json()
+      if (!res.ok && res.status !== 207) {
+        throw new Error(result.error?.message || 'Failed to save changes')
       }
 
       // Stop the due-reminder cycle for members who were just cleared to zero.

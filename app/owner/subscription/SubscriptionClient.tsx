@@ -8,7 +8,6 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
@@ -74,25 +73,15 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   }, [latestRequest, subState])
 
   const syncSubscription = useCallback(async () => {
-    const supabase = createClient()
-    const [requestResult, gymResult] = await Promise.all([
-      supabase
-        .from('subscription_requests')
-        .select('id, status, submitted_at, rejection_reason')
-        .eq('gym_id', gym.id)
-        .order('submitted_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from('gyms')
-        .select('subscription_status, plan_type, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at')
-        .eq('id', gym.id)
-        .single(),
-    ])
+    const res = await fetch('/api/subscription/sync')
+    const json = await res.json()
+    if (!res.ok || !json.data) return
 
-    if (!requestResult.error) setLiveRequest(requestResult.data)
-    if (gymResult.data) {
-      const nextState = computeSubscriptionState(gymResult.data)
+    const { latestRequest: reqData, gym: gymData } = json.data
+
+    if (reqData !== undefined) setLiveRequest(reqData)
+    if (gymData) {
+      const nextState = computeSubscriptionState(gymData)
       const previousState = previousSubStateRef.current
       previousSubStateRef.current = nextState
       setLiveSubState(nextState)

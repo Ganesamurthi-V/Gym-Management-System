@@ -7,27 +7,37 @@
  * Forwards:  https://graph.facebook.com/{version}/{resource}
  *
  * Security:
+ *   - Server-to-server only: browser-originated requests are rejected, and no
+ *     CORS access is granted (no wildcard ACAO, no preflight approval)
+ *   - Optional shared secret (GRAPH_PROXY_SECRET) when configured
  *   - Endpoint whitelist: only allowed Meta Graph endpoints pass through
  *   - Method whitelist: only GET, POST, PUT, PATCH, DELETE, OPTIONS
+ *   - Per-IP rate limit (120/min) applied in middleware.ts
  *   - Request timeout: 30 seconds
- *   - Strips infrastructure headers (Vercel, Cloudflare)
+ *   - Strips infrastructure headers (Vercel, Cloudflare) and our proxy secret
  *   - Never logs Authorization headers or tokens
  *   - Never exposes stack traces or internal paths
  *   - Returns consistent JSON errors
  *   - Security headers on all responses
+ *
+ * This route holds NO Meta credential of its own — it forwards the caller's
+ * Authorization header. The WhatsApp access token lives only in server env and
+ * is attached by services/whatsapp/graph.ts.
  *
  * Example:
  *   POST https://graph.gymflow.sbs/api/graph/v25.0/1234567/messages
  *   → POST https://graph.facebook.com/v25.0/1234567/messages
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { timingSafeEqual, createHash } from 'node:crypto'
 import { logger } from '@/lib/logger'
 import {
   isAllowedEndpoint,
   forbiddenResponse,
   errorResponse,
-  SECURITY_HEADERS,
+  GRAPH_PROXY_SECRET_HEADER,
+  getGraphProxySecret,
 } from '@/lib/graph-domain'
 
 export const dynamic = 'force-dynamic'
@@ -42,6 +52,34 @@ function upstreamBase(): string {
     process.env.GRAPH_API_BASE_URL?.replace(/\/$/, '') ??
     'https://graph.facebook.com'
   )
+}
+
+// ─── Caller authorisation ─────────────────────────────────────────────────────
+
+/**
+ * Is this request coming from a web page (as opposed to our server)?
+ *
+ * Browsers always attach `Origin` on cross-origin requests and set
+ * `Sec-Fetch-Mode: cors`. Server-side `fetch` (our WhatsApp service) sends
+ * neither. No browser has any legitimate reason to reach this proxy, so the
+ * presence of either marker is treated as abuse.
+ *
+ * Previously the route advertised `Access-Control-Allow-Origin: *` together with
+ * `Access-Control-Allow-Headers: Authorization`, which actively invited any page
+ * on the internet to relay credentialed calls to Meta through our domain.
+ */
+function isBrowserOriginated(req: NextRequest): boolean {
+  if (req.headers.get('origin')) return true
+  const fetchMode = req.headers.get('sec-fetch-mode')
+  if (fetchMode && fetchMode !== 'navigate') return true
+  return false
+}
+
+/** Constant-time compare via fixed-width digests (no length leak, no throw). */
+function secretMatches(provided: string, expected: string): boolean {
+  const a = createHash('sha256').update(provided, 'utf8').digest()
+  const b = createHash('sha256').update(expected, 'utf8').digest()
+  return timingSafeEqual(a, b)
 }
 
 // ─── Header filters ───────────────────────────────────────────────────────────
@@ -69,6 +107,8 @@ const STRIP_REQUEST_HEADERS = new Set([
   'transfer-encoding',
   'te',
   'cookie',
+  // Our own proxy credential — must never be forwarded to Meta.
+  'x-graph-proxy-secret',
 ])
 
 /** Hop-by-hop headers from upstream response that must NOT be returned. */
@@ -89,6 +129,35 @@ const STRIP_RESPONSE_HEADERS = new Set([
 
 async function proxy(req: NextRequest, path: string[]): Promise<Response> {
   const pathStr = path.join('/')
+
+  // ── Reject browser-originated calls ───────────────────────────────────────
+  // This proxy exists purely for server-to-server WhatsApp traffic. Anything
+  // arriving from a web page is either a misconfiguration or an attempt to use
+  // us as a credential-forwarding relay.
+  if (isBrowserOriginated(req)) {
+    logger.warn('graph_proxy_blocked', {
+      method: req.method,
+      path: `/${pathStr}`,
+      reason: 'browser_originated',
+    })
+    return forbiddenResponse('This endpoint is not callable from a browser.')
+  }
+
+  // ── Optional shared-secret gate ───────────────────────────────────────────
+  // Opt-in: enforced only when GRAPH_PROXY_SECRET is configured, so turning it
+  // on cannot break live sending. See lib/graph-domain.ts for the rationale.
+  const proxySecret = getGraphProxySecret()
+  if (proxySecret) {
+    const provided = req.headers.get(GRAPH_PROXY_SECRET_HEADER)
+    if (!provided || !secretMatches(provided, proxySecret)) {
+      logger.warn('graph_proxy_blocked', {
+        method: req.method,
+        path: `/${pathStr}`,
+        reason: 'proxy_secret_invalid',
+      })
+      return forbiddenResponse('Invalid proxy credentials.')
+    }
+  }
 
   // ── Path traversal protection ─────────────────────────────────────────────
   // Reject any path containing ".." or encoded traversal sequences to prevent
@@ -184,7 +253,11 @@ async function proxy(req: NextRequest, path: string[]): Promise<Response> {
   resHeaders.set('X-Content-Type-Options', 'nosniff')
   resHeaders.set('Cache-Control', 'no-store')
   resHeaders.set('X-Request-Id', requestId)
-  resHeaders.set('Access-Control-Allow-Origin', '*')
+  // NOTE: `Access-Control-Allow-Origin: *` was deliberately REMOVED. CORS is a
+  // browser-only mechanism and this proxy is server-to-server, so the wildcard
+  // granted nothing legitimate while telling every origin on the internet that
+  // it could send credentialed requests through us.
+  resHeaders.delete('access-control-allow-origin')
   // Strip any server identity
   resHeaders.delete('x-powered-by')
   resHeaders.delete('server')
@@ -214,15 +287,23 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 export async function DELETE(req: NextRequest, { params }: Ctx) {
   return proxy(req, (await params).path)
 }
+/**
+ * CORS preflight is intentionally NOT granted.
+ *
+ * This handler previously replied with `Access-Control-Allow-Origin: *` plus
+ * `Access-Control-Allow-Headers: Authorization`, which is precisely the
+ * combination that lets an arbitrary web page relay credentialed requests to
+ * Meta through our domain. The proxy only ever serves server-to-server traffic,
+ * where CORS does not apply, so refusing the preflight costs nothing and closes
+ * the browser attack surface completely.
+ */
 export async function OPTIONS(_req: NextRequest, _ctx: Ctx) {
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Hub-Signature-256',
-      'Access-Control-Max-Age': '86400',
+      Allow: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store',
     },
   })
 }

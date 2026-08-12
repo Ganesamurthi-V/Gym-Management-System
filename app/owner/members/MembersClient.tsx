@@ -6,7 +6,6 @@ import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
 
@@ -68,7 +67,6 @@ function MembersContent({ members, gymId, totalCount }: Props) {
     ageRange: 'all',
   })
   const [fixing, setFixing] = useState(false)
-  const supabase = createClient()
   
   // Load More state
   const [membersList, setMembersList] = useState(members)
@@ -106,17 +104,13 @@ function MembersContent({ members, gymId, totalCount }: Props) {
       }
     }
 
-    // Use Promise.all to batch all updates concurrently
     try {
-      await Promise.all(
-        updates.map(({ id, newNum }) =>
-          supabase.from('members').update({ member_number: newNum }).eq('id', id)
-        )
-      )
-      // Bust the Redis members cache so router.refresh() re-fetches fresh rows
-      // instead of re-serving the stale (pre-renumber) cached list.
-      const { invalidateMembersCache } = await import('./actions')
-      await invalidateMembersCache(gymId)
+      const res = await fetch('/api/members/fix-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      })
+      if (!res.ok) throw new Error('Server error')
       toast.success('Duplicate IDs fixed successfully!')
       router.refresh()
     } catch (error) {

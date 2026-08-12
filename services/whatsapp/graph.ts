@@ -22,6 +22,7 @@
 import { fetchJson }              from '@/lib/fetch'
 import { logger }                 from '@/lib/logger'
 import { formatDate } from '@/lib/utils'
+import { GRAPH_PROXY_SECRET_HEADER, getGraphProxySecret } from '@/lib/graph-domain'
 import { validateTemplatePayload, formatValidationError } from './validateTemplate'
 import type {
   SendResult,
@@ -55,7 +56,23 @@ function getAuthHeader(): Record<string, string> {
   return {
     Authorization:  `Bearer ${token}`,
     'Content-Type': 'application/json',
+    ...proxySecretHeader(),
   }
+}
+
+/**
+ * Attaches the reverse-proxy shared secret when one is configured.
+ *
+ * The proxy (`app/api/graph/[...path]/route.ts`) enforces this header only when
+ * GRAPH_PROXY_SECRET is set. Caller and proxy run in the same deployment and
+ * read the same variable, so enforcement switches on for both sides at once and
+ * setting the variable can never leave sending broken.
+ *
+ * Returns an empty object when unset, so behaviour is unchanged by default.
+ */
+function proxySecretHeader(): Record<string, string> {
+  const secret = getGraphProxySecret()
+  return secret ? { [GRAPH_PROXY_SECRET_HEADER]: secret } : {}
 }
 
 function normalisePhone(phone: string): string {
@@ -181,7 +198,9 @@ export async function uploadMedia(opts: UploadMediaOptions): Promise<UploadMedia
   try {
     const { data } = await fetchJson<{ id?: string; error?: { message: string } }>(url, {
       method:  'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      // Content-Type is intentionally omitted so the runtime sets the multipart
+      // boundary. The proxy secret is still attached when configured.
+      headers: { Authorization: `Bearer ${token}`, ...proxySecretHeader() },
       body:    formData as unknown as BodyInit,
       label:   'uploadMedia',
     })

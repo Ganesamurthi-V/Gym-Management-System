@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { Plus, Box, CheckCircle2, ShieldAlert, ShoppingCart, Loader2, Hash } from 'lucide-react'
 
@@ -27,7 +26,6 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   
-  const supabase = createClient()
   const router = useRouter()
 
   const handleSubmitBarcode = async () => {
@@ -43,39 +41,21 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
 
     try {
       if (currentMode === 'add') {
-        // Check if already exists
+        // Check if already exists locally
         if (units.some(u => u.barcode === barcode)) {
           throw new Error('This barcode is already added to this product.')
         }
 
-        // Insert new unit
-        const { data: newUnit, error: insertError } = await supabase
-          .from('inventory_units')
-          .insert({
-            gym_id: gymId,
-            inventory_id: productId,
-            barcode: barcode,
-            status: 'available'
-          })
-          .select()
-          .single()
+        // Insert new unit via API
+        const res = await fetch('/api/inventory/units', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inventory_id: productId, barcode }),
+        })
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error?.message || 'Failed to add unit')
 
-        if (insertError) {
-          if (insertError.code === '23505') throw new Error('This barcode is already registered in the system.')
-          throw insertError
-        }
-
-        // Update overall stock count
-        const { error: rpcError } = await supabase.rpc('increment_inventory_stock', { p_inventory_id: productId, amount: 1 })
-        if (rpcError) {
-          // Fallback if RPC doesn't exist
-          const { data } = await supabase.from('inventory').select('initial_stock').eq('id', productId).single()
-          if (data) {
-            await supabase.from('inventory').update({ initial_stock: data.initial_stock + 1 }).eq('id', productId)
-          }
-        }
-
-        setUnits(prev => [newUnit, ...prev])
+        setUnits(prev => [result.data, ...prev])
         setSuccess(`Added unit with barcode: ${barcode}`)
         router.refresh()
       } 
@@ -90,22 +70,14 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
           throw new Error(`This unit has already been marked as ${unit.status}.`)
         }
 
-        // Update unit status to sold
-        const { error: updateError } = await supabase
-          .from('inventory_units')
-          .update({ status: 'sold' })
-          .eq('id', unit.id)
-
-        if (updateError) throw updateError
-
-        // Decrement overall stock count
-        const { error: rpcError } = await supabase.rpc('increment_inventory_stock', { p_inventory_id: productId, amount: -1 })
-        if (rpcError) {
-          const { data } = await supabase.from('inventory').select('initial_stock').eq('id', productId).single()
-          if (data) {
-            await supabase.from('inventory').update({ initial_stock: Math.max(0, data.initial_stock - 1) }).eq('id', productId)
-          }
-        }
+        // Update unit status to sold via API
+        const res = await fetch('/api/inventory/units', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ unit_id: unit.id, status: 'sold', inventory_id: productId }),
+        })
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error?.message || 'Failed to sell unit')
 
         setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, status: 'sold' } : u))
         setSuccess(`Successfully sold unit: ${barcode}`)

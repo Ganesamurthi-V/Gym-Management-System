@@ -196,7 +196,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'x'.repeat(120)
 
-  h.store.gyms = [{ id: 'gym-1', name: 'Iron Temple', onboarding_completed: true }]
+  h.store.gyms = [{ id: 'gym-1', name: 'Iron Temple', onboarding_completed: true, subscription_status: 'active' }]
   h.store.members = []
   h.store.whatsapp_automation_logs = []
   h.store.whatsapp_send_queue = []

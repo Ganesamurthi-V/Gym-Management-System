@@ -49,10 +49,10 @@ describe('validateTemplatePayload — every approved template passes', () => {
     })
   }
 
-  it('accepts _birthday_wishes with the [memberName, gymName] body order', () => {
+  it('accepts _birthday_wishes with the [gymName, memberName] body order', () => {
     const payload = buildTemplatePayload('_birthday_wishes', base) as any
     const body = payload.template.components.find((c: any) => c.type === 'body')
-    expect(body.parameters.map((p: any) => p.text)).toEqual(['Arjun', 'Iron Temple'])
+    expect(body.parameters.map((p: any) => p.text)).toEqual(['Iron Temple', 'Arjun'])
     expect(validateTemplatePayload('_birthday_wishes', payload).valid).toBe(true)
   })
 })

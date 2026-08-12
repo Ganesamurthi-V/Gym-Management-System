@@ -8,7 +8,8 @@ import {
   ChevronLeft, Check, X, ShieldAlert, Hash, MapPin, Phone,
   Edit3,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { signOutViaApi, updatePasswordViaApi } from '@/lib/auth/client-auth'
+import { validatePasswordStrength } from '@/lib/auth/password'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
 import { invalidateAllGymCaches } from './actions'
@@ -61,7 +62,6 @@ export function AccountClient({
   upiConfig: initialUpiConfig = null,
 }: Props) {
   const router = useRouter()
-  const supabase = createClient()
 
   // Editable state
   const [gymName, setGymName] = useState(initialGymName)
@@ -215,8 +215,11 @@ export function AccountClient({
   // ── Update password ──────────────────────────────────────────────────────────
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault()
-    if (newPassword.length < 8 || !/\d/.test(newPassword)) {
-      setMessage({ type: 'error', text: 'Password must be at least 8 characters and contain at least one number.' })
+    // Same rule set the server enforces (lib/auth/password.ts), so the inline
+    // check and the endpoint can never disagree about what is acceptable.
+    const weakness = validatePasswordStrength(newPassword)
+    if (weakness) {
+      setMessage({ type: 'error', text: weakness })
       return
     }
     if (newPassword !== confirmPassword) {
@@ -225,9 +228,9 @@ export function AccountClient({
     }
     setIsSaving(true)
     setMessage(null)
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) {
-      setMessage({ type: 'error', text: error.message })
+    const result = await updatePasswordViaApi(newPassword)
+    if (!result.ok) {
+      setMessage({ type: 'error', text: result.error })
     } else {
       setMessage({ type: 'success', text: 'Password updated. You may need to log in again on other devices.' })
       setTimeout(() => { closeModal(); showToast('Password updated') }, 1500)
@@ -281,7 +284,7 @@ export function AccountClient({
       setIsSaving(false)
       return
     }
-    await supabase.auth.signOut()
+    await signOutViaApi()
     router.push('/auth/login')
   }
 

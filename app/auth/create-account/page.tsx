@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
+import { signOutViaApi } from '@/lib/auth/client-auth'
 import {
   ArrowRight, Users, TrendingUp, Shield, Zap,
   Check, AlertCircle, PartyPopper, Mail, RefreshCw, ArrowLeft,
@@ -195,7 +195,7 @@ function EmailSentScreen({ email }: { email: string }) {
       {/* Back to login */}
       <button
         onClick={async () => {
-          await createClient().auth.signOut()
+          await signOutViaApi()
           window.location.href = '/auth/login'
         }}
         className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand-600 font-medium transition-colors"
@@ -226,7 +226,6 @@ export default function CreateAccountPage() {
   const [mounted, setMounted]         = useState(false)
   const [emailSent, setEmailSent]     = useState(false)
   const isSubmitting                  = useRef(false)
-  const supabase = createClient()
 
   useEffect(() => { setMounted(true) }, [])
 

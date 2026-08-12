@@ -5,9 +5,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
-// Still needed for the Realtime gym-status channel below; all auth calls in this
-// component now go through /api/auth/*. Realtime moves server-side in Phase 4.
-import { createClient } from '@/lib/supabase/client'
 import { signOutViaApi } from '@/lib/auth/client-auth'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -91,8 +88,6 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       return
     }
 
-    const supabase = createClient()
-    
     const checkAuth = async () => {
       // Skip check entirely when tab is in the background.
       if (document.hidden) return
@@ -131,72 +126,39 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       setLiveDaysLeft(refreshedState.daysLeft ?? 0)
       if (refreshedState.isExpired && pathname !== '/owner/subscription') {
         window.location.href = '/owner/subscription'
+        return
+      }
+
+      // Detect subscription just activated while user is on the paywall — same
+      // behaviour as the former Realtime channel callback.
+      if (
+        !refreshedState.isExpiringSoon &&
+        (gymRow.subscription_status === 'active' || gymRow.subscription_status === 'trial') &&
+        pathname === '/owner/subscription'
+      ) {
+        toast.success(
+          gymRow.subscription_status === 'active'
+            ? 'Your subscription has been activated!'
+            : 'Your trial has been reset. Redirecting...',
+        )
+        setTimeout(() => {
+          window.location.href = '/owner/dashboard'
+        }, 1500)
       }
     }
 
     // Issue 3 fix: Focus listener provides instant re-check when user switches tabs.
-    // Replaced 60s polling with Supabase Realtime for instant updates without network overhead.
+    // Phase 4: Replaced Supabase Realtime channel with a 30 s poll interval.
+    // checkAuth already fetches /api/account/status and applies every guard that
+    // the Realtime callback did (name update, deactivation sign-out, subscription
+    // state, expiry redirect, activation toast). Running it periodically makes
+    // the socket redundant with zero Vercel cost and zero browser→Supabase traffic.
     window.addEventListener('focus', checkAuth)
-    
-    // Global Realtime listener for gym status (activation, expiration, blocking)
-    const channel = supabase
-      .channel(`gym-${initialGym?.id}-global-status`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'gyms',
-          filter: `id=eq.${initialGym?.id}`,
-        },
-        (payload: any) => {
-          const { is_active, subscription_status, name } = payload.new
-
-          if (name && name !== liveGymName) {
-            setLiveGymName(name)
-          }
-
-          if (is_active === false) {
-            signOutViaApi().then(() => {
-              window.location.href = '/auth/login?error=blocked'
-            })
-            return
-          }
-
-          // Recompute subscription state from the fresh row so the banner
-          // updates immediately without waiting for a server-side re-render.
-          const newState = computeSubscriptionState(payload.new)
-          setLiveSubStatus(newState.status)
-          setLiveDaysLeft(newState.daysLeft ?? 0)
-
-          // Hard redirect cases
-          if (newState.isExpired && pathname !== '/owner/subscription') {
-            window.location.href = '/owner/subscription'
-            return
-          }
-
-          // If subscription was just activated while the user is on the paywall
-          if (
-            !newState.isExpiringSoon &&
-            (subscription_status === 'active' || subscription_status === 'trial') &&
-            pathname === '/owner/subscription'
-          ) {
-            toast.success(
-              subscription_status === 'active'
-                ? 'Your subscription has been activated!'
-                : 'Your trial has been reset. Redirecting...'
-            )
-            setTimeout(() => {
-              window.location.href = '/owner/dashboard'
-            }, 1500)
-          }
-        }
-      )
-      .subscribe()
+    const pollInterval = setInterval(checkAuth, 30_000)
     
     return () => {
       window.removeEventListener('focus', checkAuth)
-      supabase.removeChannel(channel)
+      clearInterval(pollInterval)
     }
   }, [isShellless, initialUser, initialIsActive, initialSubscriptionStatus, initialGym?.id, pathname])
 

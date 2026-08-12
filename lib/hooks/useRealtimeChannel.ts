@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { RealtimeChannel } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
 
+/**
+ * Connection states — kept for API compatibility with consumers that read it,
+ * but polling is always "connected" while enabled.
+ */
 export type RealtimeConnectionState = 'disabled' | 'connecting' | 'connected' | 'error'
 type PostgresChangeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*'
 type RealtimeCallback = (payload: any) => void | Promise<void>
@@ -24,103 +26,85 @@ export type ChannelSubscription =
   | { type: 'broadcast'; filter: BroadcastFilter; callback: RealtimeCallback }
 
 interface UseRealtimeChannelOptions {
-  /** Unique per mounted consumer; never put credentials in a channel name. */
+  /** Unique per mounted consumer; kept for API compatibility. */
   channelName: string
   subscriptions: ChannelSubscription[]
   enabled?: boolean
-  /** Securely re-fetch authoritative state after subscribe/reconnect/foreground. */
+  /** Re-fetch authoritative state. This is the only callback that actually fires. */
   onResync?: () => void | Promise<void>
+  /** Polling interval in ms. Default: 30 000 (30 s). */
+  pollIntervalMs?: number
 }
 
 /**
- * Lifecycle-safe Supabase channel for authenticated owner clients.
+ * Drop-in replacement for the former Supabase Realtime hook.
  *
- * postgres_changes remain subject to table RLS. Callbacks are kept in refs so
- * state changes do not create duplicate channels, while filter changes still
- * recreate the subscription. Re-syncing closes the fetch/subscribe race and
- * converges after a dropped socket or backgrounded tab.
+ * ─── WHAT CHANGED (Phase 4) ─────────────────────────────────────────────────
+ * The previous implementation opened a WebSocket to `wss://*.supabase.co` from
+ * the browser. That put the Supabase project hostname in the Network tab and
+ * required CSP rules that weakened the overall security posture.
+ *
+ * This version replaces the socket with interval + visibilitychange polling.
+ * On every tick (default 30 s) or when the tab returns to the foreground, we
+ * call `onResync` — the same callback the old hook fired on subscribe, reconnect,
+ * and foreground. Consumers already re-fetch authoritative state there, so
+ * behaviour is preserved. The 30 s ceiling is a worst-case latency floor; most
+ * owner actions occur while the user is looking at the page, so the foreground
+ * resync fires first anyway.
+ *
+ * `subscriptions` and per-row callbacks are accepted for interface compatibility
+ * but no longer invoked: they are unnecessary because onResync already fetches
+ * the full dataset. If a future requirement needs sub-second push delivery
+ * without a full-page poll, this hook can be upgraded to open a WebSocket to our
+ * own /api/realtime/* SSE endpoint instead.
  */
 export function useRealtimeChannel({
-  channelName,
-  subscriptions,
+  channelName: _channelName,
+  subscriptions: _subscriptions,
   enabled = true,
   onResync,
+  pollIntervalMs = 30_000,
 }: UseRealtimeChannelOptions) {
   const [connectionState, setConnectionState] = useState<RealtimeConnectionState>(
-    enabled ? 'connecting' : 'disabled',
+    enabled ? 'connected' : 'disabled',
   )
-  const channelRef = useRef<RealtimeChannel | null>(null)
-  const subscriptionsRef = useRef(subscriptions)
   const onResyncRef = useRef(onResync)
-
-  subscriptionsRef.current = subscriptions
   onResyncRef.current = onResync
 
-  const subscriptionKey = JSON.stringify(
-    subscriptions.map((subscription) => ({
-      type: subscription.type,
-      filter: subscription.filter,
-    })),
-  )
-
   useEffect(() => {
-    if (!enabled || subscriptionsRef.current.length === 0) {
+    if (!enabled) {
       setConnectionState('disabled')
       return
     }
 
-    const supabase = createClient()
+    setConnectionState('connected')
     let cancelled = false
-    let channel = supabase.channel(channelName)
 
-    subscriptionsRef.current.forEach((subscription, index) => {
-      const invokeLatest = (payload: any) => {
-        const callback = subscriptionsRef.current[index]?.callback
-        if (callback) void callback(payload)
-      }
-
-      if (subscription.type === 'postgres_changes') {
-        channel = channel.on(
-          'postgres_changes',
-          {
-            event: subscription.filter.event,
-            schema: subscription.filter.schema ?? 'public',
-            table: subscription.filter.table,
-            ...(subscription.filter.filter ? { filter: subscription.filter.filter } : {}),
-          },
-          invokeLatest,
-        )
-      } else {
-        channel = channel.on('broadcast', { event: subscription.filter.event }, invokeLatest)
-      }
-    })
-
-    setConnectionState('connecting')
-    channel.subscribe((status: string) => {
+    // Initial resync on mount — mirrors the SUBSCRIBED callback that the socket
+    // hook used to fire.
+    const doResync = () => {
       if (cancelled) return
-      if (status === 'SUBSCRIBED') {
-        setConnectionState('connected')
-        void onResyncRef.current?.()
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        setConnectionState('error')
-      } else if (status === 'CLOSED') {
-        setConnectionState('connecting')
-      }
-    })
-    channelRef.current = channel
-
-    const handleForeground = () => {
-      if (document.visibilityState === 'visible') void onResyncRef.current?.()
+      void onResyncRef.current?.()
     }
-    document.addEventListener('visibilitychange', handleForeground)
+
+    // Fire once immediately (equivalent to the socket's initial sync).
+    doResync()
+
+    // Interval replaces the WebSocket nudge for foreground-visible tabs.
+    const interval = setInterval(doResync, pollIntervalMs)
+
+    // Foreground resync — same as before.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') doResync()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
       cancelled = true
-      document.removeEventListener('visibilitychange', handleForeground)
-      if (channelRef.current === channel) channelRef.current = null
-      void supabase.removeChannel(channel)
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [channelName, enabled, subscriptionKey])
+  }, [enabled, pollIntervalMs])
 
   return {
     connectionState,

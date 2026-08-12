@@ -2,38 +2,42 @@
 
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 
+/**
+ * Keeps a member tab in step with the real session state using polling.
+ * Replaces the direct Supabase browser client onAuthStateChange + refreshSession.
+ */
 export function SessionLifecycle() {
   const pathname = usePathname()
   const router = useRouter()
 
   useEffect(() => {
-    let supabase: ReturnType<typeof createClient>
+    if (pathname.startsWith('/auth/')) return
 
-    try {
-      supabase = createClient()
-    } catch {
-      return
-    }
+    let cancelled = false
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT' && !pathname.startsWith('/auth/')) {
-        router.replace('/auth/login')
-        router.refresh()
-      }
-    })
-
-    const refreshOnForeground = async () => {
+    const syncSession = async () => {
       if (document.visibilityState !== 'visible') return
-      const { data } = await supabase.auth.getSession()
-      if (data.session) await supabase.auth.refreshSession()
+
+      try {
+        const res = await fetch('/api/auth/session', {
+          credentials: 'include',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          cache: 'no-store',
+        })
+        if (cancelled) return
+
+        if (res.status === 401) {
+          router.replace('/auth/login')
+          router.refresh()
+        }
+      } catch { /* network error — retry on next visibility change */ }
     }
 
-    document.addEventListener('visibilitychange', refreshOnForeground)
+    document.addEventListener('visibilitychange', syncSession)
     return () => {
-      listener.subscription.unsubscribe()
-      document.removeEventListener('visibilitychange', refreshOnForeground)
+      cancelled = true
+      document.removeEventListener('visibilitychange', syncSession)
     }
   }, [pathname, router])
 

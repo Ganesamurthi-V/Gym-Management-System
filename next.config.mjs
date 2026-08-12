@@ -96,8 +96,8 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'date-fns'],
   },
 
-  // Keep ExcelJS server-side only — prevents it from being bundled into client chunks
-  serverExternalPackages: ['exceljs'],
+  // Keep large server-only packages out of the webpack analysis entirely
+  serverExternalPackages: ['exceljs', '@supabase/ssr'],
 
   compiler: {
     // Remove console.log in production builds

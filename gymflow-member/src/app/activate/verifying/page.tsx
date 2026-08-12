@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { AlertTriangle, CheckCircle2, Loader2, MailWarning, RefreshCw } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { loadActivation, clearActivation } from '@/lib/activation-store'
 
 type State = 'processing' | 'success' | 'consumed' | 'error'
@@ -107,16 +106,21 @@ export default function VerifyingPage() {
 
       // ── Success path: establish the session, then finalise activation ─────
       try {
-        const supabase = createClient()
-        const { data: { user }, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
+        const sessionRes = await fetch('/api/auth/set-session', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
         })
+        const sessionJson = await sessionRes.json().catch(() => null)
 
-        if (error || !user) {
+        if (!sessionRes.ok || !sessionJson?.userId) {
           if (cancelled) return
           setState('error')
-          setDetail(error?.message ?? 'session_failed')
+          setDetail(sessionJson?.error ?? 'session_failed')
           setCanResend(Boolean(stash))
           return
         }
@@ -124,7 +128,7 @@ export default function VerifyingPage() {
         const res = await fetch('/api/activate/finalize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
+          body: JSON.stringify({ userId: sessionJson.userId }),
         })
         const json = await res.json()
 

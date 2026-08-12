@@ -5,7 +5,6 @@ import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { clearLoginFailures, getLoginThrottle, recordLoginFailure } from '@/lib/auth/lockout'
-import { createClient } from '@/lib/supabase/client'
 import { safeMemberRedirect } from '@/lib/auth/redirect'
 
 function formatRemaining(milliseconds: number) {
@@ -88,33 +87,23 @@ export default function LoginPage() {
         return
       }
 
-      const supabase = createClient()
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       })
+      const json = await res.json()
 
-      if (signInError || !data.user) {
+      if (!res.ok || !json.success) {
         const state = await recordLoginFailure(email)
         setRemainingMs(state.remainingMs)
         setAttemptsRemaining(state.attemptsRemaining)
         setError(
           state.isLocked
             ? 'Too many failed attempts. Sign-in is paused for 15 minutes on this device.'
-            : `${authMessage(signInError?.message ?? '')} ${state.attemptsRemaining} attempt${state.attemptsRemaining === 1 ? '' : 's'} remaining.`,
+            : `${authMessage(json.error ?? '')} ${state.attemptsRemaining} attempt${state.attemptsRemaining === 1 ? '' : 's'} remaining.`,
         )
-        return
-      }
-
-      const { data: member, error: memberError } = await supabase
-        .from('members')
-        .select('id')
-        .eq('auth_user_id', data.user.id)
-        .maybeSingle()
-
-      if (memberError || !member) {
-        await supabase.auth.signOut({ scope: 'local' })
-        setError('This account is not linked to a GymFlow member profile. Contact your gym.')
         return
       }
 

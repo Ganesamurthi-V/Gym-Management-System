@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { getRealtimeClient } from '@/lib/supabase-browser'
 
 export type RealtimeConnectionState = 'disabled' | 'connecting' | 'connected' | 'error'
 
@@ -13,18 +12,21 @@ interface Options {
 }
 
 /**
- * Admin clients have custom app sessions, not Supabase Auth sessions. They
- * therefore consume only payload-free broadcast hints and re-fetch data from
- * cookie-authenticated admin APIs. Never apply broadcast payloads as data.
+ * Admin panel invalidation — polls on an interval + visibilitychange instead of
+ * opening a direct Supabase Realtime WebSocket.
+ *
+ * The admin panel is an internal tool, so a 10-second poll is acceptable.
+ * This removes the dependency on NEXT_PUBLIC_SUPABASE_URL/ANON_KEY in the
+ * admin client bundle.
  */
 export function useRealtimeInvalidation({
-  channelName,
+  channelName: _channelName,
   onInvalidate,
   enabled = true,
   debounceMs = 1_500,
 }: Options) {
   const [connectionState, setConnectionState] = useState<RealtimeConnectionState>(
-    enabled ? 'connecting' : 'disabled',
+    enabled ? 'connected' : 'disabled',
   )
   const callbackRef = useRef(onInvalidate)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -37,8 +39,8 @@ export function useRealtimeInvalidation({
       return
     }
 
+    setConnectionState('connected')
     let cancelled = false
-    let supabase: ReturnType<typeof getRealtimeClient>
 
     const invoke = async () => {
       timerRef.current = null
@@ -61,27 +63,11 @@ export function useRealtimeInvalidation({
       timerRef.current = setTimeout(() => { void invoke() }, debounceMs)
     }
 
-    try {
-      supabase = getRealtimeClient()
-    } catch {
-      setConnectionState('error')
-      return
-    }
+    // Initial fire
+    schedule()
 
-    const channel = supabase
-      .channel(channelName)
-      .on('broadcast', { event: 'invalidate' }, schedule)
-      .subscribe((status: string) => {
-        if (cancelled) return
-        if (status === 'SUBSCRIBED') {
-          setConnectionState('connected')
-          schedule()
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          setConnectionState('error')
-        } else if (status === 'CLOSED') {
-          setConnectionState('connecting')
-        }
-      })
+    // 10s polling for admin panel (internal tool — acceptable latency)
+    const interval = setInterval(schedule, 10_000)
 
     const handleForeground = () => {
       if (document.visibilityState === 'visible') schedule()
@@ -90,12 +76,12 @@ export function useRealtimeInvalidation({
 
     return () => {
       cancelled = true
+      clearInterval(interval)
       document.removeEventListener('visibilitychange', handleForeground)
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = null
-      void supabase.removeChannel(channel)
     }
-  }, [channelName, debounceMs, enabled])
+  }, [enabled, debounceMs])
 
   return {
     connectionState,

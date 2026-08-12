@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -39,11 +40,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Bad request' }, { status: 400 })
     }
 
-    if (password !== validPassword) {
+    // Fail closed when the secret is not configured, rather than comparing
+    // against `undefined` and risking an accidental match.
+    if (!validPassword || validPassword.trim().length < 16) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+
+    // Constant-time comparison — fixed-width digests so no length is leaked.
+    const a = createHash('sha256').update(password, 'utf8').digest()
+    const b = createHash('sha256').update(validPassword, 'utf8').digest()
+    if (!timingSafeEqual(a, b)) {
       return NextResponse.json({ error: 'Invalid admin password' }, { status: 401 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(
+      { success: true },
+      { headers: { 'Cache-Control': 'private, no-store' } }
+    )
   } catch {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   }

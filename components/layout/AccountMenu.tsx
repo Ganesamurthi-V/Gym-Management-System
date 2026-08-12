@@ -30,21 +30,19 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
   useEffect(() => {
     async function fetchForUser(userId: string, userEmail: string) {
       setEmail(userEmail)
-      const { data: gym } = await supabase
-        .from('gyms')
-        .select('id, name')
-        .eq('owner_id', userId)
-        .single()
-      setGymName(gym?.name ?? null)
-      setGymId(gym?.id ?? null)
+      // Fetch gym info via API
+      const res = await fetch('/api/account/gym')
+      const json = await res.json()
+      if (res.ok && json.data) {
+        setGymName(json.data.name ?? null)
+        setGymId(json.data.id ?? null)
+      }
 
-      if (gym?.id) {
-        const { count } = await supabase
-          .from('admin_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('gym_id', gym.id)
-          .is('read_at', null)
-        setUnreadCount(count ?? 0)
+      // Fetch unread count via API
+      const unreadRes = await fetch('/api/support/unread-count')
+      const unreadJson = await unreadRes.json()
+      if (unreadRes.ok && unreadJson.data) {
+        setUnreadCount(unreadJson.data.count ?? 0)
       }
     }
 
@@ -92,13 +90,12 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
 
   const syncUnreadCount = useCallback(async () => {
     if (!gymId) return
-    const { count } = await supabase
-      .from('admin_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('gym_id', gymId)
-      .is('read_at', null)
-    setUnreadCount(count ?? 0)
-  }, [gymId, supabase])
+    const res = await fetch('/api/support/unread-count')
+    const json = await res.json()
+    if (res.ok && json.data) {
+      setUnreadCount(json.data.count ?? 0)
+    }
+  }, [gymId])
 
   useRealtimeChannel({
     channelName: `owner_account_messages_${gymId ?? 'disabled'}`,
@@ -116,11 +113,9 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
           await syncUnreadCount()
           if (!payload.new?.id) return
 
-          const { data: newMessage } = await supabase
-            .from('admin_messages')
-            .select('id, subject, body')
-            .eq('id', payload.new.id)
-            .single()
+          const msgRes = await fetch(`/api/support/message/${payload.new.id}`)
+          const msgJson = await msgRes.json()
+          const newMessage = msgJson.data
 
           if (!newMessage) return
           setToastMessage({

@@ -4,8 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Box, Tag, Image as ImageIcon, Package, Info, ImagePlus, ShieldAlert, BadgeIndianRupee, Plus, Trash2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { invalidateInventoryCache } from '@/app/owner/inventory/actions'
 
 interface VariantForm {
   variantName: string
@@ -18,7 +16,6 @@ interface VariantForm {
 }
 
 export default function NewInventoryPage() {
-  const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -78,14 +75,7 @@ export default function NewInventoryPage() {
     setError('')
     
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
-      if (!gym) throw new Error('Gym not found')
-
-      const rowsToInsert = variants.map(v => ({
-        gym_id: gym.id,
+      const variantsToInsert = variants.map(v => ({
         product_name: productDetails.productName,
         brand: productDetails.brand || null,
         category: productDetails.category || null,
@@ -99,13 +89,13 @@ export default function NewInventoryPage() {
         low_stock_threshold: v.lowStockThreshold ? parseInt(v.lowStockThreshold, 10) : null
       }))
 
-      const { error: insertError } = await supabase
-        .from('inventory')
-        .insert(rowsToInsert)
-
-      if (insertError) throw insertError
-
-      await invalidateInventoryCache(gym.id)
+      const res = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variants: variantsToInsert }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error?.message || 'Failed to save product')
 
       router.push('/owner/inventory')
       router.refresh()

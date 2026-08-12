@@ -3,14 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash, Plus } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { calcEndDate, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import type { Plan, PaymentMode } from '@/types'
 import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
-import { invalidateGymCache } from '@/app/owner/account/actions'
 import UPIPaymentModal from '@/components/upi/UPIPaymentModal'
 
 type Step = 'personal' | 'membership' | 'preview'
@@ -26,7 +24,6 @@ interface MembershipPlan {
 
 export default function NewMemberPage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [step, setStep] = useState<Step>('personal')
   const [loading, setLoading] = useState(false)
@@ -67,36 +64,31 @@ export default function NewMemberPage() {
 
   useEffect(() => {
     async function fetchInitialData() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: gym } = await supabase.from('gyms').select('id, onboarding_data').eq('owner_id', user.id).single()
-      if (!gym) return
+      // Fetch gym data via API
+      const gymRes = await fetch('/api/account/gym')
+      const gymJson = await gymRes.json()
+      if (!gymRes.ok || !gymJson.data) return
+      const gym = gymJson.data
       setGymId(gym.id)
-      // Issue C fix: store the full onboarding_data object so handleSaveNewPlan can use it directly.
       setGymOnboardingData((gym.onboarding_data as Record<string, any>) ?? {})
 
-      // Fetch next member number
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('member_number')
-        .eq('gym_id', gym.id)
-        .order('member_number', { ascending: false })
-        .limit(1)
-      const last = memberData?.[0]?.member_number ?? 0
-      setNextMemberNumber(last + 1)
-      setForm(prev => ({ ...prev, member_number: String(last + 1) }))
+      // Fetch next member number via API
+      const numRes = await fetch('/api/members/next-number')
+      const numJson = await numRes.json()
+      if (numRes.ok && numJson.data) {
+        const next = numJson.data.next_number
+        setNextMemberNumber(next)
+        setForm(prev => ({ ...prev, member_number: String(next) }))
+      }
 
       // Fetch plans from onboarding_data
       const plans = (gym.onboarding_data as any)?.plans || []
       setGymPlans(plans)
 
       // Fetch UPI config for the payment modal
-      const { data: upiData } = await supabase
-        .from('gym_upi_config')
-        .select('upi_id, merchant_name, merchant_code, currency')
-        .eq('gym_id', gym.id)
-        .maybeSingle()
-      if (upiData) setUpiConfig(upiData)
+      const upiRes = await fetch('/api/account/upi-config')
+      const upiJson = await upiRes.json()
+      if (upiRes.ok && upiJson.data) setUpiConfig(upiJson.data)
 
       const defaultPlan = plans.find((p: MembershipPlan) => p.duration === 'monthly' && p.category === 'both') 
                        || plans.find((p: MembershipPlan) => p.duration === 'monthly')
@@ -118,8 +110,9 @@ export default function NewMemberPage() {
     setCheckingNum(true)
     setNumError('')
     const timer = setTimeout(async () => {
-      const { data } = await supabase.from('members').select('id').eq('gym_id', gymId).eq('member_number', num).single()
-      setNumError(data ? `${formatMemberId(num)} is already taken` : '')
+      const res = await fetch(`/api/members/check-number?number=${num}`)
+      const json = await res.json()
+      setNumError(json.data?.exists ? `${formatMemberId(num)} is already taken` : '')
       setCheckingNum(false)
     }, 400)
     return () => clearTimeout(timer)
@@ -177,15 +170,11 @@ export default function NewMemberPage() {
       const memberNumber = parseInt(form.member_number)
       if (!memberNumber) throw new Error('Member ID is required')
 
-      // Note: the redundant pre-insert duplicate-check SELECT was removed. The
-      // debounced availability check already runs while typing, and the DB's
-      // (gym_id, member_number) unique constraint is the authoritative guard —
-      // a duplicate now surfaces as a 23505 error handled below. This removes a
-      // full network round trip from the critical save path.
-      const { data: member, error: memberError } = await supabase
-        .from('members')
-        .insert({
-          gym_id: gymId,
+      // Create member via API
+      const memberRes = await fetch('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           member_number: memberNumber,
           name: form.name.trim(),
           phone: form.phone.trim(),
@@ -194,24 +183,24 @@ export default function NewMemberPage() {
           ...(form.age && { age: parseInt(form.age) }),
           ...(form.date_of_birth && { date_of_birth: form.date_of_birth }),
           ...(form.area.trim() && { area: form.area.trim() }),
-        })
-        .select('id')
-        .single()
-
-      if (memberError) {
-        // Unique-constraint violation → member number already taken.
-        if (memberError.code === '23505') {
+        }),
+      })
+      const memberJson = await memberRes.json()
+      if (!memberRes.ok) {
+        if (memberJson.error?.code === 'CONFLICT') {
           throw new Error(`${formatMemberId(memberNumber)} is already taken`)
         }
-        throw memberError
+        throw new Error(memberJson.error?.message || 'Failed to create member')
       }
+      const member = memberJson.data
 
+      // Create membership via API
       const end_date = calcEndDate(form.start_date, form.plan, form.plan === 'custom' ? parseInt(form.custom_months) || 1 : undefined)
-      const { error: membershipError } = await supabase
-        .from('memberships')
-        .insert({
+      const membershipRes = await fetch('/api/memberships', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           member_id: member.id,
-          gym_id: gymId,
           plan: form.plan,
           category: form.category,
           start_date: form.start_date,
@@ -220,12 +209,12 @@ export default function NewMemberPage() {
           admission_fee: parseInt(form.admission_fee, 10) || 0,
           due_amount: parseInt(form.pending_amount, 10) || 0,
           payment_mode: form.payment_mode,
-        })
-
-      if (membershipError) throw membershipError
+        }),
+      })
+      const membershipJson = await membershipRes.json()
+      if (!membershipRes.ok) throw new Error(membershipJson.error?.message || 'Failed to create membership')
 
       // Auto-send welcome WhatsApp message (fire-and-forget, non-blocking).
-      // gymName is resolved server-side by the route, so no blocking SELECT here.
       if (form.phone && form.phone.replace(/\D/g, '').length >= 10) {
         fetch('/api/whatsapp/automation/welcome', {
           method: 'POST',
@@ -240,11 +229,6 @@ export default function NewMemberPage() {
           }),
         }).catch(() => {}) // fire-and-forget
       }
-
-      // Bust caches (parallel + JWT-local auth) then navigate. Awaited so the
-      // /members re-render below serves fresh data.
-      const { invalidateMembersCache } = await import('../actions')
-      await invalidateMembersCache(gymId)
 
       toast.success('Member added successfully!')
       router.push('/owner/members')
@@ -276,13 +260,13 @@ export default function NewMemberPage() {
     setShowPlanModal(false)
     toast.success('Plan added successfully!')
 
-    // Issue C fix: use gymOnboardingData already in state — no SELECT needed.
-    // Spread to avoid mutating state directly, then merge the updated plans array.
+    // Update gym onboarding_data via API
     const merged = { ...gymOnboardingData, plans: updatedPlans }
-    await supabase.from('gyms').update({ onboarding_data: merged }).eq('id', gymId)
-
-    // Issue 3 fix: bust the 120s Redis gym cache so getGym() returns fresh onboarding_data.
-    await invalidateGymCache()
+    await fetch('/api/account/gym', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ onboarding_data: { plans: updatedPlans } }),
+    })
 
     // Keep local cache in sync so a second plan save in the same session
     // doesn't overwrite merged with the stale original object.

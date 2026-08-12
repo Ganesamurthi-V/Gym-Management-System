@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Bell, Info, AlertTriangle, ShieldCheck, Bug, Ticket as TicketIcon, X, Trash2, Wifi, WifiOff } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
@@ -45,8 +44,6 @@ export default function SupportTabsClient({
   // IDs of messages that just arrived in real-time (for "NEW" highlight)
   const [newMsgIds, setNewMsgIds] = useState<Set<string>>(new Set())
 
-  const supabase = createClient()
-
   // ── Sync when SSR props change (e.g. router refresh) ─────────────────────
   useEffect(() => {
     setMessages(initialMessages)
@@ -54,24 +51,13 @@ export default function SupportTabsClient({
   }, [initialMessages, initialTickets])
 
   const syncSupport = useCallback(async () => {
-    const [messagesResult, ticketsResult] = await Promise.all([
-      supabase
-        .from('admin_messages')
-        .select('*')
-        .eq('gym_id', gymId)
-        .eq('is_cleared_by_owner', false)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('support_tickets')
-        .select('*')
-        .eq('gym_id', gymId)
-        .eq('is_cleared_by_owner', false)
-        .order('created_at', { ascending: false }),
-    ])
-
-    if (messagesResult.data) setMessages(messagesResult.data)
-    if (ticketsResult.data) setTickets(ticketsResult.data)
-  }, [gymId, supabase])
+    const res = await fetch('/api/support/sync')
+    const json = await res.json()
+    if (res.ok && json.data) {
+      if (json.data.messages) setMessages(json.data.messages)
+      if (json.data.tickets) setTickets(json.data.tickets)
+    }
+  }, [gymId])
 
   const { isConnected: rowChangesConnected } = useRealtimeChannel({
     channelName: `owner_support_${gymId}`,

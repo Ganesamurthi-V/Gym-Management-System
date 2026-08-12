@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { MessageCircle, Check, IndianRupee, AlertCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
@@ -33,7 +32,6 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   const [searchQuery, setSearchQuery] = useState('')
   const [collecting, setCollecting] = useState(false)
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
 
   const filteredMembers = useMemo(() => {
     if (!searchQuery) return members
@@ -62,29 +60,21 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
 
     setCollecting(true)
 
-    const { error } = await supabase
-      .from('members')
-      .update({ pending_amount: newPending })
-      .eq('id', member.id)
-
-    if (error) {
-      alert('Failed to record payment. Please try again.')
-      setCollecting(false)
-    } else {
-      // Record the due payment
-      await supabase.from('due_payments').insert({
-        gym_id: gymId,
-        member_id: member.id,
-        amount: collect,
-        payment_mode: payMode
+    try {
+      const res = await fetch('/api/dues/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          member_id: member.id,
+          amount: collect,
+          payment_mode: payMode,
+        }),
       })
-
-      const remaining = member.pending_amount - collect
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error?.message || 'Failed to record payment')
 
       // If dues are fully cleared, stop any active due-reminder cycle.
-      // (No "payment received" template is sent — payment_due_reminder is a
-      // "you still owe" message and would be misleading here.)
-      if (remaining === 0 && member.phone?.replace(/\D/g, '').length >= 10) {
+      if (newPending === 0 && member.phone?.replace(/\D/g, '').length >= 10) {
         fetch('/api/whatsapp/automation/due-cleared', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -97,14 +87,6 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
         }).catch(() => {})
       }
 
-      const { invalidateMembersCache } = await import('../members/actions')
-      await invalidateMembersCache(gymId)
-
-      // Also invalidate payments cache
-      const { deleteCache } = await import('@/lib/cache')
-      await deleteCache(`gym:${gymId}:payments_page:12mo`)
-      await deleteCache(`gym:${gymId}:payments_page:allTime`)
-
       setMembers(prev => prev
         .map(m => m.id === member.id ? { ...m, pending_amount: newPending } : m)
         .filter(m => m.pending_amount > 0)
@@ -114,6 +96,9 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
       setPayMode('cash')
       setCollecting(false)
       router.refresh()
+    } catch (err: any) {
+      alert(err.message || 'Failed to record payment. Please try again.')
+      setCollecting(false)
     }
   }
 

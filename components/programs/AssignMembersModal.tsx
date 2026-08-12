@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, Loader2, Search, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import { createClient } from '@/lib/supabase/client'
 
 interface MemberRow {
   id: string
@@ -36,20 +35,16 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
     async function load() {
       setLoading(true)
       try {
-        const supabase = createClient()
-
-        const { data: memberData } = await supabase
-          .from('members')
-          .select('id, name, phone, member_number')
-          .order('name', { ascending: true })
-          .limit(500)
+        // Fetch all members via API (limit 500 for the modal)
+        const membersRes = await fetch('/api/members?limit=500&offset=0')
+        const membersJson = await membersRes.json()
 
         const res = await fetch(`/api/programs/assignments?programId=${programId}`)
         const json = await res.json()
 
         if (cancelled) return
 
-        setMembers(memberData ?? [])
+        setMembers(membersJson?.data ?? [])
         setAssignedIds(new Set(json?.memberIds ?? []))
       } catch {
         toast.error('Failed to load members')

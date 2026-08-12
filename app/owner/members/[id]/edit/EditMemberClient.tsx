@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { ArrowLeft, Check, Edit2, AlertTriangle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import type { Member } from '@/types'
 import { formatMemberId, parseMemberId } from '@/types'
 
@@ -17,7 +16,6 @@ interface Props {
 
 export function EditMemberClient({ member }: Props) {
   const router = useRouter()
-  const supabase = createClient()
 
   const [step, setStep] = useState<Step>('form')
   const [loading, setLoading] = useState(false)
@@ -45,12 +43,9 @@ export function EditMemberClient({ member }: Props) {
     setCheckingNum(true)
     setNumError('')
     const timer = setTimeout(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: gym } = await supabase.from('gyms').select('id').eq('owner_id', user.id).single()
-      if (!gym) return
-      const { data } = await supabase.from('members').select('id').eq('gym_id', gym.id).eq('member_number', num).single()
-      setNumError(data ? `${formatMemberId(num)} is already taken` : '')
+      const res = await fetch(`/api/members/check-number?number=${num}`)
+      const json = await res.json()
+      setNumError(json.data?.exists ? `${formatMemberId(num)} is already taken` : '')
       setCheckingNum(false)
     }, 500)
     return () => clearTimeout(timer)
@@ -86,9 +81,10 @@ export function EditMemberClient({ member }: Props) {
     setLoading(true)
     setError('')
     try {
-      const { error: err } = await supabase
-        .from('members')
-        .update({
+      const res = await fetch(`/api/members/${member.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           member_number: parseInt(form.member_number),
           name: form.name.trim(),
           phone: form.phone.trim(),
@@ -96,14 +92,11 @@ export function EditMemberClient({ member }: Props) {
           age: form.age ? parseInt(form.age) : null,
           date_of_birth: form.date_of_birth || null,
           area: form.area.trim() || null,
-        })
-        .eq('id', member.id)
-      if (err) throw err
-      const { invalidateMembersCache } = await import('../../actions')
-      const cacheResult = await invalidateMembersCache(member.gym_id)
-      if (!cacheResult.success) {
-        console.warn('Cache invalidation failed after member update:', cacheResult.error)
-      }
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error?.message || 'Failed to save')
+      
       toast.success('Member details updated successfully!')
       router.push(`/owner/members/${member.id}`)
       router.refresh()

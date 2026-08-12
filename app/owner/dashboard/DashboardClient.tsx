@@ -2,14 +2,12 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, TrendingUp, FileText, IndianRupee, CalendarCheck, ClipboardList } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppLink, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyReportPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
-import { format } from 'date-fns'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 
 interface Props {
@@ -28,43 +26,20 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   // Auto-refresh dashboard when memberships or attendance changes.
   useGymRealtime(gymId, ['members', 'memberships', 'attendance'])
 
-  // Memoize Supabase client to prevent recreation on every render
-  const supabase = useMemo(() => createClient(), [])
-
   useEffect(() => {
     if (expiringFilter === 'month' && monthMembers === null && !fetchingMonth) {
       setFetchingMonth(true)
       const fetchMonth = async () => {
-        const todayStr = format(new Date(), 'yyyy-MM-dd')
-
-        // Issue 4 fix: Added server-side date filter — only fetch memberships expiring THIS month.
-        // Previously fetched ALL memberships for the gym (full table scan), which could be
-        // thousands of rows for older gyms. Now filtered at the DB level.
-        const currentMonth = todayStr.slice(0, 7) // e.g. "2026-06"
-        const monthStart = `${currentMonth}-01`
-        const monthEnd = `${currentMonth}-31` // Postgres clamps to last valid day
-
-        const { data: membershipsData } = await supabase
-          .from('memberships')
-          .select('member_id, end_date, member:members(id, name, phone, member_number)')
-          .eq('gym_id', gymId)
-          .gte('end_date', monthStart)
-          .lte('end_date', monthEnd)
-          .order('end_date', { ascending: true })
-
-        const memberMap = new Map<string, any>()
-        for (const m of membershipsData ?? []) {
-          if (!m.member || memberMap.has(m.member_id)) continue
-          const daysRemaining = Math.ceil((new Date(m.end_date).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24))
-          memberMap.set(m.member_id, { ...(m.member as any), latest_membership: m, days_remaining: daysRemaining })
+        const res = await fetch('/api/dashboard/expiring')
+        const json = await res.json()
+        if (res.ok && json.data) {
+          setMonthMembers(json.data)
         }
-
-        setMonthMembers(Array.from(memberMap.values()).sort((a, b) => a.days_remaining - b.days_remaining))
         setFetchingMonth(false)
       }
       fetchMonth()
     }
-  }, [expiringFilter, gymId, monthMembers, fetchingMonth, supabase])
+  }, [expiringFilter, gymId, monthMembers, fetchingMonth])
 
   // Feature 1: Bulk WhatsApp Reminders — opens a single link with the first member,
   // since browsers block multiple window.open calls from a single user gesture.
@@ -81,42 +56,12 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
   async function handleDailyPDF() {
     setGeneratingPDF(true)
     try {
-      const today = format(new Date(), 'yyyy-MM-dd')
-      
-      // Use date-only filters for consistent results regardless of client timezone
-      const [membershipsRes, newMembersRes] = await Promise.all([
-        supabase
-          .from('memberships')
-          .select('amount, admission_fee, payment_mode, plan, category, member:members(name, member_number)')
-          .eq('gym_id', gymId)
-          .eq('start_date', today),
-        supabase
-          .from('members')
-          .select('name, member_number, phone, area, gender')
-          .eq('gym_id', gymId)
-          .gte('created_at', `${today}T00:00:00.000Z`)
-          .lt('created_at', `${today}T23:59:59.999Z`)
-      ])
+      const res = await fetch('/api/dashboard/daily-report')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error?.message || 'Failed to fetch report data')
 
-      const payments = (membershipsRes.data ?? []).map((p: any) => ({
-        memberName: p.member?.name ?? 'Unknown',
-        memberNumber: p.member?.member_number ?? 0,
-        plan: p.plan,
-        category: p.category,
-        amount: p.amount,
-        admission_fee: p.admission_fee ?? 0,
-        payment_mode: p.payment_mode,
-      }))
-
-      const newMembers = (newMembersRes.data ?? []).map((m: any) => ({
-        name: m.name,
-        memberNumber: m.member_number,
-        phone: m.phone,
-        area: m.area || '-',
-        gender: m.gender || '-'
-      }))
-
-      generateDailyReportPDF({ gymName, date: today, payments, newMembers })
+      const { payments, newMembers, date } = json.data
+      generateDailyReportPDF({ gymName, date, payments, newMembers })
     } catch (err) {
       console.error('PDF generation failed:', err)
     } finally {

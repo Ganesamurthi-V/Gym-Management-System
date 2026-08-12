@@ -39,6 +39,7 @@
     "react-dom": "^18",
     "react-hot-toast": "^2.6.0",
     "recharts": "^3.8.1",
+    "server-only": "^0.0.1",
     "serwist": "9.5.12",
     "tailwind-merge": "^2.6.1",
     "use-places-autocomplete": "^4.0.1",

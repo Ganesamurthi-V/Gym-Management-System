@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin, adminServerError } from '@/lib/api/adminAuth'
 
 export const dynamic = 'force-dynamic'
+
+const ROUTE = 'POST /api/gyms/reset-password'
 
 /**
  * Validates password strength server-side.
@@ -18,15 +21,10 @@ function validatePasswordStrength(password: string): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin(req, ROUTE)
+  if (!auth.ok) return auth.response
+
   try {
-    const authHeader = req.headers.get('authorization')
-    const token = authHeader?.split(' ')[1]
-    const validPassword = process.env.ADMIN_PASSWORD
-
-    if (!token || token !== validPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     let body: { userId?: string; password?: string }
     try {
       body = await req.json()
@@ -50,10 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: strengthError }, { status: 422 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = createAdminClient()
 
     const { error } = await supabase.auth.admin.updateUserById(
       userId,
@@ -62,8 +57,11 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json({ success: true })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message ?? 'Internal error' }, { status: 500 })
+    return NextResponse.json(
+      { success: true },
+      { headers: { 'Cache-Control': 'private, no-store' } }
+    )
+  } catch (err: unknown) {
+    return adminServerError(ROUTE, err)
   }
 }

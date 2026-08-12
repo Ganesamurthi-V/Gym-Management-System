@@ -64,6 +64,36 @@ export const SECURITY_HEADERS: Record<string, string> = {
   'X-Robots-Tag': 'noindex, nofollow',
 }
 
+// ─── Proxy shared secret (optional hardening) ─────────────────────────────────
+/**
+ * Header carrying the optional shared secret that proves a request to
+ * `/api/graph/*` came from our own server.
+ *
+ * The proxy is a transparent relay to graph.facebook.com: it holds no Meta
+ * credential of its own and simply forwards the caller's Authorization header.
+ * That makes it useful only to someone who already has a valid Meta token — but
+ * it still let anyone route Meta traffic through our domain and consume our
+ * rate-limit budget.
+ *
+ * Enforcement is opt-in so that enabling it cannot break live WhatsApp sending:
+ *   - `GRAPH_PROXY_SECRET` unset  → proxy relies on the endpoint allowlist,
+ *                                   per-IP rate limit and browser rejection.
+ *   - `GRAPH_PROXY_SECRET` set    → proxy REQUIRES the header, and the outbound
+ *                                   WhatsApp service attaches it automatically.
+ *
+ * The caller (`services/whatsapp/graph.ts`) and the proxy route run in the SAME
+ * deployment and read the SAME env var, so setting it turns enforcement on for
+ * both sides at once — there is no window where one side sends it and the other
+ * does not.
+ */
+export const GRAPH_PROXY_SECRET_HEADER = 'x-graph-proxy-secret'
+
+/** The configured proxy secret, or null when the extra layer is disabled. */
+export function getGraphProxySecret(): string | null {
+  const secret = process.env.GRAPH_PROXY_SECRET?.trim()
+  return secret && secret.length > 0 ? secret : null
+}
+
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
 export function unauthorizedResponse(): Response {

@@ -10,7 +10,6 @@ import {
   Filter, CheckSquare, Square, BookOpen, X, CheckCircle,
   Trash2,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import type { ImportedRow } from "../page";
 
 interface ReviewRow extends ImportedRow {
@@ -51,10 +50,8 @@ const methodIcon = (m?: string) => {
 
 export default function ImportReviewPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [rows, setRows] = useState<ReviewRow[]>([]);
-  const [gymId, setGymId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("pending");
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
@@ -105,14 +102,6 @@ export default function ImportReviewPage() {
 
     const cluster = sessionStorage.getItem("import_cluster");
     if (cluster) setClusterInfo(JSON.parse(cluster));
-
-    async function loadGym() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: gym } = await supabase.from("gyms").select("id").eq("owner_id", user.id).single();
-      if (gym) setGymId(gym.id);
-    }
-    loadGym();
   }, []);
 
   const filtered = useMemo(() => {
@@ -260,10 +249,12 @@ export default function ImportReviewPage() {
     const aliasRows = rows.filter(r => r._save_alias && r._area_override && r._original_area);
     for (const r of aliasRows) {
       try {
+        // gym_id is intentionally NOT sent — the route must resolve the gym
+        // from the authenticated session rather than trust a client-supplied id.
         await fetch("/api/geo/save-alias", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ raw_input: r._original_area, canonical_name: r._area_override ?? r.area, gym_id: gymId }),
+          body: JSON.stringify({ raw_input: r._original_area, canonical_name: r._area_override ?? r.area }),
         });
       } catch { /* best-effort */ }
     }

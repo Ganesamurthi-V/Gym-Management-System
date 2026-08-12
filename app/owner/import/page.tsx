@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { clearImportStorage } from "@/lib/import/storage";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -455,7 +455,6 @@ export default function ImportPage() {
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [tempFile, setTempFile] = useState<File | null>(null);
 
-  const supabase = createClient();
   const router = useRouter();
 
   function proceedWithRows(pipelineRows: ImportedRow[], hasIdCol: boolean) {
@@ -481,7 +480,6 @@ export default function ImportPage() {
     });
 
     const { rows: pipelineRows } = await runImportPipeline(mappedRows, {
-      supabase,
       onStage: stage => { if (stage === "ids") setParseStage(5); },
     });
 
@@ -497,11 +495,8 @@ export default function ImportPage() {
 
     setFileName(file.name);
     if (!userMapping) {
-      sessionStorage.removeItem("import_rows");
-      sessionStorage.removeItem("import_rows_original");
-      sessionStorage.removeItem("import_review_state");
-      sessionStorage.removeItem("import_cluster");
-      sessionStorage.removeItem("import_has_id_col");
+      // Starting a fresh file — drop any PII left over from a previous attempt.
+      clearImportStorage();
     }
 
     setParsing(true);
@@ -690,7 +685,6 @@ export default function ImportPage() {
 
     setParseStage(4);
     const { rows: pipelineRows } = await runImportPipeline(parsed, {
-      supabase,
       onStage: stage => { if (stage === "ids") setParseStage(5); },
     });
 

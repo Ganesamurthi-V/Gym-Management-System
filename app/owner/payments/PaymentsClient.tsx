@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react'
 import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
 import { getAllTimePayments } from './actions'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
@@ -156,8 +155,6 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
     mode: 'all' as ModeFilter
   })
   
-  const supabase = useMemo(() => createClient(), [])
-
   const activePayments = fullPayments ?? payments
   const activeSales = fullSales ?? productSales
   const activeDuePayments = fullDuePayments ?? duePayments
@@ -230,7 +227,11 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
 
   async function markPaid(member: PendingMember) {
     setMarkingId(member.id)
-    await supabase.from('members').update({ pending_amount: 0 }).eq('id', member.id)
+    await fetch('/api/dues/mark-paid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: member.id }),
+    })
     setLocalPending(prev => prev.filter(m => m.id !== member.id))
     setMarkingId(null)
   }

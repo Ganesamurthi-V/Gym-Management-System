@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin, adminServerError } from '@/lib/api/adminAuth'
+import { isValidUUID } from '@/lib/api/withAuth'
 
 export const dynamic = 'force-dynamic'
 
+const ROUTE = 'GET /api/gyms/[id]'
+
 export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req, ROUTE)
+  if (!auth.ok) return auth.response
+
   try {
-    const params = await props.params;
-    const authHeader = req.headers.get('authorization')
-    const token = authHeader?.split(' ')[1]
-    const validPassword = process.env.ADMIN_PASSWORD
-    
-    if (token !== validPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const params = await props.params
+
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = createAdminClient()
 
     const { data: gym, error } = await supabase
       .from('gyms')
@@ -46,8 +47,11 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       is_active: gym.is_active ?? true
     }
 
-    return NextResponse.json({ gym: responseGym, owner })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json(
+      { gym: responseGym, owner },
+      { headers: { 'Cache-Control': 'private, no-store' } }
+    )
+  } catch (err: unknown) {
+    return adminServerError(ROUTE, err)
   }
 }

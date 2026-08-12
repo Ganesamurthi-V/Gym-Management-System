@@ -217,29 +217,64 @@ export default function SetupPasswordPage() {
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0
   const canSubmit      = allCriteriaMet && passwordsMatch && !loading && !redirecting
 
-  // ── On mount: exchange URL hash tokens via our own server ────────────────
+  // ── On mount: exchange verification tokens via our own server ──────────────
   //
-  // The confirmation email lands here as:
-  //   /auth/setup-password#access_token=…&refresh_token=…
+  // Supabase sends two possible link formats depending on the project's auth
+  // configuration:
   //
-  // A URL *fragment* is never sent to the server in the initial request, so we
-  // parse it client-side and hand the tokens to /api/auth/set-session, which
-  // validates them with Supabase and writes HttpOnly session cookies. Then we
-  // confirm the session exists + email is verified via /api/auth/session.
+  //   PKCE (default for newer projects):
+  //     /auth/setup-password?code=<authorization_code>
+  //     → exchanged via POST /api/auth/exchange-code
   //
-  // This eliminates the browser Supabase client entirely — no more direct
-  // requests to *.supabase.co from this page.
+  //   Implicit (legacy / fragment-based):
+  //     /auth/setup-password#access_token=…&refresh_token=…
+  //     → exchanged via POST /api/auth/set-session
+  //
+  // Both result in HttpOnly session cookies being written by the server.
+  // We then verify the session exists + email is confirmed before showing the
+  // password form.
   useEffect(() => {
     setMounted(true)
 
     const timer = setTimeout(async () => {
+      const queryParams = new URLSearchParams(window.location.search)
+      const code = queryParams.get('code')
+
       const hash = window.location.hash ?? ''
       const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
       const accessToken = hashParams.get('access_token')
       const refreshToken = hashParams.get('refresh_token')
 
-      // If there are tokens in the fragment, exchange them for a cookie session.
-      if (accessToken && refreshToken) {
+      // ── PKCE flow: exchange the ?code= parameter ────────────────────────
+      if (code) {
+        const codeRes = await fetch('/api/auth/exchange-code', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({ code }),
+        })
+
+        if (!codeRes.ok) {
+          const errJson = await codeRes.json().catch(() => null)
+          setTokenError(
+            errJson?.error === 'code_expired'
+              ? 'This verification link has expired or was already used. This commonly happens when email security software previews the link before you click it. Click "Resend" below to get a fresh link.'
+              : 'This confirmation link is invalid. Please request a new one from the sign-up page.'
+          )
+          setSessionChecked(true)
+          return
+        }
+
+        // Clear the code from the URL so it doesn't linger in browser history
+        if (window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+      }
+      // ── Implicit flow: exchange #access_token + #refresh_token ──────────
+      else if (accessToken && refreshToken) {
         const setRes = await fetch('/api/auth/set-session', {
           method: 'POST',
           credentials: 'include',
@@ -251,7 +286,6 @@ export default function SetupPasswordPage() {
         })
 
         if (!setRes.ok) {
-          const errJson = await setRes.json().catch(() => null)
           const isExpired = setRes.status === 401
           setTokenError(
             isExpired
@@ -264,7 +298,7 @@ export default function SetupPasswordPage() {
 
         // Clear the fragment from the URL so tokens don't linger in history.
         if (window.history.replaceState) {
-          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+          window.history.replaceState(null, '', window.location.pathname)
         }
       }
 

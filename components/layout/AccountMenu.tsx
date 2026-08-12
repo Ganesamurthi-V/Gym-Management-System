@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { fetchSession, signOutViaApi } from '@/lib/auth/client-auth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, User, Settings, Lock, Bell, ChevronRight } from 'lucide-react'
@@ -25,7 +25,6 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
   const currentUserId = useRef<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     async function fetchForUser(userId: string, userEmail: string) {
@@ -46,40 +45,50 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
       }
     }
 
-    // Re-fetch whenever auth state changes (login / logout / account switch)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event: string, session: { user: { id: string; email?: string } } | null) => {
-        if (session?.user) {
-          if (currentUserId.current === session.user.id) return
-          currentUserId.current = session.user.id
+    // Resolve who is signed in from the session cookie, server-side.
+    //
+    // This replaced `supabase.auth.onAuthStateChange(...)`. That subscription
+    // existed to seed the menu on mount — it fires immediately with the current
+    // session — and to react to login/logout. Both sign-in and sign-out in this
+    // app perform a full navigation (`window.location.href` / `router.replace`),
+    // so the component remounts and this effect re-runs. The one-shot read is
+    // therefore equivalent, minus the direct connection to Supabase.
+    let cancelled = false
 
-          // Use server-rendered props only when we have all of them AND the
-          // session belongs to the same user the server rendered for.
-          // If initialGymId or initialGymName is missing (e.g. mid-onboarding),
-          // fall through to fetchForUser so we don't silently show stale/empty state.
-          const isSameUser = session.user.email === initialEmail
-          const haveAllProps = initialGymId && initialGymName
+    fetchSession().then(session => {
+      if (cancelled) return
 
-          if (isSameUser && haveAllProps) {
-            setEmail(initialEmail ?? null)
-            setGymId(initialGymId ?? null)
-            setGymName(initialGymName ?? null)
-            setUnreadCount(initialUnreadCount ?? 0)
-          } else {
-            fetchForUser(session.user.id, session.user.email ?? '')
-          }
-        } else {
-          currentUserId.current = null
-          setEmail(null)
-          setGymName(null)
-          setGymId(null)
-          setUnreadCount(0)
-        }
+      if (!session.authenticated || !session.userId) {
+        currentUserId.current = null
+        setEmail(null)
+        setGymName(null)
+        setGymId(null)
+        setUnreadCount(0)
+        return
       }
-    )
 
-    return () => subscription.unsubscribe()
-  }, [supabase, initialEmail, initialGymId, initialGymName, initialUnreadCount])
+      if (currentUserId.current === session.userId) return
+      currentUserId.current = session.userId
+
+      // Use server-rendered props only when we have all of them AND the
+      // session belongs to the same user the server rendered for.
+      // If initialGymId or initialGymName is missing (e.g. mid-onboarding),
+      // fall through to fetchForUser so we don't silently show stale/empty state.
+      const isSameUser = session.email === initialEmail
+      const haveAllProps = initialGymId && initialGymName
+
+      if (isSameUser && haveAllProps) {
+        setEmail(initialEmail ?? null)
+        setGymId(initialGymId ?? null)
+        setGymName(initialGymName ?? null)
+        setUnreadCount(initialUnreadCount ?? 0)
+      } else {
+        fetchForUser(session.userId, session.email ?? '')
+      }
+    })
+
+    return () => { cancelled = true }
+  }, [initialEmail, initialGymId, initialGymName, initialUnreadCount])
 
   // Sync prop changes from ShellGuard (for instant name updates)
   useEffect(() => {
@@ -160,7 +169,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
   }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await signOutViaApi()
     router.push('/auth/login')
   }
 

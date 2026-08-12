@@ -60,7 +60,7 @@ async function invalidateMemberAppCache(gymId: string) {
  * because there was nothing to verify against.
  */
 async function issueInvitation(gymId: string, memberId: string): Promise<ActionResult> {
-  const serviceUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)
+  const serviceUrl = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceUrl || !serviceKey) {
     return { success: false, message: 'Server not configured for invitations (missing service key)' }
@@ -205,7 +205,7 @@ export async function memberRowAction(
 
     case 'disable_portal': {
       // Delete all portal data: activity logs, auth user, and reset member portal columns
-      const serviceUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)
+      const serviceUrl = process.env.SUPABASE_URL
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
       // Fetch member's auth_user_id before wiping

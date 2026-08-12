@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
 import { fetchSession, signOutViaApi, updatePasswordViaApi } from '@/lib/auth/client-auth'
 import {
   Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock, ArrowLeft,
@@ -120,7 +119,6 @@ function RedirectingScreen() {
 
 export default function SetupPasswordPage() {
   const router  = useRouter()
-  const supabase = createClient()
 
   // Session verification state
   const [sessionChecked, setSessionChecked] = useState(false)
@@ -143,29 +141,58 @@ export default function SetupPasswordPage() {
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0
   const canSubmit      = allCriteriaMet && passwordsMatch && !loading && !redirecting
 
-  // ── On mount: exchange URL hash token then verify session ─────────────────
+  // ── On mount: exchange URL hash tokens via our own server ────────────────
   //
-  // NOTE — this is the one place the Supabase browser client is still required.
-  // The confirmation email lands here as
+  // The confirmation email lands here as:
   //   /auth/setup-password#access_token=…&refresh_token=…
-  // and a URL *fragment* is never transmitted to the server, so no API route can
-  // see those tokens. `@supabase/ssr`'s browser client reads the fragment and
-  // writes the session into cookies, which is what makes the server endpoints
-  // below (update-password, session, signout) work at all.
   //
-  // Eliminating this would mean pointing `emailRedirectTo` at a server route
-  // that receives `?code=` or `?token_hash=` instead — a change to the Supabase
-  // email template, which also invalidates links already sitting in inboxes.
-  // Tracked as follow-up; see docs/GymFlow_API_Gateway_Migration.md.
+  // A URL *fragment* is never sent to the server in the initial request, so we
+  // parse it client-side and hand the tokens to /api/auth/set-session, which
+  // validates them with Supabase and writes HttpOnly session cookies. Then we
+  // confirm the session exists + email is verified via /api/auth/session.
+  //
+  // This eliminates the browser Supabase client entirely — no more direct
+  // requests to *.supabase.co from this page.
   useEffect(() => {
     setMounted(true)
 
-    // Wait a short tick to let that fragment exchange complete, then read the
-    // session from the client that performed it.
     const timer = setTimeout(async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      const hash = window.location.hash ?? ''
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
 
-      if (sessionError || !session) {
+      // If there are tokens in the fragment, exchange them for a cookie session.
+      if (accessToken && refreshToken) {
+        const setRes = await fetch('/api/auth/set-session', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+        })
+
+        if (!setRes.ok) {
+          setTokenError(
+            'This confirmation link is invalid or has already been used. Please request a new one from the sign-up page.'
+          )
+          setSessionChecked(true)
+          return
+        }
+
+        // Clear the fragment from the URL so tokens don't linger in history.
+        if (window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        }
+      }
+
+      // Verify the session (may come from the fragment exchange above, or from
+      // a pre-existing cookie if the user refreshes the page after exchange).
+      const session = await fetchSession()
+
+      if (!session.authenticated) {
         setTokenError(
           'This confirmation link is invalid or has already been used. Please request a new one from the sign-up page.'
         )
@@ -173,7 +200,7 @@ export default function SetupPasswordPage() {
         return
       }
 
-      if (!session.user.email_confirmed_at) {
+      if (!session.emailConfirmedAt) {
         setTokenError(
           'Your email address has not been confirmed yet. Please click the verification link in your inbox.'
         )
@@ -184,7 +211,7 @@ export default function SetupPasswordPage() {
       setSessionValid(true)
       setSessionChecked(true)
       setTimeout(() => passwordRef.current?.focus(), 100)
-    }, 400)
+    }, 200) // slightly shorter delay since we're not waiting for SDK initialization
 
     return () => clearTimeout(timer)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

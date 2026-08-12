@@ -6,6 +6,8 @@ import PasswordResetForm from './PasswordResetForm'
 import GymStatusToggle from './GymStatusToggle'
 import SubscriptionPanel from './SubscriptionPanel'
 
+export const dynamic = 'force-dynamic'
+
 export default async function GymDetailPage({ params }: { params: Promise<{ gymId: string }> }) {
   const { gymId } = await params
   const supabase = createAdminClient()

@@ -3,9 +3,12 @@ import { createClient } from '@supabase/supabase-js'
 /**
  * Supabase admin client using the SERVICE ROLE key.
  * This bypasses all RLS policies — use ONLY in server-side code.
+ *
+ * Reads `SUPABASE_URL` (preferred) or `NEXT_PUBLIC_SUPABASE_URL` (fallback for
+ * deployments that haven't yet migrated to private vars).
  */
 export function createAdminClient() {
-  const url = process.env.SUPABASE_URL
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!url || !serviceKey) {

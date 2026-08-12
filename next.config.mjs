@@ -31,7 +31,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // `blob:` is required by the member membership-card QR renderer.
       "img-src 'self' blob: data: https:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io",
+      "connect-src 'self' https://*.supabase.co https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io",
       "font-src 'self' data: https://fonts.gstatic.com",
       "frame-ancestors 'none'",
       "worker-src 'self' blob:",

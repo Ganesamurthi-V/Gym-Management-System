@@ -39,6 +39,11 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => makeFakeClient(),
 }))
 
+// The automation module checks SUPABASE_URL/SERVICE_ROLE_KEY before calling
+// createClient (which is mocked above). Set dummy values so the guard passes.
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321'
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-role-key'
+
 vi.mock('@/lib/whatsapp/queue', async (importOriginal) => {
   const actual = await importOriginal<any>()
   return {

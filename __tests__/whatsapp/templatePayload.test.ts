@@ -141,10 +141,10 @@ describe('buildTemplatePayload — payment_due_reminder', () => {
 })
 
 describe('buildTemplatePayload — _birthday_wishes', () => {
-  it('maps member name, gym name in order and includes an image header', () => {
+  it('maps gym name, member name in order and includes an image header', () => {
     const p = buildTemplatePayload('_birthday_wishes', base) as any
-    // Approved body order is [memberName, gymName] → {{1}}, {{2}}.
-    expect(bodyTexts(p)).toEqual(['Arjun', 'Iron Temple'])
+    // Approved body order is [gymName, memberName] → {{1}}, {{2}}.
+    expect(bodyTexts(p)).toEqual(['Iron Temple', 'Arjun'])
 
     const header = p.template.components.find((c: any) => c.type === 'header')
     expect(header.parameters[0].type).toBe('image')

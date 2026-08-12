@@ -70,7 +70,6 @@ function FeatureCard({ icon, title, description, delay }: { icon: React.ReactNod
 const RESEND_COOLDOWN = 60
 
 function EmailSentScreen({ email }: { email: string }) {
-  const supabase = createClient()
   const [countdown, setCountdown] = useState(RESEND_COOLDOWN)
   const [resending, setResending] = useState(false)
   const [resendStatus, setResendStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -94,33 +93,36 @@ function EmailSentScreen({ email }: { email: string }) {
     setResending(true)
     setResendStatus('idle')
 
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`,
-      },
-    })
+    try {
+      const res = await fetch('/api/auth/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, type: 'signup' }),
+      })
 
-    setResending(false)
+      setResending(false)
 
-    if (error) {
+      if (!res.ok) {
+        setResendStatus('error')
+        setTimeout(() => setResendStatus('idle'), 4000)
+      } else {
+        setResendStatus('success')
+        setCountdown(RESEND_COOLDOWN)
+        clearInterval(intervalRef.current!)
+        intervalRef.current = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(intervalRef.current!)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+        setTimeout(() => setResendStatus('idle'), 4000)
+      }
+    } catch {
+      setResending(false)
       setResendStatus('error')
-      setTimeout(() => setResendStatus('idle'), 4000)
-    } else {
-      setResendStatus('success')
-      // Reset countdown
-      setCountdown(RESEND_COOLDOWN)
-      clearInterval(intervalRef.current!)
-      intervalRef.current = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current!)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
       setTimeout(() => setResendStatus('idle'), 4000)
     }
   }
@@ -193,7 +195,7 @@ function EmailSentScreen({ email }: { email: string }) {
       {/* Back to login */}
       <button
         onClick={async () => {
-          await supabase.auth.signOut()
+          await createClient().auth.signOut()
           window.location.href = '/auth/login'
         }}
         className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand-600 font-medium transition-colors"
@@ -259,48 +261,36 @@ export default function CreateAccountPage() {
     if (!canSubmit || isSubmitting.current)  return
 
     isSubmitting.current = true
-    const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/setup-password`
-
     setLoading(true)
     setError('')
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password: crypto.randomUUID(),
-      options: {
-        data: {
-          full_name: fullName.trim(),
-          name: fullName.trim(),
-          mobile_number: mobileNumber,
-        },
-        emailRedirectTo: redirectUrl,
-      },
-    })
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          fullName: fullName.trim(),
+          mobileNumber,
+        }),
+      })
+      const json = await res.json()
 
-    // Detect if Supabase returned a "fake" success due to Email Enumeration Protection.
-    // If the user already exists, Supabase returns error: null but an empty identities array.
-    if (!signUpError && signUpData?.user?.identities?.length === 0) {
-      setError('An account with this email already exists. Try signing in instead.')
-      setLoading(false)
-      isSubmitting.current = false
-      return
-    }
-
-    if (signUpError) {
-      // Surface a friendly message for common cases (fallback for when enumeration protection is off)
-      if (signUpError.message.toLowerCase().includes('already registered')) {
-        setError('An account with this email already exists. Try signing in instead.')
-      } else {
-        setError(signUpError.message)
+      if (!res.ok) {
+        setError(json.error || 'Something went wrong. Please try again.')
+        setLoading(false)
+        isSubmitting.current = false
+        return
       }
+
+      setLoading(false)
+      setEmailSent(true)
+      isSubmitting.current = false
+    } catch {
+      setError('Network error. Please check your connection and try again.')
       setLoading(false)
       isSubmitting.current = false
-      return
     }
-
-    setLoading(false)
-    setEmailSent(true)
-    isSubmitting.current = false
   }
 
   return (

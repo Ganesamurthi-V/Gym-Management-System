@@ -280,29 +280,6 @@ export default function ImportEditPage() {
         body: JSON.stringify({ memberIds }),
       }).catch(() => {});
 
-      // Auto-learn resolved localities
-      try {
-        const aliasesToSave = new Map<string, string>();
-        toInsert.forEach(row => {
-          // If the area was modified from its original raw value, remember it
-          if (row._original_area && row.area && row._original_area !== row.area) {
-            aliasesToSave.set(row._original_area, row.area);
-          }
-        });
-
-        for (const [raw_input, canonical_name] of aliasesToSave.entries()) {
-          // gym_id is intentionally NOT sent — the route must resolve the gym
-          // from the authenticated session rather than trust a client value.
-          await fetch("/api/geo/save-alias", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ raw_input, canonical_name })
-          }).catch(() => {});
-        }
-      } catch (e) {
-        console.error("Failed to auto-learn aliases", e);
-      }
-
       // Clear EVERY wizard key, not just the two row copies. The previous code
       // left `import_review_state` behind — a full third copy of every imported
       // member's name, phone, age and DOB, readable for the rest of the session.

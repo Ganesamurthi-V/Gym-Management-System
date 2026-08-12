@@ -15,8 +15,8 @@ export async function GET() {
     
     // We use the supabase-js client directly with the anon key just to check connectivity.
     // No RLS bypass required for a ping.
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)
+    const supabaseKey = (process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
     
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ status: 'unhealthy', error: 'Missing environment variables' }, { status: 500 })

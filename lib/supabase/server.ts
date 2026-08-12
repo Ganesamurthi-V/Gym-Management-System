@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { cache } from 'react'
+import { getSupabaseUrl, getSupabaseAnonKey } from './env'
 
 /**
  * Request-scoped Supabase server client.
@@ -17,12 +18,9 @@ import { cache } from 'react'
 export const createClient = cache(async () => {
   const cookieStore = await cookies()
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase environment variables are not set.')
-  }
+  // Private vars — never inlined into the browser bundle. See lib/supabase/env.ts.
+  const supabaseUrl = getSupabaseUrl()
+  const supabaseAnonKey = getSupabaseAnonKey()
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {

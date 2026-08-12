@@ -284,6 +284,8 @@ export default function CreateAccountPage() {
 
       setLoading(false)
       setEmailSent(true)
+      // Persist email so setup-password can use it for resend if the link expires
+      try { sessionStorage.setItem('gymflow_signup_email', email) } catch { /* quota */ }
       isSubmitting.current = false
     } catch {
       setError('Network error. Please check your connection and try again.')

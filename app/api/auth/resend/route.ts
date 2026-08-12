@@ -22,7 +22,14 @@ export const dynamic = 'force-dynamic'
  *
  * Server-side confirmation email resend so the browser never calls supabase.co.
  *
- * Body: { email, type?: 'signup' }
+ * Body: { email?, type?: 'signup' }
+ *
+ * The email can come from:
+ *   1. The request body (from the create-account page that knows the email)
+ *   2. The current session's user email (when a partially-valid session exists,
+ *      e.g. expired access token but the cookie still holds the user identity)
+ *
+ * If neither is available, returns 400.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +50,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
-    const { email, type = 'signup' } = body
+    let { email, type = 'signup' } = body
+
+    // If no email was provided, try to get it from the current session.
+    // This handles the case where the user is on /auth/setup-password with an
+    // expired token — the session cookie might still hold their identity even
+    // though the access token expired.
+    if (!email) {
+      try {
+        const supabaseForSession = await createClient()
+        const { data } = await supabaseForSession.auth.getUser()
+        if (data?.user?.email) {
+          email = data.user.email
+        }
+      } catch { /* session lookup failed — email is still required */ }
+    }
 
     if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })

@@ -71,25 +71,101 @@ function StrengthBar({ password }: { password: string }) {
 // ─── Token Error Screen ───────────────────────────────────────────────────────
 
 function TokenErrorScreen({ message }: { message: string }) {
+  const [resending, setResending] = useState(false)
+  const [resendResult, setResendResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [cooldown, setCooldown] = useState(0)
+
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
+
+  async function handleResend() {
+    setResending(true)
+    setResendResult(null)
+    try {
+      // Try to recover the email from sessionStorage (set during signup)
+      let email: string | undefined
+      try { email = sessionStorage.getItem('gymflow_signup_email') ?? undefined } catch { /* no access */ }
+
+      const res = await fetch('/api/auth/resend', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ email, type: 'signup' }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setResendResult({ ok: true, message: 'A new verification email has been sent. Check your inbox.' })
+        setCooldown(60)
+      } else {
+        setResendResult({ ok: false, message: json.error ?? 'Could not resend. Please try signing up again.' })
+        if (json.error?.includes('wait')) setCooldown(60)
+      }
+    } catch {
+      setResendResult({ ok: false, message: 'Network error. Please try again.' })
+    } finally {
+      setResending(false)
+    }
+  }
+
   return (
     <div className="flex flex-col items-center text-center gap-5 py-4">
-      <div className="w-16 h-16 rounded-2xl bg-red-50 border-2 border-red-200 flex items-center justify-center">
-        <AlertCircle className="w-8 h-8 text-red-500" />
+      <div className="w-16 h-16 rounded-2xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center">
+        <AlertCircle className="w-8 h-8 text-amber-500" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-black text-[#0F172A]">Link expired or invalid</h2>
-        <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{message}</p>
+        <h2 className="text-xl font-black text-[#0F172A]">Verification link expired</h2>
+        <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
+          {message || 'This link has expired or was already used. This can happen if your email provider previews links automatically.'}
+        </p>
       </div>
-      <a
-        href="/auth/create-account"
-        className="flex items-center gap-2 px-6 h-11 bg-[#0F172A] text-white text-sm font-bold rounded-xl hover:bg-[#1E293B] transition-all"
+
+      {resendResult && (
+        <div className={`text-sm font-medium px-4 py-2.5 rounded-xl w-full max-w-xs ${
+          resendResult.ok
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-red-50 text-red-600 border border-red-100'
+        }`}>
+          {resendResult.message}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleResend}
+        disabled={resending || cooldown > 0}
+        className="flex items-center gap-2 px-6 h-11 bg-brand-600 text-white text-sm font-bold rounded-xl hover:bg-brand-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Sign Up
-      </a>
-      <a href="/auth/login" className="text-sm text-brand-600 font-bold hover:text-brand-700 transition-colors">
-        Already have an account? Sign in
-      </a>
+        {resending ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Sending…
+          </>
+        ) : cooldown > 0 ? (
+          `Resend in ${cooldown}s`
+        ) : (
+          <>
+            <ArrowRight className="w-4 h-4" />
+            Resend verification email
+          </>
+        )}
+      </button>
+
+      <div className="flex flex-col items-center gap-2 pt-2">
+        <a
+          href="/auth/create-account"
+          className="flex items-center gap-2 text-sm text-slate-600 font-semibold hover:text-slate-800 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Start over with a new account
+        </a>
+        <a href="/auth/login" className="text-sm text-brand-600 font-bold hover:text-brand-700 transition-colors">
+          Already have an account? Sign in
+        </a>
+      </div>
     </div>
   )
 }
@@ -175,8 +251,12 @@ export default function SetupPasswordPage() {
         })
 
         if (!setRes.ok) {
+          const errJson = await setRes.json().catch(() => null)
+          const isExpired = setRes.status === 401
           setTokenError(
-            'This confirmation link is invalid or has already been used. Please request a new one from the sign-up page.'
+            isExpired
+              ? 'This verification link has expired or was already used. This commonly happens when email security software previews the link before you click it. Click "Resend" below to get a fresh link.'
+              : 'This confirmation link is invalid. Please request a new one from the sign-up page.'
           )
           setSessionChecked(true)
           return
@@ -211,7 +291,7 @@ export default function SetupPasswordPage() {
       setSessionValid(true)
       setSessionChecked(true)
       setTimeout(() => passwordRef.current?.focus(), 100)
-    }, 200) // slightly shorter delay since we're not waiting for SDK initialization
+    }, 0) // Run on next tick after hydration — no artificial delay needed
 
     return () => clearTimeout(timer)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

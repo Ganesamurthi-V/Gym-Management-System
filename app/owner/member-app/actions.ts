@@ -63,7 +63,7 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
   const serviceUrl = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceUrl || !serviceKey) {
-    return { success: false, message: 'Server not configured for invitations (missing service key)' }
+    return { success: false, message: 'The server is not configured for member invitations. Please contact support.' }
   }
 
   const supabase = await createClient()
@@ -79,10 +79,10 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
     .eq('gym_id', gymId)
     .single()
 
-  if (!memberData) return { success: false, message: 'Member not found' }
-  if (!memberData.phone) return { success: false, message: 'Member has no phone number' }
+  if (!memberData) return { success: false, message: 'Member not found in your gym' }
+  if (!memberData.phone) return { success: false, message: 'This member has no phone number. Add one before inviting.' }
   if (memberData.portal_suspended) {
-    return { success: false, message: 'Access is suspended for this member — reactivate before inviting' }
+    return { success: false, message: 'This member\'s access is suspended. Reactivate it before sending an invitation.' }
   }
 
   let authUserId = memberData.auth_user_id
@@ -109,9 +109,9 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
           if (list.users.length < 1000) break
         }
         if (found) authUserId = found
-        else return { success: false, message: 'Failed to create member account' }
+        else return { success: false, message: 'Could not set up the member account. Please try again.' }
       } else {
-        return { success: false, message: authCreateErr?.message ?? 'Failed to create member account' }
+        return { success: false, message: 'Could not set up the member account. Please try again.' }
       }
     } else {
       authUserId = authData.user.id
@@ -162,13 +162,16 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
   })
 
   if (sendResult.success) {
-    return { success: true, message: 'Invitation sent via WhatsApp' }
+    return { success: true, message: `Invitation sent to ${memberData.name} via WhatsApp` }
   }
 
-  // The token is live either way — surface the direct link as a fallback.
+  // The invitation token is live either way — the member can still activate if
+  // they receive the link through another channel (manual copy, etc.). Show the
+  // owner a clean message, not the raw API error.
   return {
     success: true,
-    message: `Invitation created. WhatsApp delivery failed: ${sendResult.error ?? 'unknown'}. Activation link: ${activationUrl(token)}`,
+    message: `Invitation created for ${memberData.name}. WhatsApp delivery could not be completed — please share the activation link manually.`,
+    // The activation URL is still available through the member row's action menu.
   }
 }
 
@@ -190,17 +193,17 @@ export async function memberRowAction(
     .eq('gym_id', gymId)
     .single()
 
-  if (!member) return { success: false, message: 'Member not found' }
+  if (!member) return { success: false, message: 'Member not found in your gym' }
 
   switch (action) {
     case 'enable_portal': {
       const { error } = await supabase.from('members')
         .update({ portal_enabled: true, portal_suspended: false })
         .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
+      if (error) return { success: false, message: 'Could not enable portal access. Please try again.' }
       await logActivity(gymId, memberId, 'portal_enabled')
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: 'Portal enabled' }
+      return { success: true, message: 'Portal access enabled' }
     }
 
     case 'disable_portal': {
@@ -243,9 +246,9 @@ export async function memberRowAction(
         })
         .eq('id', memberId)
 
-      if (error) return { success: false, message: error.message }
+      if (error) return { success: false, message: 'Could not disable portal. Please try again.' }
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: 'Portal disabled and all member app data deleted' }
+      return { success: true, message: 'Portal disabled and all member app data removed' }
     }
 
     case 'send_invitation':
@@ -266,20 +269,20 @@ export async function memberRowAction(
       const { error } = await supabase.from('members')
         .update({ portal_suspended: true })
         .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
+      if (error) return { success: false, message: 'Could not suspend access. Please try again.' }
       await logActivity(gymId, memberId, 'portal_disabled')
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: 'Access suspended' }
+      return { success: true, message: 'Member access suspended' }
     }
 
     case 'reactivate_access': {
       const { error } = await supabase.from('members')
         .update({ portal_suspended: false })
         .eq('id', memberId)
-      if (error) return { success: false, message: error.message }
+      if (error) return { success: false, message: 'Could not reactivate access. Please try again.' }
       await logActivity(gymId, memberId, 'portal_enabled')
       await invalidateMemberAppCache(gymId)
-      return { success: true, message: 'Access reactivated' }
+      return { success: true, message: 'Member access reactivated' }
     }
 
     case 'reset_password': {
@@ -326,7 +329,7 @@ export async function memberBulkAction(
       const { error } = await supabase.from('members')
         .update({ portal_enabled: true, portal_suspended: false })
         .in('id', memberIds)
-      if (error) return { success: false, message: error.message }
+      if (error) return { success: false, message: 'Could not enable portal for selected members. Please try again.' }
       const activities = memberIds.map(id => ({
         gym_id: gymId, member_id: id, activity: 'portal_enabled' as const, performed_by: 'owner',
       }))
@@ -377,7 +380,7 @@ export async function memberBulkAction(
       const { error } = await supabase.from('members')
         .update({ portal_suspended: true })
         .in('id', memberIds)
-      if (error) return { success: false, message: error.message }
+      if (error) return { success: false, message: 'Could not suspend selected members. Please try again.' }
       const activities = memberIds.map(id => ({
         gym_id: gymId, member_id: id, activity: 'portal_disabled' as const, performed_by: 'owner',
       }))

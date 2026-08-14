@@ -12,6 +12,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['__tests__/**/*.test.ts'],
+    // The email integration test sends REAL emails to real inboxes and
+    // deletes/recreates user accounts — never run it as part of the normal
+    // test suite. Run it manually when needed:
+    //   npx vitest run __tests__/email/verification-email.test.ts
+    exclude: ['__tests__/email/**'],
     globals: false,
   },
   resolve: {

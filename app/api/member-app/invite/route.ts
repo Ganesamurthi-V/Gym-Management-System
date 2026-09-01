@@ -21,8 +21,8 @@ import { apiLogger } from '@/lib/logger'
 import { randomBytes } from 'crypto'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { generateInvitationToken } from '@/lib/member-invitation'
-import { activationUrl } from '@/lib/member/redirect'
+import { generateInvitationToken, reusableInvitationToken } from '@/lib/member-invitation'
+import { hasOwnerRegistrationMarker } from '@/lib/auth/owner-registration'
 
 export const dynamic = 'force-dynamic'
 
@@ -113,20 +113,33 @@ export async function POST(req: NextRequest) {
           gym_id: gym.id,
           role: 'member',
         },
+        app_metadata: { role: 'member' },
       })
       log.end('CREATE_AUTH_USER')
 
       if (authCreateErr || !authData.user) {
         // If user already exists with that email, try to find them
         if (authCreateErr?.message?.includes('already been registered')) {
-          const { data: existingUsers } = await serviceSupabase.auth.admin.listUsers()
-          const existing = existingUsers?.users?.find(u => u.email === email)
-          if (existing) {
+          let existing = null
+          for (let page = 1; page <= 50 && !existing; page += 1) {
+            const { data: existingUsers } = await serviceSupabase.auth.admin.listUsers({ page, perPage: 1000 })
+            existing = existingUsers?.users.find((user) => user.email === email) ?? null
+            if (!existingUsers || existingUsers.users.length < 1000) break
+          }
+
+          const belongsToThisMember =
+            existing?.user_metadata?.role === 'member' &&
+            existing.user_metadata.member_id === memberId &&
+            existing.user_metadata.gym_id === gym.id
+
+          if (existing && belongsToThisMember) {
             authUserId = existing.id
           } else {
-            log.error('Failed to create auth user', authCreateErr)
-            log.summary(500)
-            return NextResponse.json({ success: false, error: { code: 'AUTH_FAILED', message: 'Failed to create member account' } }, { status: 500 })
+            log.summary(409)
+            return NextResponse.json(
+              { success: false, error: { code: 'EMAIL_IN_USE', message: 'This email is already linked to another account. Use a different member email.' } },
+              { status: 409, headers: { 'Cache-Control': 'private, no-store' } },
+            )
           }
         } else {
           log.error('Failed to create auth user', authCreateErr)
@@ -153,23 +166,94 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate a secure invitation token and store it as user metadata
-    const token = generateInvitationToken(memberId)
+    const { data: authUserData, error: authUserErr } =
+      await serviceSupabase.auth.admin.getUserById(authUserId!)
+    const authUser = authUserData.user
+    if (authUserErr || !authUser) {
+      log.error('Failed to load member auth user', authUserErr)
+      log.summary(500)
+      return NextResponse.json(
+        { success: false, error: { code: 'AUTH_FAILED', message: 'Failed to prepare member invitation' } },
+        { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
+    const { data: ownerGym, error: ownerGymErr } = await serviceSupabase
+      .from('gyms')
+      .select('id')
+      .eq('owner_id', authUser.id)
+      .maybeSingle()
+
+    if (ownerGymErr) {
+      log.error('Failed to verify member auth identity', ownerGymErr)
+      log.summary(500)
+      return NextResponse.json(
+        { success: false, error: { code: 'AUTH_FAILED', message: 'Failed to verify member account' } },
+        { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
+    if (ownerGym?.id || hasOwnerRegistrationMarker(authUser)) {
+      log.summary(409)
+      return NextResponse.json(
+        { success: false, error: { code: 'OWNER_EMAIL', message: 'This email belongs to a gym owner account. Use a different member email.' } },
+        { status: 409, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
+    const linkedMemberId = authUser.user_metadata?.member_id
+    if (typeof linkedMemberId === 'string' && linkedMemberId !== memberId) {
+      log.summary(409)
+      return NextResponse.json(
+        { success: false, error: { code: 'MEMBER_EMAIL_IN_USE', message: 'This email is already linked to another member account.' } },
+        { status: 409, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
+    const existingToken = member.invitation_status === 'pending'
+      ? reusableInvitationToken(
+          authUser.user_metadata?.invitation_token,
+          authUser.user_metadata?.invited_at,
+          memberId,
+          authUser.user_metadata?.member_id,
+        )
+      : null
+    const token = existingToken ?? generateInvitationToken(memberId)
+    const invitedAt = existingToken
+      ? String(authUser.user_metadata.invited_at)
+      : new Date().toISOString()
+
     log.start('SET_TOKEN')
-    await serviceSupabase.auth.admin.updateUserById(authUserId!, {
+    const { error: tokenErr } = await serviceSupabase.auth.admin.updateUserById(authUserId!, {
       user_metadata: {
+        ...authUser.user_metadata,
         invitation_token: token,
-        invited_at: new Date().toISOString(),
+        invited_at: invitedAt,
         gym_id: gym.id,
         member_id: memberId,
+        role: 'member',
+        pending_email: null,
+        activation_step: null,
+        activated_at: null,
+      },
+      app_metadata: {
+        ...authUser.app_metadata,
         role: 'member',
       },
     })
     log.end('SET_TOKEN')
 
-    // Update portal status on the member
+    if (tokenErr) {
+      log.error('Failed to store invitation token', tokenErr)
+      log.summary(500)
+      return NextResponse.json(
+        { success: false, error: { code: 'TOKEN_FAILED', message: 'Failed to prepare member invitation' } },
+        { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
     log.start('UPDATE_STATUS')
-    await serviceSupabase
+    const { error: statusErr } = await serviceSupabase
       .from('members')
       .update({
         portal_enabled: true,
@@ -180,13 +264,14 @@ export async function POST(req: NextRequest) {
       .eq('gym_id', gym.id)
     log.end('UPDATE_STATUS')
 
-    // Log activity
-    await serviceSupabase.from('member_portal_activity').insert({
-      gym_id: gym.id,
-      member_id: memberId,
-      activity: 'invitation_resent',
-      performed_by: 'owner',
-    })
+    if (statusErr) {
+      log.error('Failed to update invitation status', statusErr)
+      log.summary(500)
+      return NextResponse.json(
+        { success: false, error: { code: 'STATUS_FAILED', message: 'Failed to prepare member invitation' } },
+        { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
 
     // Send WhatsApp invitation with activation link
     log.start('SEND_WHATSAPP')
@@ -204,30 +289,40 @@ export async function POST(req: NextRequest) {
 
     if (!sendResult.success) {
       log.warn('WhatsApp send failed but invitation is active', { error: sendResult.error })
-      // Don't fail the request — the invitation is stored, member can still use the link
-      log.summary(200)
-      return NextResponse.json({
-        success: true,
-        data: {
-          memberId,
-          whatsappSent: false,
-          activationUrl: activationUrl(token),
+      log.summary(502)
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'WHATSAPP_NOT_DELIVERED',
+            message: `WhatsApp couldn't confirm delivery to ${member.name}. Check the member's WhatsApp number and try again.`,
+          },
+          data: { memberId, invitationCreated: true, whatsappSent: false },
+          meta: { request_id: log.requestId },
         },
-        meta: { request_id: log.requestId },
-      })
+        { status: 502, headers: { 'Cache-Control': 'private, no-store' } },
+      )
     }
+
+    const { error: activityErr } = await serviceSupabase.from('member_portal_activity').insert({
+      gym_id: gym.id,
+      member_id: memberId,
+      activity: 'invitation_resent',
+      performed_by: 'owner',
+    })
+    if (activityErr) log.warn('Invitation sent but activity log failed', { error: activityErr.message })
 
     log.info('Invitation sent successfully', { memberId })
     log.summary(200)
-    return NextResponse.json({
-      success: true,
-      data: {
-        memberId,
-        whatsappSent: true,
-        activationUrl: activationUrl(token),
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Invitation sent to ${member.name} via WhatsApp`,
+        data: { memberId, invitationCreated: true, whatsappSent: true },
+        meta: { request_id: log.requestId },
       },
-      meta: { request_id: log.requestId },
-    })
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
   } catch (err: unknown) {
     log.error('Unhandled exception in POST /api/member-app/invite', err)
     log.summary(500)

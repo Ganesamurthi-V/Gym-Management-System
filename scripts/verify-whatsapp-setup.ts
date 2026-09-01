@@ -115,11 +115,11 @@ function checkAccessToken(): void {
 }
 
 function checkSupabase(): void {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const url = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   
   if (!url) {
-    addResult('Supabase URL', 'fail', 'NEXT_PUBLIC_SUPABASE_URL not set')
+    addResult('Supabase URL', 'fail', 'SUPABASE_URL not set')
   } else if (!url.includes('supabase')) {
     addResult('Supabase URL', 'warning', 'URL format looks unusual')
   } else {
@@ -181,7 +181,7 @@ function checkApiRouting(): void {
   const upstream = process.env.GRAPH_API_BASE_URL
 
   if (!baseUrl) {
-    addResult('WhatsApp Base URL', 'warning', 'WHATSAPP_BASE_URL not set (defaults to proxy)')
+    addResult('WhatsApp Base URL', 'fail', 'WHATSAPP_BASE_URL not set — message sending is disabled')
   } else if (!baseUrl.startsWith('https://')) {
     addResult('WhatsApp Base URL', 'warning', 'Should be an HTTPS URL')
   } else {

@@ -269,4 +269,8 @@ export interface MemberAppData {
 export interface ActionResult {
   success: boolean
   message: string
+  /** Invitation record/token exists even if external delivery was not confirmed. */
+  invitationCreated?: boolean
+  /** True only when WhatsApp accepted the send request. */
+  whatsappSent?: boolean
 }

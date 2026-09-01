@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  hasLegacyOwnerSignupMetadata,
+  hasMemberIdentityMarker,
+  hasOwnerRegistrationMarker,
+  ownerRegistrationAppMetadata,
+} from '@/lib/auth/owner-registration'
 
 /**
  * POST /api/auth/finalize-registration
@@ -41,8 +47,31 @@ export async function POST(_req: NextRequest) {
       )
     }
 
-    // ── 3. Use service role client to bypass RLS ──────────────────────────────
+    // ── 3. Use service role client to enforce the registration boundary ──────
     const adminClient = createAdminClient()
+
+    // Auth metadata is a routing hint; the members table is the authoritative
+    // guard for legacy member accounts that predate server-owned app_metadata.
+    const { data: memberIdentity, error: memberLookupError } = await adminClient
+      .from('members')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+
+    if (memberLookupError) {
+      console.error('[auth/finalize-registration] member identity lookup failed:', memberLookupError.message)
+      return NextResponse.json(
+        { success: false, error: { code: 'DATABASE_ERROR', message: 'Failed to verify registration status. Please try again.' } },
+        { status: 500 },
+      )
+    }
+
+    if (memberIdentity?.id || hasMemberIdentityMarker(user)) {
+      return NextResponse.json(
+        { success: false, error: { code: 'FORBIDDEN', message: 'This account cannot be used to create a gym owner profile.' } },
+        { status: 403 },
+      )
+    }
 
     // ── 4. Idempotency: check if gym already exists ───────────────────────────
     const { data: existing, error: lookupError } = await adminClient
@@ -52,6 +81,7 @@ export async function POST(_req: NextRequest) {
       .maybeSingle()
 
     if (lookupError) {
+      console.error('[auth/finalize-registration] registration lookup failed:', lookupError.message)
       return NextResponse.json(
         { success: false, error: { code: 'DATABASE_ERROR', message: 'Failed to verify registration status. Please try again.' } },
         { status: 500 }
@@ -64,6 +94,28 @@ export async function POST(_req: NextRequest) {
         { success: true, gymId: existing.id, alreadyExists: true },
         { status: 409 }
       )
+    }
+
+    // New signups carry a server-owned app_metadata marker. Promote only the
+    // tightly shaped legacy owner signups after the members-table guard above.
+    if (!hasOwnerRegistrationMarker(user)) {
+      if (!hasLegacyOwnerSignupMetadata(user)) {
+        return NextResponse.json(
+          { success: false, error: { code: 'FORBIDDEN', message: 'This account is not eligible for owner registration.' } },
+          { status: 403 },
+        )
+      }
+
+      const { error: markerError } = await adminClient.auth.admin.updateUserById(user.id, {
+        app_metadata: ownerRegistrationAppMetadata(user),
+      })
+      if (markerError) {
+        console.error('[auth/finalize-registration] owner marker update failed:', markerError.message)
+        return NextResponse.json(
+          { success: false, error: { code: 'INTERNAL_ERROR', message: 'We could not finish creating your account. Please try again.' } },
+          { status: 500 },
+        )
+      }
     }
 
     // ── 5. Resolve the user's full name from sign-up metadata ─────────────────
@@ -107,12 +159,13 @@ export async function POST(_req: NextRequest) {
         )
       }
 
+      console.error('[auth/finalize-registration] gym insert failed:', insertError?.message ?? 'no row returned')
       return NextResponse.json(
         {
           success: false,
           error: {
             code: 'DATABASE_ERROR',
-            message: insertError?.message ?? 'Failed to create your gym record. Please try again.',
+            message: 'We could not finish creating your account. Please try again.',
           },
         },
         { status: 500 }
@@ -122,12 +175,13 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ success: true, gymId: newGym.id }, { status: 200 })
 
   } catch (err: unknown) {
+    console.error('[auth/finalize-registration] unexpected error:', err)
     return NextResponse.json(
       {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: err instanceof Error ? err.message : 'An unexpected error occurred.',
+          message: 'We could not finish creating your account. Please try again.',
         },
       },
       { status: 500 }

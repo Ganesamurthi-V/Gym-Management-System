@@ -72,3 +72,38 @@ export function parseInvitationToken(token: string): { memberId: string } | null
 
 /** Hours an invitation stays valid. Kept here so both apps agree. */
 export const INVITATION_EXPIRY_HOURS = 24
+
+/**
+ * Returns an existing pending token while it is still valid for this member.
+ * Retrying an uncertain WhatsApp dispatch must not rotate the bearer link: Meta
+ * may have accepted the first request even when GymFlow did not receive a
+ * response, and a new token would make that delivered link unusable.
+ */
+export function reusableInvitationToken(
+  token: unknown,
+  invitedAt: unknown,
+  memberId: string,
+  storedMemberId: unknown = memberId,
+  now = Date.now(),
+): string | null {
+  if (typeof token !== 'string' || typeof invitedAt !== 'string') return null
+
+  const parsed = parseInvitationToken(token)
+  if (parsed) {
+    if (parsed.memberId !== memberId.toLowerCase()) return null
+  } else {
+    // Legacy tokens did not embed the member id. They are still safe to reuse
+    // when the trusted Auth metadata links this exact user to this member.
+    if (storedMemberId !== memberId || token.length < 20 || token.length > 512 || /\s/.test(token)) {
+      return null
+    }
+  }
+
+  const issuedAt = new Date(invitedAt).getTime()
+  if (!Number.isFinite(issuedAt)) return null
+
+  const age = now - issuedAt
+  if (age < 0 || age > INVITATION_EXPIRY_HOURS * 60 * 60 * 1000) return null
+
+  return token
+}

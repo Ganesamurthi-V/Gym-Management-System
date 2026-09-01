@@ -59,7 +59,7 @@ export default function InvitationActivity({ invitations }: { invitations: Invit
 
   async function handleResend(row: InvitationRow) {
     const result = await run(row.id, () => memberRowAction('resend_invitation', row.memberId))
-    if (result?.success) {
+    if (result?.success || result?.invitationCreated) {
       setRows(prev => prev.map(r =>
         r.id === row.id ? { ...r, status: 'pending', sentOn: new Date().toISOString() } : r,
       ))

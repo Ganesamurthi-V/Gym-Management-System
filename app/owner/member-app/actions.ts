@@ -11,7 +11,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { activationUrl } from '@/lib/member/redirect'
+import { hasOwnerRegistrationMarker } from '@/lib/auth/owner-registration'
 import type {
   ActionResult,
   MemberActivityType,
@@ -70,11 +70,11 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
   const { createClient: createServiceClient } = await import('@supabase/supabase-js')
   const serviceSupabase = createServiceClient(serviceUrl, serviceKey)
   const { randomBytes } = await import('crypto')
-  const { generateInvitationToken } = await import('@/lib/member-invitation')
+  const { generateInvitationToken, reusableInvitationToken } = await import('@/lib/member-invitation')
 
   const { data: memberData } = await supabase
     .from('members')
-    .select('id, name, phone, email, auth_user_id, portal_suspended')
+    .select('id, name, phone, email, auth_user_id, portal_suspended, invitation_status')
     .eq('id', memberId)
     .eq('gym_id', gymId)
     .single()
@@ -96,20 +96,27 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
       password: tempPassword,
       email_confirm: true,
       user_metadata: { member_id: memberId, gym_id: gymId, role: 'member' },
+      app_metadata: { role: 'member' },
     })
 
     if (authCreateErr || !authData.user) {
       if (authCreateErr?.message?.includes('already been registered')) {
         // Page through users instead of reading only the first page.
-        let found: string | null = null
-        for (let page = 1; page <= 50 && !found; page++) {
+        let foundUser: { id: string; user_metadata?: Record<string, unknown> } | null = null
+        for (let page = 1; page <= 50 && !foundUser; page++) {
           const { data: list } = await serviceSupabase.auth.admin.listUsers({ page, perPage: 1000 })
           if (!list) break
-          found = list.users.find((u) => u.email === email)?.id ?? null
+          foundUser = list.users.find((user) => user.email === email) ?? null
           if (list.users.length < 1000) break
         }
-        if (found) authUserId = found
-        else return { success: false, message: 'Could not set up the member account. Please try again.' }
+
+        const belongsToThisMember =
+          foundUser?.user_metadata?.role === 'member' &&
+          foundUser.user_metadata.member_id === memberId &&
+          foundUser.user_metadata.gym_id === gymId
+
+        if (foundUser && belongsToThisMember) authUserId = foundUser.id
+        else return { success: false, message: 'This email is already linked to another account. Use a different member email.' }
       } else {
         return { success: false, message: 'Could not set up the member account. Please try again.' }
       }
@@ -117,30 +124,87 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
       authUserId = authData.user.id
     }
 
-    await serviceSupabase
+    const { error: memberLinkError } = await serviceSupabase
       .from('members')
       .update({ auth_user_id: authUserId })
       .eq('id', memberId)
       .eq('gym_id', gymId)
+
+    if (memberLinkError) {
+      console.error('[member-app/invitation] member auth link failed:', memberLinkError.message)
+      return { success: false, message: 'Could not set up the member account. Please try again.' }
+    }
   }
 
-  // Token embeds the member id so the member app can resolve it with a direct
-  // lookup instead of scanning every auth user. See lib/member-invitation.ts.
-  const token = generateInvitationToken(memberId)
+  const { data: authUserData, error: authUserError } =
+    await serviceSupabase.auth.admin.getUserById(authUserId!)
+  const authUser = authUserData.user
 
-  // Replacing user_metadata deliberately resets any half-finished activation
-  // (pending_email / activation_step) from a previous attempt.
-  await serviceSupabase.auth.admin.updateUserById(authUserId!, {
+  if (authUserError || !authUser) {
+    console.error('[member-app/invitation] could not load member auth user:', authUserError?.message ?? 'no user')
+    return { success: false, message: 'Could not set up the member invitation. Please try again.' }
+  }
+
+  const { data: ownerGym, error: ownerGymError } = await serviceSupabase
+    .from('gyms')
+    .select('id')
+    .eq('owner_id', authUser.id)
+    .maybeSingle()
+
+  if (ownerGymError) {
+    console.error('[member-app/invitation] owner identity check failed:', ownerGymError.message)
+    return { success: false, message: 'Could not verify the member account. Please try again.' }
+  }
+
+  if (ownerGym?.id || hasOwnerRegistrationMarker(authUser)) {
+    return { success: false, message: 'This email belongs to a gym owner account. Use a different member email.' }
+  }
+
+  const linkedMemberId = authUser.user_metadata?.member_id
+  if (typeof linkedMemberId === 'string' && linkedMemberId !== memberId) {
+    return { success: false, message: 'This email is already linked to another member account.' }
+  }
+
+  const existingToken = memberData.invitation_status === 'pending'
+    ? reusableInvitationToken(
+        authUser.user_metadata?.invitation_token,
+        authUser.user_metadata?.invited_at,
+        memberId,
+        authUser.user_metadata?.member_id,
+      )
+    : null
+  const token = existingToken ?? generateInvitationToken(memberId)
+  const invitedAt = existingToken
+    ? String(authUser.user_metadata.invited_at)
+    : new Date().toISOString()
+
+  // Reuse an unexpired pending token so an uncertain Meta response cannot make
+  // an already-delivered link invalid. Explicitly clear half-finished activation
+  // fields while preserving unrelated user metadata.
+  const { error: tokenError } = await serviceSupabase.auth.admin.updateUserById(authUserId!, {
     user_metadata: {
+      ...authUser.user_metadata,
       invitation_token: token,
-      invited_at: new Date().toISOString(),
+      invited_at: invitedAt,
       gym_id: gymId,
       member_id: memberId,
+      role: 'member',
+      pending_email: null,
+      activation_step: null,
+      activated_at: null,
+    },
+    app_metadata: {
+      ...authUser.app_metadata,
       role: 'member',
     },
   })
 
-  await serviceSupabase
+  if (tokenError) {
+    console.error('[member-app/invitation] token update failed:', tokenError.message)
+    return { success: false, message: 'Could not set up the member invitation. Please try again.' }
+  }
+
+  const { error: statusError } = await serviceSupabase
     .from('members')
     .update({
       portal_enabled: true,
@@ -150,6 +214,11 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
     })
     .eq('id', memberId)
     .eq('gym_id', gymId)
+
+  if (statusError) {
+    console.error('[member-app/invitation] member status update failed:', statusError.message)
+    return { success: false, message: 'Could not set up the member invitation. Please try again.' }
+  }
 
   const { sendWhatsAppTemplate } = await import('@/lib/whatsapp/sender')
   const { data: gymData } = await supabase.from('gyms').select('name').eq('id', gymId).single()
@@ -162,16 +231,23 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
   })
 
   if (sendResult.success) {
-    return { success: true, message: `Invitation sent to ${memberData.name} via WhatsApp` }
+    return {
+      success: true,
+      message: `Invitation sent to ${memberData.name} via WhatsApp`,
+      invitationCreated: true,
+      whatsappSent: true,
+    }
   }
 
-  // The invitation token is live either way — the member can still activate if
-  // they receive the link through another channel (manual copy, etc.). Show the
-  // owner a clean message, not the raw API error.
+  // Keep provider/configuration details in server logs. The owner only needs
+  // an accurate, actionable outcome; the token and activation URL must never
+  // be copied into a browser notification.
+  console.error('[member-app/invitation] WhatsApp delivery failed:', sendResult.error ?? 'unknown error')
   return {
-    success: true,
-    message: `Invitation created for ${memberData.name}. WhatsApp delivery could not be completed — please share the activation link manually.`,
-    // The activation URL is still available through the member row's action menu.
+    success: false,
+    message: `WhatsApp couldn't confirm delivery to ${memberData.name}. Check the member's WhatsApp number and try again.`,
+    invitationCreated: true,
+    whatsappSent: false,
   }
 }
 
@@ -254,6 +330,9 @@ export async function memberRowAction(
     case 'send_invitation':
     case 'resend_invitation': {
       const result = await issueInvitation(gymId, memberId)
+      // The member row/token may have changed even when Meta did not confirm
+      // delivery, so refresh cached UI state for both outcomes.
+      await invalidateMemberAppCache(gymId)
       if (!result.success) return result
 
       // NOTE: 'invitation_sent' would be the accurate value for a first send,
@@ -261,7 +340,6 @@ export async function memberRowAction(
       // 'invitation_resent'. Using anything else fails the INSERT at runtime, so
       // both cases log the allowed value until a migration extends the enum.
       await logActivity(gymId, memberId, 'invitation_resent')
-      await invalidateMemberAppCache(gymId)
       return result
     }
 
@@ -347,14 +425,15 @@ export async function memberBulkAction(
         memberIds.map(async (id) => ({ id, result: await issueInvitation(gymId, id) })),
       )
 
-      const sent = results.filter((r) => r.result.success)
-      const failed = results.filter((r) => !r.result.success)
+      const delivered = results.filter((entry) => entry.result.whatsappSent === true)
+      const notDelivered = results.filter((entry) => entry.result.whatsappSent !== true)
+      const invitationCreated = results.filter((entry) => entry.result.invitationCreated === true)
 
-      if (sent.length > 0) {
+      if (delivered.length > 0) {
         // See the note in memberRowAction: the CHECK constraint only allows
         // 'invitation_resent' for invitation events.
         await supabase.from('member_portal_activity').insert(
-          sent.map(({ id }) => ({
+          delivered.map(({ id }) => ({
             gym_id: gymId,
             member_id: id,
             activity: 'invitation_resent' as const,
@@ -364,15 +443,29 @@ export async function memberBulkAction(
       }
       await invalidateMemberAppCache(gymId)
 
-      if (failed.length === 0) {
-        return { success: true, message: `Invitation sent to ${sent.length} member${sent.length === 1 ? '' : 's'}` }
+      if (notDelivered.length === 0) {
+        return {
+          success: true,
+          message: `Invitation sent to ${delivered.length} member${delivered.length === 1 ? '' : 's'}`,
+          invitationCreated: invitationCreated.length > 0,
+          whatsappSent: true,
+        }
       }
-      if (sent.length === 0) {
-        return { success: false, message: `No invitations sent. ${failed[0].result.message}` }
+      if (delivered.length === 0) {
+        return {
+          success: false,
+          message: invitationCreated.length > 0
+            ? `WhatsApp couldn't confirm delivery for the selected member${count === 1 ? '' : 's'}. Check their numbers and try again.`
+            : `No invitations were created. ${notDelivered[0].result.message}`,
+          invitationCreated: invitationCreated.length > 0,
+          whatsappSent: false,
+        }
       }
       return {
         success: true,
-        message: `Invited ${sent.length} of ${count}. ${failed.length} skipped: ${failed[0].result.message}`,
+        message: `WhatsApp delivered ${delivered.length} of ${count} invitations. Check the ${notDelivered.length} member number${notDelivered.length === 1 ? '' : 's'} and try again.`,
+        invitationCreated: invitationCreated.length > 0,
+        whatsappSent: true,
       }
     }
 

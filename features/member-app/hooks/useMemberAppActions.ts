@@ -26,8 +26,10 @@ export function useAsyncAction() {
         if (result.success) toast.success(result.message)
         else toast.error(result.message)
         return result
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Something went wrong'
+      } catch {
+        // Server exceptions may contain provider, database, or configuration
+        // details. Never render an exception string in an owner notification.
+        const message = 'We could not complete that action. Please try again.'
         toast.error(message)
         return { success: false, message }
       } finally {

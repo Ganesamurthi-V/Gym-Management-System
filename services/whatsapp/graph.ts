@@ -105,9 +105,12 @@ function planLabel(plan?: string): string {
  * @param body - Full request body per Meta messages API spec
  */
 export async function sendMessage(body: Record<string, unknown>): Promise<SendResult> {
-  const url = `${getBaseUrl()}/${getPhoneNumberId()}/messages`
-
   try {
+    // Resolve configuration inside the guarded block. Missing server variables
+    // must become a SendResult for callers to handle, never an exception that
+    // can reach an owner-facing toast.
+    const url = `${getBaseUrl()}/${getPhoneNumberId()}/messages`
+
     const { data, status } = await fetchJson<{
       messages?: { id: string }[]
       error?: { message: string; code: number }

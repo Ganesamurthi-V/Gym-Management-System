@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 16px">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:32px">
+            <tr><td style="font-size:24px;font-weight:800;padding-bottom:12px">Finish setting your GymFlow password</td></tr>
+            <tr><td style="font-size:15px;line-height:1.6;color:#475569;padding-bottom:24px">Use the button below to securely choose a password for your gym owner account.</td></tr>
+            <tr>
+              <td align="center" style="padding-bottom:24px">
+                <!-- Recovery is used when a mail scanner already confirmed the signup link. The token remains client-side until the owner confirms. -->
+                <a href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 24px;border-radius:10px">Continue to password setup</a>
+              </td>
+            </tr>
+            <tr><td style="font-size:12px;line-height:1.5;color:#94a3b8">If you did not request this email, you can safely ignore it. Your password will not change.</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

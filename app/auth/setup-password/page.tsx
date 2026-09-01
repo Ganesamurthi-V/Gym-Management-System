@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { fetchSession, signOutViaApi, updatePasswordViaApi } from '@/lib/auth/client-auth'
 import {
-  Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock, ArrowLeft,
+  Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock, ArrowLeft, Mail,
 } from 'lucide-react'
 
 // ─── Password Criteria ────────────────────────────────────────────────────────
@@ -71,41 +71,56 @@ function StrengthBar({ password }: { password: string }) {
 // ─── Token Error Screen ───────────────────────────────────────────────────────
 
 function TokenErrorScreen({ message }: { message: string }) {
+  const [email, setEmail] = useState('')
   const [resending, setResending] = useState(false)
   const [resendResult, setResendResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [cooldown, setCooldown] = useState(0)
 
-  // Countdown timer for resend cooldown
+  useEffect(() => {
+    try {
+      setEmail(sessionStorage.getItem('gymflow_signup_email') ?? '')
+    } catch {
+      // Storage can be unavailable in privacy-focused browsers. The owner can
+      // still enter the address manually, which also supports another device.
+    }
+  }, [])
+
   useEffect(() => {
     if (cooldown <= 0) return
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setCooldown((current) => current - 1), 1000)
+    return () => clearTimeout(timer)
   }, [cooldown])
 
   async function handleResend() {
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setResendResult({ ok: false, message: 'Enter the email address you used to create your account.' })
+      return
+    }
+
     setResending(true)
     setResendResult(null)
-    try {
-      // Try to recover the email from sessionStorage (set during signup)
-      let email: string | undefined
-      try { email = sessionStorage.getItem('gymflow_signup_email') ?? undefined } catch { /* no access */ }
 
+    try {
       const res = await fetch('/api/auth/resend', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ email, type: 'signup' }),
+        body: JSON.stringify({ email: normalizedEmail, type: 'signup' }),
       })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        setResendResult({ ok: true, message: 'A new verification email has been sent. Check your inbox.' })
+
+      if (res.ok) {
+        try { sessionStorage.setItem('gymflow_signup_email', normalizedEmail) } catch { /* optional */ }
+        setResendResult({ ok: true, message: 'If this address matches your account, a new verification email is on its way.' })
+        setCooldown(60)
+      } else if (res.status === 429) {
+        setResendResult({ ok: false, message: 'Please wait a few minutes before requesting another email.' })
         setCooldown(60)
       } else {
-        setResendResult({ ok: false, message: json.error ?? 'Could not resend. Please try signing up again.' })
-        if (json.error?.includes('wait')) setCooldown(60)
+        setResendResult({ ok: false, message: 'We could not send a new email right now. Please try again.' })
       }
     } catch {
-      setResendResult({ ok: false, message: 'Network error. Please try again.' })
+      setResendResult({ ok: false, message: 'Check your internet connection and try again.' })
     } finally {
       setResending(false)
     }
@@ -117,10 +132,25 @@ function TokenErrorScreen({ message }: { message: string }) {
         <AlertCircle className="w-8 h-8 text-amber-500" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-black text-[#0F172A]">Verification link expired</h2>
+        <h2 className="text-xl font-black text-[#0F172A]">We couldn&apos;t verify this link</h2>
         <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
-          {message || 'This link has expired or was already used. This can happen if your email provider previews links automatically.'}
+          {message || 'This link has expired or was already used. Request a new link below.'}
         </p>
+      </div>
+
+      <div className="w-full max-w-xs space-y-2 text-left">
+        <label htmlFor="resend-email" className="block text-xs font-bold text-slate-600">
+          Account email
+        </label>
+        <input
+          id="resend-email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          className="w-full h-11 px-3.5 bg-white border-2 border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"
+        />
       </div>
 
       {resendResult && (
@@ -149,7 +179,7 @@ function TokenErrorScreen({ message }: { message: string }) {
         ) : (
           <>
             <ArrowRight className="w-4 h-4" />
-            Resend verification email
+            Send a new verification email
           </>
         )}
       </button>
@@ -166,6 +196,57 @@ function TokenErrorScreen({ message }: { message: string }) {
           Already have an account? Sign in
         </a>
       </div>
+    </div>
+  )
+}
+
+// ─── Human confirmation gate ─────────────────────────────────────────────────
+
+function VerificationReadyScreen({
+  verifying,
+  error,
+  onVerify,
+}: {
+  verifying: boolean
+  error: string
+  onVerify: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center text-center gap-5 py-4">
+      <div className="w-16 h-16 rounded-2xl bg-brand-50 border-2 border-brand-100 flex items-center justify-center">
+        <Mail className="w-8 h-8 text-brand-500" />
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-black text-[#0F172A]">Confirm your email</h2>
+        <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
+          Continue to verify your email address and choose your password.
+        </p>
+      </div>
+
+      {error && (
+        <div className="text-sm font-medium px-4 py-2.5 rounded-xl w-full max-w-xs bg-red-50 text-red-600 border border-red-100">
+          {error}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onVerify}
+        disabled={verifying}
+        className="flex items-center gap-2 px-6 h-11 bg-brand-600 text-white text-sm font-bold rounded-xl hover:bg-brand-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {verifying ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Verifying…
+          </>
+        ) : (
+          <>
+            Verify email and continue
+            <ArrowRight className="w-4 h-4" />
+          </>
+        )}
+      </button>
     </div>
   )
 }
@@ -198,8 +279,14 @@ export default function SetupPasswordPage() {
 
   // Session verification state
   const [sessionChecked, setSessionChecked] = useState(false)
-  const [sessionValid,   setSessionValid]   = useState(false)
-  const [tokenError,     setTokenError]     = useState('')
+  const [sessionValid, setSessionValid] = useState(false)
+  const [tokenError, setTokenError] = useState('')
+  const [pendingVerification, setPendingVerification] = useState<{
+    tokenHash: string
+    type: 'email' | 'signup' | 'recovery'
+  } | null>(null)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
+  const [verificationError, setVerificationError] = useState('')
 
   // Form state
   const [password,        setPassword]        = useState('')
@@ -212,122 +299,212 @@ export default function SetupPasswordPage() {
   const [mounted,         setMounted]         = useState(false)
 
   const passwordRef = useRef<HTMLInputElement>(null)
+  const verificationInFlight = useRef(false)
 
   const allCriteriaMet = PASSWORD_CRITERIA.every(c => c.test(password))
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0
   const canSubmit      = allCriteriaMet && passwordsMatch && !loading && !redirecting
 
-  // ── On mount: exchange verification tokens via our own server ──────────────
-  //
-  // Supabase sends two possible link formats depending on the project's auth
-  // configuration:
-  //
-  //   PKCE (default for newer projects):
-  //     /auth/setup-password?code=<authorization_code>
-  //     → exchanged via POST /api/auth/exchange-code
-  //
-  //   Implicit (legacy / fragment-based):
-  //     /auth/setup-password#access_token=…&refresh_token=…
-  //     → exchanged via POST /api/auth/set-session
-  //
-  // Both result in HttpOnly session cookies being written by the server.
-  // We then verify the session exists + email is confirmed before showing the
-  // password form.
-  useEffect(() => {
-    setMounted(true)
+  function clearVerificationFragment() {
+    if (window.history.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }
 
-    const timer = setTimeout(async () => {
-      const queryParams = new URLSearchParams(window.location.search)
-      const code = queryParams.get('code')
+  async function verifyPendingEmail() {
+    if (!pendingVerification || verificationInFlight.current) return
 
-      const hash = window.location.hash ?? ''
-      const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
-      const accessToken = hashParams.get('access_token')
-      const refreshToken = hashParams.get('refresh_token')
+    verificationInFlight.current = true
+    setVerifyingEmail(true)
+    setVerificationError('')
 
-      // ── PKCE flow: exchange the ?code= parameter ────────────────────────
-      if (code) {
-        const codeRes = await fetch('/api/auth/exchange-code', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-          body: JSON.stringify({ code }),
-        })
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          token_hash: pendingVerification.tokenHash,
+          type: pendingVerification.type,
+        }),
+      })
 
-        if (!codeRes.ok) {
-          const errJson = await codeRes.json().catch(() => null)
-          setTokenError(
-            errJson?.error === 'code_expired'
-              ? 'This verification link has expired or was already used. This commonly happens when email security software previews the link before you click it. Click "Resend" below to get a fresh link.'
-              : 'This confirmation link is invalid. Please request a new one from the sign-up page.'
-          )
-          setSessionChecked(true)
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          clearVerificationFragment()
+          setPendingVerification(null)
+          setTokenError('This verification link has expired or was already used. Enter your email below and we will send a new one.')
           return
         }
 
-        // Clear the code from the URL so it doesn't linger in browser history
-        if (window.history.replaceState) {
-          window.history.replaceState(null, '', window.location.pathname)
-        }
-      }
-      // ── Implicit flow: exchange #access_token + #refresh_token ──────────
-      else if (accessToken && refreshToken) {
-        const setRes = await fetch('/api/auth/set-session', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-          body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
-        })
-
-        if (!setRes.ok) {
-          const isExpired = setRes.status === 401
-          setTokenError(
-            isExpired
-              ? 'This verification link has expired or was already used. This commonly happens when email security software previews the link before you click it. Click "Resend" below to get a fresh link.'
-              : 'This confirmation link is invalid. Please request a new one from the sign-up page.'
-          )
-          setSessionChecked(true)
-          return
-        }
-
-        // Clear the fragment from the URL so tokens don't linger in history.
-        if (window.history.replaceState) {
-          window.history.replaceState(null, '', window.location.pathname)
-        }
+        setVerificationError('We could not verify your email right now. Please try again.')
+        return
       }
 
-      // Verify the session (may come from the fragment exchange above, or from
-      // a pre-existing cookie if the user refreshes the page after exchange).
       const session = await fetchSession()
-
-      if (!session.authenticated) {
-        setTokenError(
-          'This confirmation link is invalid or has already been used. Please request a new one from the sign-up page.'
-        )
-        setSessionChecked(true)
+      if (!session.authenticated || !session.emailConfirmedAt) {
+        clearVerificationFragment()
+        setPendingVerification(null)
+        setTokenError('Your email could not be confirmed. Enter your email below and request a new link.')
         return
       }
 
-      if (!session.emailConfirmedAt) {
-        setTokenError(
-          'Your email address has not been confirmed yet. Please click the verification link in your inbox.'
-        )
-        setSessionChecked(true)
-        return
-      }
-
+      clearVerificationFragment()
+      setPendingVerification(null)
       setSessionValid(true)
       setSessionChecked(true)
       setTimeout(() => passwordRef.current?.focus(), 100)
-    }, 0) // Run on next tick after hydration — no artificial delay needed
+    } catch {
+      setVerificationError('Check your internet connection and try again.')
+    } finally {
+      verificationInFlight.current = false
+      setVerifyingEmail(false)
+    }
+  }
 
-    return () => clearTimeout(timer)
+  // New confirmation emails use a TokenHash in the URL fragment and wait for
+  // an explicit click before consuming it. Legacy PKCE and implicit links stay
+  // supported so links already in an owner's inbox continue to work.
+  useEffect(() => {
+    setMounted(true)
+    let cancelled = false
+
+    async function initializeVerification() {
+      try {
+        const queryParams = new URLSearchParams(window.location.search)
+        const hashParams = new URLSearchParams((window.location.hash ?? '').replace(/^#/, ''))
+        const tokenHash = hashParams.get('token_hash')
+        const tokenType = hashParams.get('type')
+
+        if (tokenHash) {
+          const validToken = tokenHash.length >= 16 && tokenHash.length <= 1024 && !/\s/.test(tokenHash)
+          const validType =
+            tokenType === null ||
+            tokenType === 'email' ||
+            tokenType === 'signup' ||
+            tokenType === 'recovery'
+
+          if (!validToken || !validType) {
+            if (!cancelled) {
+              setTokenError('This confirmation link is invalid. Enter your email below and request a new link.')
+              setSessionChecked(true)
+            }
+            return
+          }
+
+          // Keep the fragment until verification succeeds. Fragments are not
+          // sent in HTTP requests, and retaining it lets a refresh recover from
+          // a transient network failure without forcing another email.
+          if (!cancelled) {
+            setPendingVerification({
+              tokenHash,
+              type:
+                tokenType === 'signup' || tokenType === 'recovery'
+                  ? tokenType
+                  : 'email',
+            })
+            setSessionChecked(true)
+          }
+          return
+        }
+
+        const providerError = queryParams.get('error_code') ?? queryParams.get('error')
+        if (providerError) {
+          if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname)
+          }
+          if (!cancelled) {
+            setTokenError(
+              providerError === 'otp_expired'
+                ? 'This verification link has expired or was already opened. Enter your email below and we will send a new one.'
+                : 'This confirmation link is invalid. Enter your email below and request a new link.',
+            )
+            setSessionChecked(true)
+          }
+          return
+        }
+
+        const code = queryParams.get('code')
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+
+        if (code) {
+          const codeResponse = await fetch('/api/auth/exchange-code', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ code }),
+          })
+
+          if (!codeResponse.ok) {
+            if (!cancelled) {
+              setTokenError('This verification link has expired or cannot be opened in this browser. Enter your email below and request a new link.')
+              setSessionChecked(true)
+            }
+            return
+          }
+
+          if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname)
+          }
+        } else if (accessToken && refreshToken) {
+          const setResponse = await fetch('/api/auth/set-session', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+          })
+
+          if (!setResponse.ok) {
+            if (!cancelled) {
+              setTokenError('This verification link has expired or was already used. Enter your email below and request a new link.')
+              setSessionChecked(true)
+            }
+            return
+          }
+
+          if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname)
+          }
+        }
+
+        const session = await fetchSession()
+        if (cancelled) return
+
+        if (!session.authenticated) {
+          setTokenError('This confirmation link is invalid or was already used. Enter your email below and request a new link.')
+          setSessionChecked(true)
+          return
+        }
+
+        if (!session.emailConfirmedAt) {
+          setTokenError('Your email address has not been confirmed yet. Open the latest verification email or request a new one below.')
+          setSessionChecked(true)
+          return
+        }
+
+        setSessionValid(true)
+        setSessionChecked(true)
+        setTimeout(() => passwordRef.current?.focus(), 100)
+      } catch {
+        if (!cancelled) {
+          setTokenError('We could not verify this link. Check your internet connection or request a new email below.')
+          setSessionChecked(true)
+        }
+      }
+    }
+
+    void initializeVerification()
+    return () => { cancelled = true }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Submit handler ────────────────────────────────────────────────────────
@@ -477,8 +654,17 @@ export default function SetupPasswordPage() {
         <div className="flex-1 flex items-center justify-center px-4 xs:px-6 py-8 xs:py-10">
           <div className={`w-full max-w-[440px] transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
 
-            {/* Token error */}
-            {!sessionValid && (
+            {/* Scanner-safe TokenHash links wait for a real user click. */}
+            {!sessionValid && pendingVerification && (
+              <VerificationReadyScreen
+                verifying={verifyingEmail}
+                error={verificationError}
+                onVerify={verifyPendingEmail}
+              />
+            )}
+
+            {/* Invalid/expired legacy links offer cross-device resend recovery. */}
+            {!sessionValid && !pendingVerification && (
               <TokenErrorScreen message={tokenError} />
             )}
 

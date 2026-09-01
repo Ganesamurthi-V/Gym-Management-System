@@ -103,7 +103,7 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
 
   async function handleRowAction(row: MemberPortalRow, action: MemberRowAction) {
     const result = await run(`${row.memberId}:${action}`, () => memberRowAction(action, row.memberId))
-    if (result?.success) {
+    if (result?.success || result?.invitationCreated) {
       applyLocal(row.memberId, action)
       // Notify parent to update overview cards and trigger server refresh
       onMutationComplete?.(rows.map(r => {
@@ -124,10 +124,17 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
   async function handleBulk(action: MemberBulkAction) {
     const ids = [...selection.selected]
     const result = await run(action, () => memberBulkAction(action, ids))
-    if (!result?.success) return
+    if (!result?.success && !(action === 'bulk_send_invitation' && result?.invitationCreated)) return
+
+    if (action === 'bulk_send_invitation') {
+      // Per-member outcomes can differ. Do not mark every selected row pending
+      // from an aggregate result; refresh from the authoritative server rows.
+      selection.clear()
+      onMutationComplete?.()
+      return
+    }
 
     if (action === 'bulk_enable_portal') ids.forEach(id => applyLocal(id, 'enable_portal'))
-    if (action === 'bulk_send_invitation') ids.forEach(id => applyLocal(id, 'send_invitation'))
     if (action === 'bulk_suspend') ids.forEach(id => applyLocal(id, 'suspend_access'))
     selection.clear()
     onMutationComplete?.()

@@ -10,7 +10,8 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest --watch",
-    "verify:whatsapp": "tsx scripts/verify-whatsapp-setup.ts"
+    "verify:whatsapp": "tsx scripts/verify-whatsapp-setup.ts",
+    "verify:tour": "tsx scripts/verify-tour-anchors.ts"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.0.2",
@@ -24,6 +25,7 @@
     "@upstash/redis": "^1.38.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "driver.js": "1.8.0",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.39.0",
     "jspdf": "^4.2.1",

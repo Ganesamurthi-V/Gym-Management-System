@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, Menu } from 'lucide-react'
+import { navTourAttr, tourAttr } from '@/lib/tours/anchors'
 
 type NavItem = {
   label: string;
@@ -38,6 +39,9 @@ export function DesktopNav({ collapsed = false }: { collapsed?: boolean }) {
           <Link
             key={label}
             href={href}
+            // Guided-tour anchor. Derived from the label so this one line covers
+            // both the desktop sidebar and the mobile drawer below.
+            {...navTourAttr(label)}
             // Next.js only prefetches DYNAMIC routes when prefetch is explicitly
             // true, so the default was a no-op here and every click paid a full
             // cold server round trip. Skipped for the coming-soon '#' entry.
@@ -124,6 +128,7 @@ export function MobileNav() {
               <Link
                 key={label}
                 href={href}
+                {...navTourAttr(label)}
                 onClick={(e) => {
                   if (comingSoon) {
                     e.preventDefault()
@@ -180,6 +185,7 @@ export function MobileNav() {
         </div>
         <button
           onClick={() => setOpen(true)}
+          {...tourAttr('mobileNavToggle')}
           className="w-9 h-9 xs:w-10 xs:h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 transition-colors flex-shrink-0"
           aria-label="Open menu"
         >

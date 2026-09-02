@@ -11,6 +11,7 @@ import { formatMemberId } from '@/types'
 
 import { loadMoreMembersAction, exportMembersToExcelAction } from './actions'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
+import { tourAttr } from '@/lib/tours/anchors'
 
 interface Props {
   members: MemberWithStatus[]
@@ -312,6 +313,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
         <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
           <button
             onClick={() => setShowAdvFilterModal(true)}
+            {...tourAttr('membersAdvancedFilter')}
             className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <Filter className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
@@ -323,23 +325,23 @@ function MembersContent({ members, gymId, totalCount }: Props) {
               </span>
             )}
           </button>
-          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <button onClick={() => setShowExportModal(true)} {...tourAttr('membersExport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Download className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
-          <Link href="/owner/import" className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/import" {...tourAttr('membersImport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Upload className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Import</span>
           </Link>
-          <Link href="/owner/members/bulk-edit" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/members/bulk-edit" {...tourAttr('membersBulkEdit')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Edit2 className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span>Edit Members</span>
           </Link>
-          <Link href="/owner/members/attendance" className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/members/attendance" {...tourAttr('membersAttendanceLog')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Calendar className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span>Attendance Log</span>
           </Link>
-          <Link href="/owner/members/new" className="flex items-center gap-1.5 px-2.5 xs:px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
+          <Link href="/owner/members/new" {...tourAttr('membersAddBtn')} className="flex items-center gap-1.5 px-2.5 xs:px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
             <Plus className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden xs:inline">Add Member</span>
             <span className="xs:hidden">Add</span>
@@ -348,7 +350,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3">
+      <div {...tourAttr('membersStats')} className="grid grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3">
         {/* Total Members */}
         <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#3B82F6]" style={{ backgroundColor: '#EFF6FF' }}>
           <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#DBEAFE] rounded-xl flex items-center justify-center flex-shrink-0">
@@ -397,7 +399,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
       </div>
 
       {/* Search */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div {...tourAttr('membersSearch')} className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder="Search by name or phone..."
@@ -435,7 +437,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      <div {...tourAttr('membersFilterTabs')} className="flex gap-2 overflow-x-auto no-scrollbar">
         {filterConfig.map(({ key, label, activeClass }) => (
           <button key={key} onClick={() => setFilter(key)}
             className={cn('flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all',

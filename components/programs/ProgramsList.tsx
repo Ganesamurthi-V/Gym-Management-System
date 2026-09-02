@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Plus, Search, Calendar, Target, Clock, Dumbbell } from 'lucide-react'
 import type { WorkoutProgramSummary } from '@/types'
+import { tourAttr } from '@/lib/tours/anchors'
 
 interface Props {
   programs: WorkoutProgramSummary[]
@@ -30,7 +31,7 @@ export default function ProgramsList({ programs }: Props) {
           <h1 className="text-2xl font-bold text-slate-900">Workout Programs</h1>
           <p className="text-sm font-semibold text-slate-500 mt-1">Manage and assign workout templates</p>
         </div>
-        <Link href="/owner/programs/new" className="btn-primary w-full sm:w-auto px-6 whitespace-nowrap">
+        <Link href="/owner/programs/new" {...tourAttr('programsCreateBtn')} className="btn-primary w-full sm:w-auto px-6 whitespace-nowrap">
           <Plus className="w-4 h-4" />
           Create Program
         </Link>
@@ -38,7 +39,7 @@ export default function ProgramsList({ programs }: Props) {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
+        <div {...tourAttr('programsSearch')} className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input 
             type="text" 
@@ -48,7 +49,7 @@ export default function ProgramsList({ programs }: Props) {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all shadow-sm"
           />
         </div>
-        <div className="flex bg-slate-100/80 p-1 rounded-xl shrink-0">
+        <div {...tourAttr('programsFilter')} className="flex bg-slate-100/80 p-1 rounded-xl shrink-0">
           {(['all', 'published', 'draft'] as const).map(f => (
             <button
               key={f}

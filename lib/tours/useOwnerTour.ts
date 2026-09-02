@@ -7,7 +7,7 @@ import { api } from '@/lib/api/client'
 import { at } from './anchors'
 import { TOUR_CHAPTERS, isStepInViewport, type TourStep } from './definitions'
 import type { TourChapterId, TourStatus } from './progress'
-import { setTourActive } from './tour-state'
+import { requestTourNav, setTourActive } from './tour-state'
 
 /**
  * lib/tours/useOwnerTour.ts
@@ -120,6 +120,8 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
   const silentRef = useRef(false)
   /** Guards against overlapping `startTour` calls. */
   const startingRef = useRef(false)
+  /** Whether the tour currently has the navigation menu held open. */
+  const navOpenRef = useRef(false)
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -187,6 +189,12 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
       clearTimeout(startTimerRef.current)
       startTimerRef.current = null
     }
+    // Restore the navigation menu before tearing down, so leaving the owner
+    // section cannot strand an open drawer or a sidebar the tour expanded.
+    if (navOpenRef.current) {
+      navOpenRef.current = false
+      requestTourNav('close')
+    }
     if (driverRef.current) {
       silentRef.current = true
       driverRef.current.destroy()
@@ -223,10 +231,32 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
     return -1
   }, [])
 
+  /**
+   * Open or restore the navigation menu for the step we are about to show.
+   *
+   * Must run BEFORE `moveTo`/`drive`. Driver.js resolves a step's element — and
+   * spends its `waitForElement` budget — before firing any hook, so opening the
+   * drawer from `onHighlightStarted` would be too late: the element would already
+   * have been judged missing. Doing it here means the drawer is on its way in
+   * while `waitForElement` bridges the render.
+   *
+   * Restoring is automatic: any step that does not ask for the menu closes it,
+   * so a chapter cannot leave the drawer covering the screen behind it.
+   */
+  const applyNavIntent = useCallback((target: number) => {
+    const entry = flatRef.current[target]
+    const wantOpen = Boolean(entry?.step.openNav)
+    if (wantOpen === navOpenRef.current) return
+    navOpenRef.current = wantOpen
+    requestTourNav(wantOpen ? 'open' : 'close')
+  }, [])
+
   const goToIndex = useCallback((target: number) => {
     const instance = driverRef.current
     const flat = flatRef.current
     if (!instance || target < 0 || target >= flat.length) return
+
+    applyNavIntent(target)
 
     const entry = flat[target]
     if (typeof window !== 'undefined' && window.location.pathname !== entry.route) {
@@ -236,7 +266,7 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
       routerRef.current.push(entry.route)
     }
     instance.moveTo(target)
-  }, [])
+  }, [applyNavIntent])
 
   const step = useCallback(
     (direction: 1 | -1) => {
@@ -350,6 +380,13 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
       onDestroyed: () => {
         setTourActive(false)
 
+        // Hand the navigation menu back to the owner's own preference — a drawer
+        // left open, or a sidebar we expanded, must not outlive the tour.
+        if (navOpenRef.current) {
+          navOpenRef.current = false
+          requestTourNav('close')
+        }
+
         if (silentRef.current) {
           silentRef.current = false
           return
@@ -394,6 +431,7 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
 
         finishedRef.current = false
         silentRef.current = false
+        navOpenRef.current = false
         lastIndexRef.current = startIndex
 
         const instance = driver(buildConfig(flat))
@@ -407,6 +445,9 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
           startTimerRef.current = null
           if (driverRef.current !== instance) return
           setTourActive(true)
+          // Same ordering requirement as goToIndex: open the menu before the
+          // first step resolves its element.
+          applyNavIntent(startIndex)
           instance.drive(startIndex)
         }
 

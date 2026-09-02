@@ -4,9 +4,11 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { fetchSession, signOutViaApi } from '@/lib/auth/client-auth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, User, Settings, Lock, Bell, ChevronRight } from 'lucide-react'
+import { LogOut, User, Settings, Lock, Bell, ChevronRight, Compass } from 'lucide-react'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
+import { tourAttr } from '@/lib/tours/anchors'
+import { requestTourRestart } from '@/lib/tours/tour-state'
 
 interface AccountMenuProps {
   initialEmail?: string | null
@@ -184,6 +186,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
+        {...tourAttr('accountMenu')}
         className="relative w-8 h-8 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center hover:ring-2 hover:ring-brand-300 transition-all"
         title={gymName ?? email ?? ''}
       >
@@ -258,6 +261,19 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
               </Link>
+
+              <button
+                onClick={() => { setIsOpen(false); requestTourRestart() }}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
+                    <Compass className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-semibold text-slate-700">Take the tour again</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
+              </button>
             </div>
 
             <div className="p-2 border-t border-slate-50">

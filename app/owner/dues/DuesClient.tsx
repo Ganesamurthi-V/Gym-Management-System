@@ -5,6 +5,7 @@ import { MessageCircle, Check, IndianRupee, AlertCircle } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
+import { tourAttr } from '@/lib/tours/anchors'
 
 interface DueMember {
   id: string
@@ -123,9 +124,10 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
             placeholder="Search name or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            {...tourAttr('duesSearch')}
             className="input-field w-full xs:w-52 sm:w-64"
           />
-          <div className="card px-3 xs:px-4 py-2 xs:py-2.5 hidden xs:flex items-center gap-2 flex-shrink-0">
+          <div {...tourAttr('duesTotal')} className="card px-3 xs:px-4 py-2 xs:py-2.5 hidden xs:flex items-center gap-2 flex-shrink-0">
             <AlertCircle className="w-4 h-4 text-red-500" />
             <div>
               <p className="text-xs text-slate-400">Total Pending</p>

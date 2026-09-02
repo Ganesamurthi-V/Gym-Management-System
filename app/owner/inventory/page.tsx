@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Plus, Package } from 'lucide-react'
 import InventoryFilters from '@/components/inventory/InventoryFilters'
 import { getCachedInventory } from '@/lib/api/inventory'
+import { tourAttr } from '@/lib/tours/anchors'
 
 export default async function InventoryPage(props: { searchParams?: Promise<{ query?: string, category?: string }> }) {
   const searchParams = await props.searchParams;
@@ -36,13 +37,14 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
   return (
     <div className="max-w-7xl mx-auto space-y-5 xs:space-y-6">
       <div className="flex flex-col xs:flex-row xs:items-start sm:items-center justify-between gap-3 xs:gap-4">
-        <div>
+        <div {...tourAttr('inventoryHeader')}>
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Inventory Management</h1>
           <p className="text-sm text-slate-500 mt-1">Manage your products, stock, and pricing</p>
         </div>
         {items.length > 0 && (
           <Link
             href="/owner/inventory/new"
+            {...tourAttr('inventoryAddBtn')}
             className="btn-primary inline-flex items-center gap-2 shadow-md shadow-brand-500/20 self-start xs:self-auto"
           >
             <Plus className="w-4 h-4" />
@@ -60,7 +62,10 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
           <p className="text-slate-500 max-w-sm mb-8 text-sm leading-relaxed">
             Start tracking your gym's products, supplements, and merchandise by adding your first item.
           </p>
-          <Link href="/owner/inventory/new" className="btn-primary flex items-center gap-2">
+          {/* Same tour anchor as the header button above. The two are mutually
+              exclusive — this one renders only while the inventory is empty, which
+              is exactly the state a first-run owner is in. */}
+          <Link href="/owner/inventory/new" {...tourAttr('inventoryAddBtn')} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Add First Product
           </Link>

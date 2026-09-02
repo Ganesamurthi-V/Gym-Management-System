@@ -303,7 +303,10 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
       }
       localStorage.removeItem(STORAGE_KEY)
       setSuccess(true)
-      setTimeout(() => router.push('/owner/dashboard'), 2800)
+      // `?tour=welcome` starts the guided tour on arrival. Passing it explicitly
+      // makes the first run deterministic rather than depending on the
+      // onboarding_data write above having landed before the dashboard reads it.
+      setTimeout(() => router.push('/owner/dashboard?tour=welcome'), 2800)
     } catch {
       setError('Network error. Please check your connection and try again.')
       setSubmitting(false)

@@ -9,6 +9,7 @@ import { buildWhatsAppLink, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyReportPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
+import { tourAttr } from '@/lib/tours/anchors'
 
 interface Props {
   gymName: string
@@ -83,7 +84,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
       </div>
 
       {/* Stats Grid — 2 cols mobile, 3 cols tablet, 6 cols desktop */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
+      <div {...tourAttr('dashStats')} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
         <StatCard
           icon={<Users className="w-4 h-4" style={{ color: '#16A34A' }} />}
           label="Active" value={stats.total_active}
@@ -123,7 +124,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
       <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: '420px' }}>
         {/* Expiring members — fills all available horizontal space */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div {...tourAttr('dashExpiring')} className="flex-1 min-w-0 flex flex-col">
           <motion.div
             className="card flex-1 flex flex-col"
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -142,7 +143,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
         </div>
 
         {/* Quick Actions — fixed width on desktop, full width on mobile */}
-        <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 card p-4 md:p-5 flex flex-col gap-3 bg-gradient-to-b from-white to-slate-50">
+        <div {...tourAttr('dashQuickActions')} className="w-full lg:w-72 xl:w-80 flex-shrink-0 card p-4 md:p-5 flex flex-col gap-3 bg-gradient-to-b from-white to-slate-50">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <TrendingUp className="w-3 h-3" />
             Quick Actions
@@ -161,6 +162,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               <span className="text-xs sm:text-sm">Attendance Log</span>
             </Link>
             <button onClick={handleDailyPDF} disabled={generatingPDF}
+              {...tourAttr('dashReportBtn')}
               className="w-full flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-60"
             >
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><FileText className="w-4 h-4" /></div>

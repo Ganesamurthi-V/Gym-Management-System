@@ -11,6 +11,9 @@ import toast from 'react-hot-toast'
 
 import TrialBanner from './TrialBanner'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
+import { tourAttr } from '@/lib/tours/anchors'
+import { isTourActive } from '@/lib/tours/tour-state'
+import TourLauncher from '@/components/tours/TourLauncher'
 
 const SHELL_EXCLUDED = ['/auth/', '/owner/onboarding', '/owner/subscription']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
@@ -91,6 +94,12 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     const checkAuth = async () => {
       // Skip check entirely when tab is in the background.
       if (document.hidden) return
+
+      // Stand down while a guided tour is on screen. This poll pushes results
+      // into React state, which can re-render the subtree and detach the element
+      // Driver.js is spotlighting. Up to 30 s of staleness during a two-minute
+      // tour is harmless; a highlight stuck over empty space is not.
+      if (isTourActive()) return
 
       // One request now covers both the session check and the authorization
       // refresh. This used to call `supabase.auth.getClaims()` first as a cheap
@@ -177,6 +186,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       {/* ── Desktop Sidebar ── */}
       <aside
         onClick={collapsed ? toggle : undefined}
+        {...tourAttr('sidebar')}
         className={`
           hidden md:flex flex-col bg-white border-r border-slate-200
           fixed inset-y-0 left-0 z-30 overflow-hidden
@@ -223,6 +233,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           <a
             href="/owner/members/new"
             onClick={e => e.stopPropagation()}
+            {...tourAttr('sidebarAddMember')}
             title={collapsed ? 'Add Member' : undefined}
             className={`
               flex items-center justify-center gap-2 w-full py-2.5
@@ -287,6 +298,10 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
       {/* ── Mobile nav ── */}
       <MobileNav />
+
+      {/* First-run guided tour. Renders nothing until it decides to start, and
+          lives here so one tour instance survives every /owner/* navigation. */}
+      <TourLauncher />
     </div>
   )
 }

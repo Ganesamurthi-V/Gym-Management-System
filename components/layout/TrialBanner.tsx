@@ -2,6 +2,7 @@
 
 import { Clock, AlertTriangle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { tourAttr } from '@/lib/tours/anchors'
 
 interface TrialBannerProps {
   /** 'trial' = free trial period, 'expiring' = paid sub near expiry, 'expired' = lapsed */
@@ -55,7 +56,7 @@ export default function TrialBanner({ mode, daysLeft }: TrialBannerProps) {
   const s = styles[urgency]
 
   return (
-    <div className={`flex items-center justify-between px-4 md:px-6 py-2 border-b text-sm font-medium ${s.wrap}`}>
+    <div {...tourAttr('trialBanner')} className={`flex items-center justify-between px-4 md:px-6 py-2 border-b text-sm font-medium ${s.wrap}`}>
       <div className="flex items-center gap-2 min-w-0">
         <s.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${s.iconClass}`} />
         <span className="truncate">

@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, Loader2, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
+import { tourAttr } from '@/lib/tours/anchors'
 
 interface Props {
   gymId: string
@@ -165,7 +166,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
     <div className="relative w-full min-h-[80vh] flex flex-col items-center justify-center p-3 xs:p-4 md:p-8 animate-slide-up overflow-hidden rounded-2xl xs:rounded-3xl">
       
       {/* Session Toggle */}
-      <div className="absolute top-3 right-3 xs:top-4 xs:right-4 md:top-8 md:right-8 z-20">
+      <div {...tourAttr('attendanceSession')} className="absolute top-3 right-3 xs:top-4 xs:right-4 md:top-8 md:right-8 z-20">
         <div className="bg-white/80 backdrop-blur-md rounded-full p-1 shadow-md border border-slate-200 flex items-center">
           <button
             type="button"
@@ -221,6 +222,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
               disabled={isLoading}
               value={memberId}
               onChange={(e) => setMemberId(e.target.value)}
+              {...tourAttr('attendanceInput')}
               placeholder="1042"
               className="w-full text-center text-4xl xs:text-5xl md:text-6xl font-black text-brand-600 bg-transparent border-b-2 border-slate-200 py-3 xs:py-4 focus:border-brand-500 transition-colors outline-none placeholder:text-slate-200 placeholder:font-bold"
             />
@@ -239,7 +241,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
           </button>
         </form>
 
-        <div className="mt-8 xs:mt-12 text-center">
+        <div {...tourAttr('attendanceTotal')} className="mt-8 xs:mt-12 text-center">
           <p className="text-sm xs:text-base font-bold text-slate-400">
             Total Checked-in Today: <span className="text-slate-700 bg-white shadow-sm px-3 xs:px-4 py-1 xs:py-1.5 rounded-full border border-slate-100 ml-2">{totalPresent}</span>
           </p>

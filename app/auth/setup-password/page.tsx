@@ -411,7 +411,20 @@ export default function SetupPasswordPage() {
           return
         }
 
-        const providerError = queryParams.get('error_code') ?? queryParams.get('error')
+        // GoTrue's /auth/v1/verify redirect returns its outcome in the URL
+        // FRAGMENT, not the query string — verified against the live project:
+        //   fresh link    -> #access_token=…&refresh_token=…&type=signup
+        //   consumed link -> #error=access_denied&error_code=otp_expired&…
+        // Reading the query alone meant an expired link fell through to the
+        // generic "invalid or already used" branch instead of reporting the
+        // real reason. Query is still checked for the legacy PKCE style, which
+        // does put its error there.
+        const providerError =
+          hashParams.get('error_code') ??
+          hashParams.get('error') ??
+          queryParams.get('error_code') ??
+          queryParams.get('error')
+
         if (providerError) {
           if (window.history.replaceState) {
             window.history.replaceState(null, '', window.location.pathname)

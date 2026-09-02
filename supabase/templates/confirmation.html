@@ -1,22 +1,236 @@
-<!doctype html>
+<!--
+  GymFlow — "Confirm signup" email template
+  Paste into: Supabase Dashboard -> Authentication -> Emails -> Confirm signup
+
+  ─── DO NOT ADD THE ConfirmationURL VARIABLE TO THIS TEMPLATE ───────────────
+  (Written without braces on purpose: Go templating evaluates actions even inside
+  HTML comments, so writing it out would render the real URL into the email.)
+
+  It is tempting to include it as a "button not working?" fallback, but it is the
+  single thing that breaks this flow.
+
+  ConfirmationURL points at Supabase's own hosted verify endpoint, and that
+  endpoint CONSUMES the one-time token on any GET. TokenHash is the hashed form of
+  that SAME token, so once the verify URL has been fetched the button below is
+  dead too.
+
+  Mail scanners and browser link-prefetchers do fetch URLs found in email. When
+  they do, the owner's own click arrives second and lands on
+  "#error=access_denied&error_code=otp_expired" — verified against the live
+  project. That is why the first link always failed and only a resent link worked.
+
+  The link below instead points at our own page with the token in the URL
+  FRAGMENT. Fragments are never transmitted in an HTTP request, so a scanner that
+  fetches the page URL consumes nothing. The token is only redeemed after the
+  owner clicks "Verify email and continue" on the page.
+
+  type=email is correct here for a signup confirmation token; verified against
+  this project that verifyOtp accepts it.
+-->
+<!DOCTYPE html>
 <html lang="en">
-  <body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 16px">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:32px">
-            <tr><td style="font-size:24px;font-weight:800;padding-bottom:12px">Confirm your GymFlow email</td></tr>
-            <tr><td style="font-size:15px;line-height:1.6;color:#475569;padding-bottom:24px">Hi {{ if .Data.full_name }}{{ .Data.full_name }}{{ else }}there{{ end }}, confirm your email address to finish creating your gym owner account.</td></tr>
-            <tr>
-              <td align="center" style="padding-bottom:24px">
-                <!-- The one-time TokenHash stays in the fragment. Link scanners request only the page URL and cannot consume it. -->
-                <a href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 24px;border-radius:10px">Verify email and set password</a>
-              </td>
-            </tr>
-            <tr><td style="font-size:12px;line-height:1.5;color:#94a3b8">If you did not create a GymFlow account, you can safely ignore this email.</td></tr>
-          </table>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set Your Password | GymFlow</title>
+</head>
+
+<body style="margin:0;padding:0;background:#F3F7FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F3F7FF">
+<tr>
+<td align="center" style="padding:40px 16px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:20px;border:1px solid #E6EDFF;">
+
+    <!-- Logo -->
+    <tr>
+        <td align="center" style="padding:50px 40px 30px;">
+
+            <img
+                src="https://lrzacwfypnsnjqyhidpn.supabase.co/storage/v1/object/public/assets/logo_landspace_without_bg.png"
+                width="240"
+                alt="GymFlow"
+                style="display:block;border:0;max-width:240px;width:100%;height:auto;">
+
         </td>
-      </tr>
-    </table>
-  </body>
+    </tr>
+
+    <!-- Heading -->
+    <tr>
+        <td align="center" style="padding:0 48px;">
+
+            <h1 style="
+                margin:0;
+                color:#0F1F8F;
+                font-size:32px;
+                font-weight:700;
+                line-height:40px;
+            ">
+                Set Your Password
+            </h1>
+
+        </td>
+    </tr>
+
+    <!-- Description -->
+    <tr>
+        <td align="center" style="padding:24px 48px 10px;">
+
+            <p style="
+                margin:0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                Welcome to <strong>GymFlow</strong>.
+            </p>
+
+            <p style="
+                margin:18px 0 0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                You're just one step away from getting started.
+                Create your password to activate your account and securely access GymFlow.
+            </p>
+
+        </td>
+    </tr>
+
+    <!-- Gradient Button -->
+    <tr>
+        <td align="center" style="padding:40px 48px;">
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+
+                <tr>
+
+                    <td
+                        style="
+                            border-radius:12px;
+                            background:#0F1F8F;
+                            background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                        ">
+
+                        <a
+                            href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=email"
+                            style="
+                                display:inline-block;
+                                padding:18px 42px;
+                                color:#ffffff;
+                                text-decoration:none;
+                                font-size:16px;
+                                font-weight:700;
+                                border-radius:12px;
+                                background:#0F1F8F;
+                                background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                                mso-padding-alt:18px 42px;
+                            ">
+                            Create Password →
+                        </a>
+
+                    </td>
+
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+
+    <!-- Divider -->
+    <tr>
+        <td style="padding:0 48px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td height="1" bgcolor="#EAEFF8"></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- Backup Link -->
+    <tr>
+        <td style="padding:36px 48px;">
+
+            <p style="
+                margin:0;
+                color:#94A3B8;
+                font-size:13px;
+                font-weight:700;
+                text-transform:uppercase;
+                letter-spacing:1px;
+            ">
+                Button not working?
+            </p>
+
+            <p style="
+                margin:12px 0 16px;
+                color:#64748B;
+                font-size:15px;
+                line-height:24px;
+            ">
+                Copy and paste this link into your browser:
+            </p>
+
+            <p style="
+                margin:0;
+                word-break:break-all;
+            ">
+                <!--
+                  Same fragment link as the button. Never swap this for the
+                  ConfirmationURL variable — see the note at the top of this file.
+                -->
+                <a
+                    href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=email"
+                    style="
+                        color:#1D8CFF;
+                        font-size:14px;
+                        text-decoration:none;
+                    ">{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=email</a>
+            </p>
+
+        </td>
+    </tr>
+
+</table>
+
+<!-- Footer -->
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+
+<tr>
+
+<td align="center" style="padding:28px 24px;">
+
+<p style="
+margin:0;
+color:#64748B;
+font-size:14px;
+line-height:24px;
+">
+This secure link will expire after a short time for your protection.
+If you didn't request this email, you can safely ignore it.
+</p>
+
+<p style="
+margin:22px 0 0;
+color:#94A3B8;
+font-size:13px;
+">
+© 2026 GymFlow. All rights reserved.
+</p>
+
+</td>
+
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
 </html>

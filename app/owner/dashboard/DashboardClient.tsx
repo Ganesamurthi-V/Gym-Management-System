@@ -136,15 +136,15 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             Quick Actions
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-2.5 flex-1 lg:justify-center">
-            <Link href="/owner/members/new" className="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
+            <Link href="/owner/members/new" {...tourAttr('dashAddMember')} className="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-brand-200 active:scale-95 transition-all">
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><Plus className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">Add New Member</span>
             </Link>
-            <Link href="/owner/attendance" className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
+            <Link href="/owner/attendance" {...tourAttr('dashMarkAttendance')} className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-cyan-200 active:scale-95 transition-all">
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><CalendarCheck className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">Mark Attendance</span>
             </Link>
-            <Link href="/owner/members/attendance" className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-indigo-200 active:scale-95 transition-all">
+            <Link href="/owner/members/attendance" {...tourAttr('dashAttendanceLog')} className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-3 font-bold text-sm hover:shadow-lg hover:shadow-indigo-200 active:scale-95 transition-all">
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">Attendance Log</span>
             </Link>
@@ -155,7 +155,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
               <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0"><FileText className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">{generatingPDF ? 'Generating...' : 'Daily Report PDF'}</span>
             </button>
-            <Link href="/owner/dues" className="col-span-2 lg:col-span-1 flex items-center gap-2 bg-white text-red-600 rounded-xl p-3 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
+            <Link href="/owner/dues" {...tourAttr('dashViewDues')} className="col-span-2 lg:col-span-1 flex items-center gap-2 bg-white text-red-600 rounded-xl p-3 font-bold text-sm hover:bg-red-50 transition-all border-2 border-red-100 active:scale-95">
               <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0"><IndianRupee className="w-4 h-4" /></div>
               <span className="text-xs sm:text-sm">View Fee Dues</span>
               {stats.total_dues > 0 && <span className="ml-auto text-xs bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">{formatCurrency(stats.total_dues)}</span>}

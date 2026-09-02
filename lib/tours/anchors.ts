@@ -54,7 +54,13 @@ export const TOUR_ANCHORS = {
   dashStats: 'dash-stats',
   dashExpiring: 'dash-expiring',
   dashQuickActions: 'dash-quick-actions',
+  // The five Quick Action shortcuts, anchored individually so the tour can walk
+  // them one at a time.
+  dashAddMember: 'dash-add-member',
+  dashMarkAttendance: 'dash-mark-attendance',
+  dashAttendanceLog: 'dash-attendance-log',
   dashReportBtn: 'dash-report-btn',
+  dashViewDues: 'dash-view-dues',
 
   // ── Members ────────────────────────────────────────────────────────────────
   membersStats: 'members-stats',
@@ -82,6 +88,7 @@ export const TOUR_ANCHORS = {
   // ── Attendance (self-service kiosk) ───────────────────────────────────────
   attendanceSession: 'attendance-session',
   attendanceInput: 'attendance-input',
+  attendanceSubmit: 'attendance-submit',
   attendanceTotal: 'attendance-total',
 
   // ── Inventory ──────────────────────────────────────────────────────────────
@@ -103,6 +110,19 @@ export type TourAnchorKey = keyof typeof TOUR_ANCHORS
 /** CSS selector for a step's `element`. */
 export function at(key: TourAnchorKey): string {
   return `[data-tour="${TOUR_ANCHORS[key]}"]`
+}
+
+/**
+ * Selector for an anchor scoped inside another one.
+ *
+ * Needed for navigation items: `NAV_ITEMS` renders twice — once in the desktop
+ * sidebar, once in the mobile drawer — so both copies carry the same `data-tour`
+ * value. A bare selector returns whichever comes first in the DOM (the sidebar),
+ * which on a phone is `hidden md:flex` and would spotlight a 0x0 box. Scoping to
+ * the visible container makes the match unambiguous on both viewports.
+ */
+export function atWithin(parent: TourAnchorKey, key: TourAnchorKey): string {
+  return `${at(parent)} ${at(key)}`
 }
 
 /**

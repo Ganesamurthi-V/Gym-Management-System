@@ -231,6 +231,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
           <button
             type="submit"
             disabled={isLoading || !memberId.trim()}
+            {...tourAttr('attendanceSubmit')}
             className="w-full max-w-sm mt-8 xs:mt-10 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3.5 xs:py-4 md:py-5 font-bold text-base xs:text-lg md:text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20"
           >
             {isLoading ? (

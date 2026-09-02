@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, Menu } from 'lucide-react'
 import { navTourAttr, tourAttr } from '@/lib/tours/anchors'
+import { subscribeTourNav } from '@/lib/tours/tour-state'
 
 type NavItem = {
   label: string;
@@ -100,6 +101,10 @@ export function MobileNav() {
     setMounted(true)
   }, [])
 
+  // The guided tour explains this menu, so it opens it rather than pointing at a
+  // closed drawer. See lib/tours/tour-state.ts.
+  useEffect(() => subscribeTourNav(intent => setOpen(intent === 'open')), [])
+
   const mobileNavContent = open ? (
     <>
       <div
@@ -121,7 +126,7 @@ export function MobileNav() {
             <X className="w-4 h-4" />
           </button>
         </div>
-        <nav className="px-2 xs:px-3 py-2 xs:py-3 space-y-1">
+        <nav {...tourAttr('mobileNavPanel')} className="px-2 xs:px-3 py-2 xs:py-3 space-y-1">
           {NAV_ITEMS.map(({ label, href, icon: Icon, comingSoon }) => {
             const active = isActive(href) && !comingSoon
             return (

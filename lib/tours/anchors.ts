@@ -29,6 +29,15 @@ export const TOUR_ANCHORS = {
   accountMenu: 'shell-account-menu',
   trialBanner: 'shell-trial-banner',
   mobileNavToggle: 'shell-mobile-nav-toggle',
+  /**
+   * The nav list inside the mobile drawer.
+   *
+   * Needed as its own anchor because the desktop sidebar's nav items carry the
+   * same `data-tour` values and appear earlier in the DOM. On a phone the sidebar
+   * is `hidden md:flex`, so `querySelector` would return that hidden element and
+   * Driver.js would spotlight a 0x0 box. Only exists while the drawer is open.
+   */
+  mobileNavPanel: 'shell-mobile-nav-panel',
 
   // ── Navigation (rendered from NAV_ITEMS, desktop + mobile drawer) ──────────
   navDashboard: 'nav-dashboard',

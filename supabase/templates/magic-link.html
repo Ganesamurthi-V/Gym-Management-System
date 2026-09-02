@@ -1,0 +1,278 @@
+<!--
+  GymFlow — "Magic Link" email template  (MEMBER email verification)
+  Paste into: Supabase Dashboard -> Authentication -> Emails -> Magic Link
+
+  ─── WHICH SLOT AND WHY ─────────────────────────────────────────────────────
+  This is the email a MEMBER receives after submitting their email + password on
+  the activation page. It is sent by lib/member/activation-email.ts:
+
+      supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `${getMemberAppUrl()}/api/activate/callback`,
+        },
+      })
+
+  `signInWithOtp` with an email address sends a MAGIC LINK, so Supabase renders
+  the Magic Link template — NOT "Confirm signup". That matters: "Confirm signup"
+  belongs to OWNER registration and must carry the owner design.
+
+      confirmation.html  -> Confirm signup   -> OWNER  (set password)
+      recovery.html      -> Reset password   -> OWNER  (set password)
+      magic-link.html    -> Magic Link       -> MEMBER (this file)
+      invite.html        -> Invite user      -> MEMBER invite (dormant)
+
+  ─── THIS TEMPLATE MUST KEEP ConfirmationURL. DO NOT "FIX" IT. ──────────────
+  The owner templates deliberately avoid ConfirmationURL and put the token in the
+  URL fragment instead, because a fragment cannot be consumed by a mail scanner.
+  The opposite is correct here, and swapping it would BREAK member activation:
+
+    - `emailRedirectTo` is /api/activate/callback, a SERVER route. Servers cannot
+      read a URL fragment, so a fragment token would never reach it.
+    - The flow depends on Supabase's implicit redirect: /auth/v1/verify responds
+      303 to /api/activate/callback#access_token=...  The callback sees no query
+      params, forwards to /activate/verifying, and the browser carries the
+      fragment across that redirect. The client page then reads
+      window.location.hash and hands the tokens to /api/auth/set-session.
+    - app/activate/verifying/page.tsx reads `access_token` / `refresh_token` (and
+      `error_code`) from the fragment. It has NO `token_hash` handling, so a
+      "#token_hash=..." link would fall through to its `no_tokens` error branch
+      and activation would fail.
+
+  ─── HOW THE SINGLE-USE PROBLEM IS HANDLED HERE ─────────────────────────────
+  Magic links are single use, and link previewers can consume one before the
+  member taps it. Rather than a template change, the member flow mitigates this
+  in the product: /activate/verifying detects `otp_expired`, first re-checks
+  /api/activate/status in case a scanner burned the link AFTER a real activation
+  succeeded, and otherwise offers a one-tap "Send me a new link".
+
+  If you ever want member links to be scanner-proof the way the owner links are,
+  it needs a code change, not a template change: point `emailRedirectTo` at a
+  client page and teach it to redeem a `token_hash` (type `magiclink`) from the
+  fragment.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm Your Email | GymFlow</title>
+</head>
+
+<body style="margin:0;padding:0;background:#F3F7FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F3F7FF">
+<tr>
+<td align="center" style="padding:40px 16px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:20px;border:1px solid #E6EDFF;">
+
+    <!-- Logo -->
+    <tr>
+        <td align="center" style="padding:50px 40px 30px;">
+            <img
+                src="https://lrzacwfypnsnjqyhidpn.supabase.co/storage/v1/object/public/assets/logo_members_without_bg.png"
+                width="240"
+                alt="GymFlow"
+                style="display:block;border:0;max-width:240px;width:100%;height:auto;">
+        </td>
+    </tr>
+
+    <!-- Heading -->
+    <tr>
+        <td align="center" style="padding:0 48px;">
+            <h1 style="
+                margin:0;
+                color:#0F1F8F;
+                font-size:32px;
+                font-weight:700;
+                line-height:40px;
+            ">
+                Welcome to GymFlow Members
+            </h1>
+        </td>
+    </tr>
+
+    <!-- Description -->
+    <tr>
+        <td align="center" style="padding:24px 48px 10px;">
+
+            <p style="
+                margin:0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                Your GymFlow Members account is almost ready.
+            </p>
+
+            <p style="
+                margin:18px 0 0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                To complete your account setup, please confirm your email address
+                by clicking the button below.
+            </p>
+
+        </td>
+    </tr>
+
+    <!-- Gradient Button -->
+    <tr>
+        <td align="center" style="padding:40px 48px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="
+                        border-radius:12px;
+                        background:#0F1F8F;
+                        background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                    ">
+                        <a
+                            href="{{ .ConfirmationURL }}"
+                            style="
+                                display:inline-block;
+                                padding:18px 42px;
+                                color:#ffffff;
+                                text-decoration:none;
+                                font-size:16px;
+                                font-weight:700;
+                                border-radius:12px;
+                                background:#0F1F8F;
+                                background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                                mso-padding-alt:18px 42px;
+                            ">
+                            Confirm Email →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- What you'll access -->
+    <tr>
+        <td style="padding:0 48px 32px;">
+            <p style="
+                margin:0 0 16px;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                Once confirmed, you'll have secure access to:
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Membership details
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Workout plans
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Attendance history
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Payment history
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Rewards, achievements &amp; workout streaks
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- Divider -->
+    <tr>
+        <td style="padding:0 48px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td height="1" bgcolor="#EAEFF8"></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- Backup Link -->
+    <tr>
+        <td style="padding:36px 48px;">
+            <p style="
+                margin:0;
+                color:#94A3B8;
+                font-size:13px;
+                font-weight:700;
+                text-transform:uppercase;
+                letter-spacing:1px;
+            ">
+                Button not working?
+            </p>
+
+            <p style="
+                margin:12px 0 16px;
+                color:#64748B;
+                font-size:15px;
+                line-height:24px;
+            ">
+                Copy and paste this link into your browser:
+            </p>
+
+            <p style="
+                margin:0;
+                word-break:break-all;
+            ">
+                <a
+                    href="{{ .ConfirmationURL }}"
+                    style="
+                        color:#1D8CFF;
+                        font-size:14px;
+                        text-decoration:none;
+                    ">
+                    {{ .ConfirmationURL }}
+                </a>
+            </p>
+        </td>
+    </tr>
+
+</table>
+
+<!-- Footer -->
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+    <tr>
+        <td align="center" style="padding:28px 24px;">
+            <p style="
+                margin:0;
+                color:#64748B;
+                font-size:14px;
+                line-height:24px;
+            ">
+                This secure link will expire after a short time for your protection.
+                If you didn't request this email, you can safely ignore it.
+            </p>
+            <p style="
+                margin:22px 0 0;
+                color:#94A3B8;
+                font-size:13px;
+            ">
+                © 2026 GymFlow. All rights reserved.
+            </p>
+        </td>
+    </tr>
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>

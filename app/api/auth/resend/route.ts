@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { createAuthEmailClient } from '@/lib/supabase/auth-email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   OWNER_REGISTRATION_INDEX_TTL_SECONDS,
@@ -147,7 +148,11 @@ export async function POST(req: NextRequest) {
           ex: OWNER_REGISTRATION_INDEX_TTL_SECONDS,
         })
 
-        const supabase = await createClient()
+        // Must be the non-PKCE client. `resetPasswordForEmail` sends a code
+        // challenge whenever flowType is 'pkce', which yields a `pkce_` token
+        // that verifyOtp() can never redeem — the same defect that broke the
+        // original confirmation email. See lib/supabase/auth-email.ts.
+        const supabase = createAuthEmailClient()
         const result = user.email_confirmed_at
           ? await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo: redirectUrl })
           : await supabase.auth.resend({

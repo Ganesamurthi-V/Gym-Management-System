@@ -248,7 +248,10 @@ export function AccountClient({
     setMessage(null)
     const res = await fetch('/api/account/delete-data', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      // Satisfies the CSRF guard in withAuth without depending on the browser
+      // sending an Origin header on a same-origin POST.
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ gym_id: gymId }),
     })
     const json = await res.json()
@@ -275,7 +278,8 @@ export function AccountClient({
     setMessage(null)
     const res = await fetch('/api/account/delete-gym', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ gym_id: gymId }),
     })
     const json = await res.json()

@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
 import { getAllTimePayments } from './actions'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
+import { tourAttr } from '@/lib/tours/anchors'
 
 interface Payment {
   id: string
@@ -389,12 +390,13 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           setExportOptions({ memberships: true, inventory: true, dues: true, period, customFrom, customTo, mode: modeFilter })
           setShowExportModal(true)
         }} disabled={isLoadingAllTime}
+          {...tourAttr('paymentsExport')}
           className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50 self-start xs:self-auto">
           <Download className="w-4 h-4" />{isLoadingAllTime ? 'Loading...' : 'Export'}
         </button>
       </div>
 
-      <div className="card p-4 xs:p-5 bg-gradient-to-br from-brand-500 to-brand-600">
+      <div {...tourAttr('paymentsCollection')} className="card p-4 xs:p-5 bg-gradient-to-br from-brand-500 to-brand-600">
         <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-1">
           {period === 'today' ? "Today's Collection"
             : period === 'week' ? "This Week's Collection"
@@ -460,7 +462,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       )}
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div {...tourAttr('paymentsPeriodFilter')} className="flex gap-2 overflow-x-auto no-scrollbar">
           {(['today', 'week', 'month', 'all', 'custom'] as Period[]).map(p => (
             <button key={p} onClick={() => handlePeriodChange(p)} disabled={isLoadingAllTime}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-50 ${
@@ -470,7 +472,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
             </button>
           ))}
         </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div {...tourAttr('paymentsModeFilter')} className="flex gap-2 overflow-x-auto no-scrollbar">
           {(['all', 'cash', 'upi', 'card'] as ModeFilter[]).map(m => (
             <button key={m} onClick={() => setMode(m)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
@@ -500,7 +502,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
         </div>
       )}
 
-      <div className="flex border-b border-slate-200 mt-2">
+      <div {...tourAttr('paymentsTabs')} className="flex border-b border-slate-200 mt-2">
         <button onClick={() => setActiveTab('membership')}
           className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${
             activeTab === 'membership' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -521,7 +523,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
         </button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div {...tourAttr('paymentsSearch')} className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="search" placeholder={activeTab === 'membership' ? "Search by name or phone..." : activeTab === 'due' ? "Search dues..." : "Search product..."}

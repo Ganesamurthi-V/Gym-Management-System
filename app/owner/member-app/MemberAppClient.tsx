@@ -9,6 +9,7 @@ import OverviewCards from '@/features/member-app/components/OverviewCards'
 import MemberPortalTable from '@/features/member-app/components/MemberPortalTable'
 import InvitationActivity from '@/features/member-app/components/InvitationActivity'
 import GamificationPanel from '@/features/member-app/components/GamificationPanel'
+import { tourAttr } from '@/lib/tours/anchors'
 
 type TabId = 'portal' | 'invitations' | 'gamification'
 
@@ -141,10 +142,12 @@ export default function MemberAppClient({
       </div>
 
       {/* Overview cards — always visible, derived from current state */}
-      <OverviewCards overview={overview} />
+      <div {...tourAttr('memberAppOverview')}>
+        <OverviewCards overview={overview} />
+      </div>
 
       {/* Tabs */}
-      <div className="border-b border-surface-border overflow-x-auto">
+      <div {...tourAttr('memberAppTabs')} className="border-b border-surface-border overflow-x-auto">
         <div role="tablist" aria-label="Member app sections" className="flex gap-1 min-w-max">
           {TABS.map(({ id, label, icon: Icon }) => {
             const active = tab === id

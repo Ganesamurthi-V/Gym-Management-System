@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { isTourActive } from '@/lib/tours/tour-state'
 
 /**
  * Connection states — kept for API compatibility with consumers that read it,
@@ -84,6 +85,14 @@ export function useRealtimeChannel({
     // hook used to fire.
     const doResync = () => {
       if (cancelled) return
+
+      // Stand down while a guided tour is running. For owner pages `onResync` is
+      // `router.refresh()`, which re-renders the Server Component subtree and
+      // replaces the DOM node Driver.js has spotlighted, detaching the highlight
+      // mid-tour. The launcher refreshes once the tour ends, so nothing is
+      // permanently stale.
+      if (isTourActive()) return
+
       void onResyncRef.current?.()
     }
 

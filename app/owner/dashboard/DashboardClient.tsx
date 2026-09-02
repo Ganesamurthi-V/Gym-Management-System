@@ -42,18 +42,7 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
     }
   }, [expiringFilter, gymId, monthMembers, fetchingMonth])
 
-  // Feature 1: Bulk WhatsApp Reminders — opens a single link with the first member,
-  // since browsers block multiple window.open calls from a single user gesture.
-  function handleBulkRemind() {
-    const validMembers = expiringMembers.filter(m => m.latest_membership && isValidPhone(m.phone))
-    if (validMembers.length === 0) return
-    
-    // Open the first member's link (only one popup allowed per click)
-    const first = validMembers[0]
-    window.open(buildWhatsAppLink(first.phone, first.name, first.latest_membership!.end_date), '_blank')
-  }
-
-  // Feature 3: Daily Report PDF
+  // Daily Report PDF
   async function handleDailyPDF() {
     setGeneratingPDF(true)
     try {
@@ -133,8 +122,6 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           >
             <ExpiringContent
               expiringMembers={expiringFilter === 'month' ? (monthMembers || []) : expiringMembers}
-              handleBulkRemind={handleBulkRemind}
-              gymId={gymId}
               expiringFilter={expiringFilter}
               setExpiringFilter={setExpiringFilter}
               fetchingMonth={fetchingMonth}
@@ -183,15 +170,11 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
 
 function ExpiringContent({
   expiringMembers,
-  handleBulkRemind,
-  gymId,
   expiringFilter,
   setExpiringFilter,
   fetchingMonth
 }: {
   expiringMembers: MemberWithStatus[],
-  handleBulkRemind: () => void,
-  gymId: string,
   expiringFilter: 'week' | 'month',
   setExpiringFilter: (f: 'week' | 'month') => void,
   fetchingMonth: boolean
@@ -212,7 +195,6 @@ function ExpiringContent({
           {fetchingMonth && <span className="text-xs text-slate-400 animate-pulse ml-2">Loading...</span>}
         </div>
         <div className="flex items-center gap-2">
-          {/* Bulk WhatsApp Remind removed per user request */}
           <Link href="/owner/members?filter=expiring" className="text-brand-600 text-sm font-semibold">See all</Link>
         </div>
       </div>
@@ -224,7 +206,7 @@ function ExpiringContent({
       ) : (
         <div className="flex-1 relative min-h-[200px]">
           <div className="absolute inset-0 overflow-y-auto divide-y divide-slate-50 overscroll-contain">
-            {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} gymId={gymId} />)}
+            {expiringMembers.map((member) => <ExpiringMemberRow key={member.id} member={member} />)}
           </div>
         </div>
       )}
@@ -278,7 +260,7 @@ function StatCardCurrency({ icon, label, value, iconBg, cardBg, borderColor, val
   return content
 }
 
-function ExpiringMemberRow({ member, gymId }: { member: MemberWithStatus, gymId: string }) {
+function ExpiringMemberRow({ member }: { member: MemberWithStatus }) {
   const daysLeft = member.days_remaining
   return (
     <div className="flex items-center gap-3 px-4 md:px-5 py-3 hover:bg-slate-50 transition-colors">

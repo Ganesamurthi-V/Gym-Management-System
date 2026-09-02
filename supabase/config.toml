@@ -243,9 +243,19 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Scanner-safe owner signup and recovery templates. Hosted Supabase projects
-# must receive the same HTML through Authentication -> Email Templates in the
-# Dashboard; config.toml controls local Supabase only.
+# Scanner-safe auth email templates. All three keep the one-time token in the URL
+# FRAGMENT so mail scanners and link prefetchers cannot consume it. Hosted
+# Supabase projects must receive the same HTML through
+# Authentication -> Emails in the Dashboard; config.toml controls local Supabase only.
+#
+# Two audiences, kept deliberately separate:
+#   confirmation + recovery -> OWNER  ("Set Your Password" design, fragment token)
+#   magic_link              -> MEMBER ("Confirm Your Email" design, ConfirmationURL)
+#   invite                  -> MEMBER ("You have been invited" design, dormant)
+#
+# The fragment-vs-ConfirmationURL split is intentional and NOT interchangeable.
+# Run `npm run verify:email-templates` before changing any of them.
+
 [auth.email.template.confirmation]
 subject = "Confirm your GymFlow email"
 content_path = "./supabase/templates/confirmation.html"
@@ -254,10 +264,20 @@ content_path = "./supabase/templates/confirmation.html"
 subject = "Finish setting your GymFlow password"
 content_path = "./supabase/templates/recovery.html"
 
-# Uncomment to customize invitation emails separately.
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# MEMBER email verification. Sent by lib/member/activation-email.ts via
+# signInWithOtp(), which Supabase renders with the MAGIC LINK template — not
+# "Confirm signup". This one must keep ConfirmationURL: emailRedirectTo is
+# /api/activate/callback, a server route that cannot read a URL fragment.
+[auth.email.template.magic_link]
+subject = "Confirm your email — GymFlow Members"
+content_path = "./supabase/templates/magic-link.html"
+
+# Member invite template. Currently DORMANT: members are invited over WhatsApp
+# with a GymFlow /activate/<token> link, and nothing calls inviteUserByEmail.
+# Registered here so the file stays in sync with the Dashboard.
+[auth.email.template.invite]
+subject = "You have been invited to GymFlow"
+content_path = "./supabase/templates/invite.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

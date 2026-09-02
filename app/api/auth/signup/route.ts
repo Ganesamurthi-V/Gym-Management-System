@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAuthEmailClient } from '@/lib/supabase/auth-email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   OWNER_REGISTRATION_INDEX_TTL_SECONDS,
@@ -63,7 +63,12 @@ export async function POST(req: NextRequest) {
     const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/+$/, '')
     const redirectUrl = `${appOrigin}/auth/setup-password`
 
-    const supabase = await createClient()
+    // Deliberately NOT the cookie-bound SSR client: that one is hard-wired to
+    // flowType 'pkce', which makes GoTrue bind the emailed token to a PKCE flow
+    // and prefix it with `pkce_`. verifyOtp() cannot redeem such a token, so
+    // every confirmation link failed as "expired or already used".
+    // See lib/supabase/auth-email.ts.
+    const supabase = createAuthEmailClient()
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password: crypto.randomUUID(), // random password; user sets theirs via email link

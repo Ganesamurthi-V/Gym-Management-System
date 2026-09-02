@@ -2,7 +2,7 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import ShellGuard from './ShellGuard'
-import { getAuthUser, getGymCore, getUnreadAdminMessages, getSubscriptionState } from '@/lib/dal'
+import { getAuthUser, getGymCore, getSubscriptionState } from '@/lib/dal'
 import { PATHNAME_HEADER, needsSubscriptionGuard } from '@/lib/protected-routes'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { MEMBER_HOME } from '@/lib/member/redirect'
@@ -29,7 +29,6 @@ export default async function AppShell({ children }: { children: React.ReactNode
 
   let gym = null
   let isActive = true
-  let unreadCount = 0
   let subscriptionStatus = 'unknown'
   let trialDaysLeft = 0
 
@@ -43,15 +42,28 @@ export default async function AppShell({ children }: { children: React.ReactNode
     // Because getGymCore is React cache()-wrapped, every page below this layout
     // that calls getGym()/getGymSubscription()/getGymIsActive() reuses this
     // exact query for free.
-    // Both queries are independent (the unread count is RLS-scoped to the
-    // owner, so it does not need gym.id), so they run concurrently: the shell
-    // pays the cost of the slower one rather than the sum.
-    const [{ gym: core }, unreadResult] = await Promise.all([
-      getGymCore(user.id),
-      getUnreadAdminMessages(user.id),
-    ])
-
-    unreadCount = unreadResult.count ?? 0
+    //
+    // ─── WHY THE UNREAD COUNT IS NO LONGER AWAITED HERE ────────────────────
+    // This used to be `Promise.all([getGymCore, getUnreadAdminMessages])`. The
+    // two run concurrently, so the shell paid the SLOWER of the pair — and
+    // measured against this project the unread count is the slower one whenever
+    // its 30s Redis entry has expired:
+    //
+    //     gyms single row .............. ~157ms
+    //     admin_messages unread count .. ~214ms   (no gym_id predicate; row
+    //                                              visibility comes from an RLS
+    //                                              EXISTS subquery against gyms)
+    //
+    // Because this is a LAYOUT, nothing downstream can be sent until it resolves
+    // — not even the `loading.tsx` skeleton. So a cosmetic notification badge was
+    // setting the time-to-first-byte for every single owner page, roughly every
+    // 30 seconds.
+    //
+    // The gym row genuinely has to block: it carries `is_active` and the
+    // subscription columns behind the paywall redirect below, and a redirect must
+    // be decided before any HTML is streamed. The badge does not. AccountMenu now
+    // fetches it on mount instead, so it costs the shell nothing.
+    const { gym: core } = await getGymCore(user.id)
 
     if (core) {
       gym = {
@@ -103,7 +115,9 @@ export default async function AppShell({ children }: { children: React.ReactNode
       initialUser={user}
       initialGym={gym}
       initialIsActive={isActive}
-      initialUnreadCount={unreadCount}
+      // `null` means "not fetched" — AccountMenu resolves it on mount so the
+      // shell is not gated on a cosmetic badge. See the note above.
+      initialUnreadCount={null}
       initialSubscriptionStatus={subscriptionStatus}
       initialTrialDaysLeft={trialDaysLeft}
     >

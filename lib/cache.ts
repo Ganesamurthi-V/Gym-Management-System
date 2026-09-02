@@ -119,6 +119,27 @@ export async function invalidatePattern(pattern: string): Promise<void> {
 import type { RequestLogger } from '@/lib/logger'
 
 /**
+ * Schedules a cache write to run after the response is sent.
+ *
+ * Falls back to awaiting inline when `after()` is unavailable or throws — it
+ * requires a request scope, so a script or a background job calling
+ * `cacheWrapper` would otherwise lose the write entirely. Correctness first:
+ * a slower write beats a silently dropped one.
+ */
+async function deferCacheWrite(write: () => Promise<unknown>): Promise<void> {
+  try {
+    const { after } = await import('next/server')
+    after(() => {
+      void write().catch(() => {
+        // Already non-fatal: the next read simply misses and re-queries.
+      })
+    })
+  } catch {
+    await write().catch(() => {})
+  }
+}
+
+/**
  * A higher-order wrapper that abstracts the cache lookup and miss logic.
  * Guarantees that the app never crashes if Redis goes down.
  */
@@ -150,9 +171,17 @@ export async function cacheWrapper<T>(
     const freshData = await fetchFn()
     if (logger) logger.end('FETCHFN')
 
-    // Store in cache
+    // ── Store in cache WITHOUT blocking the response ────────────────────────
+    // The value the caller needs is already in hand, so awaiting the write only
+    // delays the render. Upstash is REST-over-HTTPS and a SET measures ~57ms
+    // against this project, which was landing on every cache miss for no gain.
+    //
+    // `after()` runs the write once the response has been sent, which is what
+    // makes it safe to skip the await on serverless — a bare floating promise can
+    // be killed when the invocation ends, losing the write and guaranteeing the
+    // next request misses too.
     if (logger) logger.start('REDIS SET')
-    await setCache(key, freshData, ttlSeconds)
+    await deferCacheWrite(() => setCache(key, freshData, ttlSeconds))
     if (logger) logger.end('REDIS SET')
     
     if (logger) logger.info('RETURNING FRESH DATA')

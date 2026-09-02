@@ -1,8 +1,6 @@
 import { cache } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { cacheWrapper } from '@/lib/cache'
-import { cacheKeys } from '@/lib/cache-keys'
 import { timed } from '@/lib/perf'
 import { computeSubscriptionState } from './subscription-utils'
 
@@ -145,27 +143,21 @@ export const getGymIsActive = cache(async (userId: string) => {
   return { isActive: gym?.is_active ?? true, error }
 })
 
-// ── Unread admin messages (cached 30s) ────────────────────────────────────────
-// Takes the OWNER id rather than the gym id, so it no longer has to wait for
-// the gym row to load and can run in parallel with getGymCore.
+// ── Unread admin messages ─────────────────────────────────────────────────────
+// REMOVED from the server render path.
 //
-// No `gym_id` filter is needed: the "owners read their gym's messages" RLS
-// policy already restricts rows to
-//   EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id
-//           AND owner_id = auth.uid())
-// so the database scopes this to exactly the caller's own gym.
-export const getUnreadAdminMessages = cache(async (userId: string) => {
-  return cacheWrapper(cacheKeys.unreadCount(userId), 30, async () => {
-    const supabase = await createClient()
-    const { count, error } = await timed('unread admin messages', () =>
-      supabase
-        .from('admin_messages')
-        .select('*', { count: 'exact', head: true })
-        .is('read_at', null)
-    )
-    return { count, error }
-  })
-})
+// This used to be awaited inside AppShell's `Promise.all`, which meant the shell
+// paid the slower of it and the gym row. Measured on this project the unread
+// count is the slower one whenever its Redis entry has expired (~214ms vs
+// ~157ms), and because AppShell is a LAYOUT nothing downstream — not even the
+// `loading.tsx` skeleton — could be streamed until it resolved. A cosmetic
+// notification badge was therefore setting time-to-first-byte for every owner
+// page roughly every 30 seconds.
+//
+// `AccountMenu` now fetches it from `/api/support/unread-count` on mount, off
+// the critical path. The gym row still blocks, because it carries `is_active`
+// and the subscription columns behind the paywall redirect, and a redirect has
+// to be decided before any HTML is streamed.
 
 // ── Subscription state helper ─────────────────────────────────────────────────
 // Computes the effective subscription state from either a full gym row or the

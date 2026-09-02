@@ -342,8 +342,22 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
   const renderPopover = useCallback(
     (popover: PopoverDOM, index: number | undefined) => {
       const flat = flatRef.current
-      const entry = flat[index ?? lastIndexRef.current]
+      const position = index ?? lastIndexRef.current
+      const entry = flat[position]
       if (!entry) return
+
+      // Progress rail down the card's left edge, filling downward. Driver's own
+      // "N of M" text stays in the footer, but across 27 steps a filling rail is
+      // what actually tells the owner how much is left. Vertical, so the height
+      // carries the value — see .gf-tour-progress in driver-theme.css.
+      const track = document.createElement('div')
+      track.className = 'gf-tour-progress'
+      const fill = document.createElement('span')
+      fill.className = 'gf-tour-progress-fill'
+      const pct = flat.length > 0 ? ((position + 1) / flat.length) * 100 : 0
+      fill.style.height = `${Math.min(100, Math.max(0, pct))}%`
+      track.appendChild(fill)
+      popover.wrapper.appendChild(track)
 
       // Chapter label above the title, so the owner always knows which part of
       // the app they are being shown.

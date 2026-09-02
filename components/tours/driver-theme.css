@@ -1,7 +1,7 @@
 /**
  * components/tours/driver-theme.css
  * ────────────────────────────────
- * Brand styling for the Driver.js guided tour.
+ * Brand styling for the Driver.js guided tour popover.
  *
  * Loaded by `TourLauncher.tsx` immediately after `driver.js/dist/driver.css`.
  *
@@ -10,7 +10,7 @@
  * so it has higher specificity and wins regardless of the order the two
  * stylesheets end up in after the CSS bundler merges them.
  *
- * Values come from `app/design-tokens.css`, which is imported globally in
+ * Values come from `app/design-tokens.css`, imported globally in
  * `app/globals.css`, so the popover tracks the brand palette automatically.
  *
  * Note: Tailwind's `content` globs cover `app/**` and `components/**` but not
@@ -18,87 +18,140 @@
  * utility classes. The few classes the copy does use are declared here.
  */
 
-/* Fade duration for the overlay + popover, read by driver.css. */
 .driver-fade .driver-overlay,
 .driver-fade .driver-popover {
-  --driver-animation-duration: 0.32s;
+  --driver-animation-duration: 0.3s;
+}
+
+/* Replaces driver's plain opacity fade with a slight rise and settle. Higher
+   specificity than `.driver-fade .driver-popover`, so this wins. Driver
+   positions with `top`/`left`, never `transform`, so animating transform here
+   cannot fight its placement. */
+@keyframes gf-tour-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.driver-fade .driver-popover.gymflow-tour-popover {
+  animation: gf-tour-pop-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .driver-popover.gymflow-tour-popover {
+  --gf-radius: 18px;
   --driver-popover-font-family: inherit;
 
-  min-width: 268px;
-  max-width: 348px;
-  padding: 18px 18px 14px;
+  min-width: 300px;
+  max-width: 384px;
+  padding: 22px 22px 15px;
   color: var(--color-text-primary, #0f172a);
-  background-color: #fff;
-  border: 1px solid rgb(37 99 235 / 12%);
-  border-radius: var(--radius-xl, 1rem);
+
+  /* Barely-there vertical gradient. Reads as a lit surface rather than flat
+     white, which is most of what separates a premium card from a plain one. */
+  background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+  border: 1px solid rgb(15 23 42 / 7%);
+  border-radius: var(--gf-radius);
+
+  /* Layered elevation: a hairline, a tight contact shadow, then two wide soft
+     casts. A single large shadow reads as a smudge; stacking them reads as
+     depth. The inset highlight catches the top edge like real glass. */
   box-shadow:
-    0 18px 44px -12px rgb(15 23 42 / 28%),
-    0 4px 12px -4px rgb(15 23 42 / 12%);
+    inset 0 1px 0 rgb(255 255 255 / 90%),
+    0 1px 2px rgb(15 23 42 / 6%),
+    0 12px 24px -10px rgb(15 23 42 / 16%),
+    0 32px 64px -24px rgb(15 23 42 / 26%);
 }
 
-/* Coloured rail down the left edge — ties the popover to the brand gradient. */
-.driver-popover.gymflow-tour-popover::before {
-  content: '';
+/* ── Progress rail, down the left edge ─────────────────────────────────────
+   Injected by `renderPopover` in lib/tours/useOwnerTour.ts, and fills downward
+   as the tour advances. With 27 steps the bare "10 of 27" reads as a chore,
+   whereas a filling rail shows how little is left at a glance.
+
+   Inset from the top and bottom on purpose. The card has an 18px corner radius,
+   so a rail pinned to the full height would run past the curve and appear to
+   poke out of the corners. Clipping it with `overflow: hidden` on the card is
+   not an option either — that would cut off driver's arrow, which is positioned
+   outside the box. */
+.driver-popover.gymflow-tour-popover .gf-tour-progress {
   position: absolute;
-  top: 14px;
-  bottom: 14px;
+  top: 15px;
+  bottom: 15px;
   left: 0;
   width: 3px;
+  overflow: hidden;
+  background: var(--color-surface-sunken, #f1f5f9);
   border-radius: 0 3px 3px 0;
+}
+
+.driver-popover.gymflow-tour-popover .gf-tour-progress-fill {
+  display: block;
+  width: 100%;
+  border-radius: inherit;
   background: linear-gradient(
-    to bottom,
+    180deg,
     var(--color-brand-500, #2563eb),
     var(--color-brand-2, #06b6d4)
   );
+  transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Chapter label ─────────────────────────────────────────────────────────
+   A tinted pill rather than bare uppercase text, so it reads as a deliberate
+   badge and gives the title something to sit against. */
+.driver-popover.gymflow-tour-popover .gf-tour-chapter {
+  display: inline-block;
+  margin-bottom: 11px;
+  padding: 3px 9px 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-brand-700, #1e40af);
+  background: var(--color-brand-50, #eff6ff);
+  border: 1px solid rgb(37 99 235 / 14%);
+  border-radius: 999px;
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-title {
-  padding-right: 26px;
-  font-size: 15px;
+  display: block;
+  padding-right: 30px;
+  font-size: 16.5px;
   font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
+  line-height: 1.35;
+  letter-spacing: -0.018em;
   color: var(--color-text-primary, #0f172a);
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-description {
-  margin-top: 6px;
-  font-size: 13px;
-  font-weight: 450;
-  line-height: 1.6;
+  margin-top: 7px;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.65;
   color: var(--color-text-secondary, #475569);
 }
 
-/* Chapter label above the title, e.g. "Members · 2 of 9". */
-.driver-popover.gymflow-tour-popover .gf-tour-chapter {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--color-brand-600, #1d4ed8);
-}
-
-/* Inline emphasis used sparingly in step copy. */
 .driver-popover.gymflow-tour-popover .driver-popover-description strong {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text-primary, #0f172a);
 }
 
+/* ── Close button ──────────────────────────────────────────────────────────
+   Circular and quiet until hovered. Nudged clear of the progress bar. */
 .driver-popover.gymflow-tour-popover .driver-popover-close-btn {
-  width: 26px;
-  height: 26px;
-  top: 12px;
-  right: 12px;
-  font-size: 17px;
-  font-weight: 400;
-  line-height: 24px;
-  border-radius: 8px;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 26px;
   color: var(--color-text-muted, #94a3b8);
+  border-radius: 999px;
   transition: color 0.15s, background-color 0.15s;
 }
 
@@ -108,59 +161,75 @@
   background-color: var(--color-surface-sunken, #f1f5f9);
 }
 
+/* ── Footer ────────────────────────────────────────────────────────────────
+   The divider stops short of the card edges so it reads as a considered rule
+   rather than the card being cut in half. */
 .driver-popover.gymflow-tour-popover .driver-popover-footer {
-  margin-top: 16px;
-  padding-top: 12px;
   gap: 10px;
-  border-top: 1px solid var(--color-surface-sunken, #f1f5f9);
+  margin-top: 18px;
+  padding-top: 13px;
+  border-top: 1px solid rgb(15 23 42 / 7%);
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-progress-text {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  /* Tabular figures stop the label jittering as the step number changes. */
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-muted, #94a3b8);
 }
 
+/* ── Buttons ───────────────────────────────────────────────────────────────*/
 .driver-popover.gymflow-tour-popover .driver-popover-footer-btn {
-  padding: 7px 13px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 8px 15px;
+  font-size: 12.5px;
+  font-weight: 600;
   line-height: 1.3;
-  border-radius: 9px;
-  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  border-radius: 10px;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s,
+    transform 0.12s;
 }
 
-/* Secondary action — "Back". */
+/* Secondary — "Back". Deliberately borderless so there is exactly one thing
+   in the footer competing for attention. */
 .driver-popover.gymflow-tour-popover .driver-popover-prev-btn {
   color: var(--color-text-secondary, #475569);
-  background-color: #fff;
-  border: 1px solid var(--border-color-default, #e2e8f0);
+  background-color: transparent;
+  border: 1px solid transparent;
 }
 
-.driver-popover.gymflow-tour-popover .driver-popover-prev-btn:hover:not(.driver-popover-btn-disabled) {
+.driver-popover.gymflow-tour-popover
+  .driver-popover-prev-btn:hover:not(.driver-popover-btn-disabled) {
   color: var(--color-text-primary, #0f172a);
-  background-color: var(--color-surface-hover, #f8fafc);
+  background-color: var(--color-surface-sunken, #f1f5f9);
 }
 
-/* Primary action — "Next" / "Finish". */
+/* Primary — "Next" / "Finish". */
 .driver-popover.gymflow-tour-popover .driver-popover-next-btn {
   color: #fff;
   background: linear-gradient(
-    to right,
-    var(--color-brand-500, #2563eb),
-    var(--color-brand-600, #1d4ed8)
+    135deg,
+    var(--color-brand-500, #2563eb) 0%,
+    var(--color-brand-600, #1d4ed8) 100%
   );
   border: 1px solid transparent;
-  box-shadow: 0 1px 2px rgb(37 99 235 / 30%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    0 1px 2px rgb(29 78 216 / 24%),
+    0 6px 14px -6px rgb(37 99 235 / 55%);
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-next-btn:hover {
-  background: linear-gradient(
-    to right,
-    var(--color-brand-600, #1d4ed8),
-    var(--color-brand-700, #1e40af)
-  );
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    0 2px 4px rgb(29 78 216 / 26%),
+    0 10px 20px -6px rgb(37 99 235 / 60%);
+}
+
+.driver-popover.gymflow-tour-popover .driver-popover-next-btn:active {
+  transform: translateY(0);
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-footer-btn:focus-visible {
@@ -168,23 +237,24 @@
   outline-offset: 2px;
 }
 
-/* "Skip tour" text button injected via onPopoverRender. */
+/* "Skip tour" — injected via onPopoverRender. Quiet by default: it is an exit,
+   not an invitation. */
 .driver-popover.gymflow-tour-popover .gf-tour-skip {
   all: unset;
   box-sizing: border-box;
   cursor: pointer;
-  padding: 7px 4px;
+  padding: 8px 4px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-text-muted, #94a3b8);
-  text-decoration: underline;
-  text-underline-offset: 2px;
   border-radius: 6px;
   transition: color 0.15s;
 }
 
 .driver-popover.gymflow-tour-popover .gf-tour-skip:hover {
   color: var(--color-text-secondary, #475569);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .driver-popover.gymflow-tour-popover .gf-tour-skip:focus-visible {
@@ -192,26 +262,38 @@
   outline-offset: 2px;
 }
 
+/* Matches the card's top edge so the arrow reads as part of the same surface. */
 .driver-popover.gymflow-tour-popover .driver-popover-arrow {
-  border-color: #fff;
+  border-color: #ffffff;
 }
 
-/* The spotlit element gets a soft brand ring so the target is unmistakable. */
+/* ── Spotlit element ───────────────────────────────────────────────────────
+   Two rings: a defined inner edge plus a soft outer bloom, so the target is
+   unmistakable against the dimmed page without looking like an error state. */
 .driver-active .driver-active-element {
   border-radius: var(--radius-lg, 0.75rem);
-  box-shadow: 0 0 0 3px rgb(37 99 235 / 35%);
+  box-shadow:
+    0 0 0 3px rgb(37 99 235 / 45%),
+    0 0 0 9px rgb(37 99 235 / 13%);
 }
 
-/* Respect the user's motion preference — the overlay still works, it just
-   stops animating. Mirrors the global rule in app/design-tokens.css. */
+/* Respect the user's motion preference — the overlay still works, it just stops
+   moving. Mirrors the global rule in app/design-tokens.css. */
 @media (prefers-reduced-motion: reduce) {
   .driver-fade .driver-overlay,
-  .driver-fade .driver-popover {
+  .driver-fade .driver-popover,
+  .driver-fade .driver-popover.gymflow-tour-popover {
     animation: none !important;
   }
 
+  .driver-popover.gymflow-tour-popover .gf-tour-progress-fill,
   .driver-popover.gymflow-tour-popover .driver-popover-footer-btn,
-  .driver-popover.gymflow-tour-popover .driver-popover-close-btn {
+  .driver-popover.gymflow-tour-popover .driver-popover-close-btn,
+  .driver-popover.gymflow-tour-popover .gf-tour-skip {
     transition: none !important;
+  }
+
+  .driver-popover.gymflow-tour-popover .driver-popover-next-btn:hover {
+    transform: none;
   }
 }

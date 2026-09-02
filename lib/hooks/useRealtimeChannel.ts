@@ -35,7 +35,32 @@ interface UseRealtimeChannelOptions {
   onResync?: () => void | Promise<void>
   /** Polling interval in ms. Default: 30 000 (30 s). */
   pollIntervalMs?: number
+  /**
+   * Skip the on-mount resync when the page was JUST server-rendered.
+   *
+   * The immediate resync exists to compensate for Next.js's client Router Cache,
+   * which `next.config.mjs` lets serve a dynamic RSC payload for up to 180s — on
+   * an in-app navigation the data really can be stale, so the resync is earned.
+   *
+   * On a fresh document load it is pure waste: the server rendered this exact
+   * data microseconds ago, and for `useGymRealtime` the resync is
+   * `router.refresh()`, so every hard load rendered the whole server tree twice.
+   * Measured against this project, one owner render costs ~160-430ms of database
+   * round trips, so the duplicate was doubling that for no new information.
+   *
+   * `performance.now()` is time since navigationStart, which is exactly the
+   * signal needed: small means this mount belongs to the initial document load,
+   * large means a later client-side navigation.
+   */
+  skipInitialResyncOnFreshLoad?: boolean
 }
+
+/**
+ * How recent the document load has to be for a mount to count as "the server
+ * just rendered this". Generous enough to cover slow hydration; anything beyond
+ * it is treated as a client navigation, where the Router Cache may be stale.
+ */
+const FRESH_LOAD_WINDOW_MS = 3_000
 
 /**
  * Drop-in replacement for the former Supabase Realtime hook.
@@ -65,6 +90,7 @@ export function useRealtimeChannel({
   enabled = true,
   onResync,
   pollIntervalMs = 30_000,
+  skipInitialResyncOnFreshLoad = false,
 }: UseRealtimeChannelOptions) {
   const [connectionState, setConnectionState] = useState<RealtimeConnectionState>(
     enabled ? 'connected' : 'disabled',
@@ -96,8 +122,15 @@ export function useRealtimeChannel({
       void onResyncRef.current?.()
     }
 
-    // Fire once immediately (equivalent to the socket's initial sync).
-    doResync()
+    // Fire once immediately (equivalent to the socket's initial sync) — unless
+    // the server just rendered this page, in which case there is nothing newer
+    // to fetch. See `skipInitialResyncOnFreshLoad`.
+    const isFreshServerRender =
+      typeof performance !== 'undefined' && performance.now() < FRESH_LOAD_WINDOW_MS
+
+    if (!(skipInitialResyncOnFreshLoad && isFreshServerRender)) {
+      doResync()
+    }
 
     // Interval replaces the WebSocket nudge for foreground-visible tabs.
     const interval = setInterval(doResync, pollIntervalMs)
@@ -113,7 +146,7 @@ export function useRealtimeChannel({
       clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [enabled, pollIntervalMs])
+  }, [enabled, pollIntervalMs, skipInitialResyncOnFreshLoad])
 
   return {
     connectionState,

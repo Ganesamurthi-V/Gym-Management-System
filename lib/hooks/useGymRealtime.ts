@@ -46,5 +46,11 @@ export function useGymRealtime(
     subscriptions,
     enabled,
     onResync: handleChange,
+    // `handleChange` is `router.refresh()`, which re-runs the whole server tree.
+    // On a fresh document load the server rendered that tree microseconds ago, so
+    // refreshing immediately doubled every page load's database work for no new
+    // data. In-app navigations still resync, because the Router Cache can serve a
+    // payload up to 180s old there.
+    skipInitialResyncOnFreshLoad: true,
   })
 }

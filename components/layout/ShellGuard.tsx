@@ -40,7 +40,8 @@ interface ShellGuardProps {
   initialUser: User | null
   initialGym: GymRow
   initialIsActive: boolean
-  initialUnreadCount: number
+  /** `null` when the layout deliberately did not fetch it — AccountMenu will. */
+  initialUnreadCount: number | null
   initialSubscriptionStatus: string
   initialTrialDaysLeft: number
 }

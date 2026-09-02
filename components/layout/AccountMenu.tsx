@@ -14,7 +14,12 @@ interface AccountMenuProps {
   initialEmail?: string | null
   initialGymId?: string | null
   initialGymName?: string | null
-  initialUnreadCount?: number
+  /**
+   * `null`/undefined means the server did not fetch it. AppShell deliberately
+   * skips that query so a cosmetic badge cannot delay the whole shell, so this
+   * component resolves the count on mount instead.
+   */
+  initialUnreadCount?: number | null
 }
 
 export default function AccountMenu({ initialEmail, initialGymId, initialGymName, initialUnreadCount }: AccountMenuProps = {}) {
@@ -29,6 +34,25 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
   const router = useRouter()
 
   useEffect(() => {
+    /**
+     * Resolves just the notification badge.
+     *
+     * Split out from `fetchForUser` because the common path now has valid gym
+     * props but an unknown count: AppShell stopped awaiting the unread query so
+     * that it could not gate the shell's time-to-first-byte.
+     */
+    async function fetchUnreadCount() {
+      try {
+        const res = await fetch('/api/support/unread-count')
+        const json = await res.json()
+        if (!cancelled && res.ok && json.data) {
+          setUnreadCount(json.data.count ?? 0)
+        }
+      } catch {
+        // A badge that fails to load must never disturb the shell.
+      }
+    }
+
     async function fetchForUser(userId: string, userEmail: string) {
       setEmail(userEmail)
       // Fetch gym info via API
@@ -83,7 +107,13 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
         setEmail(initialEmail ?? null)
         setGymId(initialGymId ?? null)
         setGymName(initialGymName ?? null)
-        setUnreadCount(initialUnreadCount ?? 0)
+
+        if (typeof initialUnreadCount === 'number') {
+          setUnreadCount(initialUnreadCount)
+        } else {
+          // Not server-rendered — fetch it without blocking anything.
+          void fetchUnreadCount()
+        }
       } else {
         fetchForUser(session.userId, session.email ?? '')
       }

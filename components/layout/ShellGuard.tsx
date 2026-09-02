@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import TrialBanner from './TrialBanner'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { tourAttr } from '@/lib/tours/anchors'
-import { isTourActive } from '@/lib/tours/tour-state'
+import { isTourActive, subscribeTourNav } from '@/lib/tours/tour-state'
 import TourLauncher from '@/components/tours/TourLauncher'
 
 const SHELL_EXCLUDED = ['/auth/', '/owner/onboarding', '/owner/subscription']
@@ -64,6 +64,26 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     if (saved === 'true') setCollapsed(true)
     setMounted(true)
   }, [])
+
+  // The guided tour explains the navigation menu, so it expands a collapsed
+  // sidebar first — otherwise the step would spotlight a strip of icons.
+  // 'close' restores the owner's saved preference rather than forcing expanded,
+  // so a sidebar they chose to collapse stays collapsed afterwards.
+  useEffect(
+    () =>
+      subscribeTourNav(intent => {
+        if (intent === 'open') {
+          setCollapsed(false)
+          return
+        }
+        try {
+          setCollapsed(localStorage.getItem(SIDEBAR_KEY) === 'true')
+        } catch {
+          setCollapsed(false)
+        }
+      }),
+    [],
+  )
 
   // Effect 2: Auth guard — set up focus listener and 60s interval.
   // Does NOT include `pathname` so the interval is not reset on every navigation.

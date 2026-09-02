@@ -99,3 +99,41 @@ export function subscribeTourRestart(listener: RestartListener): () => void {
     restartListeners.delete(listener)
   }
 }
+
+// ── Navigation menu control ─────────────────────────────────────────────────
+//
+// The tour explains the navigation menu, so it has to actually open it rather
+// than point at a closed one.
+//
+// Both pieces of state live in components the tour cannot reach: the drawer's
+// `open` flag is local to `MobileNav`, and the sidebar's `collapsed` flag is
+// local to `ShellGuard`. Clicking the hamburger programmatically would work for
+// the drawer but does nothing for a collapsed desktop sidebar, so both subscribe
+// here instead and the tour states its intent once.
+//
+// 'close' restores the owner's own preference rather than forcing a state — a
+// sidebar they had collapsed stays collapsed after the tour.
+
+export type TourNavIntent = 'open' | 'close'
+
+type NavListener = (intent: TourNavIntent) => void
+const navListeners = new Set<NavListener>()
+
+/** Ask the shell to open or restore the navigation menu. */
+export function requestTourNav(intent: TourNavIntent): void {
+  for (const listener of navListeners) {
+    try {
+      listener(intent)
+    } catch {
+      // A failing shell listener must not interrupt the tour.
+    }
+  }
+}
+
+/** Subscribe to navigation-menu requests. Returns an unsubscribe function. */
+export function subscribeTourNav(listener: NavListener): () => void {
+  navListeners.add(listener)
+  return () => {
+    navListeners.delete(listener)
+  }
+}

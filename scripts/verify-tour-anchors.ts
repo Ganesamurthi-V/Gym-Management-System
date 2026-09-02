@@ -112,10 +112,23 @@ function main(): void {
 
   // Anchors the tour actually asks for.
   const referenced = new Set<TourAnchorKey>()
+  let usesNavTarget = false
+
   for (const chapter of TOUR_CHAPTERS) {
     for (const step of chapter.steps) {
       if (step.anchor) referenced.add(step.anchor)
+      if (step.navTarget) {
+        referenced.add(step.navTarget)
+        usesNavTarget = true
+      }
     }
+  }
+
+  // Nav steps are scoped to whichever menu container the viewport shows, so both
+  // containers are in use even though no step names them directly.
+  if (usesNavTarget) {
+    referenced.add('sidebar')
+    referenced.add('mobileNavPanel')
   }
 
   // 1. Every referenced anchor must be attached somewhere. This is the check
@@ -190,6 +203,34 @@ function main(): void {
     }
     console.log(rule)
   }
+
+  // The walk order, so the flow can be reviewed without running the tour.
+  // 'menu' marks a step that opens the navigation menu and points at an entry;
+  // '->' marks a step that navigates to a new route.
+  console.log('  Walk order (desktop):')
+  // The tour opens on the first chapter's route, so seed it — otherwise step 1
+  // would be reported as a navigation it never performs.
+  let currentRoute = TOUR_CHAPTERS[0]?.route ?? ''
+  let position = 0
+  for (const chapter of TOUR_CHAPTERS) {
+    for (const step of chapter.steps) {
+      if (!isStepInViewport(step, true)) continue
+      position += 1
+
+      const navigates = !step.navTarget && chapter.route !== currentRoute
+      if (navigates) currentRoute = chapter.route
+
+      const marker = step.navTarget ? 'menu' : navigates ? ' ->  ' : '     '
+      const target = step.navTarget
+        ? `${step.navTarget}`
+        : step.anchor ?? '(centred)'
+
+      console.log(
+        `    ${String(position).padStart(2)}. ${marker} ${chapter.label.padEnd(18)} ${target.padEnd(20)} ${navigates ? chapter.route : ''}`,
+      )
+    }
+  }
+  console.log(rule)
 
   for (const line of info) console.log(`  INFO  ${line}`)
   if (info.length > 0) console.log(rule)

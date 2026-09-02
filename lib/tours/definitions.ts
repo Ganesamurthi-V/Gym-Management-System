@@ -51,10 +51,34 @@ export type TourStepAlign = 'start' | 'center' | 'end'
 export type TourStep = {
   /** Anchor to spotlight. Omit for a centred step with no target. */
   anchor?: TourAnchorKey
+  /**
+   * Spotlight a NAVIGATION ITEM instead of a page element, to show the owner
+   * where a page lives before opening it.
+   *
+   * The engine handles the rest of the behaviour implicitly:
+   *   - opens the menu first (sidebar on desktop, drawer on mobile)
+   *   - scopes the selector to whichever container that viewport shows, since
+   *     both render the same `data-tour` value
+   *   - does NOT navigate, because the point is to show the item from wherever
+   *     the owner currently is; the following step performs the navigation
+   *   - lets a click on the item advance the tour, so the natural instinct to
+   *     click the highlighted menu entry does the right thing
+   */
+  navTarget?: TourAnchorKey
   title: string
   /** Supports inline HTML; `<strong>` is styled in `driver-theme.css`. */
   description: string
   side?: TourStepSide
+  /**
+   * Overrides `side` below 768px.
+   *
+   * Some panels change axis with the layout — the dashboard's Quick Actions is a
+   * right-hand column on desktop but a two-column grid on a phone, where a
+   * ~270px popover fits on neither side of a half-width button. Driver.js flips a
+   * popover that does not fit, but with no good side available it ends up clamped
+   * over the thing it is pointing at.
+   */
+  mobileSide?: TourStepSide
   align?: TourStepAlign
   viewport?: TourViewport
   /**
@@ -97,26 +121,6 @@ export const TOUR_CHAPTERS: TourChapter[] = [
         description:
           'Your gym is set up. This is a quick look around — about two minutes, and you can leave whenever you like. You can start it again any time from your account menu.',
       },
-      {
-        anchor: 'sidebar',
-        title: 'Your main menu',
-        description:
-          'Everything you manage lives here — members, payments, dues, attendance, stock and workout plans. We will look at each one in turn. You can collapse this menu with the arrow at the top to give yourself more room.',
-        side: 'right',
-        align: 'start',
-        viewport: 'desktop',
-        openNav: true,
-      },
-      {
-        anchor: 'mobileNavPanel',
-        title: 'Your main menu',
-        description:
-          'Everything you manage lives here — members, payments, dues, attendance, stock and workout plans. Tap the menu button in the bottom bar to open this any time.',
-        side: 'top',
-        align: 'center',
-        viewport: 'mobile',
-        openNav: true,
-      },
     ],
   },
 
@@ -135,12 +139,58 @@ export const TOUR_CHAPTERS: TourChapter[] = [
         align: 'start',
       },
       {
-        anchor: 'dashExpiring',
-        title: 'Renewals coming up',
+        anchor: 'dashQuickActions',
+        title: 'Your everyday shortcuts',
         description:
-          'The one panel worth checking every morning: memberships ending soon, with a WhatsApp reminder for each. Catching a renewal before it lapses is far easier than winning the member back afterwards.',
-        side: 'right',
+          'The five things you will do most, always one click away. Let us go through them.',
+        side: 'left',
+        mobileSide: 'top',
         align: 'start',
+      },
+      {
+        anchor: 'dashAddMember',
+        title: '1. Add New Member',
+        description:
+          'Sign someone up: name, phone, plan and start date. GymFlow works out the expiry date and gives them a member ID.',
+        side: 'left',
+        mobileSide: 'bottom',
+        align: 'center',
+      },
+      {
+        anchor: 'dashMarkAttendance',
+        title: '2. Mark Attendance',
+        description:
+          'Opens the check-in screen, where members mark themselves present with their member ID.',
+        side: 'left',
+        mobileSide: 'bottom',
+        align: 'center',
+      },
+      {
+        anchor: 'dashAttendanceLog',
+        title: '3. Attendance Log',
+        description:
+          'The full check-in history — who trained and when. Filter by date range or member, and export it whenever you need it.',
+        side: 'left',
+        mobileSide: 'bottom',
+        align: 'center',
+      },
+      {
+        anchor: 'dashReportBtn',
+        title: '4. Daily Report PDF',
+        description:
+          'Creates a PDF of today\'s collections and new joiners. Useful for your own records, or to share with a partner.',
+        side: 'left',
+        mobileSide: 'bottom',
+        align: 'center',
+      },
+      {
+        anchor: 'dashViewDues',
+        title: '5. View Fee Dues',
+        description:
+          'Jumps to everyone who still owes you money. When there is an outstanding amount, it shows right here on the button.',
+        side: 'left',
+        mobileSide: 'bottom',
+        align: 'center',
       },
     ],
   },
@@ -151,6 +201,12 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     label: 'Members',
     route: '/owner/members',
     steps: [
+      {
+        navTarget: 'navMembers',
+        title: 'This is your main menu',
+        description:
+          'Every part of GymFlow is reachable from here. We will open each one in turn, starting with <strong>Members</strong>.',
+      },
       {
         anchor: 'membersAddBtn',
         title: 'Everyone who trains at your gym',
@@ -169,6 +225,11 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     route: '/owner/payments',
     steps: [
       {
+        navTarget: 'navPayments',
+        title: 'Next: Payments',
+        description: 'Everything you have taken in, in one place.',
+      },
+      {
         anchor: 'paymentsCollection',
         title: 'Everything you have collected',
         description:
@@ -185,6 +246,11 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     label: 'Fee Dues',
     route: '/owner/dues',
     steps: [
+      {
+        navTarget: 'navDues',
+        title: 'Next: Fee Dues',
+        description: 'Where you chase what is still outstanding.',
+      },
       {
         anchor: 'duesTotal',
         title: 'Money still owed to you',
@@ -205,12 +271,34 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     route: '/owner/attendance',
     steps: [
       {
+        navTarget: 'navAttendance',
+        title: 'Next: Attendance',
+        description: 'How members check in each day.',
+      },
+      {
         anchor: 'attendanceInput',
         title: 'Check-ins',
         description:
-          'A member types their ID and they are marked present. Leave this page open on a tablet at your entrance and members check themselves in — no queue at your desk. Switch between morning and evening batches in the corner.',
+          'The member types their own ID here. Leave this page open on a tablet at your entrance and members check themselves in — no queue at your desk.',
         side: 'bottom',
         align: 'center',
+      },
+      {
+        anchor: 'attendanceSubmit',
+        title: 'Confirm the check-in',
+        description:
+          'Press Confirm and they are marked present for today. You will see their name and the time straight away, and on the way out the same ID records their check-out and workout duration.',
+        side: 'top',
+        align: 'center',
+      },
+      {
+        anchor: 'attendanceSession',
+        title: 'Morning or evening batch',
+        description:
+          'Switch the session before your batch starts, so check-ins are recorded against the right one. That way you can see which batch is actually busy and staff it properly.',
+        side: 'left',
+        mobileSide: 'bottom',
+        align: 'start',
       },
     ],
   },
@@ -222,12 +310,25 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     route: '/owner/inventory',
     steps: [
       {
+        navTarget: 'navInventory',
+        title: 'Next: Inventory',
+        description: 'Stock for anything you sell at the counter.',
+      },
+      {
         anchor: 'inventoryHeader',
         title: 'Your shop',
         description:
-          'Supplements, drinks and merchandise. Track what you hold, what it cost and what it sells for, and get a warning before you run out. Sales recorded here show up alongside your membership income on the Payments page.',
+          'Supplements, drinks and merchandise. Track what you hold, what it cost and what it sells for. Sales recorded here show up alongside your membership income on the Payments page.',
         side: 'bottom',
         align: 'start',
+      },
+      {
+        anchor: 'inventoryAddBtn',
+        title: 'Add a product',
+        description:
+          'Set a product up once with its price and opening stock, and GymFlow warns you before you run low. From then on you just record sales against it.',
+        side: 'bottom',
+        align: 'center',
       },
     ],
   },
@@ -238,6 +339,11 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     label: 'Workout Programs',
     route: '/owner/programs',
     steps: [
+      {
+        navTarget: 'navPrograms',
+        title: 'Next: Workout Programs',
+        description: 'Training plans you can assign to members.',
+      },
       {
         anchor: 'programsCreateBtn',
         title: 'Build workout plans',
@@ -255,6 +361,11 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     label: 'Member App',
     route: '/owner/member-app',
     steps: [
+      {
+        navTarget: 'navMemberApp',
+        title: 'Last one: Member App',
+        description: 'The app your members get on their own phones.',
+      },
       {
         anchor: 'memberAppOverview',
         title: 'Your members get their own app',

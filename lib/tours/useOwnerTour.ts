@@ -4,8 +4,13 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Config, DriveStep, Driver, PopoverDOM } from 'driver.js'
 import { api } from '@/lib/api/client'
-import { at } from './anchors'
-import { TOUR_CHAPTERS, isStepInViewport, type TourStep } from './definitions'
+import { at, atWithin, type TourAnchorKey } from './anchors'
+import {
+  TOUR_CHAPTERS,
+  isStepInViewport,
+  type TourStep,
+  type TourStepSide,
+} from './definitions'
 import type { TourChapterId, TourStatus } from './progress'
 import { requestTourNav, setTourActive } from './tour-state'
 
@@ -55,6 +60,19 @@ type FlatStep = {
   /** Index within this chapter AFTER viewport filtering. */
   stepIndexInChapter: number
   step: TourStep
+  /** Resolved CSS selector, or undefined for a centred step. */
+  selector?: string
+  /**
+   * Popover side, resolved for this viewport. Nav steps need different placement
+   * on each: the sidebar is a tall column on the left, the mobile drawer is a
+   * bottom sheet, so the same side value cannot serve both.
+   */
+  side?: TourStepSide
+  /**
+   * True for a step that spotlights a navigation item. Those point at the menu
+   * from wherever the owner already is, so they must not trigger a route change.
+   */
+  isNav: boolean
 }
 
 export type TourResumePoint = {
@@ -69,18 +87,46 @@ export type StartTourOptions = {
   delayMs?: number
 }
 
-/** Flatten the chapters into the linear list Driver.js drives. */
+/**
+ * Flatten the chapters into the linear list Driver.js drives.
+ *
+ * Selectors are resolved here, once, because a navigation item's selector depends
+ * on the viewport: `NAV_ITEMS` renders in both the desktop sidebar and the mobile
+ * drawer with the same `data-tour` value, so it has to be scoped to whichever
+ * container that width actually shows.
+ */
 function buildFlatSteps(isDesktop: boolean): FlatStep[] {
   const flat: FlatStep[] = []
+  const navContainer: TourAnchorKey = isDesktop ? 'sidebar' : 'mobileNavPanel'
+
   for (const chapter of TOUR_CHAPTERS) {
     const visible = chapter.steps.filter(step => isStepInViewport(step, isDesktop))
     visible.forEach((step, indexInChapter) => {
+      const isNav = Boolean(step.navTarget)
+      const selector = step.navTarget
+        ? atWithin(navContainer, step.navTarget)
+        : step.anchor
+          ? at(step.anchor)
+          : undefined
+
+      // Nav steps point out of the sidebar to the right on desktop, and up out of
+      // the bottom-sheet drawer on mobile. Other steps may declare their own
+      // mobile override where the layout changes axis.
+      const side: TourStepSide | undefined = isNav
+        ? isDesktop ? 'right' : 'top'
+        : !isDesktop && step.mobileSide
+          ? step.mobileSide
+          : step.side
+
       flat.push({
         chapterId: chapter.id,
         chapterLabel: chapter.label,
         route: chapter.route,
         stepIndexInChapter: indexInChapter,
         step,
+        selector,
+        side,
+        isNav,
       })
     })
   }
@@ -218,11 +264,10 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
 
     while (target >= 0 && target < flat.length) {
       const entry = flat[target]
-      const anchor = entry.step.anchor
       const sameRoute =
         typeof window !== 'undefined' && window.location.pathname === entry.route
 
-      if (entry.step.optional && anchor && sameRoute && !document.querySelector(at(anchor))) {
+      if (entry.step.optional && entry.selector && sameRoute && !document.querySelector(entry.selector)) {
         target += direction
         continue
       }
@@ -245,7 +290,8 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
    */
   const applyNavIntent = useCallback((target: number) => {
     const entry = flatRef.current[target]
-    const wantOpen = Boolean(entry?.step.openNav)
+    // A nav step spotlights an item inside the menu, so it always needs it open.
+    const wantOpen = Boolean(entry?.isNav || entry?.step.openNav)
     if (wantOpen === navOpenRef.current) return
     navOpenRef.current = wantOpen
     requestTourNav(wantOpen ? 'open' : 'close')
@@ -259,7 +305,14 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
     applyNavIntent(target)
 
     const entry = flat[target]
-    if (typeof window !== 'undefined' && window.location.pathname !== entry.route) {
+    // Nav steps deliberately stay put: they show where a page lives, from
+    // wherever the owner currently is. The step after each one performs the
+    // actual navigation.
+    if (
+      !entry.isNav &&
+      typeof window !== 'undefined' &&
+      window.location.pathname !== entry.route
+    ) {
       // Push first, then move. Driver.js waits for the element via
       // `waitForElement` while the new page renders, keeping the current step
       // highlighted in the meantime.
@@ -322,14 +375,22 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
         popover: {
           title: source.title,
           description: source.description,
-          side: source.side,
+          side: entry.side,
           align: source.align,
         },
       }
-      if (source.anchor) {
-        driveStep.element = at(source.anchor)
+      if (entry.selector) {
+        driveStep.element = entry.selector
         driveStep.waitForElement = ELEMENT_WAIT_MS
       }
+
+      if (entry.isNav) {
+        // Clicking the highlighted menu entry is the natural instinct, and the
+        // Link navigates on its own. Advancing on click keeps the tour in step
+        // with that instead of leaving the popover pointing at a stale element.
+        driveStep.advanceOnClick = true
+      }
+
       return driveStep
     })
   }, [])

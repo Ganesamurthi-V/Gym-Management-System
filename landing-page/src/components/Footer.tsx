@@ -130,8 +130,9 @@ export function Footer() {
             content rather than claiming details a visitor cannot see.
           */}
           <div className="mt-4 flex flex-col gap-1.5 text-[12px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            <span className="inline-flex items-center gap-2 justify-center md:justify-start">
-              <MapPin className="w-3.5 h-3.5" /> Villianur, Puducherry 605110
+            <span className="inline-flex items-start gap-2 justify-center md:justify-start">
+              <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>No. 126, Anbu Nagar, Achariyapuram, Villianur, Puducherry 605110</span>
             </span>
             <a
               href="mailto:ganesamurthiv@gmail.com"

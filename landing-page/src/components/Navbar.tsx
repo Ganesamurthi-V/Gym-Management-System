@@ -58,7 +58,7 @@ export function Navbar() {
     >
       {/* Logo */}
       <a href="#" className="flex items-center" aria-label="GymFlow home">
-        <img src="/logo_landspace_without_bg.png" alt="GymFlow" className="h-18 w-auto" />
+        <img src="/logo_landspace_without_bg.webp" alt="GymFlow" width="400" height="178" className="h-18 w-auto" />
       </a>
 
       {/* Desktop nav */}

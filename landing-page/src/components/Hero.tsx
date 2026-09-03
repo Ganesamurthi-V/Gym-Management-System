@@ -278,7 +278,9 @@ export function Hero() {
                 maxHeight: '340px',
               }}
             >
-              <img src="/hero.png" alt="GymFlow Dashboard" width="2880" height="1532" fetchPriority="high" decoding="async" className="w-full h-auto block rounded-b-[16px]" />
+              {/* 1160x617 WebP: 2x the 580px container cap. The old 2880px PNG
+                  was ~5x oversized and this is the LCP element. */}
+              <img src="/hero.webp" alt="GymFlow Dashboard" width="1160" height="617" fetchPriority="high" decoding="async" className="w-full h-auto block rounded-b-[16px]" />
             </div>
           </div>
         </div>

@@ -26,6 +26,13 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'gymflow',
   },
+  // The owner console is private. `robots.ts` disallows /owner/, which stops
+  // crawlers fetching it; this is the directive that actually keeps the URLs out
+  // of the index if one is ever discovered through an external link.
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {

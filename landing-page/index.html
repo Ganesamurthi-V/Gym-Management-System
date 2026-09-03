@@ -12,19 +12,153 @@
     <title>GymFlow — Gym Management for Tamil Nadu &amp; Puducherry Gyms</title>
     <meta name="description" content="GymFlow is the all-in-one gym management platform for independent gym owners. Track members, payments, attendance and dues, and send WhatsApp reminders — all in one place." />
 
+    <!--
+      Canonical URL. Without this, gymflow.sbs, www.gymflow.sbs, the http://
+      variant and every ?utm_source=… share link look like separate pages with
+      identical content, which splits ranking signals between them. robots.txt
+      cannot fix that — this is the only thing that consolidates them.
+      Must stay byte-identical to the <loc> in public/sitemap.xml.
+    -->
+    <link rel="canonical" href="https://gymflow.sbs/" />
+
+    <!--
+      index,follow is already the default; it is spelled out so the intent is
+      explicit alongside app.gymflow.sbs, which is deliberately noindex.
+      max-image-preview:large opts into large image thumbnails in search results
+      instead of the default small one.
+    -->
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
     <!-- Open Graph / social sharing -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="GymFlow" />
     <meta property="og:title" content="GymFlow — Know who paid. Who didn't. Who's expiring." />
     <meta property="og:description" content="The all-in-one gym management platform for independent gyms. Members, payments, attendance, dues, and WhatsApp reminders in one place." />
-    <meta property="og:image" content="https://app.gymflow.sbs/logo_landspace.png" />
-    <meta property="og:url" content="https://gymflow.sbs" />
+    <!-- Kept identical to <link rel="canonical"> and the sitemap <loc>. -->
+    <meta property="og:url" content="https://gymflow.sbs/" />
+    <meta property="og:locale" content="en_IN" />
+
+    <!--
+      og-image.jpg is generated from the full-res hero screenshot at exactly
+      1200x630 (1.90:1), which is the ratio every major platform crops to.
+      It replaced app.gymflow.sbs/logo_landspace.png, which was wrong on three
+      counts: 2.25:1 so it got trimmed top and bottom, 952 KB (WhatsApp is
+      unreliable much above ~300 KB, and WhatsApp is how this audience shares
+      links), and served from the app domain so the marketing site's previews
+      depended on another host.
+
+      Declaring width/height lets platforms reserve the card layout before the
+      image finishes downloading, so the preview does not reflow.
+    -->
+    <meta property="og:image" content="https://gymflow.sbs/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The GymFlow dashboard showing member counts, dues and expiring memberships at a glance." />
 
     <!-- Twitter card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="GymFlow — Gym Management, simplified" />
     <meta name="twitter:description" content="Members, payments, attendance, dues, and WhatsApp reminders in one place. Built for Tamil Nadu &amp; Puducherry gyms." />
-    <meta name="twitter:image" content="https://app.gymflow.sbs/logo_landspace.png" />
+    <meta name="twitter:image" content="https://gymflow.sbs/og-image.jpg" />
+    <meta name="twitter:image:alt" content="The GymFlow dashboard showing member counts, dues and expiring memberships at a glance." />
+
+    <!--
+      ─── STRUCTURED DATA (JSON-LD) ──────────────────────────────────────────
+      What lets Google understand this as a paid software product rather than a
+      generic page: the price, what it does, who sells it, and where it operates.
+
+      Every value here is also visible on the page, which is a hard requirement —
+      Google treats markup describing content a visitor cannot see as spam.
+      The price mirrors the Pricing section (Pricing.tsx: ₹3,000 / month,
+      "GymFlow Pro"), and featureList mirrors the six cards in Features.tsx.
+
+      DELIBERATELY ABSENT: AggregateRating and Review. The testimonials in
+      Testimonials.tsx are three named quotes that cannot be independently
+      verified, and Google's review-snippet policy forbids self-serving review
+      markup for a product you sell yourself. Adding star ratings here would risk
+      a manual action, which costs far more than the stars would earn. If those
+      testimonials become verifiable, collect them through a third-party review
+      platform and let that platform emit the markup.
+
+      One @graph rather than several script blocks so the nodes can @id-reference
+      each other instead of repeating the organization details.
+    -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://gymflow.sbs/#organization",
+          "name": "GymFlow",
+          "url": "https://gymflow.sbs/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://gymflow.sbs/logo_landspace_without_bg.webp",
+            "width": 400,
+            "height": 178
+          },
+          "email": "support@gymflow.sbs",
+          "areaServed": [
+            { "@type": "State", "name": "Tamil Nadu" },
+            { "@type": "AdministrativeArea", "name": "Puducherry" }
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://gymflow.sbs/#website",
+          "url": "https://gymflow.sbs/",
+          "name": "GymFlow",
+          "description": "Gym management software for independent gyms in Tamil Nadu and Puducherry.",
+          "publisher": { "@id": "https://gymflow.sbs/#organization" },
+          "inLanguage": "en-IN"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://gymflow.sbs/#software",
+          "name": "GymFlow",
+          "applicationCategory": "BusinessApplication",
+          "applicationSubCategory": "Gym Management Software",
+          "operatingSystem": "Web browser, Android, iOS",
+          "url": "https://gymflow.sbs/",
+          "installUrl": "https://app.gymflow.sbs",
+          "description": "All-in-one gym management for independent gym owners: member records, payments and dues, attendance, and automated WhatsApp reminders.",
+          "publisher": { "@id": "https://gymflow.sbs/#organization" },
+          "screenshot": "https://gymflow.sbs/og-image.jpg",
+          "inLanguage": "en-IN",
+          "featureList": [
+            "Dashboard & Live Stats",
+            "Member Management",
+            "Payments & Dues",
+            "One-Tap Attendance",
+            "Smart Area Detection",
+            "Bulk CSV/Excel Import",
+            "WhatsApp Reminders",
+            "Reports & Analytics"
+          ],
+          "offers": {
+            "@type": "Offer",
+            "name": "GymFlow Pro",
+            "price": "3000",
+            "priceCurrency": "INR",
+            "availability": "https://schema.org/InStock",
+            "url": "https://gymflow.sbs/#pricing",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "3000",
+              "priceCurrency": "INR",
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
+            }
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

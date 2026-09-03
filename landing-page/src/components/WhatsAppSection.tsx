@@ -155,10 +155,19 @@ export function WhatsAppSection() {
               </svg>
             </div>
 
+            {/* 880x1320 WebP (was a 2.1 MB PNG): 2x the 440px container cap.
+                width/height are set so the browser reserves the correct space
+                before load — that keeps CLS at zero and, because this element is
+                GSAP/ScrollTrigger animated, stops the trigger positions being
+                computed against a zero-height box. */}
             <img 
               ref={phoneRef}
-              src="/Whatsapp_phone.png" 
+              src="/Whatsapp_phone.webp" 
               alt="WhatsApp Automation on Phone" 
+              width="880"
+              height="1320"
+              loading="lazy"
+              decoding="async"
               className="relative z-10 w-full object-contain drop-shadow-2xl" 
             />
           </div>

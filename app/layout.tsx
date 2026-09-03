@@ -18,6 +18,16 @@ const sora = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap'
  * own so the installed PWA matches the experience the user installed from.
  */
 export const metadata: Metadata = {
+  /**
+   * Required for Next.js to resolve relative URLs in generated metadata —
+   * canonical links, Open Graph and Twitter card URLs, and the `sitemap` field
+   * of `robots.txt`. Without it Next.js warns at build time and falls back to
+   * localhost, which would emit wrong absolute URLs in production.
+   *
+   * Falls back to the production host so a preview build without the env var set
+   * still produces valid absolute URLs rather than throwing.
+   */
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.gymflow.sbs'),
   title: 'gymflow — Gym Management',
   description:
     'A powerful, intelligent management system for modern fitness centers in Tamil Nadu and Puducherry.',

@@ -47,6 +47,12 @@ export const metadata: Metadata = {
     title: 'GymFlow',
   },
   formatDetection: { telephone: false },
+  // Every /m/* route is a member's private data. `robots.ts` disallows /m/;
+  // this is the directive that guarantees exclusion from the index.
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 /**

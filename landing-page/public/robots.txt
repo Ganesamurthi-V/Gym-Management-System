@@ -1,0 +1,33 @@
+# robots.txt for the GymFlow marketing site — https://gymflow.sbs
+#
+# ─── WHY THIS IS A STATIC FILE AND NOT robots.ts ────────────────────────────
+# `app/robots.ts` is a Next.js App Router convention. This project is Vite +
+# React, so that file would never be compiled or served. Vite copies everything
+# in `public/` verbatim into `dist/`, so this lands at /robots.txt in the build.
+#
+# ─── THIS DOMAIN IS THE ONE THAT SHOULD RANK ────────────────────────────────
+# The two hosts have deliberately opposite policies:
+#
+#   gymflow.sbs      (this site)  public marketing page  -> index everything
+#   app.gymflow.sbs  (the app)    owner/member console   -> disallow everything
+#
+# The app host is fully disallowed because every route there is auth-gated or
+# carries a one-time token, and its `/` only redirects to login. All search
+# visibility is meant to come from this domain.
+#
+# ─── NOTHING IS DISALLOWED HERE, ON PURPOSE ─────────────────────────────────
+# The build output is a single page plus its assets: index.html, favicon.svg and
+# a handful of images. There is no admin area, no API and no private route to
+# protect, and blocking the CSS/JS bundles would stop Google rendering the page
+# and hurt ranking. If a private path is ever added to this host, add it here AND
+# give the page a `noindex` meta tag — robots.txt alone does not guarantee a URL
+# stays out of search results.
+#
+# AI crawlers (GPTBot, ClaudeBot, CCBot, PerplexityBot) are intentionally left
+# allowed: being quotable in AI answers is free distribution for a marketing
+# page. Add per-agent Disallow blocks below if that ever becomes unwanted.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://gymflow.sbs/sitemap.xml

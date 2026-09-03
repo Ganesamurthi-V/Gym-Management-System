@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, MapPin, Mail, Phone } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -123,6 +123,33 @@ export function Footer() {
           <div className="text-[12px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
             Built for gym owners, by fitness enthusiasts. © 2026 GymFlow. Tamil Nadu &amp; Puducherry, India.
           </div>
+
+          {/*
+            Visible contact block. Mirrors the Organization contactPoint + address
+            in index.html's JSON-LD, so the structured data reflects on-page
+            content rather than claiming details a visitor cannot see.
+          */}
+          <div className="mt-4 flex flex-col gap-1.5 text-[12px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            <span className="inline-flex items-center gap-2 justify-center md:justify-start">
+              <MapPin className="w-3.5 h-3.5" /> Villianur, Puducherry 605110
+            </span>
+            <a
+              href="mailto:ganesamurthiv@gmail.com"
+              className="inline-flex items-center gap-2 justify-center md:justify-start transition-colors"
+              onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.75)')}
+              onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.4)')}
+            >
+              <Mail className="w-3.5 h-3.5" /> ganesamurthiv@gmail.com
+            </a>
+            <a
+              href="tel:+919384886895"
+              className="inline-flex items-center gap-2 justify-center md:justify-start transition-colors"
+              onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.75)')}
+              onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.4)')}
+            >
+              <Phone className="w-3.5 h-3.5" /> +91 93848 86895
+            </a>
+          </div>
         </div>
 
         <div className="flex items-center gap-7">
@@ -130,7 +157,7 @@ export function Footer() {
             { label: 'Privacy',  href: '#' },
             { label: 'Terms',    href: '#' },
             { label: 'Support',  href: '#support' },
-            { label: 'Contact',  href: 'mailto:support@gymflow.sbs' },
+            { label: 'Contact',  href: 'mailto:ganesamurthiv@gmail.com' },
           ].map(link => (
             <a
               key={link.label}

@@ -5,23 +5,28 @@
 # React, so that file would never be compiled or served. Vite copies everything
 # in `public/` verbatim into `dist/`, so this lands at /robots.txt in the build.
 #
-# ─── WARNING: CLOUDFLARE IS CURRENTLY OVERRIDING THIS FILE ──────────────────
+# ─── ACTION REQUIRED: CLOUDFLARE OVERRIDES THIS FILE ────────────────────────
 # Verified against the live site: https://www.gymflow.sbs/robots.txt does NOT
-# serve this content. It returns a Cloudflare-managed file delimited by
-# "# BEGIN Cloudflare Managed content", which adds Content-Signal directives and
-# Disallow rules for AI crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended,
-# Bytespider, Amazonbot, Applebot-Extended, meta-externalagent) and DROPS the
-# Sitemap line below.
+# serve this content. Cloudflare returns its own managed file, delimited by
+# "# BEGIN Cloudflare Managed content", which:
+#   - sets Content-Signal: search=yes,ai-train=no,use=reference
+#   - Disallows GPTBot, ClaudeBot, CCBot, Google-Extended, Bytespider, Amazonbot,
+#     Applebot-Extended and meta-externalagent
+#   - DROPS the Sitemap line at the bottom of this file
 #
-# Consequences:
-#   - Sitemap auto-discovery via robots.txt does not work. The sitemap must be
-#     submitted manually in Search Console (it already is).
-#   - AI crawlers are blocked by Cloudflare's default, not by a decision made
-#     here. If being cited in AI answers is wanted, turn that off in the
-#     Cloudflare dashboard under AI Crawl Control / Manage robots.txt.
+# That is Cloudflare's default, not a decision made here, and it is the OPPOSITE
+# of the intended policy below (AI crawlers allowed).
 #
-# To make THIS file authoritative, disable Cloudflare's managed robots.txt.
-# Until then, treat the rules below as the intended policy, not the live one.
+# UNTIL IT IS DISABLED, THE RULES IN THIS FILE HAVE NO EFFECT. To make this file
+# authoritative:
+#   Cloudflare dashboard -> the gymflow.sbs zone -> AI Crawl Control
+#   (older accounts: Security -> Bots, or Settings -> Manage robots.txt)
+#   Turn OFF the managed robots.txt / "Block AI bots" setting, then purge the
+#   cache for /robots.txt.
+#
+# Re-verify afterwards — the live file should contain the Sitemap line and no
+# "Cloudflare Managed content" markers:
+#   curl -s https://www.gymflow.sbs/robots.txt
 #
 # ─── HOST: www, NOT THE APEX ────────────────────────────────────────────────
 # https://gymflow.sbs/* returns 308 -> https://www.gymflow.sbs/*, so www is the
@@ -47,11 +52,65 @@
 # give the page a `noindex` meta tag — robots.txt alone does not guarantee a URL
 # stays out of search results.
 #
-# AI crawlers (GPTBot, ClaudeBot, CCBot, PerplexityBot) are intentionally left
-# allowed: being quotable in AI answers is free distribution for a marketing
-# page. Add per-agent Disallow blocks below if that ever becomes unwanted.
+# ─── AI CRAWLERS ARE ALLOWED, DELIBERATELY ──────────────────────────────────
+# Being quotable in ChatGPT, Claude, Perplexity and AI search summaries is free
+# distribution for a marketing page, so every AI crawler is permitted.
+#
+# The per-agent groups below are technically redundant — `User-agent: *` with
+# `Allow: /` already permits them. They are spelled out because a robots.txt
+# user-agent group OVERRIDES the wildcard for that agent, so if Cloudflare's
+# managed robots.txt (or anything else) ever reintroduces a Disallow for one of
+# these, the conflict is obvious in a diff instead of silent.
+#
+# Content-Signal is Cloudflare's directive, mirrored here with permissive values
+# so this file states the opposite of Cloudflare's default
+# (search=yes,ai-train=no,use=reference). It is advisory; most crawlers ignore it.
 
 User-agent: *
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
+Allow: /
+
+# Explicitly allowed AI / LLM crawlers — the exact set Cloudflare was blocking.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: cohere-ai
 Allow: /
 
 # sitemap.xml is deliberately minimal — declaration, urlset, one url, no comments.

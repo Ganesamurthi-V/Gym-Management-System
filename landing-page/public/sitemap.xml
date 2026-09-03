@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Sitemap for https://gymflow.sbs
+  Sitemap for https://www.gymflow.sbs
 
   ONE URL, and that is correct. `react-router-dom` is listed in package.json but
   no router is ever mounted: src/main.tsx renders <App /> directly, and App.tsx is
@@ -16,10 +16,16 @@
   `changefreq` and `priority` are omitted on purpose: Google ignores both. Only
   <loc> and <lastmod> carry weight, and lastmod only while it stays honest — bump
   it when the page content changes meaningfully, or it will simply be disregarded.
+
+  THE HOST MUST BE www. https://gymflow.sbs/* returns 308 -> www, and a <loc>
+  that redirects is not indexed at the submitted address. Submit this sitemap to
+  Search Console as https://www.gymflow.sbs/sitemap.xml — submitting the apex URL
+  fails with "Sitemap could not be read" because GSC does not follow redirects
+  for sitemaps. Keep this <loc> identical to <link rel="canonical"> in index.html.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://gymflow.sbs/</loc>
+    <loc>https://www.gymflow.sbs/</loc>
     <lastmod>2026-09-03</lastmod>
   </url>
 </urlset>

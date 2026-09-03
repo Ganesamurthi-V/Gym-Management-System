@@ -1,9 +1,33 @@
-# robots.txt for the GymFlow marketing site — https://gymflow.sbs
+# robots.txt for the GymFlow marketing site — https://www.gymflow.sbs
 #
 # ─── WHY THIS IS A STATIC FILE AND NOT robots.ts ────────────────────────────
 # `app/robots.ts` is a Next.js App Router convention. This project is Vite +
 # React, so that file would never be compiled or served. Vite copies everything
 # in `public/` verbatim into `dist/`, so this lands at /robots.txt in the build.
+#
+# ─── WARNING: CLOUDFLARE IS CURRENTLY OVERRIDING THIS FILE ──────────────────
+# Verified against the live site: https://www.gymflow.sbs/robots.txt does NOT
+# serve this content. It returns a Cloudflare-managed file delimited by
+# "# BEGIN Cloudflare Managed content", which adds Content-Signal directives and
+# Disallow rules for AI crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended,
+# Bytespider, Amazonbot, Applebot-Extended, meta-externalagent) and DROPS the
+# Sitemap line below.
+#
+# Consequences:
+#   - Sitemap auto-discovery via robots.txt does not work. The sitemap must be
+#     submitted manually in Search Console (it already is).
+#   - AI crawlers are blocked by Cloudflare's default, not by a decision made
+#     here. If being cited in AI answers is wanted, turn that off in the
+#     Cloudflare dashboard under AI Crawl Control / Manage robots.txt.
+#
+# To make THIS file authoritative, disable Cloudflare's managed robots.txt.
+# Until then, treat the rules below as the intended policy, not the live one.
+#
+# ─── HOST: www, NOT THE APEX ────────────────────────────────────────────────
+# https://gymflow.sbs/* returns 308 -> https://www.gymflow.sbs/*, so www is the
+# canonical host. The Sitemap URL below must use www: Google Search Console does
+# not follow redirects for sitemap URLs and reports a redirecting one as
+# "Sitemap could not be read".
 #
 # ─── THIS DOMAIN IS THE ONE THAT SHOULD RANK ────────────────────────────────
 # The two hosts have deliberately opposite policies:
@@ -30,4 +54,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://gymflow.sbs/sitemap.xml
+Sitemap: https://www.gymflow.sbs/sitemap.xml

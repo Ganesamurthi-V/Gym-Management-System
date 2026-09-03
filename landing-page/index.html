@@ -13,13 +13,21 @@
     <meta name="description" content="GymFlow is the all-in-one gym management platform for independent gym owners. Track members, payments, attendance and dues, and send WhatsApp reminders — all in one place." />
 
     <!--
-      Canonical URL. Without this, gymflow.sbs, www.gymflow.sbs, the http://
-      variant and every ?utm_source=… share link look like separate pages with
-      identical content, which splits ranking signals between them. robots.txt
-      cannot fix that — this is the only thing that consolidates them.
-      Must stay byte-identical to the <loc> in public/sitemap.xml.
+      Canonical URL. Consolidates the http:// variant and every ?utm_source=…
+      share link, which would otherwise look like separate pages with identical
+      content and split ranking signals. robots.txt cannot fix that; this is the
+      only thing that does.
+
+      NOTE THE www. The apex returns 308 -> https://www.gymflow.sbs/, so www is
+      the live host. Pointing canonical at the apex meant pointing it at a
+      redirect — and it is what made Google Search Console report "Sitemap could
+      not be read", because GSC does not follow redirects for sitemap URLs.
+
+      Must stay byte-identical to the <loc> in public/sitemap.xml and to og:url.
+      If the apex is ever made canonical instead (by flipping the redirect at the
+      host so www -> apex), update all three together.
     -->
-    <link rel="canonical" href="https://gymflow.sbs/" />
+    <link rel="canonical" href="https://www.gymflow.sbs/" />
 
     <!--
       index,follow is already the default; it is spelled out so the intent is
@@ -35,7 +43,7 @@
     <meta property="og:title" content="GymFlow — Know who paid. Who didn't. Who's expiring." />
     <meta property="og:description" content="The all-in-one gym management platform for independent gyms. Members, payments, attendance, dues, and WhatsApp reminders in one place." />
     <!-- Kept identical to <link rel="canonical"> and the sitemap <loc>. -->
-    <meta property="og:url" content="https://gymflow.sbs/" />
+    <meta property="og:url" content="https://www.gymflow.sbs/" />
     <meta property="og:locale" content="en_IN" />
 
     <!--
@@ -50,7 +58,7 @@
       Declaring width/height lets platforms reserve the card layout before the
       image finishes downloading, so the preview does not reflow.
     -->
-    <meta property="og:image" content="https://gymflow.sbs/og-image.jpg" />
+    <meta property="og:image" content="https://www.gymflow.sbs/og-image.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -60,7 +68,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="GymFlow — Gym Management, simplified" />
     <meta name="twitter:description" content="Members, payments, attendance, dues, and WhatsApp reminders in one place. Built for Tamil Nadu &amp; Puducherry gyms." />
-    <meta name="twitter:image" content="https://gymflow.sbs/og-image.jpg" />
+    <meta name="twitter:image" content="https://www.gymflow.sbs/og-image.jpg" />
     <meta name="twitter:image:alt" content="The GymFlow dashboard showing member counts, dues and expiring memberships at a glance." />
 
     <!--
@@ -106,17 +114,17 @@
       "@graph": [
         {
           "@type": "Organization",
-          "@id": "https://gymflow.sbs/#organization",
+          "@id": "https://www.gymflow.sbs/#organization",
           "name": "GymFlow",
-          "url": "https://gymflow.sbs/",
+          "url": "https://www.gymflow.sbs/",
           "description": "Gym management software for independent gym owners in Tamil Nadu and Puducherry.",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://gymflow.sbs/logo_landspace_without_bg.webp",
+            "url": "https://www.gymflow.sbs/logo_landspace_without_bg.webp",
             "width": 400,
             "height": 178
           },
-          "image": "https://gymflow.sbs/og-image.jpg",
+          "image": "https://www.gymflow.sbs/og-image.jpg",
           "email": "ganesamurthiv@gmail.com",
           "telephone": "+91-93848-86895",
           "contactPoint": {
@@ -144,7 +152,7 @@
             "price": "3000",
             "priceCurrency": "INR",
             "availability": "https://schema.org/InStock",
-            "url": "https://gymflow.sbs/#pricing",
+            "url": "https://www.gymflow.sbs/#pricing",
             "priceSpecification": {
               "@type": "UnitPriceSpecification",
               "price": "3000",
@@ -165,11 +173,11 @@
         },
         {
           "@type": "WebSite",
-          "@id": "https://gymflow.sbs/#website",
-          "url": "https://gymflow.sbs/",
+          "@id": "https://www.gymflow.sbs/#website",
+          "url": "https://www.gymflow.sbs/",
           "name": "GymFlow",
           "description": "Gym management software for independent gyms in Tamil Nadu and Puducherry.",
-          "publisher": { "@id": "https://gymflow.sbs/#organization" },
+          "publisher": { "@id": "https://www.gymflow.sbs/#organization" },
           "inLanguage": "en-IN"
         }
       ]

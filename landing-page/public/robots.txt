@@ -5,27 +5,26 @@
 # React, so that file would never be compiled or served. Vite copies everything
 # in `public/` verbatim into `dist/`, so this lands at /robots.txt in the build.
 #
-# ─── ACTION REQUIRED: CLOUDFLARE OVERRIDES THIS FILE ────────────────────────
-# Verified against the live site: https://www.gymflow.sbs/robots.txt does NOT
-# serve this content. Cloudflare returns its own managed file, delimited by
-# "# BEGIN Cloudflare Managed content", which:
-#   - sets Content-Signal: search=yes,ai-train=no,use=reference
-#   - Disallows GPTBot, ClaudeBot, CCBot, Google-Extended, Bytespider, Amazonbot,
-#     Applebot-Extended and meta-externalagent
-#   - DROPS the Sitemap line at the bottom of this file
+# ─── HISTORY: CLOUDFLARE USED TO OVERRIDE THIS FILE (RESOLVED) ──────────────
+# Cloudflare's managed robots.txt feature used to replace this file entirely with
+# its own version, which:
+#   - set Content-Signal: search=yes,ai-train=no,use=reference
+#   - Disallowed GPTBot, ClaudeBot, CCBot, Google-Extended, Bytespider,
+#     Amazonbot, Applebot-Extended and meta-externalagent
+#   - DROPPED the Sitemap line at the bottom of this file
 #
-# That is Cloudflare's default, not a decision made here, and it is the OPPOSITE
-# of the intended policy below (AI crawlers allowed).
+# That was Cloudflare's default, not a decision made here, and it silently
+# blocked every AI crawler while breaking sitemap auto-discovery.
 #
-# UNTIL IT IS DISABLED, THE RULES IN THIS FILE HAVE NO EFFECT. To make this file
-# authoritative:
-#   Cloudflare dashboard -> the gymflow.sbs zone -> AI Crawl Control
-#   (older accounts: Security -> Bots, or Settings -> Manage robots.txt)
-#   Turn OFF the managed robots.txt / "Block AI bots" setting, then purge the
-#   cache for /robots.txt.
+# It has been disabled and the cache purged; this file is now the live one
+# (verified: the served response contains the Sitemap line and none of the
+# Disallow rules above).
 #
-# Re-verify afterwards — the live file should contain the Sitemap line and no
-# "Cloudflare Managed content" markers:
+# IF AI CRAWLERS OR THE SITEMAP LINE EVER VANISH AGAIN, that setting has been
+# re-enabled. Check: Cloudflare dashboard -> gymflow.sbs zone -> AI Crawl Control
+# (older accounts: Security -> Bots, or Settings -> Manage robots.txt), turn the
+# managed robots.txt / "Block AI bots" setting OFF, then Caching -> Purge cache
+# for /robots.txt. Verify with:
 #   curl -s https://www.gymflow.sbs/robots.txt
 #
 # ─── HOST: www, NOT THE APEX ────────────────────────────────────────────────

@@ -10,7 +10,7 @@
         email,
         options: {
           shouldCreateUser: false,
-          emailRedirectTo: `${getMemberAppUrl()}/api/activate/callback`,
+          emailRedirectTo: `${getMemberAppUrl()}/activate/verifying`,
         },
       })
 
@@ -23,34 +23,48 @@
       magic-link.html    -> Magic Link       -> MEMBER (this file)
       invite.html        -> Invite user      -> MEMBER invite (dormant)
 
-  ─── THIS TEMPLATE MUST KEEP ConfirmationURL. DO NOT "FIX" IT. ──────────────
-  The owner templates deliberately avoid ConfirmationURL and put the token in the
-  URL fragment instead, because a fragment cannot be consumed by a mail scanner.
-  The opposite is correct here, and swapping it would BREAK member activation:
+  ─── SCANNER-SAFE FRAGMENT TOKEN. DO NOT REINTRODUCE ConfirmationURL. ───────
+  This template links to OUR OWN page with the one-time token in the URL
+  fragment, the same way the owner templates do:
 
-    - `emailRedirectTo` is /api/activate/callback, a SERVER route. Servers cannot
-      read a URL fragment, so a fragment token would never reach it.
-    - The flow depends on Supabase's implicit redirect: /auth/v1/verify responds
-      303 to /api/activate/callback#access_token=...  The callback sees no query
-      params, forwards to /activate/verifying, and the browser carries the
-      fragment across that redirect. The client page then reads
-      window.location.hash and hands the tokens to /api/auth/set-session.
-    - app/activate/verifying/page.tsx reads `access_token` / `refresh_token` (and
-      `error_code`) from the fragment. It has NO `token_hash` handling, so a
-      "#token_hash=..." link would fall through to its `no_tokens` error branch
-      and activation would fail.
+      <RedirectTo>#token_hash=<TokenHash>&type=magiclink
 
-  ─── HOW THE SINGLE-USE PROBLEM IS HANDLED HERE ─────────────────────────────
-  Magic links are single use, and link previewers can consume one before the
-  member taps it. Rather than a template change, the member flow mitigates this
-  in the product: /activate/verifying detects `otp_expired`, first re-checks
-  /api/activate/status in case a scanner burned the link AFTER a real activation
-  succeeded, and otherwise offers a one-tap "Send me a new link".
+  A fragment is never transmitted in an HTTP request, so a mail scanner or link
+  previewer that fetches the URL receives an ordinary page and consumes nothing.
 
-  If you ever want member links to be scanner-proof the way the owner links are,
-  it needs a code change, not a template change: point `emailRedirectTo` at a
-  client page and teach it to redeem a `token_hash` (type `magiclink`) from the
-  fragment.
+  This file previously used the ConfirmationURL variable, which resolves to
+  Supabase's hosted /auth/v1/verify endpoint. That endpoint redeems the one-time
+  token on ANY GET — including the automatic fetches performed by mail scanners,
+  link previewers and antivirus software. That is what made members report links
+  "expiring" seconds after they arrived, and why the address in the email read
+  supabase.co rather than app.gymflow.sbs.
+
+  Never include both variables. TokenHash is the hashed form of the same one-time
+  token, so whichever one is fetched first invalidates the other.
+
+  ─── WHAT THIS DEPENDS ON ───────────────────────────────────────────────────
+    - lib/member/activation-email.ts sets emailRedirectTo to /activate/verifying,
+      a CLIENT page. A server route could never read the fragment.
+    - It sends through createAuthEmailClient(), whose flowType is 'implicit'.
+      Under 'pkce' GoTrue binds the emailed token to a PKCE flow and prefixes it
+      `pkce_`, which verifyOtp() can never redeem.
+    - app/activate/verifying/page.tsx holds the token WITHOUT redeeming it and
+      posts it to /api/activate/redeem only after a real tap. Redeeming on page
+      load would let a JavaScript-executing scanner burn it anyway.
+    - Supabase Dashboard -> Authentication -> URL Configuration must allowlist
+      https://app.gymflow.sbs/activate/verifying, or GoTrue rejects RedirectTo
+      and falls back to the Site URL.
+
+  ─── OLDER LINKS STILL WORK ─────────────────────────────────────────────────
+  Emails already sitting in inboxes point at /api/activate/callback and carry
+  #access_token=... Both that route and that branch of /activate/verifying are
+  retained, so those links continue to activate normally.
+
+  ─── THE SINGLE-USE PROBLEM ─────────────────────────────────────────────────
+  Still handled in the product as a second line of defence: /activate/verifying
+  detects an expired token, first re-checks /api/activate/status in case a
+  scanner burned the link AFTER a real activation succeeded, and otherwise offers
+  a one-tap "Send me a new link".
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -131,7 +145,7 @@
                         background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
                     ">
                         <a
-                            href="{{ .ConfirmationURL }}"
+                            href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=magiclink"
                             style="
                                 display:inline-block;
                                 padding:18px 42px;
@@ -231,15 +245,18 @@
                 margin:0;
                 word-break:break-all;
             ">
+                <!--
+                  Same fragment link as the button. Never swap either of these
+                  for the ConfirmationURL variable — see the note at the top of
+                  this file. Kept on one line so the '#' stays with the token.
+                -->
                 <a
-                    href="{{ .ConfirmationURL }}"
+                    href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=magiclink"
                     style="
                         color:#1D8CFF;
                         font-size:14px;
                         text-decoration:none;
-                    ">
-                    {{ .ConfirmationURL }}
-                </a>
+                    ">{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=magiclink</a>
             </p>
         </td>
     </tr>

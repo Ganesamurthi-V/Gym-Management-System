@@ -150,7 +150,7 @@ export function InteractiveDemo() {
           <div className="w-[220px] bg-white border-r border-slate-100 flex flex-col flex-shrink-0 relative">
             <div className="h-[68px] flex items-center justify-between px-5 border-b border-slate-100 flex-shrink-0">
               <div className="flex items-center">
-                <img src="/logo_landspace_without_bg.png" alt="GymFlow" loading="lazy" decoding="async" className="h-[80px] w-auto object-contain" />
+                <img src="/logo_landspace_without_bg.webp" alt="GymFlow" width="400" height="178" loading="lazy" decoding="async" className="h-[80px] w-auto object-contain" />
               </div>
               <button className="w-6 h-6 rounded border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors">
                 <ChevronLeft className="w-4 h-4" />
@@ -207,7 +207,7 @@ export function InteractiveDemo() {
               
               <div className="absolute right-6 top-1/2 -translate-y-1/2">
                 <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center">
-                  <img src="/logo_only.png" alt="User Avatar" loading="lazy" decoding="async" className="w-5 h-5 object-contain" />
+                  <img src="/logo_only.webp" alt="User Avatar" width="160" height="160" loading="lazy" decoding="async" className="w-5 h-5 object-contain" />
                 </div>
               </div>
             </div>

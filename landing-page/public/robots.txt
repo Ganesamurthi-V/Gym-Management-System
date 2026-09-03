@@ -54,4 +54,11 @@
 User-agent: *
 Allow: /
 
+# sitemap.xml is deliberately minimal — declaration, urlset, one url, no comments.
+# It lists exactly ONE url because this site is a single scrolling page: no router
+# is mounted (src/main.tsx renders <App /> directly), so #features, #pricing etc.
+# are in-page anchors, not separate URLs, and Google resolves them to this same
+# page. An earlier version carried a long explanatory comment that included
+# literal loc and lastmod tag text; that is valid XML but invites lenient parsers
+# to match the comment instead of the real element, so it was removed.
 Sitemap: https://www.gymflow.sbs/sitemap.xml

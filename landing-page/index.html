@@ -73,13 +73,30 @@
       The price mirrors the Pricing section (Pricing.tsx: ₹3,000 / month,
       "GymFlow Pro"), and featureList mirrors the six cards in Features.tsx.
 
-      DELIBERATELY ABSENT: AggregateRating and Review. The testimonials in
-      Testimonials.tsx are three named quotes that cannot be independently
-      verified, and Google's review-snippet policy forbids self-serving review
-      markup for a product you sell yourself. Adding star ratings here would risk
-      a manual action, which costs far more than the stars would earn. If those
-      testimonials become verifiable, collect them through a third-party review
-      platform and let that platform emit the markup.
+      ─── RICH RESULTS TEST STATUS ───────────────────────────────────────────
+      Last run: 2 valid items, ZERO errors. Organization valid, Software Apps
+      valid. The remaining non-critical issue is the one described next, and it
+      is intentional.
+
+      DELIBERATELY ABSENT: aggregateRating and review. Google lists these as
+      "Rating or review — you must include one of the following" for the Software
+      App rich result, so without one this markup stays valid but will not
+      generate the rich result. That is the correct trade here:
+
+        - There is no rating to report. Inventing ratingValue/ratingCount is
+          exactly what Google's review-snippet policy treats as spam, and the
+          penalty is a manual action against the whole site.
+        - The three quotes in Testimonials.tsx are attributed to named people but
+          cannot be verified from this repo, so they are not marked up either.
+
+      To become eligible legitimately, pick one:
+        1. If those testimonials are real, consented customers, add `review`
+           nodes with author + reviewBody matching the on-page text verbatim.
+        2. Collect ratings through a third-party review platform and let that
+           platform emit the markup — the most durable option.
+
+      `address` is region-level because GymFlow has no public street address.
+      That is honest and valid; add streetAddress/postalCode if one exists.
 
       One @graph rather than several script blocks so the nodes can @id-reference
       each other instead of repeating the organization details.
@@ -93,13 +110,27 @@
           "@id": "https://gymflow.sbs/#organization",
           "name": "GymFlow",
           "url": "https://gymflow.sbs/",
+          "description": "Gym management software for independent gym owners in Tamil Nadu and Puducherry.",
           "logo": {
             "@type": "ImageObject",
             "url": "https://gymflow.sbs/logo_landspace_without_bg.webp",
             "width": 400,
             "height": 178
           },
+          "image": "https://gymflow.sbs/og-image.jpg",
           "email": "support@gymflow.sbs",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "support@gymflow.sbs",
+            "availableLanguage": ["en", "ta"],
+            "areaServed": "IN"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "addressRegion": "Tamil Nadu",
+            "addressCountry": "IN"
+          },
           "areaServed": [
             { "@type": "State", "name": "Tamil Nadu" },
             { "@type": "AdministrativeArea", "name": "Puducherry" }

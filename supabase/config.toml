@@ -243,17 +243,25 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Scanner-safe auth email templates. All three keep the one-time token in the URL
-# FRAGMENT so mail scanners and link prefetchers cannot consume it. Hosted
-# Supabase projects must receive the same HTML through
+# Scanner-safe auth email templates. ALL FOUR keep the one-time token in the URL
+# FRAGMENT of a link to a page we control, so mail scanners and link prefetchers
+# cannot consume it. Hosted Supabase projects must receive the same HTML through
 # Authentication -> Emails in the Dashboard; config.toml controls local Supabase only.
 #
-# Two audiences, kept deliberately separate:
-#   confirmation + recovery -> OWNER  ("Set Your Password" design, fragment token)
-#   magic_link              -> MEMBER ("Confirm Your Email" design, ConfirmationURL)
+# Two audiences, kept deliberately separate by DESIGN, no longer by mechanism:
+#   confirmation + recovery -> OWNER  ("Set Your Password" design)
+#   magic_link              -> MEMBER ("Confirm Your Email" design)
 #   invite                  -> MEMBER ("You have been invited" design, dormant)
 #
-# The fragment-vs-ConfirmationURL split is intentional and NOT interchangeable.
+# ConfirmationURL must never appear in any of them. It resolves to Supabase's
+# hosted /auth/v1/verify endpoint, which redeems the token on ANY GET — that is
+# what made member activation links appear to expire within seconds, and why the
+# link in the email showed a supabase.co address instead of app.gymflow.sbs.
+#
+# magic_link was the last exception and was migrated: emailRedirectTo now points
+# at /activate/verifying (a client page) instead of /api/activate/callback (a
+# server route, which cannot read a fragment).
+#
 # Run `npm run verify:email-templates` before changing any of them.
 
 [auth.email.template.confirmation]
@@ -266,8 +274,10 @@ content_path = "./supabase/templates/recovery.html"
 
 # MEMBER email verification. Sent by lib/member/activation-email.ts via
 # signInWithOtp(), which Supabase renders with the MAGIC LINK template — not
-# "Confirm signup". This one must keep ConfirmationURL: emailRedirectTo is
-# /api/activate/callback, a server route that cannot read a URL fragment.
+# "Confirm signup". Links to /activate/verifying with the token in the fragment;
+# that page holds it unredeemed until the member taps, then posts it to
+# /api/activate/redeem. The hosted project must allowlist that URL under
+# Authentication -> URL Configuration, or GoTrue ignores RedirectTo.
 [auth.email.template.magic_link]
 subject = "Confirm your email — GymFlow Members"
 content_path = "./supabase/templates/magic-link.html"

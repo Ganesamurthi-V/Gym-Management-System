@@ -1,32 +1,32 @@
 /**
  * scripts/verify-email-templates.ts
  * ─────────────────────────────────
- * Guards the Supabase auth email templates. Each one is checked against the
- * strategy its landing target actually supports, because the correct answer is
- * the OPPOSITE for owners and members.
+ * Guards the Supabase auth email templates. Every one of them must put the
+ * one-time token in the URL FRAGMENT of a link to a page we control:
  *
- * ─── TWO STRATEGIES, BOTH CORRECT IN THEIR OWN PLACE ────────────────────────
+ *     {{ .RedirectTo }}#token_hash={{ .TokenHash }}&type=...
  *
- * 'fragment-token'  (OWNER: confirm signup, reset password)
- *   Links point at a client PAGE with the token in the URL fragment:
- *       {{ .RedirectTo }}#token_hash={{ .TokenHash }}&type=...
- *   A fragment is never transmitted in an HTTP request, so a mail scanner or
- *   link prefetcher that fetches the page URL consumes nothing. The page redeems
- *   the token only after a real click.
- *   ConfirmationURL is FORBIDDEN here: it points at Supabase's hosted verify
- *   endpoint, which consumes the one-time token on any GET. Since TokenHash is
- *   the hashed form of that same token, including both means whichever is
- *   fetched first kills the other.
+ * A fragment is never transmitted in an HTTP request, so a mail scanner, link
+ * prefetcher or antivirus product that fetches the URL receives an ordinary page
+ * and consumes nothing. The landing page redeems the token only after a real
+ * click.
  *
- * 'confirmation-url'  (MEMBER: magic link)
- *   `emailRedirectTo` is /api/activate/callback — a SERVER route, which cannot
- *   read a fragment. The flow relies on Supabase's implicit redirect carrying
- *   #access_token=... to /activate/verifying, which reads window.location.hash.
- *   ConfirmationURL is REQUIRED here, and a fragment token_hash would be wrong:
- *   app/activate/verifying/page.tsx has no token_hash handling, so such a link
- *   would hit its `no_tokens` branch and activation would fail.
- *   The single-use problem is mitigated in the product instead — that page
- *   detects otp_expired, re-checks activation status, and offers a resend.
+ * ─── ConfirmationURL IS FORBIDDEN IN ALL OF THEM ────────────────────────────
+ * It resolves to Supabase's hosted /auth/v1/verify endpoint, which redeems the
+ * one-time token on ANY GET. And because TokenHash is the hashed form of that
+ * same token, a template containing both is worse than either alone: whichever
+ * is fetched first invalidates the other.
+ *
+ * ─── THE MEMBER MAGIC LINK USED TO BE THE EXCEPTION ─────────────────────────
+ * It was required to use ConfirmationURL, because `emailRedirectTo` pointed at
+ * /api/activate/callback — a SERVER route, which cannot read a fragment. That is
+ * why members reported activation links "expiring" within seconds: scanners were
+ * redeeming them in transit.
+ *
+ * That exception is gone. `emailRedirectTo` now points at /activate/verifying, a
+ * client page that holds the token unredeemed until tapped, so the magic link is
+ * verified by exactly the same rules as the owner templates. /api/activate/
+ * callback is still deployed for links already sitting in inboxes.
  *
  * Run with:  npm run verify:email-templates
  */
@@ -35,18 +35,15 @@ import { existsSync, readFileSync } from 'node:fs'
 
 const TOKEN_HASH = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4'
 const OWNER_REDIRECT = 'https://app.gymflow.sbs/auth/setup-password'
-const MEMBER_REDIRECT = 'https://app.gymflow.sbs/api/activate/callback'
+const MEMBER_REDIRECT = 'https://app.gymflow.sbs/activate/verifying'
 const RAW_TOKEN_MARKER = 'RAWTOKENMARKER'
-
-type Strategy = 'fragment-token' | 'confirmation-url'
 
 type Target = {
   file: string
   dashboard: string
   audience: 'OWNER' | 'MEMBER'
-  strategy: Strategy
-  /** Only meaningful for fragment-token templates. */
-  expectedType?: string
+  /** The `type=` parameter the landing page expects to redeem with. */
+  expectedType: string
   redirect: string
   note?: string
 }
@@ -56,7 +53,6 @@ const TARGETS: Target[] = [
     file: 'supabase/templates/confirmation.html',
     dashboard: 'Confirm signup',
     audience: 'OWNER',
-    strategy: 'fragment-token',
     expectedType: 'email',
     redirect: OWNER_REDIRECT,
   },
@@ -64,7 +60,6 @@ const TARGETS: Target[] = [
     file: 'supabase/templates/recovery.html',
     dashboard: 'Reset password',
     audience: 'OWNER',
-    strategy: 'fragment-token',
     expectedType: 'recovery',
     redirect: OWNER_REDIRECT,
   },
@@ -72,15 +67,14 @@ const TARGETS: Target[] = [
     file: 'supabase/templates/magic-link.html',
     dashboard: 'Magic Link',
     audience: 'MEMBER',
-    strategy: 'confirmation-url',
+    expectedType: 'magiclink',
     redirect: MEMBER_REDIRECT,
-    note: 'ConfirmationURL is required — /api/activate/callback cannot read a fragment.',
+    note: 'Redeemed by /activate/verifying via POST /api/activate/redeem.',
   },
   {
     file: 'supabase/templates/invite.html',
     dashboard: 'Invite user',
     audience: 'MEMBER',
-    strategy: 'fragment-token',
     expectedType: 'invite',
     redirect: OWNER_REDIRECT,
     note: 'Dormant: nothing calls inviteUserByEmail.',
@@ -147,49 +141,33 @@ function inspect(target: Target): Check[] {
   const usesConfirmationUrl = output.includes(RAW_TOKEN_MARKER)
   const positions = tokenOccurrences(markup)
 
-  if (target.strategy === 'fragment-token') {
-    checks.push({
-      name: 'ConfirmationURL never rendered (would be consumable)',
-      ok: !usesConfirmationUrl,
-      detail: usesConfirmationUrl ? 'FOUND — token would be consumable' : 'absent',
-    })
+  checks.push({
+    name: 'ConfirmationURL never rendered (would be consumable)',
+    ok: !usesConfirmationUrl,
+    detail: usesConfirmationUrl ? 'FOUND — token would be consumable' : 'absent',
+  })
 
-    const allInFragment = positions.every(pos => {
-      const lineStart = markup.lastIndexOf('\n', pos) + 1
-      return markup.slice(lineStart, pos).includes('#')
-    })
-    checks.push({
-      name: 'token appears only inside a URL fragment',
-      ok: positions.length > 0 && allInFragment,
-      detail: `${positions.length} occurrence(s), all after '#': ${allInFragment}`,
-    })
+  const allInFragment = positions.every(pos => {
+    const lineStart = markup.lastIndexOf('\n', pos) + 1
+    return markup.slice(lineStart, pos).includes('#')
+  })
+  checks.push({
+    name: 'token appears only inside a URL fragment',
+    ok: positions.length > 0 && allInFragment,
+    detail: `${positions.length} occurrence(s), all after '#': ${allInFragment}`,
+  })
 
-    checks.push({
-      name: `declares type=${target.expectedType}`,
-      ok: markup.includes(`type=${target.expectedType}`),
-      detail: markup.includes(`type=${target.expectedType}`) ? 'yes' : 'MISSING',
-    })
+  checks.push({
+    name: `declares type=${target.expectedType}`,
+    ok: markup.includes(`type=${target.expectedType}`),
+    detail: markup.includes(`type=${target.expectedType}`) ? 'yes' : 'MISSING',
+  })
 
-    checks.push({
-      name: 'primary link points at our own page',
-      ok: markup.includes(`${target.redirect}#token_hash=`),
-      detail: markup.includes(`${target.redirect}#token_hash=`) ? 'yes' : 'MISSING',
-    })
-  } else {
-    checks.push({
-      name: 'uses ConfirmationURL (required by the server-route callback)',
-      ok: usesConfirmationUrl,
-      detail: usesConfirmationUrl ? 'yes' : 'MISSING — activation would break',
-    })
-
-    checks.push({
-      name: 'no fragment token_hash link (verifying page cannot redeem one)',
-      ok: !markup.includes('#token_hash='),
-      detail: markup.includes('#token_hash=')
-        ? 'FOUND — would land as no_tokens'
-        : 'absent',
-    })
-  }
+  checks.push({
+    name: 'primary link points at our own page',
+    ok: markup.includes(`${target.redirect}#token_hash=`),
+    detail: markup.includes(`${target.redirect}#token_hash=`) ? 'yes' : 'MISSING',
+  })
 
   const leftovers = output.match(/\{\{[^}]*\}\}|<<UNKNOWN:\w+>>/g) ?? []
   checks.push({
@@ -212,7 +190,7 @@ function main(): void {
   for (const target of TARGETS) {
     console.log(`\n  ${target.file}`)
     console.log(
-      `    Dashboard: ${target.dashboard}  |  Audience: ${target.audience}  |  Strategy: ${target.strategy}`,
+      `    Dashboard: ${target.dashboard}  |  Audience: ${target.audience}  |  type=${target.expectedType}`,
     )
     if (target.note) console.log(`    Note: ${target.note}`)
 
@@ -230,7 +208,7 @@ function main(): void {
 
   console.log(`\n${rule}`)
   if (failures === 0) {
-    console.log('  Passed: every template matches the strategy its landing target supports.')
+    console.log('  Passed: every template keeps its one-time token in a scanner-safe fragment.')
     console.log(`${'═'.repeat(76)}\n`)
     return
   }

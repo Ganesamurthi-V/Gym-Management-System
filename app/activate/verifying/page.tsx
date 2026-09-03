@@ -1,12 +1,22 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AlertTriangle, CheckCircle2, Loader2, MailWarning, RefreshCw } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Loader2, MailCheck, MailWarning, RefreshCw } from 'lucide-react'
 import { loadActivation, clearActivation } from '@/lib/member/activation-store'
 
-type State = 'processing' | 'success' | 'consumed' | 'error'
+type State = 'processing' | 'confirm' | 'success' | 'consumed' | 'error'
+
+/** Supabase OTP types this page will redeem from the fragment. */
+type RedeemType = 'magiclink' | 'email'
+
+/** Drops the fragment from the address bar once it is no longer needed. */
+function clearFragment() {
+  if (window.history.replaceState) {
+    window.history.replaceState(null, '', window.location.pathname)
+  }
+}
 
 /**
  * /activate/verifying
@@ -17,12 +27,27 @@ type State = 'processing' | 'success' | 'consumed' | 'error'
  * cannot read, so /api/activate/callback forwards here and this component reads
  * `window.location.hash`.
  *
- * The important case this page adds is `otp_expired`. Supabase magic links are
- * single use, and mail providers / link previewers / antivirus scanners fetch
- * links automatically — which consumes the token before the member taps it.
- * That is the reported "link expired after 5-10 seconds". Previously this landed
- * on /activate/error, which said "contact your gym" and offered no way out.
- * Here the member gets a one-tap resend.
+ * ── TWO LINK SHAPES ARRIVE HERE ────────────────────────────────────────────
+ *
+ * 1. `#token_hash=…&type=magiclink`  — current emails.
+ *    The email now links straight to this page and keeps the one-time token in
+ *    the fragment. A fragment is never transmitted in an HTTP request, so a mail
+ *    scanner or link previewer that fetches the URL consumes nothing. Crucially
+ *    this page must NOT redeem it on load either, or a scanner that executes
+ *    JavaScript would burn it just the same — so the token is held and submitted
+ *    to /api/activate/redeem only after a real tap. Same guarantee the owner
+ *    flow gets in app/auth/setup-password/page.tsx.
+ *
+ * 2. `#access_token=…&refresh_token=…` — links already in inboxes.
+ *    The previous template used `{{ .ConfirmationURL }}`, so Supabase's
+ *    /auth/v1/verify redeemed the token itself and 303'd to
+ *    /api/activate/callback with a session in the fragment; that route forwards
+ *    here. This branch is kept so those emails keep working, and is why
+ *    /api/activate/callback still exists.
+ *
+ * `otp_expired` remains handled for both. Shape 2 was single-use-on-any-GET,
+ * which is what produced the reported "link expired after 5-10 seconds"; the
+ * member gets a one-tap resend rather than a dead end.
  */
 export default function VerifyingPage() {
   const [state, setState] = useState<State>('processing')
@@ -31,6 +56,12 @@ export default function VerifyingPage() {
   const [resendMsg, setResendMsg] = useState('')
   const [cooldown, setCooldown] = useState(0)
   const [canResend, setCanResend] = useState(false)
+
+  // Held, deliberately unredeemed, until the member taps the button.
+  const [pendingToken, setPendingToken] = useState<{ tokenHash: string; type: RedeemType } | null>(null)
+  const [redeeming, setRedeeming] = useState(false)
+  const [redeemError, setRedeemError] = useState('')
+  const redeemInFlight = useRef(false)
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -52,6 +83,91 @@ export default function VerifyingPage() {
       return false
     }
   }, [])
+
+  /**
+   * Redeems the held fragment token. Only ever called from an explicit tap —
+   * see the note at the top of this file about why it must not run on mount.
+   */
+  const redeemPendingToken = useCallback(async () => {
+    if (!pendingToken || redeemInFlight.current) return
+
+    redeemInFlight.current = true
+    setRedeeming(true)
+    setRedeemError('')
+
+    try {
+      const res = await fetch('/api/activate/redeem', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ token_hash: pendingToken.tokenHash, type: pendingToken.type }),
+      })
+      const json = await res.json().catch(() => null)
+
+      if (!res.ok || !json?.success) {
+        const stash = loadActivation()
+
+        // The member may be re-opening an email after activation already
+        // completed. Confirm before reporting a failure.
+        if (stash && (await confirmActivated(stash.token, stash.memberId))) {
+          clearActivation()
+          clearFragment()
+          setPendingToken(null)
+          setState('success')
+          return
+        }
+
+        // 401 is terminal for this token: expired or already used.
+        if (res.status === 401) {
+          clearFragment()
+          setPendingToken(null)
+          setDetail(json?.code ?? 'token_expired')
+          setCanResend(Boolean(stash))
+          setState('consumed')
+          return
+        }
+
+        // Rate limited or a server hiccup. Keep the fragment so the same link
+        // can be retried instead of forcing another email.
+        setRedeemError(json?.error ?? 'We could not verify your link right now. Please try again.')
+        return
+      }
+
+      // The session now lives in HttpOnly cookies. Finish the member-row writes.
+      const finalizeRes = await fetch('/api/activate/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: json.userId }),
+      })
+      const finalizeJson = await finalizeRes.json().catch(() => null)
+
+      if (!finalizeRes.ok || !finalizeJson?.success) {
+        // Session exists but the DB write failed. Say so rather than claiming
+        // success, or the member lands in a portal that still thinks they are
+        // not activated.
+        clearFragment()
+        setPendingToken(null)
+        setDetail(finalizeJson?.error ?? 'finalize_failed')
+        setCanResend(Boolean(loadActivation()))
+        setState('error')
+        return
+      }
+
+      clearActivation()
+      clearFragment()
+      setPendingToken(null)
+      setState('success')
+      setTimeout(() => { window.location.href = '/activate/success' }, 1200)
+    } catch {
+      setRedeemError('Check your internet connection and try again.')
+    } finally {
+      redeemInFlight.current = false
+      setRedeeming(false)
+    }
+  }, [pendingToken, confirmActivated])
 
   useEffect(() => {
     let cancelled = false
@@ -86,6 +202,31 @@ export default function VerifyingPage() {
         setState(expired ? 'consumed' : 'error')
         setDetail(reason)
         setCanResend(Boolean(stash))
+        return
+      }
+
+      // ── Current emails: a token_hash held in the fragment ─────────────────
+      // Checked before the access_token branch because these links carry no
+      // access_token and would otherwise fall through to `no_tokens`. Nothing is
+      // redeemed here — that waits for a tap.
+      const tokenHash = hashParams.get('token_hash')
+      if (tokenHash) {
+        const validToken =
+          tokenHash.length >= 16 && tokenHash.length <= 1024 && !/\s/.test(tokenHash)
+
+        if (!validToken) {
+          if (cancelled) return
+          setState('error')
+          setDetail('invalid_token')
+          setCanResend(Boolean(stash))
+          return
+        }
+
+        if (cancelled) return
+        const rawType = hashParams.get('type')
+        setPendingToken({ tokenHash, type: rawType === 'email' ? 'email' : 'magiclink' })
+        setCanResend(Boolean(stash))
+        setState('confirm')
         return
       }
 
@@ -208,6 +349,56 @@ export default function VerifyingPage() {
           <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="rounded-2xl shadow-md" />
           <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
           <p className="text-sm font-medium text-slate-600">Completing activation…</p>
+        </div>
+      </main>
+    )
+  }
+
+  // Scanner-safe gate: the token is in hand but stays unredeemed until tapped.
+  if (state === 'confirm') {
+    return (
+      <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md text-center">
+          <div className="mb-6 flex flex-col items-center">
+            <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="mb-4 rounded-2xl shadow-md" />
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-50">
+              <MailCheck className="h-8 w-8 text-brand-500" />
+            </div>
+
+            <h1 className="text-xl font-bold text-slate-900">Confirm your email</h1>
+
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Tap below to verify your email address and finish activating your
+              GymFlow account.
+            </p>
+
+            {redeemError && (
+              <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600" role="alert">
+                {redeemError}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={redeemPendingToken}
+              disabled={redeeming}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {redeeming
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</>
+                : <>Verify my email <ArrowRight className="h-4 w-4" /></>}
+            </button>
+
+            <Link
+              href="/auth/login?role=member"
+              className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-slate-500 underline hover:text-slate-700"
+            >
+              Already activated? Go to login
+            </Link>
+          </div>
         </div>
       </main>
     )

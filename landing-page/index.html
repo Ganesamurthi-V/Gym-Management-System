@@ -65,41 +65,41 @@
 
     <!--
       ─── STRUCTURED DATA (JSON-LD) ──────────────────────────────────────────
-      What lets Google understand this as a paid software product rather than a
-      generic page: the price, what it does, who sells it, and where it operates.
+      Two nodes: the Organization (brand/knowledge-panel entity) and the WebSite.
+      Every value is also visible on the page — Google treats markup describing
+      content a visitor cannot see as spam.
 
-      Every value here is also visible on the page, which is a hard requirement —
-      Google treats markup describing content a visitor cannot see as spam.
-      The price mirrors the Pricing section (Pricing.tsx: ₹3,000 / month,
-      "GymFlow Pro"), and featureList mirrors the six cards in Features.tsx.
+      ─── WHY THERE IS NO SoftwareApplication NODE ───────────────────────────
+      An earlier version declared one. The Rich Results Test flagged it with a
+      permanent non-critical issue: the "Software App" rich result REQUIRES a
+      `aggregateRating` or `review`, and both require a numeric ratingValue.
 
-      ─── RICH RESULTS TEST STATUS ───────────────────────────────────────────
-      Last run: 2 valid items, ZERO errors. Organization valid, Software Apps
-      valid. The remaining non-critical issue is the one described next, and it
-      is intentional.
+      This page has no genuine rating to report — the testimonials in
+      Testimonials.tsx are quotes with no star scores — and inventing a number is
+      exactly what Google's review policy treats as spam (penalty: a site-wide
+      manual action). A SoftwareApplication with no rating never produces a rich
+      result anyway, so the type only bought a permanent advisory. It was removed.
 
-      DELIBERATELY ABSENT: aggregateRating and review. Google lists these as
-      "Rating or review — you must include one of the following" for the Software
-      App rich result, so without one this markup stays valid but will not
-      generate the rich result. That is the correct trade here:
+      The price signal is preserved honestly via `makesOffer` on the Organization
+      below: an Offer/Service is descriptive data, NOT one of Google's
+      rich-result feature types, so it triggers no rating requirement and no
+      warning. The ₹3,000/month figure mirrors the visible Pricing section
+      (Pricing.tsx).
 
-        - There is no rating to report. Inventing ratingValue/ratingCount is
-          exactly what Google's review-snippet policy treats as spam, and the
-          penalty is a manual action against the whole site.
-        - The three quotes in Testimonials.tsx are attributed to named people but
-          cannot be verified from this repo, so they are not marked up either.
+      TO EARN THE STAR RICH RESULT LATER: once real, consented customer ratings
+      exist AND are shown on the page, re-add a SoftwareApplication node with an
+      `aggregateRating` (ratingValue + ratingCount) sourced from those ratings.
+      That is the only compliant path to stars.
 
-      To become eligible legitimately, pick one:
-        1. If those testimonials are real, consented customers, add `review`
-           nodes with author + reviewBody matching the on-page text verbatim.
-        2. Collect ratings through a third-party review platform and let that
-           platform emit the markup — the most durable option.
-
-      `address` is region-level because GymFlow has no public street address.
-      That is honest and valid; add streetAddress/postalCode if one exists.
-
-      One @graph rather than several script blocks so the nodes can @id-reference
-      each other instead of repeating the organization details.
+      ─── CONTACT / ADDRESS ──────────────────────────────────────────────────
+      contactPoint and address are COMPLETE with the business's real details.
+      The second non-critical issue was caused by a partial version of these
+      (a ContactPoint with no telephone, a PostalAddress with only region +
+      country); filling in the real phone, email, locality and PIN resolves it.
+      All of it is mirrored in the footer so the markup matches visible content.
+      `streetAddress` is intentionally omitted — GymFlow is run from Villianur
+      with no public storefront, and locality + region + postalCode + country is
+      a complete address for an entity without a street presence.
     -->
     <script type="application/ld+json">
     {
@@ -118,59 +118,29 @@
             "height": 178
           },
           "image": "https://gymflow.sbs/og-image.jpg",
-          "email": "support@gymflow.sbs",
+          "email": "ganesamurthiv@gmail.com",
+          "telephone": "+91-93848-86895",
           "contactPoint": {
             "@type": "ContactPoint",
             "contactType": "customer support",
-            "email": "support@gymflow.sbs",
+            "telephone": "+91-93848-86895",
+            "email": "ganesamurthiv@gmail.com",
             "availableLanguage": ["en", "ta"],
             "areaServed": "IN"
           },
           "address": {
             "@type": "PostalAddress",
-            "addressRegion": "Tamil Nadu",
+            "addressLocality": "Villianur",
+            "addressRegion": "Puducherry",
+            "postalCode": "605110",
             "addressCountry": "IN"
           },
           "areaServed": [
             { "@type": "State", "name": "Tamil Nadu" },
             { "@type": "AdministrativeArea", "name": "Puducherry" }
-          ]
-        },
-        {
-          "@type": "WebSite",
-          "@id": "https://gymflow.sbs/#website",
-          "url": "https://gymflow.sbs/",
-          "name": "GymFlow",
-          "description": "Gym management software for independent gyms in Tamil Nadu and Puducherry.",
-          "publisher": { "@id": "https://gymflow.sbs/#organization" },
-          "inLanguage": "en-IN"
-        },
-        {
-          "@type": "SoftwareApplication",
-          "@id": "https://gymflow.sbs/#software",
-          "name": "GymFlow",
-          "applicationCategory": "BusinessApplication",
-          "applicationSubCategory": "Gym Management Software",
-          "operatingSystem": "Web browser, Android, iOS",
-          "url": "https://gymflow.sbs/",
-          "installUrl": "https://app.gymflow.sbs",
-          "description": "All-in-one gym management for independent gym owners: member records, payments and dues, attendance, and automated WhatsApp reminders.",
-          "publisher": { "@id": "https://gymflow.sbs/#organization" },
-          "screenshot": "https://gymflow.sbs/og-image.jpg",
-          "inLanguage": "en-IN",
-          "featureList": [
-            "Dashboard & Live Stats",
-            "Member Management",
-            "Payments & Dues",
-            "One-Tap Attendance",
-            "Smart Area Detection",
-            "Bulk CSV/Excel Import",
-            "WhatsApp Reminders",
-            "Reports & Analytics"
           ],
-          "offers": {
+          "makesOffer": {
             "@type": "Offer",
-            "name": "GymFlow Pro",
             "price": "3000",
             "priceCurrency": "INR",
             "availability": "https://schema.org/InStock",
@@ -184,8 +154,23 @@
                 "value": 1,
                 "unitCode": "MON"
               }
+            },
+            "itemOffered": {
+              "@type": "Service",
+              "name": "GymFlow Pro",
+              "serviceType": "Gym management software",
+              "description": "All-in-one gym management for independent gym owners: member records, payments and dues, attendance, and automated WhatsApp reminders."
             }
           }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://gymflow.sbs/#website",
+          "url": "https://gymflow.sbs/",
+          "name": "GymFlow",
+          "description": "Gym management software for independent gyms in Tamil Nadu and Puducherry.",
+          "publisher": { "@id": "https://gymflow.sbs/#organization" },
+          "inLanguage": "en-IN"
         }
       ]
     }

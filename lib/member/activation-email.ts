@@ -7,7 +7,7 @@
  * the redirect target and on how Supabase's rate limits are reported.
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createAuthEmailClient } from '@/lib/supabase/auth-email'
 import { memberAppOrigin } from '@/lib/member/redirect'
 
 export type SendResult =
@@ -16,13 +16,24 @@ export type SendResult =
   | { ok: false; kind: 'rate_limited'; retryAfterSeconds: number; message: string }
   | { ok: false; kind: 'failed'; message: string }
 
-function getAnonSupabase() {
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_ANON_KEY
-  if (!url || !key) throw new Error('Missing Supabase configuration')
-  // No session persistence: this client exists only to trigger the email.
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
-}
+/**
+ * Where the emailed link lands.
+ *
+ * A CLIENT page, deliberately. The one-time token now travels in the URL
+ * fragment (`#token_hash=...`), and a fragment is never transmitted in an HTTP
+ * request — only page JavaScript can read it. That is what makes the link
+ * immune to mail scanners, but it also means a server route could never see it.
+ *
+ * This used to be `/api/activate/callback`, which forced the template to use
+ * `{{ .ConfirmationURL }}` — a Supabase-hosted URL that redeems the token on ANY
+ * GET, including the automatic fetches performed by mail scanners and link
+ * previewers. That is what made activation links appear to expire seconds after
+ * they arrived.
+ *
+ * `/api/activate/callback` is intentionally left in place: links already sitting
+ * in members' inboxes still point at it, and it forwards to this same page.
+ */
+export const ACTIVATION_LANDING_PATH = '/activate/verifying'
 
 /**
  * Canonical public origin for member-facing links.
@@ -73,13 +84,19 @@ function classify(message: string): SendResult {
  * app created it when the invitation was sent.
  */
 export async function sendVerificationEmail(email: string): Promise<SendResult> {
-  const supabase = getAnonSupabase()
+  // MUST be the implicit-flow client. `signInWithOtp` attaches a PKCE code
+  // challenge whenever flowType is 'pkce', and GoTrue then binds the emailed
+  // token to that flow and prefixes it `pkce_`. `{{ .TokenHash }}` would become
+  // a PKCE token, which `verifyOtp()` can never redeem — it would fail for every
+  // member, every time, including on retry. This is the same defect that once
+  // broke owner signup; see lib/supabase/auth-email.ts for the full account.
+  const supabase = createAuthEmailClient()
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: `${getMemberAppUrl()}/api/activate/callback`,
+      emailRedirectTo: `${getMemberAppUrl()}${ACTIVATION_LANDING_PATH}`,
     },
   })
 

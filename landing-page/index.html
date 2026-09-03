@@ -96,10 +96,9 @@
       The second non-critical issue was caused by a partial version of these
       (a ContactPoint with no telephone, a PostalAddress with only region +
       country); filling in the real phone, email, locality and PIN resolves it.
-      All of it is mirrored in the footer so the markup matches visible content.
-      `streetAddress` is intentionally omitted — GymFlow is run from Villianur
-      with no public storefront, and locality + region + postalCode + country is
-      a complete address for an entity without a street presence.
+      All of it is mirrored in the footer so the markup matches visible content,
+      including the full streetAddress — filling that cleared the last
+      "Missing field 'streetAddress'" advisory in the Rich Results Test.
     -->
     <script type="application/ld+json">
     {
@@ -130,6 +129,7 @@
           },
           "address": {
             "@type": "PostalAddress",
+            "streetAddress": "No. 126, Anbu Nagar, Achariyapuram",
             "addressLocality": "Villianur",
             "addressRegion": "Puducherry",
             "postalCode": "605110",

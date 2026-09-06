@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      Two theme-colors, one per scheme, so the mobile browser chrome matches the
+      surface it sits above instead of fighting it. These are the exact
+      --background values from src/index.css; if those change, change these.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f5f5" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141414" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>GymFlow — Gym Management for Tamil Nadu &amp; Puducherry Gyms</title>
+    <meta
+      name="description"
+      content="GymFlow is the all-in-one gym management platform for independent gym owners. Track members, payments, attendance and dues, and send unlimited WhatsApp reminders — all for ₹3,000/month."
+    />
+
+    <!--
+      Canonical URL. Consolidates the http:// variant and every ?utm_source=…
+      share link, which would otherwise look like separate pages with identical
+      content and split ranking signals.
+
+      NOTE THE www. The apex returns 308 -> https://www.gymflow.sbs/, so www is
+      the live host. Pointing canonical at the apex means pointing it at a
+      redirect, which is what makes Search Console report "Sitemap could not be
+      read" — GSC does not follow redirects for sitemap URLs.
+
+      Must stay byte-identical to the <loc> in public/sitemap.xml and to og:url.
+    -->
+    <link rel="canonical" href="https://www.gymflow.sbs/" />
+
+    <!--
+      index,follow is already the default; spelled out so the intent is explicit
+      alongside app.gymflow.sbs, which is deliberately noindex.
+      max-image-preview:large opts into large image thumbnails in search results.
+    -->
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <!-- Open Graph / social sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GymFlow" />
+    <meta property="og:title" content="GymFlow — Know who paid. Who didn't. Who's expiring." />
+    <meta
+      property="og:description"
+      content="The all-in-one gym management platform for independent gyms. Members, payments, attendance, dues, and unlimited WhatsApp reminders in one place."
+    />
+    <!-- Kept identical to <link rel="canonical"> and the sitemap <loc>. -->
+    <meta property="og:url" content="https://www.gymflow.sbs/" />
+    <meta property="og:locale" content="en_IN" />
+
+    <!--
+      og-image.jpg is exactly 1200x630 (1.90:1), the ratio every major platform
+      crops to, and is kept well under ~300 KB because WhatsApp is unreliable
+      above that — and WhatsApp is how this audience shares links.
+      Declaring width/height lets platforms reserve the card layout before the
+      image finishes downloading, so the preview does not reflow.
+    -->
+    <meta property="og:image" content="https://www.gymflow.sbs/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The GymFlow dashboard showing member counts, dues and expiring memberships at a glance."
+    />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GymFlow — Gym Management, simplified" />
+    <meta
+      name="twitter:description"
+      content="Members, payments, attendance, dues, and unlimited WhatsApp reminders in one place. Built for Tamil Nadu &amp; Puducherry gyms."
+    />
+    <meta name="twitter:image" content="https://www.gymflow.sbs/og-image.jpg" />
+    <meta
+      name="twitter:image:alt"
+      content="The GymFlow dashboard showing member counts, dues and expiring memberships at a glance."
+    />
+
+    <!--
+      ─── THEME BOOTSTRAP ────────────────────────────────────────────────────
+      Runs before first paint and before the CSS applies, so the stored theme is
+      already on <html> when the page renders. Without this the page paints in
+      light, then React's effect swaps it to dark a frame later — a visible white
+      flash for every dark-mode visitor.
+
+      Inline and synchronous on purpose: a deferred or external script would run
+      after paint and defeat the point. Kept in sync with useTheme() in
+      src/lib/useTheme.ts, which reads the same 'gf-theme' key.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('gf-theme');
+          var dark = stored
+            ? stored === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {
+          /* private mode / storage disabled — fall through to the light default */
+        }
+      })();
+    </script>
+
+    <!--
+      ─── STRUCTURED DATA (JSON-LD) ──────────────────────────────────────────
+      Three nodes: the Organization (brand/knowledge-panel entity), the WebSite,
+      and the FAQPage. Every value is also visible on the page — Google treats
+      markup describing content a visitor cannot see as spam.
+
+      ─── WHY THERE IS NO SoftwareApplication NODE ───────────────────────────
+      SoftwareApplication is only eligible for rich results with aggregateRating,
+      and inventing ratings the site cannot evidence is exactly what earns a
+      manual action. Real, verifiable reviews are the only compliant path there.
+
+      ─── FAQPage ───────────────────────────────────────────────────────────
+      Mirrors the six visible accordion items in src/components/FAQ.tsx verbatim.
+      If the copy in that component changes, change it here too or the markup
+      stops matching the rendered content.
+    -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.gymflow.sbs/#organization",
+          "name": "GymFlow",
+          "url": "https://www.gymflow.sbs/",
+          "description": "Gym management software for independent gym owners in Tamil Nadu and Puducherry.",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.gymflow.sbs/logo_landspace_without_bg.webp",
+            "width": 400,
+            "height": 178
+          },
+          "image": "https://www.gymflow.sbs/og-image.jpg",
+          "email": "ganesamurthiv@gmail.com",
+          "telephone": "+91-93848-86895",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "telephone": "+91-93848-86895",
+            "email": "ganesamurthiv@gmail.com",
+            "availableLanguage": ["en", "ta"],
+            "areaServed": "IN"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "No. 126, Anbu Nagar, Achariyapuram",
+            "addressLocality": "Villianur",
+            "addressRegion": "Puducherry",
+            "postalCode": "605110",
+            "addressCountry": "IN"
+          },
+          "areaServed": [
+            { "@type": "State", "name": "Tamil Nadu" },
+            { "@type": "AdministrativeArea", "name": "Puducherry" }
+          ],
+          "makesOffer": {
+            "@type": "Offer",
+            "price": "3000",
+            "priceCurrency": "INR",
+            "availability": "https://schema.org/InStock",
+            "url": "https://www.gymflow.sbs/#pricing",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "3000",
+              "priceCurrency": "INR",
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
+            },
+            "itemOffered": {
+              "@type": "Service",
+              "name": "GymFlow Pro",
+              "serviceType": "Gym management software",
+              "description": "All-in-one gym management for independent gym owners: member records, payments and dues, attendance, and unlimited automated WhatsApp reminders."
+            }
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.gymflow.sbs/#website",
+          "url": "https://www.gymflow.sbs/",
+          "name": "GymFlow",
+          "description": "Gym management software for independent gyms in Tamil Nadu and Puducherry.",
+          "publisher": { "@id": "https://www.gymflow.sbs/#organization" },
+          "inLanguage": "en-IN"
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://www.gymflow.sbs/#faq",
+          "isPartOf": { "@id": "https://www.gymflow.sbs/#website" },
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is there a free trial?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run a full week of operations before you decide."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How much does GymFlow cost?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "₹3,000 per month, flat. One plan with every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Are WhatsApp messages really unlimited?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Welcome messages, renewal reminders, and payment due alerts are all included. Most gym platforms bill ₹0.30 to ₹1 per message, which becomes thousands a month once you pass 200 members."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I move my existing members from Excel?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Upload your CSV or Excel file and GymFlow auto-detects the columns, normalises area names, and flags any rows that need review. Most gyms finish a few hundred members in under 15 minutes."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is my gym's data safe?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Each gym's records are isolated and reachable only from your own account. Data is encrypted in transit, backed up regularly, and never shared with other gyms or sold on."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do you offer support in Tamil?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes — over WhatsApp, phone, and email, in both Tamil and English. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

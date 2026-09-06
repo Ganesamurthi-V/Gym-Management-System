@@ -1,0 +1,176 @@
+import { useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ArrowRight, MapPin } from 'lucide-react';
+import { Marquee } from './Marquee';
+import { DashboardMock } from './DashboardMock';
+import { prefersReducedMotion } from '../lib/useReveal';
+import { useMediaQuery } from '../lib/useMediaQuery';
+
+const APP_URL = 'https://app.gymflow.sbs';
+
+/**
+ * Coverage, not a customer list. A logo strip of named gyms would assert
+ * specific clients the site cannot evidence; the service area is a fact.
+ */
+const CITIES = [
+  'Chennai',
+  'Coimbatore',
+  'Madurai',
+  'Puducherry',
+  'Tiruchirappalli',
+  'Salem',
+  'Erode',
+  'Tirunelveli',
+  'Vellore',
+  'Thanjavur',
+] as const;
+
+const TRUST_POINTS = ['14-day free trial', 'No credit card', 'Cancel anytime'] as const;
+
+export function Hero() {
+  const scope = useRef<HTMLElement>(null);
+  const interactive = useMediaQuery('(min-width: 1024px)');
+
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+
+    const ctx = gsap.context(() => {
+      // Entrance runs on mount rather than on scroll — the hero is already in
+      // view on load, so a ScrollTrigger here would never fire.
+      gsap
+        .timeline({ defaults: { ease: 'power3.out' } })
+        .from('.hero-badge', { y: 16, opacity: 0, duration: 0.5 })
+        .from('.hero-line', { y: 30, opacity: 0, duration: 0.75, stagger: 0.1 }, '-=0.25')
+        .from('.hero-sub', { y: 18, opacity: 0, duration: 0.6 }, '-=0.4')
+        .from('.hero-cta', { y: 16, opacity: 0, duration: 0.55, stagger: 0.08 }, '-=0.35')
+        .from('.hero-trust', { opacity: 0, duration: 0.5 }, '-=0.3')
+        .from('.hero-frame', { y: 40, opacity: 0, duration: 0.9 }, '-=0.45')
+        .from('.hero-marquee', { opacity: 0, duration: 0.6 }, '-=0.4');
+    }, scope);
+
+    return () => ctx.revert();
+  }, []);
+
+  return (
+    <section ref={scope} className="relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8">
+      {/* Lime bloom behind the headline — the accent's only appearance at this
+          scale, which is what keeps it feeling deliberate rather than decorative. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[560px] w-[900px] -translate-x-1/2"
+        style={{
+          background:
+            'radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 70%)',
+          filter: 'blur(20px)',
+        }}
+      />
+
+      <div className="mx-auto max-w-[1240px]">
+        {/* ── Copy ──────────────────────────────────────────────────────── */}
+        <div className="mx-auto max-w-[820px] text-center">
+          <span className="hero-badge pill pill-accent">
+            <MapPin className="h-3.5 w-3.5" />
+            Built for Tamil Nadu &amp; Puducherry gyms
+            <span aria-hidden className="text-accent-ink dark:text-accent">
+              ✦
+            </span>
+          </span>
+
+          <h1 className="display-1 mt-8 text-balance">
+            <span className="hero-line block">Know who paid.</span>
+            <span className="hero-line block text-muted-foreground">
+              Who didn&apos;t. Who&apos;s next.
+            </span>
+          </h1>
+
+          <p className="hero-sub lead mx-auto mt-7 max-w-[560px]">
+            GymFlow is the all-in-one gym management platform for independent gym owners.
+            Members, payments, attendance, dues, and WhatsApp reminders — in one place,
+            without the notebooks.
+          </p>
+
+          {/* Stacked and equal width on phones, inline from sm up — two pills of
+              different widths stacked centre-aligned reads as a mistake. */}
+          <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
+            <a href={APP_URL} className="hero-cta btn btn-primary btn-lg">
+              Start free trial
+              <ArrowRight className="h-4 w-4" />
+            </a>
+            <a href="#pricing" className="hero-cta btn btn-outline btn-lg">
+              See pricing
+            </a>
+          </div>
+
+          <ul className="hero-trust mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            {TRUST_POINTS.map(point => (
+              <li
+                key={point}
+                className="flex items-center gap-2 text-xs font-medium text-muted-foreground"
+              >
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* ── Product shot ──────────────────────────────────────────────── */}
+        <div className="hero-frame mt-16 md:mt-20">
+          <div className="card mx-auto max-w-[1060px] overflow-hidden p-1.5 shadow-[0_40px_90px_-40px_rgba(0,0,0,0.35)]">
+            {/* Window chrome — reads as "this is the real product", and costs
+                three dots to say it. */}
+            <div className="flex items-center gap-1.5 px-3 py-2.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
+              <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
+              <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
+              <span className="ml-3 font-mono text-[11px] text-muted-foreground">
+                app.gymflow.sbs
+              </span>
+            </div>
+            {/*
+              The live mock is a fixed 1160px canvas scaled to fit. Below ~1024px
+              that scale drops under 0.6 and the dashboard's 9-11px UI text stops
+              being readable — at phone widths it lands around 2.5px. An
+              interactive panel nobody can read or hit is worse than a picture of
+              one, so narrow viewports keep the original screenshot, which also
+              leaves the mobile LCP on a fast cached image.
+            */}
+            {interactive ? (
+              <>
+                {/* The mock is aria-hidden, so this carries what the old alt
+                    attribute did — without it the product shot goes silent. */}
+                <p className="sr-only">
+                  The GymFlow dashboard showing active members, today&apos;s collection,
+                  memberships expiring soon and total outstanding dues. Sidebar
+                  navigation covers members, payments, dues, attendance and inventory.
+                </p>
+                <DashboardMock />
+              </>
+            ) : (
+              <img
+                src="/hero.webp"
+                alt="The GymFlow dashboard showing active members, today's collection, memberships expiring soon and total outstanding dues."
+                width={1160}
+                height={617}
+                // Above the fold: eager + high priority, and never lazy — lazy here
+                // would delay the largest contentful paint on purpose.
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                className="block w-full rounded-2xl border border-border-subtle"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ── Coverage marquee ──────────────────────────────────────────── */}
+        <div className="hero-marquee mt-16">
+          <p className="mb-6 text-center text-xs font-medium tracking-wide text-muted-foreground">
+            Serving independent gyms across Tamil Nadu &amp; Puducherry
+          </p>
+          <Marquee items={CITIES} durationSeconds={38} />
+        </div>
+      </div>
+    </section>
+  );
+}

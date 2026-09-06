@@ -1,0 +1,603 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE VARIANT
+
+   Tailwind v4 defaults `dark:` to prefers-color-scheme, which cannot be
+   overridden by a toggle. Rebinding it to a class lets the ThemeToggle drive it
+   while still honouring the OS default on first visit (see the bootstrap script
+   in index.html, which sets .dark before first paint).
+═══════════════════════════════════════════════════════════════════════════ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEMANTIC TOKENS
+
+   Declared as plain custom properties (not directly in @theme) because they
+   need two values — one per theme. @theme inline below maps them into Tailwind
+   utilities, so `bg-background` resolves through the variable at runtime and
+   flips with the .dark class instead of being frozen at build time.
+═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #f5f5f5;
+  --foreground: #0a0a0a;
+
+  --muted: #ffffff;
+  /* #737373 is the usual neutral-500 here, but on the #f5f5f5 page it lands at
+     4.35:1 — just under WCAG AA for body text. #6b6b6b reads identically and
+     clears it at 4.84:1. */
+  --muted-foreground: #6b6b6b;
+  --subtle: #fafafa;
+
+  --border: #e5e5e5;
+  --border-strong: #d4d4d4;
+  --ring: #0066ff;
+
+  /* Elevated surfaces (cards, panels, the browser frame in the hero mockup) */
+  --frame: #ffffff;
+
+  /* Lime accent — the single chromatic note against the neutral base */
+  --accent: #a8d946;
+  --accent-ink: #171717;
+  --accent-soft: #e8f5c8;
+  --accent-strong: #8fbf2f;
+
+  --card-primary: #a8d946;
+  --card-secondary: #e8f5c8;
+  --card-foreground: #171717;
+  --card-foreground-muted: #525252;
+
+  /* WhatsApp green, kept out of the accent scale so it never reads as brand */
+  --whatsapp: #22c55e;
+  --whatsapp-soft: #f0fdf4;
+  --whatsapp-ink: #15803d;
+
+  /* BorderGlow surface treatment. These live here rather than as props because
+     the component would otherwise have to read the theme in JS, and a value read
+     at render goes stale the moment ThemeToggle flips .dark — nothing re-renders
+     the cards. On a light surface the halo composites normally; a blend mode
+     would wash it out against near-white. */
+  --glow-border: rgb(24 24 27 / 12%);
+  --glow-shadow: rgb(24 24 27 / 4%) 0 1px 2px, rgb(24 24 27 / 5%) 0 8px 24px;
+  --glow-blend-fill: normal;
+  --glow-blend-halo: normal;
+
+  --shadow-color: 0deg 0% 0%;
+}
+
+.dark {
+  --background: #141414;
+  --foreground: #fafafa;
+
+  --muted: #171717;
+  --muted-foreground: #a3a3a3;
+  --subtle: #1c1c1c;
+
+  --border: #262626;
+  --border-strong: #333333;
+  --ring: #3b82f6;
+
+  --frame: #000000;
+
+  --accent: #a8d946;
+  --accent-ink: #171717;
+  --accent-soft: #2a3a1a;
+  --accent-strong: #bde85c;
+
+  --card-primary: #a8d946;
+  --card-secondary: #2a3a1a;
+  --card-foreground: #fafafa;
+  --card-foreground-muted: #d4d4d4;
+
+  --whatsapp: #22c55e;
+  --whatsapp-soft: #14251a;
+  --whatsapp-ink: #4ade80;
+
+  /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
+     keeps the inward bleed tinting the card instead of covering it, and
+     plus-lighter makes the halo read as emitted light. */
+  --glow-border: rgb(255 255 255 / 15%);
+  --glow-shadow: rgb(0 0 0 / 10%) 0 1px 2px, rgb(0 0 0 / 10%) 0 2px 4px,
+    rgb(0 0 0 / 10%) 0 4px 8px, rgb(0 0 0 / 10%) 0 8px 16px,
+    rgb(0 0 0 / 10%) 0 16px 32px, rgb(0 0 0 / 10%) 0 32px 64px;
+  --glow-blend-fill: soft-light;
+  --glow-blend-halo: plus-lighter;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAILWIND THEME
+
+   `inline` keeps the var() reference in the generated utility instead of
+   inlining the resolved value — that is what makes the tokens above switchable.
+═══════════════════════════════════════════════════════════════════════════ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+
+  --color-border-subtle: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+
+  --color-frame: var(--frame);
+
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
+
+  --color-card-primary: var(--card-primary);
+  --color-card-secondary: var(--card-secondary);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-foreground-muted: var(--card-foreground-muted);
+
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-soft: var(--whatsapp-soft);
+  --color-whatsapp-ink: var(--whatsapp-ink);
+
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Radii — the template is built on pills and generously rounded cards */
+  --radius-card: 20px;
+  --radius-card-lg: 28px;
+  --radius-pill: 9999px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════════════════════════════════════ */
+* {
+  border-color: var(--border);
+}
+
+html {
+  /* No scroll-behavior: smooth — Lenis owns scrolling and the two fight,
+     producing a stutter on anchor jumps. Lenis handles anchors in main.tsx. */
+  scroll-padding-top: 96px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  font-variation-settings: "opsz" 32;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Visible focus ring for keyboard users only — mouse users never see it, so the
+   pill buttons stay clean without sacrificing keyboard navigability. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DISPLAY TYPOGRAPHY
+
+   Tight tracking at large sizes, loosening as the size drops — letter-spacing
+   that flatters a 96px headline makes 32px text look cramped, so it scales with
+   the clamp rather than being a fixed value.
+═══════════════════════════════════════════════════════════════════════════ */
+/* -0.025em is the template's own ratio: -2.4px against a 96px headline. */
+.display-1 {
+  font-size: clamp(44px, 7.2vw, 96px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.display-2 {
+  font-size: clamp(34px, 4.8vw, 60px);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.display-3 {
+  font-size: clamp(26px, 3.2vw, 40px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.lead {
+  font-size: clamp(16px, 1.35vw, 19px);
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+/* Small mono label above section headings */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENTS
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Interactive dashboard mock ───────────────────────────────────────────────
+   The mock is laid out once at a fixed 1160x620 and then scaled to whatever
+   width the hero frame gives it. That is what the screenshot it replaced did
+   implicitly, and it buys two things a fluid layout would not: the composition
+   can never reflow into a broken state at an awkward width, and the reserved
+   height is exact at first paint, so nothing shifts as it mounts.
+
+   aspect-ratio reserves the box. The scale factor itself has to come from JS: a
+   pure-CSS `scale(calc(100cqw / 1160))` is invalid, because that divides a
+   length by a number and yields a length, and scale() only takes a number —
+   the browser drops the whole declaration and the canvas overflows. */
+.dash-shell {
+  aspect-ratio: 1160 / 620;
+  overflow: hidden;
+}
+
+.dash-canvas {
+  width: 1160px;
+  height: 620px;
+  transform-origin: top left;
+}
+
+/* Pill badge — hero "Now available", section tags */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--frame);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.pill-accent {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.dark .pill-accent {
+  color: var(--accent);
+}
+
+/* Buttons — every CTA on the page is a pill */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.18s ease,
+    border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* Inverted-ink primary: near-black pill in light, near-white in dark */
+.btn-primary {
+  background: var(--foreground);
+  color: var(--background);
+  border: 1px solid var(--foreground);
+}
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--foreground) 86%, var(--background));
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--foreground) 40%, transparent);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+}
+.btn-accent:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.btn-outline {
+  background: var(--frame);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover {
+  border-color: var(--border-strong);
+  background: var(--subtle);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover {
+  color: var(--foreground);
+  background: var(--subtle);
+}
+
+.btn-lg {
+  padding: 15px 30px;
+  font-size: 15px;
+}
+
+/* Cards */
+.card {
+  background: var(--frame);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-strong);
+  box-shadow: 0 18px 40px -18px color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+
+/* Host for BorderGlow. The translate3d promotes the card to its own compositing
+   layer — without it the masked mix-blend-mode layers inside seam visibly on
+   some GPUs. It lives here rather than as an inline style so the hover lift can
+   share the same transform instead of being overridden by it. */
+.glow-card {
+  transform: translate3d(0, 0, 0.01px);
+  transition: transform 0.25s ease;
+}
+.glow-card:hover {
+  transform: translate3d(0, -4px, 0.01px);
+}
+
+/* The two mesh layers' compositing. Constant per layer and theme-driven, so it
+   belongs here rather than inline — and React types mix-blend-mode and
+   mask-composite as closed unions that reject a var() and a multi-value list. */
+.glow-card-fill {
+  mask-composite: subtract, add, add, add, add, add;
+  -webkit-mask-composite: source-out, source-over, source-over, source-over,
+    source-over, source-over;
+  mix-blend-mode: var(--glow-blend-fill);
+}
+
+.glow-card-halo {
+  mix-blend-mode: var(--glow-blend-halo);
+}
+
+/* Lime feature card — the template's signature block */
+.card-lime {
+  background: var(--card-primary);
+  color: var(--accent-ink);
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, #000);
+  border-radius: var(--radius-card-lg);
+}
+
+.card-lime-soft {
+  background: var(--card-secondary);
+  color: var(--card-foreground);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: var(--radius-card-lg);
+}
+
+.input-field {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--frame);
+  color: var(--foreground);
+  font-size: 14px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.input-field::placeholder {
+  color: var(--muted-foreground);
+}
+.input-field:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Hairline divider that fades at both ends */
+.rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border) 15%,
+    var(--border) 85%,
+    transparent
+  );
+}
+
+/* Dot-grid section background */
+.dot-grid {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--foreground) 12%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 28px 28px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Marquee travels exactly -50%: the track holds the list twice, so the loop
+   point lands on an identical frame and the seam is invisible. */
+@keyframes marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatY {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--marquee-duration, 42s) linear infinite;
+}
+.animate-float {
+  animation: floatY 4s ease-in-out infinite;
+}
+.animate-pulse-dot {
+  animation: pulseDot 1.8s ease-in-out infinite;
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.25s ease-out both;
+}
+
+/* Pause the marquee on hover so a visitor can actually read a name */
+.marquee-track:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════════════════════════════════ */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: 9999px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PERFORMANCE
+
+   Sections already clip their own decoration; paint containment tells the
+   browser it never needs to repaint outside their box, which cuts per-frame
+   paint work during scroll. No visual difference.
+═══════════════════════════════════════════════════════════════════════════ */
+section,
+footer {
+  contain: paint;
+}
+
+/* Opt-out for sections whose children paint outside their own box. `contain:
+   paint` clips to the padding box, which would cut a straight edge through the
+   BorderGlow halo wherever a card sits flush against the section's padding —
+   visible at 1-column widths, where every card is full-bleed. layout + style
+   keep most of the containment win without clipping. */
+.contain-visible {
+  contain: layout style;
+}
+
+/* Applied by the IntersectionObserver in App.tsx to offscreen sections so their
+   infinite animations stop burning frames while invisible. */
+.gf-anim-paused,
+.gf-anim-paused * {
+  animation-play-state: paused !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+
+   Kills the decorative loops and transforms. GSAP reveal tweens are disabled
+   separately in main.tsx, since CSS cannot reach them.
+═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-marquee {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  /* Hold the lift, keep the layer promotion — the transition above is already
+     ~0, so without this the card would jump 4px instead of easing. The glow
+     itself stays: it is a pointer-driven hover affordance, not a loop. */
+  .glow-card:hover {
+    transform: translate3d(0, 0, 0.01px);
+  }
+}

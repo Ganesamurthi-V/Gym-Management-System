@@ -1,0 +1,122 @@
+# robots.txt for the GymFlow marketing site — https://www.gymflow.sbs
+#
+# ─── WHY THIS IS A STATIC FILE AND NOT robots.ts ────────────────────────────
+# `app/robots.ts` is a Next.js App Router convention. This project is Vite +
+# React, so that file would never be compiled or served. Vite copies everything
+# in `public/` verbatim into `dist/`, so this lands at /robots.txt in the build.
+#
+# ─── HISTORY: CLOUDFLARE USED TO OVERRIDE THIS FILE (RESOLVED) ──────────────
+# Cloudflare's managed robots.txt feature used to replace this file entirely with
+# its own version, which:
+#   - set Content-Signal: search=yes,ai-train=no,use=reference
+#   - Disallowed GPTBot, ClaudeBot, CCBot, Google-Extended, Bytespider,
+#     Amazonbot, Applebot-Extended and meta-externalagent
+#   - DROPPED the Sitemap line at the bottom of this file
+#
+# That was Cloudflare's default, not a decision made here, and it silently
+# blocked every AI crawler while breaking sitemap auto-discovery.
+#
+# It has been disabled and the cache purged; this file is now the live one
+# (verified: the served response contains the Sitemap line and none of the
+# Disallow rules above).
+#
+# IF AI CRAWLERS OR THE SITEMAP LINE EVER VANISH AGAIN, that setting has been
+# re-enabled. Check: Cloudflare dashboard -> gymflow.sbs zone -> AI Crawl Control
+# (older accounts: Security -> Bots, or Settings -> Manage robots.txt), turn the
+# managed robots.txt / "Block AI bots" setting OFF, then Caching -> Purge cache
+# for /robots.txt. Verify with:
+#   curl -s https://www.gymflow.sbs/robots.txt
+#
+# ─── HOST: www, NOT THE APEX ────────────────────────────────────────────────
+# https://gymflow.sbs/* returns 308 -> https://www.gymflow.sbs/*, so www is the
+# canonical host. The Sitemap URL below must use www: Google Search Console does
+# not follow redirects for sitemap URLs and reports a redirecting one as
+# "Sitemap could not be read".
+#
+# ─── THIS DOMAIN IS THE ONE THAT SHOULD RANK ────────────────────────────────
+# The two hosts have deliberately opposite policies:
+#
+#   gymflow.sbs      (this site)  public marketing page  -> index everything
+#   app.gymflow.sbs  (the app)    owner/member console   -> disallow everything
+#
+# The app host is fully disallowed because every route there is auth-gated or
+# carries a one-time token, and its `/` only redirects to login. All search
+# visibility is meant to come from this domain.
+#
+# ─── NOTHING IS DISALLOWED HERE, ON PURPOSE ─────────────────────────────────
+# The build output is a single page plus its assets: index.html, favicon.svg and
+# a handful of images. There is no admin area, no API and no private route to
+# protect, and blocking the CSS/JS bundles would stop Google rendering the page
+# and hurt ranking. If a private path is ever added to this host, add it here AND
+# give the page a `noindex` meta tag — robots.txt alone does not guarantee a URL
+# stays out of search results.
+#
+# ─── AI CRAWLERS ARE ALLOWED, DELIBERATELY ──────────────────────────────────
+# Being quotable in ChatGPT, Claude, Perplexity and AI search summaries is free
+# distribution for a marketing page, so every AI crawler is permitted.
+#
+# The per-agent groups below are technically redundant — `User-agent: *` with
+# `Allow: /` already permits them. They are spelled out because a robots.txt
+# user-agent group OVERRIDES the wildcard for that agent, so if Cloudflare's
+# managed robots.txt (or anything else) ever reintroduces a Disallow for one of
+# these, the conflict is obvious in a diff instead of silent.
+#
+# Content-Signal is Cloudflare's directive, mirrored here with permissive values
+# so this file states the opposite of Cloudflare's default
+# (search=yes,ai-train=no,use=reference). It is advisory; most crawlers ignore it.
+
+User-agent: *
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
+Allow: /
+
+# Explicitly allowed AI / LLM crawlers — the exact set Cloudflare was blocking.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# sitemap.xml is deliberately minimal — declaration, urlset, one url, no comments.
+# It lists exactly ONE url because this site is a single scrolling page: no router
+# is mounted (src/main.tsx renders <App /> directly), so #features, #pricing etc.
+# are in-page anchors, not separate URLs, and Google resolves them to this same
+# page. An earlier version carried a long explanatory comment that included
+# literal loc and lastmod tag text; that is valid XML but invites lenient parsers
+# to match the comment instead of the real element, so it was removed.
+Sitemap: https://www.gymflow.sbs/sitemap.xml

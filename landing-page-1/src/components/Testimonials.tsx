@@ -9,7 +9,7 @@ const TESTIMONIALS = [
       'Before GymFlow I had 4 notebooks. Now I open one tab. Dues used to slip through — not anymore.',
     author: 'Karthik R.',
     role: 'Owner',
-    gym: 'Iron Arena, Puducherry',
+    gym: 'Iron Arena',
     initials: 'KR',
   },
   {
@@ -17,7 +17,7 @@ const TESTIMONIALS = [
       'The WhatsApp reminder feature alone saves me 2 hours every week. Members actually pay on time now.',
     author: 'Priya S.',
     role: 'Owner',
-    gym: 'FitZone, Chennai',
+    gym: 'FitZone',
     initials: 'PS',
   },
   {
@@ -25,7 +25,7 @@ const TESTIMONIALS = [
       'Imported 300 members from Excel in 10 minutes. GymFlow fixed all the messy area names automatically.',
     author: 'Murugan T.',
     role: 'Owner',
-    gym: 'Strength Lab, Coimbatore',
+    gym: 'Strength Lab',
     initials: 'MT',
   },
 ] as const;

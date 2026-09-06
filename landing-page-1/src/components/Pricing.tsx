@@ -60,9 +60,9 @@ export function Pricing() {
 
         {/* ── Plan + activation ─────────────────────────────────────────── */}
         <div className="mt-14 grid gap-4 lg:grid-cols-[1.15fr_1fr] lg:gap-5">
-          {/* Plan card — lime, because this is the one thing on the page a
-              visitor is meant to act on. */}
-          <div className="reveal card-lime relative overflow-hidden p-8 md:p-10">
+          {/* Plan card — filled accent, because this is the one thing on the page
+              a visitor is meant to act on. */}
+          <div className="reveal card-accent relative overflow-hidden p-8 md:p-10">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">
                 GymFlow Pro
@@ -80,9 +80,9 @@ export function Pricing() {
               >
                 ₹3,000
               </span>
-              <span className="pb-2 text-[15px] text-accent-ink/70">/ month</span>
+              <span className="pb-2 text-[15px] text-accent-ink/80">/ month</span>
             </div>
-            <p className="mt-3 text-[13.5px] text-accent-ink/75">
+            <p className="mt-3 text-[13.5px] text-accent-ink/80">
               Unlimited members. Unlimited WhatsApp messages. Every module, on every
               account.
             </p>
@@ -116,7 +116,7 @@ export function Pricing() {
               </a>
             </div>
 
-            <p className="mt-5 flex items-center justify-center gap-2 text-[11.5px] text-accent-ink/65">
+            <p className="mt-5 flex items-center justify-center gap-2 text-[11.5px] text-accent-ink/80">
               <ShieldCheck className="h-3.5 w-3.5" />
               14-day free trial first · Cancel anytime
             </p>
@@ -143,7 +143,7 @@ export function Pricing() {
                       />
                     )}
                     <span className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-border-subtle bg-subtle">
-                      <Icon className="h-4.5 w-4.5 text-accent-ink dark:text-accent" />
+                      <Icon className="h-4.5 w-4.5 text-accent-text" />
                     </span>
                     {/* Number on its own line so the title and the description
                         share one left edge instead of stepping in and out. */}
@@ -166,7 +166,7 @@ export function Pricing() {
             <div className="mt-auto pt-9">
               <div className="flex items-start gap-3 rounded-2xl border border-border-subtle bg-subtle p-4">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent-soft">
-                  <CreditCard className="h-4 w-4 text-accent-ink dark:text-accent" />
+                  <CreditCard className="h-4 w-4 text-accent-text" />
                 </span>
                 <span>
                   <span className="block text-[13px] font-medium text-foreground">

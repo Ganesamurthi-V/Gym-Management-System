@@ -32,8 +32,8 @@ const FAQS = [
     a: "Each gym's records are isolated and reachable only from your own account. Data is encrypted in transit, backed up regularly, and never shared with other gyms or sold on.",
   },
   {
-    q: 'Do you offer support in Tamil?',
-    a: 'Yes — over WhatsApp, phone, and email, in both Tamil and English. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.',
+    q: 'How do I reach support?',
+    a: 'Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.',
   },
 ] as const;
 
@@ -54,7 +54,7 @@ export function FAQ() {
             <span className="text-muted-foreground">need to know.</span>
           </h2>
           <p className="reveal lead mt-5 max-w-[340px]">
-            Still unsure about something? Ask us directly — we answer in Tamil or English.
+            Still unsure about something? Ask us directly and we will walk you through it.
           </p>
           <div className="reveal mt-8 flex flex-wrap gap-3">
             <a href={APP_URL} className="btn btn-primary">

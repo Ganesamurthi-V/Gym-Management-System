@@ -35,9 +35,9 @@ const PRODUCT_ITEMS = [
 
 const RESOURCE_ITEMS = [
   { icon: Route, label: 'How it works', desc: 'From signup to daily use', href: '#how' },
-  { icon: Map, label: 'Coverage', desc: 'Tamil Nadu & Puducherry', href: '#testimonials' },
+  { icon: Map, label: 'Coverage', desc: 'Independent gyms across India', href: '#testimonials' },
   { icon: HelpCircle, label: 'FAQ', desc: 'Trial, pricing, data safety', href: '#faq' },
-  { icon: LifeBuoy, label: 'Support', desc: 'Tamil & English, priority', href: '#support' },
+  { icon: LifeBuoy, label: 'Support', desc: 'Priority support, included', href: '#support' },
 ] as const;
 
 const MOBILE_LINKS = [
@@ -130,7 +130,10 @@ export function Navbar() {
             alt="GymFlow"
             width={400}
             height={178}
-            className="h-8 w-auto"
+            /* The wordmark is dark-inked, so on the dark navbar it was all but
+               invisible. brightness-0 crushes it to black and invert lifts it to
+               white — the same treatment the footer logo uses on its blue panel. */
+            className="h-8 w-auto dark:brightness-0 dark:invert"
           />
         </a>
 
@@ -293,7 +296,7 @@ function DropdownTrigger({
                     className="flex items-start gap-3 rounded-2xl p-3 transition-colors hover:bg-subtle"
                   >
                     <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent-soft">
-                      <Icon className="h-4 w-4 text-accent-ink dark:text-accent" />
+                      <Icon className="h-4 w-4 text-accent-text" />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-[13.5px] font-medium leading-tight text-foreground">

@@ -1,0 +1,8 @@
+# Vercel runs this script on a Linux builder. If it were ever checked in with
+# CRLF endings — which is easy to do by accident from Windows with
+# core.autocrlf=false — bash fails on every line with a confusing
+# "$'\r': command not found", and the deploy breaks.
+#
+# Scoped to this one file on purpose rather than a blanket "*.sh": a wider rule
+# would renormalise the husky hooks in .husky/ as a side effect.
+scripts/vercel-ignore-root.sh text eol=lf

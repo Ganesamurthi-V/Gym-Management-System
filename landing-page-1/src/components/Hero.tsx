@@ -65,9 +65,9 @@ export function Hero() {
 
       <div className="mx-auto max-w-[1240px]">
         {/* ── Copy ──────────────────────────────────────────────────────── */}
-        {/* 1040px, not 820: the serif italic runs wider than Geist at the same
-            size, and at 820 the second line broke into two. */}
-        <div className="mx-auto max-w-[1040px] text-center">
+        {/* 900px fits the longest headline line with headroom for the serif's
+            wider metrics, without letting the measure sprawl. */}
+        <div className="mx-auto max-w-[900px] text-center">
           <span className="hero-badge pill pill-accent">
             <MapPin className="h-3.5 w-3.5" />
             Built for independent gyms across India
@@ -76,17 +76,18 @@ export function Hero() {
             </span>
           </span>
 
-          {/* <em> rather than a styled span: these three words carry the stress
-              of the sentence, so the emphasis is real and not just decoration.
-              Line two loses its muted colour — the accent words are the emphasis
-              now, and greying the words around them muddled both. */}
-          <h1 className="display-1 mt-8 text-balance">
+          {/* Two explicit lines rather than one balanced block. Left to wrap on
+              its own the heading broke as "Built to make gym / management
+              effortless.", splitting the compound noun, and text-balance cannot
+              fix that because it only chooses where to break, not what stays
+              together. Fixing the break needs the phrase to fall in two units.
+
+              <em> rather than a styled span: "effortless" carries the stress of
+              the sentence, so the emphasis is real and not just decoration. */}
+          <h1 className="display-1 mt-8">
+            <span className="hero-line block">Gym management,</span>
             <span className="hero-line block">
-              Know who <em className="display-accent">paid.</em>
-            </span>
-            <span className="hero-line block">
-              Who <em className="display-accent">didn&apos;t.</em> Who&apos;s{' '}
-              <em className="display-accent">next.</em>
+              made <em className="display-accent">effortless.</em>
             </span>
           </h1>
 

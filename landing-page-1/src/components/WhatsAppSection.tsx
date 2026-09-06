@@ -67,14 +67,17 @@ export function WhatsAppSection() {
                   notifications.
                 </p>
               </div>
-              <div className="bg-accent p-5">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-accent-ink/70">
+              {/* bg-card-primary rather than bg-accent: this half carries two
+                  levels of white text, and --accent is too light a blue to keep
+                  the dimmer level above AA. */}
+              <div className="bg-card-primary p-5">
+                <p className="font-mono text-[10px] uppercase tracking-wider text-accent-ink/80">
                   GymFlow
                 </p>
                 <p className="mt-2.5 text-[26px] font-medium tracking-tight text-accent-ink">
                   Included
                 </p>
-                <p className="mt-1 text-[11.5px] text-accent-ink/75">
+                <p className="mt-1 text-[11.5px] text-accent-ink/80">
                   Unlimited messages at zero extra cost, on every account.
                 </p>
               </div>
@@ -98,7 +101,7 @@ export function WhatsAppSection() {
         <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:gap-8">
           <div className="reveal relative w-full max-w-[300px] shrink-0">
             {/* Soft green bloom — WhatsApp's own colour, kept to a backdrop so it
-                never competes with the lime accent for brand attention. */}
+                never competes with the blue accent for brand attention. */}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 -z-10 scale-125"

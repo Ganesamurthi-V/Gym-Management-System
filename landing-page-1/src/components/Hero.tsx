@@ -10,19 +10,21 @@ const APP_URL = 'https://app.gymflow.sbs';
 
 /**
  * Coverage, not a customer list. A logo strip of named gyms would assert
- * specific clients the site cannot evidence; the service area is a fact.
+ * specific clients the site cannot evidence; where the product is available is
+ * a fact. Spread across regions so the strip reads as national reach rather
+ * than one state.
  */
 const CITIES = [
+  'Mumbai',
+  'Delhi',
+  'Bengaluru',
+  'Hyderabad',
   'Chennai',
-  'Coimbatore',
-  'Madurai',
-  'Puducherry',
-  'Tiruchirappalli',
-  'Salem',
-  'Erode',
-  'Tirunelveli',
-  'Vellore',
-  'Thanjavur',
+  'Kolkata',
+  'Pune',
+  'Ahmedabad',
+  'Jaipur',
+  'Lucknow',
 ] as const;
 
 const TRUST_POINTS = ['14-day free trial', 'No credit card', 'Cancel anytime'] as const;
@@ -53,39 +55,46 @@ export function Hero() {
 
   return (
     <section ref={scope} className="relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8">
-      {/* Lime bloom behind the headline — the accent's only appearance at this
-          scale, which is what keeps it feeling deliberate rather than decorative. */}
+      {/* Brand-hue mesh behind the headline and product shot. Spans the full
+          width rather than a centred 900px block, so the colour reaches behind
+          the dashboard frame the way it does in the reference. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[560px] w-[900px] -translate-x-1/2"
-        style={{
-          background:
-            'radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 70%)',
-          filter: 'blur(20px)',
-        }}
+        className="hero-mesh pointer-events-none absolute inset-x-0 top-0 -z-10 h-[760px]"
       />
 
       <div className="mx-auto max-w-[1240px]">
         {/* ── Copy ──────────────────────────────────────────────────────── */}
-        <div className="mx-auto max-w-[820px] text-center">
+        {/* 1040px, not 820: the serif italic runs wider than Geist at the same
+            size, and at 820 the second line broke into two. */}
+        <div className="mx-auto max-w-[1040px] text-center">
           <span className="hero-badge pill pill-accent">
             <MapPin className="h-3.5 w-3.5" />
-            Built for Tamil Nadu &amp; Puducherry gyms
-            <span aria-hidden className="text-accent-ink dark:text-accent">
+            Built for independent gyms across India
+            <span aria-hidden className="text-accent-text">
               ✦
             </span>
           </span>
 
+          {/* <em> rather than a styled span: these three words carry the stress
+              of the sentence, so the emphasis is real and not just decoration.
+              Line two loses its muted colour — the accent words are the emphasis
+              now, and greying the words around them muddled both. */}
           <h1 className="display-1 mt-8 text-balance">
-            <span className="hero-line block">Know who paid.</span>
-            <span className="hero-line block text-muted-foreground">
-              Who didn&apos;t. Who&apos;s next.
+            <span className="hero-line block">
+              Know who <em className="display-accent">paid.</em>
+            </span>
+            <span className="hero-line block">
+              Who <em className="display-accent">didn&apos;t.</em> Who&apos;s{' '}
+              <em className="display-accent">next.</em>
             </span>
           </h1>
 
-          <p className="hero-sub lead mx-auto mt-7 max-w-[560px]">
-            GymFlow is the all-in-one gym management platform for independent gym owners.
-            Members, payments, attendance, dues, and WhatsApp reminders — in one place,
+          {/* Trimmed to two lines. The full product definition still lives in the
+              meta description and the features section; repeating it here only
+              pushed the product shot below the fold. */}
+          <p className="hero-sub lead mx-auto mt-7 max-w-[620px]">
+            Members, payments, attendance, dues and WhatsApp reminders — in one place,
             without the notebooks.
           </p>
 
@@ -166,7 +175,7 @@ export function Hero() {
         {/* ── Coverage marquee ──────────────────────────────────────────── */}
         <div className="hero-marquee mt-16">
           <p className="mb-6 text-center text-xs font-medium tracking-wide text-muted-foreground">
-            Serving independent gyms across Tamil Nadu &amp; Puducherry
+            Serving independent gyms across India
           </p>
           <Marquee items={CITIES} durationSeconds={38} />
         </div>

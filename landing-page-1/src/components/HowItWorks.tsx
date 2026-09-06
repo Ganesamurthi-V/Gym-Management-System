@@ -58,7 +58,9 @@ export function HowItWorks() {
                 key={step.num}
                 className="reveal group grid grid-cols-[auto_1fr] gap-x-5 gap-y-0 border-t border-border-subtle py-8 last:border-b sm:gap-x-8"
               >
-                <span className="font-mono text-[13px] font-medium text-muted-foreground transition-colors group-hover:text-accent-ink dark:group-hover:text-accent">
+                {/* accent-text, not accent-ink: this number sits on the page
+                    background, where accent-ink is white and would disappear. */}
+                <span className="font-mono text-[13px] font-medium text-muted-foreground transition-colors group-hover:text-accent-text">
                   {step.num}
                 </span>
                 <div className="min-w-0">
@@ -68,7 +70,7 @@ export function HowItWorks() {
                   </p>
                 </div>
 
-                {/* Lime rule that draws in on hover — the row's only decoration,
+                {/* Accent rule that draws in on hover — the row's only decoration,
                     and the only thing signalling it is interactive-ish. */}
                 <span
                   aria-hidden

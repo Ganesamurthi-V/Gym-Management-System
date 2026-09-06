@@ -20,7 +20,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Alias for registry installs. shadcn writes imports as "@/components/..."
+       from the aliases in components.json, so without this mapping anything
+       pulled from the React Bits registry would not resolve. Existing relative
+       imports are unaffected. */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

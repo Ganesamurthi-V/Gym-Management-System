@@ -160,9 +160,9 @@ export default function BorderGlow({
   className = '',
   contentClassName = '',
   edgeSensitivity = 30,
-  // Lime accent (#a8d946) in HSL. Must stay numeric: parseHSL reads it in JS,
+  // Brand blue (#2563eb) in HSL. Must stay numeric: parseHSL reads it in JS,
   // so a var() would silently fall back to the amber default.
-  glowColor = '80 66 56',
+  glowColor = '221 83 53',
   backgroundColor = 'var(--frame)',
   borderRadius = 'var(--radius-card)',
   glowRadius = 40,

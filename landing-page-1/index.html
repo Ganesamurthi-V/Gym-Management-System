@@ -104,10 +104,10 @@
 
     <!--
       ─── THEME BOOTSTRAP ────────────────────────────────────────────────────
-      Runs before first paint and before the CSS applies, so the stored theme is
-      already on <html> when the page renders. Without this the page paints in
-      light, then React's effect swaps it to dark a frame later — a visible white
-      flash for every dark-mode visitor.
+      Runs before first paint and before the CSS applies, so the theme is already
+      on <html> when the page renders. Dark is the default, so without this the
+      page would paint light and then swap to dark a frame later — a visible white
+      flash for the majority of visits.
 
       Inline and synchronous on purpose: a deferred or external script would run
       after paint and defeat the point. Kept in sync with useTheme() in
@@ -115,14 +115,17 @@
     -->
     <script>
       (function () {
+        // Dark is the default: a visitor with no saved choice always opens dark,
+        // regardless of their OS setting. An explicit choice via the toggle still
+        // wins for the rest of that visit. Because dark is the fallback, the
+        // catch (storage disabled / private mode) also lands on dark rather than
+        // needing to re-add the class.
         try {
-          var stored = localStorage.getItem('gf-theme');
-          var dark = stored
-            ? stored === 'dark'
-            : window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (dark) document.documentElement.classList.add('dark');
+          if (localStorage.getItem('gf-theme') !== 'light') {
+            document.documentElement.classList.add('dark');
+          }
         } catch (e) {
-          /* private mode / storage disabled — fall through to the light default */
+          document.documentElement.classList.add('dark');
         }
       })();
     </script>

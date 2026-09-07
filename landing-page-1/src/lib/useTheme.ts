@@ -16,14 +16,6 @@ function currentTheme(): Theme {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
-function hasStoredPreference(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(currentTheme);
 
@@ -38,16 +30,11 @@ export function useTheme() {
     }
   }, [theme]);
 
-  // Follow the OS only until the visitor makes an explicit choice — after that,
-  // their choice wins and system changes are ignored.
-  useEffect(() => {
-    const query = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = (event: MediaQueryListEvent) => {
-      if (!hasStoredPreference()) setTheme(event.matches ? 'dark' : 'light');
-    };
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
+  // Dark is the default, so an un-toggled visitor stays dark whatever their OS
+  // does — the site no longer follows prefers-color-scheme. The effect that
+  // watched for OS changes has been removed: with dark as the default and the
+  // toggle owning any deviation, there is nothing left for a system change to
+  // drive. hasStoredPreference is likewise gone with its only caller.
 
   const toggle = useCallback(() => {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));

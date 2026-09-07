@@ -51,6 +51,33 @@ const MOBILE_LINKS = [
 
 type MenuId = 'product' | 'resources';
 
+/**
+ * Floating-island metrics, in px.
+ *
+ * These live as constants rather than Tailwind classes because the mobile
+ * sheet's top offset is derived from them. The sheet used to be pinned at a
+ * hardcoded top-[68px], which silently became wrong the moment the bar started
+ * changing height — it would have overlapped the bar or floated below it.
+ *
+ * NAV_H_SCROLLED is only 10px shorter on purpose. The reference this mirrors
+ * keeps its height fixed and gets the "shrunk" read entirely from narrowing the
+ * width; a large height change on a fixed element reads as a jolt rather than a
+ * settle, because every item inside it moves vertically at the same time.
+ */
+const NAV_TOP = 14;
+const NAV_H = 68;
+const NAV_H_SCROLLED = 58;
+const NAV_MAX_W = 1240;
+const NAV_MAX_W_SCROLLED = 1120;
+
+/**
+ * Scroll distance before the bar collapses. Matched to the reference, which
+ * flips between 40px and 60px, and deliberately past the old 16px: at 16 the bar
+ * changed shape while the visitor was still effectively looking at the top of
+ * the hero, which read as a twitch rather than a response to scrolling.
+ */
+const COLLAPSE_AT = 48;
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
@@ -64,7 +91,7 @@ export function Navbar() {
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
-        setScrolled(window.scrollY > 16);
+        setScrolled(window.scrollY > COLLAPSE_AT);
         ticking = false;
       });
     };
@@ -103,25 +130,38 @@ export function Navbar() {
   }, [mobileOpen]);
 
   return (
-    <header
-      ref={navRef}
-      className="fixed inset-x-0 top-0 z-50"
-      style={{
-        background: scrolled
-          ? 'color-mix(in srgb, var(--background) 82%, transparent)'
-          : 'color-mix(in srgb, var(--background) 60%, transparent)',
-        backdropFilter: 'blur(18px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(18px) saturate(180%)',
-        borderBottom: `1px solid ${scrolled ? 'var(--border)' : 'transparent'}`,
-        // Own compositor layer, so the blur isn't re-rasterised with the page on
-        // every scroll frame.
-        transform: 'translateZ(0)',
-        transition: 'background 0.3s ease, border-color 0.3s ease',
-      }}
-    >
+    // Two layers, mirroring the reference: the <header> is a transparent,
+    // full-width padded frame that never moves, and the <nav> inside it is the
+    // island that collapses. Animating a fixed, full-bleed bar directly would
+    // mean animating the thing the dropdowns are positioned against.
+    <header ref={navRef} className="fixed inset-x-0 top-0 z-50 px-3 md:px-5" style={{ paddingTop: NAV_TOP }}>
       <nav
         aria-label="Main"
-        className="mx-auto flex h-[68px] max-w-[1240px] items-center justify-between gap-6 px-5 md:px-8"
+        className="nav-island mx-auto flex items-center justify-between gap-6 px-4 md:px-6"
+        style={{
+          height: scrolled ? NAV_H_SCROLLED : NAV_H,
+          maxWidth: scrolled ? NAV_MAX_W_SCROLLED : NAV_MAX_W,
+          borderRadius: 16,
+          // Transparent at rest so the hero mesh reads through it cleanly, and a
+          // translucent --frame surface once collapsed. --frame rather than
+          // --background because the island is meant to sit above the page, not
+          // blend into it.
+          backgroundColor: scrolled
+            ? 'color-mix(in srgb, var(--frame) 72%, transparent)'
+            : 'transparent',
+          // Toggled rather than transitioned. backdrop-filter does not
+          // interpolate cheaply, and the reference snaps it too — the 400ms
+          // colour fade running alongside hides the switch.
+          backdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
+          WebkitBackdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
+          border: `1px solid ${scrolled ? 'var(--border)' : 'transparent'}`,
+          boxShadow: scrolled
+            ? '0 10px 34px -12px color-mix(in srgb, var(--foreground) 22%, transparent)'
+            : 'none',
+          // Own compositor layer, so the blur is not re-rasterised with the page
+          // on every scroll frame.
+          transform: 'translateZ(0)',
+        }}
       >
         {/* Logo */}
         <a href="#" aria-label="GymFlow home" className="flex shrink-0 items-center">
@@ -191,7 +231,10 @@ export function Navbar() {
       {/* Mobile sheet */}
       {mobileOpen && (
         <div
-          className="animate-fade-in-up fixed inset-x-0 top-[68px] bottom-0 overflow-y-auto border-t border-border-subtle bg-background px-5 py-6 lg:hidden"
+          // Derived from the island metrics rather than hardcoded: the bar now
+          // changes height, so a fixed offset would leave a gap or an overlap.
+          style={{ top: NAV_TOP + (scrolled ? NAV_H_SCROLLED : NAV_H) }}
+          className="animate-fade-in-up fixed inset-x-0 bottom-0 overflow-y-auto border-t border-border-subtle bg-background px-5 py-6 lg:hidden"
           onClick={event => {
             // Any link tap closes the sheet; the delegated Lenis handler in
             // main.tsx still performs the scroll.

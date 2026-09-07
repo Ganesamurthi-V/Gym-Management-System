@@ -6,12 +6,17 @@ import BorderGlow from './BorderGlow';
 import { MemberAppCard } from './MemberAppCard';
 
 /* Illustrative figures for the mock interfaces below — they demonstrate the
-   layout, they are not claims about any particular gym. */
+   layout, they are not claims about any particular gym.
+ 
+   Label and value only. Each tile used to carry a third line ("+12 this month",
+   "Reminders queued"), which put twelve pieces of text in one row of four tiles
+   and made this the densest thing on the page for the least return — a couple of
+   them were not even deltas, just restated notes. */
 const DASHBOARD_STATS = [
-  { label: 'Active members', value: '248', delta: '+12 this month' },
-  { label: "Today's collection", value: '₹12,400', delta: '9 payments' },
-  { label: 'Expiring in 7 days', value: '9', delta: 'Reminders queued' },
-  { label: 'Outstanding dues', value: '₹18,600', delta: 'Across 14 members' },
+  { label: 'Active members', value: '248' },
+  { label: "Today's collection", value: '₹12,400' },
+  { label: 'Expiring in 7 days', value: '9' },
+  { label: 'Outstanding dues', value: '₹18,600' },
 ] as const;
 
 const ATTENDANCE_ROWS = [
@@ -83,11 +88,17 @@ export function BentoFeatures() {
 
           {/* Dashboard — two columns wide at lg, where its stat row sits four
               across. Below that it is a single column and the stats fall to 2x2. */}
+          {/* The old desc here was a comma-list of the four tile labels sitting
+              directly beneath it — "active members, today's collection,
+              memberships expiring soon and total dues" — so the reader parsed the
+              same four things twice. Deleting it outright left the card with a
+              floating row of tiles and ~115px of dead air, so the slot earns its
+              place back by carrying the point instead of the labels. */}
           <BentoCard
             className="lg:col-span-2"
             icon={LayoutDashboard}
             title="Dashboard & live stats"
-            desc="Active members, today's collection, memberships expiring soon and total dues — the whole picture on one screen."
+            desc="The whole picture, on one screen."
           >
             <div className="flex flex-1 flex-col justify-center gap-2.5">
               {/* lg, not sm: `sm:` keys off the viewport rather than the card, so
@@ -97,15 +108,17 @@ export function BentoFeatures() {
                 {DASHBOARD_STATS.map(stat => (
                   <div
                     key={stat.label}
-                    className="rounded-2xl border border-border-subtle bg-subtle p-3"
+                    className="rounded-2xl border border-border-subtle bg-subtle p-4"
                   >
                     <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                       {stat.label}
                     </p>
-                    <p className="mt-2 text-[22px] font-medium leading-none tracking-tight text-foreground">
+                    {/* 24px, up from 21. Dropping the third line freed height, and
+                        spending it on the number rather than leaving it as a gap
+                        is what makes these tiles easier to read at a glance. */}
+                    <p className="mt-2.5 text-[24px] font-medium leading-none tracking-tight text-foreground">
                       {stat.value}
                     </p>
-                    <p className="mt-2 text-[11px] text-muted-foreground">{stat.delta}</p>
                   </div>
                 ))}
               </div>
@@ -128,12 +141,15 @@ export function BentoFeatures() {
           >
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-accent-ink" />
-              <h3 className="text-[16px] font-medium tracking-tight text-accent-ink">
+              {/* 17px to match BentoCard's title — this card is hand-rolled
+                  rather than going through it, so the size has to be kept in
+                  step by hand. */}
+              <h3 className="text-[17px] font-medium tracking-tight text-accent-ink">
                 One-tap attendance
               </h3>
             </div>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-accent-ink/80">
-              Mark today in a tap. Pull up any member&apos;s history.
+            <p className="mt-1.5 text-[13px] leading-relaxed text-accent-ink/80">
+              Mark today in a tap.
             </p>
 
             <div className="mt-5 flex flex-1 flex-col justify-center gap-2">
@@ -169,7 +185,7 @@ export function BentoFeatures() {
             className="lg:col-span-2"
             icon={Users}
             title="Member management"
-            desc="Add, edit and search member details in seconds."
+            desc="Find and edit anyone in seconds."
           >
             <div className="flex flex-1 flex-col justify-center gap-2">
               {MEMBER_ROWS.map(row => (
@@ -206,7 +222,7 @@ export function BentoFeatures() {
           <BentoCard
             icon={CreditCard}
             title="Payments & dues"
-            desc="Record cash, UPI or card payments, see what's pending, and nudge members on WhatsApp."
+            desc="Cash, UPI or card. Nudges sent for you."
           >
             {/* The member app card sets a tall row. Rather than stretch the panel
                 to fill it — which either spreads the three items to the far edges
@@ -246,7 +262,8 @@ export function BentoFeatures() {
 interface BentoCardProps {
   icon: typeof Users;
   title: string;
-  desc: string;
+  /** Optional: omit it where the mock already says the same thing. */
+  desc?: string;
   children: ReactNode;
   className?: string;
 }
@@ -265,17 +282,31 @@ function BentoCard({ icon: Icon, title, desc, children, className = '' }: BentoC
         {/* Icon sits inline with the title rather than in a 40px chip above it.
             The chip and its margin cost 60px of card height, which the
             one-viewport budget cannot spare, and the icon reads the same here. */}
+        {/* Icon sits inline with the title rather than in a 40px chip above it.
+            The chip and its margin cost 60px of card height, which the
+            one-viewport budget cannot spare, and the icon reads the same here.
+
+            17px, up from 16. The largest text in these cards is a stat value at
+            21px, so at 16 the title — the layer you actually scan — was being
+            outweighed by the detail layer underneath it. */}
         <div className="flex items-center gap-2.5">
           <Icon className="h-4 w-4 shrink-0 text-accent-text" />
-          <h3 className="text-[16px] font-medium tracking-tight text-foreground">
+          <h3 className="text-[17px] font-medium tracking-tight text-foreground">
             {title}
           </h3>
         </div>
-        <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{desc}</p>
+
+        {/* Tight to the title and a step smaller, so it reads as a subtitle
+            rather than a paragraph. Skipped entirely when absent, so a card with
+            no desc does not carry an empty <p> and its stray margin. */}
+        {desc && (
+          <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{desc}</p>
+        )}
+
         {/* The mock area grows to fill whatever height the grid row gives this
             card, so a short mock never leaves a gap in the middle of the card.
             Each mock opts into stretching via flex-1 on its own root. */}
-        <div className="mt-5 flex flex-1 flex-col">{children}</div>
+        <div className="mt-4 flex flex-1 flex-col">{children}</div>
       </BorderGlow>
     </div>
   );

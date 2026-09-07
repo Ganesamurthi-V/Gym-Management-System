@@ -100,9 +100,11 @@ export function MemberAppCard() {
           their own app.
         </h3>
 
-        <p className="mt-3.5 max-w-[300px] text-[13px] leading-relaxed text-accent-ink/80">
-          Membership, attendance and a digital gym card on their own phone. Installs from a
-          link, no app store.
+        {/* Trimmed from three clauses to two. The old copy listed membership,
+            attendance and the gym card — all three of which the phone below is
+            already showing. */}
+        <p className="mt-3 max-w-[280px] text-[13px] leading-relaxed text-accent-ink/80">
+          A digital gym card on their own phone. No app store.
         </p>
 
         {/* Phone well. The frame inside is sized BLEED taller than this box, so the

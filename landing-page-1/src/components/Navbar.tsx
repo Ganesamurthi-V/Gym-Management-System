@@ -217,7 +217,12 @@ export function Navbar() {
           >
             Sign in
           </a>
-          <a href={APP_URL} className="btn btn-primary hidden sm:inline-flex">
+          {/* Compact size via .btn-nav (see index.css): the base .btn (12px/22px,
+              14px) reads oversized in the nav strip next to the ghost "Sign in"
+              link. Tailwind px/py utilities lose the cascade to .btn's own
+              padding, so the smaller size is a dedicated class authored after
+              .btn. */}
+          <a href={APP_URL} className="btn btn-primary btn-nav hidden sm:inline-flex">
             Start free trial
           </a>
 

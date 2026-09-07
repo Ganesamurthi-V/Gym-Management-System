@@ -613,14 +613,24 @@ body {
    A dedicated class because btn-lg is not a Tailwind utility, so `sm:btn-lg`
    would never generate. */
 .hero-cta {
-  padding: 12px 22px;
-  font-size: 14px;
+  padding: 9px 16px;
+  font-size: 13px;
 }
 @media (min-width: 640px) {
   .hero-cta {
     padding: 15px 30px;
     font-size: 15px;
   }
+}
+
+/* Compact primary CTA for the nav strip. A dedicated class rather than Tailwind
+   px/py/text utilities on the element, because .btn sets padding and font-size
+   as its own declarations and — being authored later in this file than Tailwind
+   emits its utilities — wins the cascade over them. This rule is later still, so
+   it takes. */
+.btn-nav {
+  padding: 8px 12px;
+  font-size: 13px;
 }
 
 /* Cards */

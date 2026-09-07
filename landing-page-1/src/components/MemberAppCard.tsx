@@ -143,7 +143,7 @@ function PhoneMock() {
   return (
     <div
       role="img"
-      aria-label="The GymFlow member app running on a phone. The screen shows the member's membership as active with 24 days left, above their digital member card."
+      aria-label="The GymFlow member app running on a phone. The screen shows the member's membership as active with 24 days left, above their digital member card, which carries a QR code the gym scans at the door."
       className="relative"
       style={{ height: `calc(100% + ${BLEED}px)` }}
     >
@@ -202,7 +202,42 @@ function PhoneMock() {
               </span>
             </div>
 
-            <p className="mt-auto font-mono text-[9px] uppercase tracking-wider text-accent-ink/80">
+            {/* The QR the real card carries — app/m/membership/card encodes the
+                member code and renders it in #1e40af on white, so this is a
+                genuine scannable code for GF2049, generated once into an SVG
+                rather than pulled in with a QR library the landing page would
+                otherwise not need.
+
+                my-auto here does the work the footer's mt-auto used to: the free
+                space splits evenly above and below this block, which centres the
+                QR between the name and the code while still pushing the footer
+                down onto the crop line. */}
+            <span className="my-auto flex justify-center">
+              <span className="rounded-xl bg-accent-ink p-2">
+                <img
+                  src="/member-qr.svg"
+                  alt=""
+                  aria-hidden
+                  width={88}
+                  height={88}
+                  loading="lazy"
+                  decoding="async"
+                  /* Smaller below md, for crop clearance rather than for spacing.
+                     The well is a fixed 330px there, which is less than the card
+                     needs, so the card sits at its min-content height and
+                     overflows past the crop — my-auto has no free space to
+                     distribute and every px of QR pushes the code line closer to
+                     being cut. At 88 the line cleared the crop by 10px; at 64 it
+                     clears by ~34. Growing the well instead is the wrong lever:
+                     because the card is floored, 50px of extra page height bought
+                     only 10px of slack. Separation here comes from the tile's own
+                     padding, not from the margins. */
+                  className="block h-16 w-16 md:h-[88px] md:w-[88px]"
+                />
+              </span>
+            </span>
+
+            <p className="font-mono text-[9px] uppercase tracking-wider text-accent-ink/80">
               GF · 2049 · Active
             </p>
           </div>

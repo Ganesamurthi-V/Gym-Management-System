@@ -49,7 +49,11 @@ export function Footer() {
             <a href="#" aria-label="GymFlow home" className="inline-flex">
               {/* The wordmark is dark-inked for light backgrounds. brightness-0
                   crushes it to black and invert lifts it to solid white, which is
-                  the only way to reuse the one asset on a filled accent panel. */}
+                  the only way to reuse the one asset on a filled accent panel.
+
+                  Responsive: h-12 (48px) on mobile, h-20 (80px) from md up. The
+                  footer has room for a large mark on desktop, but h-25 (100px)
+                  was oversized on a phone. */}
               <img
                 src="/logo_landspace_without_bg.webp"
                 alt="GymFlow"
@@ -57,7 +61,7 @@ export function Footer() {
                 height={178}
                 loading="lazy"
                 decoding="async"
-                className="h-25 w-auto brightness-0 invert"
+                className="h-12 w-auto brightness-0 invert md:h-20"
               />
             </a>
             <p className="mt-5 max-w-[280px] text-[13px] leading-relaxed text-accent-ink/80">

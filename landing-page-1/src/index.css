@@ -71,6 +71,31 @@
   --whatsapp-soft: #f0fdf4;
   --whatsapp-ink: #15803d;
 
+  /* WhatsApp's own light palette, for the phone mock's screen.
+ 
+     Separate from the --whatsapp-* trio above, which is this site's green used at
+     site scale. These are the actual surface colours inside the app being
+     depicted, so they are named by role in that UI rather than by our scale, and
+     they follow .dark so the mock switches with the page instead of leaving a
+     black slab on a white section.
+ 
+     --wa-green does not flip: WhatsApp's action green is the same in both of its
+     themes. */
+  --wa-chat: #efeae2;
+  --wa-bar: #f0f2f5;
+  /* Distinct from --wa-chat in light but identical to it in dark, which is how
+     WhatsApp treats the composer strip in each of its themes. */
+  --wa-composer: #f0f2f5;
+  --wa-bubble-in: #ffffff;
+  --wa-chip: #ffffff;
+  --wa-avatar: #dfe5e7;
+  --wa-ink: #111b21;
+  --wa-ink-strong: #0b141a;
+  --wa-ink-dim: #667781;
+  --wa-ink-faint: #8696a0;
+  --wa-home: #111b21;
+  --wa-green: #00a884;
+
   /* BorderGlow surface treatment. These live here rather than as props because
      the component would otherwise have to read the theme in JS, and a value read
      at render goes stale the moment ThemeToggle flips .dark — nothing re-renders
@@ -117,6 +142,22 @@
   --whatsapp: #22c55e;
   --whatsapp-soft: #14251a;
   --whatsapp-ink: #4ade80;
+
+  /* WhatsApp's own dark palette. The bubble matches the top bar here, which is
+     how WhatsApp does it — on the near-black chat surface the two still read as
+     separate planes. */
+  --wa-chat: #0b141a;
+  --wa-bar: #202c33;
+  --wa-composer: #0b141a;
+  --wa-bubble-in: #202c33;
+  --wa-chip: #182229;
+  --wa-avatar: #0b141a;
+  --wa-ink: #e9edef;
+  --wa-ink-strong: #f2f5f6;
+  --wa-ink-dim: #8696a0;
+  --wa-ink-faint: #6f7f88;
+  --wa-home: #e9edef;
+  --wa-green: #00a884;
 
   /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
      keeps the inward bleed tinting the card instead of covering it, and

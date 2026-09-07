@@ -65,8 +65,8 @@ type MenuId = 'product' | 'resources';
  * settle, because every item inside it moves vertically at the same time.
  */
 const NAV_TOP = 14;
-const NAV_H = 68;
-const NAV_H_SCROLLED = 58;
+const NAV_H = 76;
+const NAV_H_SCROLLED = 64;
 const NAV_MAX_W = 1240;
 const NAV_MAX_W_SCROLLED = 1120;
 
@@ -174,10 +174,11 @@ export function Navbar() {
                invisible. brightness-0 crushes it to black and invert lifts it to
                white — the same treatment the footer logo uses on its blue panel.
 
-               h-10 (40px) is the ceiling here: the island collapses to 58px on
-               scroll, so this leaves 9px of clearance top and bottom at its
-               shortest. Larger would crowd the bar. */
-            className="h-17 w-auto dark:brightness-0 dark:invert"
+               Responsive: h-9 (36px) on mobile, h-14 (56px) from md up. The
+               island is 76px (64px collapsed), so 56px keeps ~4px clearance top
+               and bottom when scrolled — a single fixed large height filled the
+               whole bar on phones. */
+            className="h-9 w-auto dark:brightness-0 dark:invert md:h-14"
           />
         </a>
 

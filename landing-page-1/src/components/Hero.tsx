@@ -129,20 +129,27 @@ export function Hero() {
             — in one place, without the notebooks.
           </p>
 
-          {/* Stacked and equal width on phones, inline from sm up — two pills of
-              different widths stacked centre-aligned reads as a mistake.
+          {/* Side by side at every width. On mobile the two pills share the row
+              at equal width (flex-1 + basis-0); from sm up they shrink to their
+              content and centre, so they sit as a natural inline pair rather than
+              two stretched half-widths.
 
               Sizing comes from .hero-cta (see index.css): base .btn size on
-              mobile, growing to btn-lg dimensions from sm up. So the mobile CTAs
-              are smaller, leaving more of the fold to the enlarged heading and
-              the product shot. The other btn-lg CTAs on the page stay large on
-              mobile because their larger tap target is right there. */}
-          <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
-            <a href={APP_URL} className="hero-cta btn btn-primary">
+              mobile, growing to btn-lg dimensions from sm up. The other btn-lg
+              CTAs on the page stay large on mobile because their larger tap
+              target is right there. */}
+          <div className="mt-9 flex flex-row items-center justify-center gap-3">
+            <a
+              href={APP_URL}
+              className="hero-cta btn btn-primary flex-1 basis-0 sm:flex-none"
+            >
               Start free trial
               <ArrowRight className="h-4 w-4" />
             </a>
-            <a href="#pricing" className="hero-cta btn btn-outline">
+            <a
+              href="#pricing"
+              className="hero-cta btn btn-outline flex-1 basis-0 sm:flex-none"
+            >
               See pricing
             </a>
           </div>

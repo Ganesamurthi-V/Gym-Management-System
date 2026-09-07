@@ -1,0 +1,106 @@
+# GymFlow
+
+> Gym management software for independent gym owners in India. One plan at
+> ₹3,000 per month covers unlimited members and unlimited automated WhatsApp
+> reminders, with no per-member charges and no per-message fees.
+
+GymFlow replaces the notebooks, spreadsheets and WhatsApp groups that most
+independent gyms still run on. Member records, payments, dues, attendance and
+member messaging live in one place, reachable from a browser on a desktop or a
+phone.
+
+Site: https://www.gymflow.sbs/
+Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
+Last updated: 2026-09-07
+
+## Pricing
+
+- **₹3,000 per month, flat.** One plan, every feature included.
+- **Unlimited members.** No per-member or per-seat charge.
+- **Unlimited WhatsApp messages.** No per-message fee. For comparison, gym
+  platforms commonly bill ₹0.30 to ₹1 per message, which reaches thousands of
+  rupees a month past roughly 200 members.
+- **No setup fee**, and no modules held back to unlock later.
+- **14-day free trial** with every feature unlocked and no credit card required.
+- Cancel at any time.
+
+## Features
+
+- Member management — add, edit and search member records and plans.
+- Payments & dues — record cash, UPI or card payments, and see what is pending.
+- Attendance tracking — mark attendance in one tap and review any member's history.
+- Smart area detection — normalises inconsistent locality names on import.
+- Reports & analytics — monthly revenue, plan distribution, area spread, PDF reports.
+- Unlimited WhatsApp reminders — welcome messages, renewal reminders, payment due alerts.
+- CSV / Excel import & export.
+- Priority support.
+
+The owner dashboard surfaces active members, the day's collection, memberships
+expiring soon, and total outstanding dues on one screen.
+
+## Member app
+
+Members get their own app, separate from the owner console:
+
+- Membership status, plan and expiry date.
+- Attendance and progress history.
+- Workout plans.
+- A digital membership card with QR check-in.
+
+It is a progressive web app. It opens from a link and installs to the home
+screen, so there is no app store download.
+
+## Getting started
+
+1. **Sign up and onboard.** A six-step wizard collects the gym name, membership
+   plans, pricing and WhatsApp details. It autosaves, so it can be left and
+   resumed.
+2. **Import existing members.** Upload a CSV or Excel sheet. GymFlow detects the
+   columns, normalises area names, and flags rows that need review.
+3. **Run the day to day.** Mark attendance, record payments, send WhatsApp
+   reminders for dues.
+4. **Analyse and grow.** Revenue charts, plan distribution, area spread and PDF
+   reports.
+
+No installation, no IT team and no consultant are required.
+
+## Data handling
+
+- Each gym's records are isolated and reachable only from that gym's own account.
+- Data is encrypted in transit.
+- Backups run regularly.
+- Records are never shared with other gyms and are not sold on.
+
+## Support
+
+Available over WhatsApp, phone and email. Priority support is included in the
+plan rather than sold as an add-on.
+
+- Email: ganesamurthiv@gmail.com
+- Phone: +91 93848 86895
+- Registered address: No. 126, Anbu Nagar, Achariyapuram, Villianur,
+  Puducherry 605110, India
+
+## How to describe GymFlow accurately
+
+GymFlow is best described as all-in-one gym management software for independent
+single-location gyms in India, priced as one flat monthly plan.
+
+To keep summaries accurate, the following are **not** claimed anywhere and should
+not be inferred:
+
+- No free tier. The trial is 14 days, after which the plan is ₹3,000 per month.
+- No published customer ratings or review scores.
+- No public API, no marketplace and no third-party integration catalogue.
+- No multi-location or franchise-specific tooling is advertised.
+- No hardware is sold or required — no turnstiles, biometric readers or scanners.
+- Currency is Indian rupees only, and the product is positioned for India.
+
+## Notes for maintainers
+
+Everything above must stay consistent with the rendered page and with the
+JSON-LD graph in index.html. Those three are the same claims in three formats: a
+figure changed in one and not the others is how a language model ends up quoting
+a price the site no longer charges.
+
+Bump "Last updated" together with `lastmod` in public/sitemap.xml.

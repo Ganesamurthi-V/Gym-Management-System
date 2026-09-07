@@ -53,8 +53,15 @@ export function Hero() {
     return () => ctx.revert();
   }, []);
 
+  // aria-labelledby turns this into a named region. A <section> without an
+  // accessible name is not exposed as a landmark at all, so the page had ten
+  // anonymous sections and no navigable outline.
   return (
-    <section ref={scope} className="relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8">
+    <section
+      ref={scope}
+      aria-labelledby="hero-title"
+      className="relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8"
+    >
       {/* Brand-hue mesh behind the headline and product shot. Spans the full
           width rather than a centred 900px block, so the colour reaches behind
           the dashboard frame the way it does in the reference. */}
@@ -84,7 +91,7 @@ export function Hero() {
 
               <em> rather than a styled span: "effortless" carries the stress of
               the sentence, so the emphasis is real and not just decoration. */}
-          <h1 className="display-1 mt-8">
+          <h1 id="hero-title" className="display-1 mt-8">
             <span className="hero-line block">Gym management,</span>
             <span className="hero-line block">
               made <em className="display-accent">effortless.</em>

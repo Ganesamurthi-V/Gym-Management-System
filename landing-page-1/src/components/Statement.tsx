@@ -48,8 +48,15 @@ export function Statement() {
     return () => ctx.revert();
   }, []);
 
+  // aria-label rather than aria-labelledby: this section is a single statement
+  // with no heading of its own, and inventing a visually-hidden heading to point
+  // at would add a phantom entry to the document outline.
   return (
-    <section ref={scope} className="px-5 py-6 md:px-8 md:py-8">
+    <section
+      ref={scope}
+      aria-label="What GymFlow replaces"
+      className="px-5 py-6 md:px-8 md:py-8"
+    >
       {/* The 1240px wrapper is what puts the paragraph's left edge on the same
           line as every other section's content. Left-aligning inside the old
           centred 960px box would have inset it by 140px and aligned with

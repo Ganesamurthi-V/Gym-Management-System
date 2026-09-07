@@ -524,22 +524,27 @@ body {
     /* Behind the copy: hold the page colour so muted body text keeps its ratio
        whatever the ribbons are doing underneath.
 
-       The geometry is measured, not guessed, and it is fitted to the 1080px
-       layer height set by COVER_H in HeroBeams.tsx — these percentages resolve
-       against that box, so the two have to move together.
+       The geometry is measured, not guessed. The vertical radius is a percentage
+       of the layer height set by COVER_H in HeroBeams.tsx, so the two have to move
+       together. The copy block runs roughly y=120 to y=624; centred at 35% (378px)
+       with a 54% radius (583px), the near-solid core reaches 46% of that — 268px —
+       covering y=110 to y=646.
 
-       The copy block runs roughly y=120 to y=640. Centred at 35% (378px) with a
-       54% vertical radius (583px), the near-solid core reaches 46% of that radius
-       — 268px — covering y=110 to y=646. Horizontally the core reaches 464px
-       against the block's 420px half-width. So the whole block, subhead and trust
-       line included, sits inside the protected zone with a little margin.
+       The horizontal radius is an absolute length, and that is the point. As a
+       percentage it tracked the viewport while the thing it protects does not: the
+       copy is capped at max-w-[900px], so on a wide screen 70% was generous and at
+       768px it collapsed to a ±247px core under text running the full 768. Body
+       text measured 3.34:1 there against 6.04:1 at 1440 — the same class of
+       failure as the first version of this gradient, just hiding in a viewport
+       range never swept. 1080px puts the core at ±497px against a ±454px
+       worst-case copy half-width, so every width from 360 up is covered, and wide
+       screens get more visible ribbons as a side effect because the protected area
+       no longer grows with them.
 
-       An earlier pass centred it at 22% with a 46% radius, which faded to nothing
-       by y=460 and left the subhead unprotected: a beam highlight behind it
-       measured 3.83:1 against #a3a3a3, under AA for body text. Fitted properly
-       the same worst case measures 6.65:1. */
+       An earlier pass centred it at 22% with a 46% vertical radius, which faded to
+       nothing by y=460 and left the subhead unprotected at 3.83:1. */
     radial-gradient(
-      70% 54% at 50% 35%,
+      1080px 54% at 50% 35%,
       var(--beams-base) 0%,
       color-mix(in srgb, var(--beams-base) 92%, transparent) 46%,
       color-mix(in srgb, var(--beams-base) 60%, transparent) 70%,
@@ -575,6 +580,65 @@ body {
   opacity: 0.28;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
+}
+
+/* The canvas mounts on idle rather than with the hero, so without this it would
+   appear as a hard cut a second or two in. Fading only the canvas layer, not the
+   scrim or grain, keeps the copy's backdrop stable from first paint. */
+.hero-beams {
+  animation: beams-in 700ms ease-out both;
+}
+@keyframes beams-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-beams {
+    animation: none;
+  }
+}
+
+/* ── Phone-fitted scrim ───────────────────────────────────────────────────────
+   The desktop ellipse is fitted to a copy block 900px wide sitting in a 1440px
+   layer. A phone inverts that: the copy is effectively full-bleed (x=20 to 355 of
+   390) inside a portrait layer, so the same gradient leaves the left and right
+   edges of every line outside the protected core — measured at ~77% coverage
+   where desktop gets 92-100%.
+
+   Refitted against measured layout in the 880px phone layer: copy runs y=124 to
+   y=565 at the narrowest width tested (360px), so the ellipse centres at 39%
+   (343px) with a 62% vertical radius (546px). Same absolute 1080px horizontal
+   radius as desktop — on a 390px screen that makes the falloff effectively
+   vertical, which is right when the text is full-bleed, and it leaves the whole
+   vertical budget for covering the taller wrapped copy.
+
+   The consequence is deliberate: on a phone the copy block covers nearly all the
+   area above the product card, so protecting it properly leaves the ribbons
+   reading as a glow around and above the text rather than as bold diagonals.
+   Loosening this to expose more of them is exactly the trade that put body text
+   under 4.5:1. */
+@media (max-width: 767px) {
+  .hero-beams-scrim {
+    background:
+      radial-gradient(
+        1080px 62% at 50% 39%,
+        var(--beams-base) 0%,
+        color-mix(in srgb, var(--beams-base) 92%, transparent) 46%,
+        color-mix(in srgb, var(--beams-base) 60%, transparent) 70%,
+        transparent 90%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 0%,
+        transparent 68%,
+        color-mix(in srgb, var(--background) 60%, transparent) 86%,
+        var(--background) 100%
+      );
+  }
 }
 
 /* ── Interactive dashboard mock ───────────────────────────────────────────────

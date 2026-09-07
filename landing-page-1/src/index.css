@@ -96,6 +96,21 @@
   --wa-home: #111b21;
   --wa-green: #00a884;
 
+  /* Chips and arc orbiting the phone mock.
+ 
+     Written as full colours rather than relying on a `/30` opacity modifier on
+     border-whatsapp: that modifier silently produced nothing and the utility fell
+     through to the base --border rule, so the chips ended up outlined in neutral
+     grey.
+ 
+     Light needs a white face plus a real drop shadow — the section is #fff here,
+     so a tinted face alone measured 1.05 against it and simply vanished. The arc
+     also has to be carried harder on white than on near-black. */
+  --wa-chip-face: #ffffff;
+  --wa-chip-edge: color-mix(in srgb, var(--whatsapp) 45%, transparent);
+  --wa-chip-lift: 0 6px 18px -8px rgb(24 24 27 / 22%);
+  --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 55%, transparent);
+
   /* BorderGlow surface treatment. These live here rather than as props because
      the component would otherwise have to read the theme in JS, and a value read
      at render goes stale the moment ThemeToggle flips .dark — nothing re-renders
@@ -158,6 +173,14 @@
   --wa-ink-faint: #6f7f88;
   --wa-home: #e9edef;
   --wa-green: #00a884;
+
+  /* Tinted face and a green bloom instead of a drop shadow: on a near-black
+     section a dark shadow does nothing, and the glow is what makes these read as
+     lit chips the way the reference does. */
+  --wa-chip-face: #14251a;
+  --wa-chip-edge: color-mix(in srgb, var(--whatsapp) 32%, transparent);
+  --wa-chip-lift: 0 0 22px -4px color-mix(in srgb, var(--whatsapp) 45%, transparent);
+  --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 30%, transparent);
 
   /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
      keeps the inward bleed tinting the card instead of covering it, and
@@ -538,6 +561,42 @@ body {
   mix-blend-mode: var(--glow-blend-halo);
 }
 
+/* 3D tilt for the WhatsApp phone mock.
+ 
+   A class rather than a pile of arbitrary utilities so the four angles sit in one
+   place and can be tuned without decoding an underscore-escaped transform.
+ 
+   The perspective belongs on the parent, not the rotated element — declared on
+   its own element so the phone keeps its own transform slot free for the float
+   animation stacked above it.
+ 
+   Only from lg up. Below that the phone is nearly the full width of its column,
+   and rotating type at that size costs real legibility for a flourish that reads
+   as an accident on a narrow screen. */
+.phone-scene {
+  perspective: 1400px;
+}
+
+/* Chips orbiting the phone.
+ 
+   A class, not three arbitrary utilities, because two of the three are ambiguous
+   to Tailwind when handed a bare var(): `border-[var(--x)]` could be a width and
+   `shadow-[var(--x)]` could be a shadow colour, so both resolved to nothing and
+   the chips came out with the default grey border and no lift. Only bg-[var()]
+   survived. Declaring them here sidesteps the guessing entirely. */
+.orbit-chip {
+  background: var(--wa-chip-face);
+  border: 1px solid var(--wa-chip-edge);
+  box-shadow: var(--wa-chip-lift);
+}
+
+@media (min-width: 1024px) {
+  .phone-tilt {
+    transform: rotateX(4deg) rotateY(-15deg) rotateZ(3deg);
+    transform-style: preserve-3d;
+  }
+}
+
 /* Filled accent card — the template's signature block. Static; the blue cards
    that need a hover go through BorderGlow and .glow-card-accent below. */
 .card-accent {
@@ -688,6 +747,134 @@ body {
 }
 .animate-float {
   animation: floatY 4s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHONE + ORBIT IDLE MOTION
+
+   Four separate clocks, and more importantly four different easing curves.
+
+   The phone and its ring used to share one animated wrapper, so they drifted as
+   a single rigid object and the ring read as painted onto the device. Splitting
+   them is only half the fix: with the same easing they would still breathe in
+   step. Contrasting curves are what sell the ring as sitting in space around the
+   phone rather than stuck to it.
+
+   Periods are 7 / 11 / 9 / 4.5s — deliberately non-multiples, so the four
+   elements take minutes to return to the same relative pose.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Phone — sine in-out. Symmetric, no hang at either end, so the device reads as
+   suspended in a fluid. This is the calm reference the other three play against.
+
+   The float and the 3D tilt are on separate elements on purpose: one transform
+   property cannot hold both a static rotation and an animated translation
+   without the keyframes having to restate the rotation. */
+@keyframes phoneBob {
+  0%,
+  100% {
+    transform: translate3d(0, -6px, 0);
+  }
+  50% {
+    transform: translate3d(0, 8px, 0);
+  }
+}
+
+.phone-bob {
+  animation: phoneBob 7s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  will-change: transform;
+}
+
+/* Ring — a hard in-out that loiters at both extremes and crosses the middle
+   quickly. That is the opposite emphasis to the phone's sine, so even when the
+   two periods briefly align the motion still reads as unrelated.
+
+   Centring lives on a wrapper element rather than here: Tailwind's
+   -translate-x-1/2 and this animation both write `transform`, and the animation
+   would win and throw the ring off centre. */
+@keyframes orbitBreathe {
+  0%,
+  100% {
+    transform: rotate(-3.5deg) scale(0.985);
+    opacity: 0.7;
+  }
+  50% {
+    transform: rotate(3.5deg) scale(1.03);
+    opacity: 1;
+  }
+}
+
+.orbit-ring {
+  transform-origin: center;
+  animation: orbitBreathe 11s cubic-bezier(0.85, 0, 0.15, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* Scroll-driven swing of the whole orbit around the phone.
+ 
+   --orbit-angle is written per frame by a scrubbed ScrollTrigger, so scrolling
+   down carries the ring and chips one way around the device and scrolling up
+   unwinds them. It defaults to 0deg, which is the composed rest pose, so nothing
+   depends on the JS having run — reduced motion and no-JS both land there.
+ 
+   .orbit-counter cancels the same angle on each chip. Rotating the assembly moves
+   a chip to a new position AND spins the chip itself; without the counter the
+   icons would tumble as they travelled. The custom property inherits from the
+   swinging ancestor, so one write per frame drives both directions. */
+.orbit-swing {
+  transform: rotate(var(--orbit-angle, 0deg));
+  will-change: transform;
+}
+
+.orbit-counter {
+  transform: rotate(calc(-1 * var(--orbit-angle, 0deg)));
+}
+
+/* Chips — a back-out whose control point passes 1, so each one overshoots and
+   settles. That springy arrival is the clearest tell that they are not bolted to
+   the phone, which never overshoots. Staggered by negative delay at the call
+   site so the three are already out of phase on first paint. */
+@keyframes chipBob {
+  0%,
+  100% {
+    transform: translate3d(0, 5px, 0);
+  }
+  50% {
+    transform: translate3d(0, -7px, 0);
+  }
+}
+
+.orbit-chip {
+  animation: chipBob 9s cubic-bezier(0.34, 1.32, 0.64, 1) infinite;
+}
+
+/* Dots — quad in-out, the mildest of the four, and the shortest period. Opacity
+   only: these are SVG circles, and animating a transform on them would need
+   transform-box juggling for no visual gain. */
+@keyframes orbitDotPulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.orbit-dot {
+  animation: orbitDotPulse 4.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Idle motion is decoration, so it is the first thing to go. Killing the
+   animation leaves each element at its keyframe-free resting position, which is
+   the composed layout — nothing jumps. */
+@media (prefers-reduced-motion: reduce) {
+  .phone-bob,
+  .orbit-ring,
+  .orbit-chip,
+  .orbit-dot {
+    animation: none;
+  }
 }
 .animate-pulse-dot {
   animation: pulseDot 1.8s ease-in-out infinite;

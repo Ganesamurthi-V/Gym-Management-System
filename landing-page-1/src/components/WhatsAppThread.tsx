@@ -88,11 +88,11 @@ export function WhatsAppThread({ messages }: { messages: readonly ThreadMessage[
           <div className="flex items-center gap-2 px-2.5 pb-2.5">
             <ChevronLeft className="h-4 w-4 shrink-0 text-[var(--wa-ink-dim)]" />
             <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-[var(--wa-avatar)] text-[10px] font-semibold text-[var(--wa-green)]">
-              FZ
+              GF
             </span>
             <span className="min-w-0 flex-1 text-left">
               <span className="block truncate text-[12px] font-medium text-[var(--wa-ink)]">
-                Fit Zone Gym
+                Gym Flow
               </span>
               <span className="block text-[9px] text-[var(--wa-ink-dim)]">Business account</span>
             </span>

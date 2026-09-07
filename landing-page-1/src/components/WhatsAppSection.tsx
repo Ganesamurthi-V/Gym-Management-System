@@ -1,6 +1,30 @@
 import { Ban, BellRing, UserPlus, Wallet } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
+import { AutomationOrbit, type OrbitChip } from './AutomationOrbit';
 import { WhatsAppThread, type ThreadMessage } from './WhatsAppThread';
+
+/* The three chips orbiting the phone, reusing MESSAGE_TYPES' icons so the ring
+   visibly answers to the list beside it.
+ 
+   Positions and arc dots are hand-placed rather than derived from an angle: the
+   chips sit a little outside the ellipse with their dot on it, which is what the
+   reference does, so solving for points on the curve would have fought the look.
+   Dot coordinates are in the orbit SVG's 640x680 space, whose centre (320,340)
+   lands on the phone's centre. */
+/* Radii matter now that rotation is continuous: each chip sweeps a full circle,
+   so its distance from the phone's centre sets how far it reaches at the extremes
+   of that circle, not just where it happens to sit at rest.
+ 
+   The welcome chip used to sit 291px out — 40px further than the other two — and
+   swung to due-right that put its edge 4px past the section, which is
+   overflow-hidden and would have sliced it at xl. Pulled in to ~264 it clears,
+   and the three radii (264 / 248 / 249) now read as one shared orbit rather than
+   one chip flung wider than its siblings. */
+const ORBIT_CHIPS: readonly OrbitChip[] = [
+  { icon: UserPlus, label: 'Welcome', position: '-left-[74px] top-[16%]', dot: { x: 121, y: 193 } },
+  { icon: Wallet, label: 'Payment', position: '-left-[104px] top-[54%]', dot: { x: 114, y: 474 } },
+  { icon: BellRing, label: 'Renewal', position: '-right-[86px] top-[33%]', dot: { x: 543, y: 248 } },
+];
 
 const MESSAGE_TYPES = [
   {
@@ -140,8 +164,25 @@ export function WhatsAppSection() {
                 filter: 'blur(12px)',
               }}
             />
-            <div className="animate-float relative">
-              <WhatsAppThread messages={THREAD} />
+            {/* Three nested elements, each owning exactly one job, because they
+                all want the `transform` property and only one can have it:
+
+                  phone-scene  perspective for the 3D tilt below
+                  phone-bob    the animated float
+                  phone-tilt   the static 3D rotation
+
+                The orbit is a sibling of phone-bob rather than a child. It used
+                to ride the same float, which made the ring look painted onto the
+                device; on its own clock and easing it reads as surrounding it.
+                It stays outside phone-tilt too — rotating the chips would skew
+                their icons, and in the reference they read flat. */}
+            <div className="phone-scene relative">
+              <AutomationOrbit chips={ORBIT_CHIPS} />
+              <div className="phone-bob">
+                <div className="phone-tilt">
+                  <WhatsAppThread messages={THREAD} />
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { Ban, BellRing, UserPlus, Wallet } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { AutomationOrbit, type OrbitChip } from './AutomationOrbit';
+import { ShinyText } from './ShinyText';
 import { WhatsAppThread, type ThreadMessage } from './WhatsAppThread';
 
 /* The three chips orbiting the phone, reusing MESSAGE_TYPES' icons so the ring
@@ -11,19 +12,29 @@ import { WhatsAppThread, type ThreadMessage } from './WhatsAppThread';
    reference does, so solving for points on the curve would have fought the look.
    Dot coordinates are in the orbit SVG's 640x680 space, whose centre (320,340)
    lands on the phone's centre. */
-/* Radii matter now that rotation is continuous: each chip sweeps a full circle,
-   so its distance from the phone's centre sets how far it reaches at the extremes
-   of that circle, not just where it happens to sit at rest.
+/* Positions are set by bearing from the phone's centre, because that is what
+   decides whether a chip is visible. The phone is 330px wide, so anything whose
+   x falls inside ±165 is behind it; at these radii that hides any chip whose
+   bearing is roughly 50-130 degrees or 230-310.
  
-   The welcome chip used to sit 291px out — 40px further than the other two — and
-   swung to due-right that put its edge 4px past the section, which is
-   overflow-hidden and would have sliced it at xl. Pulled in to ~264 it clears,
-   and the three radii (264 / 248 / 249) now read as one shared orbit rather than
-   one chip flung wider than its siblings. */
+   All three sit near due-left or due-right with at least 20 degrees of headroom
+   before their centre crosses into that band, which is what lets the sway run at
+   ±20 without any of them disappearing:
+ 
+     welcome  200 degrees, r 264   (was 216 — only 11 degrees of headroom)
+     payment  169 degrees, r 248
+     renewal  340 degrees, r 250   (was 334 — only 3 degrees of headroom)
+ 
+   Radii stay in the 248-264 band. Anything further out and the chip clips the
+   section's right edge at xl, which is overflow-hidden; keeping them close also
+   reads as one shared orbit rather than chips flung to different distances.
+ 
+   Dots are the point where each chip's bearing crosses the ellipse, so every chip
+   has a node on the arc beside it. */
 const ORBIT_CHIPS: readonly OrbitChip[] = [
-  { icon: UserPlus, label: 'Welcome', position: '-left-[74px] top-[16%]', dot: { x: 121, y: 193 } },
-  { icon: Wallet, label: 'Payment', position: '-left-[104px] top-[54%]', dot: { x: 114, y: 474 } },
-  { icon: BellRing, label: 'Renewal', position: '-right-[86px] top-[33%]', dot: { x: 543, y: 248 } },
+  { icon: UserPlus, label: 'Welcome', position: '-left-[109px] top-[28%]', dot: { x: 94, y: 256 } },
+  { icon: Wallet, label: 'Payment', position: '-left-[104px] top-[54%]', dot: { x: 86, y: 386 } },
+  { icon: BellRing, label: 'Renewal', position: '-right-[95px] top-[29%]', dot: { x: 546, y: 256 } },
 ];
 
 const MESSAGE_TYPES = [
@@ -106,8 +117,17 @@ export function WhatsAppSection() {
           <div>
             <span className="reveal eyebrow">WhatsApp automation</span>
 
+            {/* "Unlimited" gets the same emphasis the hero gives "effortless":
+                serif italic in the accent colour, with the shine sweeping through
+                it. It is the load-bearing word in this section — the whole claim
+                is that messaging is not metered — and reusing one treatment keeps
+                the site to a single emphasis language rather than inventing a
+                second one per section. */}
             <h2 id="whatsapp-title" className="reveal display-2 mt-4 text-balance">
-              Unlimited WhatsApp.
+              <em className="display-accent">
+                <ShinyText text="Unlimited" speed={2.8} spread={120} />
+              </em>{' '}
+              WhatsApp.
               <br />
               <span className="text-muted-foreground">Built in, not billed extra.</span>
             </h2>
@@ -148,10 +168,13 @@ export function WhatsAppSection() {
             </ul>
           </div>
 
-          {/* Capped at 330: the mock holds a real 9/16 screen, so width drives
-              height directly — at 400 the phone would stand 710px tall and
-              tower over the 540px copy column beside it. */}
-          <div className="reveal relative mx-auto w-full max-w-[330px] shrink-0">
+          {/* Capped at 300 (was 330): the mock holds a real 9/16 screen, so
+              width drives height directly. Narrower than this and the banner
+              image and the message text inside the thread start to feel cramped.
+              A narrower phone also widens the orbit's visible arc — the band
+              hidden behind it shrinks with its width — so the chips keep their
+              clearance. */}
+          <div className="reveal relative mx-auto w-full max-w-[300px] shrink-0">
             {/* Soft green bloom — WhatsApp's own colour, kept to a backdrop so it
                 never competes with the blue accent for brand attention. Also what
                 fills the column either side of a phone this narrow. */}

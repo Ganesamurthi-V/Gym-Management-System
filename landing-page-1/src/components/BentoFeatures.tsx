@@ -73,8 +73,19 @@ export function BentoFeatures() {
         {/* ── Bento grid ──────────────────────────────────────────────────
             Four columns at lg, the first slightly wider to hold the phone. The
             member app card spans both rows there, so the eight cells are filled
-            by five cards: phone (2) + dashboard (2) + attendance + members +
-            payments (2).
+            by five cards: phone (2) + dashboard (2) + attendance + payments +
+            members (2).
+
+            The two wide cards sit on opposite sides of the grid, and that is the
+            whole point of the arrangement. Previously Dashboard and Members were
+            both 2-wide in column 2, and Attendance and Payments were both 1-wide
+            in column 4, so every vertical seam lined up and the thing read as a
+            three-column table rather than a bento. Putting the narrow card on the
+            left of row 2 and the wide card on the right staggers the seams: row 1
+            breaks after column 3, row 2 after column 2.
+
+            Done with lg:order rather than by reordering the JSX, so the stacking
+            order below lg stays the narrative one — members before payments.
 
             No flex-1 here on purpose: with it, the grid stretched to eat whatever
             height min-h-screen left over, so on a tall viewport the cards grew
@@ -101,10 +112,13 @@ export function BentoFeatures() {
             desc="The whole picture, on one screen."
           >
             <div className="flex flex-1 flex-col justify-center gap-2.5">
-              {/* lg, not sm: `sm:` keys off the viewport rather than the card, so
-                  four across in a single md column gave each tile ~62px and values
-                  like ₹12,400 overflowed. */}
-              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              {/* Four across only from xl, and this is measured rather than
+                  guessed. Breakpoints key off the viewport, not the card, so at
+                  lg this two-column card is 443px wide and each of four tiles gets
+                  93px — 59px of it after padding, against 82px needed for
+                  "₹12,400". Both rupee values and two of the labels overflowed.
+                  2x2 until xl gives each tile ~196px, which clears comfortably. */}
+              <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
                 {DASHBOARD_STATS.map(stat => (
                   <div
                     key={stat.label}
@@ -113,10 +127,12 @@ export function BentoFeatures() {
                     <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                       {stat.label}
                     </p>
-                    {/* 24px, up from 21. Dropping the third line freed height, and
-                        spending it on the number rather than leaving it as a gap
-                        is what makes these tiles easier to read at a glance. */}
-                    <p className="mt-2.5 text-[24px] font-medium leading-none tracking-tight text-foreground">
+                    {/* 22px, up from the original 21. Dropping the third line
+                        freed height and spending it on the number is what makes
+                        these readable at a glance — but 24 was too far: at xl a
+                        tile has 93px of content and "₹12,400" needs 90 of it at
+                        24px, leaving no margin for a longer figure. */}
+                    <p className="mt-2.5 text-[22px] font-medium leading-none tracking-tight text-foreground">
                       {stat.value}
                     </p>
                   </div>
@@ -177,12 +193,12 @@ export function BentoFeatures() {
             </div>
           </BorderGlow>
 
-          {/* Members — two columns at lg. The span sits here rather than on
-              Payments because these rows absorb the extra width like a table,
-              where the Payments panel is one thin progress bar that reads as
-              sparse when stretched. */}
+          {/* Members — two columns at lg, on the right of row 2. The span sits
+              here rather than on Payments because these rows absorb the extra
+              width like a table, where the Payments panel is one thin progress
+              bar that reads as sparse when stretched. */}
           <BentoCard
-            className="lg:col-span-2"
+            className="lg:order-2 lg:col-span-2"
             icon={Users}
             title="Member management"
             desc="Find and edit anyone in seconds."
@@ -218,8 +234,10 @@ export function BentoFeatures() {
             </div>
           </BentoCard>
 
-          {/* Payments — fills the last cell of the second row */}
+          {/* Payments — one column, and ordered ahead of Members at lg so it
+              takes the left of row 2 directly under the wide Dashboard. */}
           <BentoCard
+            className="lg:order-1"
             icon={CreditCard}
             title="Payments & dues"
             desc="Cash, UPI or card. Nudges sent for you."

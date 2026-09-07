@@ -352,22 +352,29 @@ export default function BorderGlow({
       />
 
       {/* Mesh bleeding inward from the rim, punched out in the middle so the
-          card's own surface stays readable behind the content. */}
-      <div
-        aria-hidden
-        /* mask-composite and mix-blend-mode live in CSS: they are constant, and
-           React's CSSProperties types both as closed unions that reject a
-           multi-value list and a var() respectively. */
-        className="glow-card-fill absolute inset-0 -z-[1] rounded-[inherit]"
-        style={{
-          border: '1px solid transparent',
-          background: meshGradients.map(g => `${g} padding-box`).join(', '),
-          maskImage: fillMask,
-          WebkitMaskImage: fillMask,
-          opacity: borderOpacity * fillOpacity,
-          transition: fade,
-        }}
-      />
+          card's own surface stays readable behind the content.
+
+          Skipped entirely at fillOpacity 0 rather than rendered at zero opacity.
+          An invisible layer still costs a mask and a composite on every pointer
+          frame, because the mask string is rebuilt from the cursor angle whether
+          or not anyone can see the result. */}
+      {fillOpacity > 0 && (
+        <div
+          aria-hidden
+          /* mask-composite and mix-blend-mode live in CSS: they are constant, and
+             React's CSSProperties types both as closed unions that reject a
+             multi-value list and a var() respectively. */
+          className="glow-card-fill absolute inset-0 -z-[1] rounded-[inherit]"
+          style={{
+            border: '1px solid transparent',
+            background: meshGradients.map(g => `${g} padding-box`).join(', '),
+            maskImage: fillMask,
+            WebkitMaskImage: fillMask,
+            opacity: borderOpacity * fillOpacity,
+            transition: fade,
+          }}
+        />
+      )}
 
       {/* Outer halo. Inset by -glowRadius, so the section it lives in must not
           use `contain: paint` (see .contain-visible in index.css). */}

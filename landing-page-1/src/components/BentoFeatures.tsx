@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Check, CheckCircle2, CreditCard, LayoutDashboard, Users } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
+import { ACCENT_GLOW } from '../lib/borderGlowPresets';
 import BorderGlow from './BorderGlow';
 import { MemberAppCard } from './MemberAppCard';
 
@@ -42,7 +43,10 @@ export function BentoFeatures() {
          overflow. */
       className="contain-visible px-5 py-14 md:px-8 md:py-16 lg:flex lg:min-h-screen lg:flex-col lg:py-9"
     >
-      <div className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col">
+      {/* justify-center pairs with the de-stretched grid: the section still holds
+          a full screen, but the header+grid group sits centred in it rather than
+          pinned to the top with dead space underneath. */}
+      <div className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col lg:justify-center">
         {/* ── Header ────────────────────────────────────────────────────── */}
         {/* display-3 rather than display-2, and tighter margins: the section is
             budgeted to one viewport, and at display-2 the header alone took 234px
@@ -65,10 +69,15 @@ export function BentoFeatures() {
             Four columns at lg, the first slightly wider to hold the phone. The
             member app card spans both rows there, so the eight cells are filled
             by five cards: phone (2) + dashboard (2) + attendance + members +
-            payments (2). The implicit rows are auto-sized, which means
-            align-content stretches them to fill a tall grid but never shrinks one
-            below its content. */}
-        <div className="mt-8 grid flex-1 grid-cols-1 gap-4 md:grid-cols-2 lg:mt-6 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
+            payments (2).
+
+            No flex-1 here on purpose: with it, the grid stretched to eat whatever
+            height min-h-screen left over, so on a tall viewport the cards grew
+            with the window instead of being sized by their content. The rows are
+            auto-sized now, so a card is as tall as what is in it and no taller.
+            The column below centres the group, which is what absorbs the slack
+            that the stretch used to. */}
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:mt-6 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
           {/* Member app — first, and the full height of the grid from md up */}
           <MemberAppCard />
 
@@ -88,7 +97,7 @@ export function BentoFeatures() {
                 {DASHBOARD_STATS.map(stat => (
                   <div
                     key={stat.label}
-                    className="rounded-2xl border border-border-subtle bg-subtle p-3.5"
+                    className="rounded-2xl border border-border-subtle bg-subtle p-3"
                   >
                     <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                       {stat.label}
@@ -105,8 +114,18 @@ export function BentoFeatures() {
           </BentoCard>
 
           {/* Attendance — the one fully filled block in this row, so the accent
-              lands once and reads as intentional */}
-          <article className="reveal card-accent flex flex-col p-6">
+              lands once and reads as intentional.
+
+              A BorderGlow like the white cards, not a plain article: its hover
+              now tracks the pointer and lights the facing arc instead of
+              swapping the whole border at once. ACCENT_GLOW carries the white
+              rim; .glow-card-accent the resting rim and text colour. */}
+          <BorderGlow
+            as="article"
+            className="reveal glow-card-accent"
+            contentClassName="p-5"
+            {...ACCENT_GLOW}
+          >
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-accent-ink" />
               <h3 className="text-[16px] font-medium tracking-tight text-accent-ink">
@@ -140,8 +159,7 @@ export function BentoFeatures() {
                 </div>
               ))}
             </div>
-
-          </article>
+          </BorderGlow>
 
           {/* Members — two columns at lg. The span sits here rather than on
               Payments because these rows absorb the extra width like a table,
@@ -241,7 +259,9 @@ function BentoCard({ icon: Icon, title, desc, children, className = '' }: BentoC
        layer promotion. The wrapper is the grid item, so it carries the column
        span; `grid` makes its single child stretch to the full row height. */
     <div className={`reveal grid ${className}`}>
-      <BorderGlow as="article" contentClassName="p-6">
+      {/* fillOpacity 0: only the rim lights on hover. The inward mesh bleed tinted
+          the card interior, which fought the mock UI sitting on top of it. */}
+      <BorderGlow as="article" contentClassName="p-5" fillOpacity={0}>
         {/* Icon sits inline with the title rather than in a 40px chip above it.
             The chip and its margin cost 60px of card height, which the
             one-viewport budget cannot spare, and the icon reads the same here. */}

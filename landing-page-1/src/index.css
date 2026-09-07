@@ -286,6 +286,27 @@ body {
    COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Floating nav island ──────────────────────────────────────────────────────
+   The collapsed state itself is driven by inline styles from the scroll handler
+   in Navbar.tsx; only the timing lives here, so that a reduced-motion preference
+   can switch the resize off. A header that silently changes width and height by
+   ~10% is exactly the kind of unrequested motion that setting exists for, but
+   the surface still needs to appear or the text loses its background — so the
+   colour fade is kept and only the geometry snaps. */
+.nav-island {
+  transition:
+    max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-island {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+}
+
 /* ── Hero mesh ────────────────────────────────────────────────────────────────
    Four soft radial stops in the two brand hues, standing in for the reference's
    blurred mesh. Deliberately no filter: blur() — the stops are already soft, and
@@ -476,12 +497,35 @@ body {
   mix-blend-mode: var(--glow-blend-halo);
 }
 
-/* Filled accent card — the template's signature block */
+/* Filled accent card — the template's signature block. Static; the blue cards
+   that need a hover go through BorderGlow and .glow-card-accent below. */
 .card-accent {
   background: var(--card-primary);
   color: var(--accent-ink);
   border: 1px solid color-mix(in srgb, var(--accent) 70%, #000);
   border-radius: var(--radius-card-lg);
+}
+
+/* Filled-accent variant of a BorderGlow card.
+
+   The blue cards previously hovered with a flat border-colour swap, which read
+   as a different interaction from the white cards beside them — those track the
+   pointer and light only the arc facing it. Routing the blue cards through
+   BorderGlow gives the whole grid one hover behaviour.
+
+   Only the two custom properties BorderGlow reads through inline style are set
+   here. Background and radius cannot be: BorderGlow writes those inline, and an
+   inline declaration beats anything in this rule. They go in as props instead
+   (see ACCENT_GLOW). */
+.glow-card-accent {
+  color: var(--accent-ink);
+  /* Resting rim — the same darkened accent the static .card-accent uses, so
+     these cards look untouched until the pointer arrives. */
+  --glow-border: color-mix(in srgb, var(--accent) 70%, #000);
+  /* The white cards carry a soft drop shadow to lift them off a near-white
+     page. A fully saturated blue card already separates from it, and the shadow
+     only muddied the bottom edge. */
+  --glow-shadow: none;
 }
 
 .card-accent-soft {

@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { ArrowRight, MapPin } from 'lucide-react';
 import { Marquee } from './Marquee';
 import { DashboardMock } from './DashboardMock';
+import { HeroBeams } from './HeroBeams';
 import { ShinyText } from './ShinyText';
 import { prefersReducedMotion } from '../lib/useReveal';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -63,6 +64,12 @@ export function Hero() {
       aria-labelledby="hero-title"
       className="relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8"
     >
+      {/* Animated ribbons, dark mode only, and deliberately first: the mesh below
+          dims itself off a sibling selector on .hero-beams, so DOM order here is
+          what tells it the beams are present. HeroBeams renders nothing at all in
+          light mode, under reduced motion, or below 768px. */}
+      <HeroBeams />
+
       {/* Brand-hue mesh behind the headline and product shot. Spans the full
           width rather than a centred 900px block, so the colour reaches behind
           the dashboard frame the way it does in the reference. */}

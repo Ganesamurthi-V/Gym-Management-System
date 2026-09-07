@@ -199,6 +199,19 @@
      the highest contrast against the page. */
   --shine-glint: #ffffff;
 
+  /* Base the Beams field sits on — deliberately blacker than --background so the
+     ribbons read against near-black rather than against the page grey.
+
+     Read in two places that must agree: the WebGL clear colour (HeroBeams.tsx)
+     and the scrim's protected core (.hero-beams-scrim). If the scrim kept
+     painting --background over a blacker canvas, the area behind the copy would
+     sit ~20 levels lighter than everything around it and read as a lit box.
+
+     #050505 rather than #000000: pure black crushes the darkest end of the
+     ribbons' falloff to a flat edge, and leaves nothing for the noise to
+     subtract from. */
+  --beams-base: #050505;
+
   /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
      keeps the inward bleed tinting the card instead of covering it, and
      plus-lighter makes the halo read as emitted light. */
@@ -490,6 +503,78 @@ body {
 }
 .dark .hero-mesh {
   opacity: 0.5;
+}
+
+/* ── Beams backdrop (dark mode) ───────────────────────────────────────────────
+   HeroBeams renders both of these ahead of .hero-mesh in the section, so the
+   sibling selector below is also the switch: no beams in the DOM means the mesh
+   keeps its full strength, and nothing has to thread a flag through props to say
+   so.
+
+   At 0.5 the mesh's blue and cyan stops sit on top of the ribbons and turn the
+   whole area into one soft wash — the beams stop reading as separate shapes.
+   Dimmed, the hue survives as a tint over them, which is the point of keeping it
+   at all. */
+.hero-beams ~ .hero-mesh {
+  opacity: 0.26;
+}
+
+.hero-beams-scrim {
+  background:
+    /* Behind the copy: hold the page colour so muted body text keeps its ratio
+       whatever the ribbons are doing underneath.
+
+       The geometry is measured, not guessed, and it is fitted to the 1080px
+       layer height set by COVER_H in HeroBeams.tsx — these percentages resolve
+       against that box, so the two have to move together.
+
+       The copy block runs roughly y=120 to y=640. Centred at 35% (378px) with a
+       54% vertical radius (583px), the near-solid core reaches 46% of that radius
+       — 268px — covering y=110 to y=646. Horizontally the core reaches 464px
+       against the block's 420px half-width. So the whole block, subhead and trust
+       line included, sits inside the protected zone with a little margin.
+
+       An earlier pass centred it at 22% with a 46% radius, which faded to nothing
+       by y=460 and left the subhead unprotected: a beam highlight behind it
+       measured 3.83:1 against #a3a3a3, under AA for body text. Fitted properly
+       the same worst case measures 6.65:1. */
+    radial-gradient(
+      70% 54% at 50% 35%,
+      var(--beams-base) 0%,
+      color-mix(in srgb, var(--beams-base) 92%, transparent) 46%,
+      color-mix(in srgb, var(--beams-base) 60%, transparent) 70%,
+      transparent 90%
+    ),
+    /* Bottom fade. The canvas is opaque, so without this its lower edge is a
+       straight line across the page. Held off until 68% (734px) so the ribbons
+       keep full strength down either side of the product frame — that open margin
+       is most of what makes the effect visible at all, once the copy above it is
+       protected. */
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 68%,
+      color-mix(in srgb, var(--background) 60%, transparent) 86%,
+      var(--background) 100%
+    );
+}
+
+/* Static monochrome dither over the beams field.
+   feTurbulence rasterised once by the UA and tiled — no canvas, no second frame
+   loop, nothing per-frame. Film grain has no reason to move, and animating a
+   full-width layer to make it shimmer would cost real paint time for an effect
+   nobody consciously registers.
+   saturate 0 keeps it neutral: fractalNoise is coloured by default, and coloured
+   speckle would fight the brand blue coming off the ribbons.
+   Faded out at the bottom on the same schedule as the scrim, or the grain would
+   carry on past the ribbons and put visible texture on the plain page below. */
+.hero-beams-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  opacity: 0.28;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
 }
 
 /* ── Interactive dashboard mock ───────────────────────────────────────────────

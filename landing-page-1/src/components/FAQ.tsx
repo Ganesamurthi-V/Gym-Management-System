@@ -43,12 +43,17 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" ref={scope} className="px-5 py-24 md:px-8 md:py-28">
+    <section
+      id="faq"
+      ref={scope}
+      aria-labelledby="faq-title"
+      className="px-5 py-24 md:px-8 md:py-28"
+    >
       <div className="mx-auto grid max-w-[1240px] gap-12 lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-20">
         {/* ── Intro ─────────────────────────────────────────────────────── */}
         <div className="lg:sticky lg:top-28 lg:self-start">
           <span className="reveal eyebrow">Frequently asked questions</span>
-          <h2 className="reveal display-2 mt-4 text-balance">
+          <h2 id="faq-title" className="reveal display-2 mt-4 text-balance">
             Everything you
             <br />
             <span className="text-muted-foreground">need to know.</span>

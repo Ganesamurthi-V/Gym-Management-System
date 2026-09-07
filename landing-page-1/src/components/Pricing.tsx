@@ -44,12 +44,17 @@ export function Pricing() {
   const scope = useReveal<HTMLElement>({ stagger: 0.09 });
 
   return (
-    <section id="pricing" ref={scope} className="px-5 py-24 md:px-8 md:py-28">
+    <section
+      id="pricing"
+      ref={scope}
+      aria-labelledby="pricing-title"
+      className="px-5 py-24 md:px-8 md:py-28"
+    >
       <div className="mx-auto max-w-[1240px]">
         {/* ── Header ────────────────────────────────────────────────────── */}
         <div className="mx-auto max-w-[640px] text-center">
           <span className="reveal eyebrow">Pricing</span>
-          <h2 className="reveal display-2 mt-4 text-balance">
+          <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance">
             One plan. <span className="text-muted-foreground">Everything included.</span>
           </h2>
           <p className="reveal lead mx-auto mt-5 max-w-[520px]">

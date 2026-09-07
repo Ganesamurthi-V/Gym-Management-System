@@ -32,6 +32,7 @@ export function WhatsAppSection() {
     <section
       id="whatsapp"
       ref={scope}
+      aria-labelledby="whatsapp-title"
       className="relative overflow-hidden border-y border-border-subtle bg-muted px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto grid max-w-[1240px] items-center gap-14 lg:grid-cols-2 lg:gap-20">
@@ -39,7 +40,7 @@ export function WhatsAppSection() {
         <div>
           <span className="reveal eyebrow">WhatsApp automation</span>
 
-          <h2 className="reveal display-2 mt-4 text-balance">
+          <h2 id="whatsapp-title" className="reveal display-2 mt-4 text-balance">
             Unlimited WhatsApp.
             <br />
             <span className="text-muted-foreground">Built in, not billed extra.</span>

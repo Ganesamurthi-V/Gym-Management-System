@@ -1,5 +1,11 @@
 <!doctype html>
-<html lang="en">
+<!--
+  en-IN, not plain en: og:locale already declares en_IN and the JSON-LD declares
+  inLanguage en-IN, so a bare "en" here was the one place disagreeing about which
+  English this is. Regional consistency is a small ranking and answer-engine
+  signal for an India-only product.
+-->
+<html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -55,7 +61,10 @@
     <!-- Open Graph / social sharing -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="GymFlow" />
-    <meta property="og:title" content="GymFlow — Know who paid. Who didn't. Who's expiring." />
+    <!-- Kept in step with the h1 in src/components/Hero.tsx. This previously read
+         "Know who paid. Who didn't. Who's expiring.", a headline no longer on the
+         page — a share card promising copy the visitor never finds reads as bait. -->
+    <meta property="og:title" content="GymFlow — Gym management, made effortless." />
     <meta
       property="og:description"
       content="The all-in-one gym management platform for independent gyms. Members, payments, attendance, dues, and unlimited WhatsApp reminders in one place."
@@ -82,7 +91,7 @@
 
     <!-- Twitter card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="GymFlow — Gym Management, simplified" />
+    <meta name="twitter:title" content="GymFlow — Gym management, made effortless." />
     <meta
       name="twitter:description"
       content="Members, payments, attendance, dues, and unlimited WhatsApp reminders in one place. Built for independent gyms across India."
@@ -120,19 +129,47 @@
 
     <!--
       ─── STRUCTURED DATA (JSON-LD) ──────────────────────────────────────────
-      Three nodes: the Organization (brand/knowledge-panel entity), the WebSite,
-      and the FAQPage. Every value is also visible on the page — Google treats
-      markup describing content a visitor cannot see as spam.
+      Six nodes, cross-referenced by @id rather than repeated:
 
-      ─── WHY THERE IS NO SoftwareApplication NODE ───────────────────────────
-      SoftwareApplication is only eligible for rich results with aggregateRating,
-      and inventing ratings the site cannot evidence is exactly what earns a
-      manual action. Real, verifiable reviews are the only compliant path there.
+        #organization  the brand / knowledge-panel entity
+        #offer         the single ₹3,000-a-month plan, defined once and
+                       referenced by both the Organization and the software
+        #website       the site
+        #webpage       this page, and what it is about
+        #software      the product itself
+        #howto         the four onboarding steps
+        #faq           the six accordion questions
 
-      ─── FAQPage ───────────────────────────────────────────────────────────
-      Mirrors the six visible accordion items in src/components/FAQ.tsx verbatim.
-      If the copy in that component changes, change it here too or the markup
-      stops matching the rendered content.
+      THE GOVERNING RULE, stated precisely, because the distinction matters:
+
+        CONTENT properties must appear verbatim in the rendered page. That is
+        every FAQ question and answer, every HowTo step, featureList, and the
+        price. Google treats markup describing content a visitor cannot see as
+        spam, and an answer engine quoting a claim the page does not make is
+        worse than not being quoted at all. If you edit that copy in a
+        component, edit it here in the same commit.
+
+        METADATA properties — name, description, browserRequirements — describe
+        the entity rather than quote the page, and are not expected to be
+        duplicated in body copy. They still have to be TRUE; they just do not
+        have to be findable with ctrl-F.
+
+      ─── SoftwareApplication IS PRESENT, WITHOUT RATINGS ────────────────────
+      This node used to be omitted on the grounds that SoftwareApplication needs
+      aggregateRating to win a rich result. That is true of the rich result and
+      irrelevant to everything else: answer engines read the whole graph, and
+      this is the node that lets one state what GymFlow is, what it runs on and
+      what it costs. So the node is here and aggregateRating is not — inventing
+      ratings the site cannot evidence is what earns a manual action. Add it only
+      when real, verifiable reviews exist to point at.
+
+      ─── HowTo MIRRORS src/components/HowItWorks.tsx ────────────────────────
+      Four steps, names and text taken verbatim from the STEPS array there.
+      No totalTime: the section says "in minutes", and converting that into a
+      precise ISO duration would be inventing precision the page never claims.
+
+      ─── FAQPage MIRRORS src/components/FAQ.tsx ─────────────────────────────
+      The six visible accordion items, verbatim.
     -->
     <script type="application/ld+json">
     {
@@ -172,6 +209,7 @@
           "areaServed": { "@type": "Country", "name": "India" },
           "makesOffer": {
             "@type": "Offer",
+            "@id": "https://www.gymflow.sbs/#offer",
             "price": "3000",
             "priceCurrency": "INR",
             "availability": "https://schema.org/InStock",
@@ -204,9 +242,95 @@
           "inLanguage": "en-IN"
         },
         {
+          "@type": "WebPage",
+          "@id": "https://www.gymflow.sbs/#webpage",
+          "url": "https://www.gymflow.sbs/",
+          "name": "GymFlow — Gym Management Software for Indian Gyms",
+          "description": "GymFlow is the all-in-one gym management platform for independent gym owners. Track members, payments, attendance and dues, and send unlimited WhatsApp reminders — all for ₹3,000/month.",
+          "isPartOf": { "@id": "https://www.gymflow.sbs/#website" },
+          "about": { "@id": "https://www.gymflow.sbs/#organization" },
+          "mainEntity": { "@id": "https://www.gymflow.sbs/#software" },
+          "primaryImageOfPage": {
+            "@type": "ImageObject",
+            "url": "https://www.gymflow.sbs/og-image.jpg",
+            "width": 1200,
+            "height": 630
+          },
+          "inLanguage": "en-IN"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://www.gymflow.sbs/#software",
+          "name": "GymFlow",
+          "url": "https://www.gymflow.sbs/",
+          "description": "All-in-one gym management for independent gym owners: member records, payments and dues, attendance, and unlimited automated WhatsApp reminders.",
+          "applicationCategory": "BusinessApplication",
+          "applicationSubCategory": "Gym management software",
+          "operatingSystem": "Web browser",
+          "browserRequirements": "Requires a modern web browser.",
+          "image": "https://www.gymflow.sbs/og-image.jpg",
+          "screenshot": {
+            "@type": "ImageObject",
+            "url": "https://www.gymflow.sbs/hero.webp",
+            "width": 1160,
+            "height": 617,
+            "caption": "The GymFlow dashboard showing active members, today's collection, memberships expiring soon and total outstanding dues."
+          },
+          "inLanguage": "en-IN",
+          "publisher": { "@id": "https://www.gymflow.sbs/#organization" },
+          "offers": { "@id": "https://www.gymflow.sbs/#offer" },
+          "featureList": [
+            "Member management",
+            "Payments & dues",
+            "Attendance tracking",
+            "Smart area detection",
+            "Reports & analytics",
+            "Unlimited WhatsApp reminders",
+            "CSV / Excel import & export",
+            "Priority support"
+          ]
+        },
+        {
+          "@type": "HowTo",
+          "@id": "https://www.gymflow.sbs/#howto",
+          "name": "How to set up GymFlow for your gym",
+          "description": "No IT team, no installation, no consultant. Sign up and start entering your first members the same day.",
+          "isPartOf": { "@id": "https://www.gymflow.sbs/#webpage" },
+          "step": [
+            {
+              "@type": "HowToStep",
+              "position": 1,
+              "url": "https://www.gymflow.sbs/#how",
+              "name": "Sign up and onboard",
+              "text": "A six-step wizard walks you through your gym name, membership plans, pricing and WhatsApp details. It autosaves, so you can stop and come back."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 2,
+              "url": "https://www.gymflow.sbs/#how",
+              "name": "Import your members",
+              "text": "Upload the CSV or Excel sheet you already keep. GymFlow detects the columns, normalises area names, and flags anything that needs a look."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 3,
+              "url": "https://www.gymflow.sbs/#how",
+              "name": "Run the day to day",
+              "text": "Mark attendance, record payments, and send WhatsApp reminders for dues — from one dashboard that works just as well on your phone."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 4,
+              "url": "https://www.gymflow.sbs/#how",
+              "name": "Analyse and grow",
+              "text": "Monthly revenue charts, plan distribution, area spread and PDF reports. Know exactly where the gym stands before the month closes."
+            }
+          ]
+        },
+        {
           "@type": "FAQPage",
           "@id": "https://www.gymflow.sbs/#faq",
-          "isPartOf": { "@id": "https://www.gymflow.sbs/#website" },
+          "isPartOf": { "@id": "https://www.gymflow.sbs/#webpage" },
           "mainEntity": [
             {
               "@type": "Question",

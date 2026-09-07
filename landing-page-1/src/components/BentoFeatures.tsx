@@ -32,6 +32,7 @@ export function BentoFeatures() {
     <section
       id="features"
       ref={scope}
+      aria-labelledby="features-title"
       /* contain-visible: the BorderGlow halo paints up to 40px outside each card,
          and the default `contain: paint` on section would clip it flat.
 
@@ -49,7 +50,7 @@ export function BentoFeatures() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-[560px]">
             <span className="reveal eyebrow">Core modules</span>
-            <h2 className="reveal display-3 mt-3 text-balance">
+            <h2 id="features-title" className="reveal display-3 mt-3 text-balance">
               Everything your gym needs,
               <br />
               <span className="text-muted-foreground">nothing it doesn&apos;t.</span>

@@ -383,7 +383,11 @@ function ViewTitle({ title, sub }: { title: string; sub?: string }) {
         <Dumbbell className="h-3.5 w-3.5 text-[#2563EB]" />
         <span className="text-[10.5px] font-medium text-slate-500">{GYM_NAME}</span>
       </div>
-      <h3 className="text-[19px] font-bold tracking-tight text-slate-900">{title}</h3>
+      {/* p, not h3. This is chrome inside a decorative product preview, so it has
+          no place in the page's heading outline — as an h3 directly after the
+          hero's h1 it created a 1 -> 3 level jump. Tailwind Preflight resets
+          margins on both elements, so nothing moves visually. */}
+      <p className="text-[19px] font-bold tracking-tight text-slate-900">{title}</p>
       {sub && <p className="mt-0.5 text-[11px] text-slate-400">{sub}</p>}
     </div>
   );
@@ -844,9 +848,10 @@ function AttendanceView({
   return (
     <div className="flex h-full flex-col items-center justify-center">
       <div className="w-full max-w-[340px] text-center">
-        <h3 className="text-[26px] font-bold leading-none tracking-tight text-slate-900">
+        {/* p, not h3 — mock chrome, same reasoning as the panel title above. */}
+        <p className="text-[26px] font-bold leading-none tracking-tight text-slate-900">
           {GYM_NAME}
-        </h3>
+        </p>
         <p className="mt-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
           Self-service attendance
         </p>

@@ -109,20 +109,40 @@ export function Hero() {
 
           {/* Trimmed to two lines. The full product definition still lives in the
               meta description and the features section; repeating it here only
-              pushed the product shot below the fold. */}
+              pushed the product shot below the fold.
+
+              "WhatsApp automation" carries the shine — the same treatment the
+              hero heading gives "effortless" and the WhatsApp section gives
+              "Unlimited". It is the differentiating feature in this list (every
+              rival does members and payments; the built-in WhatsApp is the hook),
+              so it earns the one spot of emphasis in an otherwise plain sentence.
+              font-medium lifts it just enough that the shine reads as intentional
+              against the muted body text around it. */}
           <p className="hero-sub lead mx-auto mt-7 max-w-[620px]">
-            Members, payments, attendance, dues and WhatsApp reminders — in one place,
-            without the notebooks.
+            Members, payments, attendance, dues and{' '}
+            <ShinyText
+              text="WhatsApp automation"
+              speed={3}
+              spread={120}
+              className="font-medium"
+            />{' '}
+            — in one place, without the notebooks.
           </p>
 
           {/* Stacked and equal width on phones, inline from sm up — two pills of
-              different widths stacked centre-aligned reads as a mistake. */}
+              different widths stacked centre-aligned reads as a mistake.
+
+              Sizing comes from .hero-cta (see index.css): base .btn size on
+              mobile, growing to btn-lg dimensions from sm up. So the mobile CTAs
+              are smaller, leaving more of the fold to the enlarged heading and
+              the product shot. The other btn-lg CTAs on the page stay large on
+              mobile because their larger tap target is right there. */}
           <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
-            <a href={APP_URL} className="hero-cta btn btn-primary btn-lg">
+            <a href={APP_URL} className="hero-cta btn btn-primary">
               Start free trial
               <ArrowRight className="h-4 w-4" />
             </a>
-            <a href="#pricing" className="hero-cta btn btn-outline btn-lg">
+            <a href="#pricing" className="hero-cta btn btn-outline">
               See pricing
             </a>
           </div>

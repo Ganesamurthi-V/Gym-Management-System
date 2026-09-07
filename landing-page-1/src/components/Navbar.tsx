@@ -172,8 +172,12 @@ export function Navbar() {
             height={178}
             /* The wordmark is dark-inked, so on the dark navbar it was all but
                invisible. brightness-0 crushes it to black and invert lifts it to
-               white — the same treatment the footer logo uses on its blue panel. */
-            className="h-8 w-auto dark:brightness-0 dark:invert"
+               white — the same treatment the footer logo uses on its blue panel.
+
+               h-10 (40px) is the ceiling here: the island collapses to 58px on
+               scroll, so this leaves 9px of clearance top and bottom at its
+               shortest. Larger would crowd the bar. */
+            className="h-17 w-auto dark:brightness-0 dark:invert"
           />
         </a>
 

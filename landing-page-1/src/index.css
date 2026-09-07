@@ -306,12 +306,13 @@ body {
    the clamp rather than being a fixed value.
 ═══════════════════════════════════════════════════════════════════════════ */
 /* -0.025em is the template's own ratio: -2.4px against a 96px headline. */
-/* 36px floor, not the original 44. Only the hero h1 uses this class, so the
-   floor is tuned to its first line: "Gym management," needs ~335px at 40px, so
-   at 44 it broke after "Gym" on every phone, and at 40 it still broke at 360px
-   wide. 36 clears it down to a 320px content column. */
+/* 40px floor, up from 36 — the mobile heading was asked to be larger. The floor
+   is bounded by the first line, "Gym management,", which needs ~335px at 40px:
+   at a 390px viewport the px-5 gutters leave a 350px content column, so 40px
+   clears with margin. It was 44 originally, which broke after "Gym" on phones;
+   40 is the largest that stays on one line down to the ~360px-wide viewports. */
 .display-1 {
-  font-size: clamp(36px, 7.2vw, 96px);
+  font-size: clamp(40px, 9vw, 96px);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.025em;
@@ -603,6 +604,23 @@ body {
 .btn-lg {
   padding: 15px 30px;
   font-size: 15px;
+}
+
+/* Hero-only: keep the CTAs at the base .btn size on mobile and only grow to
+   btn-lg from sm up. The other btn-lg CTAs on the page (nav sheet, CTA band,
+   pricing) are full-width mobile buttons where the larger tap target is right,
+   so this shrink is scoped to the hero rather than folded into .btn-lg itself.
+   A dedicated class because btn-lg is not a Tailwind utility, so `sm:btn-lg`
+   would never generate. */
+.hero-cta {
+  padding: 12px 22px;
+  font-size: 14px;
+}
+@media (min-width: 640px) {
+  .hero-cta {
+    padding: 15px 30px;
+    font-size: 15px;
+  }
 }
 
 /* Cards */

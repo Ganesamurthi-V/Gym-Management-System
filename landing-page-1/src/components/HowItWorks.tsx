@@ -30,13 +30,18 @@ export function HowItWorks() {
   const scope = useReveal<HTMLElement>({ stagger: 0.1 });
 
   return (
-    <section id="how" ref={scope} className="px-5 py-24 md:px-8 md:py-28">
+    <section
+      id="how"
+      ref={scope}
+      aria-labelledby="how-title"
+      className="px-5 py-24 md:px-8 md:py-28"
+    >
       <div className="mx-auto max-w-[1240px]">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-20">
           {/* ── Sticky intro ────────────────────────────────────────────── */}
           <div className="lg:sticky lg:top-28 lg:self-start">
             <span className="reveal eyebrow">How it works</span>
-            <h2 className="reveal display-2 mt-4 text-balance">
+            <h2 id="how-title" className="reveal display-2 mt-4 text-balance">
               Up and running
               <br />
               <span className="text-muted-foreground">in minutes.</span>

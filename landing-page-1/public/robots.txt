@@ -112,6 +112,81 @@ Allow: /
 User-agent: cohere-ai
 Allow: /
 
+# The newer wave of AI agents, added for the same tripwire reason as the block
+# above rather than because they need permission — `User-agent: *` already grants
+# it. Several of these appear in Cloudflare's block list but not in the original
+# set it was blocking here, so without an explicit group a future managed-robots
+# override could quietly disallow them and leave no diff to notice.
+#
+# Note the pattern: the crawler that trains and the fetcher that answers a live
+# user question are usually SEPARATE agents (PerplexityBot vs Perplexity-User,
+# meta-externalagent vs Meta-ExternalFetcher). Allowing only the first still
+# leaves the product invisible when someone actually asks about it.
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+User-agent: MistralAI-User
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: Google-CloudVertexBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: Ai2Bot
+Allow: /
+
+User-agent: Ai2Bot-Dolma
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: ImagesiftBot
+Allow: /
+
+User-agent: Omgilibot
+Allow: /
+
+User-agent: omgili
+Allow: /
+
+User-agent: Timpibot
+Allow: /
+
+User-agent: Webzio-Extended
+Allow: /
+
+User-agent: PanguBot
+Allow: /
+
+User-agent: FirecrawlAgent
+Allow: /
+
+User-agent: SemrushBot-OCOB
+Allow: /
+
+# ─── /llms.txt ──────────────────────────────────────────────────────────────
+# A plain-language summary of the product for language models, served at
+# https://www.gymflow.sbs/llms.txt (source: public/llms.txt).
+#
+# This is a comment, not a directive. robots.txt has no field for declaring an
+# llms.txt, and inventing one like `Llms:` would just be an unparsed line — the
+# note is here so anyone auditing crawler policy finds the file.
+
 # sitemap.xml is deliberately minimal — declaration, urlset, one url, no comments.
 # It lists exactly ONE url because this site is a single scrolling page: no router
 # is mounted (src/main.tsx renders <App /> directly), so #features, #pricing etc.

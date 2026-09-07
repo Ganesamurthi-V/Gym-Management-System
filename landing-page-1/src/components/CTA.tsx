@@ -22,7 +22,7 @@ export function CTA() {
   const scope = useReveal<HTMLElement>({ stagger: 0.09 });
 
   return (
-    <section ref={scope} className="relative z-10 px-5 md:px-8">
+    <section ref={scope} aria-labelledby="cta-title" className="relative z-10 px-5 md:px-8">
       {/* Narrower than the footer panel below it, so the accent shows on both
           sides of the overlap rather than the card covering the panel's full
           width. */}
@@ -45,6 +45,7 @@ export function CTA() {
 
         <div className="relative">
           <h2
+            id="cta-title"
             className="reveal mx-auto max-w-[680px] text-balance font-medium leading-[1.08] tracking-[-0.03em] text-foreground"
             style={{ fontSize: 'clamp(30px, 4.2vw, 52px)' }}
           >

@@ -57,11 +57,12 @@ export function Testimonials() {
     <section
       id="testimonials"
       ref={scope}
+      aria-labelledby="testimonials-title"
       className="relative overflow-hidden border-y border-border-subtle bg-muted px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto max-w-[900px] text-center">
         <span className="reveal eyebrow">What gym owners say</span>
-        <h2 className="reveal display-2 mt-4 text-balance">
+        <h2 id="testimonials-title" className="reveal display-2 mt-4 text-balance">
           Real gyms. <span className="text-muted-foreground">Real results.</span>
         </h2>
 

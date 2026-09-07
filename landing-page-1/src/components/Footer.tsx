@@ -57,7 +57,7 @@ export function Footer() {
                 height={178}
                 loading="lazy"
                 decoding="async"
-                className="h-9 w-auto brightness-0 invert"
+                className="h-25 w-auto brightness-0 invert"
               />
             </a>
             <p className="mt-5 max-w-[280px] text-[13px] leading-relaxed text-accent-ink/80">

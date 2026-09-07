@@ -168,13 +168,22 @@ export function WhatsAppSection() {
             </ul>
           </div>
 
-          {/* Capped at 300 (was 330): the mock holds a real 9/16 screen, so
+          {/* Hidden below md. On a phone the mock stacks under the copy as a
+              second full-width block that only restates what the three rows above
+              already say, and it is the tallest thing in the section — so on the
+              viewport with the least room it costs the most scroll for the least
+              new information. The message rows and the price band carry the point
+              on mobile; the device returns from md up where the grid gives it a
+              column of its own. Hiding the wrapper also drops its bloom, tilt and
+              orbit in one move.
+
+              Capped at 300 (was 330): the mock holds a real 9/16 screen, so
               width drives height directly. Narrower than this and the banner
               image and the message text inside the thread start to feel cramped.
               A narrower phone also widens the orbit's visible arc — the band
               hidden behind it shrinks with its width — so the chips keep their
               clearance. */}
-          <div className="reveal relative mx-auto w-full max-w-[300px] shrink-0">
+          <div className="reveal relative mx-auto hidden w-full max-w-[300px] shrink-0 md:block">
             {/* Soft green bloom — WhatsApp's own colour, kept to a backdrop so it
                 never competes with the blue accent for brand attention. Also what
                 fills the column either side of a phone this narrow. */}

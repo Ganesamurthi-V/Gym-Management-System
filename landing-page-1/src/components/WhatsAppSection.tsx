@@ -138,8 +138,7 @@ export function WhatsAppSection() {
                 number" line that used to float under the cards as a stray list
                 item is folded in here instead. */}
             <p className="reveal lead mt-6 max-w-[520px]">
-              Every GymFlow account includes fully automated WhatsApp messaging, sent from
-              your gym&apos;s own number.
+              Every GymFlow account includes fully automated WhatsApp messaging, with <ShinyText text="zero extra cost." speed={2.8} spread={120} />
             </p>
 
             {/* Bare rows, not cards. With border, background and a hover lift

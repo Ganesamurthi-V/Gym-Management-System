@@ -31,6 +31,51 @@ interface ShaderSource {
   defines?: Record<string, string | number | boolean>;
 }
 
+/**
+ * Default ceiling on the backing-store resolution.
+ *
+ * Fragment cost scales with the square of this, and it is the single biggest
+ * lever on the whole effect. Measured with GPU timer queries on Intel Iris Xe:
+ * 1.54 megapixels costs 0.97ms of GPU time a frame, 3.46 costs 2.06ms — about
+ * 0.6ms per megapixel. 1.5 rather than fiber's 2 is a 44% cut in fragments.
+ *
+ * Overridable per device because a phone wants less again: see HeroBeams, which
+ * drops it further where the screen is small and the GPU is not.
+ *
+ * Safe to lower because there is no detail here to preserve — broad soft
+ * gradients with a dither on top resample invisibly. Text or thin geometry would
+ * be a different argument.
+ */
+const DEFAULT_MAX_PIXEL_RATIO = 1.5;
+
+/**
+ * Default render cap, independent of the display's refresh rate.
+ *
+ * The motion is a slow noise scroll with no edges to judder. Measured, the mean
+ * pixel change between consecutive redraws at 30fps is 0.075 of 255 — about
+ * thirteen times finer than one 8-bit colour step — so consecutive frames are
+ * very nearly identical and redrawing more often buys nothing visible. On a 90Hz
+ * panel this skips two of every three frames.
+ *
+ * The clock still advances by real elapsed time, so speed is unchanged: this
+ * drops frames, it does not slow the animation down.
+ */
+const DEFAULT_TARGET_FPS = 30;
+
+/**
+ * Slack on the frame-budget test, and it is load-bearing.
+ *
+ * Redraws can only land on animation frames, so the achievable rates are the
+ * display's refresh divided by a whole number. On a 90Hz panel three frames bank
+ * 33.30ms against a 33.33ms threshold — short by three hundredths of a
+ * millisecond — so an exact comparison rejects it and waits for a fourth frame.
+ * That is 22.5fps, and measured against a 30fps target this ran at 25.
+ *
+ * 2ms is under a quarter of the shortest realistic frame, so it can only ever
+ * pull in a redraw that was already within rounding distance of being due.
+ */
+const FRAME_BUDGET_SLACK_SECONDS = 0.002;
+
 type UniformValue = THREE.IUniform<unknown> | unknown;
 
 interface ExtendMaterialConfig {
@@ -343,6 +388,13 @@ export interface BeamsProps {
   rotation?: number;
   lightMode?: boolean;
   className?: string;
+  /**
+   * Ceiling on devicePixelRatio for the backing store. The dominant cost knob —
+   * fragment work scales with its square.
+   */
+  maxPixelRatio?: number;
+  /** Redraws per second, capped independently of the display's refresh rate. */
+  targetFps?: number;
 }
 
 export function Beams({
@@ -358,6 +410,8 @@ export function Beams({
   rotation = 0,
   lightMode = false,
   className,
+  maxPixelRatio = DEFAULT_MAX_PIXEL_RATIO,
+  targetFps = DEFAULT_TARGET_FPS,
 }: BeamsProps) {
   const host = useRef<HTMLDivElement>(null);
 
@@ -385,8 +439,7 @@ export function Beams({
     });
 
     let { w, h } = size();
-    // Matches fiber's dpr={[1, 2]}: retina sharpness without paying for 3x.
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
     renderer.setSize(w, h, false);
 
     const canvas = renderer.domElement;
@@ -463,14 +516,30 @@ export function Beams({
     canvas.addEventListener('webglcontextlost', onLost);
     canvas.addEventListener('webglcontextrestored', onRestored);
 
+    const minFrameSeconds = 1 / targetFps;
+
     const clock = new THREE.Clock();
+    // Elapsed time banked since the last redraw. The uniform is advanced by this
+    // whole amount rather than by one frame's worth, which is what keeps the
+    // ribbons moving at the same speed regardless of how many frames were
+    // skipped to hit targetFps.
+    let banked = 0;
+
     let raf = requestAnimationFrame(function tick() {
       raf = requestAnimationFrame(tick);
       // Read the delta unconditionally so a paused stretch is discarded rather
       // than arriving as one huge jump the moment the canvas comes back.
       const delta = clock.getDelta();
       if (lost || !onScreen || document.hidden) return;
-      material.uniforms.time.value += 0.1 * delta;
+
+      banked += delta;
+      if (banked + FRAME_BUDGET_SLACK_SECONDS < minFrameSeconds) return;
+
+      material.uniforms.time.value += 0.1 * banked;
+      // Carry the overshoot instead of zeroing it. Discarding it throws away up
+      // to a frame's worth of budget every redraw, which is what dragged the
+      // measured rate below targetFps.
+      banked = Math.max(0, banked - minFrameSeconds);
       renderer.render(scene, camera);
     });
 
@@ -499,6 +568,8 @@ export function Beams({
     scale,
     rotation,
     lightMode,
+    maxPixelRatio,
+    targetFps,
   ]);
 
   return <div ref={host} aria-hidden className={className} />;

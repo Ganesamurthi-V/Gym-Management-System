@@ -9,11 +9,42 @@ import { prefersReducedMotion } from '../lib/useReveal';
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Resting rotation, degrees per second. ~40s for a full revolution: slow enough
- * to read as a drift rather than a spin, fast enough to be visible if you watch
- * a chip for a couple of seconds.
+ * Amplitude of the sway, in degrees either side of rest.
+ *
+ * The orbit sways rather than revolving, and that is forced by the phone's
+ * proportions. A chip sits ~250px from centre; the phone is 330x537, so ±165
+ * half-width. Anything whose x falls inside that band is behind the device, which
+ * on a full revolution is 46% of the cycle — the chips spent most of their time
+ * invisible. Clearing the phone over the top and bottom instead would need a
+ * vertical radius past 416px, which is far more room than the section has.
+ *
+ * 20 is the largest amplitude where all three chip centres stay outside the
+ * phone's half-width for the whole sway. The binding chip is the welcome one,
+ * repositioned in WhatsAppSection to buy the headroom this needs.
  */
+const SWING_DEG = 20;
+
+/** Degrees per second while scrolling, before the velocity boost multiplies it. */
 const BASE_DEG_PER_SEC = 9;
+
+/**
+ * Idle legs, degrees per second. Clockwise is the faster of the two on purpose:
+ * the sway has to turn round somewhere to keep the chips out from behind the
+ * phone, so making the return leg half the speed means roughly two thirds of the
+ * idle cycle is spent travelling clockwise and it reads as a clockwise drift
+ * rather than an even back-and-forth.
+ */
+const IDLE_CW_DEG_PER_SEC = 9;
+const IDLE_RETURN_DEG_PER_SEC = 4.5;
+
+/**
+ * Scroll velocity below this (px/sec) does not set a direction. Without it, the
+ * tail of Lenis's easing dithers around zero and flips the spin on noise.
+ */
+const SCROLL_DEADZONE = 40;
+
+/** Boost above which we treat the page as actively scrolling. */
+const SCROLLING_ABOVE = 1.08;
 
 /**
  * How much scroll speed adds. Scroll velocity arrives in px/sec, so dividing by
@@ -81,11 +112,15 @@ export function AutomationOrbit({ chips }: { chips: readonly OrbitChip[] }) {
     const swing = swingRef.current;
     if (!swing) return;
 
-    // Rotation accumulates on the ticker rather than being scrubbed to scroll
-    // position. A scrub maps angle to *where* the page is, so the orbit freezes
-    // the instant scrolling stops and unwinds on the way back up. Here scroll
-    // only ever modulates the speed of a rotation that never stops.
+    // The angle is driven directly rather than through a sine of a phase. A sine
+    // reverses on its own schedule, so "which way is it going" was never under
+    // scroll's control — and direction is the whole point here.
+    //
+    // legDir is the current travel direction: +1 clockwise, -1 anti-clockwise. It
+    // flips when the sway reaches either end, and scrolling overrides it outright.
     let angle = 0;
+    let legDir = 1;
+    let scrollSign = 0;
     let boost = 1;
     let inView = false;
 
@@ -100,11 +135,13 @@ export function AutomationOrbit({ chips }: { chips: readonly OrbitChip[] }) {
           inView = self.isActive;
         },
         onUpdate: self => {
-          // Unsigned on purpose: scrolling either way speeds the orbit up rather
-          // than reversing it, so there is no direction flip to reconcile with
-          // the resting drift.
-          const velocity = Math.abs(self.getVelocity());
-          boost = Math.min(1 + velocity * BOOST_PER_PX_PER_SEC, MAX_BOOST);
+          // Signed now. getVelocity is positive when the page scrolls down, and
+          // down should drive the orbit anti-clockwise, so the sign inverts.
+          const velocity = self.getVelocity();
+          boost = Math.min(1 + Math.abs(velocity) * BOOST_PER_PX_PER_SEC, MAX_BOOST);
+          if (Math.abs(velocity) > SCROLL_DEADZONE) {
+            scrollSign = velocity > 0 ? -1 : 1;
+          }
         },
       });
     });
@@ -122,9 +159,38 @@ export function AutomationOrbit({ chips }: { chips: readonly OrbitChip[] }) {
       // which is invisible and cheaper than spinning an offscreen element.
       if (!inView) return;
 
-      // Wrapped, so a long session cannot grow the value until float precision
-      // starts to show. A 360 wrap is visually a no-op.
-      angle = (angle + BASE_DEG_PER_SEC * boost * dt) % 360;
+      const scrolling = boost > SCROLLING_ABOVE && scrollSign !== 0;
+
+      // Scroll wins over the idle leg, and leaves legDir behind it so that when
+      // scrolling stops the drift carries on the same way rather than jumping.
+      if (scrolling) legDir = scrollSign;
+
+      const rate = scrolling
+        ? BASE_DEG_PER_SEC * boost
+        : legDir > 0
+          ? IDLE_CW_DEG_PER_SEC
+          : IDLE_RETURN_DEG_PER_SEC;
+
+      // Ease the last stretch into each end, but only when travelling towards it.
+      // Driving the angle directly means the turnaround would otherwise be a hard
+      // velocity flip; this rounds it off without ever fully stalling.
+      const travellingOutward = Math.sign(angle) === legDir;
+      const approach = travellingOutward ? 1 - (Math.abs(angle) / SWING_DEG) ** 2 : 1;
+      const eased = 0.3 + 0.7 * Math.max(0, approach);
+
+      angle += rate * eased * legDir * dt;
+
+      // Clamp and turn round. This is what keeps every chip clear of the phone,
+      // so it holds even while scrolling: park at the end rather than let a fast
+      // scroll carry a chip behind the bezel.
+      if (angle >= SWING_DEG) {
+        angle = SWING_DEG;
+        legDir = -1;
+      } else if (angle <= -SWING_DEG) {
+        angle = -SWING_DEG;
+        legDir = 1;
+      }
+
       swing.style.setProperty('--orbit-angle', `${angle.toFixed(2)}deg`);
     };
 
@@ -140,12 +206,11 @@ export function AutomationOrbit({ chips }: { chips: readonly OrbitChip[] }) {
     <div
       ref={swingRef}
       aria-hidden
-      /* -z-10 sits on the whole assembly, not just the arc as it used to. Now
-         that rotation is continuous the chips travel the full circle, and the two
-         at the smaller radii pass inside the phone's silhouette near the top and
-         bottom of their arc. Behind the opaque bezel they slide out of view and
-         re-emerge, which is what an orbit should do; in front they would sit on
-         top of the message.
+      /* -z-10 on the whole assembly, not just the arc. The sway is bounded so the
+         chips stay clear of the phone, but they pass close to its edge at the ends
+         of their travel, and a chip grazing the bezel should tuck behind it rather
+         than ride over the message. The arc genuinely does cross the phone and
+         needs to be occluded there.
 
          Contained rather than escaping to the page: .phone-scene sets
          `perspective`, which establishes a stacking context. */

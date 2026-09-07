@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { ArrowRight, MapPin } from 'lucide-react';
 import { Marquee } from './Marquee';
 import { DashboardMock } from './DashboardMock';
+import { ShinyText } from './ShinyText';
 import { prefersReducedMotion } from '../lib/useReveal';
 import { useMediaQuery } from '../lib/useMediaQuery';
 
@@ -90,11 +91,19 @@ export function Hero() {
               together. Fixing the break needs the phrase to fall in two units.
 
               <em> rather than a styled span: "effortless" carries the stress of
-              the sentence, so the emphasis is real and not just decoration. */}
+              the sentence, so the emphasis is real and not just decoration.
+
+              The <em> keeps the serif italic and the size correction; ShinyText
+              only takes over the paint. Its base colour is passed as the same
+              --accent-text the class sets, so the word looks unchanged between
+              sweeps and reduced motion lands on exactly that colour. */}
           <h1 id="hero-title" className="display-1 mt-8">
             <span className="hero-line block">Gym management,</span>
             <span className="hero-line block">
-              made <em className="display-accent">effortless.</em>
+              made{' '}
+              <em className="display-accent">
+                <ShinyText text="effortless." speed={2.8} spread={120} />
+              </em>
             </span>
           </h1>
 

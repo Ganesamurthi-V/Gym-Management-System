@@ -111,6 +111,18 @@
   --wa-chip-lift: 0 6px 18px -8px rgb(24 24 27 / 22%);
   --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 55%, transparent);
 
+  /* Highlight that sweeps through a ShinyText word. Paired with --accent-text as
+     the base, so it has to stay legible against the page rather than just look
+     bright: the base measures 6.15:1 here and this holds 3.5:1, above the 3:1 AA
+     threshold for the display sizes it is used at.
+ 
+     Picked by measurement, not by eye. The first choice, #6d9bff, looked right and
+     came out at 2.47:1 — under the threshold — because a highlight on a light page
+     has to move *towards* the background to read as lighter, which spends contrast
+     rather than gaining it. This is the lightest blue that still clears 3:1 while
+     staying visibly brighter than the base. */
+  --shine-glint: #4f7dee;
+
   /* BorderGlow surface treatment. These live here rather than as props because
      the component would otherwise have to read the theme in JS, and a value read
      at render goes stale the moment ThemeToggle flips .dark — nothing re-renders
@@ -181,6 +193,11 @@
   --wa-chip-edge: color-mix(in srgb, var(--whatsapp) 32%, transparent);
   --wa-chip-lift: 0 0 22px -4px color-mix(in srgb, var(--whatsapp) 45%, transparent);
   --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 30%, transparent);
+
+  /* White here. The dark-mode base is #93c5fd, so the glint has to be lighter
+     than that to read as a highlight, and white is both the brightest option and
+     the highest contrast against the page. */
+  --shine-glint: #ffffff;
 
   /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
      keeps the inward bleed tinting the card instead of covering it, and
@@ -328,6 +345,75 @@ body {
   font-size: 1.08em;
   letter-spacing: -0.005em;
   color: var(--accent-text);
+}
+
+/* ShinyText — a metallic sheen sweeping through a word.
+ 
+   Driven entirely by CSS rather than the upstream React Bits implementation,
+   which animates background-position through motion/react. That would have meant
+   adding Framer Motion alongside the GSAP already here, ~60KB for one decorative
+   text effect, plus a per-instance requestAnimationFrame callback for something
+   the compositor does for free.
+ 
+   Every knob is a custom property written by the component, so the prop API is
+   unchanged and the animation still runs off the main thread. */
+.shiny-text {
+  display: inline-block;
+  background-image: linear-gradient(
+    var(--shine-angle, 120deg),
+    var(--shine-color) 0%,
+    var(--shine-color) 35%,
+    var(--shine-glint-local) 50%,
+    var(--shine-color) 65%,
+    var(--shine-color) 100%
+  );
+  /* 200% wide, so sliding the position moves the highlight across the glyphs
+     instead of resizing the ramp. */
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: shinyTextSweep var(--shine-duration, 2s) linear infinite;
+}
+
+/* From fully off the right to fully off the left. --shine-end carries the delay:
+   pushing the end further past -50% leaves the highlight off-screen for the rest
+   of the cycle, which is how the upstream component's hold phase looks. */
+@keyframes shinyTextSweep {
+  from {
+    background-position: 150% center;
+  }
+  to {
+    background-position: var(--shine-end, -50%) center;
+  }
+}
+
+.shiny-text-pause-on-hover:hover {
+  animation-play-state: paused;
+}
+
+/* Decoration, so it goes first — and the fallback has to restore a painted glyph,
+   not just stop the sweep. With the fill transparent and the gradient gone the
+   word would disappear entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .shiny-text {
+    animation: none;
+    background-image: none;
+    color: var(--shine-color);
+    -webkit-text-fill-color: var(--shine-color);
+  }
+}
+
+/* Forced colours drops background-image, which would leave nothing painting the
+   text at all. Hand it back to the system colour. */
+@media (forced-colors: active) {
+  .shiny-text {
+    animation: none;
+    background-image: none;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
 }
 
 .lead {

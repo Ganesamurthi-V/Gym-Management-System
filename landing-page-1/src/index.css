@@ -207,10 +207,11 @@
      painting --background over a blacker canvas, the area behind the copy would
      sit ~20 levels lighter than everything around it and read as a lit box.
 
-     #050505 rather than #000000: pure black crushes the darkest end of the
-     ribbons' falloff to a flat edge, and leaves nothing for the noise to
-     subtract from. */
-  --beams-base: #050505;
+     Pure black, matching the reference. This was #050505 for a while, on the
+     reasoning that a little lift kept the ribbons' darkest falloff from clipping
+     flat — but that lift applies to the gaps between ribbons too, and those gaps
+     are what make the edges read. Black gaps are the whole basis of the contrast. */
+  --beams-base: #000000;
 
   /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
      keeps the inward bleed tinting the card instead of covering it, and
@@ -624,11 +625,19 @@ body {
 @media (max-width: 767px) {
   .hero-beams-scrim {
     background:
+      /* Weaker than desktop's 92/60 on purpose. A 1080px radius on a 375px
+         screen is effectively a full-width slab, so unlike desktop there is no
+         horizontal falloff for the ribbons to show through — at 92% the field was
+         smothered end to end and the effect was invisible rather than subtle.
+
+         The slack to do this was measured: body text sat at 7.45:1 against a 4.5
+         floor here, roughly a sixfold luminance margin. 80/45 spends part of it
+         and is re-measured below, not assumed. */
       radial-gradient(
         1080px 62% at 50% 39%,
-        var(--beams-base) 0%,
-        color-mix(in srgb, var(--beams-base) 92%, transparent) 46%,
-        color-mix(in srgb, var(--beams-base) 60%, transparent) 70%,
+        color-mix(in srgb, var(--beams-base) 88%, transparent) 0%,
+        color-mix(in srgb, var(--beams-base) 80%, transparent) 46%,
+        color-mix(in srgb, var(--beams-base) 45%, transparent) 70%,
         transparent 90%
       ),
       linear-gradient(
@@ -837,7 +846,10 @@ body {
    and rotating type at that size costs real legibility for a flourish that reads
    as an accident on a narrow screen. */
 .phone-scene {
-  perspective: 1400px;
+  /* Shorter than it was (1400px). Perspective distance is inversely related to how
+     strong the foreshortening reads, so pulling the vanishing point closer makes
+     the same rotation look like more of a turn. */
+  perspective: 1150px;
 }
 
 /* Chips orbiting the phone.
@@ -855,7 +867,15 @@ body {
 
 @media (min-width: 1024px) {
   .phone-tilt {
-    transform: rotateX(4deg) rotateY(-15deg) rotateZ(3deg);
+    /* Was 4/-15/3. The Y turn does most of the work and carries most of the
+       increase; X and Z follow it up so the device still reads as one coherent
+       rotation rather than a flat card swung sideways.
+
+       -24deg foreshortens the screen by cos(24) = 0.91, so the chat content loses
+       9% of its width — still comfortably readable, which is the limit worth
+       respecting here. Past roughly -30 the message text starts to compress
+       enough to notice. */
+    transform: rotateX(7deg) rotateY(-24deg) rotateZ(5deg);
     transform-style: preserve-3d;
   }
 }

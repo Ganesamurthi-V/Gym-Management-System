@@ -33,8 +33,41 @@ const PHONE_QUERY = '(max-width: 767px)';
  * .hero-beams-scrim in index.css is fitted to both numbers per breakpoint —
  * change one and the other has to move with it.
  */
-const PHONE = { coverH: 'h-[880px]', maxPixelRatio: 1.15, targetFps: 20 } as const;
-const DESKTOP = { coverH: 'h-[1080px]', maxPixelRatio: 1.5, targetFps: 30 } as const;
+/*
+  fov is why the ribbons were invisible on a phone rather than merely subtle.
+
+  At fov 30 from z=20 the frame is ~10.7 world units tall, and a portrait layer
+  375 wide by 880 tall makes it only ~4.6 units across. Against 2-unit beams that
+  is barely two ribbons on screen — no edges, no variation, just a dark wash. 58
+  degrees opens the frame to ~22 units tall and ~9.4 across, so five or six
+  ribbons read at once.
+
+  Coverage still holds at that width: rotated 45 degrees the slab has to span
+  (9.4 + 22.2) / sqrt(2) = 22.4 units, and it is 24 by 24.
+
+  lightIntensity spends measured headroom. Body text behind the phone copy
+  measured 7.45:1 against a 4.5 floor, and luminance would have to rise about
+  sixfold before it reached 5:1 — so the ribbons can be a good deal brighter and
+  still leave the copy comfortably legible. Desktop has less slack (6.18:1) and
+  more open area, so it stays at 1.
+*/
+const PHONE = {
+  coverH: 'h-[880px]',
+  maxPixelRatio: 1.15,
+  targetFps: 20,
+  fov: 58,
+  // 1.9 was set against a blue-200 light; white carries more luminance for the
+  // same intensity, so this comes down to compensate.
+  lightIntensity: 1.5,
+} as const;
+
+const DESKTOP = {
+  coverH: 'h-[1080px]',
+  maxPixelRatio: 1.5,
+  targetFps: 30,
+  fov: 30,
+  lightIntensity: 1,
+} as const;
 
 /**
  * The canvas paints an opaque rectangle, so its clear colour has to agree with
@@ -50,7 +83,7 @@ function readBeamsBase(): string {
   const value = getComputedStyle(document.documentElement)
     .getPropertyValue('--beams-base')
     .trim();
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : '#050505';
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
 }
 
 interface NetworkInformation {
@@ -141,7 +174,7 @@ export function HeroBeams() {
   const active = wanted && ready;
 
   const settings = isPhone ? PHONE : DESKTOP;
-  const background = useMemo(() => (active ? readBeamsBase() : '#050505'), [active]);
+  const background = useMemo(() => (active ? readBeamsBase() : '#000000'), [active]);
 
   if (!active) return null;
 
@@ -178,24 +211,59 @@ export function HeroBeams() {
               page. The scrim knocks this back by ~80% over the copy, so the extra
               brightness lands in open area and not behind the text.
             */
-            lightColor="#bfdbfe"
+            /*
+              White, like the reference, not the brand blue this ran on for a while.
+              Ribbon definition comes from luminance range, and white simply has
+              more of it to give against black than blue-200 does. The brand tint is
+              still present in the layer — the hero mesh sits above these — so
+              tinting the light as well was double-counting it and costing contrast.
+            */
+            lightColor="#ffffff"
+            /*
+              Back to pure black, and this is what makes them read as ribbons rather
+              than as a gradient.
+
+              A non-black diffuse term lights the surface evenly, which is genuinely
+              better for coverage — it was how the corner imbalance got fixed. But
+              it also lifts the gaps between ribbons off black, and those gaps are
+              the edges. Once every pixel has a floor, adjacent ribbons at slightly
+              different angles differ by slightly different amounts of light, and the
+              boundaries stop being boundaries. The result was evenly lit and
+              shapeless: a shader background, exactly as described.
+
+              With black there is no floor, so a small change in surface normal is
+              the difference between lit and not — which is what draws a crisp edge.
+              Coverage is instead handled by the mirrored fill light in Beams.tsx,
+              which does not cost contrast because it adds a second highlight rather
+              than a global lift.
+            */
+            beamColor="#000000"
+            /*
+              Back to a tight lobe. 0.72 spread the highlight so wide that its
+              falloff became the dominant gradient on screen, washing the ribbons
+              out. 0.3 keeps the specular sharp, so brightness tracks the ribbon
+              geometry instead of the distance from a light.
+            */
+            roughness={0.3}
             speed={3.4}
             /*
-              The shader only ever subtracts grain (rgb -= noise / 15 * intensity),
-              so this both roughens and darkens, which is why it pairs with the
-              near-black base rather than fighting it. At 5 the ceiling is a 0.33
-              subtraction against 0.20 at 3.
+              Down from 5. The shader only ever subtracts grain
+              (rgb -= noise / 15 * intensity), so at 5 the ceiling was a 0.33
+              subtraction — enough to crush the mid-tones along a ribbon's gradient
+              into black speckle and cost the smooth falloff the reference has.
 
-              Grain is only visible where a ribbon is lit — there is nothing to
-              take away from the black field itself. The dither across the flat
-              area is .hero-beams-grain, a separate additive layer.
+              Lowering it does not cost visible grain, because the grain that reads
+              on screen is .hero-beams-grain, an additive CSS layer at full device
+              resolution. This value only ever dithered the lit ribbons.
             */
-            noiseIntensity={5}
+            noiseIntensity={3}
             scale={0.2}
             rotation={45}
             backgroundColor={background}
             maxPixelRatio={settings.maxPixelRatio}
             targetFps={settings.targetFps}
+            fov={settings.fov}
+            lightIntensity={settings.lightIntensity}
           />
         </Suspense>
       </div>

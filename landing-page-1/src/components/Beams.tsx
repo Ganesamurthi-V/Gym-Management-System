@@ -246,6 +246,7 @@ function buildBeamMaterial(opts: {
   noiseIntensity: number;
   scale: number;
   lightMode: boolean;
+  roughness: number;
 }): THREE.ShaderMaterial {
   return extendMaterial(THREE.MeshStandardMaterial, {
     header: `
@@ -297,7 +298,7 @@ function buildBeamMaterial(opts: {
     uniforms: {
       diffuse: new THREE.Color(...hexToNormalizedRGB(opts.beamColor)),
       time: { shared: true, mixed: true, linked: true, value: 0 },
-      roughness: 0.3,
+      roughness: opts.roughness,
       metalness: 0.3,
       uSpeed: { shared: true, mixed: true, linked: true, value: opts.speed },
       envMapIntensity: 10,
@@ -377,7 +378,14 @@ export interface BeamsProps {
   beamNumber?: number;
   /** Colour of the directional light, i.e. what the ribbons are lit with. */
   lightColor?: string;
-  /** Base colour of the ribbon surface. Near-black keeps them reading as shadow. */
+  /**
+   * Base colour of the ribbon surface, and the material's diffuse term.
+   *
+   * Pure black means no diffuse response at all, leaving the ribbons lit only by
+   * specular — which localises visibility to wherever the highlight lobes land
+   * and starves the rest of the frame. Any non-black value restores a
+   * view-independent term that reads evenly across the whole field.
+   */
   beamColor?: string;
   /** Must match the page behind the canvas or its edges show as a hard rectangle. */
   backgroundColor?: string;
@@ -395,6 +403,34 @@ export interface BeamsProps {
   maxPixelRatio?: number;
   /** Redraws per second, capped independently of the display's refresh rate. */
   targetFps?: number;
+  /**
+   * Vertical field of view, degrees. Governs how much of the ribbon slab is on
+   * screen: wider fov means more, smaller ribbons.
+   */
+  fov?: number;
+  /** Brightness of the key light. */
+  lightIntensity?: number;
+  /**
+   * Surface roughness, 0-1. Widens or tightens the specular lobe.
+   *
+   * Low values give a tight highlight that covers a small part of the frame,
+   * which is what concentrates brightness into one corner. Higher values spread
+   * the same energy over much more of the surface.
+   */
+  roughness?: number;
+  /**
+   * Intensity of each fill light, as a fraction of the key.
+   *
+   * With beamColor black the ribbons are lit almost entirely by specular
+   * response, so a single light puts its highlight in one screen corner and
+   * starves the rest. Three fills spread matching highlights across both
+   * diagonals — see the placement note where they are created.
+   *
+   * Raising this past roughly 0.6 starts to cost the effect its definition: every
+   * fill adds light everywhere, and the black between ribbons is what makes their
+   * edges read. 0 disables them and leaves the single key light.
+   */
+  fillLightRatio?: number;
 }
 
 export function Beams({
@@ -412,6 +448,12 @@ export function Beams({
   className,
   maxPixelRatio = DEFAULT_MAX_PIXEL_RATIO,
   targetFps = DEFAULT_TARGET_FPS,
+  fov = 30,
+  lightIntensity = 1,
+  // 0.85 was right when there was one fill; with three it would triple the added
+  // light and wash the blacks back out.
+  fillLightRatio = 0.5,
+  roughness = 0.3,
 }: BeamsProps) {
   const host = useRef<HTMLDivElement>(null);
 
@@ -451,7 +493,7 @@ export function Beams({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(backgroundColor);
 
-    const camera = new THREE.PerspectiveCamera(30, w / h, 0.1, 200);
+    const camera = new THREE.PerspectiveCamera(fov, w / h, 0.1, 200);
     camera.position.set(0, 0, 20);
 
     const material = buildBeamMaterial({
@@ -460,6 +502,7 @@ export function Beams({
       noiseIntensity,
       scale,
       lightMode,
+      roughness,
     });
     const geometry = createStackedPlanesBufferGeometry(
       beamNumber,
@@ -473,12 +516,59 @@ export function Beams({
     group.rotation.z = THREE.MathUtils.degToRad(rotation);
     group.add(new THREE.Mesh(geometry, material));
 
-    // Inside the group so it rotates with the ribbons — the highlight has to
+    // Inside the group so they rotate with the ribbons — the highlight has to
     // stay in the same place relative to them, or rotation slides the lit band
     // off the beams.
-    const dirLight = new THREE.DirectionalLight(new THREE.Color(lightColor), 1);
-    dirLight.position.set(0, 3, 10);
-    group.add(dirLight);
+    const keyLight = new THREE.DirectionalLight(new THREE.Color(lightColor), lightIntensity);
+    keyLight.position.set(0, 3, 10);
+    group.add(keyLight);
+
+    /*
+      Mirrored fill.
+
+      With beamColor black there is no diffuse term, so what is visible is the
+      specular lobe, and its screen position follows the half-vector between the
+      view and light directions. The key light's +3 in y biases that lobe toward
+      group-space +y, which a 45 degree group rotation maps to screen up-left —
+      one bright corner and a starved opposite one.
+
+      Negating only the y offset puts a second lobe in the opposite corner. z
+      stays positive: mirroring the whole position through the origin would put
+      the light behind the slab, lighting a back face the camera never sees.
+
+      Slightly under the key rather than equal to it — matching them exactly
+      flattens the field into an even wash and loses any sense of a light
+      direction.
+    */
+    if (fillLightRatio > 0) {
+      /*
+        Three fills, not one, placed so their lobes land on both diagonals.
+
+        A light at (px, py, 10) puts its brightest point at group-space
+        (2*px, 2*py). The key's (0, 3) lands at group (0, 6), which the 45 degree
+        rotation sends to screen up-left; its mirror (0, -3) lands down-right.
+        Those two share one diagonal and leave the other unlit, so offsetting the
+        remaining pair in x instead of y — group (+-6, 0) — sends them to screen
+        up-right and down-left.
+
+        Four tight lobes rather than one broad one. Widening the lobe would cover
+        the same area but is what turned the ribbons into a wash: brightness has to
+        stay a function of ribbon geometry, not of distance from a light.
+      */
+      const fillOffsets: ReadonlyArray<readonly [number, number]> = [
+        [0, -3],
+        [3, 0],
+        [-3, 0],
+      ];
+      for (const [x, y] of fillOffsets) {
+        const fill = new THREE.DirectionalLight(
+          new THREE.Color(lightColor),
+          lightIntensity * fillLightRatio,
+        );
+        fill.position.set(x, y, 10);
+        group.add(fill);
+      }
+    }
 
     scene.add(group);
     scene.add(new THREE.AmbientLight(0xffffff, 1));
@@ -570,6 +660,10 @@ export function Beams({
     lightMode,
     maxPixelRatio,
     targetFps,
+    fov,
+    lightIntensity,
+    fillLightRatio,
+    roughness,
   ]);
 
   return <div ref={host} aria-hidden className={className} />;

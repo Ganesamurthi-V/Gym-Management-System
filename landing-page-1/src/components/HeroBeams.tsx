@@ -10,7 +10,6 @@ import { useMediaQuery } from '../lib/useMediaQuery';
  * never download it at all.
  */
 const Beams = lazy(() => import('./Beams'));
-
 const PHONE_QUERY = '(max-width: 767px)';
 
 /**

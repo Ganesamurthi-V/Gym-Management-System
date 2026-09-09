@@ -49,7 +49,7 @@ interface ShaderSource {
 const DEFAULT_MAX_PIXEL_RATIO = 1.5;
 
 /**
- * Default render cap, independent of the display's refresh rate.
+ * Default redraw ceiling, independent of the display's refresh rate.
  *
  * The motion is a slow noise scroll with no edges to judder. Measured, the mean
  * pixel change between consecutive redraws at 30fps is 0.075 of 255 — about
@@ -57,8 +57,15 @@ const DEFAULT_MAX_PIXEL_RATIO = 1.5;
  * very nearly identical and redrawing more often buys nothing visible. On a 90Hz
  * panel this skips two of every three frames.
  *
- * The clock still advances by real elapsed time, so speed is unchanged: this
- * drops frames, it does not slow the animation down.
+ * A ceiling, not an exact rate. Redraws can only happen on animation frames, so
+ * the achievable rates are the refresh divided by a whole number: on a 90Hz panel
+ * a 30fps budget lands cleanly every third frame, but the 20fps used on phones
+ * falls between the fourth and fifth and measures nearer 15-18. That is under
+ * budget, never over, which is the direction that matters.
+ *
+ * The uniform advances by real elapsed time regardless, so this drops frames
+ * without changing how fast the ribbons travel — verified at 0.1 of uniform time
+ * per wall second at both 30 and 20, which is what the loop is written to produce.
  */
 const DEFAULT_TARGET_FPS = 30;
 
@@ -608,6 +615,21 @@ export function Beams({
 
     const minFrameSeconds = 1 / targetFps;
 
+    /*
+      Ceiling on how much time one frame may advance the animation by.
+
+      Animation frames stop being delivered whenever the page is backgrounded,
+      occluded, or the machine sleeps, and the gap is not reported until the next
+      frame arrives — as a single delta covering the whole stall. Replaying it is
+      never right: that time was not seen, so it should be dropped rather than
+      fast-forwarded through.
+
+      Proportional to the frame budget rather than a fixed number, so it scales
+      with targetFps and can never throttle the intended pace. 1.5x leaves room
+      for ordinary jitter while cutting anything that is clearly a stall.
+    */
+    const maxFrameDeltaSeconds = minFrameSeconds * 1.5;
+
     const clock = new THREE.Clock();
     // Elapsed time banked since the last redraw. The uniform is advanced by this
     // whole amount rather than by one frame's worth, which is what keeps the
@@ -617,19 +639,48 @@ export function Beams({
 
     let raf = requestAnimationFrame(function tick() {
       raf = requestAnimationFrame(tick);
-      // Read the delta unconditionally so a paused stretch is discarded rather
-      // than arriving as one huge jump the moment the canvas comes back.
-      const delta = clock.getDelta();
+
+      /*
+        Clamped, and this is load-bearing.
+
+        This used to be a bare getDelta() on the reasoning that a paused stretch
+        would be discarded by the guard below — but that guard tests
+        document.hidden, and a backgrounded tab does not reliably report itself as
+        hidden. Measured: after five seconds in another tab, visibilityState stayed
+        "visible" the whole time and no visibilitychange fired, yet frames stopped.
+        So the full stall arrived as one delta, passed the guard, and was banked.
+
+        The result was a step of 0.536 against a normal 0.0045 — 118x — draining at
+        only one frame budget per redraw, so roughly 160 redraws of violent motion
+        before it settled. Clamping here is what makes stalled time inert.
+      */
+      const delta = Math.min(clock.getDelta(), maxFrameDeltaSeconds);
       if (lost || !onScreen || document.hidden) return;
 
       banked += delta;
       if (banked + FRAME_BUDGET_SLACK_SECONDS < minFrameSeconds) return;
 
-      material.uniforms.time.value += 0.1 * banked;
-      // Carry the overshoot instead of zeroing it. Discarding it throws away up
-      // to a frame's worth of budget every redraw, which is what dragged the
-      // measured rate below targetFps.
-      banked = Math.max(0, banked - minFrameSeconds);
+      /*
+        Advance by exactly the time being consumed, and remove exactly that much.
+
+        This previously advanced by the whole bank while subtracting only one frame
+        budget, so the surplus above a budget was advanced again on the next redraw
+        — and again after that. Measured, it ran the animation at 1.709x its
+        intended rate: 0.171 of uniform time per wall second against the 0.1 the
+        loop is written to produce.
+
+        That subtraction was added to stop the redraw rate undershooting targetFps,
+        but the real cause of the undershoot was an exact floating-point comparison,
+        which FRAME_BUDGET_SLACK_SECONDS above already fixes. Consuming the whole
+        bank costs nothing in cadence and makes the speed exact.
+
+        The remainder is clamped as well, so even if a large delta ever reaches this
+        point it cannot leave a residue that drips oversized steps into later
+        frames.
+      */
+      const consumed = Math.min(banked, maxFrameDeltaSeconds);
+      material.uniforms.time.value += 0.1 * consumed;
+      banked = Math.min(banked - consumed, maxFrameDeltaSeconds);
       renderer.render(scene, camera);
     });
 

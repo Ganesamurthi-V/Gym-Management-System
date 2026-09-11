@@ -72,17 +72,33 @@ const DESKTOP = {
  * The canvas paints an opaque rectangle, so its clear colour has to agree with
  * what the scrim paints over it or the two show as different shades.
  *
- * --beams-base, not --background: the field is deliberately blacker than the
- * page so the ribbons have near-black to read against. .hero-beams-scrim uses
- * the same token for its protected core, and the scrim's bottom stop is what
- * ramps this back up to --background where the layer meets the rest of the page.
- * Read rather than hardcoded so retuning the token moves both together.
+ * --beams-base, not --background: it is whatever the unlit field resolves to in
+ * each theme, which is black in dark mode and white in light. Those are set by the
+ * lighting model rather than chosen freely. Dark mode lights additively, so unlit
+ * means black; light mode runs the lightMode branch, where low energy maps to
+ * white.
+ *
+ * It shows less than it looks like it should. The twelve ribbons are built with
+ * zero spacing into one 24x24 slab that covers the frame at both breakpoints, so
+ * the clear colour is almost entirely painted over and what reads as the field is
+ * really the slab's own shading. It still has to agree, because the slab's corners
+ * can fall inside the frame once the vertex noise displaces them.
+ *
+ * The scrim paints --beams-scrim, which is a separate token. They match in dark
+ * mode and, since the field went white, in light mode too, but they are kept apart
+ * because they answer to different constraints: this one to the lighting model,
+ * that one to the contrast the copy needs. The scrim's bottom stop is what ramps
+ * the field back to --background where the layer meets the rest of the page. Read
+ * rather than hardcoded so retuning the token moves the canvas with it.
  */
-function readBeamsBase(): string {
+function readBeamsBase(isDark: boolean): string {
   const value = getComputedStyle(document.documentElement)
     .getPropertyValue('--beams-base')
     .trim();
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
+  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+  // Token missing or malformed. The fallback has to follow the theme too: a fixed
+  // black here would paint a black rectangle across the page in light mode.
+  return isDark ? '#000000' : '#ffffff';
 }
 
 interface NetworkInformation {
@@ -143,20 +159,247 @@ function useDeferredUntilIdle(enabled: boolean, timeoutMs: number): boolean {
 }
 
 /**
- * The Beams background, behind the hero, dark mode only. Runs on phones too.
+ * Per-theme material settings.
+ *
+ * The shader carries a lightMode branch that rewrites each fragment as
+ * mix(white, chroma, energy): unlit areas go white and lit areas take the
+ * surface's hue. That inverts the whole effect, which is what light mode needs —
+ * but it also changes what every other value should be.
+ *
+ * beamColor stops being a floor and becomes the hue. In dark mode black is
+ * correct because the gaps between ribbons are what draw their edges. Under
+ * lightMode the same black would normalise to a chroma of white and the ribbons
+ * would vanish into the page, so it has to carry colour instead.
+ *
+ * It does not have to be a pale colour, which an earlier version of this note
+ * claimed. The argument was that chroma normalises the surface to its brightest
+ * channel, so #2563eb yields a fully lit ribbon at 0.153 luminance, and that
+ * behind #6b6b6b body text would be 1.22:1. The figure is right and the
+ * conclusion does not follow: it assumes the field reaches the text. Every glyph
+ * in the hero sits at r <= 0.44 of the scrim ellipse, where coverage is at least
+ * 97%, so only about 3% of the field ever arrives. Measured, the saturated brand
+ * blue puts the worst glyph backdrop at rgb(249,250,255) and body text at 4.9:1.
+ * The scrim, not the field, is what text is read against.
+ *
+ * Noise still comes down in light mode. It is subtracted before the lightMode
+ * branch, so it lowers energy, and lower energy means whiter: the grain lightens
+ * rather than darkens and works against the ribbons instead of texturing them.
+ */
+const DARK_MATERIAL = {
+  lightMode: false,
+  beamColor: '#000000',
+  lightColor: '#ffffff',
+  noiseIntensity: 4,
+  // Additive path: the ambient floor is what colours unlit areas, so it stays at
+  // full. Only the lightMode branch needs it cut.
+  ambientIntensity: 1,
+  // Three fills at half the key. Needed here specifically because beamColor is
+  // black: with no diffuse term the only thing on screen is the specular lobe, and
+  // one light puts that lobe in a single screen corner.
+  fillLightRatio: 0.5,
+  // Inert here: both only apply inside the lightMode branch, which this theme does
+  // not enter. Present so the two materials share a shape, and set to the upstream
+  // values so they cannot change anything if that ever stops being true.
+  huePivot: 0,
+  hueGain: 0.98,
+  // Dark mode's contrast comes from the specular lobe, not from NdotL, so it does
+  // not need the steeper tilt light mode requires. These are the original values.
+  scale: 0.2,
+  speed: 3.4,
+  intensityScale: { desktop: 1, phone: 1 },
+} as const;
+
+/*
+  Light mode: a white field with the brand blue arriving as the waves.
+
+  This is the opposite tonal arrangement to dark mode, and it has to be, because
+  the lighting is additive. Specular highlights can only brighten what they land
+  on, so on a white field there is no way to render a wave that is darker than the
+  field it sits on. Painting blue onto white additively just clamps back to white.
+
+  So lightMode is true here. That branch remaps each finished fragment as
+  mix(white, chroma, t), where t is the fragment's energy put through huePivot and
+  hueGain: below the pivot it clamps to white, above it climbs to the hue. Field
+  reads white, the lit ribbon bodies read brand blue, and specular glints stay white
+  because a blown highlight has equal channels and so normalises to a white chroma.
+  That last part is what keeps the ribbons crisp instead of flattening them, and it
+  is the reason this branch can carry the look rather than merely inverting it.
+
+  ambientIntensity is cut hard, and its absence is why this branch looked washed out
+  on earlier attempts. energy is max(r, g, b), so a uniform ambient floor reads as
+  "fully lit" everywhere: at ambient 1 a blue with a 0.92 blue channel pins the mix
+  near its 0.94 ceiling across the whole frame, giving a flat saturated field with
+  the structure compressed out. At 0.05 the floor is low enough that the directional
+  lights are the only route to the hue.
+
+  beamColor is --accent, the brand blue from app/design-tokens.css, not a Tailwind
+  blue picked to look right. Under this branch it is a hue rather than a floor:
+  chroma divides out brightness, so only its ratios matter and it should be the
+  saturated brand value. It deliberately no longer tracks --beams-base, which is
+  white now because white is what unlit fragments become.
+
+  The values below were fitted by measurement, in this order: cut ambient and the
+  fill ratio so the lighting has somewhere dark to go, raise the key to put the level
+  back, then calibrate huePivot and hueGain against the resulting distribution. The
+  last step is the one that separates field from wave, and the first two only exist
+  to give it a distribution wide enough to cut. Each has a note of its own.
+*/
+const LIGHT_MATERIAL = {
+  lightMode: true,
+  beamColor: '#2563eb',
+  lightColor: '#ffffff',
+  /*
+    Off, for two reasons that both come from where it sits in the pipeline.
+
+    It is subtracted from rgb before the lightMode branch, so it perturbs energy and
+    the gain then multiplies the result. At 0.6 it moves a channel by up to 0.04,
+    against a pivot fitted to 0.01 precision, so it is a large disturbance on the
+    quantity the whole mapping is calibrated against. Its mean matters as much as its
+    spread: turning it off shifted every energy percentile up by about 0.02.
+
+    It also cannot texture the part of the frame that most needs it. Over half the
+    field clamps to pure white, and there t is already 0, so lowering energy further
+    changes nothing at all.
+
+    So the grain comes from .hero-beams-grain instead: a CSS layer at full device
+    resolution, composited after the canvas, unamplified by the gain and effective on
+    white. See its blend mode note in index.css, which has to be multiply for exactly
+    the reason above.
+  */
+  noiseIntensity: 0,
+  /*
+    Fitted to the measured energy distribution on the raw canvas.
+
+    Calibrate by setting pivot 0 and gain 1, which makes t equal energy so the
+    rendered B-R reports the distribution directly, and capture with .hero-mesh,
+    .hero-beams-grain and .hero-beams-scrim hidden. All three have to go: the mesh
+    paints accent-tinted blue above the beams, the scrim whitens toward the copy and
+    the grain perturbs R, so a composited screenshot is not a function of t alone.
+    Fitting against one of those was what produced two wrong values before this.
+
+    Measured that way, pooled over three animation phases:
+
+      p05 0.312   p25 0.356   p50 0.382   p75 0.439   p95 0.575   max 0.593
+
+    The pivot sits just above the median, so more than half the frame clamps to pure
+    white and reads as field. The gain then carries p95 to 0.77, near saturation, so
+    the top of the distribution is unmistakably brand blue:
+
+      p05 -> 0 (white)   p50 -> 0 (white)   p75 -> 0.17 (pale)   p95 -> 0.77
+
+    Positive, so the hue lands on the lit ribbons rather than in the gaps. That is
+    the arrangement the design wants: the waves are the lit bands, and because
+    specular blows to a white chroma, each one carries a white sheen along its crest
+    where the highlight lands. White field, blue waves, white glints on the waves.
+
+    Both values are positions in a distribution about 0.26 wide, so recalibrate if
+    the lighting, scale or noiseIntensity move. noiseIntensity especially: it
+    subtracts before this branch, and turning it off shifted every percentile up by
+    around 0.02, which was enough on its own to take the field from blue to blank.
+  */
+  huePivot: 0.4,
+  hueGain: 4.4,
+  /*
+    Higher than dark mode's 0.2, which sets how many waves cross the frame rather
+    than how strong they are.
+
+    The noise wavelength is about 1/scale in world units, so against a frame roughly
+    14 units across, 0.2 gives around three bands and 0.55 gives eight or so. With
+    the hue keyed to a slice of the lighting range, each band is a distinct blue
+    wave, and eight reads as waves where three reads as a gradient.
+
+    It also steepens the normals, which widens the lighting range the pivot and gain
+    have to work with, though far less than the wave count matters.
+
+    Dark mode keeps 0.2: its ribbons come from the specular lobe, so its structure
+    does not depend on this at all.
+  */
+  scale: 0.55,
+  /*
+    Down from dark mode's 3.4, and it is a compensation rather than a preference.
+
+    scale multiplies the whole noise coordinate including the time term, which reads
+    vec3(..., pos.z + time * uSpeed * 3.) * uScale, so the animation rate is the
+    product of the two. 0.55 * 1.25 is 0.6875 against dark mode's 0.2 * 3.4 = 0.68:
+    the same apparent speed. Left at 3.4 the waves would travel nearly three times
+    faster in light mode than dark for no reason other than the scale change.
+  */
+  speed: 1.25,
+  /*
+    Near zero, because under this branch ambient is a floor on saturation rather
+    than on brightness.
+
+    energy is max(r, g, b), and ambient is uniform, so every unit of it raises the
+    mix factor everywhere at once. At 0.18 the whole field measured B-R 71 of a
+    possible 228, a flat light blue with the waves swinging only 0.25 to 0.41. The
+    field cannot be white while ambient is holding it off white.
+  */
+  ambientIntensity: 0.05,
+  /*
+    Far below dark mode's 0.5, and this is what turns a flat blue field into waves.
+
+    All four lights sit at z=+10 and the slab faces the camera, so each one lands
+    NdotL near 0.958 on a flat fragment and the three fills together outweigh the
+    key. That is a broad, nearly uniform contribution: it raises the floor
+    everywhere instead of picking out geometry, which is why the measured field
+    varied by so little. Dark mode wants exactly that, because with a black diffuse
+    the fills are the only thing lighting the far corners at all.
+
+    Dropping them to 0.18 lets the key light dominate, so NdotL variation from the
+    warped normals actually reaches the output and the troughs can fall back to
+    white.
+  */
+  fillLightRatio: 0.18,
+  /*
+    Raised well past the first attempt's 0.28, which is a consequence of the two
+    values above rather than an independent choice.
+
+    Cutting ambient and the fills lowered the whole field, not just its troughs, so
+    the crests need the level put back or the waves come out pale everywhere. This
+    restores it through the one term that still varies across the frame, the key
+    light, which is the difference between raising contrast and raising brightness.
+
+    It stays well under dark mode's because the diffuse term saturates. metalness
+    0.3 puts the diffuse blue channel at 0.645, so the mix reaches its 0.94 ceiling
+    at a light level dark mode would consider dim, and past that the frame goes flat
+    saturated blue: the same failure as high ambient, by a different route.
+
+    Phone is 0.5 against its 1.5 base, landing at 0.75 absolute, close to desktop on
+    purpose. That 1.5 exists to compensate a cramped portrait frame under additive
+    lighting and has no equivalent job here.
+  */
+  intensityScale: { desktop: 0.7, phone: 0.5 },
+} as const;
+
+/**
+ * Specular roughness, shared by both themes.
+ *
+ * The single sharpness control: it sets how wide the highlight lobe is, and a
+ * narrower lobe means brightness falls off over a shorter distance, which is what
+ * reads as a defined edge. 0.22 rather than the 0.3 this ran on before.
+ *
+ * There is a floor to how far this can usefully go. Tightening the lobe also
+ * shrinks the area each light reaches, which is what concentrated everything into
+ * one corner before there were four of them — past roughly 0.15 the frame starts
+ * breaking into isolated bright patches with dead space between.
+ */
+const ROUGHNESS = 0.22;
+
+/**
+ * The Beams background, behind the hero, in both themes. Runs on phones too.
  *
  * Gates, each for its own reason:
- *  - light mode: the effect is lit ribbons on near-black. On #f5f5f5 there is
- *    nothing for them to glow against, so the CSS mesh stays the light-mode
- *    treatment.
  *  - reduced motion: it is continuous movement with no user control, which is
  *    exactly what that preference is asking not to see.
  *  - Data Saver or 2g: see connectionAllowsDecoration.
  *
- * Width is no longer a gate. It used to be, on the grounds that a full-width
- * WebGL canvas is the wrong trade on a phone — that concern is now answered by
- * spending less rather than by not showing up: a smaller layer, a pixel ratio
- * near 1 instead of the device's 2-3, 20fps instead of 30, and the whole thing
+ * Neither theme nor width gates it any more. Light mode used to, on the grounds
+ * that lit ribbons need near-black to glow against — true of the dark treatment,
+ * but the shader's lightMode branch inverts the tonality so the same geometry
+ * reads as pale ribbons on white instead. Width used to, on the grounds that a
+ * full-width WebGL canvas is the wrong trade on a phone — answered by spending
+ * less rather than by not showing up: a smaller layer, a pixel ratio near 1
+ * instead of the device's 2-3, a lower redraw ceiling, and the whole thing
  * deferred to idle so it is never on the critical path.
  */
 export function HeroBeams() {
@@ -168,12 +411,17 @@ export function HeroBeams() {
   // identity on every paint.
   const connectionOk = useMemo(() => connectionAllowsDecoration(), []);
 
-  const wanted = isDark && !reducedMotion && connectionOk;
+  const wanted = !reducedMotion && connectionOk;
   const ready = useDeferredUntilIdle(wanted, 2500);
   const active = wanted && ready;
 
   const settings = isPhone ? PHONE : DESKTOP;
-  const background = useMemo(() => (active ? readBeamsBase() : '#000000'), [active]);
+  const material = isDark ? DARK_MATERIAL : LIGHT_MATERIAL;
+
+  // Re-read on theme change, not just on mount: --beams-base inverts between
+  // themes, so a toggle that kept the old floor would show the canvas as a block
+  // against the page.
+  const background = useMemo(() => readBeamsBase(isDark), [isDark]);
 
   if (!active) return null;
 
@@ -199,70 +447,100 @@ export function HeroBeams() {
             */
             beamHeight={24}
             /*
-              Brand blue rather than the snippet's white, so the ribbons read as
-              lit by the same blue the rest of the page uses instead of as a
-              neutral grey effect dropped behind it. Swap to '#ffffff' for the
-              stock look.
-
-              blue-200 rather than the blue-300 this started on: noiseIntensity 5
-              subtracts up to a third of each fragment's brightness, and against
-              near-black the darker blue left the ribbons barely separable from the
-              page. The scrim knocks this back by ~80% over the copy, so the extra
-              brightness lands in open area and not behind the text.
+              White in both themes, and for the same reason in both: the specular
+              highlight is the beam, and white gives it the most luminance range to
+              travel. The hue comes from the field underneath, never from the light.
             */
+            lightColor={material.lightColor}
             /*
-              White, like the reference, not the brand blue this ran on for a while.
-              Ribbon definition comes from luminance range, and white simply has
-              more of it to give against black than blue-200 does. The brand tint is
-              still present in the layer — the hero mesh sits above these — so
-              tinting the light as well was double-counting it and costing contrast.
-            */
-            lightColor="#ffffff"
-            /*
-              Back to pure black, and this is what makes them read as ribbons rather
-              than as a gradient.
+              Means two different things depending on lightMode, which is why it is
+              the value that differs between themes.
 
-              A non-black diffuse term lights the surface evenly, which is genuinely
-              better for coverage — it was how the corner imbalance got fixed. But
-              it also lifts the gaps between ribbons off black, and those gaps are
-              the edges. Once every pixel has a floor, adjacent ribbons at slightly
-              different angles differ by slightly different amounts of light, and the
-              boundaries stop being boundaries. The result was evenly lit and
-              shapeless: a shader background, exactly as described.
+              Dark mode, additive: it is the floor the ribbons sit on, and black is
+              right because it has to equal the canvas clear colour so an unlit
+              ribbon disappears into the field and only the lit part is a shape. It
+              must not be lifted off the field to improve coverage. Doing that once
+              did fix a corner imbalance, but it also put a floor under every pixel,
+              so adjacent ribbons differed by only slightly different amounts of
+              light and the boundaries stopped being boundaries. That is what made
+              it read as a shader wash rather than as beams.
 
-              With black there is no floor, so a small change in surface normal is
-              the difference between lit and not — which is what draws a crisp edge.
-              Coverage is instead handled by the mirrored fill light in Beams.tsx,
-              which does not cost contrast because it adds a second highlight rather
-              than a global lift.
+              Light mode, lightMode branch: it is the hue, not a floor. chroma
+              divides brightness out, so only the ratios between channels matter and
+              this should be the saturated brand blue. Unlit fragments go white on
+              their own, so it does not track the clear colour here.
             */
-            beamColor="#000000"
+            beamColor={material.beamColor}
+            lightMode={material.lightMode}
             /*
-              Back to a tight lobe. 0.72 spread the highlight so wide that its
-              falloff became the dominant gradient on screen, washing the ribbons
-              out. 0.3 keeps the specular sharp, so brightness tracks the ribbon
-              geometry instead of the distance from a light.
+              Cut hard in light mode. Ambient is uniform, and the lightMode branch
+              keys off max(r, g, b), so a full ambient floor reads as fully lit
+              across the entire frame and flattens the ribbons into a solid colour.
+              See the prop's own note in Beams.tsx.
             */
-            roughness={0.3}
-            speed={3.4}
+            ambientIntensity={material.ambientIntensity}
             /*
-              Down from 5. The shader only ever subtracts grain
-              (rgb -= noise / 15 * intensity), so at 5 the ceiling was a 0.33
-              subtraction — enough to crush the mid-tones along a ribbon's gradient
-              into black speckle and cost the smooth falloff the reference has.
+              Also cut hard in light mode, and for the same underlying reason: the
+              fills are broad and nearly uniform, so under the lightMode branch they
+              raise saturation everywhere rather than picking out the ribbons. Dark
+              mode needs them because a black diffuse leaves specular as the only
+              light in the frame.
+            */
+            fillLightRatio={material.fillLightRatio}
+            /*
+              The pair that decides where white ends and the hue begins. Only active
+              under lightMode; dark mode passes the upstream values and never reaches
+              the branch that reads them.
+            */
+            huePivot={material.huePivot}
+            hueGain={material.hueGain}
+            roughness={ROUGHNESS}
+            /*
+              Per-theme only because scale is. The shader multiplies the two together
+              to advance the noise, so changing one without the other changes how
+              fast the waves travel. See the note on LIGHT_MATERIAL.speed.
+            */
+            speed={material.speed}
+            /*
+              Lower in light mode, because the shader only ever subtracts grain
+              (rgb -= noise / 15 * intensity) and the two themes read that
+              subtraction in opposite directions.
 
-              Lowering it does not cost visible grain, because the grain that reads
-              on screen is .hero-beams-grain, an additive CSS layer at full device
-              resolution. This value only ever dithered the lit ribbons.
+              Dark mode: subtracting darkens, which speckles the black field and the
+              white highlights, so it can run high at 4.
+
+              Light mode: the subtraction happens before the lightMode branch, so it
+              lowers energy, and lower energy means whiter. Grain lightens there. At
+              4 it washed the blue back out of the waves, hence 1.5.
+
+              Most visible grain comes from .hero-beams-grain either way, a CSS layer
+              at full device resolution that none of this touches. This value only
+              dithers the ribbons themselves.
             */
-            noiseIntensity={3}
-            scale={0.2}
+            noiseIntensity={material.noiseIntensity}
+            /*
+              Noise frequency, and in light mode it is the control on lighting
+              contrast rather than on texture. Steeper displacement means more normal
+              tilt, which is the only thing that makes NdotL vary across a slab this
+              flat. See the note on LIGHT_MATERIAL.scale.
+            */
+            scale={material.scale}
             rotation={45}
             backgroundColor={background}
             maxPixelRatio={settings.maxPixelRatio}
             targetFps={settings.targetFps}
             fov={settings.fov}
-            lightIntensity={settings.lightIntensity}
+            /*
+              Breakpoint sets the level; the per-theme scale is 1 in both now that
+              light mode runs dark mode's treatment. It stays a per-theme value
+              rather than being folded away because the phone carries a 1.5x boost
+              for its cramped portrait frame, and if the themes ever diverge again
+              that boost is the first thing that needs to differ between them.
+            */
+            lightIntensity={
+              settings.lightIntensity *
+              (isPhone ? material.intensityScale.phone : material.intensityScale.desktop)
+            }
           />
         </Suspense>
       </div>

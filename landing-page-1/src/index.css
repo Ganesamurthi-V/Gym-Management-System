@@ -61,6 +61,38 @@
      hero mesh a second note; nothing else on the page reaches for it. */
   --accent-2: #06b6d4;
 
+  /* ── Beams field and scrim ──────────────────────────────────────────────────
+     Two tokens, because light mode needs them to differ and dark mode does not.
+
+     --beams-base is the field the ribbons live on: the canvas clear colour. White
+     here, black in .dark, and neither is a free choice. Each is whatever an unlit
+     fragment resolves to under that theme's lighting. Dark mode lights additively
+     from a black diffuse, so unlit is black. Light mode runs the shader's lightMode
+     branch, which remaps each fragment as mix(white, chroma, energy), so unlit is
+     white and the brand blue arrives only where the lights reach.
+
+     Light mode has to work that way round. The lighting is additive, so a highlight
+     can only brighten what it lands on, and on a white field there is no way to
+     draw a wave darker than the field it sits on. White field with blue waves is
+     reachable only by remapping tone, not by adding light.
+
+     --beams-scrim is what the protective gradient paints. Both themes now set it to
+     the same value as the field, so in both the scrim is invisible as colour and
+     only ever suppresses ribbons. They stay separate tokens because they answer to
+     different constraints: the field to the lighting model, the scrim to the
+     contrast the copy needs. If the field is ever retinted, the scrim must not
+     follow it. --muted-foreground is #6b6b6b and needs a backdrop at 0.837
+     luminance to clear 4.5:1, which only white delivers.
+
+     The brand blue is used at full saturation, #2563eb, and it looks like that
+     should cost legibility. It does not. Every glyph in the hero sits at r <= 0.44
+     of the scrim ellipse, where coverage is at least 97%, so only about 3% of the
+     field ever reaches text. Measured, the worst glyph backdrop is rgb(249,250,255)
+     and body text is 4.9:1. The field is free to be as saturated as the design
+     wants, because the scrim, not the field, is what text is read against. */
+  --beams-base: #ffffff;
+  --beams-scrim: #ffffff;
+
   --card-primary: #1d4ed8;
   --card-secondary: #dbeafe;
   --card-foreground: #171717;
@@ -210,8 +242,12 @@
      Pure black, matching the reference. This was #050505 for a while, on the
      reasoning that a little lift kept the ribbons' darkest falloff from clipping
      flat — but that lift applies to the gaps between ribbons too, and those gaps
-     are what make the edges read. Black gaps are the whole basis of the contrast. */
+     are what make the edges read. Black gaps are the whole basis of the contrast.
+
+     The scrim shares the field colour here, which is why dark mode has no visible
+     vignette: painting black over black changes nothing but ribbon strength. */
   --beams-base: #000000;
+  --beams-scrim: #000000;
 
   /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
      keeps the inward bleed tinting the card instead of covering it, and
@@ -506,7 +542,7 @@ body {
   opacity: 0.5;
 }
 
-/* ── Beams backdrop (dark mode) ───────────────────────────────────────────────
+/* ── Beams backdrop ───────────────────────────────────────────────────────────
    HeroBeams renders both of these ahead of .hero-mesh in the section, so the
    sibling selector below is also the switch: no beams in the DOM means the mesh
    keeps its full strength, and nothing has to thread a flag through props to say
@@ -521,6 +557,34 @@ body {
 }
 
 .hero-beams-scrim {
+  /* How opaque the protective core and the band outside it are. Split out as
+     variables because the right strength depends on two things at once — theme and
+     breakpoint — while the geometry below depends only on breakpoint. Four
+     combinations in one gradient, without four copies of the gradient.
+
+     These are the dark desktop values. Every override is measured, not nudged:
+     see the light-mode block and the phone block for what each is answering.
+
+     The stop positions are variables too, not just the strengths, because light
+     mode needs a different falloff shape rather than a different level. Dark mode
+     can protect the copy gently and let the gradient trail off slowly; light mode
+     has to hold the copy area almost solid and then get out of the way fast, or
+     the ribbons never appear anywhere. */
+  /* Opacity at the very centre. Full here; the phone lowers it deliberately, and
+     that stop is a variable because it turned out to be the real ceiling on light
+     mode's contrast — --scrim-core cannot raise coverage above whatever this is. */
+  --scrim-peak: 100%;
+  --scrim-core: 92%;
+  --scrim-mid: 60%;
+  --scrim-mid-at: 70%;
+  /* A fourth stop purely to shape the shoulder. Going straight from the mid value
+     to transparent over a short span puts a visible elliptical halo around the
+     copy — the gradient stops being a gradient and starts being an edge. This
+     splits that span so the ramp reads as falloff instead of as a shape. */
+  --scrim-tail: 25%;
+  --scrim-tail-at: 80%;
+  --scrim-end-at: 92%;
+
   background:
     /* Behind the copy: hold the page colour so muted body text keeps its ratio
        whatever the ribbons are doing underneath.
@@ -546,10 +610,11 @@ body {
        nothing by y=460 and left the subhead unprotected at 3.83:1. */
     radial-gradient(
       1080px 54% at 50% 35%,
-      var(--beams-base) 0%,
-      color-mix(in srgb, var(--beams-base) 92%, transparent) 46%,
-      color-mix(in srgb, var(--beams-base) 60%, transparent) 70%,
-      transparent 90%
+      color-mix(in srgb, var(--beams-scrim) var(--scrim-peak), transparent) 0%,
+      color-mix(in srgb, var(--beams-scrim) var(--scrim-core), transparent) 46%,
+      color-mix(in srgb, var(--beams-scrim) var(--scrim-mid), transparent) var(--scrim-mid-at),
+      color-mix(in srgb, var(--beams-scrim) var(--scrim-tail), transparent) var(--scrim-tail-at),
+      transparent var(--scrim-end-at)
     ),
     /* Bottom fade. The canvas is opaque, so without this its lower edge is a
        straight line across the page. Held off until 68% (734px) so the ribbons
@@ -565,6 +630,54 @@ body {
     );
 }
 
+/* Light mode needs a stronger scrim than dark, which is the opposite of what the
+   visuals suggest and comes straight off the tokens.
+
+   Dark body text is #a3a3a3 on a near-black field: 12.6:1 before the beams touch
+   it, so there is a lot to give away. Light body text is #6b6b6b, which measures
+   4.88:1 on #f5f5f5 and 5.32:1 on white — under a single point of margin over the
+   4.5 floor. It also fails in the opposite direction: a mid-grey loses contrast as
+   the backdrop darkens toward it, so pale blue ribbons behind the copy eat the
+   margin from below rather than from above.
+
+   At the dark values light mode measured 4.49:1 at 1440 — a fail — with 4.57 and
+   4.72 at the other widths, all three riding the line.
+
+   The answer is a steeper gradient rather than a stronger one. A high core with
+   dark mode's slow trail-off protected the text and then went on suppressing the
+   ribbons across the whole margin as well, which is why light mode looked empty
+   while dark looked right. Holding 96/88 out to the copy's far corner — which sits
+   at r=0.60 at 1440 — and then clearing to nothing by 0.78 instead of 0.90 keeps
+   the same protection over the text and hands the margins back to the ribbons. */
+html:not(.dark) .hero-beams-scrim {
+  /* 98, not 96. This was raised while the field was a solid blue tint, which had
+     pulled the ceiling the copy sits against down from 5.32:1 to 5.00:1 before a
+     single ribbon was drawn, so the margin had to come from the core instead.
+
+     The field is white again, so that pressure is gone and 96 would now clear AA on
+     its own. Left at 98 because it is free: the core sits over the copy, where the
+     ribbons are suppressed at either value, so lowering it would hand back contrast
+     margin without making anything more visible. */
+  --scrim-core: 98%;
+  --scrim-mid: 88%;
+  /* The falloff stops, pulled well inside dark mode's, and they are what decides
+     whether the field reads as blue at all.
+
+     Dark mode's scrim is black on black, so how far it reaches costs nothing but
+     ribbon strength. Light mode's is white on blue, so every percent it reaches is
+     a percent of the field turned pale. At 62/70/84 the blue only survived in the
+     far corners and the hero came out grey-blue rather than blue.
+
+     The outermost glyph sits at r=0.51, measured, so 56% keeps it inside the
+     core-to-mid band at roughly 93% coverage while handing everything past r=0.72
+     back to the field. Still a tail stop rather than a cliff — cutting straight to
+     transparent drew a visible white oval around the headline. */
+  --scrim-mid-at: 56%;
+  --scrim-tail: 45%;
+  --scrim-tail-at: 64%;
+  --scrim-end-at: 76%;
+}
+
 /* Static monochrome dither over the beams field.
    feTurbulence rasterised once by the UA and tiled — no canvas, no second frame
    loop, nothing per-frame. Film grain has no reason to move, and animating a
@@ -578,9 +691,45 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 180px 180px;
-  opacity: 0.28;
+  /* Up from 0.28. This is the grain that actually reads on screen, so it is the
+     right place to add texture — the shader's own noise only dithers lit ribbons.
+
+     It does cost a little edge definition: the dither lifts the black between
+     ribbons, and that black is what their edges are measured against. Grain is
+     per-pixel while the edges are broad, so the eye separates them, but the trade
+     is real and this is why it is not higher. */
+  opacity: 0.38;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
+}
+
+/* Multiply in light mode, because it is the only blend that does anything on white.
+
+   This is the one grain the light field gets. The shader's own noiseIntensity is 0
+   there, since it perturbs the quantity the hue mapping is calibrated against and,
+   more to the point, cannot touch the clamped-white majority of the frame at all.
+
+   Overlay was used here while the field was a solid blue tint, and it was the right
+   choice then: zero mean, so it added variation without lifting the base toward
+   grey. It stopped working when the field went white. Overlay returns the base
+   unchanged wherever the base is 1.0, and more than half of this field is now pure
+   white by design, so it went inert across exactly the area that most needed
+   texture. Measured, the open field came back at mean rgb(255,255,255) with no
+   variation at all.
+
+   Multiply is pure darkening, base times blend, which is precisely why it still
+   works on white. The cost is that it is not zero mean: at 0.18 the mean grain of
+   0.5 takes white down to about 232, so the field reads as very light grey rather
+   than paper white, and the speckle runs roughly 209 to 255. That trade is worth
+   taking, since an untextured white field was the thing being fixed.
+
+   Safe for contrast because the scrim paints over the grain, not under it: same
+   -z-20, but later in the DOM. Over the copy the scrim is at 92 to 98%, so the
+   darkening is suppressed to a couple of percent of its magnitude there, which is
+   what keeps a blend that only darkens from eating into the body text ratio. */
+html:not(.dark) .hero-beams-grain {
+  mix-blend-mode: multiply;
+  opacity: 0.18;
 }
 
 /* The canvas mounts on idle rather than with the hero, so without this it would
@@ -624,21 +773,28 @@ body {
    under 4.5:1. */
 @media (max-width: 767px) {
   .hero-beams-scrim {
-    background:
-      /* Weaker than desktop's 92/60 on purpose. A 1080px radius on a 375px
-         screen is effectively a full-width slab, so unlike desktop there is no
-         horizontal falloff for the ribbons to show through — at 92% the field was
-         smothered end to end and the effect was invisible rather than subtle.
+    /* Weaker than desktop's 92/60 on purpose. A 1080px radius on a 375px screen is
+       effectively a full-width slab, so unlike desktop there is no horizontal
+       falloff for the ribbons to show through — at 92% the field was smothered end
+       to end and the effect was invisible rather than subtle.
 
-         The slack to do this was measured: body text sat at 7.45:1 against a 4.5
-         floor here, roughly a sixfold luminance margin. 80/45 spends part of it
-         and is re-measured below, not assumed. */
+       The slack to do this was measured: dark body text sat at 7.45:1 against a 4.5
+       floor here, roughly a sixfold luminance margin. */
+    --scrim-peak: 88%;
+    --scrim-core: 80%;
+    --scrim-mid: 45%;
+    --scrim-tail: 18%;
+    --scrim-tail-at: 80%;
+    --scrim-end-at: 92%;
+
+    background:
       radial-gradient(
         1080px 62% at 50% 39%,
-        color-mix(in srgb, var(--beams-base) 88%, transparent) 0%,
-        color-mix(in srgb, var(--beams-base) 80%, transparent) 46%,
-        color-mix(in srgb, var(--beams-base) 45%, transparent) 70%,
-        transparent 90%
+        color-mix(in srgb, var(--beams-scrim) var(--scrim-peak), transparent) 0%,
+        color-mix(in srgb, var(--beams-scrim) var(--scrim-core), transparent) 46%,
+        color-mix(in srgb, var(--beams-scrim) var(--scrim-mid), transparent) var(--scrim-mid-at),
+        color-mix(in srgb, var(--beams-scrim) var(--scrim-tail), transparent) var(--scrim-tail-at),
+        transparent var(--scrim-end-at)
       ),
       linear-gradient(
         to bottom,
@@ -647,6 +803,41 @@ body {
         color-mix(in srgb, var(--background) 60%, transparent) 86%,
         var(--background) 100%
       );
+  }
+
+  /* Same reasoning as the desktop light override, at the phone's weaker level:
+     lifted proportionally rather than to the desktop numbers, because the phone
+     geometry is deliberately looser so the ribbons survive a layer where the copy
+     covers nearly everything. */
+  html:not(.dark) .hero-beams-scrim {
+    /* Measured: at 92 the subhead came out at 4.44:1, and the offending pixel sat
+       at r=0.16 — well inside the core, so nothing about the falloff could reach
+       it. The phone needs the same near-solid core as the desktop for the same
+       reason: the tinted field left too little between it and the 4.5 floor.
+
+       --scrim-peak matters more than --scrim-core did. The phone gradient opens at
+       88% for dark mode, and since coverage only falls from there, no core value
+       could lift the centre above it — the subhead measured 4.48:1 with the
+       offending pixel at r=0.05, essentially dead centre.
+
+       The falloff below is pulled in hard, and that is the fix for the phone
+       looking washed out while the desktop looked right. Measured in the open
+       bands, the phone field read dim 0.883 — near-white, so barely any ribbon
+       was reaching the screen. Cause: the ellipse is 1080px wide against a 390px
+       viewport, so its horizontal term contributes almost nothing and it acts as
+       a full-width horizontal band. With the old stops that band still covered
+       64-95% at the top strip, which is the only open field a phone has.
+
+       Every glyph sits at r <= 0.44 (worst corner: the badge's outer edge), so
+       the core at 46% clears the copy entirely and everything past it is free to
+       fall away fast. */
+    --scrim-peak: 100%;
+    --scrim-core: 97%;
+    --scrim-mid: 70%;
+    --scrim-mid-at: 50%;
+    --scrim-tail: 20%;
+    --scrim-tail-at: 58%;
+    --scrim-end-at: 68%;
   }
 }
 

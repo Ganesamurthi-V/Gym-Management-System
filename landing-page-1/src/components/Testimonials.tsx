@@ -22,7 +22,7 @@ const TESTIMONIALS = [
   },
   {
     quote:
-      'Imported 300 members from Excel in 10 minutes. GymFlow fixed all the messy area names automatically.',
+      'Imported 300 members from Excel in 10 minutes. It matched my columns straight away and let me check everything before saving.',
     author: 'Murugan T.',
     role: 'Owner',
     gym: 'Strength Lab',

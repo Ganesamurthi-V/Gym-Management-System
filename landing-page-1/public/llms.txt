@@ -29,8 +29,9 @@ Last updated: 2026-09-07
 - Member management — add, edit and search member records and plans.
 - Payments & dues — record cash, UPI or card payments, and see what is pending.
 - Attendance tracking — mark attendance in one tap and review any member's history.
-- Smart area detection — normalises inconsistent locality names on import.
-- Reports & analytics — monthly revenue, plan distribution, area spread, PDF reports.
+- Member app & workouts — members get their own app; see the Member app section below.
+- Reports & analytics — monthly revenue, plan distribution, joining and expiry
+  trends, downloadable PDF reports.
 - Unlimited WhatsApp reminders — welcome messages, renewal reminders, payment due alerts.
 - CSV / Excel import & export.
 - Priority support.
@@ -55,12 +56,13 @@ screen, so there is no app store download.
 1. **Sign up and onboard.** A six-step wizard collects the gym name, membership
    plans, pricing and WhatsApp details. It autosaves, so it can be left and
    resumed.
-2. **Import existing members.** Upload a CSV or Excel sheet. GymFlow detects the
-   columns, normalises area names, and flags rows that need review.
+2. **Import existing members.** Upload a CSV or Excel sheet. GymFlow matches the
+   column headings to its own fields and shows a preview first, so anything odd
+   can be corrected before records are saved.
 3. **Run the day to day.** Mark attendance, record payments, send WhatsApp
    reminders for dues.
-4. **Analyse and grow.** Revenue charts, plan distribution, area spread and PDF
-   reports.
+4. **Analyse and grow.** Revenue charts, plan distribution, joining and expiry
+   trends, downloadable PDF reports.
 
 No installation, no IT team and no consultant are required.
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 
 const APP_URL = 'https://app.gymflow.sbs';
@@ -25,7 +25,7 @@ const FAQS = [
   },
   {
     q: 'Can I move my existing members from Excel?',
-    a: 'Upload your CSV or Excel file and GymFlow auto-detects the columns, normalises area names, and flags any rows that need review. Most gyms finish a few hundred members in under 15 minutes.',
+    a: 'Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm, and most gyms finish a few hundred members in under 15 minutes.',
   },
   {
     q: "Is my gym's data safe?",
@@ -38,30 +38,41 @@ const FAQS = [
 ] as const;
 
 export function FAQ() {
-  const scope = useReveal<HTMLElement>({ stagger: 0.06 });
-  // First item open, matching the template — it also proves the rows expand.
+  /*
+    Two scopes rather than one on the section, because the header and the list want
+    different reveal behaviour.
+
+    The header is a group that arrives together, so it keeps the default: one
+    trigger for the scope, targets staggered. The list is tall enough that a single
+    trigger would fire while the lower cards were still well below the fold, so
+    those would animate unseen and sit at rest by the time they were reached.
+    perElement gives each card its own trigger, which is how the reference site
+    behaves: measured there, cards four and five held at opacity 0 until scrolled
+    to, while the first three had already resolved.
+  */
+  const headerScope = useReveal<HTMLDivElement>({ stagger: 0.08 });
+  const listScope = useReveal<HTMLUListElement>({ perElement: true, start: 'top 90%' });
+
+  // First item open, matching the reference — it also proves the rows expand.
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section
-      id="faq"
-      ref={scope}
-      aria-labelledby="faq-title"
-      className="px-5 py-24 md:px-8 md:py-28"
-    >
-      <div className="mx-auto grid max-w-[1240px] gap-12 lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-20">
-        {/* ── Intro ─────────────────────────────────────────────────────── */}
-        <div className="lg:sticky lg:top-28 lg:self-start">
+    <section id="faq" aria-labelledby="faq-title" className="px-5 py-24 md:px-8 md:py-28">
+      {/* Narrow and centred, where this used to be a 1240px two-column split with a
+          sticky intro. A single column keeps question and answer on one measure and
+          puts the header above the content it introduces. */}
+      <div className="mx-auto max-w-[820px]">
+        {/* ── Header ────────────────────────────────────────────────────── */}
+        <div ref={headerScope} className="text-center">
           <span className="reveal eyebrow">Frequently asked questions</span>
           <h2 id="faq-title" className="reveal display-2 mt-4 text-balance">
-            Everything you
-            <br />
-            <span className="text-muted-foreground">need to know.</span>
+            Everything you <span className="text-muted-foreground">need to know.</span>
           </h2>
-          <p className="reveal lead mt-5 max-w-[340px]">
-            Still unsure about something? Ask us directly and we will walk you through it.
+          <p className="reveal lead mx-auto mt-5 max-w-[520px]">
+            Still unsure about something? Ask us directly and we will walk you through
+            it.
           </p>
-          <div className="reveal mt-8 flex flex-wrap gap-3">
+          <div className="reveal mt-8 flex flex-wrap items-center justify-center gap-3">
             <a href={APP_URL} className="btn btn-primary">
               Start free trial
             </a>
@@ -72,39 +83,53 @@ export function FAQ() {
         </div>
 
         {/* ── Accordion ─────────────────────────────────────────────────── */}
-        <ul className="flex flex-col">
+        {/* Separate cards with a gap, not rows divided by hairlines. gap-3 matches
+            the reference; the card itself is the project's own .card, so the radius,
+            surface and border come from the design system rather than being
+            restated here. */}
+        <ul ref={listScope} className="mt-14 flex flex-col gap-3">
           {FAQS.map((item, index) => {
             const expanded = open === index;
             const panelId = `faq-panel-${index}`;
             const buttonId = `faq-button-${index}`;
 
             return (
-              <li key={item.q} className="reveal border-t border-border-subtle last:border-b">
+              <li
+                key={item.q}
+                className="reveal card transition-colors hover:border-border-strong"
+              >
                 <h3>
+                  {/*
+                    A real button inside the heading, keeping aria-expanded and
+                    aria-controls. The reference puts role="button" tabindex="0" on the
+                    card div instead, which gives up the native Enter and Space
+                    handling and the implicit role for no visual gain. The padding
+                    lives on the button rather than the card so the whole top of the
+                    card is the hit area, which is what makes it feel like the card is
+                    the control.
+                  */}
                   <button
                     type="button"
                     id={buttonId}
                     aria-expanded={expanded}
                     aria-controls={panelId}
                     onClick={() => setOpen(expanded ? null : index)}
-                    className="flex w-full items-start justify-between gap-6 py-6 text-left"
+                    className="flex w-full items-center justify-between gap-4 p-5 text-left sm:p-6"
                   >
-                    <span
-                      className={`text-[16.5px] font-medium tracking-tight transition-colors ${
-                        expanded ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
+                    <span className="text-[15.5px] font-medium tracking-tight text-foreground sm:text-[16.5px]">
                       {item.q}
                     </span>
-                    <span
-                      className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border transition-all duration-300 ${
-                        expanded
-                          ? 'rotate-45 border-accent bg-accent text-accent-ink'
-                          : 'border-border-subtle text-muted-foreground'
+                    {/*
+                      Chevron rotating a half turn, where this used to be a plus
+                      rotating 45 degrees into a cross. 300ms to match the measured
+                      reference, which took about 260ms to travel 0 to 180.
+                    */}
+                    <ChevronDown
+                      aria-hidden
+                      className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ease-out ${
+                        expanded ? 'rotate-180' : ''
                       }`}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </span>
+                    />
                   </button>
                 </h3>
 
@@ -113,22 +138,31 @@ export function FAQ() {
                   max-height, so the row animates to the answer's real height
                   without hard-coding a guess that clips longer copy.
 
-                  The answer stays in the DOM when collapsed: the FAQPage markup
-                  has to correspond to content that is actually on the page, and
-                  there are no focusable elements inside to trap a keyboard user.
+                  The answer stays in the DOM when collapsed. The reference unmounts
+                  it and animates height 0 -> auto through Framer Motion, which looks
+                  the same but cannot be copied here: the FAQPage JSON-LD in
+                  index.html quotes every answer, and structured data describing text
+                  a visitor cannot find on the page is treated as spam. Nothing inside
+                  is focusable, so leaving it mounted traps no keyboard user.
+
+                  300ms, down from 400. Measured on the reference, open and close both
+                  took about 250 to 260ms.
                 */}
                 <div
                   id={panelId}
                   role="region"
                   aria-labelledby={buttonId}
-                  className="grid transition-all duration-400 ease-out"
+                  className="grid transition-all duration-300 ease-out"
                   style={{
                     gridTemplateRows: expanded ? '1fr' : '0fr',
                     opacity: expanded ? 1 : 0,
                   }}
                 >
                   <div className="overflow-hidden">
-                    <p className="max-w-[620px] pb-7 text-[14.5px] leading-relaxed text-muted-foreground">
+                    {/* Indented to the button's padding so the answer lines up under
+                        the question. No top padding: the button's own bottom padding
+                        already separates them. */}
+                    <p className="px-5 pb-5 text-[14.5px] leading-relaxed text-muted-foreground sm:px-6 sm:pb-6">
                       {item.a}
                     </p>
                   </div>

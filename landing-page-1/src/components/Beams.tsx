@@ -254,6 +254,8 @@ function buildBeamMaterial(opts: {
   scale: number;
   lightMode: boolean;
   roughness: number;
+  huePivot: number;
+  hueGain: number;
 }): THREE.ShaderMaterial {
   return extendMaterial(THREE.MeshStandardMaterial, {
     header: `
@@ -285,7 +287,7 @@ function buildBeamMaterial(opts: {
     vec3 tangentZ = normalize(nextposZ - curpos);
     return normalize(cross(tangentZ, tangentX));
   }`,
-    fragmentHeader: 'uniform float uLightMode;',
+    fragmentHeader: 'uniform float uLightMode;\n  uniform float uHuePivot;\n  uniform float uHueGain;',
     vertex: {
       '#include <begin_vertex>': `transformed.z += getPos(transformed.xyz);`,
       '#include <beginnormal_vertex>': `objectNormal = getNormal(position.xyz);`,
@@ -298,7 +300,28 @@ function buildBeamMaterial(opts: {
       float energy = max(max(gl_FragColor.r, gl_FragColor.g), gl_FragColor.b);
       vec3 chroma = clamp(gl_FragColor.rgb / max(energy, 0.0001), 0.0, 1.0);
       chroma = pow(chroma, vec3(1.2));
-      gl_FragColor.rgb = mix(vec3(1.0), chroma, clamp(energy * 0.98, 0.0, 0.94));
+      /*
+        Contrast control on the white-to-hue mix, which upstream lacks.
+
+        As shipped this was mix(white, chroma, energy * 0.98): a straight linear map
+        from energy to saturation, with no control over where colour begins.
+
+        That is unusable for a light theme because energy does not span the range the
+        mix assumes. Measured on the raw canvas here it runs about 0.31 to 0.59, so a
+        linear map leaves every fragment between a third and three fifths saturated:
+        no white anywhere, and a field that reads as one flat tint rather than as
+        waves crossing open space.
+
+        Subtracting a pivot and applying a gain selects a slice of that distribution
+        instead. Everything on the white side of the pivot clamps to white and reads
+        as field; the span beyond it climbs to saturation and reads as a wave. Which
+        side is which is the gain's sign.
+
+        Defaults of 0 and 0.98 reproduce the original expression exactly, so this is
+        inert unless a caller opts in.
+      */
+      float t = clamp((energy - uHuePivot) * uHueGain, 0.0, 0.94);
+      gl_FragColor.rgb = mix(vec3(1.0), chroma, t);
     }`,
     },
     material: { fog: true },
@@ -312,6 +335,8 @@ function buildBeamMaterial(opts: {
       uNoiseIntensity: opts.noiseIntensity,
       uScale: opts.scale,
       uLightMode: opts.lightMode ? 1 : 0,
+      uHuePivot: opts.huePivot,
+      uHueGain: opts.hueGain,
     },
   });
 }
@@ -438,6 +463,50 @@ export interface BeamsProps {
    * edges read. 0 disables them and leaves the single key light.
    */
   fillLightRatio?: number;
+  /**
+   * Ambient light intensity. Uniform, so it sets the floor every fragment gets
+   * before any directional light is added.
+   *
+   * 1 is right whenever the ribbons are lit additively: the floor is what gives
+   * unlit areas their base colour, and dropping it there just darkens the field.
+   *
+   * It has to come down under lightMode, because that branch keys off
+   * max(r, g, b) and reads a uniform floor as "fully lit". A saturated blue has a
+   * blue channel near 0.92, so ambient alone puts energy at 0.92 across the whole
+   * frame and the mix sits pinned near its 0.94 ceiling. The result is a flat
+   * saturated field with the ribbon structure compressed out of it, which is what
+   * made this branch look washed out before rather than any choice of colour.
+   * Low ambient puts unlit fragments back near white and lets the directional
+   * lights be the only thing that reaches the hue.
+   */
+  ambientIntensity?: number;
+  /**
+   * Energy at which a fragment is left white, under lightMode. Ignored otherwise.
+   *
+   * Only useful alongside hueGain: together they select which slice of the energy
+   * range carries the hue, and the gain's sign decides which side of this the
+   * colour falls on. 0 is the upstream behaviour, where every lit fragment takes at
+   * least some colour.
+   */
+  huePivot?: number;
+  /**
+   * Signed multiplier on the distance from huePivot, under lightMode. Ignored
+   * otherwise.
+   *
+   * Magnitude widens the gap between field and ribbons, and is normally well above
+   * 1 because the energy the lighting produces occupies only part of the range the
+   * mix assumes: measured here, roughly 0.31 to 0.59.
+   *
+   * The sign chooses which side of the pivot carries the colour. Positive puts it in
+   * the light, matching upstream, so the lit ribbons take the hue while the gaps go
+   * white. Negative inverts that and colours the shadows instead.
+   *
+   * Large magnitudes amplify the shader's own grain, since that grain perturbs
+   * energy before this is applied and lands in saturation rather than brightness.
+   * Past roughly 10, noiseIntensity generally has to go to 0 and the texture has to
+   * come from a layer composited after the canvas.
+   */
+  hueGain?: number;
 }
 
 export function Beams({
@@ -461,6 +530,11 @@ export function Beams({
   // light and wash the blacks back out.
   fillLightRatio = 0.5,
   roughness = 0.3,
+  // 1 keeps the additive path exactly as it was; only lightMode needs it lowered.
+  ambientIntensity = 1,
+  // 0 and 0.98 reproduce the upstream mix exactly, so these are inert by default.
+  huePivot = 0,
+  hueGain = 0.98,
 }: BeamsProps) {
   const host = useRef<HTMLDivElement>(null);
 
@@ -510,6 +584,8 @@ export function Beams({
       scale,
       lightMode,
       roughness,
+      huePivot,
+      hueGain,
     });
     const geometry = createStackedPlanesBufferGeometry(
       beamNumber,
@@ -578,7 +654,7 @@ export function Beams({
     }
 
     scene.add(group);
-    scene.add(new THREE.AmbientLight(0xffffff, 1));
+    scene.add(new THREE.AmbientLight(0xffffff, ambientIntensity));
 
     const resize = () => {
       ({ w, h } = size());
@@ -715,6 +791,9 @@ export function Beams({
     lightIntensity,
     fillLightRatio,
     roughness,
+    ambientIntensity,
+    huePivot,
+    hueGain,
   ]);
 
   return <div ref={host} aria-hidden className={className} />;

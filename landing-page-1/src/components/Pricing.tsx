@@ -11,11 +11,17 @@ import { useReveal } from '../lib/useReveal';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
+/* One line per module that actually ships. "Smart area detection" used to sit in
+   this list and has been removed everywhere it appeared, including the JSON-LD
+   featureList in index.html and public/llms.txt — a plan that says "all features"
+   cannot list one that is not there. The member app took its place: app/m carries
+   workouts, progress and rewards, and the owner side manages it from
+   app/owner/member-app. */
 const INCLUDED = [
   'Member management',
   'Payments & dues',
   'Attendance tracking',
-  'Smart area detection',
+  'Member app & workouts',
   'Reports & analytics',
   'Unlimited WhatsApp reminders',
   'CSV / Excel import & export',
@@ -64,10 +70,13 @@ export function Pricing() {
         </div>
 
         {/* ── Plan + activation ─────────────────────────────────────────── */}
-        <div className="mt-14 grid gap-4 lg:grid-cols-[1.15fr_1fr] lg:gap-5">
+        {/* Capped well inside the section's 1240px. The pair used to run the full
+            width, which on a wide screen stretched a card holding one price and
+            eight short lines across 1240px and left it looking mostly empty. */}
+        <div className="mx-auto mt-12 grid max-w-[1040px] gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-5">
           {/* Plan card — filled accent, because this is the one thing on the page
               a visitor is meant to act on. */}
-          <div className="reveal card-accent relative overflow-hidden p-8 md:p-10">
+          <div className="reveal card-accent relative flex flex-col overflow-hidden p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">
                 GymFlow Pro
@@ -78,23 +87,26 @@ export function Pricing() {
               </span>
             </div>
 
-            <div className="mt-8 flex items-end gap-2">
+            <div className="mt-6 flex items-end gap-2">
+              {/* Down from clamp(56px, 8vw, 88px). At 88px the price was taller than
+                  the section heading above it and set the whole card's scale; the
+                  figure still needs to dominate the card, not the page. */}
               <span
                 className="font-medium leading-none tracking-[-0.04em] text-accent-ink"
-                style={{ fontSize: 'clamp(56px, 8vw, 88px)' }}
+                style={{ fontSize: 'clamp(42px, 5.5vw, 64px)' }}
               >
                 ₹3,000
               </span>
-              <span className="pb-2 text-[15px] text-accent-ink/80">/ month</span>
+              <span className="pb-1.5 text-[14px] text-accent-ink/80">/ month</span>
             </div>
-            <p className="mt-3 text-[13.5px] text-accent-ink/80">
+            <p className="mt-3 text-[13px] text-accent-ink/80">
               Unlimited members. Unlimited WhatsApp messages. Every module, on every
               account.
             </p>
 
-            <div className="my-8 h-px bg-accent-ink/15" />
+            <div className="my-6 h-px bg-accent-ink/15" />
 
-            <ul className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
               {INCLUDED.map(item => (
                 <li key={item} className="flex items-center gap-2.5">
                   <span className="grid h-4.5 w-4.5 shrink-0 place-items-center rounded-full bg-accent-ink">
@@ -105,7 +117,22 @@ export function Pricing() {
               ))}
             </ul>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            {/*
+              mt-auto, so the CTA is pinned to the card's bottom edge.
+
+              The two cards are grid siblings and the row takes the taller one's
+              height, which is the activation card: measured, it is naturally about
+              135px taller at 1440. Without this that 135px landed underneath the
+              trial line as a gap below the last thing in the card, which reads as a
+              layout fault. Anchoring the CTA collects the slack above it instead,
+              between the feature list and the buttons, where extra room in a pricing
+              card looks deliberate. pt-7 is the floor for when the heights do match,
+              as they do once the cards stack on mobile.
+
+              btn-lg stays: on mobile these are full-width, and the larger tap target
+              is the reason index.css scopes its shrink to the hero only.
+            */}
+            <div className="mt-auto flex flex-col gap-3 pt-7 sm:flex-row">
               <a
                 href={APP_URL}
                 className="btn btn-lg flex-1 border border-accent-ink bg-accent-ink text-accent hover:bg-accent-ink/90"
@@ -121,21 +148,25 @@ export function Pricing() {
               </a>
             </div>
 
-            <p className="mt-5 flex items-center justify-center gap-2 text-[11.5px] text-accent-ink/80">
+            <p className="mt-4 flex items-center justify-center gap-2 text-[11.5px] text-accent-ink/80">
               <ShieldCheck className="h-3.5 w-3.5" />
               14-day free trial first · Cancel anytime
             </p>
           </div>
 
           {/* Activation flow */}
-          <div className="reveal card flex flex-col p-8 md:p-10">
+          {/* Padding and rhythm track the plan card's. The two are grid siblings, so
+              the row takes the taller one's height and the shorter card stretches to
+              match: shrinking only one would just move the empty space, not remove
+              it. */}
+          <div className="reveal card flex flex-col p-6 md:p-8">
             <h3 className="display-3">Simple 3-step activation</h3>
             <p className="mt-3 text-[13.5px] leading-relaxed text-muted-foreground">
               Payments are verified manually, so there is no card on file and nothing
               charges you automatically.
             </p>
 
-            <ol className="mt-9 flex flex-col gap-7">
+            <ol className="mt-7 flex flex-col gap-6">
               {ACTIVATION_STEPS.map((step, index) => {
                 const Icon = step.icon;
                 return (
@@ -168,7 +199,7 @@ export function Pricing() {
               })}
             </ol>
 
-            <div className="mt-auto pt-9">
+            <div className="mt-auto pt-7">
               <div className="flex items-start gap-3 rounded-2xl border border-border-subtle bg-subtle p-4">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent-soft">
                   <CreditCard className="h-4 w-4 text-accent-text" />

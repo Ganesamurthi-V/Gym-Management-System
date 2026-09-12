@@ -84,12 +84,17 @@
      follow it. --muted-foreground is #6b6b6b and needs a backdrop at 0.837
      luminance to clear 4.5:1, which only white delivers.
 
-     The brand blue is used at full saturation, #2563eb, and it looks like that
+     The wave colour is used at full saturation, #1D4DD5, and it looks like that
      should cost legibility. It does not. Every glyph in the hero sits at r <= 0.44
      of the scrim ellipse, where coverage is at least 97%, so only about 3% of the
      field ever reaches text. Measured, the worst glyph backdrop is rgb(249,250,255)
      and body text is 4.9:1. The field is free to be as saturated as the design
-     wants, because the scrim, not the field, is what text is read against. */
+     wants, because the scrim, not the field, is what text is read against.
+
+     That colour lives in HeroBeams.tsx as LIGHT_MATERIAL.beamColor, not here: it is
+     the material's hue under the shader's lightMode branch rather than anything CSS
+     paints, so a token would imply this file controls it. --beams-base below stays
+     white, which is what an unlit fragment resolves to under that branch. */
   --beams-base: #ffffff;
   --beams-scrim: #ffffff;
 

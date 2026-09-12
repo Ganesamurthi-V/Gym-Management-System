@@ -246,7 +246,15 @@ const DARK_MATERIAL = {
 */
 const LIGHT_MATERIAL = {
   lightMode: true,
-  beamColor: '#2563eb',
+  /*
+    #1D4DD5, given directly rather than taken from a token.
+
+    Worth knowing it is three steps of blue away from --accent-strong, which is
+    #1d4ed8: near enough that swapping to the token would be invisible, so if these
+    should track the design system rather than drift from it, that is the one to use.
+    Left as the literal value because it was specified as such.
+  */
+  beamColor: '#1D4DD5',
   lightColor: '#ffffff',
   /*
     Off, for two reasons that both come from where it sits in the pipeline.
@@ -277,54 +285,68 @@ const LIGHT_MATERIAL = {
     the grain perturbs R, so a composited screenshot is not a function of t alone.
     Fitting against one of those was what produced two wrong values before this.
 
-    Measured that way, pooled over three animation phases:
+    Read off a probe build whose branch ended in gl_FragColor.rgb = vec3(energy),
+    making the frame a greyscale map of energy itself, and read as raw bytes rather
+    than decoded. Two things make that indirection necessary, and both cost a wrong
+    fit before they were understood.
 
-      p05 0.312   p25 0.356   p50 0.382   p75 0.439   p95 0.575   max 0.593
+    Inverting the normal output through B - R does not work. R is
+    (1 - t) + chromaR^1.2 * t, and chromaR only equals the diffuse colour's ratio on
+    a purely diffuse fragment; specular drags chroma toward white, so the coefficient
+    collapses wherever a highlight lands and B - R understates t by a varying amount.
+    Two builds with different amounts of blue on screen invert to different apparent
+    distributions.
 
-    The pivot sits just above the median, so more than half the frame clamps to pure
-    white and reads as field. The gain then carries p95 to 0.77, near saturation, so
-    the top of the distribution is unmistakably brand blue:
+    And the probe's bytes are not sRGB. This branch is spliced at
+    #include <dithering_fragment>, which three runs after #include
+    <colorspace_fragment>, so anything written here has already missed the encoding
+    step. energy is therefore the maximum of the already-encoded channels, and the
+    byte is that value directly. Decoding it as sRGB read the median as 0.31 when it
+    is 0.65, which put the pivot far below the whole distribution: t clamped at its
+    0.94 ceiling nearly everywhere and the field came out a flat, uniform blue. The
+    tell was that pivot 0.31 and pivot 0.45 both left the same 1.9% of the frame
+    white, which cannot happen if the pivot is inside the data.
 
-      p05 -> 0 (white)   p50 -> 0 (white)   p75 -> 0.17 (pale)   p95 -> 0.77
+    Measured, at scale 0.2 with beamColor #1D4DD5, pooled over three phases:
 
-    Positive, so the hue lands on the lit ribbons rather than in the gaps. That is
-    the arrangement the design wants: the waves are the lit bands, and because
-    specular blows to a white chroma, each one carries a white sheen along its crest
-    where the highlight lands. White field, blue waves, white glints on the waves.
+      p25 0.573   p50 0.647   p60 0.690   p70 0.761   p80 0.863   p90 1.000
 
-    Both values are positions in a distribution about 0.26 wide, so recalibrate if
-    the lighting, scale or noiseIntensity move. noiseIntensity especially: it
-    subtracts before this branch, and turning it off shifted every percentile up by
-    around 0.02, which was enough on its own to take the field from blue to blank.
+    The shape matters as much as the numbers. The top sixth is blown to 1.0: that is
+    the specular lobe, and those fragments have a near-neutral chroma, so
+    mix(white, chroma, t) leaves them white however high t climbs. The hue can only
+    come from the diffuse mid-band, which is why the gain is fitted to p80 rather
+    than to the maximum. Aiming at the peak would spend the range on fragments that
+    render white anyway.
+
+      p50 -> 0 (white field)   p60 -> 0.13   p70 -> 0.38   p80 -> 0.75 (full blue)
+      p90 and above -> clamped, but neutral chroma, so white glints on the crests
+
+    Recalibrate with the probe whenever the lighting, scale, beamColor or
+    noiseIntensity move, since the pivot is an absolute position inside a
+    distribution that all four of them shift.
   */
-  huePivot: 0.4,
-  hueGain: 4.4,
+  huePivot: 0.655,
+  hueGain: 3.6,
   /*
-    Higher than dark mode's 0.2, which sets how many waves cross the frame rather
-    than how strong they are.
+    Identical to dark mode, which is what sets the wave density.
 
-    The noise wavelength is about 1/scale in world units, so against a frame roughly
-    14 units across, 0.2 gives around three bands and 0.55 gives eight or so. With
-    the hue keyed to a slice of the lighting range, each band is a distinct blue
-    wave, and eight reads as waves where three reads as a gradient.
-
-    It also steepens the normals, which widens the lighting range the pivot and gain
-    have to work with, though far less than the wave count matters.
-
-    Dark mode keeps 0.2: its ribbons come from the specular lobe, so its structure
-    does not depend on this at all.
+    The noise wavelength is roughly 1/scale in world units, so against a frame about
+    14 units across this gives three or four broad bands. It was briefly 0.55, which
+    packs in eight or so; that reads as busy rather than as waves, and it also stopped
+    matching dark mode, whose ribbons are wide and few. Same number here means the two
+    themes have the same structure and only the colour differs.
   */
-  scale: 0.55,
+  scale: 0.2,
   /*
-    Down from dark mode's 3.4, and it is a compensation rather than a preference.
+    Identical to dark mode, and it has to move with scale.
 
-    scale multiplies the whole noise coordinate including the time term, which reads
-    vec3(..., pos.z + time * uSpeed * 3.) * uScale, so the animation rate is the
-    product of the two. 0.55 * 1.25 is 0.6875 against dark mode's 0.2 * 3.4 = 0.68:
-    the same apparent speed. Left at 3.4 the waves would travel nearly three times
-    faster in light mode than dark for no reason other than the scale change.
+    The shader advances the noise by the product of the two: the coordinate reads
+    vec3(..., pos.z + time * uSpeed * 3.) * uScale. This was 1.25 while scale was
+    0.55, purely so that 0.55 * 1.25 matched dark mode's 0.2 * 3.4 and the waves
+    travelled at the same apparent rate. With scale back at 0.2 the compensation is
+    no longer needed and the original value is correct again.
   */
-  speed: 1.25,
+  speed: 3.4,
   /*
     Near zero, because under this branch ambient is a floor on saturation rather
     than on brightness.

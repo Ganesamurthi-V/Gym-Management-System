@@ -4,6 +4,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 import { Marquee } from './Marquee';
 import { DashboardMock } from './DashboardMock';
 import { HeroBeams } from './HeroBeams';
+import { HeroPixels } from './HeroPixels';
 import { ShinyText } from './ShinyText';
 import { prefersReducedMotion } from '../lib/useReveal';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -66,9 +67,17 @@ export function Hero() {
     >
       {/* Animated ribbons, dark mode only, and deliberately first: the mesh below
           dims itself off a sibling selector on .hero-beams, so DOM order here is
-          what tells it the beams are present. HeroBeams renders nothing at all in
-          light mode, under reduced motion, or below 768px. */}
+          what tells it the beams are present. HeroBeams renders nothing in light
+          mode, under reduced motion, or on a metered connection — and in each of
+          those cases the mesh takes over as the hero's backdrop at full strength.
+          It does run on phones. */}
       <HeroBeams />
+
+      {/* Light mode's counterpart: a dithered pixel grid, since the beams above
+          need a near-black field and so never run there. Sits above the mesh wash
+          and below the copy, masked out of the middle so nothing is read through
+          it. Exactly one of the two ever mounts. */}
+      <HeroPixels />
 
       {/* Brand-hue mesh behind the headline and product shot. Spans the full
           width rather than a centred 900px block, so the colour reaches behind

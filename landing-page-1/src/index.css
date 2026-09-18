@@ -585,28 +585,24 @@ body {
       transparent calc(50% + 470px),
       #000 calc(50% + 530px)
     );
-  /* Mounts on idle, so without this it cuts in a second or two after the hero has
-     painted.
+  /* No fade-in, deliberately, after two attempts at one caused two different bugs.
 
-     Its own keyframes rather than the beams', and that is not tidiness. beams-in
-     ends at opacity 1, and animation-fill-mode: both keeps that end state applied
-     forever, which overrides the 0.5 declared above: measured, the layer sat at
-     opacity 1 and the pixels rendered at full strength. A fade has to land on
-     whatever opacity the layer is meant to keep. */
-  animation: pixels-in 700ms ease-out both;
-}
-@keyframes pixels-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 0.5;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-pixels {
-    animation: none;
-  }
+     Reusing the beams' keyframes put the layer at opacity 1: beams-in ends at 1 and
+     animation-fill-mode: both keeps that end state applied forever, overriding the
+     0.5 declared above, so the grid rendered at full strength.
+
+     Its own keyframes ending at 0.5 then failed the other way. Measured on this
+     element, the animation sat at playState running with currentTime 0 for seconds
+     on end while the element and its canvas both stayed put, so it never left its
+     from keyframe and the layer was invisible. Dropping the fill mode did not help,
+     because an animation stuck inside its active interval still applies the value at
+     t=0. I did not establish why this element never receives a start time when
+     .hero-beams, mounted the same way, does.
+
+     So the layer simply sits at its resting opacity. The cost is that it appears
+     rather than fades when the canvas mounts on idle, which is a cosmetic detail;
+     the alternative was a decorative transition deciding whether the backdrop is
+     visible at all. */
 }
 
 /* Light mode has no beams behind it, so this layer is the hero's entire backdrop
@@ -776,7 +772,11 @@ html:not(.dark) .hero-mesh {
    appear as a hard cut a second or two in. Fading only the canvas layer, not the
    scrim or grain, keeps the copy's backdrop stable from first paint. */
 .hero-beams {
-  animation: beams-in 700ms ease-out both;
+  /* Explicit resting opacity and no fill mode, for the reason recorded on
+     .hero-pixels: with `both`, an animation that never starts leaves the element
+     pinned at its from keyframe, which for a fade-in means permanently invisible. */
+  opacity: 1;
+  animation: beams-in 700ms ease-out;
 }
 @keyframes beams-in {
   from {

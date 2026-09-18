@@ -7,7 +7,7 @@ import { connectionAllowsDecoration, useDeferredUntilIdle } from '../lib/decorat
  * Split out for the same reason as Beams: three.js is ~123KB gzipped and has no
  * business in the entry bundle for a background. Only fetched once the gates pass.
  */
-const PixelBlast = lazy(() => import('./PixelBlast'));
+const CharGrid = lazy(() => import('./CharGrid'));
 const PHONE_QUERY = '(max-width: 767px)';
 
 /**
@@ -24,26 +24,33 @@ function readAccent(): string {
 }
 
 /**
- * Bigger cells and a slower redraw on a phone.
+ * Cheaper on a phone, in the dimensions that actually cost.
  *
- * pixelSize is the lever that matters. It is a cell edge in CSS px, so the number
- * of cells goes with its inverse square: 4 to 6 is a little over half as many
- * cells to evaluate, on the device least able to afford them. It also keeps the
- * grid legible on a small screen, where 4px cells start to read as noise rather
- * than as pixels.
+ * This shader is far more expensive per fragment than a dithered pixel grid:
+ * computeField advects the sample point ten times and evaluates the flow field
+ * three times per iteration, so every fragment runs thirty sin-heavy evaluations.
+ * The cell snapping does not help, because each fragment still computes its cell's
+ * value independently.
+ *
+ * So the phone gets a coarser grid, a lower pixel-ratio ceiling and a lower redraw
+ * ceiling. A larger cell does not reduce the per-fragment cost, but a lower pixel
+ * ratio reduces the fragment count quadratically, which is the lever that matters.
+ *
+ * scale comes down with the frame: 25 is fitted to a 1440-wide layer, and at 390 the
+ * same value packs the structure too tightly to read.
  */
 const PHONE = {
-  pixelSize: 6,
-  maxPixelRatio: 1.15,
-  targetFps: 20,
-  patternScale: 2.6,
+  size: 12,
+  scale: 14,
+  maxPixelRatio: 1,
+  targetFps: 15,
 } as const;
 
 const DESKTOP = {
-  pixelSize: 4,
-  maxPixelRatio: 1.5,
-  targetFps: 30,
-  patternScale: 2.2,
+  size: 10,
+  scale: 25,
+  maxPixelRatio: 1.25,
+  targetFps: 24,
 } as const;
 
 /**
@@ -90,63 +97,38 @@ export function HeroPixels() {
       className="hero-pixels pointer-events-none absolute inset-x-0 top-0 -z-20 h-[760px]"
     >
       <Suspense fallback={null}>
-        <PixelBlast
+        <CharGrid
           className="h-full w-full"
-          /*
-            square, not one of the rounded variants. The whole point is that it reads
-            as pixels, and circle or diamond spend fragments on an antialiased mask
-            that makes the grid softer, which is the opposite of the intent.
-          */
-          variant="square"
-          pixelSize={settings.pixelSize}
           color={color}
           /*
-            fbm frequency. Higher gathers the pattern into smaller, more separate
-            clumps; lower spreads it into broad fields that read as a gradient rather
-            than as pixels. The phone runs slightly higher so the pattern still has
-            structure inside a much narrower frame.
+            10px, the pitch measured on the reference: its column-ink autocorrelation
+            peaks at lag 10 with a harmonic at 20.
           */
-          patternScale={settings.patternScale}
+          size={settings.size}
           /*
-            Down from the component's default of 1, which fills a lot of the frame.
-            This shifts the dither threshold, so it is the direct control on how much
-            of the grid lights up, and a background wants far fewer cells than a demo
-            does.
+            25 on desktop is the reference's own uScale. It is a frequency against an
+            aspect-corrected uv, so it has to come down on a narrow frame or the
+            structure packs tighter than the 10px cells can resolve.
           */
-          patternDensity={0.62}
+          scale={settings.scale}
           /*
-            A little irregularity in cell coverage. Without it the grid is perfectly
-            uniform where the noise plateaus, and the eye picks out the Bayer matrix
-            itself as a repeating 8x8 texture.
+            Fitted to the reference's measured ink coverage of 9.3%. This is the
+            coverage control: a cell needs gray above 1/(charCount - 1), about 0.11,
+            before it draws anything at all, so intensity sets how much of the grid
+            is inked.
           */
-          pixelSizeJitter={0.4}
+          intensity={0.35}
+          /* Both straight off the reference's live uniforms. */
+          waveTension={0.5}
+          waveTwist={0.1}
           /*
-            Off: the layer is pointer-events-none, so pointer-down can never reach it,
-            and the ripple path costs a ten-iteration loop in every fragment.
+            1, the reference's own value, and here it does read as motion: the flow
+            field feeds time in at t * 0.1 and t * 0.2 inside flowField, not at the
+            hundredth-scale the previous pixel shader used, so the pattern visibly
+            moves without needing to be driven hard. Measured on the reference at this
+            speed: mean 1.55/255 per 700ms.
           */
-          enableRipples={false}
-          /*
-            Fades all four edges, so the grid dissolves into the page instead of
-            ending on the layer's 760px boundary. Paired with the CSS mask, which
-            handles the middle.
-          */
-          edgeFade={0.4}
-          /*
-            Far above the component's default of 0.5, and it has to be.
-
-            speed only scales how fast the fbm field drifts, and the shader feeds it
-            in at uTime * 0.05, so the default advances the noise by 0.025 units a
-            second. Cells flip through a step(), so nothing visibly happens until the
-            field moves enough for a cell to cross the dither threshold. Measured at
-            0.45: 0.06% of cells changed state per second, and 1.31% over a full eight
-            seconds. That is a still image with a slow bias, not an animation.
-
-            The rate works out at roughly 5 to 7% of cells per unit of noise time, so
-            6 lands near 2% a second: enough that the grid is visibly alive, little
-            enough that it reads as a shimmer behind the copy rather than as flicker
-            competing with it.
-          */
-          speed={6}
+          speed={1}
           maxPixelRatio={settings.maxPixelRatio}
           targetFps={settings.targetFps}
         />

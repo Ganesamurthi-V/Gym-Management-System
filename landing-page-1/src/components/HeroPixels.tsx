@@ -39,16 +39,39 @@ function readAccent(): string {
  * scale comes down with the frame: 25 is fitted to a 1440-wide layer, and at 390 the
  * same value packs the structure too tightly to read.
  */
+/*
+  intensity and contrast are solved, not tuned by eye.
+
+  The shader maps the field to a glyph as floor(gray * 9), with
+  gray = pow(length(field) * intensity, contrast). The reference's measured per-cell
+  fill distribution fixes two points of that mapping: 46.6% of its cells are empty, so
+  P(gray < 1/9) = 0.466, and 20.7% carry a heavier mark, so P(gray >= 5/9) = 0.207.
+  Both are thresholds on length(field), so with its 46th and 79th percentiles the pair
+  falls out directly:
+
+    contrast  = ln 5 / ln(q79 / q46)
+    intensity = (1/9)^(1/contrast) / q46
+
+  Evaluating the field over the real cell grid gives q46 0.546 and q79 0.867 at the
+  desktop size, hence the values below. Pushed back through the mapping they predict
+  empty 46.6%, light 32.7%, heavy 20.7% against the reference's 46.6 / 30.9 / 20.7.
+  The percentiles shift with scale and frame shape, so the two devices do not share a
+  pair and the values have to be re-solved if scale changes.
+*/
 const PHONE = {
   size: 12,
-  scale: 14,
+  scale: 3,
+  intensity: 0.986,
+  contrast: 3.378,
   maxPixelRatio: 1,
   targetFps: 15,
 } as const;
 
 const DESKTOP = {
   size: 10,
-  scale: 25,
+  scale: 4,
+  intensity: 0.974,
+  contrast: 3.482,
   maxPixelRatio: 1.25,
   targetFps: 24,
 } as const;
@@ -106,18 +129,33 @@ export function HeroPixels() {
           */
           size={settings.size}
           /*
-            25 on desktop is the reference's own uScale. It is a frequency against an
-            aspect-corrected uv, so it has to come down on a narrow frame or the
-            structure packs tighter than the 10px cells can resolve.
+            Field frequency, and the control that decides whether this reads as a wave
+            or as speckle.
+
+            The reference's own uScale is 25, and copying it was wrong. At 25, with the
+            aspect correction, p.x spans about 47 radians across the layer, and
+            computeField amplifies gradients by 1/ep = 20 over ten iterations, so
+            neighbouring cells decorrelate entirely. Measured, our inked cells formed
+            runs averaging 3 cells against the reference's 19, and 3 is what pure
+            chance gives at that coverage: scattered marks, no flow.
+
+            Its 25 works there because its pattern is not coming from this field. Its
+            live uniforms are uIntensity 0 with uHasVideo true, so the field is scaled
+            out and the glyphs are driven by a texture instead. Matching the look meant
+            matching the field's coherence rather than its number.
           */
           scale={settings.scale}
           /*
-            Fitted to the reference's measured ink coverage of 9.3%. This is the
-            coverage control: a cell needs gray above 1/(charCount - 1), about 0.11,
-            before it draws anything at all, so intensity sets how much of the grid
-            is inked.
+            Solved together against the reference's per-cell fill distribution rather
+            than picked by eye; the derivation is on the settings above.
+
+            Matching its total ink coverage was not enough on its own. An earlier pass
+            sat at 9.9% ink against its 9.3% and still looked nothing like it, because
+            the grey ran high enough to reach the top of the ramp: cells filled in,
+            only 7% stayed empty against its 47%, and the layer read as boxes.
           */
-          intensity={0.35}
+          intensity={settings.intensity}
+          contrast={settings.contrast}
           /* Both straight off the reference's live uniforms. */
           waveTension={0.5}
           waveTwist={0.1}

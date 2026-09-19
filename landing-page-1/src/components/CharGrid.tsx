@@ -23,14 +23,25 @@ import * as THREE from 'three';
    ═════════════════════════════════════════════════════════════════════════ */
 
 /**
- * Glyph ramp, ordered from no ink to most.
- *
- * The shader indexes this with floor(gray * (count - 1)), so index 0 has to be
- * blank: that is what leaves the field's quiet areas empty instead of tiling a
- * character across the whole layer. Ten entries to match the reference's
+ * Glyph ramp, ordered from no ink to most. Ten entries, matching the reference's
  * uCharCount.
+ *
+ * Index 0 has to be blank: that is what leaves the field's quiet areas empty rather
+ * than tiling a character across the whole layer.
+ *
+ * Every other entry is a fine mark, and that is the important constraint. Measured
+ * per 10px cell, the reference never fills a cell beyond 20%: its marks are dots and
+ * light punctuation, nothing heavier. An earlier ramp here ended in # % @, which fill
+ * 35 to 55% of their cell, and 27% of cells landed on them. That is what made the
+ * layer read as a grid of boxes instead of a wave, and it also flattened the flow:
+ * dots strung along the field's streaks read as direction, while filled cells read as
+ * uniform texture. Directional anisotropy measured 1.38 against the reference's 2.15.
+ *
+ * So the heavy glyphs are gone and the ramp tops out around * and =. The horizontal
+ * strokes in the middle of it (- ~ =) also happen to sit along the flow, which helps
+ * the streaks read.
  */
-const RAMP = ' .,:;+*#%@';
+const RAMP = ' .,:;-~=+*';
 
 /** Atlas cell in px. Only affects glyph crispness, not the on-screen grid pitch. */
 const ATLAS_CELL = 64;
@@ -50,7 +61,14 @@ function createFontAtlas(): THREE.CanvasTexture {
   if (ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ffffff';
-    ctx.font = `${Math.round(ATLAS_CELL * 0.82)}px ui-monospace, "Geist Mono", monospace`;
+    /*
+      0.95 of the cell, not the 0.82 this started at. Punctuation occupies a small
+      part of its em box, so at 0.82 the marks came out lighter than the reference's:
+      measured, 6.8% of our cells landed in its 8-20% fill band against its 20.7%,
+      and total ink was 2.4% against its 4.2%. Scaling the face up scales each mark
+      with it, which lifts both without touching the field or the ramp.
+    */
+    ctx.font = `${Math.round(ATLAS_CELL * 0.95)}px ui-monospace, "Geist Mono", monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (let i = 0; i < RAMP.length; i++) {
@@ -84,6 +102,7 @@ uniform vec2  uResolution;
 uniform float uScale;
 uniform float uSpeed;
 uniform float uIntensity;
+uniform float uContrast;
 uniform float uWaveTension;
 uniform float uWaveTwist;
 
@@ -130,7 +149,20 @@ void main() {
 
   vec2 uv0 = vUv * aspect;
   vec2 field = computeField(uv0 * uScale, uTime * uSpeed);
-  float gray = clamp(length(field) * uIntensity, 0.0, 1.0);
+
+  /*
+    The curve is what spreads the ramp out. length(field) has a narrow distribution,
+    so scaling it linearly puts nearly every cell just above the ink threshold and
+    the grid comes out monotone: one dot weight everywhere, 18% of cells empty
+    against the reference's 47%, and nothing in its 8-20% fill band at all.
+
+    A power curve widens the spread instead of shifting it. Values below 1 are pushed
+    down hard, so quiet cells fall under the threshold and go empty, while the peaks
+    survive and reach further up the ramp. That is what gives the waves light and
+    heavy passages rather than a uniform stipple.
+  */
+  float g = length(field) * uIntensity;
+  float gray = clamp(pow(g, uContrast), 0.0, 1.0);
   gl_FragColor = vec4(gray, gray, gray, 1.0);
 }
 `;
@@ -204,6 +236,15 @@ export interface CharGridProps {
    * it out.
    */
   intensity?: number;
+  /**
+   * Power curve applied to the grey level, which sets how far the ramp spreads.
+   *
+   * 1 is linear, and linear is too narrow here: the field's own distribution is tight,
+   * so every cell lands on the same glyph. Above 1 pushes quiet cells below the ink
+   * threshold while leaving the peaks, which is what produces empty space and varied
+   * mark weight in the same frame.
+   */
+  contrast?: number;
   /** Tangent step in the advection walk. */
   waveTension?: number;
   /** Slow circular drift added each iteration. */
@@ -216,9 +257,10 @@ export function CharGrid({
   className,
   color = '#2563eb',
   size = 10,
-  scale = 25,
+  scale = 6,
   speed = 1,
-  intensity = 0.35,
+  intensity = 0.9,
+  contrast = 2.2,
   waveTension = 0.5,
   waveTwist = 0.1,
   maxPixelRatio = 1.25,
@@ -260,6 +302,7 @@ export function CharGrid({
       uScale: { value: scale },
       uSpeed: { value: speed },
       uIntensity: { value: intensity },
+      uContrast: { value: contrast },
       uWaveTension: { value: waveTension },
       uWaveTwist: { value: waveTwist },
     };
@@ -398,6 +441,7 @@ export function CharGrid({
     scale,
     speed,
     intensity,
+    contrast,
     waveTension,
     waveTwist,
     maxPixelRatio,

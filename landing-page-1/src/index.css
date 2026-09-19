@@ -529,62 +529,45 @@ body {
    means no pixels behind the copy at all, which is a stronger guarantee than any
    coverage percentage.
 
-   The geometry is the copy block, not a circle: it is the same ellipse the beams
-   scrim was fitted to, reused as a hole. Clear out to 44% of it, then ramp in over
-   the next third so the grid arrives gradually rather than at a visible boundary.
+   The opacity is set by contrast, not taste, because the grid now runs behind the
+   copy rather than around it.
 
-   opacity 0.5 on top of that. The pixels are the brand accent at full saturation,
-   and at full strength they compete with the headline instead of sitting behind it. */
+   Working back from the render, the darkest mark the canvas produces is about
+   rgb(19,25,61): the ink is the brand accent at full saturation, which is a much
+   darker mark than the reference's near-black-on-white at the same nominal opacity.
+   At 0.5 that took the backdrop under the subhead to rgb(132,135,153), and #3a3a3a
+   against that measured 3.20:1 at 1440 and 2.88:1 at 390, against a 4.5 floor. 0.35
+   is the ceiling that clears it; 0.3 leaves margin for the phase the field happens to
+   be in.
+
+   Worth noting this still leaves our marks bolder than the reference's, not fainter.
+   Measured inside its own subhead, its darkest backdrop is rgb(233,234,246), about
+   twelve levels off white; ours at 0.3 sits around seventy levels off. It gets away
+   with 0.5 because its ink is nearly neutral and only 5.5% of that rect is covered. */
 .hero-pixels {
-  opacity: 0.5;
+  opacity: 0.3;
   /*
-    Two mask layers, which the spec composites additively, so a cell survives if
-    either one keeps it. The vertical layer keeps the strips above and below the
-    copy; the horizontal layer keeps the margins either side of it. Their union is
-    everything except the rectangle the copy occupies.
+    One mask layer, and it only feathers the bottom edge. The grid runs the full
+    width of the hero and straight through the copy, which is what the reference
+    does.
 
-    Absolute lengths, not percentages, and that is the point. The copy column is a
-    fixed max-w-[900px] centred in the viewport, so a percentage hole tracks the
-    viewport while the thing it has to clear does not: at 1024 a 24%-to-76% hole
-    leaves the outer 120px of every headline line uncovered. calc(50% +- 500px)
-    follows the column at every width, and below about 1000px it simply exceeds the
-    viewport, which correctly means no side pixels on a narrow screen.
+    What was here before was a hole: two additive layers whose union was everything
+    except the rectangle the copy sits in. It kept the copy pristine, but a
+    rectangular void in the middle of the pattern is itself a shape, and it read as a
+    box sitting in the hero.
 
-    Fitted to measured layout: the copy runs y=124 to y=623 at 1440 and y=124 to
-    y=521 at 390, so the hole spans 124 to 640 with ramps outside that.
+    Legibility moved to the type instead, which is where it belongs. The hero copy
+    now carries enough contrast to be read over the grid rather than needing the grid
+    removed from behind it; see .hero-sub and .hero-trust below. That is what the
+    reference does not do, and why its own subhead measures 3.97:1 against a 4.5
+    floor.
 
-    470 rather than 450 for the half-width, because 1024 is where this is tightest,
-    not 1440. The column is 900px wide whatever the viewport, so at 1024 it spans
-    x=62 to 962 with only 62px of margin; a 450px hole would leave the outer 10px of
-    every headline line uncovered. 470 clears it with room, and costs 40px of pixel
-    area on a wide screen where there is plenty.
-
-    This replaced a radial mask that only reached y=452. It measured clean at first
-    and then failed the moment the pattern drifted, because whether a cell landed
-    over the trust row was down to the noise phase at capture: the subhead fell to
-    3.94:1 and the trust row to 3.28:1 against a 4.5 floor. A mask has to exclude
-    the copy for every phase, not for the one that happened to be on screen.
+    The feather is still needed: the layer is a fixed 760px tall, so without it the
+    grid would stop dead on a horizontal line partway down the page. It fades out
+    from 520 to 740, which also thins the grid behind the trust row on its way past.
   */
-  -webkit-mask-image:
-    linear-gradient(to bottom, #000 0, #000 96px, transparent 124px, transparent 640px, #000 690px),
-    linear-gradient(
-      to right,
-      #000 0,
-      #000 calc(50% - 530px),
-      transparent calc(50% - 470px),
-      transparent calc(50% + 470px),
-      #000 calc(50% + 530px)
-    );
-  mask-image:
-    linear-gradient(to bottom, #000 0, #000 96px, transparent 124px, transparent 640px, #000 690px),
-    linear-gradient(
-      to right,
-      #000 0,
-      #000 calc(50% - 530px),
-      transparent calc(50% - 470px),
-      transparent calc(50% + 470px),
-      #000 calc(50% + 530px)
-    );
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 520px, transparent 740px);
+  mask-image: linear-gradient(to bottom, #000 0, #000 520px, transparent 740px);
   /* No fade-in, deliberately, after two attempts at one caused two different bugs.
 
      Reusing the beams' keyframes put the layer at opacity 1: beams-in ends at 1 and
@@ -603,6 +586,37 @@ body {
      rather than fades when the canvas mounts on idle, which is a cosmetic detail;
      the alternative was a decorative transition deciding whether the backdrop is
      visible at all. */
+}
+
+/* Hero copy sits over the character grid, so in light mode it needs more contrast
+   than the rest of the page does.
+
+   --muted-foreground is #6b6b6b, which is 4.84:1 on a bare #f5f5f5 page: four tenths
+   of a point above the 4.5 floor. Enough for a flat background, not for anything drawn
+   on top of it. Measured, a full-strength grid mark takes the local backdrop to about
+   rgb(140,171,239), and #6b6b6b against that is 2.3:1. Holding the token would have
+   meant capping the grid near 5% opacity behind the copy, which is invisible, so the
+   choice was a darker hero subhead or no grid behind the text.
+
+   A token rather than a literal, because dark mode must not inherit it: there the
+   backdrop is the beams, whose scrim was fitted to #a3a3a3, and #3a3a3a on #141414
+   would be unreadable.
+
+   Scoped to the hero rather than changed on --muted-foreground itself, which the
+   navbar, pricing, features and footer all use and none of which have a shader behind
+   them.
+
+   The headline needs nothing: it is --foreground at 40px and up, and measures in the
+   teens over the same grid. */
+:root {
+  --hero-copy: #3a3a3a;
+}
+.dark {
+  --hero-copy: var(--muted-foreground);
+}
+.hero-sub,
+.hero-trust li {
+  color: var(--hero-copy);
 }
 
 /* Light mode has no beams behind it, so this layer is the hero's entire backdrop

@@ -4,17 +4,14 @@ import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 
 /**
- * three.js is ~120KB gzipped, which is a lot to spend on a background for a sign-in
- * page. ssr: false because it touches document at module scope, and dynamic so the
- * bytes are only fetched once every gate below has passed — a visitor who never
- * qualifies never downloads it.
+ * three.js is ~120KB gzipped, which is a lot to spend on a background. ssr: false
+ * because it touches document at module scope, and dynamic so the bytes are only
+ * fetched once every gate below has passed — a visitor who never qualifies never
+ * downloads it.
  */
 const CharGrid = dynamic(() => import('./CharGrid').then((m) => m.CharGrid), {
   ssr: false,
 })
-
-/** The breakpoint the host panel appears at. Must match its `lg:` classes. */
-const PANEL_AT = 1024
 
 interface NetworkInformation {
   saveData?: boolean
@@ -40,8 +37,8 @@ function connectionAllowsDecoration(): boolean {
 }
 
 function useMediaQuery(query: string): boolean {
-  // Starts false and is corrected after mount. The alternative, reading matchMedia
-  // during render, differs between server and client and trips hydration.
+  // Starts false and is corrected after mount. Reading matchMedia during render would
+  // differ between server and client and trip hydration.
   const [matches, setMatches] = useState(false)
 
   useEffect(() => {
@@ -57,8 +54,8 @@ function useMediaQuery(query: string): boolean {
 
 /**
  * Holds a flag back until the browser is idle, so fetching and compiling a shader cannot
- * compete with the sign-in form's own paint. The form is the reason anyone is on this
- * page; the backdrop can wait.
+ * compete with the page's own paint. On an auth page the form is the reason anyone is
+ * here; the backdrop can wait.
  *
  * requestIdleCallback where available, a timeout elsewhere. The timeout is a ceiling in
  * both branches: on a busy page idle may never arrive, and the effect should still show.
@@ -85,33 +82,52 @@ function useDeferredUntilIdle(enabled: boolean, timeoutMs: number): boolean {
   return ready
 }
 
+export interface AsciiBackdropProps {
+  className?: string
+  /** Ink for the dense end of the ramp, where the heaviest glyphs are. */
+  color?: string
+  /** Ink for the faint end, mixed out toward `color` as cells get denser. */
+  colorTint?: string
+  scale?: number
+  intensity?: number
+  contrast?: number
+  /**
+   * Viewport width below which nothing mounts, in px.
+   *
+   * Not only a cosmetic choice. Below this the library is never fetched, so the default
+   * of 768 means every phone visitor skips ~120KB gzipped for a background they were
+   * never going to dwell on. Raise it where the host element is itself hidden at small
+   * widths, or the component would mount inside a display:none parent and pay the
+   * download to render nothing.
+   */
+  minWidth?: number
+}
+
 /**
- * The character grid as the auth panel's backdrop, carrying the same effect as the
- * marketing hero.
+ * The character grid, gated so it only ever costs anything when it will be seen.
  *
- * Gated four ways, and the width gate is the one that matters most for cost. The host
- * panel is `hidden lg:flex`, so below 1024px it is not on screen at all — without this
- * check the component would still mount inside a display:none parent and pull three.js
- * down for every phone visitor to render nothing. Everyone signing in on a phone now
- * skips the download entirely.
- *
+ *  - width: see minWidth.
  *  - reduced motion: continuous movement with no user control is exactly what that
  *    preference asks not to see.
  *  - Data Saver or 2g: see connectionAllowsDecoration.
- *  - idle: the form paints first.
+ *  - idle: the page's own content paints first.
  *
- * Ink matches the hero's dark theme: white at the dense end of the ramp, brand-300 at
- * the faint end, so the colour rides the lighter marks while the heavy ones stay at full
- * strength. Values for intensity and contrast are solved for this panel's own geometry
- * rather than copied from the hero — it is a portrait column against the hero's
- * landscape band, and the field's percentiles depend on frame shape.
+ * Nothing is rendered until all four pass, and nothing is downloaded either.
  */
-export function AsciiPanelBackdrop({ className }: { className?: string }) {
-  const isPanelVisible = useMediaQuery(`(min-width: ${PANEL_AT}px)`)
+export function AsciiBackdrop({
+  className,
+  color = '#000000',
+  colorTint,
+  scale = 4,
+  intensity = 1.099,
+  contrast = 2.501,
+  minWidth = 768,
+}: AsciiBackdropProps) {
+  const wideEnough = useMediaQuery(`(min-width: ${minWidth}px)`)
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const connectionOk = useMemo(() => connectionAllowsDecoration(), [])
 
-  const wanted = isPanelVisible && !reducedMotion && connectionOk
+  const wanted = wideEnough && !reducedMotion && connectionOk
   const ready = useDeferredUntilIdle(wanted, 2000)
 
   if (!wanted || !ready) return null
@@ -119,15 +135,13 @@ export function AsciiPanelBackdrop({ className }: { className?: string }) {
   return (
     <CharGrid
       className={className}
-      color="#ffffff"
-      colorTint="#93c5fd"
+      color={color}
+      colorTint={colorTint}
       size={10}
-      scale={4}
+      scale={scale}
       speed={1}
-      /* Solved against this panel's 80x90 cell grid for 28% of cells empty and 34%
-         carrying a heavy mark, the same distribution the hero settled on. */
-      intensity={1.115}
-      contrast={2.298}
+      intensity={intensity}
+      contrast={contrast}
       waveTension={0.5}
       waveTwist={0.1}
       maxPixelRatio={1.25}
@@ -136,4 +150,4 @@ export function AsciiPanelBackdrop({ className }: { className?: string }) {
   )
 }
 
-export default AsciiPanelBackdrop
+export default AsciiBackdrop

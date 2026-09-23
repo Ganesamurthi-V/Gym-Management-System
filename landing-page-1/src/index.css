@@ -484,72 +484,79 @@ body {
   }
 }
 
-/* ── Hero mesh ────────────────────────────────────────────────────────────────
-   Four soft radial stops in the two brand hues, standing in for the reference's
-   blurred mesh. Deliberately no filter: blur() — the stops are already soft, and
-   blurring a 1440x760 layer costs real paint time for no visible gain.
+/* ── Hero surface ─────────────────────────────────────────────────────────────
+   Pure white in light, pure black in dark, matching the reference: its hero is
+   #ffffff with near-black glyphs and #0a0a0a with white ones, and no tint either
+   side. The grid ink is set to the same two values in HeroPixels.
 
-   Dark mode drops the opacity rather than changing the colours: at full strength
-   these read as glowing panels against #141414 instead of ambient light. */
-.hero-mesh {
-  background:
-    radial-gradient(
-      38% 42% at 16% 6%,
-      color-mix(in srgb, var(--accent-2) 30%, transparent) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      40% 44% at 80% 2%,
-      color-mix(in srgb, var(--accent) 26%, transparent) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      52% 40% at 50% 24%,
-      color-mix(in srgb, var(--accent-strong) 18%, transparent) 0%,
-      transparent 72%
-    ),
-    radial-gradient(
-      28% 32% at 90% 32%,
-      color-mix(in srgb, var(--accent-2) 20%, transparent) 0%,
-      transparent 70%
-    );
+   This replaced a four-stop mesh in the two brand hues. A wash in --accent is what
+   kept the hero from reading as monochrome, and it was also carrying a contrast cost
+   for no legibility benefit: its strength had been tuned down to 5-12% precisely
+   because a flat accent tint fails AA behind the subhead by 10%.
+
+   It sits on the section rather than on a layer of its own, which is what lets it be
+   opaque. A child at negative z-index paints above its parent's background but below
+   its content, so the section's own background is the only place a solid fill can go
+   without hiding the grid at -z-20. The old mesh could only ever be translucent
+   because it was a sibling in front of the canvas.
+
+   The fade at the bottom keeps the change inside the hero. The page is --background
+   (#f5f5f5 light, #141414 dark), so pure white to the section edge would leave a seam
+   where the next section starts; easing into it from 560 to 800px hides that. The
+   grid has already feathered out by 740, so the two transitions overlap rather than
+   stacking up as two visible bands. */
+.hero-surface {
+  background: linear-gradient(to bottom, #fff 0, #fff 560px, var(--background) 800px);
 }
-.dark .hero-mesh {
-  opacity: 0.5;
+.dark .hero-surface {
+  background: linear-gradient(to bottom, #000 0, #000 560px, var(--background) 800px);
+}
+.dark .hero-pixels {
+  opacity: 0.35;
 }
 
-/* ── Light-mode pixel grid ────────────────────────────────────────────────────
-   Sits above the mesh wash and below the copy. The shader fades its own four
-   edges; everything here is about keeping it off the text.
+/* ── Character grid ───────────────────────────────────────────────────────────
+   Sits directly on the hero surface and below the copy, in both themes. The shader
+   fades its own four edges; everything here is about how strongly it prints.
 
-   The mask is the legibility mechanism, and it is deliberately not a scrim. The
-   beams needed a painted gradient because a canvas underneath kept producing new
-   brightness that had to be covered over; a mask instead removes the layer's own
-   alpha, so no amount of pattern can push through it. Transparent in the middle
-   means no pixels behind the copy at all, which is a stronger guarantee than any
-   coverage percentage.
+   Legibility is the type's job here, not this layer's. There was a mask that cut the
+   grid out from behind the copy entirely, which is the strongest guarantee available
+   and was dropped anyway: a rectangular void in the middle of the pattern is itself a
+   shape, and it read as a box sitting in the hero. What replaced it is contrast
+   headroom in the copy, see --hero-copy.
 
-   The opacity is set by contrast, not taste, because the grid now runs behind the
-   copy rather than around it.
+   The opacity is set by contrast, not taste, because the grid runs behind the copy
+   rather than around it.
 
-   Working back from the render, the darkest mark the canvas produces is about
-   rgb(19,25,61): the ink is the brand accent at full saturation, which is a much
-   darker mark than the reference's near-black-on-white at the same nominal opacity.
-   At 0.5 that took the backdrop under the subhead to rgb(132,135,153), and #3a3a3a
-   against that measured 3.20:1 at 1440 and 2.88:1 at 390, against a 4.5 floor. 0.35
-   is the ceiling that clears it; 0.3 leaves margin for the phase the field happens to
-   be in.
+   The ink is pure black on the white surface, so a full mark at opacity a leaves the
+   local backdrop at 255(1 - a). At 0.5 that measured rgb(132,135,153) under the subhead
+   and #3a3a3a against it came to 3.20:1 at 1440 and 2.88:1 at 390, against a 4.5 floor.
+   0.35 is the ceiling that clears it; 0.3 leaves margin for whichever phase the field
+   is in when the page loads.
 
-   Worth noting this still leaves our marks bolder than the reference's, not fainter.
-   Measured inside its own subhead, its darkest backdrop is rgb(233,234,246), about
-   twelve levels off white; ours at 0.3 sits around seventy levels off. It gets away
-   with 0.5 because its ink is nearly neutral and only 5.5% of that rect is covered. */
+   Note this still leaves our marks bolder than the reference's, not fainter. Measured
+   inside its own subhead, its darkest backdrop is rgb(233,234,246), about twelve levels
+   off white; ours at 0.3 sits around seventy-five off. It gets away with 0.5 because
+   only 5.5% of that rect carries a mark at all. */
 .hero-pixels {
-  opacity: 0.3;
+  /* 0.31 is the ceiling, not a preference. A full mark at opacity a leaves the backdrop
+     at 255(1 - a) on the white surface, so each piece of hero text implies a limit:
+     0.635 for the headline, 0.361 for the body copy, 0.459 for the blue emphasis at
+     rest, and 0.322 for its glint, which binds. Past that the sweep on "effortless."
+     falls under 3:1. The rest of the visibility had to come from density, which costs no
+     contrast at all; see the note on the ramp in HeroPixels. */
+  opacity: 0.31;
+  /* Dark runs higher, at 0.35, because its limits are looser rather than for symmetry.
+     Its ink is white, so each mark lightens the backdrop instead of darkening it, and
+     the hero text there is light too: the brighter the mark, the less contrast the copy
+     has. Against the black surface the limits are 0.571 for the headline, 0.385 for the
+     body copy and 0.373 for the blue emphasis at rest, so 0.35 sits just inside. Still
+     short of the reference's 0.6, which it can afford because its glyphs are
+     near-neutral rather than full white. */
   /*
-    One mask layer, and it only feathers the bottom edge. The grid runs the full
-    width of the hero and straight through the copy, which is what the reference
-    does.
+    One mask layer, feathered at both ends. Across the width it does nothing: the grid
+    runs the full width of the hero and straight through the copy, which is what the
+    reference does.
 
     What was here before was a hole: two additive layers whose union was everything
     except the rectangle the copy sits in. It kept the copy pristine, but a
@@ -562,12 +569,35 @@ body {
     reference does not do, and why its own subhead measures 3.97:1 against a 4.5
     floor.
 
-    The feather is still needed: the layer is a fixed 760px tall, so without it the
-    grid would stop dead on a horizontal line partway down the page. It fades out
-    from 520 to 740, which also thins the grid behind the trust row on its way past.
+    Feathered at both ends.
+
+    The top: clear across the navbar, then ramping in to full by 210px. The reference
+    does the same, and it is the more legible arrangement either way. The navbar is
+    the one strip of the hero where small text sits directly on the backdrop with no
+    fill of its own, and it is also where the grid is least useful, since it reads as
+    noise behind the links rather than as part of the wave. Full strength starts below
+    the badge and arrives as the headline does.
+
+    The bottom: the layer is a fixed 760px tall, so without a fade the grid would stop
+    dead on a horizontal line partway down the page. Out from 520 to 740, which also
+    thins it behind the trust row on the way past.
   */
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 520px, transparent 740px);
-  mask-image: linear-gradient(to bottom, #000 0, #000 520px, transparent 740px);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 76px,
+    #000 210px,
+    #000 520px,
+    transparent 740px
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 76px,
+    #000 210px,
+    #000 520px,
+    transparent 740px
+  );
   /* No fade-in, deliberately, after two attempts at one caused two different bugs.
 
      Reusing the beams' keyframes put the layer at opacity 1: beams-in ends at 1 and
@@ -591,16 +621,18 @@ body {
 /* Hero copy sits over the character grid, so in light mode it needs more contrast
    than the rest of the page does.
 
-   --muted-foreground is #6b6b6b, which is 4.84:1 on a bare #f5f5f5 page: four tenths
-   of a point above the 4.5 floor. Enough for a flat background, not for anything drawn
-   on top of it. Measured, a full-strength grid mark takes the local backdrop to about
-   rgb(140,171,239), and #6b6b6b against that is 2.3:1. Holding the token would have
-   meant capping the grid near 5% opacity behind the copy, which is invisible, so the
-   choice was a darker hero subhead or no grid behind the text.
+   --muted-foreground is #6b6b6b, which clears the 4.5 floor on a flat page by about
+   four tenths of a point. That is enough for flat, and not enough for anything drawn
+   on top. A black mark at 0.3 over the white surface puts the local backdrop at
+   rgb(179), where #6b6b6b measures 2.5:1. Holding the token would have meant capping
+   the grid near 5% opacity behind the copy, which is invisible, so the choice was a
+   darker hero subhead or no grid behind the text at all.
 
-   A token rather than a literal, because dark mode must not inherit it: there the
-   backdrop is the beams, whose scrim was fitted to #a3a3a3, and #3a3a3a on #141414
-   would be unreadable.
+   A token rather than a literal, because the two themes move in opposite directions.
+   Light ink is black and darkens the backdrop, so light copy has to get darker; dark
+   ink is white and lightens it while the text is light too, so dark copy has to get
+   lighter. The ceilings, measured against the worst mark each theme produces:
+   #464646 in light, #bdbdbd in dark. The values below sit clear of both.
 
    Scoped to the hero rather than changed on --muted-foreground itself, which the
    navbar, pricing, features and footer all use and none of which have a shader behind
@@ -611,58 +643,70 @@ body {
 :root {
   --hero-copy: #3a3a3a;
 }
+
+/* The emphasised words in the hero, back in brand blue, and their sweep.
+   
+   Two accent values, not one, because the two sit at different sizes and so answer to
+   different floors. "effortless." is 96px, which is large text at 3:1, and takes
+   --accent-text unchanged. "WhatsApp automation" is 19px regular at 4.5:1, where
+   --accent-text measures only 3.16 against the worst mark the grid puts behind it, so
+   it steps down to blue-900. Same hue, enough darker to clear the floor.
+
+   Both glints are white, in both themes, and in light mode that is a deliberate
+   exception to the contrast floor rather than an oversight.
+
+   The glint replaces the glyph's paint at the highlight rather than adding to it:
+   .shiny-text puts --shine-glint-local at the gradient's 50% stop and clips it to the
+   text, so mid-sweep those pixels ARE the glint colour. On the white surface a white
+   glint therefore measures about 1:1 where it peaks, and the slice of the word under it
+   is invisible for the moment it passes. In dark it is the opposite and entirely safe,
+   around 13.5:1, because white moves away from a black surface.
+
+   What keeps this from being a plain regression:
+     - the resting colour carries the word, and it is comfortably compliant. Measured
+       4.78 light and 3.88 dark for the display word, 4.91 and 6.77 for the body one.
+     - the gradient only reaches full glint at a single stop, with base at 35% and 65%,
+       so what fails is a narrow moving slice and not the word.
+     - prefers-reduced-motion and forced-colors both drop the gradient entirely and fall
+       back to that resting colour, so anyone who has asked not to see motion gets a
+       flat compliant word.
+
+   It is still a knowing trade of a moment of legibility for the sheen, chosen after the
+   legible version (blue-800 lifting to blue-700, which measured 3.09) was judged too
+   subtle to read as a shine. Worth revisiting if AA compliance across the animation ever
+   has to be provable rather than argued. */
+:root {
+  /* The theme's blue text token, which is as bright as this can go with the grid at
+     0.31. Measured against its worst mark, rgb(176): --accent-text is 3.09, which clears
+     the 3:1 a 96px word answers to. --accent, brand-500, is 2.38 and does not.
+
+     The body word cannot follow it there. It rides the subhead, which is
+     clamp(16px, 1.35vw, 19px), so on a phone it is 16px normal text at 4.5:1 rather than
+     3:1, and --accent-text only reaches 3.09. blue-900 is the brightest blue that clears
+     that floor, at 4.78. The two are deliberately different values for that reason, not
+     an oversight. */
+  --hero-accent-display: var(--accent-text);
+  --hero-accent-body: #1e3a8a;
+  --hero-shine-display: #ffffff;
+  --hero-shine-body: #ffffff;
+}
 .dark {
-  --hero-copy: var(--muted-foreground);
+  /* #d4d4d4 cleared the floor but only just, measuring 4.73 on the trust row at 390 on
+     the old #141414 surface. Ten levels brighter, plus the surface going to pure black,
+     puts it comfortably clear. Still clearly separated from the #fafafa headline. */
+  --hero-copy: #dedede;
+  /* The body accent lightens to blue-200, since blue-900 on black would be unreadable.
+     Both glints are pure white here: against a black surface that is the brightest a
+     sheen can be and the safest, since it moves the glyphs away from the background
+     rather than toward it. 8.45:1 at the highlight. */
+  --hero-accent-display: var(--accent-text);
+  --hero-accent-body: #bfdbfe;
+  --hero-shine-display: #ffffff;
+  --hero-shine-body: #ffffff;
 }
 .hero-sub,
 .hero-trust li {
   color: var(--hero-copy);
-}
-
-/* Light mode has no beams behind it, so this layer is the hero's entire backdrop
-   and it is written for that job rather than as a tint over something else.
-
-   Wider, softer and much weaker than the dark stops above. The strength is set by
-   contrast, not taste: the subhead is --muted-foreground (#6b6b6b) on a #f5f5f5
-   page, which is only 4.95:1 to begin with, so there are barely four tenths of a
-   point of headroom before AA fails. Measured against #f5f5f5, a flat accent tint
-   clears 4.5:1 at 7% and fails by 10%, which is the whole budget for every layer
-   here added together.
-
-   So the stops are placed where the copy is not. The wash arcs in from above the
-   section and the two corner stops sit at y=4% and 6%, all of them falling away
-   before the subhead at y=437. The one that does cross the headline is fine
-   there: --foreground is near black and needs 3:1, not 4.5:1.
-
-   The linear stop last, and at 5%, is what stops the hero reading as a plain grey
-   band now that the canvas is gone. It clears by 62% of the layer, which is 471px,
-   chosen against the subhead rather than for the look: at 78% the subhead measured
-   4.67:1 on a 390 viewport, and pulling the fade in put it at a more comfortable
-   distance from the floor while leaving the tint where the headline is, which needs
-   only 3:1. 471px is also well above the product card at y=588, so a gradient
-   reaching zero there cannot show as a seam. */
-html:not(.dark) .hero-mesh {
-  background:
-    radial-gradient(
-      120% 68% at 50% -14%,
-      color-mix(in srgb, var(--accent) 10%, transparent) 0%,
-      transparent 66%
-    ),
-    radial-gradient(
-      74% 52% at 10% 4%,
-      color-mix(in srgb, var(--accent-2) 12%, transparent) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      74% 52% at 90% 6%,
-      color-mix(in srgb, var(--accent) 11%, transparent) 0%,
-      transparent 70%
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--accent) 5%, transparent) 0%,
-      transparent 62%
-    );
 }
 
 /* ── Beams backdrop ───────────────────────────────────────────────────────────
@@ -903,6 +947,28 @@ html:not(.dark) .hero-mesh {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft);
   color: var(--accent-text);
+}
+
+/* ── Monochrome hero accents ──────────────────────────────────────────────────
+   The surface and the grid ink went to pure black and white, and these were what
+   was left holding brand blue inside the hero: the badge pill, the serif emphasis
+   in the headline, and the dot before each trust point.
+
+   Scoped to .hero-surface rather than changed at the source. .display-accent is
+   also the emphasis in the WhatsApp heading, and .text-accent-text is used by
+   Bento, Pricing and the Navbar; all of those keep the brand palette. .pill-accent
+   currently has no other user, but scoping it means a second use elsewhere still
+   gets the branded version rather than inheriting a hero-specific decision.
+
+   The badge keeps a visible edge, since without the blue fill a borderless pill on
+   pure white has nothing to define it. */
+.hero-surface .pill-accent {
+  border-color: var(--border-strong);
+  background: var(--subtle);
+  color: var(--foreground);
+}
+.hero-surface .display-accent {
+  color: var(--hero-accent-display);
 }
 
 /* Buttons — every CTA on the page is a pill */

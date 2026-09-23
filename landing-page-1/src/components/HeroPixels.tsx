@@ -11,19 +11,6 @@ const CharGrid = lazy(() => import('./CharGrid'));
 const PHONE_QUERY = '(max-width: 767px)';
 
 /**
- * Reads the brand blue out of the tokens rather than repeating the hex.
- *
- * The pixels are the one place on the page where the accent appears as texture
- * rather than as a fill, and it should still move if the token moves.
- */
-function readAccent(): string {
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue('--accent')
-    .trim();
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : '#2563eb';
-}
-
-/**
  * Cheaper on a phone, in the dimensions that actually cost.
  *
  * This shader is far more expensive per fragment than a dithered pixel grid:
@@ -52,17 +39,28 @@ function readAccent(): string {
     contrast  = ln 5 / ln(q79 / q46)
     intensity = (1/9)^(1/contrast) / q46
 
-  Evaluating the field over the real cell grid gives q46 0.546 and q79 0.867 at the
-  desktop size, hence the values below. Pushed back through the mapping they predict
-  empty 46.6%, light 32.7%, heavy 20.7% against the reference's 46.6 / 30.9 / 20.7.
+  These were first solved against the reference's own distribution, 47% of cells empty
+  with a fifth carrying a heavier mark, and have since been re-solved for a denser grid:
+  28% empty and 34% heavy.
+
+  Density is the lever because darkness is not. On the white surface a full mark at
+  layer opacity a leaves the backdrop at 255(1 - a), so every piece of hero text implies
+  a ceiling on a, and the blue emphasis words bind it hard: the glint on "effortless."
+  caps opacity at 0.322 against the 0.31 now in use. There is nothing left there.
+
+  Coverage, on the other hand, is free. WCAG compares text against its background per
+  pixel, so the measured floor is set by the darkest single mark and not by how many
+  marks there are. Inking more of the grid, and pushing more of it further up the ramp,
+  makes the layer read more strongly without moving any contrast number.
+
   The percentiles shift with scale and frame shape, so the two devices do not share a
-  pair and the values have to be re-solved if scale changes.
+  pair and both have to be re-solved if scale or the target distribution changes.
 */
 const PHONE = {
   size: 12,
   scale: 3,
-  intensity: 0.986,
-  contrast: 3.378,
+  intensity: 1.133,
+  contrast: 2.496,
   maxPixelRatio: 1,
   targetFps: 15,
 } as const;
@@ -70,29 +68,29 @@ const PHONE = {
 const DESKTOP = {
   size: 10,
   scale: 4,
-  intensity: 0.974,
-  contrast: 3.482,
+  intensity: 1.096,
+  contrast: 2.535,
   maxPixelRatio: 1.25,
   targetFps: 24,
 } as const;
 
 /**
- * The hero's light-mode backdrop: a dithered pixel grid over the brand wash.
+ * The hero's backdrop in both themes: a character grid flowing over the mesh wash.
  *
- * Light mode only, and that is the point of it. Dark mode has the Beams canvas,
- * which needs a near-black field for its specular highlights to read against;
- * light mode had nothing moving at all after the beams were gated out of it, just
- * the static mesh wash. This fills that gap without either theme having to
- * compromise for the other.
+ * This used to be light mode only, with the Beams canvas covering dark. Both themes
+ * now run this one, which is also what the reference does: switching its theme keeps
+ * the same grid at the same uScale, uSize, uSpeed, uWaveTension and uWaveTwist, and
+ * changes only two things, uColor from near-black to pure white and the layer opacity
+ * from 0.5 to 0.6. Beams is no longer mounted; two WebGL contexts in one hero is not
+ * worth it for a decoration, and the heavier of the two was the one being dropped.
  *
- * The other gates match Beams, for the same reasons:
+ * Gates, unchanged and for the same reasons:
  *  - reduced motion: continuous movement with no user control.
  *  - Data Saver or 2g: see connectionAllowsDecoration.
  *
- * Legibility is handled in CSS rather than here. .hero-pixels carries a mask that
- * removes the grid from behind the copy, so the pixels live in the margins where
- * nothing is read. That is cheaper and more predictable than the gradient scrim the
- * beams needed, because a mask cannot be defeated by whatever the shader does.
+ * Legibility is handled in CSS, not here: the grid runs behind the copy rather than
+ * around it, so .hero-pixels sets the opacity each theme can afford and --hero-copy
+ * carries the text far enough from the marks to stay readable over them.
  */
 export function HeroPixels() {
   const isDark = useIsDark();
@@ -103,14 +101,36 @@ export function HeroPixels() {
   // identity on every paint.
   const connectionOk = useMemo(() => connectionAllowsDecoration(), []);
 
-  const wanted = !isDark && !reducedMotion && connectionOk;
+  // No theme condition: both themes run the grid now.
+  const wanted = !reducedMotion && connectionOk;
   const ready = useDeferredUntilIdle(wanted, 2500);
   const active = wanted && ready;
 
   const settings = isPhone ? PHONE : DESKTOP;
 
-  // Re-read per theme so a toggle cannot leave the previous theme's accent behind.
-  const color = useMemo(() => (isDark ? '#2563eb' : readAccent()), [isDark]);
+  /*
+    Pure black on pure white, pure white on pure black, which is what the reference
+    does: its uColor is [0.003,0.003,0.003] in light and [1,1,1] in dark, on #ffffff
+    and #0a0a0a. The hero surface is set to match in .hero-surface.
+
+    This used to read --accent, and the brand blue was the wrong ink for a glyph ramp
+    in both directions. In light it tints the whole backdrop, so the hero never looked
+    monochrome; in dark it is darker than several steps of the ramp, so marks that
+    should read as the heaviest come out dimmer than the page and the gradient inverts.
+    A neutral ink keeps the ramp monotonic, which is the thing the glyph mapping
+    assumes.
+
+    Not read from a token, because these are not brand values: they are the two ends
+    of the range the ramp needs, and they should not follow --accent if it moves.
+  */
+  const color = isDark ? '#ffffff' : '#000000';
+
+  /*
+    The coloured end of the ramp, carrying the faint marks. The heavy ones keep the full
+    strength of `color` above, which is what makes the grid read; the tint rides on the
+    lighter glyphs where it adds colour without costing presence.
+  */
+  const colorTint = isDark ? '#93c5fd' : '#2563eb';
 
   if (!active) return null;
 
@@ -123,6 +143,7 @@ export function HeroPixels() {
         <CharGrid
           className="h-full w-full"
           color={color}
+          colorTint={colorTint}
           /*
             10px, the pitch measured on the reference: its column-ink autocorrelation
             peaks at lag 10 with a harmonic at 20.

@@ -3,7 +3,6 @@ import gsap from 'gsap';
 import { ArrowRight, MapPin } from 'lucide-react';
 import { Marquee } from './Marquee';
 import { DashboardMock } from './DashboardMock';
-import { HeroBeams } from './HeroBeams';
 import { HeroPixels } from './HeroPixels';
 import { ShinyText } from './ShinyText';
 import { prefersReducedMotion } from '../lib/useReveal';
@@ -63,29 +62,19 @@ export function Hero() {
     <section
       ref={scope}
       aria-labelledby="hero-title"
-      className="relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8"
+      className="hero-surface relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8"
     >
-      {/* Animated ribbons, dark mode only, and deliberately first: the mesh below
-          dims itself off a sibling selector on .hero-beams, so DOM order here is
-          what tells it the beams are present. HeroBeams renders nothing in light
-          mode, under reduced motion, or on a metered connection — and in each of
-          those cases the mesh takes over as the hero's backdrop at full strength.
-          It does run on phones. */}
-      <HeroBeams />
+      {/* The hero's moving backdrop in both themes: a character grid flowing over the
+          mesh wash below, inked with the accent in light and white in dark. It runs
+          behind the copy rather than around it, so the legibility work is in the type
+          and the layer opacity rather than in a mask; see .hero-pixels.
 
-      {/* Light mode's counterpart: a dithered pixel grid, since the beams above
-          need a near-black field and so never run there. Sits above the mesh wash
-          and below the copy, masked out of the middle so nothing is read through
-          it. Exactly one of the two ever mounts. */}
+          This replaced HeroBeams, which used to cover dark mode on its own. The
+          reference keeps one effect across both themes and only reinks it, and two
+          WebGL contexts in a single hero is not a trade worth making for decoration.
+          Renders nothing under reduced motion or on a metered connection, in which
+          case the mesh is the backdrop on its own. It does run on phones. */}
       <HeroPixels />
-
-      {/* Brand-hue mesh behind the headline and product shot. Spans the full
-          width rather than a centred 900px block, so the colour reaches behind
-          the dashboard frame the way it does in the reference. */}
-      <div
-        aria-hidden
-        className="hero-mesh pointer-events-none absolute inset-x-0 top-0 -z-10 h-[760px]"
-      />
 
       <div className="mx-auto max-w-[1240px]">
         {/* ── Copy ──────────────────────────────────────────────────────── */}
@@ -95,9 +84,9 @@ export function Hero() {
           <span className="hero-badge pill pill-accent">
             <MapPin className="h-3.5 w-3.5" />
             Built for independent gyms across India
-            <span aria-hidden className="text-accent-text">
-              ✦
-            </span>
+            {/* Inherits the pill's colour rather than naming the accent, so the
+                monochrome hero override in .hero-surface reaches it too. */}
+            <span aria-hidden>✦</span>
           </span>
 
           {/* Two explicit lines rather than one balanced block. Left to wrap on
@@ -110,15 +99,26 @@ export function Hero() {
               the sentence, so the emphasis is real and not just decoration.
 
               The <em> keeps the serif italic and the size correction; ShinyText
-              only takes over the paint. Its base colour is passed as the same
-              --accent-text the class sets, so the word looks unchanged between
-              sweeps and reduced motion lands on exactly that colour. */}
+              only takes over the paint. Its base colour is passed as the same value
+              the class resolves to in the hero, so the word looks unchanged between
+              sweeps and reduced motion lands on exactly that colour.
+
+              Passed rather than left to the component's default, because ShinyText
+              writes both colours as inline custom properties and no stylesheet rule
+              can reach those. The glint is white by request; the contrast trade that
+              involves is recorded on --hero-shine-display in index.css. */}
           <h1 id="hero-title" className="display-1 mt-8">
             <span className="hero-line block">Gym management,</span>
             <span className="hero-line block">
               made{' '}
               <em className="display-accent">
-                <ShinyText text="effortless." speed={2.8} spread={120} />
+                <ShinyText
+                  text="effortless."
+                  speed={2.8}
+                  spread={120}
+                  color="var(--hero-accent-display)"
+                  shineColor="var(--hero-shine-display)"
+                />
               </em>
             </span>
           </h1>
@@ -136,11 +136,17 @@ export function Hero() {
               against the muted body text around it. */}
           <p className="hero-sub lead mx-auto mt-7 max-w-[620px]">
             Members, payments, attendance, dues and{' '}
+            {/* Resting colour is blue-800 rather than --accent-text: this word is 19px
+                regular, so it answers to 4.5:1 rather than 3:1, and --accent-text only
+                reaches 3.16 against the grid behind it. The glint is white, same as the
+                headline's. */}
             <ShinyText
               text="WhatsApp automation"
               speed={3}
               spread={120}
               className="font-medium"
+              color="var(--hero-accent-body)"
+              shineColor="var(--hero-shine-body)"
             />{' '}
             — in one place, without the notebooks.
           </p>
@@ -176,7 +182,9 @@ export function Hero() {
                 key={point}
                 className="flex items-center gap-2 text-xs font-medium text-muted-foreground"
               >
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
+                {/* currentColor, so the dot follows --hero-copy with the text it
+                    belongs to instead of being the one blue mark left in the row. */}
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
                 {point}
               </li>
             ))}

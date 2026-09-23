@@ -191,6 +191,7 @@ uniform vec2  uResolution;
 uniform vec2  uCells;
 uniform float uCharCount;
 uniform vec3  uColor;
+uniform vec3  uColorTint;
 uniform float uSize;
 
 varying vec2 vUv;
@@ -211,17 +212,43 @@ void main() {
 
   float alpha = texture2D(uFontTexture, atlasUV).a;
 
-  // The + 0.1 keeps the faintest glyphs from going fully transparent, so the ramp
-  // reads as a gradient of density instead of cutting off.
-  vec3 ink = uColor * (gray + 0.1);
+  /*
+    Two inks, mixed by the cell's own density. Keying the mix to gray rather than to
+    position means the colour follows the flow, so it reads as part of the wave rather
+    than a gradient laid over it.
+
+    uColorTint carries the faint end and uColor the dense end, and that direction
+    matters more than it looks. It was the other way round first, which put the tint on
+    the heaviest glyphs: exactly the marks that do the most to make the grid visible
+    were painted the palest colour available. On the white surface they composited to
+    rgb(191,211,255) while the tiny dots sat at rgb(178), so the biggest marks were the
+    least legible and the whole layer read as washed out.
+
+    I had justified that order in a comment here on the grounds that reversing it would
+    "put the tint in charge of the worst case". That was wrong. The extreme ink is
+    reached at gray = 1 in this order and at gray = 0 in the other, but it is reached
+    either way, so the darkest possible mark on white is pure black in both and the
+    contrast floor does not move. What changes is only which glyphs get it, and the
+    dense ones are the better home for it.
+  */
+  vec3 ink = mix(uColorTint, uColor, gray) * (gray + 0.1);
   gl_FragColor = vec4(ink * alpha, alpha);
 }
 `;
 
 export interface CharGridProps {
   className?: string;
-  /** Ink colour. */
+  /** Ink colour for the dense end of the ramp, where the heaviest glyphs are. */
   color?: string;
+  /**
+   * Ink colour for the faint end, mixed out toward `color` as cells get denser.
+   *
+   * Defaults to `color`, which gives a single flat ink. Set it to something different
+   * and the grid picks up colour on its lighter marks while the heavy ones keep the
+   * full strength of `color`. Contrast is governed by `color` alone, since that is the
+   * end the mix reaches at full density.
+   */
+  colorTint?: string;
   /** Cell pitch in CSS px. The reference uses 10. */
   size?: number;
   /** Field frequency. Higher packs more structure into the frame. */
@@ -256,6 +283,7 @@ export interface CharGridProps {
 export function CharGrid({
   className,
   color = '#2563eb',
+  colorTint,
   size = 10,
   scale = 6,
   speed = 1,
@@ -315,6 +343,7 @@ export function CharGrid({
       uCells: { value: new THREE.Vector2(1, 1) },
       uCharCount: { value: RAMP.length },
       uColor: { value: new THREE.Color(color) },
+      uColorTint: { value: new THREE.Color(colorTint ?? color) },
       uSize: { value: size },
     };
 
@@ -437,6 +466,7 @@ export function CharGrid({
     };
   }, [
     color,
+    colorTint,
     size,
     scale,
     speed,

@@ -17,14 +17,30 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
+import { AsciiPanelBackdrop } from '@/components/ui/AsciiPanelBackdrop'
 import { signOutViaApi } from '@/lib/auth/client-auth'
 import { clearLoginFailures, getLoginThrottle, recordLoginFailure } from '@/lib/member/lockout'
 import { safeMemberRedirect } from '@/lib/member/redirect'
 import type { AppRole } from '@/lib/auth/roles'
 
-// ─── Animated Grid Background ───────────────────────────────────────────────────
+// ─── Animated Panel Background ──────────────────────────────────────────────────
 
-function GridBackground() {
+/**
+ * The dark panel's texture: the same character-grid flow field the marketing hero
+ * runs, over the existing brand orbs.
+ *
+ * The orbs stay — they are what gives the panel its colour and depth, and the grid
+ * reads over them rather than against them. What the grid replaced is the 60px SVG
+ * lattice and the twenty floating particles that used to sit here: both were doing
+ * the same job of texturing the panel, and three overlapping treatments read as
+ * noise rather than as one idea.
+ *
+ * Dropping the particles also removes twenty elements each running an infinite
+ * transform animation on the main thread. The grid is a single canvas that parks
+ * itself when off-screen or backgrounded, and unlike them it is gated on reduced
+ * motion and on Data Saver.
+ */
+function PanelBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
       {/* Animated gradient orbs */}
@@ -32,35 +48,15 @@ function GridBackground() {
       <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-gradient-to-tr from-cyan-400/15 to-emerald-400/10 rounded-full blur-[80px] animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
       <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] bg-gradient-to-r from-brand-500/10 to-purple-500/10 rounded-full blur-[60px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '4s' }} />
 
-      {/* Grid overlay */}
-      <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-      </svg>
+      {/* Character grid.
 
-      {/* Floating particles */}
-      {Array.from({ length: 20 }).map((_, i) => {
-        const r1 = Math.abs((Math.sin(i + 1) * 10000) % 1)
-        const r2 = Math.abs((Math.sin(i + 2) * 10000) % 1)
-        const r3 = Math.abs((Math.sin(i + 3) * 10000) % 1)
-        const r4 = Math.abs((Math.sin(i + 4) * 10000) % 1)
-        return (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-white/20 rounded-full"
-            style={{
-              left: `${(r1 * 100).toFixed(2)}%`,
-              top: `${(r2 * 100).toFixed(2)}%`,
-              animation: `float-particle ${(6 + r3 * 8).toFixed(2)}s ease-in-out infinite`,
-              animationDelay: `${(r4 * 5).toFixed(2)}s`,
-            }}
-          />
-        )
-      })}
+          opacity-20 is a ceiling rather than a preference. White ink on this panel
+          means every mark lightens the local background, and the panel's text is
+          light too, so the brighter the mark the less contrast the copy has. At
+          text-white/70 the limit measures 0.24; past it the body copy drops under
+          4.5:1. The mask fades the grid out toward the bottom so it does not run
+          into the footer line. */}
+      <AsciiPanelBackdrop className="absolute inset-0 opacity-20 [mask-image:linear-gradient(to_bottom,#000_0,#000_65%,transparent_92%)]" />
     </div>
   )
 }
@@ -78,7 +74,9 @@ function FeatureCard({ icon, title, description, delay }: { icon: React.ReactNod
       </div>
       <div>
         <h3 className="text-sm font-bold text-white/90 mb-0.5">{title}</h3>
-        <p className="text-xs text-white/40 leading-relaxed">{description}</p>
+        {/* white/70 for the same reason as the panel paragraph: white/40 measured
+            3.81:1 on this panel, under the 4.5 floor, before the grid existed. */}
+        <p className="text-xs text-white/70 leading-relaxed">{description}</p>
       </div>
     </div>
   )
@@ -451,7 +449,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex">
       {/* ─── LEFT PANEL: Dark branded hero ─── */}
       <div className="hidden lg:flex lg:w-[55%] relative bg-[#0B0F1A] flex-col p-10 xl:p-14 overflow-hidden">
-        <GridBackground />
+        <PanelBackground />
 
         {/* Top: Logo */}
         <div className={`relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
@@ -478,7 +476,12 @@ export default function LoginPage() {
                 gymflow
               </span>
             </h1>
-            <p className="text-base text-white/40 max-w-md leading-relaxed font-medium">
+            {/* white/70, not the white/40 this was. On #0B0F1A that measured 3.81:1
+                against a 4.5 floor, so it was already under AA before the grid went in
+                behind it, and a lightening backdrop would only have compounded it. At
+                white/70 it clears the floor and can carry the grid at up to 0.24
+                opacity. */}
+            <p className="text-base text-white/70 max-w-md leading-relaxed font-medium">
               {role === 'member'
                 ? 'Your membership, workouts, streaks and rewards — all in one place.'
                 : 'The complete gym management platform trusted by gym owners across Tamil Nadu and Pondicherry.'}
@@ -545,7 +548,10 @@ export default function LoginPage() {
               <span className="text-[11px] font-bold text-brand-300 tracking-wide">Setup in 2 Minutes</span>
             </div>
           </div>
-          <p className="text-[11px] text-white/20 font-medium">
+          {/* white/20 measured 1.82:1 here, which is not readable by any standard and
+              was the worst of the three. The grid is masked out by this point in the
+              panel, so the only thing changing its contrast is the weight itself. */}
+          <p className="text-[11px] text-white/70 font-medium">
             © {new Date().getFullYear()} gymflow. Built for gym owners, by fitness enthusiasts.
           </p>
         </div>
@@ -711,15 +717,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* CSS for floating particles */}
-      <style>{`
-        @keyframes float-particle {
-          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.2; }
-          25% { transform: translateY(-20px) translateX(10px); opacity: 0.5; }
-          50% { transform: translateY(-10px) translateX(-5px); opacity: 0.3; }
-          75% { transform: translateY(-30px) translateX(15px); opacity: 0.4; }
-        }
-      `}</style>
     </div>
   )
 }

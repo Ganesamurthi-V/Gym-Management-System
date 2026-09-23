@@ -16,6 +16,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
+import { useMediaQuery } from '../lib/useMediaQuery';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -78,11 +79,46 @@ const NAV_MAX_W_SCROLLED = 1120;
  */
 const COLLAPSE_AT = 48;
 
+/**
+ * Where the inline menu takes over from the hamburger. Kept as a constant because the
+ * sheet's open state is derived from it as well as hidden by the matching `lg:` classes,
+ * and the two must not disagree.
+ */
+const DESKTOP_AT = 1024;
+
+/**
+ * Hoverable bridge between a trigger and its panel, in px.
+ *
+ * The panel used to be offset with top: calc(100% + 10px), which left 10px belonging to
+ * neither the trigger nor the panel. Crossing it took the pointer outside the group, so
+ * onMouseLeave fired and the panel closed before it could be reached — the dropdowns
+ * were unusable with a mouse, while working fine by keyboard, which is why it survived.
+ * The same 10px is now padding on a wrapper that starts flush at top: 100%, so the space
+ * belongs to the hover target and the gap still reads visually.
+ */
+const PANEL_BRIDGE = 10;
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+
+  const isDesktop = useMediaQuery(`(min-width: ${DESKTOP_AT}px)`);
+
+  /*
+    Derived rather than stored, and that matters for more than tidiness.
+
+    The sheet is hidden by CSS at lg, but hiding it does not unset mobileOpen, and the
+    scroll lock below was keyed to that: widening a phone-width window past lg with the
+    sheet open left the page unscrollable with nothing on screen to release it.
+
+    Deriving fixes that without an effect that resets state, which would only trade the
+    stuck lock for a cascading render. The toggle below flips against this value rather
+    than against mobileOpen, so returning to a narrow width cannot leave the button one
+    press out of step with what is on screen.
+  */
+  const sheetOpen = mobileOpen && !isDesktop;
 
   useEffect(() => {
     let ticking = false;
@@ -121,13 +157,26 @@ export function Navbar() {
     };
   }, [openMenu]);
 
-  // Lock body scroll behind the mobile sheet so the page underneath doesn't move.
+  // Escape closes the sheet as well. It already closed the desktop dropdown, and a
+  // full-screen overlay that ignores the key is the more surprising of the two.
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    if (!sheetOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sheetOpen]);
+
+  // Lock body scroll behind the mobile sheet so the page underneath doesn't move.
+  // Keyed to the derived value, so the lock is released whenever the sheet stops being
+  // on screen, including because the viewport grew rather than because it was dismissed.
+  useEffect(() => {
+    document.body.style.overflow = sheetOpen ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [mobileOpen]);
+  }, [sheetOpen]);
 
   return (
     // Two layers, mirroring the reference: the <header> is a transparent,
@@ -137,7 +186,7 @@ export function Navbar() {
     <header ref={navRef} className="fixed inset-x-0 top-0 z-50 px-3 md:px-5" style={{ paddingTop: NAV_TOP }}>
       <nav
         aria-label="Main"
-        className="nav-island mx-auto flex items-center justify-between gap-6 px-4 md:px-6"
+        className="nav-island relative mx-auto flex items-center justify-between gap-6 px-4 md:px-6"
         style={{
           height: scrolled ? NAV_H_SCROLLED : NAV_H,
           maxWidth: scrolled ? NAV_MAX_W_SCROLLED : NAV_MAX_W,
@@ -182,8 +231,13 @@ export function Navbar() {
           />
         </a>
 
-        {/* Desktop nav */}
-        <div className="hidden items-center gap-1 lg:flex">
+        {/* Desktop nav, centred on the island rather than left as the middle child of a
+            justify-between row. That only centres the middle child when the two either
+            side of it match in width, and they do not: the wordmark measures 126px
+            against a 235px right cluster, which put the menu 62px left of centre. Out of
+            flow it holds the true centre at every width, and the logo and CTAs still sit
+            at the extremes, which is what justify-between is actually good at. */}
+        <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
           <DropdownTrigger
             id="product"
             label="Product"
@@ -228,19 +282,21 @@ export function Navbar() {
 
           <button
             type="button"
-            onClick={() => setMobileOpen(open => !open)}
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen(!sheetOpen)}
+            aria-label={sheetOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={sheetOpen}
+            aria-controls={sheetOpen ? 'nav-mobile-sheet' : undefined}
             className="grid h-9 w-9 place-items-center rounded-pill border border-border-subtle bg-frame text-foreground lg:hidden"
           >
-            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {sheetOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
         </div>
       </nav>
 
       {/* Mobile sheet */}
-      {mobileOpen && (
+      {sheetOpen && (
         <div
+          id="nav-mobile-sheet"
           // Derived from the island metrics rather than hardcoded: the bar now
           // changes height, so a fixed offset would leave a gap or an overlap.
           style={{ top: NAV_TOP + (scrolled ? NAV_H_SCROLLED : NAV_H) }}
@@ -319,8 +375,11 @@ function DropdownTrigger({
     >
       <button
         type="button"
+        aria-haspopup="true"
         aria-expanded={isOpen}
-        aria-controls={panelId}
+        /* Named only while the panel exists. The panel unmounts when closed, so setting
+           this unconditionally left aria-controls pointing at no element. */
+        aria-controls={isOpen ? panelId : undefined}
         onClick={() => setOpenMenu(isOpen ? null : id)}
         className={`inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[13.5px] font-medium transition-colors ${
           isOpen ? 'bg-subtle text-foreground' : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
@@ -333,9 +392,13 @@ function DropdownTrigger({
       </button>
 
       {isOpen && (
+        /* The offset is padding on this wrapper rather than a position offset on the
+           panel, so the space between trigger and panel is part of the hover target.
+           See PANEL_BRIDGE. */
+        <div className="absolute left-0 top-full" style={{ paddingTop: PANEL_BRIDGE }}>
         <div
           id={panelId}
-          className="animate-fade-in-up absolute left-0 top-[calc(100%+10px)] card overflow-hidden p-2 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.28)]"
+          className="animate-fade-in-up card overflow-hidden p-2 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.28)]"
           style={{ width: columns === 2 ? 520 : 300 }}
         >
           <ul className={columns === 2 ? 'grid grid-cols-2 gap-1' : 'flex flex-col gap-1'}>
@@ -364,6 +427,7 @@ function DropdownTrigger({
               );
             })}
           </ul>
+        </div>
         </div>
       )}
     </div>

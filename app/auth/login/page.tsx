@@ -2,88 +2,32 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import {
-  Eye,
-  EyeOff,
-  ArrowRight,
-  Users,
-  TrendingUp,
-  Shield,
-  Zap,
-  Check,
-  Building2,
-  UserRound,
-  ShieldCheck,
-} from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, Check, Building2, UserRound, ShieldCheck } from 'lucide-react'
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
-import { AsciiPanelBackdrop } from '@/components/ui/AsciiPanelBackdrop'
+import { AuthShell } from '@/components/auth/AuthShell'
+import {
+  authDividerLabel,
+  authHeading,
+  authInput,
+  authLabel,
+  authLink,
+  authPanel,
+  authPrimaryButton,
+  authSub,
+} from '@/components/auth/authStyles'
 import { signOutViaApi } from '@/lib/auth/client-auth'
 import { clearLoginFailures, getLoginThrottle, recordLoginFailure } from '@/lib/member/lockout'
 import { safeMemberRedirect } from '@/lib/member/redirect'
 import type { AppRole } from '@/lib/auth/roles'
 
-// ─── Animated Panel Background ──────────────────────────────────────────────────
-
-/**
- * The dark panel's texture: the same character-grid flow field the marketing hero
- * runs, over the existing brand orbs.
- *
- * The orbs stay — they are what gives the panel its colour and depth, and the grid
- * reads over them rather than against them. What the grid replaced is the 60px SVG
- * lattice and the twenty floating particles that used to sit here: both were doing
- * the same job of texturing the panel, and three overlapping treatments read as
- * noise rather than as one idea.
- *
- * Dropping the particles also removes twenty elements each running an infinite
- * transform animation on the main thread. The grid is a single canvas that parks
- * itself when off-screen or backgrounded, and unlike them it is gated on reduced
- * motion and on Data Saver.
- */
-function PanelBackground() {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Animated gradient orbs */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-br from-brand-400/20 to-violet-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-gradient-to-tr from-cyan-400/15 to-emerald-400/10 rounded-full blur-[80px] animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
-      <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] bg-gradient-to-r from-brand-500/10 to-purple-500/10 rounded-full blur-[60px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '4s' }} />
-
-      {/* Character grid.
-
-          opacity-20 is a ceiling rather than a preference. White ink on this panel
-          means every mark lightens the local background, and the panel's text is
-          light too, so the brighter the mark the less contrast the copy has. At
-          text-white/70 the limit measures 0.24; past it the body copy drops under
-          4.5:1. The mask fades the grid out toward the bottom so it does not run
-          into the footer line. */}
-      <AsciiPanelBackdrop className="absolute inset-0 opacity-20 [mask-image:linear-gradient(to_bottom,#000_0,#000_65%,transparent_92%)]" />
-    </div>
-  )
-}
-
-// ─── Feature Card ───────────────────────────────────────────────────────────────
-
-function FeatureCard({ icon, title, description, delay }: { icon: React.ReactNode; title: string; description: string; delay: number }) {
-  return (
-    <div
-      className="flex items-start gap-4 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] backdrop-blur-sm hover:bg-white/[0.08] transition-all duration-500 group"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-400/20 to-brand-500/10 border border-brand-400/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-        {icon}
-      </div>
-      <div>
-        <h3 className="text-sm font-bold text-white/90 mb-0.5">{title}</h3>
-        {/* white/70 for the same reason as the panel paragraph: white/40 measured
-            3.81:1 on this panel, under the 4.5 floor, before the grid existed. */}
-        <p className="text-xs text-white/70 leading-relaxed">{description}</p>
-      </div>
-    </div>
-  )
-}
-
 // ─── Registration Success Banner ────────────────────────────────────────────────
 
+/*
+  Semantic colour is kept through the monochrome restyle. The surface, type and primary
+  action lost the brand blue, but success, error and warning states did not: colour is
+  carrying meaning in them, and each pairs it with an icon and wording so it is never the
+  only cue.
+*/
 function RegistrationSuccessBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <div className="mb-5 p-4 bg-emerald-50 border border-emerald-200 rounded-xl animate-slide-up">
@@ -141,7 +85,10 @@ function RoleSelector({
     <div
       role="tablist"
       aria-label="Choose account type"
-      className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1"
+      /* Opaque neutral track, so the grid never shows through behind the tab labels.
+         That is what lets the inactive label sit at neutral-600, below the neutral-700
+         floor that applies to text directly on the surface. */
+      className="mb-6 grid grid-cols-2 gap-1 rounded-2xl border border-neutral-200 bg-neutral-100 p-1"
     >
       {(['owner', 'member'] as const).map((role) => {
         const active = value === role
@@ -156,10 +103,10 @@ function RoleSelector({
             aria-controls="login-form"
             disabled={disabled}
             onClick={() => onChange(role)}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all duration-200 disabled:cursor-not-allowed ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed ${
               active
-                ? 'bg-white text-[#0F172A] shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white text-neutral-950 shadow-sm'
+                : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
             <Icon className="h-4 w-4" strokeWidth={active ? 2.5 : 2} aria-hidden="true" />
@@ -446,277 +393,156 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* ─── LEFT PANEL: Dark branded hero ─── */}
-      <div className="hidden lg:flex lg:w-[55%] relative bg-[#0B0F1A] flex-col p-10 xl:p-14 overflow-hidden">
-        <PanelBackground />
+    <AuthShell
+      maxWidth={400}
+      footer={
+        <p className="text-xs text-neutral-700">
+          Secured with end-to-end encryption
+        </p>
+      }
+    >
+      <div
+        className={`transition-all duration-500 ${
+          mounted ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
+        }`}
+      >
+        <RoleSelector value={role} onChange={switchRole} disabled={loading} />
 
-        {/* Top: Logo */}
-        <div className={`relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <Image src="/logo_only.png" alt="GymFlow Logo" width={40} height={40} className="object-contain drop-shadow-md" />
-            </div>
-            <span className="text-lg font-black text-white tracking-tight">gymflow</span>
-          </div>
+        <div className="mb-7">
+          <h1 className={authHeading}>{copy.heading}</h1>
+          <p className={authSub}>{copy.sub}</p>
         </div>
 
-        {/* Center: Hero content */}
-        <div className={`relative z-10 mt-16 xl:mt-24 space-y-8 transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-400/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-              <span className="text-[11px] font-bold text-brand-300 uppercase tracking-wider">
-                {role === 'member' ? 'Member App' : 'Gym Management Platform'}
-              </span>
+        {showRegBanner && <RegistrationSuccessBanner onDismiss={() => setShowRegBanner(false)} />}
+
+        {notice && (
+          <div
+            role="status"
+            className="animate-slide-up mb-5 flex items-center gap-2.5 rounded-xl border border-neutral-200 bg-neutral-50 p-3.5 text-sm font-semibold text-neutral-900"
+          >
+            <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+            {notice}
+          </div>
+        )}
+
+        {error && (
+          <div
+            role="alert"
+            className="animate-slide-up mb-5 flex items-center gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3.5 text-sm font-semibold text-red-700"
+          >
+            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+              <span className="text-xs text-red-600">!</span>
             </div>
-            <h1 className="text-4xl xl:text-5xl font-black text-white leading-[1.1] tracking-tight">
-              Welcome to<br />
-              <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-cyan-400 bg-clip-text text-transparent">
-                gymflow
-              </span>
-            </h1>
-            {/* white/70, not the white/40 this was. On #0B0F1A that measured 3.81:1
-                against a 4.5 floor, so it was already under AA before the grid went in
-                behind it, and a lightening backdrop would only have compounded it. At
-                white/70 it clears the floor and can carry the grid at up to 0.24
-                opacity. */}
-            <p className="text-base text-white/70 max-w-md leading-relaxed font-medium">
-              {role === 'member'
-                ? 'Your membership, workouts, streaks and rewards — all in one place.'
-                : 'The complete gym management platform trusted by gym owners across Tamil Nadu and Pondicherry.'}
+            {error}
+          </div>
+        )}
+
+        {!error && role === 'member' && attemptsRemaining < 5 && (
+          <p role="status" className="mb-4 text-xs font-semibold text-amber-700">
+            {attemptsRemaining} sign-in attempts remaining on this device.
+          </p>
+        )}
+
+        <form
+          id="login-form"
+          role="tabpanel"
+          aria-labelledby={`role-tab-${role}`}
+          onSubmit={handleLogin}
+          className="space-y-5"
+        >
+          <div>
+            <label htmlFor="email" className={authLabel}>
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={authInput}
+              placeholder={copy.placeholder}
+              required
+              autoComplete="email"
+              aria-invalid={Boolean(error)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className={authLabel}>
+              Password
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`${authInput} pr-12`}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+                aria-invalid={Boolean(error)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || isLocked}
+            aria-busy={loading}
+            className={`${authPrimaryButton} group`}
+          >
+            {isLocked ? (
+              `Try again in ${lockoutLabel}`
+            ) : loading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                Sign in
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="my-7 flex items-center gap-4">
+          <div className="h-px flex-1 bg-neutral-200" />
+          <span className={authDividerLabel}>Or</span>
+          <div className="h-px flex-1 bg-neutral-200" />
+        </div>
+
+        {role === 'owner' ? (
+          <p className="text-center text-sm text-neutral-700">
+            Don&apos;t have an account?{' '}
+            <a href="/auth/create-account" className={authLink}>
+              Create account
+            </a>
+          </p>
+        ) : (
+          <div className={`flex items-start gap-3 ${authPanel}`}>
+            <ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-neutral-500" />
+            <p className="text-xs leading-relaxed text-neutral-700">
+              Member accounts are created by your gym. Contact them if you have not received
+              your secure activation link.
             </p>
           </div>
-
-          {/* Feature cards */}
-          <div className="space-y-3 max-w-md">
-            {role === 'member' ? (
-              <>
-                <FeatureCard
-                  icon={<Users className="w-4.5 h-4.5 text-brand-300" />}
-                  title="Digital Membership Card"
-                  description="Check in fast and see your plan status at a glance"
-                  delay={400}
-                />
-                <FeatureCard
-                  icon={<TrendingUp className="w-4.5 h-4.5 text-emerald-300" />}
-                  title="Workouts & Progress"
-                  description="Follow assigned programs and track every session"
-                  delay={600}
-                />
-                <FeatureCard
-                  icon={<Shield className="w-4.5 h-4.5 text-amber-300" />}
-                  title="Streaks & Rewards"
-                  description="Earn XP and unlock achievements as you train"
-                  delay={800}
-                />
-              </>
-            ) : (
-              <>
-                <FeatureCard
-                  icon={<Users className="w-4.5 h-4.5 text-brand-300" />}
-                  title="Member Management"
-                  description="Track memberships, attendance, and renewals effortlessly"
-                  delay={400}
-                />
-                <FeatureCard
-                  icon={<TrendingUp className="w-4.5 h-4.5 text-emerald-300" />}
-                  title="Smart Dashboard"
-                  description="Get insights into your gym's performance at a glance"
-                  delay={600}
-                />
-                <FeatureCard
-                  icon={<Shield className="w-4.5 h-4.5 text-amber-300" />}
-                  title="Fast & Secure"
-                  description="Your data is completely secure and accessible anywhere"
-                  delay={800}
-                />
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom: Value props for new users */}
-        <div className={`relative z-10 mt-auto space-y-4 transition-all duration-700 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <div className="flex flex-wrap gap-2.5">
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-500/10 border border-emerald-400/15">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[11px] font-bold text-emerald-300 tracking-wide">Free Forever</span>
-            </div>
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-500/10 border border-brand-400/15">
-              <Zap className="w-3 h-3 text-brand-300" />
-              <span className="text-[11px] font-bold text-brand-300 tracking-wide">Setup in 2 Minutes</span>
-            </div>
-          </div>
-          {/* white/20 measured 1.82:1 here, which is not readable by any standard and
-              was the worst of the three. The grid is masked out by this point in the
-              panel, so the only thing changing its contrast is the weight itself. */}
-          <p className="text-[11px] text-white/70 font-medium">
-            © {new Date().getFullYear()} gymflow. Built for gym owners, by fitness enthusiasts.
-          </p>
-        </div>
+        )}
       </div>
-
-      {/* ─── RIGHT PANEL: Login form ─── */}
-      <div className="flex-1 flex flex-col bg-[#FAFBFD] lg:bg-white min-w-0">
-        {/* Mobile logo (only on smaller screens) */}
-        <div className="lg:hidden flex items-center gap-3 p-4 xs:p-6 pb-0 pt-safe-top">
-          <div className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center">
-            <Image src="/logo_only.png" alt="GymFlow Logo" width={36} height={36} className="object-contain drop-shadow-sm" />
-          </div>
-          <span className="text-base xs:text-lg font-black text-slate-900 tracking-tight">gymflow</span>
-        </div>
-
-        {/* Form container — centered */}
-        <div className="flex-1 flex items-center justify-center px-4 xs:px-6 py-8 xs:py-10">
-          <div className={`w-full max-w-[400px] transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-            {/* Role selector */}
-            <RoleSelector value={role} onChange={switchRole} disabled={loading} />
-
-            {/* Heading */}
-            <div className="mb-6 xs:mb-8">
-              <h2 className="text-xl xs:text-2xl font-black text-[#0F172A] tracking-tight">{copy.heading}</h2>
-              <p className="text-sm text-slate-400 mt-1.5 font-medium">{copy.sub}</p>
-            </div>
-
-            {/* Registration success banner */}
-            {showRegBanner && (
-              <RegistrationSuccessBanner onDismiss={() => setShowRegBanner(false)} />
-            )}
-
-            {/* Wrong-tab notice */}
-            {notice && (
-              <div role="status" className="mb-5 flex items-center gap-2.5 p-3.5 bg-brand-50 border border-brand-100 rounded-xl text-brand-700 text-sm font-semibold animate-slide-up">
-                <div className="w-4 h-4 border-2 border-brand-300 border-t-brand-600 rounded-full animate-spin flex-shrink-0" />
-                {notice}
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div role="alert" className="mb-5 flex items-center gap-2.5 p-3.5 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-semibold animate-slide-up">
-                <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-red-500 text-xs">!</span>
-                </div>
-                {error}
-              </div>
-            )}
-
-            {/* Attempts hint (member tab only) */}
-            {!error && role === 'member' && attemptsRemaining < 5 && (
-              <p role="status" className="mb-4 text-xs font-semibold text-amber-600">
-                {attemptsRemaining} sign-in attempts remaining on this device.
-              </p>
-            )}
-
-            {/* Form */}
-            <form id="login-form" role="tabpanel" aria-labelledby={`role-tab-${role}`} onSubmit={handleLogin} className="space-y-5">
-              <div>
-                <label htmlFor="email" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  inputMode="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-12 px-4 bg-white border-2 border-slate-200 rounded-xl text-base sm:text-sm text-slate-900 font-medium placeholder:text-slate-300 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all duration-200"
-                  placeholder={copy.placeholder}
-                  required
-                  autoComplete="email"
-                  aria-invalid={Boolean(error)}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-12 px-4 pr-12 bg-white border-2 border-slate-200 rounded-xl text-base sm:text-sm text-slate-900 font-medium placeholder:text-slate-300 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all duration-200"
-                    placeholder="••••••••"
-                    required
-                    autoComplete="current-password"
-                    aria-invalid={Boolean(error)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                  >
-                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Sign In Button */}
-              <button
-                type="submit"
-                disabled={loading || isLocked}
-                aria-busy={loading}
-                className="w-full h-12 bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed group"
-              >
-                {isLocked ? (
-                  `Try again in ${lockoutLabel}`
-                ) : loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    Sign In
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-7">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">Or</span>
-              <div className="flex-1 h-px bg-slate-200" />
-            </div>
-
-            {/* Role-specific footer */}
-            {role === 'owner' ? (
-              <div className="text-center space-y-4">
-                <p className="text-sm text-slate-400 font-medium">
-                  Don&apos;t have an account?{' '}
-                  <a href="/auth/create-account" className="text-brand-600 font-bold hover:text-brand-700 transition-colors">
-                    Create account
-                  </a>
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-start gap-3 rounded-xl border border-brand-100 bg-brand-50 p-3.5">
-                <ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-500" />
-                <p className="text-xs leading-relaxed text-slate-600">
-                  Member accounts are created by your gym. Contact them if you have not received your
-                  secure activation link.
-                </p>
-              </div>
-            )}
-
-            {/* Bottom security badge */}
-            <div className="mt-10 flex items-center justify-center gap-2 text-[11px] text-slate-300 font-medium">
-              <Shield className="w-3.5 h-3.5" />
-              <span>Secured with end-to-end encryption</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
+    </AuthShell>
   )
 }
+

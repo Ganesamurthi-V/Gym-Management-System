@@ -7,6 +7,15 @@ import { fetchSession, signOutViaApi, updatePasswordViaApi } from '@/lib/auth/cl
 import {
   Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock, ArrowLeft, Mail,
 } from 'lucide-react'
+import { AuthShell } from '@/components/auth/AuthShell'
+import {
+  authHeading,
+  authInput,
+  authLabel,
+  authLink,
+  authPrimaryButton,
+  authSub,
+} from '@/components/auth/authStyles'
 
 // ─── Password Criteria ────────────────────────────────────────────────────────
 
@@ -34,9 +43,12 @@ function PasswordStrength({ password }: { password: string }) {
         return (
           <div
             key={c.label}
-            className={`flex items-center gap-2 text-xs font-medium transition-colors duration-200 ${ok ? 'text-emerald-600' : 'text-slate-400'}`}
+            /* Met criteria keep emerald, because that is the state being reported. The
+               unmet ones move from slate-400 to neutral-700: at 12px they answer to
+               4.5:1, and slate-400 does not reach it over the grid. */
+            className={`flex items-center gap-2 text-xs font-medium transition-colors duration-200 ${ok ? 'text-emerald-700' : 'text-neutral-700'}`}
           >
-            <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${ok ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full transition-all duration-200 ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-200 text-neutral-600'}`}>
               <Check className={`w-2.5 h-2.5 transition-opacity duration-200 ${ok ? 'opacity-100' : 'opacity-30'}`} strokeWidth={3} />
             </div>
             {c.label}
@@ -60,7 +72,7 @@ function StrengthBar({ password }: { password: string }) {
 
   return (
     <div className="mt-2 space-y-1">
-      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-200">
         <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <p className={`text-[11px] font-bold ${color.replace('bg-', 'text-')}`}>{label}</p>
@@ -132,14 +144,18 @@ function TokenErrorScreen({ message }: { message: string }) {
         <AlertCircle className="w-8 h-8 text-amber-500" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-black text-[#0F172A]">We couldn&apos;t verify this link</h2>
-        <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
+        <h2 className="text-xl font-bold tracking-tight text-neutral-950">
+          We couldn&apos;t verify this link
+        </h2>
+        {/* neutral-700, not the slate-500 this was: measured over the grid behind it
+            slate-500 came to 2.53:1 against a 4.5 floor. */}
+        <p className="max-w-xs text-sm leading-relaxed text-neutral-700">
           {message || 'This link has expired or was already used. Request a new link below.'}
         </p>
       </div>
 
       <div className="w-full max-w-xs space-y-2 text-left">
-        <label htmlFor="resend-email" className="block text-xs font-bold text-slate-600">
+        <label htmlFor="resend-email" className={authLabel}>
           Account email
         </label>
         <input
@@ -149,15 +165,15 @@ function TokenErrorScreen({ message }: { message: string }) {
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
           autoComplete="email"
-          className="w-full h-11 px-3.5 bg-white border-2 border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"
+          className={`${authInput} h-11`}
         />
       </div>
 
       {resendResult && (
-        <div className={`text-sm font-medium px-4 py-2.5 rounded-xl w-full max-w-xs ${
+        <div className={`w-full max-w-xs rounded-xl px-4 py-2.5 text-sm font-medium ${
           resendResult.ok
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-            : 'bg-red-50 text-red-600 border border-red-100'
+            ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+            : 'border border-red-100 bg-red-50 text-red-700'
         }`}>
           {resendResult.message}
         </div>
@@ -167,7 +183,7 @@ function TokenErrorScreen({ message }: { message: string }) {
         type="button"
         onClick={handleResend}
         disabled={resending || cooldown > 0}
-        className="flex items-center gap-2 px-6 h-11 bg-brand-600 text-white text-sm font-bold rounded-xl hover:bg-brand-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`${authPrimaryButton} h-11 w-auto px-6`}
       >
         {resending ? (
           <>
@@ -184,15 +200,15 @@ function TokenErrorScreen({ message }: { message: string }) {
         )}
       </button>
 
-      <div className="flex flex-col items-center gap-2 pt-2">
+      <div className="flex flex-col items-center gap-3 pt-2">
         <a
           href="/auth/create-account"
-          className="flex items-center gap-2 text-sm text-slate-600 font-semibold hover:text-slate-800 transition-colors"
+          className="flex items-center gap-2 rounded text-sm font-semibold text-neutral-700 transition-colors hover:text-neutral-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           Start over with a new account
         </a>
-        <a href="/auth/login" className="text-sm text-brand-600 font-bold hover:text-brand-700 transition-colors">
+        <a href="/auth/login" className={`${authLink} text-sm`}>
           Already have an account? Sign in
         </a>
       </div>
@@ -213,18 +229,18 @@ function VerificationReadyScreen({
 }) {
   return (
     <div className="flex flex-col items-center text-center gap-5 py-4">
-      <div className="w-16 h-16 rounded-2xl bg-brand-50 border-2 border-brand-100 flex items-center justify-center">
-        <Mail className="w-8 h-8 text-brand-500" />
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-neutral-200 bg-neutral-50">
+        <Mail className="h-8 w-8 text-neutral-800" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-black text-[#0F172A]">Confirm your email</h2>
-        <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
+        <h2 className="text-xl font-bold tracking-tight text-neutral-950">Confirm your email</h2>
+        <p className="max-w-xs text-sm leading-relaxed text-neutral-700">
           Continue to verify your email address and choose your password.
         </p>
       </div>
 
       {error && (
-        <div className="text-sm font-medium px-4 py-2.5 rounded-xl w-full max-w-xs bg-red-50 text-red-600 border border-red-100">
+        <div className="w-full max-w-xs rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
@@ -233,7 +249,7 @@ function VerificationReadyScreen({
         type="button"
         onClick={onVerify}
         disabled={verifying}
-        className="flex items-center gap-2 px-6 h-11 bg-brand-600 text-white text-sm font-bold rounded-xl hover:bg-brand-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`${authPrimaryButton} h-11 w-auto px-6`}
       >
         {verifying ? (
           <>
@@ -257,17 +273,16 @@ function RedirectingScreen() {
   return (
     <div className="flex flex-col items-center text-center gap-5 py-4">
       <div className="relative">
-        <div className="w-16 h-16 rounded-2xl bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
-          <Check className="w-8 h-8 text-emerald-500" />
+        {/* Emerald stays: this is the confirmation that the account now exists. */}
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-emerald-200 bg-emerald-50">
+          <Check className="h-8 w-8 text-emerald-600" />
         </div>
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-black text-[#0F172A]">Account created!</h2>
-        <p className="text-sm text-slate-500 leading-relaxed">
-          Redirecting you to sign in…
-        </p>
+        <h2 className="text-xl font-bold tracking-tight text-neutral-950">Account created</h2>
+        <p className="text-sm leading-relaxed text-neutral-700">Redirecting you to sign in…</p>
       </div>
-      <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-900" />
     </div>
   )
 }
@@ -591,226 +606,202 @@ export default function SetupPasswordPage() {
   // ── Loading skeleton while session is being verified ──────────────────────
   if (!sessionChecked) {
     return (
-      <div className="min-h-screen bg-[#FAFBFD] flex items-center justify-center">
+      /* Plain white, no grid. This is a sub-second state before the session check
+         resolves, and mounting a shader for it would be the one moment on the page where
+         the backdrop competes with something that matters. */
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
-          <p className="text-sm text-slate-400 font-medium">Verifying your link…</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-900" />
+          <p className="text-sm font-medium text-neutral-700">Verifying your link…</p>
         </div>
       </div>
     )
   }
-
   return (
-    <div className="min-h-screen flex">
-      {/* ─── LEFT PANEL ─── */}
-      <div className="hidden lg:flex lg:w-[45%] relative bg-[#0B0F1A] flex-col items-center justify-center p-10 xl:p-14 overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-br from-brand-400/20 to-violet-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-[-15%] right-[-5%] w-[50%] h-[50%] bg-gradient-to-tr from-cyan-400/15 to-emerald-400/10 rounded-full blur-[80px] animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
-
-        <div className={`relative z-10 space-y-8 text-center transition-all duration-700 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-          <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-brand-400/20 to-brand-600/10 border border-brand-400/20 flex items-center justify-center">
-            <Lock className="w-12 h-12 text-brand-300" />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-3xl font-black text-white leading-tight">
-              Almost there!<br />
-              <span className="bg-gradient-to-r from-brand-300 to-cyan-400 bg-clip-text text-transparent">
-                Set your password
-              </span>
-            </h2>
-            <p className="text-sm text-white/40 max-w-xs leading-relaxed">
-              Your email is verified. Choose a strong password to secure your account, then sign in.
-            </p>
-          </div>
-
-          {/* Steps indicator */}
-          <div className="flex items-center justify-center gap-2 flex-wrap">
+    <AuthShell
+      maxWidth={440}
+      footer={<p className="text-xs text-neutral-700">Secured with end-to-end encryption</p>}
+    >
+      <div
+        className={`transition-all duration-500 ${
+          mounted ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
+        }`}
+      >
+        {/* The step indicator moved out of the retired left panel and into the column.
+            It was the one genuinely useful thing on that panel: this page is the middle
+            of a three-step flow arrived at from an email, and saying so is orientation
+            rather than marketing. Recoloured to neutral, with the completed step keeping
+            emerald because "done" is information. */}
+        {sessionValid && !redirecting && (
+          <ol className="mb-7 flex flex-wrap items-center justify-center gap-2">
             {[
-              { label: 'Email verified', done: true,  active: false },
-              { label: 'Set password',   done: false, active: true  },
-              { label: 'Sign in',        done: false, active: false },
+              { label: 'Email verified', done: true, active: false },
+              { label: 'Set password', done: false, active: true },
+              { label: 'Sign in', done: false, active: false },
             ].map((step, i) => (
-              <div key={step.label} className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold ${
-                  step.done
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : step.active
-                    ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
-                    : 'bg-white/5 text-white/30 border border-white/10'
-                }`}>
-                  {step.done   && <Check className="w-3 h-3" strokeWidth={3} />}
-                  {step.active && <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />}
+              <li key={step.label} className="flex items-center gap-2">
+                <span
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+                    step.done
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : step.active
+                        ? 'border-neutral-300 bg-neutral-900 text-white'
+                        : 'border-neutral-200 bg-white text-neutral-600'
+                  }`}
+                  aria-current={step.active ? 'step' : undefined}
+                >
+                  {step.done && <Check className="h-3 w-3" strokeWidth={3} />}
                   {step.label}
-                </div>
-                {i < 2 && <div className="w-4 h-px bg-white/10" />}
-              </div>
+                </span>
+                {i < 2 && <span aria-hidden className="h-px w-4 bg-neutral-300" />}
+              </li>
             ))}
-          </div>
-        </div>
+          </ol>
+        )}
 
-        <div className="absolute bottom-8 left-10 flex items-center gap-3">
-          <Image src="/logo_only.png" alt="GymFlow" width={32} height={32} className="object-contain" />
-          <span className="text-sm font-black text-white/60">gymflow</span>
-        </div>
-      </div>
+        {/* Scanner-safe TokenHash links wait for a real user click. */}
+        {!sessionValid && pendingVerification && (
+          <VerificationReadyScreen
+            verifying={verifyingEmail}
+            error={verificationError}
+            onVerify={verifyPendingEmail}
+          />
+        )}
 
-      {/* ─── RIGHT PANEL ─── */}
-      <div className="flex-1 flex flex-col bg-[#FAFBFD] lg:bg-white min-w-0">
-        {/* Mobile logo */}
-        <div className="lg:hidden flex items-center gap-3 p-4 xs:p-6 pb-0">
-          <div className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center">
-            <Image src="/logo_only.png" alt="GymFlow Logo" width={36} height={36} className="object-contain drop-shadow-sm" />
-          </div>
-          <span className="text-base xs:text-lg font-black text-slate-900 tracking-tight">gymflow</span>
-        </div>
+        {/* Invalid or expired legacy links offer cross-device resend recovery. */}
+        {!sessionValid && !pendingVerification && <TokenErrorScreen message={tokenError} />}
 
-        <div className="flex-1 flex items-center justify-center px-4 xs:px-6 py-8 xs:py-10">
-          <div className={`w-full max-w-[440px] transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        {sessionValid && redirecting && <RedirectingScreen />}
 
-            {/* Scanner-safe TokenHash links wait for a real user click. */}
-            {!sessionValid && pendingVerification && (
-              <VerificationReadyScreen
-                verifying={verifyingEmail}
-                error={verificationError}
-                onVerify={verifyPendingEmail}
-              />
-            )}
+        {sessionValid && !redirecting && (
+          <>
+            <div className="mb-7">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-neutral-200 bg-neutral-50">
+                <Lock className="h-6 w-6 text-neutral-800" />
+              </div>
+              <h1 className={authHeading}>Set your password</h1>
+              <p className={authSub}>Choose a strong password to protect your account</p>
+            </div>
 
-            {/* Invalid/expired legacy links offer cross-device resend recovery. */}
-            {!sessionValid && !pendingVerification && (
-              <TokenErrorScreen message={tokenError} />
-            )}
-
-            {/* Redirecting overlay */}
-            {sessionValid && redirecting && (
-              <RedirectingScreen />
-            )}
-
-            {/* Password form */}
-            {sessionValid && !redirecting && (
-              <>
-                <div className="mb-7 text-center">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-50 border-2 border-brand-100 mb-4">
-                    <Lock className="w-6 h-6 text-brand-500" />
-                  </div>
-                  <h2 className="text-2xl xs:text-3xl font-black text-[#0F172A] tracking-tight">Set your password</h2>
-                  <p className="text-sm text-slate-400 mt-1.5 font-medium">Choose a strong password to protect your account</p>
+            {error && (
+              <div
+                role="alert"
+                className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3.5 text-sm font-semibold text-red-700"
+              >
+                <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                  <AlertCircle className="h-3 w-3 text-red-600" />
                 </div>
+                {error}
+              </div>
+            )}
 
-                {error && (
-                  <div className="mb-5 flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-semibold">
-                    <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <AlertCircle className="w-3 h-3 text-red-500" />
-                    </div>
-                    {error}
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {/* Password */}
-                  <div>
-                    <label htmlFor="password-sp" className="block text-sm font-bold text-[#0F172A] mb-2">
-                      Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        ref={passwordRef}
-                        id="password-sp"
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        className="w-full h-12 px-4 pr-12 bg-white border-2 border-slate-200 rounded-xl text-sm text-slate-900 font-medium placeholder:text-slate-300 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all duration-200"
-                        placeholder="Create a strong password"
-                        required
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {password.length > 0 && (
-                      <>
-                        <StrengthBar password={password} />
-                        <PasswordStrength password={password} />
-                      </>
-                    )}
-                  </div>
-
-                  {/* Confirm Password */}
-                  <div>
-                    <label htmlFor="confirm-sp" className="block text-sm font-bold text-[#0F172A] mb-2">
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="confirm-sp"
-                        type={showConfirm ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={e => setConfirmPassword(e.target.value)}
-                        className={`w-full h-12 px-4 pr-12 bg-white border-2 rounded-xl text-sm text-slate-900 font-medium placeholder:text-slate-300 focus:outline-none focus:ring-4 transition-all duration-200 ${
-                          confirmPassword.length > 0
-                            ? passwordsMatch
-                              ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500/10'
-                              : 'border-red-300 focus:border-red-400 focus:ring-red-400/10'
-                            : 'border-slate-200 focus:border-brand-500 focus:ring-brand-500/10'
-                        }`}
-                        placeholder="Repeat your password"
-                        required
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirm(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                        aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                      >
-                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {confirmPassword.length > 0 && (
-                      <p className={`mt-1.5 text-xs font-medium flex items-center gap-1 ${passwordsMatch ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {passwordsMatch
-                          ? <><Check className="w-3 h-3" strokeWidth={3} /> Passwords match</>
-                          : <><AlertCircle className="w-3 h-3" /> Passwords do not match</>
-                        }
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Submit */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="password-sp" className={authLabel}>
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    ref={passwordRef}
+                    id="password-sp"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`${authInput} pr-12`}
+                    placeholder="Create a strong password"
+                    required
+                    autoComplete="new-password"
+                  />
                   <button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="w-full h-12 bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed group mt-2"
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {loading ? (
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {password.length > 0 && (
+                  <>
+                    <StrengthBar password={password} />
+                    <PasswordStrength password={password} />
+                  </>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="confirm-sp" className={authLabel}>
+                  Confirm password
+                </label>
+                <div className="relative">
+                  {/* The match state keeps its red and emerald borders. That is the field
+                      telling you whether the two values agree, which is the whole reason
+                      the field exists, and it is mirrored in the wording below. */}
+                  <input
+                    id="confirm-sp"
+                    type={showConfirm ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={`h-12 w-full rounded-xl border-2 bg-white px-4 pr-12 text-base font-medium text-neutral-900 transition-colors duration-150 placeholder:text-neutral-400 focus:outline-none focus:ring-4 sm:text-sm ${
+                      confirmPassword.length > 0
+                        ? passwordsMatch
+                          ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500/10'
+                          : 'border-red-300 focus:border-red-400 focus:ring-red-400/10'
+                        : 'border-neutral-200 focus:border-neutral-900 focus:ring-neutral-900/10'
+                    }`}
+                    placeholder="Repeat your password"
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                    aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {confirmPassword.length > 0 && (
+                  <p
+                    className={`mt-1.5 flex items-center gap-1 text-xs font-medium ${
+                      passwordsMatch ? 'text-emerald-700' : 'text-red-700'
+                    }`}
+                  >
+                    {passwordsMatch ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Creating your account…
+                        <Check className="h-3 w-3" strokeWidth={3} /> Passwords match
                       </>
                     ) : (
                       <>
-                        Create Account
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                        <AlertCircle className="h-3 w-3" /> Passwords do not match
                       </>
                     )}
-                  </button>
-                </form>
+                  </p>
+                )}
+              </div>
 
-                <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-300 font-medium">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Secured with end-to-end encryption</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                className={`${authPrimaryButton} group mt-2`}
+              >
+                {loading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Creating your account…
+                  </>
+                ) : (
+                  <>
+                    Create account
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </>
+                )}
+              </button>
+            </form>
+          </>
+        )}
       </div>
-    </div>
+    </AuthShell>
   )
 }

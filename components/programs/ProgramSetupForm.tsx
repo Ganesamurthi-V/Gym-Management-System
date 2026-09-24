@@ -44,7 +44,7 @@ export default function ProgramSetupForm({ data, updateData, onNext }: Props) {
       <div className="flex-1 space-y-8">
         
         {/* Section 1: Program Information */}
-        <section className="card p-6 border border-slate-100 shadow-sm rounded-2xl bg-white">
+        <section className="card p-6 border border-slate-100 shadow-sm rounded-2xl bg-surface">
           <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
             <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
               <Dumbbell className="w-4 h-4 text-brand-600" />
@@ -100,7 +100,7 @@ export default function ProgramSetupForm({ data, updateData, onNext }: Props) {
         </section>
 
         {/* Section 2: Program Setup */}
-        <section className="card p-6 border border-slate-100 shadow-sm rounded-2xl bg-white">
+        <section className="card p-6 border border-slate-100 shadow-sm rounded-2xl bg-surface">
           <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
             <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
               <Activity className="w-4 h-4 text-amber-600" />
@@ -132,7 +132,7 @@ export default function ProgramSetupForm({ data, updateData, onNext }: Props) {
                   onClick={() => handleUpdate('difficulty', level)}
                   className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                     data.difficulty === level 
-                      ? 'bg-white text-slate-900 shadow-sm' 
+                      ? 'bg-surface text-slate-900 shadow-sm' 
                       : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                   }`}
                 >
@@ -179,7 +179,7 @@ export default function ProgramSetupForm({ data, updateData, onNext }: Props) {
         </section>
 
         {/* Section 3: Audience */}
-        <section className="card p-6 border border-slate-100 shadow-sm rounded-2xl bg-white">
+        <section className="card p-6 border border-slate-100 shadow-sm rounded-2xl bg-surface">
           <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
               <Users className="w-4 h-4 text-indigo-600" />
@@ -215,7 +215,7 @@ export default function ProgramSetupForm({ data, updateData, onNext }: Props) {
 
       {/* Right Sidebar: Preview & CTA */}
       <div className="w-full lg:w-80 flex flex-col gap-6">
-        <div className="card p-5 border border-slate-200 bg-white shadow-sm sticky top-24 rounded-2xl">
+        <div className="card p-5 border border-slate-200 bg-surface shadow-sm sticky top-24 rounded-2xl">
           <div className="flex flex-col items-center text-center pb-5 mb-5 border-b border-slate-100">
             <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
               <Target className="w-6 h-6 text-slate-600" />

@@ -109,7 +109,7 @@ export default function NewInventoryPage() {
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/owner/inventory" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
+        <Link href="/owner/inventory" className="w-9 h-9 flex items-center justify-center rounded-xl bg-surface border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>

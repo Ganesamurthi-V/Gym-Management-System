@@ -107,7 +107,7 @@ function RoleSelector({
             onClick={() => onChange(role)}
             className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed ${
               active
-                ? 'bg-white text-neutral-950 shadow-sm'
+                ? 'bg-surface text-neutral-950 shadow-sm'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >

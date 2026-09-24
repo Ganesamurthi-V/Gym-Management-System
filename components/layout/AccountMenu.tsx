@@ -232,7 +232,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
           <div className="fixed inset-0 bg-black/20 z-40 md:hidden" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown Panel */}
-          <div className="fixed md:absolute top-14 md:top-full left-3 right-3 xs:left-4 xs:right-4 md:left-auto md:right-0 mt-2 md:w-64 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden transition-all animate-pop-in">
+          <div className="fixed md:absolute top-14 md:top-full left-3 right-3 xs:left-4 xs:right-4 md:left-auto md:right-0 mt-2 md:w-64 bg-surface rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden transition-all animate-pop-in">
             <div className="p-4 border-b border-slate-50">
               {gymName && <p className="text-sm font-bold text-slate-900 truncate">{gymName}</p>}
               <p className="text-xs font-medium text-slate-400 truncate mt-0.5">{email}</p>
@@ -327,7 +327,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
             setToastMessage(null)
             router.push('/owner/account/notifications')
           }}
-          className="fixed bottom-6 right-6 z-[100] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl p-4 flex gap-4 items-start w-[320px] cursor-pointer hover:bg-slate-50 transition-all animate-pop-in group"
+          className="fixed bottom-6 right-6 z-[100] bg-surface border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl p-4 flex gap-4 items-start w-[320px] cursor-pointer hover:bg-slate-50 transition-all animate-pop-in group"
         >
           <div className="w-10 h-10 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 relative">
             <Bell className="w-5 h-5" />

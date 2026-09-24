@@ -24,7 +24,7 @@ export default function Loading() {
       {/* Main Grid: Quick Actions + Expiring This Week */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {/* Quick Actions Skeleton */}
-        <div className="card p-4 md:p-5 space-y-3 bg-gradient-to-b from-white to-slate-50">
+        <div className="card p-4 md:p-5 space-y-3 bg-gradient-to-b from-surface to-slate-50">
           <div className="w-28 h-4 bg-slate-100 skeleton rounded-md mb-4" />
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-[52px] w-full bg-slate-100 skeleton rounded-xl" />

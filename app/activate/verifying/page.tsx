@@ -363,7 +363,7 @@ export default function VerifyingPage() {
             <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="mb-4 rounded-2xl shadow-md" />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-surface p-6 shadow-sm">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-50">
               <MailCheck className="h-8 w-8 text-brand-500" />
             </div>

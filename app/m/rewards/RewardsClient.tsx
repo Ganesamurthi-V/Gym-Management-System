@@ -57,7 +57,7 @@ export default function RewardsClient({
       </header>
 
       {/* ─── Level Hero Card ─────────────────────────────────────────────── */}
-      <div className="mb-5 rounded-2xl bg-gradient-to-br from-violet-50 via-white to-brand-50 border border-violet-100 p-5">
+      <div className="mb-5 rounded-2xl bg-gradient-to-br from-violet-50 via-surface to-brand-50 border border-violet-100 p-5">
         <div className="flex items-center gap-4">
           {/* Level badge — uses /public/level/level_N.webp images */}
           <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">

@@ -38,7 +38,7 @@ export default async function AdminPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div key={i} className="bg-surface rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4 mb-4">
               <div className={`w-12 h-12 ${stat.bg} rounded-full flex items-center justify-center`}>
                 <stat.icon className={`w-6 h-6 ${stat.color}`} />
@@ -62,7 +62,7 @@ export default async function AdminPage() {
         }}
       />
 
-      <div className="mt-12 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <div className="mt-12 bg-surface rounded-2xl p-6 shadow-sm border border-gray-100">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
         <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 px-4 py-3 rounded-lg w-fit border border-emerald-100">
           <span className="relative flex h-3 w-3">

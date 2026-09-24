@@ -84,12 +84,12 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
                   <th className="px-4 xl:px-5 py-3.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Stock</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-100 bg-surface">
                 {items.map(item => (
                   <tr key={item.id} className="hover:bg-slate-50/80 transition-colors cursor-pointer group">
                     <td className="px-4 xl:px-5 py-3.5 xs:py-4">
                       <div className="flex items-center gap-2 xs:gap-3">
-                        <div className="w-9 h-9 xs:w-10 xs:h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 group-hover:bg-white group-hover:shadow-sm transition-all border border-slate-100">
+                        <div className="w-9 h-9 xs:w-10 xs:h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 group-hover:bg-surface group-hover:shadow-sm transition-all border border-slate-100">
                           <Package className="w-4 h-4 xs:w-5 xs:h-5 text-slate-400 group-hover:text-brand-500 transition-colors" />
                         </div>
                         <div className="min-w-0">

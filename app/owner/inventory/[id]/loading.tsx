@@ -24,11 +24,11 @@ export default function InventoryItemLoading() {
           <div className="card p-5 space-y-3 bg-slate-50/50">
             <div className="h-3 w-24 bg-slate-200 rounded"></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white p-3 rounded-xl border border-slate-100">
+              <div className="bg-surface p-3 rounded-xl border border-slate-100">
                 <div className="h-2 w-12 bg-slate-100 rounded mb-2"></div>
                 <div className="h-6 w-20 bg-slate-200 rounded"></div>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-100">
+              <div className="bg-surface p-3 rounded-xl border border-slate-100">
                 <div className="h-2 w-16 bg-slate-100 rounded mb-2"></div>
                 <div className="h-6 w-12 bg-slate-200 rounded"></div>
               </div>
@@ -43,7 +43,7 @@ export default function InventoryItemLoading() {
             </div>
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="p-3 rounded-xl border border-slate-100 bg-white">
+                <div key={i} className="p-3 rounded-xl border border-slate-100 bg-surface">
                   <div className="flex items-center justify-between mb-2">
                     <div className="h-4 w-24 bg-slate-200 rounded"></div>
                     <div className="h-4 w-12 bg-slate-100 rounded"></div>
@@ -97,7 +97,7 @@ export default function InventoryItemLoading() {
                     <th className="px-5 py-3 w-10"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
+                <tbody className="divide-y divide-slate-100 bg-surface">
                   {[...Array(6)].map((_, i) => (
                     <tr key={i}>
                       <td className="px-5 py-4"><div className="h-4 w-32 bg-slate-100 rounded"></div></td>

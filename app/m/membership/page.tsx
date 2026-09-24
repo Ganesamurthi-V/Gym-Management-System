@@ -76,7 +76,7 @@ export default async function MembershipPage() {
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                   <div
-                    className="h-full rounded-full bg-white transition-all"
+                    className="h-full rounded-full bg-surface transition-all"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>

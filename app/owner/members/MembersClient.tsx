@@ -257,7 +257,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
   }), [membersList])
 
   const filterConfig: { key: FilterType; label: string; activeClass: string }[] = [
-    { key: 'all',      label: 'All',      activeClass: 'bg-slate-900 text-white' },
+    { key: 'all',      label: 'All',      activeClass: 'bg-emphasis text-emphasis-fg' },
     { key: 'active',   label: 'Active',   activeClass: 'bg-emerald-500 text-white' },
     { key: 'expiring', label: 'Expiring', activeClass: 'bg-amber-500 text-white' },
     { key: 'expired',  label: 'Expired',  activeClass: 'bg-red-500 text-white' },
@@ -314,7 +314,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
           <button
             onClick={() => setShowAdvFilterModal(true)}
             {...tourAttr('membersAdvancedFilter')}
-            className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <Filter className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden xs:inline">Advanced</span>
@@ -325,19 +325,19 @@ function MembersContent({ members, gymId, totalCount }: Props) {
               </span>
             )}
           </button>
-          <button onClick={() => setShowExportModal(true)} {...tourAttr('membersExport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <button onClick={() => setShowExportModal(true)} {...tourAttr('membersExport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Download className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
-          <Link href="/owner/import" {...tourAttr('membersImport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/import" {...tourAttr('membersImport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Upload className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Import</span>
           </Link>
-          <Link href="/owner/members/bulk-edit" {...tourAttr('membersBulkEdit')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/members/bulk-edit" {...tourAttr('membersBulkEdit')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Edit2 className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span>Edit Members</span>
           </Link>
-          <Link href="/owner/members/attendance" {...tourAttr('membersAttendanceLog')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href="/owner/members/attendance" {...tourAttr('membersAttendanceLog')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Calendar className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span>Attendance Log</span>
           </Link>
@@ -351,49 +351,61 @@ function MembersContent({ members, gymId, totalCount }: Props) {
 
       {/* Stats Cards */}
       <div {...tourAttr('membersStats')} className="grid grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3">
+        {/*
+          These four cards used raw hex — `border-[#3B82F6]`, `text-[#475569]` and an inline
+          `style={{ backgroundColor: '#EFF6FF' }}` — every one of which is a literal Tailwind
+          palette value written the long way. Arbitrary values and inline styles are invisible
+          to the theme: they cannot be redefined, so these were the only cards in the app that
+          would have stayed pale blue, green, red and orange on a dark page. Swapped to the
+          equivalent named utilities, which theme with everything else.
+        */}
+
         {/* Total Members */}
-        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#3B82F6]" style={{ backgroundColor: '#EFF6FF' }}>
-          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#DBEAFE] rounded-xl flex items-center justify-center flex-shrink-0">
-            <Users className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#2563EB]" />
+        {/* dark:border-*-200 on each card below: step 500 is literal by design (it is the
+            saturated button fill), so without the override these outlines stay neon against a
+            near-black card. The themed 200 is a dark hairline instead. */}
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-brand-500 dark:border-brand-200 bg-brand-50">
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Users className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-brand-500" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold leading-tight">Total Members</p>
-            <p className="text-base xs:text-lg font-bold text-[#1D4ED8]">
+            <p className="text-[10px] xs:text-xs text-slate-600 font-semibold leading-tight">Total Members</p>
+            <p className="text-base xs:text-lg font-bold text-brand-600">
               {membersList.length} <span className="text-xs font-normal text-slate-400">/ {totalCount}</span>
             </p>
           </div>
         </div>
 
         {/* Active Members */}
-        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#22C55E]" style={{ backgroundColor: '#F0FDF4' }}>
-          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#DCFCE7] rounded-xl flex items-center justify-center flex-shrink-0">
-            <Check className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#16A34A]" />
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-green-500 dark:border-green-200 bg-green-50">
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Check className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-green-600" />
           </div>
           <div>
-            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold">Active</p>
-            <p className="text-base xs:text-lg font-bold text-[#15803D]">{counts.active}</p>
+            <p className="text-[10px] xs:text-xs text-slate-600 font-semibold">Active</p>
+            <p className="text-base xs:text-lg font-bold text-green-700">{counts.active}</p>
           </div>
         </div>
 
         {/* Expired Members */}
-        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#EF4444]" style={{ backgroundColor: '#FEF2F2' }}>
-          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#FEE2E2] rounded-xl flex items-center justify-center flex-shrink-0">
-            <X className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#DC2626]" />
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-red-500 dark:border-red-200 bg-red-50">
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <X className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-red-600" />
           </div>
           <div>
-            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold">Expired</p>
-            <p className="text-base xs:text-lg font-bold text-[#B91C1C]">{counts.expired}</p>
+            <p className="text-[10px] xs:text-xs text-slate-600 font-semibold">Expired</p>
+            <p className="text-base xs:text-lg font-bold text-red-700">{counts.expired}</p>
           </div>
         </div>
 
         {/* Overdue Dues */}
-        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-[#F97316]" style={{ backgroundColor: '#FFF7ED' }}>
-          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-[#FFEDD5] rounded-xl flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-[#EA580C]" />
+        <div className="card p-3 xs:p-3.5 flex items-center gap-2 xs:gap-3 hover:shadow-md transition-all border border-orange-500 dark:border-orange-200 bg-orange-50">
+          <div className="w-8 h-8 xs:w-9 xs:h-9 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-orange-600" />
           </div>
           <div>
-            <p className="text-[10px] xs:text-xs text-[#475569] font-semibold">Overdue Dues</p>
-            <p className="text-base xs:text-lg font-bold text-[#C2410C]">{counts.overdue}</p>
+            <p className="text-[10px] xs:text-xs text-slate-600 font-semibold">Overdue Dues</p>
+            <p className="text-base xs:text-lg font-bold text-orange-700">{counts.overdue}</p>
           </div>
         </div>
       </div>
@@ -441,7 +453,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
         {filterConfig.map(({ key, label, activeClass }) => (
           <button key={key} onClick={() => setFilter(key)}
             className={cn('flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all',
-              filter === key ? activeClass : 'bg-white border border-slate-200 text-slate-500')}
+              filter === key ? activeClass : 'bg-surface border border-slate-200 text-slate-500')}
           >
             {label} <span className="opacity-60">({counts[key]})</span>
           </button>
@@ -635,7 +647,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-all shadow-sm"
+            className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-emphasis-fg bg-emphasis rounded-xl hover:bg-emphasis-hover disabled:opacity-50 transition-all shadow-sm"
           >
             {loadingMore ? 'Loading...' : `Load Next 200 (Showing ${membersList.length} of ${totalCount})`}
           </button>
@@ -650,7 +662,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
           
           {/* Modal Container */}
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-pop-in">
+            <div className="relative w-full max-w-3xl bg-surface rounded-2xl shadow-2xl overflow-hidden animate-pop-in">
               {/* Header */}
               <div className="bg-gradient-to-r from-brand-600 to-brand-700 p-6 text-white relative">
                 <button
@@ -683,21 +695,21 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                     <button
                       onClick={() => setAdvFilters({...advFilters, quick: advFilters.quick === 'active_expiring' ? null : 'active_expiring'})}
                       className={cn('flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all',
-                        advFilters.quick === 'active_expiring' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100')}
+                        advFilters.quick === 'active_expiring' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100')}
                     >
                       <Check className="w-4 h-4" /> Active + Expiring Soon
                     </button>
                     <button
                       onClick={() => setAdvFilters({...advFilters, quick: advFilters.quick === 'unpaid' ? null : 'unpaid'})}
                       className={cn('flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all',
-                        advFilters.quick === 'unpaid' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100')}
+                        advFilters.quick === 'unpaid' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100')}
                     >
                       <CreditCard className="w-4 h-4" /> Unpaid + Overdue
                     </button>
                     <button
                       onClick={() => setAdvFilters({...advFilters, quick: advFilters.quick === 'new' ? null : 'new'})}
                       className={cn('flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all',
-                        advFilters.quick === 'new' ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-700 hover:bg-pink-100')}
+                        advFilters.quick === 'new' ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-700 hover:bg-pink-100')}
                     >
                       <Calendar className="w-4 h-4" /> New this Month
                     </button>
@@ -834,7 +846,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
                   </button>
                   <button
                     onClick={() => setShowAdvFilterModal(false)}
-                    className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-semibold hover:bg-brand-700 transition-all shadow-md shadow-brand-100"
+                    className="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-semibold hover:bg-brand-700 transition-all shadow-md shadow-brand-100"
                   >
                     Apply Filters
                   </button>
@@ -848,7 +860,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
       {/* Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-pop-in">
+          <div className="bg-surface rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-pop-in">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-lg text-slate-800">Export Members</h3>
               <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
@@ -883,7 +895,7 @@ function MembersContent({ members, gymId, totalCount }: Props) {
             </div>
             <div className="p-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
               <button onClick={() => setShowExportModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Cancel</button>
-              <button onClick={() => { setShowExportModal(false); exportExcel(); }} className="px-4 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors flex items-center gap-2"><Download className="w-4 h-4"/> Download Excel</button>
+              <button onClick={() => { setShowExportModal(false); exportExcel(); }} className="px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-700 rounded-lg transition-colors flex items-center gap-2"><Download className="w-4 h-4"/> Download Excel</button>
             </div>
           </div>
         </div>

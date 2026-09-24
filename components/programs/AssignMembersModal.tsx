@@ -152,8 +152,8 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
   const resetToIdle = () => { setMode('idle'); setSelectedIds(new Set()); setSearch('') }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85dvh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-surface rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85dvh]">
 
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-slate-100 flex-shrink-0">
@@ -459,7 +459,7 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
                 type="button"
                 onClick={handleDeassign}
                 disabled={submitting || selectedIds.size === 0}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Removing...</>

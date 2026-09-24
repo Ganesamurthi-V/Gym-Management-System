@@ -609,7 +609,7 @@ export default function SetupPasswordPage() {
       /* Plain white, no grid. This is a sub-second state before the session check
          resolves, and mounting a shader for it would be the one moment on the page where
          the backdrop competes with something that matters. */
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-900" />
           <p className="text-sm font-medium text-neutral-700">Verifying your link…</p>
@@ -645,8 +645,8 @@ export default function SetupPasswordPage() {
                     step.done
                       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                       : step.active
-                        ? 'border-neutral-300 bg-neutral-900 text-white'
-                        : 'border-neutral-200 bg-white text-neutral-600'
+                        ? 'border-neutral-300 bg-carbon-900 text-white dark:bg-neutral-900 dark:text-carbon-950'
+                        : 'border-neutral-200 bg-surface text-neutral-600'
                   }`}
                   aria-current={step.active ? 'step' : undefined}
                 >
@@ -742,7 +742,7 @@ export default function SetupPasswordPage() {
                     type={showConfirm ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`h-12 w-full rounded-xl border-2 bg-white px-4 pr-12 text-base font-medium text-neutral-900 transition-colors duration-150 placeholder:text-neutral-400 focus:outline-none focus:ring-4 sm:text-sm ${
+                    className={`h-12 w-full rounded-xl border-2 bg-surface px-4 pr-12 text-base font-medium text-neutral-900 transition-colors duration-150 placeholder:text-neutral-400 focus:outline-none focus:ring-4 sm:text-sm ${
                       confirmPassword.length > 0
                         ? passwordsMatch
                           ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500/10'

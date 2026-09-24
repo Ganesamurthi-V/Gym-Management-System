@@ -270,7 +270,7 @@ export default function UPIQRSetup({ initialConfig, onConfigChange }: Props) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-60"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-500 hover:bg-brand-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-60"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Confirm & Save
@@ -336,7 +336,7 @@ export default function UPIQRSetup({ initialConfig, onConfigChange }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex flex-col items-center gap-2 p-5 bg-white border-2 border-dashed border-slate-200 rounded-xl hover:border-brand-400 hover:bg-brand-50/30 transition-all group"
+          className="flex flex-col items-center gap-2 p-5 bg-surface border-2 border-dashed border-slate-200 rounded-xl hover:border-brand-400 hover:bg-brand-50/30 transition-all group"
         >
           <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center group-hover:bg-brand-100 transition-colors">
             <Upload className="w-5 h-5 text-brand-600" />
@@ -347,7 +347,7 @@ export default function UPIQRSetup({ initialConfig, onConfigChange }: Props) {
 
         <button
           onClick={startCamera}
-          className="flex flex-col items-center gap-2 p-5 bg-white border-2 border-dashed border-slate-200 rounded-xl hover:border-brand-400 hover:bg-brand-50/30 transition-all group"
+          className="flex flex-col items-center gap-2 p-5 bg-surface border-2 border-dashed border-slate-200 rounded-xl hover:border-brand-400 hover:bg-brand-50/30 transition-all group"
         >
           <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center group-hover:bg-brand-100 transition-colors">
             <Camera className="w-5 h-5 text-brand-600" />

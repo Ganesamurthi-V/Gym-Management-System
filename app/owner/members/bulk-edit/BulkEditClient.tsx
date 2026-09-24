@@ -40,7 +40,7 @@ interface Props {
   gymId: string
 }
 
-const cls = 'px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white'
+const cls = 'px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-surface'
 
 export function EditMembersClient({ members, gymId }: Props) {
   const router = useRouter()
@@ -359,7 +359,7 @@ export function EditMembersClient({ members, gymId }: Props) {
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+          <div className="bg-surface rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -514,7 +514,7 @@ export function EditMembersClient({ members, gymId }: Props) {
                           className={`w-full ${cls}`} placeholder="Area" autoComplete="off" />
                       </div>
                       {activeAreaId === m.id && (areaSuggestions[m.id] ?? []).length > 0 && (
-                        <ul className="absolute z-30 left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5" data-scroll-box>
+                        <ul className="absolute z-30 left-4 right-4 bg-surface border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto mt-0.5" data-scroll-box>
                           {(areaSuggestions[m.id] ?? []).slice(0, 6).map(a => (
                             <li key={a.id} onMouseDown={() => {
                               updateField(m.id, 'area', a.name)

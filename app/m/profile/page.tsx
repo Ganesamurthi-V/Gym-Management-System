@@ -5,6 +5,7 @@ import { getMemberWithGym } from '@/lib/member/member-data'
 import { formatDate } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
 import { LogoutButton } from '@/components/member/LogoutButton'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
 // route-level `revalidate` cannot be used for per-user pages.
@@ -50,9 +51,15 @@ export default async function ProfilePage() {
   return (
     <div className="page-container py-6">
 
-      <header className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">GymFlow Member</p>
-        <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Profile</h1>
+      <header className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-brand-600">GymFlow Member</p>
+          <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Profile</h1>
+        </div>
+        {/* The member app has no persistent header chrome, and Profile is where an app's
+            appearance settings are conventionally found. The full three-way group fits here
+            because the page is a settings surface rather than a dense data view. */}
+        <ThemeToggle className="mt-0.5 shrink-0" />
       </header>
 
       {/* Avatar + name */}

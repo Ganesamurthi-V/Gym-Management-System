@@ -56,7 +56,7 @@ export default function AdminDashboardRealtime({ initial }: { initial: SubStats 
         {subStats.map((stat, i) => (
           <div
             key={i}
-            className={`bg-white rounded-2xl p-5 shadow-sm border transition-shadow hover:shadow-md ${
+            className={`bg-surface rounded-2xl p-5 shadow-sm border transition-shadow hover:shadow-md ${
               stat.urgent ? 'border-amber-300 bg-amber-50' : 'border-gray-100'
             }`}
           >

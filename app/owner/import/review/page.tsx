@@ -403,7 +403,7 @@ export default function ImportReviewPage() {
                           />
                         </div>
                         {isExpanded && rowSuggestions.length > 0 && (
-                          <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl mt-0.5 max-h-36 overflow-y-auto" data-scroll-box>
+                          <ul className="absolute z-30 left-3 right-3 bg-surface border border-slate-200 rounded-xl shadow-xl mt-0.5 max-h-36 overflow-y-auto" data-scroll-box>
                             {rowSuggestions.map(s => (
                               <li key={s.id} onMouseDown={() => selectSuggestion(row._idx, s.name)}
                                 className="px-3 py-2 text-xs hover:bg-brand-50 hover:text-brand-700 cursor-pointer flex items-center justify-between"
@@ -466,7 +466,7 @@ export default function ImportReviewPage() {
                                 <div className="flex flex-wrap gap-1.5">
                                   {row.suggestions!.map((s, si) => (
                                     <button key={si} onClick={() => selectSuggestion(row._idx, s.name)}
-                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs hover:border-brand-400 hover:bg-brand-50 transition-all"
+                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-surface border border-slate-200 rounded-lg text-xs hover:border-brand-400 hover:bg-brand-50 transition-all"
                                     >
                                       <span className={`w-1.5 h-1.5 rounded-full ${confidenceColor(s.confidence)}`} />
                                       {s.name}

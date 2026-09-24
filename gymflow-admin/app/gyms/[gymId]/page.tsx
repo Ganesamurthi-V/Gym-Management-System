@@ -12,14 +12,37 @@ export default async function GymDetailPage({ params }: { params: Promise<{ gymI
   const { gymId } = await params
   const supabase = createAdminClient()
 
-  const gymRes = await supabase.from('gyms').select('id, name, owner_id, created_at, is_active').eq('id', gymId).single()
+  const gymRes = await supabase
+    .from('gyms')
+    // phone and onboarding_data added: the phone shown below used to come from the auth
+    // user alone, so the number an owner typed into onboarding never appeared here.
+    .select('id, name, owner_id, created_at, is_active, phone, onboarding_data')
+    .eq('id', gymId)
+    .single()
 
   if (gymRes.error || !gymRes.data) notFound()
 
   const gym = gymRes.data
-  
+
   // Fetch owner details
   const { data: { user: owner } } = await supabase.auth.admin.getUserById(gym.owner_id)
+
+  /*
+    The gym's own contact number, preferred over the owner's account number below.
+
+    Three sources in descending trustworthiness:
+      1. gyms.phone — what onboarding and account settings now both write.
+      2. onboarding_data.phone — where it lived exclusively until that change, so every
+         gym onboarded before it has a number here and nothing in the column. Dropping
+         this fallback would blank the field for all existing gyms.
+      3. the owner's auth record — a different thing entirely (the number given at signup,
+         not the gym's contact line), kept last so a gym that never finished onboarding
+         still shows something.
+  */
+  const onboarding = (gym.onboarding_data ?? {}) as Record<string, unknown>
+  const onboardingPhone = typeof onboarding.phone === 'string' ? onboarding.phone.trim() : ''
+  const gymPhone = gym.phone?.trim() || onboardingPhone || null
+  const ownerPhone = owner?.user_metadata?.mobile_number || owner?.phone || null
 
   return (
     <div className="space-y-6">
@@ -90,12 +113,28 @@ export default async function GymDetailPage({ params }: { params: Promise<{ gymI
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Phone Number</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Gym Phone</p>
               <div className="flex items-center gap-2 text-slate-300">
                 <Phone className="w-4 h-4 text-slate-400" />
-                <span>{owner?.user_metadata?.mobile_number || owner?.phone || 'Not provided'}</span>
+                <span>{gymPhone ?? 'Not provided'}</span>
               </div>
             </div>
+
+            {/*
+              Only when it differs. The owner's signup number and the gym's contact line are
+              usually the same person's phone, and printing one number twice under two labels
+              reads as a rendering fault rather than as two facts. Shown when they genuinely
+              diverge, because then which is which matters for support.
+            */}
+            {ownerPhone && ownerPhone !== gymPhone && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Account Phone</p>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Phone className="w-4 h-4 text-slate-500" />
+                  <span>{ownerPhone}</span>
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Owner Name</p>

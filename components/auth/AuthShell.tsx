@@ -2,6 +2,7 @@
 
 import { AsciiBackdrop } from '@/components/ui/AsciiBackdrop'
 import { AuthWordmark } from '@/components/auth/AuthWordmark'
+import { useTheme } from '@/components/theme/ThemeProvider'
 
 /**
  * The shell every /auth page sits in: a white surface with the character grid running
@@ -86,8 +87,24 @@ const CARD_PADDING_X = 32
  * is a media query, and inline styles cannot carry one.
  */
 
+/**
+ * Grid ink for the active theme.
+ *
+ * Read from the resolved theme rather than a CSS variable because these are WebGL shader
+ * uniforms: CharGrid parses them into THREE.Color at mount, so `var(--grid-ink)` would reach
+ * the shader as an unparseable string. The values mirror --grid-ink / --grid-ink-tint in
+ * theme.css; both are listed there so the pairing stays visible in one place.
+ */
+function useGridInk(): { color: string; tint: string } {
+  const { resolved } = useTheme()
+  return resolved === 'dark'
+    ? { color: '#ffffff', tint: '#a3a3a3' }
+    : { color: '#000000', tint: '#737373' }
+}
+
 export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShellProps) {
   const split = Boolean(aside)
+  const gridInk = useGridInk()
   // Every layout is carded now, so the padding is always added back on.
   const columnWidth = maxWidth + CARD_PADDING_X * 2
 
@@ -114,7 +131,7 @@ export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShell
           Horizontal padding is fixed and vertical is fluid: the first has to stay in step
           with CARD_PADDING_X, the second is free to give room back on a short window.
         */
-        className="rounded-2xl border border-neutral-200 bg-white px-8 py-[var(--auth-card-pad-y)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.13)]"
+        className="rounded-2xl border border-neutral-200 bg-surface px-8 py-[var(--auth-card-pad-y)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.13)]"
       >
         {children}
       </div>
@@ -136,19 +153,26 @@ export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShell
       isolation: isolate makes this element a stacking context, so the z-indices below are
       scoped to it: surface first, grid at z-0, column at z-10.
     */
-    <div className="auth-rhythm relative isolate min-h-screen bg-white">
+    <div className="auth-rhythm relative isolate min-h-screen bg-surface">
       {/*
         fixed rather than absolute, so a form long enough to scroll (create-account) keeps
         the grid still underneath it instead of dragging a 10px lattice up the screen.
 
         opacity-[0.26] is a contrast ceiling, not a preference; see the note above.
       */}
+      {/*
+        Ink comes from the theme, not a literal. The grid draws dark glyphs for a light page;
+        on a near-black page dark-on-dark is nothing at all, so the ink inverts to light at
+        the same low opacity and the texture is identical. These are shader uniforms rather
+        than CSS, so they cannot be corrected by a utility — the value has to be read here.
+
+        The faint end stays grey rather than the brand blue the landing hero uses, so nothing
+        on the page carries a hue except the semantic states.
+      */}
       <AsciiBackdrop
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.26]"
-        color="#000000"
-        /* Monochrome: the faint end is grey rather than the brand blue the landing hero
-           uses, so nothing on the page carries a hue except the semantic states. */
-        colorTint="#737373"
+        color={gridInk.color}
+        colorTint={gridInk.tint}
         scale={4}
         intensity={1.099}
         contrast={2.501}

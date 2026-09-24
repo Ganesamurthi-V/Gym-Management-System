@@ -71,7 +71,7 @@ export default function AchievementCard({ achievement }: { achievement: Achievem
   return (
     <div
       className={`
-        relative rounded-2xl border bg-white p-3.5 transition-all
+        relative rounded-2xl border bg-surface p-3.5 transition-all
         ${unlocked
           ? `${style.border} ${style.glow}`
           : 'border-slate-100 shadow-sm'

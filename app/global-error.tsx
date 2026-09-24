@@ -20,7 +20,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="antialiased">
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-100">
+          <div className="max-w-md w-full bg-surface rounded-2xl shadow-xl p-8 text-center border border-gray-100">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
@@ -35,7 +35,7 @@ export default function GlobalError({
 
             <button
               onClick={() => reset()}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+              className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm"
             >
               <RefreshCcw className="w-4 h-4" />
               Reload Application

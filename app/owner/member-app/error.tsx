@@ -21,7 +21,7 @@ export default function MemberAppError({
 
   return (
     <div className="max-w-8xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-sm border border-surface-border p-6">
+      <div className="bg-surface rounded-2xl shadow-sm border border-surface-border p-6">
         <div className="flex flex-col items-center text-center py-8">
           <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mb-4">
             <AlertTriangle className="w-5 h-5" />

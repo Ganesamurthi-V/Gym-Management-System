@@ -410,7 +410,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col md:flex-row overflow-hidden">
       {/* -- Left Sidebar (Desktop Only) -- */}
-      <div className="hidden md:flex md:w-72 lg:w-80 xl:w-96 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex-col justify-between p-5 lg:p-6 border-r border-slate-800 flex-shrink-0 relative isolate">
+      <div className="hidden md:flex md:w-72 lg:w-80 xl:w-96 bg-gradient-to-b from-ink-900 to-ink-800 text-white flex-col justify-between p-5 lg:p-6 border-r border-slate-800 flex-shrink-0 relative isolate">
         {/*
           The character grid from /auth, in reverse polarity: white ink here rather than
           black, since this panel is dark. absolute rather than the fixed used on /auth
@@ -477,7 +477,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                           ? 'bg-emerald-500/20 border border-emerald-500/30'
                           : active
                           ? 'bg-brand-500 text-white shadow-xs shadow-brand-500/30'
-                          : 'bg-slate-800 text-slate-600'
+                          : 'bg-ink-800 text-slate-600'
                       }`}
                     >
                       {done ? (
@@ -500,7 +500,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         </div>
 
         {/* Tip panel / Footer */}
-        <div className="relative z-10 bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl">
+        <div className="relative z-10 bg-ink-800/40 border border-slate-700/30 p-4 rounded-2xl">
           <div className="flex items-center gap-2 mb-2 text-brand-400">
             <Sparkles className="w-4 h-4 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-wider">Quick Setup Tip</span>
@@ -533,7 +533,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
             <div className="pb-4">
               <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-white rounded-full transition-all duration-500 ease-out"
+                  className="h-full bg-surface rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -606,7 +606,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         </div>
 
         {/* -- Navigation -- */}
-        <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 py-4 pb-safe-bottom">
+        <div className="flex-shrink-0 bg-surface border-t border-slate-200 px-4 py-4 pb-safe-bottom">
           <div className="max-w-3xl mx-auto flex items-center gap-3">
             {currentStep > 0 ? (
               <button onClick={handleBack} className="btn-secondary w-auto px-5">
@@ -839,7 +839,7 @@ function CityAutocompleteInner({ value, onChange }: { value: string; onChange: (
         placeholder="e.g. Chennai"
       />
       {status === 'OK' && (
-        <ul className="absolute z-10 w-full bg-white mt-1 rounded-xl shadow-lg border border-slate-200 overflow-hidden max-h-60 overflow-y-auto">
+        <ul className="absolute z-10 w-full bg-surface mt-1 rounded-xl shadow-lg border border-slate-200 overflow-hidden max-h-60 overflow-y-auto">
           {data.map(({ place_id, description }) => (
             <li
               key={place_id}

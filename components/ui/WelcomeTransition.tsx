@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AsciiBackdrop } from '@/components/ui/AsciiBackdrop'
+import { useTheme } from '@/components/theme/ThemeProvider'
 
 /**
  * The full-screen hand-off shown between a successful sign-in and the dashboard, while the
@@ -50,10 +51,10 @@ interface WelcomeTransitionProps {
  */
 const SCRIM_GRADIENT =
   'radial-gradient(42% 38% at 50% 50%, ' +
-  'rgba(255,255,255,1) 0%, ' +
-  'rgba(255,255,255,1) 62%, ' +
-  'rgba(255,255,255,0.55) 82%, ' +
-  'rgba(255,255,255,0) 100%)'
+  'rgb(var(--c-grid-scrim) / 1) 0%, ' +
+  'rgb(var(--c-grid-scrim) / 1) 62%, ' +
+  'rgb(var(--c-grid-scrim) / 0.55) 82%, ' +
+  'rgb(var(--c-grid-scrim) / 0) 100%)'
 
 /** Blocks in the progress meter. */
 const SEGMENTS = 18
@@ -72,6 +73,9 @@ const SWEEP_MS = 700
 
 export function WelcomeTransition({ userName, title, subtitle }: WelcomeTransitionProps) {
   const [stage, setStage] = useState(0) // 0=initial, 1=check, 2=text, 3=progress
+  const { resolved } = useTheme()
+  const gridInk =
+    resolved === 'dark' ? { color: '#ffffff', tint: '#a3a3a3' } : { color: '#000000', tint: '#737373' }
 
   useEffect(() => {
     const t1 = setTimeout(() => setStage(1), 200)
@@ -87,15 +91,17 @@ export function WelcomeTransition({ userName, title, subtitle }: WelcomeTransiti
       AuthShell about a negative z-index landing in the root stacking context and the body
       background painting over the canvas.
     */
-    <div className="fixed inset-0 z-[200] isolate flex items-center justify-center overflow-hidden bg-white">
+    <div className="fixed inset-0 z-[200] isolate flex items-center justify-center overflow-hidden bg-surface">
       {/*
         absolute rather than the fixed used on /auth: this overlay already fills the
         viewport, so there is nothing to pin against.
       */}
       <AsciiBackdrop
         className="pointer-events-none absolute inset-0 z-0 opacity-[0.26]"
-        color="#000000"
-        colorTint="#737373"
+        /* Inverts with the theme — dark glyphs are invisible on a near-black page. Passed as
+           props rather than CSS variables because CharGrid parses them into shader uniforms. */
+        color={gridInk.color}
+        colorTint={gridInk.tint}
         scale={4}
         intensity={1.099}
         contrast={2.501}
@@ -134,9 +140,15 @@ export function WelcomeTransition({ userName, title, subtitle }: WelcomeTransiti
               style={{ animation: stage >= 1 ? 'ring-pulse 2s ease-out 0.5s infinite' : 'none' }}
             />
 
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-neutral-950 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.25)]">
+            {/*
+              Inverts rather than staying dark. The tile's whole job is to be the darkest
+              element on a light page; on a dark page that reads as a hole, so in dark mode it
+              becomes the lightest element and the tick flips with it. Pinning it dark would
+              hide both the tile and its white tick against the surface.
+            */}
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-carbon-950 dark:bg-neutral-900 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.25)]">
               <svg
-                className="h-10 w-10 text-white"
+                className="h-10 w-10 text-white dark:text-carbon-950"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -226,7 +238,7 @@ export function WelcomeTransition({ userName, title, subtitle }: WelcomeTransiti
                 stage >= 3 ? 'opacity-100' : 'opacity-0'
               }`}
             >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-[1px] bg-neutral-950" />
+              <span className="h-1.5 w-1.5 animate-pulse rounded-[1px] bg-carbon-950 dark:bg-neutral-900" />
               <span className="text-[11px] font-semibold uppercase tracking-widest text-neutral-700">
                 Loading your gym
               </span>

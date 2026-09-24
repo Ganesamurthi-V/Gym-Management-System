@@ -362,7 +362,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
     <div className="flex-1 w-full flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto min-h-[500px]">
       
       {/* Left Main Builder */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-surface rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         
         {/* Top Header & Day Tabs */}
         <div className="border-b border-slate-100 bg-slate-50/50">
@@ -371,7 +371,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
               <Settings2 className="w-5 h-5 text-brand-600" />
               Exercise Builder
             </h2>
-            <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+            <div className="flex items-center gap-2 bg-surface rounded-xl border border-slate-200 p-1 shadow-sm">
               <button 
                 onClick={() => setActiveWeek(Math.max(1, activeWeek - 1))}
                 className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 disabled:opacity-30"
@@ -414,7 +414,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
           <div className="max-w-3xl mx-auto space-y-4">
             
             {exercises[activeDay].length === 0 && !showSearch && (
-              <div className="text-center py-16 px-4 border-2 border-dashed border-slate-200 rounded-3xl bg-white">
+              <div className="text-center py-16 px-4 border-2 border-dashed border-slate-200 rounded-3xl bg-surface">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Dumbbell className="w-6 h-6 text-slate-400" />
                 </div>
@@ -446,7 +446,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
                     setDragEnabledId(null)
                   }}
                   onDragOver={(e) => e.preventDefault()}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group/card transition-all hover:border-slate-300"
+                  className="bg-surface rounded-2xl border border-slate-200 shadow-sm overflow-hidden group/card transition-all hover:border-slate-300"
                 >
                   {/* Card Header */}
                   <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -489,7 +489,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
                             <p className="text-sm text-slate-500 font-medium">No sets planned for Week {activeWeek}.</p>
                             <button 
                               onClick={() => duplicatePreviousWeek(ex.id, activeWeek)}
-                              className="px-4 py-2 text-xs font-bold bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm"
+                              className="px-4 py-2 text-xs font-bold bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm"
                             >
                               Copy from Week {activeWeek - 1}
                             </button>
@@ -541,26 +541,26 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
                             
                             {ex.type === 'Strength' && (
                               <>
-                                <input value={set.exerciseName || ''} onChange={e => updateSet(ex.id, setIdx, 'exerciseName', e.target.value)} className="flex-[2] h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder={ex.name} title="Override exercise name for supersets/circuits" />
-                                <input value={set.reps || ''} onChange={e => updateSet(ex.id, setIdx, 'reps', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="10" />
-                                <input value={set.weight || ''} onChange={e => updateSet(ex.id, setIdx, 'weight', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="kg/lb" />
-                                <input value={set.rest || ''} onChange={e => updateSet(ex.id, setIdx, 'rest', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none hidden sm:block" placeholder="90s" />
-                                <input value={set.rpe || ''} onChange={e => updateSet(ex.id, setIdx, 'rpe', e.target.value)} className="w-16 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none hidden md:block" placeholder="@8" />
+                                <input value={set.exerciseName || ''} onChange={e => updateSet(ex.id, setIdx, 'exerciseName', e.target.value)} className="flex-[2] h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder={ex.name} title="Override exercise name for supersets/circuits" />
+                                <input value={set.reps || ''} onChange={e => updateSet(ex.id, setIdx, 'reps', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="10" />
+                                <input value={set.weight || ''} onChange={e => updateSet(ex.id, setIdx, 'weight', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="kg/lb" />
+                                <input value={set.rest || ''} onChange={e => updateSet(ex.id, setIdx, 'rest', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none hidden sm:block" placeholder="90s" />
+                                <input value={set.rpe || ''} onChange={e => updateSet(ex.id, setIdx, 'rpe', e.target.value)} className="w-16 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none hidden md:block" placeholder="@8" />
                               </>
                             )}
 
                              {ex.type === 'Cardio' && (
                               <>
-                                <input value={set.duration || ''} onChange={e => updateSet(ex.id, setIdx, 'duration', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="20m" />
-                                <input value={set.intensity || ''} onChange={e => updateSet(ex.id, setIdx, 'intensity', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="Zone 2" />
-                                <input value={set.distance || ''} onChange={e => updateSet(ex.id, setIdx, 'distance', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="km/mi" />
+                                <input value={set.duration || ''} onChange={e => updateSet(ex.id, setIdx, 'duration', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="20m" />
+                                <input value={set.intensity || ''} onChange={e => updateSet(ex.id, setIdx, 'intensity', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="Zone 2" />
+                                <input value={set.distance || ''} onChange={e => updateSet(ex.id, setIdx, 'distance', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="km/mi" />
                               </>
                             )}
 
                             {ex.type === 'Mobility' && (
                               <>
-                                <input value={set.holdTime || ''} onChange={e => updateSet(ex.id, setIdx, 'holdTime', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="30s" />
-                                <input value={set.rounds || ''} onChange={e => updateSet(ex.id, setIdx, 'rounds', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-white focus:bg-white border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="1" />
+                                <input value={set.holdTime || ''} onChange={e => updateSet(ex.id, setIdx, 'holdTime', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="30s" />
+                                <input value={set.rounds || ''} onChange={e => updateSet(ex.id, setIdx, 'rounds', e.target.value)} className="flex-1 h-9 bg-slate-50 hover:bg-surface focus:bg-surface border border-transparent focus:border-brand-500 rounded-lg px-3 text-sm font-semibold transition-all outline-none" placeholder="1" />
                               </>
                             )}
                           </div>
@@ -596,14 +596,14 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
                       if (!showSearch) setShowSearch(true)
                     }}
                     onFocus={() => setShowSearch(true)}
-                    className="w-full h-14 pl-14 pr-4 bg-white border border-slate-200 rounded-2xl shadow-sm text-sm font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all placeholder:text-slate-400 placeholder:font-semibold"
+                    className="w-full h-14 pl-14 pr-4 bg-surface border border-slate-200 rounded-2xl shadow-sm text-sm font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all placeholder:text-slate-400 placeholder:font-semibold"
                     placeholder="Search exercise library..."
                   />
                 </div>
                 
                 {showSearch && searchQuery && (
                   <div 
-                    className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden max-h-[300px] overflow-y-auto"
+                    className="mt-2 bg-surface rounded-2xl shadow-sm border border-slate-200 overflow-hidden max-h-[300px] overflow-y-auto"
                   >
                     {EXERCISE_LIBRARY.filter(ex => ex.name.toLowerCase().includes(searchQuery.toLowerCase())).map((ex, i) => (
                       <button
@@ -641,7 +641,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
 
       {/* Right Sidebar */}
       <div className="w-full lg:w-80 flex flex-col justify-between min-h-0">
-        <div className="card border-slate-200 overflow-hidden bg-white shadow-sm flex flex-col h-full rounded-3xl min-h-0">
+        <div className="card border-slate-200 overflow-hidden bg-surface shadow-sm flex flex-col h-full rounded-3xl min-h-0">
           <div className="p-5 border-b border-slate-100 bg-slate-50/50">
             <h3 className="font-bold text-slate-900">{programData.name || "Untitled"}</h3>
             <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">{programData.duration} Weeks Plan</p>
@@ -689,7 +689,7 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
               <button 
                 onClick={onBack} 
                 disabled={isPublishing || isSavingDraft}
-                className="flex-1 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 text-sm font-bold text-slate-600 bg-surface border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Back
               </button>

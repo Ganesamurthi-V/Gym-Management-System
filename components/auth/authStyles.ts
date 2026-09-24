@@ -35,22 +35,32 @@ export const authLabel = 'mb-2 block text-[13px] font-semibold text-neutral-800'
  * reflows.
  */
 export const authInput =
-  'h-12 w-full rounded-xl border-2 border-neutral-200 bg-white px-4 text-base font-medium ' +
+  'h-12 w-full rounded-xl border-2 border-neutral-200 bg-surface px-4 text-base font-medium ' +
   'text-neutral-900 transition-colors duration-150 placeholder:text-neutral-400 ' +
   'focus:border-neutral-900 focus:outline-none focus:ring-4 focus:ring-neutral-900/10 sm:text-sm'
 
-/** Primary action. Near-black rather than the previous #0F172A navy. */
+/**
+ * Primary action. Near-black rather than the previous #0F172A navy.
+ *
+ * This is one of the few places that needs an explicit dark-mode rule rather than a themed
+ * colour. The button is defined by being the darkest thing on a light page, so neither
+ * automatic option is right: theming it would turn it near-white while its own `text-white`
+ * label stayed white, and pinning it dark would leave a #0a0a0a button on a #171717 page.
+ * The correct dark-mode form is the inverse — a near-white button with dark text — which no
+ * single colour can express. Hence the dark: variants.
+ */
 export const authPrimaryButton =
-  'flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm ' +
-  'font-semibold text-white transition-colors duration-150 hover:bg-neutral-800 ' +
+  'flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-carbon-950 text-sm ' +
+  'font-semibold text-white transition-colors duration-150 hover:bg-carbon-800 ' +
+  'dark:bg-neutral-900 dark:text-carbon-950 dark:hover:bg-neutral-700 ' +
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 ' +
-  'focus-visible:ring-offset-2 active:scale-[0.99] disabled:cursor-not-allowed ' +
-  'disabled:opacity-50'
+  'focus-visible:ring-offset-2 dark:focus-visible:ring-offset-carbon-950 ' +
+  'active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50'
 
 /** Secondary action, for the pages that offer two. */
 export const authSecondaryButton =
   'flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-neutral-200 ' +
-  'bg-white text-sm font-semibold text-neutral-900 transition-colors duration-150 ' +
+  'bg-surface text-sm font-semibold text-neutral-900 transition-colors duration-150 ' +
   'hover:border-neutral-300 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 ' +
   'focus-visible:ring-neutral-900 focus-visible:ring-offset-2'
 
@@ -66,7 +76,13 @@ export const authLink =
   'underline-offset-2 transition-colors hover:decoration-neutral-900 focus:outline-none ' +
   'focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 rounded'
 
-/** Panel for grouped secondary content: agreements, notes, the member advisory. */
+/**
+ * Panel for grouped secondary content: agreements, notes, the member advisory.
+ *
+ * bg-neutral-50 is themed, so this tracks the page automatically: the faintest tint above
+ * white in light mode, and the faintest lift above the page in dark mode. That is the
+ * behaviour wanted here, which is why it needs no dark: variant.
+ */
 export const authPanel = 'rounded-xl border border-neutral-200 bg-neutral-50 p-4'
 
 /**

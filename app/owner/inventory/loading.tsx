@@ -31,7 +31,7 @@ export default function InventoryLoading() {
                 <th className="px-5 py-3.5"><div className="h-3 w-16 bg-slate-200 rounded ml-auto"></div></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody className="divide-y divide-slate-100 bg-surface">
               {[...Array(5)].map((_, i) => (
                 <tr key={i}>
                   <td className="px-5 py-4">

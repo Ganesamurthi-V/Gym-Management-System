@@ -146,7 +146,7 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
                       mx-auto flex h-9 w-9 items-center justify-center rounded-full transition-all cursor-pointer
                       ${cell.checked
                         ? isSelected
-                          ? 'bg-brand-600 shadow-md shadow-brand-200 scale-110'
+                          ? 'bg-brand-500 shadow-md shadow-brand-200 scale-110'
                           : 'bg-brand-500 hover:bg-brand-600'
                         : cell.isPast
                         ? isSelected

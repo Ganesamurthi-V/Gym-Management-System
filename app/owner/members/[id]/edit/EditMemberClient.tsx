@@ -222,7 +222,7 @@ export function EditMemberClient({ member }: Props) {
                 {(['male', 'female', 'other'] as const).map(g => (
                   <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
                     className={`py-3 px-2 rounded-2xl border-2 text-sm font-semibold transition-all text-center ${
-                      form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                      form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-surface text-slate-500'
                     }`}
                   >
                     {g === 'male' ? 'M' : g === 'female' ? 'F' : 'O'}

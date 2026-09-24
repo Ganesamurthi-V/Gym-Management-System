@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
+import { ThemeToggle, ThemeToggleButton } from '@/components/theme/ThemeToggle'
 import { signOutViaApi } from '@/lib/auth/client-auth'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -209,7 +210,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         onClick={collapsed ? toggle : undefined}
         {...tourAttr('sidebar')}
         className={`
-          hidden md:flex flex-col bg-white border-r border-slate-200
+          hidden md:flex flex-col bg-surface border-r border-slate-200
           fixed inset-y-0 left-0 z-30 overflow-hidden
           transition-[width] duration-300 ease-in-out group/sidebar
           ${collapsed ? 'w-14 cursor-pointer hover:w-60' : 'w-56 lg:w-60 cursor-default'}
@@ -282,7 +283,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         transition-[padding] duration-300 ease-in-out
         ${collapsed ? 'md:pl-14' : 'md:pl-56 lg:pl-60'}
       `}>
-        <header className="sticky top-0 h-14 md:h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
+        <header className="sticky top-0 h-14 md:h-16 bg-surface/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
           <div className="w-full px-3 xs:px-4 md:px-6 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
               <Image src="/logo_only.png" alt={`${liveGymName || 'GymFlow'} Logo`} width={40} height={40} className="rounded-lg object-contain md:hidden" />
@@ -291,12 +292,18 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 md:gap-3">
               <span className="text-base md:text-xl font-black text-brand-600 tracking-tight uppercase max-w-[200px] md:max-w-[300px] truncate">{liveGymName || 'GymFlow'}</span>
             </div>
-            <AccountMenu 
-              initialEmail={initialUser?.email} 
-              initialGymId={initialGym?.id}
-              initialGymName={liveGymName}
-              initialUnreadCount={initialUnreadCount} 
-            />
+            {/* Theme control sits beside the account menu — the segmented group needs room, so
+                it is desktop-only here; the member header carries the compact single button. */}
+            <div className="flex items-center gap-2 md:gap-3">
+              <ThemeToggle className="hidden md:inline-flex" />
+              <ThemeToggleButton className="md:hidden" />
+              <AccountMenu
+                initialEmail={initialUser?.email}
+                initialGymId={initialGym?.id}
+                initialGymName={liveGymName}
+                initialUnreadCount={initialUnreadCount}
+              />
+            </div>
           </div>
         </header>
 

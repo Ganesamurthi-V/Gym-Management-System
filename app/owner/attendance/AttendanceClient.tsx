@@ -232,7 +232,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
             type="submit"
             disabled={isLoading || !memberId.trim()}
             {...tourAttr('attendanceSubmit')}
-            className="w-full max-w-sm mt-8 xs:mt-10 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3.5 xs:py-4 md:py-5 font-bold text-base xs:text-lg md:text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20"
+            className="w-full max-w-sm mt-8 xs:mt-10 bg-emphasis hover:bg-emphasis-hover text-emphasis-fg rounded-full py-3.5 xs:py-4 md:py-5 font-bold text-base xs:text-lg md:text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-ink-900/20"
           >
             {isLoading ? (
               <Loader2 className="w-6 h-6 xs:w-8 xs:h-8 animate-spin" />
@@ -244,7 +244,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
         <div {...tourAttr('attendanceTotal')} className="mt-8 xs:mt-12 text-center">
           <p className="text-sm xs:text-base font-bold text-slate-400">
-            Total Checked-in Today: <span className="text-slate-700 bg-white shadow-sm px-3 xs:px-4 py-1 xs:py-1.5 rounded-full border border-slate-100 ml-2">{totalPresent}</span>
+            Total Checked-in Today: <span className="text-slate-700 bg-surface shadow-sm px-3 xs:px-4 py-1 xs:py-1.5 rounded-full border border-slate-100 ml-2">{totalPresent}</span>
           </p>
         </div>
 
@@ -253,12 +253,12 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
       {/* Success / Error Overlay Modal */}
       <div className={cn(
         "absolute inset-0 z-50 flex flex-col items-center justify-center p-4 text-center transition-all duration-300 rounded-3xl",
-        message.type !== null ? 'bg-slate-900/40 backdrop-blur-md opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
+        message.type !== null ? 'bg-ink-900/40 backdrop-blur-md opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
       )}>
         
         {/* Modal Card */}
         <div className={cn(
-          "bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-6 md:p-8 flex flex-col items-center border border-slate-100 transform transition-all duration-300",
+          "bg-surface w-full max-w-md rounded-[2rem] shadow-2xl p-6 md:p-8 flex flex-col items-center border border-slate-100 transform transition-all duration-300",
           message.type !== null ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'
         )}>
           
@@ -285,8 +285,8 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Workout Duration</p>
                    <p className="text-3xl font-black text-brand-600">{message.attendanceInfo.duration}</p>
                    <div className="flex items-center justify-center gap-3 mt-3 text-xs font-semibold text-slate-500">
-                     <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">In: {message.attendanceInfo.checkInTime}</span> 
-                     <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">Out: {message.attendanceInfo.checkOutTime}</span>
+                     <span className="bg-surface border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">In: {message.attendanceInfo.checkInTime}</span> 
+                     <span className="bg-surface border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">Out: {message.attendanceInfo.checkOutTime}</span>
                    </div>
                  </div>
                ) : (

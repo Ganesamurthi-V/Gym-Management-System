@@ -391,7 +391,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           setShowExportModal(true)
         }} disabled={isLoadingAllTime}
           {...tourAttr('paymentsExport')}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50 self-start xs:self-auto">
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50 self-start xs:self-auto">
           <Download className="w-4 h-4" />{isLoadingAllTime ? 'Loading...' : 'Export'}
         </button>
       </div>
@@ -439,7 +439,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           {showPending && (
             <div className="space-y-2">
               {localPending.map(m => (
-                <div key={m.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5 border border-amber-100">
+                <div key={m.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2.5 border border-amber-100">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
                       {m.name}
@@ -466,7 +466,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           {(['today', 'week', 'month', 'all', 'custom'] as Period[]).map(p => (
             <button key={p} onClick={() => handlePeriodChange(p)} disabled={isLoadingAllTime}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-50 ${
-                period === p ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-500'
+                period === p ? 'bg-emphasis text-emphasis-fg' : 'bg-surface border border-slate-200 text-slate-500'
               }`}>
               {p === 'all' && isLoadingAllTime && period !== 'all' ? 'Loading...' : p === 'all' ? 'All Time' : p === 'custom' ? 'Custom' : p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
@@ -476,7 +476,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           {(['all', 'cash', 'upi', 'card'] as ModeFilter[]).map(m => (
             <button key={m} onClick={() => setMode(m)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                modeFilter === m ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-500'
+                modeFilter === m ? 'bg-emphasis text-emphasis-fg' : 'bg-surface border border-slate-200 text-slate-500'
               }`}>
               {m === 'all' ? 'All Modes' : m.toUpperCase()}
             </button>
@@ -652,8 +652,8 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       </div>
 
       {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-slate-100">
               <h2 className="text-lg font-bold text-slate-900">Customize Export</h2>
               <p className="text-sm text-slate-500 mt-1">Select which transaction types to include in your Excel file.</p>
@@ -661,15 +661,15 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
             <div className="p-5 space-y-4 bg-slate-50 max-h-[60vh] overflow-y-auto no-scrollbar">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Data Types</label>
-                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                <label className="flex items-center gap-3 p-3 bg-surface border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
                   <input type="checkbox" checked={exportOptions.memberships} onChange={(e) => setExportOptions(prev => ({ ...prev, memberships: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
                   <span className="text-sm font-semibold text-slate-700">Memberships</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                <label className="flex items-center gap-3 p-3 bg-surface border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
                   <input type="checkbox" checked={exportOptions.inventory} onChange={(e) => setExportOptions(prev => ({ ...prev, inventory: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
                   <span className="text-sm font-semibold text-slate-700">Inventory Sales</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
+                <label className="flex items-center gap-3 p-3 bg-surface border border-slate-200 rounded-xl cursor-pointer hover:border-brand-500 transition-colors">
                   <input type="checkbox" checked={exportOptions.dues} onChange={(e) => setExportOptions(prev => ({ ...prev, dues: e.target.checked }))} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-600" />
                   <span className="text-sm font-semibold text-slate-700">Due Collections</span>
                 </label>
@@ -702,11 +702,11 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
                 </select>
               </div>
             </div>
-            <div className="p-4 bg-white flex gap-3">
+            <div className="p-4 bg-surface flex gap-3">
               <button onClick={() => setShowExportModal(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-200 transition-colors">
                 Cancel
               </button>
-              <button onClick={() => { setShowExportModal(false); exportExcel(); }} disabled={!exportOptions.memberships && !exportOptions.inventory && !exportOptions.dues} className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-50">
+              <button onClick={() => { setShowExportModal(false); exportExcel(); }} disabled={!exportOptions.memberships && !exportOptions.inventory && !exportOptions.dues} className="flex-1 py-2.5 bg-brand-500 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-50">
                 Export Now
               </button>
             </div>

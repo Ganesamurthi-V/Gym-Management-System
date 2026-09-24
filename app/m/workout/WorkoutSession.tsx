@@ -247,7 +247,7 @@ export default function WorkoutSession({ programName, dayLabel, exercises, onFin
           <button
             type="button"
             onClick={skipRest}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-surface border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 transition-colors"
           >
             <ChevronRight className="h-3.5 w-3.5" />
             Skip Rest

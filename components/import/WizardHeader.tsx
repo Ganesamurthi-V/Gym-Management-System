@@ -16,7 +16,7 @@ export default function WizardHeader({ currentStep }: WizardHeaderProps) {
   ];
 
   return (
-    <div className="w-full bg-white border border-slate-100/80 rounded-3xl p-6 shadow-sm mb-6">
+    <div className="w-full bg-surface border border-slate-100/80 rounded-3xl p-6 shadow-sm mb-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <div className="w-12 h-12 bg-brand-500 rounded-2xl flex items-center justify-center text-white shadow-md shadow-brand-500/20">

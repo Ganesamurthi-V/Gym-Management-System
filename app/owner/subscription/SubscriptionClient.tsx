@@ -209,11 +209,11 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   if (liveSubState.status === 'active' && !liveSubState.isExpired && !liveSubState.isExpiringSoon) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl border border-emerald-200 p-10 text-center space-y-4 shadow-sm max-w-md w-full">
+        <div className="bg-surface rounded-2xl border border-emerald-200 p-10 text-center space-y-4 shadow-sm max-w-md w-full">
           <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto" />
           <h2 className="text-xl font-bold text-slate-900">Your subscription is active</h2>
           <p className="text-sm text-slate-500">You have full access to all GymFlow features.</p>
-          <Link href="/owner/dashboard" className="inline-flex items-center justify-center w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors">
+          <Link href="/owner/dashboard" className="inline-flex items-center justify-center w-full py-3 bg-brand-500 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors">
             Go to Dashboard
           </Link>
         </div>
@@ -225,7 +225,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   if (isPending && !success) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl border border-amber-200 p-8 shadow-sm max-w-md w-full text-center space-y-4">
+        <div className="bg-surface rounded-2xl border border-amber-200 p-8 shadow-sm max-w-md w-full text-center space-y-4">
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
             <RefreshCw className="w-8 h-8 text-amber-600 animate-spin" style={{ animationDuration: '3s' }} />
           </div>
@@ -255,7 +255,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   if (success) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl border border-emerald-200 p-10 text-center shadow-sm max-w-md w-full space-y-5">
+        <div className="bg-surface rounded-3xl border border-emerald-200 p-10 text-center shadow-sm max-w-md w-full space-y-5">
           <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto" />
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Payment Proof Submitted!</h2>
@@ -356,9 +356,9 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
 
         {/* Step 1 UI */}
         {step === 1 && (
-          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm">
+          <div className="bg-surface rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm">
              <div className="flex items-center gap-4 mb-8">
-               <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-brand-500/30">1</div>
+               <div className="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-brand-500/30">1</div>
                <div>
                  <h3 className="text-xl font-bold text-slate-900">Choose Your Plan</h3>
                  <p className="text-sm text-slate-500 font-medium">Select the plan that works best for your gym.</p>
@@ -371,11 +371,11 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                 <div 
                   onClick={() => setSelectedPlan('monthly')}
                   className={`md:col-span-4 cursor-pointer rounded-3xl border-2 p-6 transition-all duration-200 ${
-                    selectedPlan === 'monthly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-white hover:border-brand-200 hover:-translate-y-1'
+                    selectedPlan === 'monthly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-surface hover:border-brand-200 hover:-translate-y-1'
                   }`}
                 >
                    <div className="flex justify-between items-start mb-5">
-                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'monthly' ? 'bg-white border-brand-100 shadow-sm' : 'bg-slate-50 border-slate-100'}`}>
+                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'monthly' ? 'bg-surface border-brand-100 shadow-sm' : 'bg-slate-50 border-slate-100'}`}>
                        <Calendar className={`w-6 h-6 ${selectedPlan === 'monthly' ? 'text-brand-600' : 'text-slate-400'}`} />
                      </div>
                      {selectedPlan === 'monthly' ? (
@@ -406,12 +406,12 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                 <div 
                   onClick={() => setSelectedPlan('yearly')}
                   className={`md:col-span-4 cursor-pointer rounded-3xl border-2 p-6 transition-all duration-200 relative ${
-                    selectedPlan === 'yearly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-white hover:border-brand-200 hover:-translate-y-1'
+                    selectedPlan === 'yearly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-surface hover:border-brand-200 hover:-translate-y-1'
                   }`}
                 >
-                   <div className="absolute top-5 right-5 bg-brand-600 text-white text-[10px] font-black px-3 py-1 rounded-full tracking-wider shadow-sm shadow-brand-500/30">BEST VALUE</div>
+                   <div className="absolute top-5 right-5 bg-brand-500 text-white text-[10px] font-black px-3 py-1 rounded-full tracking-wider shadow-sm shadow-brand-500/30">BEST VALUE</div>
                    <div className="flex justify-between items-start mb-5">
-                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'yearly' ? 'bg-white border-brand-100 shadow-sm' : 'bg-amber-50 border-amber-100/50'}`}>
+                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'yearly' ? 'bg-surface border-brand-100 shadow-sm' : 'bg-amber-50 border-amber-100/50'}`}>
                        <Zap className={`w-6 h-6 ${selectedPlan === 'yearly' ? 'text-brand-600' : 'text-amber-500'}`} />
                      </div>
                      {selectedPlan === 'yearly' ? (
@@ -462,7 +462,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
              <div className="mt-10 pt-8 border-t border-slate-100 flex justify-end">
                <button 
                  onClick={() => setStep(2)}
-                 className="px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold transition-all shadow-md shadow-brand-500/25 flex items-center gap-2"
+                 className="px-8 py-3.5 bg-brand-500 hover:bg-brand-700 text-white rounded-xl font-bold transition-all shadow-md shadow-brand-500/25 flex items-center gap-2"
                >
                  Continue to Payment <ArrowRight className="w-4 h-4" />
                </button>
@@ -472,10 +472,10 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
 
         {/* Step 2 UI */}
         {step === 2 && (
-          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm flex flex-col">
+          <div className="bg-surface rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm flex flex-col">
              <div className="flex items-center justify-between mb-8">
                <div className="flex items-center gap-4">
-                 <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-brand-500/30">2</div>
+                 <div className="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-brand-500/30">2</div>
                  <div>
                    <h3 className="text-xl font-bold text-slate-900">Make Payment</h3>
                    <p className="text-sm text-slate-500 font-medium">Pay securely using any UPI app</p>
@@ -490,7 +490,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
              <div className="flex flex-col lg:flex-row gap-8 items-stretch mb-10">
                
                {/* Left Side: QR & Details */}
-               <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-stretch gap-6 border border-slate-100 p-5 rounded-3xl bg-white shadow-sm">
+               <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-stretch gap-6 border border-slate-100 p-5 rounded-3xl bg-surface shadow-sm">
                  <div className="w-48 h-48 sm:w-56 sm:h-56 p-3 bg-slate-50 border border-slate-100 rounded-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
                    <Image
                      src={selectedPlan === 'monthly' ? '/2999.jpeg' : '/29k.jpeg'}
@@ -540,7 +540,9 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                </div>
 
                {/* Right Side: Instructions */}
-               <div className="flex-1 bg-[#F5F8FF] rounded-3xl p-6 md:p-8 flex flex-col justify-between border border-brand-100/50">
+               {/* bg-brand-50 rather than the arbitrary #F5F8FF it was: an arbitrary value
+                  cannot be themed, so this panel would have stayed pale blue in dark mode. */}
+              <div className="flex-1 bg-brand-50 rounded-3xl p-6 md:p-8 flex flex-col justify-between border border-brand-100/50">
                  <div>
                    <div className="flex items-center gap-2 mb-6">
                      <AlertCircle className="w-5 h-5 text-brand-600" />
@@ -555,7 +557,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                        'Upload the screenshot below'
                      ].map((text, i) => (
                        <li key={i} className="flex items-center gap-4">
-                         <div className="w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-black shadow-sm shadow-brand-500/20">{i + 1}</div>
+                         <div className="w-6 h-6 rounded-full bg-brand-500 text-white flex items-center justify-center flex-shrink-0 text-xs font-black shadow-sm shadow-brand-500/20">{i + 1}</div>
                          <span className="text-sm font-semibold text-slate-700">{text}</span>
                        </li>
                      ))}
@@ -616,7 +618,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
                     placeholder="e.g. 403612345678"
-                    className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium placeholder:font-normal"
+                    className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium placeholder:font-normal"
                   />
                 </div>
 
@@ -643,7 +645,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                     className={`px-8 py-3.5 rounded-xl font-bold transition-all shadow-md flex items-center gap-2 ${
                       submitting || !file
                         ? 'bg-slate-100 text-slate-400 shadow-none cursor-not-allowed'
-                        : 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/25'
+                        : 'bg-brand-500 hover:bg-brand-700 text-white shadow-brand-500/25'
                     }`}
                   >
                     {submitting ? (

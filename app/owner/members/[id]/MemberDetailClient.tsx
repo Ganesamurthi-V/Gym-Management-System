@@ -240,7 +240,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
                 {(['monthly', 'quarterly', 'annual', 'custom'] as Plan[]).map((plan) => (
                   <button key={plan} type="button" onClick={() => setRenewForm(p => ({ ...p, plan }))}
                     className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                      renewForm.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                      renewForm.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-surface text-slate-500'
                     }`}
                   >
                     {plan === 'monthly' ? '1M' : plan === 'quarterly' ? '3M' : plan === 'annual' ? '12M' : 'Custom'}
@@ -273,7 +273,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
                 {(['cash', 'upi', 'card'] as PaymentMode[]).map((mode) => (
                   <button key={mode} type="button" onClick={() => setRenewForm(p => ({ ...p, payment_mode: mode }))}
                     className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                      renewForm.payment_mode === mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                      renewForm.payment_mode === mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-surface text-slate-500'
                     }`}
                   >
                     {mode.toUpperCase()}

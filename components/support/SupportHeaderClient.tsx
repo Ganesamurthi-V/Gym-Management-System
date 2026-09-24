@@ -16,7 +16,7 @@ export default function SupportHeaderClient() {
       
       <button 
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors shadow-sm"
+        className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-500 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors shadow-sm"
       >
         <Plus className="w-4 h-4" />
         <span className="text-sm">Submit Ticket</span>

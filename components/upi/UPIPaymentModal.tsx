@@ -94,8 +94,8 @@ export default function UPIPaymentModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
 
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -134,7 +134,7 @@ export default function UPIPaymentModal({
             <button
               onClick={handleGenerateQR}
               disabled={generating || !merchantConfig}
-              className="w-full flex items-start gap-4 p-4 bg-white border-2 border-slate-200 rounded-xl hover:border-brand-400 hover:bg-brand-50/30 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-start gap-4 p-4 bg-surface border-2 border-slate-200 rounded-xl hover:border-brand-400 hover:bg-brand-50/30 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="w-11 h-11 bg-brand-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-brand-100 transition-colors">
                 {generating ? (
@@ -154,7 +154,7 @@ export default function UPIPaymentModal({
             {/* Option 2: Collect Manually */}
             <button
               onClick={onCollectManually}
-              className="w-full flex items-start gap-4 p-4 bg-white border-2 border-slate-200 rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-all text-left group"
+              className="w-full flex items-start gap-4 p-4 bg-surface border-2 border-slate-200 rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-all text-left group"
             >
               <div className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-slate-200 transition-colors">
                 <Wallet className="w-5 h-5 text-slate-600" />
@@ -195,7 +195,7 @@ export default function UPIPaymentModal({
 
             {/* QR Code */}
             <div className="flex flex-col items-center">
-              <div className="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
+              <div className="p-4 bg-surface border-2 border-slate-200 rounded-2xl shadow-sm">
                 {qrDataUrl ? (
                   <img
                     src={qrDataUrl}

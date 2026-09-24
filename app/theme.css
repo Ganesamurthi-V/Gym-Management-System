@@ -1,0 +1,533 @@
+/*
+  ══════════════════════════════════════════════════════════════════════════════
+  Light / dark colour ramps
+  ══════════════════════════════════════════════════════════════════════════════
+
+  These variables back the achromatic Tailwind scales declared in
+  tailwind.config.js. Every value is a bare "R G B" channel triplet, not a
+  finished colour, so Tailwind's <alpha-value> placeholder can still inject slash
+  opacities (`bg-slate-900/40`, `text-white/70`).
+
+  ── Why the palette is themed instead of the components ──────────────────────
+  An audit of the main app found 2,669 hardcoded neutral utilities across 102
+  files and exactly 4 `dark:` variants in total. Adding a dark variant to each
+  utility would be thousands of edits, and the failure mode of a missed one is
+  the worst kind: slate text on a slate background renders invisible rather than
+  merely wrong, so a partial conversion is harder to spot than no conversion.
+  Redefining the scales flips all of them together.
+
+  ── Light mode is intentionally a no-op ──────────────────────────────────────
+  The :root values below are byte-identical to Tailwind's own slate/gray/zinc/
+  neutral/stone ramps. Light mode therefore renders exactly as it did before this
+  file existed, which is what makes the change reviewable: any visual difference
+  in light mode is a bug, not a design decision.
+*/
+
+:root {
+  color-scheme: light;
+
+  /* ── Tailwind slate (unchanged) ─────────────────────────────────────────── */
+  --c-slate-50: 248 250 252;
+  --c-slate-100: 241 245 249;
+  --c-slate-200: 226 232 240;
+  --c-slate-300: 203 213 225;
+  --c-slate-400: 148 163 184;
+  --c-slate-500: 100 116 139;
+  --c-slate-600: 71 85 105;
+  --c-slate-700: 51 65 85;
+  --c-slate-800: 30 41 59;
+  --c-slate-900: 15 23 42;
+  --c-slate-950: 2 6 23;
+
+  /* ── Tailwind gray (unchanged) ──────────────────────────────────────────── */
+  --c-gray-50: 249 250 251;
+  --c-gray-100: 243 244 246;
+  --c-gray-200: 229 231 235;
+  --c-gray-300: 209 213 219;
+  --c-gray-400: 156 163 175;
+  --c-gray-500: 107 114 128;
+  --c-gray-600: 75 85 99;
+  --c-gray-700: 55 65 81;
+  --c-gray-800: 31 41 55;
+  --c-gray-900: 17 24 39;
+  --c-gray-950: 3 7 18;
+
+  /* ── Tailwind zinc (unchanged) ──────────────────────────────────────────── */
+  --c-zinc-50: 250 250 250;
+  --c-zinc-100: 244 244 245;
+  --c-zinc-200: 228 228 231;
+  --c-zinc-300: 212 212 216;
+  --c-zinc-400: 161 161 170;
+  --c-zinc-500: 113 113 122;
+  --c-zinc-600: 82 82 91;
+  --c-zinc-700: 63 63 70;
+  --c-zinc-800: 39 39 42;
+  --c-zinc-900: 24 24 27;
+  --c-zinc-950: 9 9 11;
+
+  /* ── Tailwind neutral (unchanged) ───────────────────────────────────────── */
+  --c-neutral-50: 250 250 250;
+  --c-neutral-100: 245 245 245;
+  --c-neutral-200: 229 229 229;
+  --c-neutral-300: 212 212 212;
+  --c-neutral-400: 163 163 163;
+  --c-neutral-500: 115 115 115;
+  --c-neutral-600: 82 82 82;
+  --c-neutral-700: 64 64 64;
+  --c-neutral-800: 38 38 38;
+  --c-neutral-900: 23 23 23;
+  --c-neutral-950: 10 10 10;
+
+  /* ── Tailwind stone (unchanged) ─────────────────────────────────────────── */
+  --c-stone-50: 250 250 249;
+  --c-stone-100: 245 245 244;
+  --c-stone-200: 231 229 228;
+  --c-stone-300: 214 211 209;
+  --c-stone-400: 168 162 158;
+  --c-stone-500: 120 113 108;
+  --c-stone-600: 87 83 78;
+  --c-stone-700: 68 64 60;
+  --c-stone-800: 41 37 36;
+  --c-stone-900: 28 25 23;
+  --c-stone-950: 12 10 9;
+
+  /* ── Surfaces — the themed replacement for bg-white ─────────────────────── */
+  --c-surface: 255 255 255;
+  --c-surface-secondary: 248 250 252;
+  --c-surface-card: 241 245 249;
+  --c-surface-border: 226 232 240;
+  --c-surface-sunken: 241 245 249;
+
+  /* ── High-emphasis fill (selected chips, solid dark buttons) ─────────────── */
+  /* Matches the slate-900 these elements used before, so light mode is unchanged. */
+  --c-emphasis: 15 23 42;
+  --c-emphasis-hover: 30 41 59;
+  --c-emphasis-fg: 255 255 255;
+
+  /*
+    ── Character-grid backdrop (/auth, the welcome transition) ────────────────
+    The scrim is the radial wash that flattens the grid behind the copy, and the ink is
+    the grid's own glyph colour. Both are consumed through rgb(var(--…) / a) because they
+    live in inline gradients and component props, which Tailwind never sees — they were the
+    one part of the theme that stayed literally white on a black page.
+  */
+  --c-grid-scrim: 255 255 255;  /* wash over the grid: the page colour */
+  --grid-ink: #000000;          /* glyphs: dark marks on a light page */
+  --grid-ink-tint: #737373;
+}
+
+/*
+  ══════════════════════════════════════════════════════════════════════════════
+  Dark ramp — hue-free
+  ══════════════════════════════════════════════════════════════════════════════
+
+  Neutral grey, deliberately. An earlier version of this ramp was slate-toned, so
+  the page sat at 15 23 42 and every surface carried a blue cast. It is a common
+  choice and it was the wrong one here: this app's dark theme is meant to read as
+  black, and the only colour on screen should be the brand blue and the semantic
+  states. A blue-tinted background competes with both — brand-500 on a blue-black
+  card loses much of its separation.
+
+  So all five achromatic families collapse onto ONE hue-free ramp in dark mode.
+  They stay distinct in light mode, where Tailwind's own tints are what the design
+  was built against; in dark mode the differences between slate, zinc and stone are
+  noise, and unifying them means a card cannot pick up a stray tint depending on
+  which family a component happened to reach for.
+
+  ── How the ramp is built ────────────────────────────────────────────────────
+  Not a numeric mirror of the light scale. Two things matter:
+
+    · Steps stay monotonic. A higher number is more prominent in dark mode, the
+      way a higher number is darker in light mode. The first draft of this file
+      gave slate-600 a lighter value than slate-700, quietly swapping the
+      relationship between headings and body copy.
+
+    · The bright end stops short of #fff. Pure white body text haloes against
+      near-black; 214 reads as clean white and measures calmer.
+
+  ── Measured against the card surface (23 23 23) ─────────────────────────────
+    700 (214) body text        12.2:1
+    600 (190) headings          9.6:1
+    500 (163) muted text        7.1:1
+    400 (130) placeholder       4.7:1  — clears 4.5, so even placeholders pass
+    200 ( 42) hairline          not text; a perceptible edge on a card
+*/
+.dark {
+  color-scheme: dark;
+
+  /* slate */
+  --c-slate-50: 23 23 23;
+  --c-slate-100: 32 32 32;
+  --c-slate-200: 42 42 42;
+  --c-slate-300: 64 64 64;
+  --c-slate-400: 130 130 130;
+  --c-slate-500: 163 163 163;
+  --c-slate-600: 190 190 190;
+  --c-slate-700: 214 214 214;
+  --c-slate-800: 232 232 232;
+  --c-slate-900: 245 245 245;
+  --c-slate-950: 252 252 252;
+
+  /* gray */
+  --c-gray-50: 23 23 23;
+  --c-gray-100: 32 32 32;
+  --c-gray-200: 42 42 42;
+  --c-gray-300: 64 64 64;
+  --c-gray-400: 130 130 130;
+  --c-gray-500: 163 163 163;
+  --c-gray-600: 190 190 190;
+  --c-gray-700: 214 214 214;
+  --c-gray-800: 232 232 232;
+  --c-gray-900: 245 245 245;
+  --c-gray-950: 252 252 252;
+
+  /* zinc */
+  --c-zinc-50: 23 23 23;
+  --c-zinc-100: 32 32 32;
+  --c-zinc-200: 42 42 42;
+  --c-zinc-300: 64 64 64;
+  --c-zinc-400: 130 130 130;
+  --c-zinc-500: 163 163 163;
+  --c-zinc-600: 190 190 190;
+  --c-zinc-700: 214 214 214;
+  --c-zinc-800: 232 232 232;
+  --c-zinc-900: 245 245 245;
+  --c-zinc-950: 252 252 252;
+
+  /* neutral */
+  --c-neutral-50: 23 23 23;
+  --c-neutral-100: 32 32 32;
+  --c-neutral-200: 42 42 42;
+  --c-neutral-300: 64 64 64;
+  --c-neutral-400: 130 130 130;
+  --c-neutral-500: 163 163 163;
+  --c-neutral-600: 190 190 190;
+  --c-neutral-700: 214 214 214;
+  --c-neutral-800: 232 232 232;
+  --c-neutral-900: 245 245 245;
+  --c-neutral-950: 252 252 252;
+
+  /* stone */
+  --c-stone-50: 23 23 23;
+  --c-stone-100: 32 32 32;
+  --c-stone-200: 42 42 42;
+  --c-stone-300: 64 64 64;
+  --c-stone-400: 130 130 130;
+  --c-stone-500: 163 163 163;
+  --c-stone-600: 190 190 190;
+  --c-stone-700: 214 214 214;
+  --c-stone-800: 232 232 232;
+  --c-stone-900: 245 245 245;
+  --c-stone-950: 252 252 252;
+
+  /*
+    Surfaces are layered so elevation reads without a bright border doing the work:
+    the page is darkest, cards sit above it, raised panels above those.
+  */
+  --c-surface: 23 23 23;            /* cards, modals, inputs */
+  --c-surface-secondary: 10 10 10;  /* page background, beneath cards */
+  --c-surface-card: 38 38 38;       /* raised panel inside a card */
+  --c-surface-border: 38 38 38;
+  --c-surface-sunken: 10 10 10;     /* wells, table stripes */
+
+  /*
+    Emphasis inverts rather than staying dark. A selected chip is dark in light mode because
+    dark is the emphatic end of the ramp; on a near-black page the emphatic end is light.
+    Keeping it dark would give a #0f172a pill on a #171717 card — about 1.02:1, so the pill
+    would vanish and leave its label floating.
+
+    245 on 23 measures 16.4:1 for the label, and the fill stands clear of the card.
+  */
+  --c-emphasis: 245 245 245;
+  --c-emphasis-hover: 214 214 214;
+  --c-emphasis-fg: 10 10 10;
+
+  /*
+    The scrim follows the page, so it dims the grid instead of bleaching it. Left white it
+    painted an opaque white blob across the /auth left column and took the headings with it.
+
+    The ink inverts for the same reason the scrim does: the grid draws dark glyphs for a
+    light page, and dark-on-near-black is nothing at all. Light glyphs at the same low
+    opacity give the identical texture.
+  */
+  --c-grid-scrim: 10 10 10;
+  --grid-ink: #ffffff;
+  --grid-ink-tint: #a3a3a3;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Semantic families — generated, do not hand-edit
+   ══════════════════════════════════════════════════════════════════════════════
+
+   Only the tint and dark-text steps are themed: 50/100/200 and 700/800/900. The
+   saturated middle (300-600) stays literal because those are solid fills —
+   `bg-emerald-500 text-white` buttons, gradient stops, status dots — and a filled
+   button keeps its colour in dark mode.
+
+   That constraint is what sets how dark the tints are. text-*-600 is used 281
+   times as the label and icon colour ON these tints and it does not theme, so the
+   dark tint has to be dark enough for a literal 600 to clear 4.5:1 against it.
+   Mixing family-950 halfway to the page gets there, and it also matches the
+   reference: near-black cards carrying coloured icons, not coloured cards.
+*/
+:root {
+  /* red */
+  --c-red-50: 254 242 242;
+  --c-red-100: 254 226 226;
+  --c-red-200: 254 202 202;
+  --c-red-600: 220 38 38;
+  --c-red-700: 185 28 28;
+  --c-red-800: 153 27 27;
+  --c-red-900: 127 29 29;
+  /* orange */
+  --c-orange-50: 255 247 237;
+  --c-orange-100: 255 237 213;
+  --c-orange-200: 254 215 170;
+  --c-orange-600: 234 88 12;
+  --c-orange-700: 194 65 12;
+  --c-orange-800: 154 52 18;
+  --c-orange-900: 124 45 18;
+  /* amber */
+  --c-amber-50: 255 251 235;
+  --c-amber-100: 254 243 199;
+  --c-amber-200: 253 230 138;
+  --c-amber-600: 217 119 6;
+  --c-amber-700: 180 83 9;
+  --c-amber-800: 146 64 14;
+  --c-amber-900: 120 53 15;
+  /* yellow */
+  --c-yellow-50: 254 252 232;
+  --c-yellow-100: 254 249 195;
+  --c-yellow-200: 254 240 138;
+  --c-yellow-600: 202 138 4;
+  --c-yellow-700: 161 98 7;
+  --c-yellow-800: 133 77 14;
+  --c-yellow-900: 113 63 18;
+  /* green */
+  --c-green-50: 240 253 244;
+  --c-green-100: 220 252 231;
+  --c-green-200: 187 247 208;
+  --c-green-600: 22 163 74;
+  --c-green-700: 21 128 61;
+  --c-green-800: 22 101 52;
+  --c-green-900: 20 83 45;
+  /* emerald */
+  --c-emerald-50: 236 253 245;
+  --c-emerald-100: 209 250 229;
+  --c-emerald-200: 167 243 208;
+  --c-emerald-600: 5 150 105;
+  --c-emerald-700: 4 120 87;
+  --c-emerald-800: 6 95 70;
+  --c-emerald-900: 6 78 59;
+  /* teal */
+  --c-teal-50: 240 253 250;
+  --c-teal-100: 204 251 241;
+  --c-teal-200: 153 246 228;
+  --c-teal-600: 13 148 136;
+  --c-teal-700: 15 118 110;
+  --c-teal-800: 17 94 89;
+  --c-teal-900: 19 78 74;
+  /* cyan */
+  --c-cyan-50: 236 254 255;
+  --c-cyan-100: 207 250 254;
+  --c-cyan-200: 165 243 252;
+  --c-cyan-600: 8 145 178;
+  --c-cyan-700: 14 116 144;
+  --c-cyan-800: 21 94 117;
+  --c-cyan-900: 22 78 99;
+  /* sky */
+  --c-sky-50: 240 249 255;
+  --c-sky-100: 224 242 254;
+  --c-sky-200: 186 230 253;
+  --c-sky-600: 2 132 199;
+  --c-sky-700: 3 105 161;
+  --c-sky-800: 7 89 133;
+  --c-sky-900: 12 74 110;
+  /* blue */
+  --c-blue-50: 239 246 255;
+  --c-blue-100: 219 234 254;
+  --c-blue-200: 191 219 254;
+  --c-blue-600: 37 99 235;
+  --c-blue-700: 29 78 216;
+  --c-blue-800: 30 64 175;
+  --c-blue-900: 30 58 138;
+  /* indigo */
+  --c-indigo-50: 238 242 255;
+  --c-indigo-100: 224 231 255;
+  --c-indigo-200: 199 210 254;
+  --c-indigo-600: 79 70 229;
+  --c-indigo-700: 67 56 202;
+  --c-indigo-800: 55 48 163;
+  --c-indigo-900: 49 46 129;
+  /* violet */
+  --c-violet-50: 245 243 255;
+  --c-violet-100: 237 233 254;
+  --c-violet-200: 221 214 254;
+  --c-violet-600: 124 58 237;
+  --c-violet-700: 109 40 217;
+  --c-violet-800: 91 33 182;
+  --c-violet-900: 76 29 149;
+  /* purple */
+  --c-purple-50: 250 245 255;
+  --c-purple-100: 243 232 255;
+  --c-purple-200: 233 213 255;
+  --c-purple-600: 147 51 234;
+  --c-purple-700: 126 34 206;
+  --c-purple-800: 107 33 168;
+  --c-purple-900: 88 28 135;
+  /* pink */
+  --c-pink-50: 253 242 248;
+  --c-pink-100: 252 231 243;
+  --c-pink-200: 251 207 232;
+  --c-pink-600: 219 39 119;
+  --c-pink-700: 190 24 93;
+  --c-pink-800: 157 23 77;
+  --c-pink-900: 131 24 67;
+  /* rose */
+  --c-rose-50: 255 241 242;
+  --c-rose-100: 255 228 230;
+  --c-rose-200: 254 205 211;
+  --c-rose-600: 225 29 72;
+  --c-rose-700: 190 18 60;
+  --c-rose-800: 159 18 57;
+  --c-rose-900: 136 19 55;
+  /* brand */
+  --c-brand-50: 239 246 255;
+  --c-brand-100: 219 234 254;
+  --c-brand-200: 191 219 254;
+  --c-brand-600: 29 78 216;
+  --c-brand-700: 30 64 175;
+  --c-brand-800: 30 58 138;
+  --c-brand-900: 23 37 84;
+}
+
+.dark {
+  /* red */
+  --c-red-50: 40 10 10;
+  --c-red-100: 69 10 10;
+  --c-red-200: 127 29 29;
+  --c-red-600: 248 113 113;
+  --c-red-700: 252 165 165;
+  --c-red-800: 254 202 202;
+  --c-red-900: 254 226 226;
+  /* orange */
+  --c-orange-50: 39 15 9;
+  --c-orange-100: 67 20 7;
+  --c-orange-200: 124 45 18;
+  --c-orange-600: 251 146 60;
+  --c-orange-700: 253 186 116;
+  --c-orange-800: 254 215 170;
+  --c-orange-900: 255 237 213;
+  /* amber */
+  --c-amber-50: 40 18 7;
+  --c-amber-100: 69 26 3;
+  --c-amber-200: 120 53 15;
+  --c-amber-600: 251 191 36;
+  --c-amber-700: 252 211 77;
+  --c-amber-800: 253 230 138;
+  --c-amber-900: 254 243 199;
+  /* yellow */
+  --c-yellow-50: 38 21 8;
+  --c-yellow-100: 66 32 6;
+  --c-yellow-200: 113 63 18;
+  --c-yellow-600: 250 204 21;
+  --c-yellow-700: 253 224 71;
+  --c-yellow-800: 254 240 138;
+  --c-yellow-900: 254 249 195;
+  /* green */
+  --c-green-50: 8 28 16;
+  --c-green-100: 5 46 22;
+  --c-green-200: 20 83 45;
+  --c-green-600: 74 222 128;
+  --c-green-700: 134 239 172;
+  --c-green-800: 187 247 208;
+  --c-green-900: 220 252 231;
+  /* emerald */
+  --c-emerald-50: 6 27 22;
+  --c-emerald-100: 2 44 34;
+  --c-emerald-200: 6 78 59;
+  --c-emerald-600: 52 211 153;
+  --c-emerald-700: 110 231 183;
+  --c-emerald-800: 167 243 208;
+  --c-emerald-900: 209 250 229;
+  /* teal */
+  --c-teal-50: 7 29 28;
+  --c-teal-100: 4 47 46;
+  --c-teal-200: 19 78 74;
+  --c-teal-600: 45 212 191;
+  --c-teal-700: 94 234 212;
+  --c-teal-800: 153 246 228;
+  --c-teal-900: 204 251 241;
+  /* cyan */
+  --c-cyan-50: 9 31 39;
+  --c-cyan-100: 8 51 68;
+  --c-cyan-200: 22 78 99;
+  --c-cyan-600: 34 211 238;
+  --c-cyan-700: 103 232 249;
+  --c-cyan-800: 165 243 252;
+  --c-cyan-900: 207 250 254;
+  /* sky */
+  --c-sky-50: 9 29 42;
+  --c-sky-100: 8 47 73;
+  --c-sky-200: 12 74 110;
+  --c-sky-600: 56 189 248;
+  --c-sky-700: 125 211 252;
+  --c-sky-800: 186 230 253;
+  --c-sky-900: 224 242 254;
+  /* blue */
+  --c-blue-50: 17 24 47;
+  --c-blue-100: 23 37 84;
+  --c-blue-200: 30 58 138;
+  --c-blue-600: 96 165 250;
+  --c-blue-700: 147 197 253;
+  --c-blue-800: 191 219 254;
+  --c-blue-900: 219 234 254;
+  /* indigo */
+  --c-indigo-50: 20 19 43;
+  --c-indigo-100: 30 27 75;
+  --c-indigo-200: 49 46 129;
+  --c-indigo-600: 129 140 248;
+  --c-indigo-700: 165 180 252;
+  --c-indigo-800: 199 210 254;
+  --c-indigo-900: 224 231 255;
+  /* violet */
+  --c-violet-50: 28 13 56;
+  --c-violet-100: 46 16 101;
+  --c-violet-200: 76 29 149;
+  --c-violet-600: 167 139 250;
+  --c-violet-700: 196 181 253;
+  --c-violet-800: 221 214 254;
+  --c-violet-900: 237 233 254;
+  /* purple */
+  --c-purple-50: 35 9 55;
+  --c-purple-100: 59 7 100;
+  --c-purple-200: 88 28 135;
+  --c-purple-600: 192 132 252;
+  --c-purple-700: 216 180 254;
+  --c-purple-800: 233 213 255;
+  --c-purple-900: 243 232 255;
+  /* pink */
+  --c-pink-50: 45 9 23;
+  --c-pink-100: 80 7 36;
+  --c-pink-200: 131 24 67;
+  --c-pink-600: 244 114 182;
+  --c-pink-700: 249 168 212;
+  --c-pink-800: 251 207 232;
+  --c-pink-900: 252 231 243;
+  /* rose */
+  --c-rose-50: 43 8 18;
+  --c-rose-100: 76 5 25;
+  --c-rose-200: 136 19 55;
+  --c-rose-600: 251 113 133;
+  --c-rose-700: 253 164 175;
+  --c-rose-800: 254 205 211;
+  --c-rose-900: 255 228 230;
+  /* brand */
+  --c-brand-50: 12 16 31;
+  --c-brand-100: 13 21 51;
+  --c-brand-200: 23 37 84;
+  --c-brand-600: 96 165 250;
+  --c-brand-700: 147 197 253;
+  --c-brand-800: 191 219 254;
+  --c-brand-900: 219 234 254;
+}

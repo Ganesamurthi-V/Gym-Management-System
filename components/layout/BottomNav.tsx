@@ -16,7 +16,7 @@
 //   const pathname = usePathname()
 
 //   return (
-//     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 safe-area-pb">
+//     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-slate-100 safe-area-pb">
 //       <div className="max-w-lg mx-auto flex">
 //         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
 //           const isActive = pathname === href || pathname.startsWith(href + '/')

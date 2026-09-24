@@ -324,7 +324,7 @@ export default function ImportEditPage() {
   // Removed read-only preview step to combine Edit & Preview
 
   // ── Edit ──────────────────────────────────────────────────────────────────
-  const cls = "px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white disabled:bg-slate-50 disabled:text-slate-400";
+  const cls = "px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400 bg-surface disabled:bg-slate-50 disabled:text-slate-400";
 
   return (
     <div className="space-y-4 pb-6 max-w-[1600px] mx-auto">
@@ -580,7 +580,7 @@ export default function ImportEditPage() {
                           className={`flex-1 min-w-0 ${cls}`} placeholder="Area" autoComplete="off" />
                       </div>
                       {activeAreaIdx === idx && suggestions.length > 0 && (
-                        <ul className="absolute z-30 left-3 right-3 bg-white border border-slate-200 rounded-xl shadow-xl max-h-36 overflow-y-auto mt-0.5" data-scroll-box>
+                        <ul className="absolute z-30 left-3 right-3 bg-surface border border-slate-200 rounded-xl shadow-xl max-h-36 overflow-y-auto mt-0.5" data-scroll-box>
                           {suggestions.slice(0, 5).map(a => (
                             <li key={a.id}
                               onMouseDown={() => {

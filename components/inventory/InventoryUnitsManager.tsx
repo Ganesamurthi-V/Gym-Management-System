@@ -169,7 +169,7 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
                   key={unit.id} 
                   className={`p-3 rounded-xl border flex items-center justify-between ${
                     unit.status === 'available' 
-                      ? 'bg-white border-slate-200 shadow-sm' 
+                      ? 'bg-surface border-slate-200 shadow-sm' 
                       : 'bg-slate-50 border-slate-100 opacity-75'
                   }`}
                 >
@@ -205,8 +205,8 @@ export default function InventoryUnitsManager({ productId, initialUnits, gymId }
       </div>
 
       {actionMode && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
             <h3 className="font-bold text-slate-900">
               {actionMode === 'add' ? 'Add Unit Barcode' : 'Sell Unit by Barcode'}
             </h3>

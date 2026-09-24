@@ -46,7 +46,7 @@ export default function ProgramsList({ programs }: Props) {
             placeholder="Search programs..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all shadow-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all shadow-sm"
           />
         </div>
         <div {...tourAttr('programsFilter')} className="flex bg-slate-100/80 p-1 rounded-xl shrink-0">
@@ -55,7 +55,7 @@ export default function ProgramsList({ programs }: Props) {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                filter === f ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                filter === f ? 'bg-surface text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               {f}
@@ -66,7 +66,7 @@ export default function ProgramsList({ programs }: Props) {
 
       {/* Grid */}
       {filteredPrograms.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white border border-slate-200 border-dashed rounded-3xl">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-surface border border-slate-200 border-dashed rounded-3xl">
           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
             <Dumbbell className="w-6 h-6 text-slate-400" />
           </div>
@@ -88,7 +88,7 @@ export default function ProgramsList({ programs }: Props) {
             <Link 
               href={`/owner/programs/${program.id}`} 
               key={program.id}
-              className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-brand-300 hover:shadow-md transition-all group relative flex flex-col"
+              className="bg-surface rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-brand-300 hover:shadow-md transition-all group relative flex flex-col"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex gap-2">

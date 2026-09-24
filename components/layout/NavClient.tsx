@@ -108,10 +108,10 @@ export function MobileNav() {
   const mobileNavContent = open ? (
     <>
       <div
-        className="md:hidden fixed inset-0 bg-slate-900/40 z-[9998] backdrop-blur-sm"
+        className="md:hidden fixed inset-0 bg-ink-900/40 z-[9998] backdrop-blur-sm"
         onClick={() => setOpen(false)}
       />
-      <div className={`md:hidden fixed bottom-0 inset-x-0 z-[9999] bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+      <div className={`md:hidden fixed bottom-0 inset-x-0 z-[9999] bg-surface rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
         open ? 'translate-y-0' : 'translate-y-full'
       }`}>
         <div className="flex justify-center pt-3 pb-1">
@@ -179,7 +179,7 @@ export function MobileNav() {
 
   return (
     <>
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 flex items-center justify-between px-4 xs:px-5 h-14 xs:h-16 pb-safe-bottom">
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-slate-200 flex items-center justify-between px-4 xs:px-5 h-14 xs:h-16 pb-safe-bottom">
         <div className="flex items-center gap-2 xs:gap-2.5 min-w-0">
           {current && (
             <>

@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Dumbbell, Building2, CreditCard, BarChart2, Settings, Megaphone, Sparkles,
-  ChevronRight, ChevronLeft, Check, Plus, Trash2, X, Clock, Users, TrendingUp, Zap
+  Building2, CreditCard, Sparkles,
+  ChevronRight, ChevronLeft, Check, Plus, Trash2, X, Zap
 } from 'lucide-react'
 import usePlacesAutocomplete from 'use-places-autocomplete'
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
+import { AsciiBackdrop } from '@/components/ui/AsciiBackdrop'
 import UPIQRSetup from '@/components/upi/UPIQRSetup'
 
 // --- Types --------------------------------------------------------------------
@@ -34,49 +35,28 @@ interface GymDetailsData {
   city: string
 }
 
-interface BusinessMetricsData {
-  activeMembers: number
-  monthlyJoins: number
-  cancellations: number
-  trainersCount: number
-  monthlyRevenue: number
-  monthlyExpenses: number
-}
-
-interface OperationsData {
-  openTime: string
-  closeTime: string
-  workingDays: string[]
-  attendanceMethod: string
-  existingSoftware: string
-  wantsToImportData: boolean
-  hasSplitShift?: boolean
-  openTime2?: string
-  closeTime2?: string
-}
-
-interface MarketingData {
-  leadSources: string[]
-  whatsappMarketing: boolean
-  instagramLink: string
-  paymentReminders: boolean
-  renewalReminders: boolean
-  reminderDaysBefore: number
-}
-
-interface AIPersonalizationData {
-  biggestChallenge: string
-  mainGoal: string
-  additionalNotes: string
-}
-
+/**
+ * Business Metrics, Operations, Marketing and AI Personalization used to sit between these
+ * two and the payment step. All four are gone, along with their types, state, step
+ * components and the copy that described them.
+ *
+ * They were safe to remove because nothing consumed them. Every field went into the
+ * `gyms.onboarding_data` JSONB and stopped there — a repo-wide search for the keys
+ * (`operations`, `marketing`, `aiPersonalization`, and the individual fields: openTime,
+ * workingDays, attendanceMethod, leadSources, reminderDaysBefore, biggestChallenge, and the
+ * rest) found no reader outside this file. The sidebar tips claimed otherwise, promising that
+ * Operations "controls automated booking schedules and check-in window logic" and Marketing
+ * "initialize[s] automated WhatsApp & payment reminder schedules". Neither was true; no code
+ * read either. That is four screens of questions asked of every new gym owner for data that
+ * was written once and never looked at again.
+ *
+ * `plans` stays because it is genuinely read — app/owner/members/new reads
+ * onboarding_data.plans when adding a member. The tour system also nests under a `tour` key
+ * in the same blob and is untouched by this.
+ */
 interface OnboardingData {
   gymDetails: GymDetailsData
   plans: MembershipPlan[]
-  metrics: BusinessMetricsData
-  operations: OperationsData
-  marketing: MarketingData
-  aiPersonalization: AIPersonalizationData
 }
 
 // --- Constants ----------------------------------------------------------------
@@ -100,52 +80,89 @@ const DEFAULT_DATA: OnboardingData = {
     city: '',
   },
   plans: DEFAULT_PLANS,
-  metrics: {
-    activeMembers: 0,
-    monthlyJoins: 0,
-    cancellations: 0,
-    trainersCount: 0,
-    monthlyRevenue: 0,
-    monthlyExpenses: 0,
-  },
-  operations: {
-    openTime: '06:00',
-    closeTime: '12:00',
-    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-    attendanceMethod: 'Manual',
-    existingSoftware: '',
-    wantsToImportData: false,
-    hasSplitShift: false,
-    openTime2: '16:00',
-    closeTime2: '21:00',
-  },
-  marketing: {
-    leadSources: [],
-    whatsappMarketing: false,
-    instagramLink: '',
-    paymentReminders: true,
-    renewalReminders: true,
-    reminderDaysBefore: 7,
-  },
-  aiPersonalization: {
-    biggestChallenge: '',
-    mainGoal: '',
-    additionalNotes: '',
-  },
 }
 
 const STEPS = [
   { title: 'Gym Details', subtitle: 'Tell us about your gym', icon: Building2, required: true },
   { title: 'Membership Plans', subtitle: 'Set up your pricing', icon: CreditCard, required: false },
-  { title: 'Business Metrics', subtitle: 'Current performance', icon: BarChart2, required: false },
-  { title: 'Operations', subtitle: 'How you run your gym', icon: Settings, required: false },
   { title: 'Payment Settings', subtitle: 'Set up UPI payments', icon: CreditCard, required: false },
-  { title: 'Marketing', subtitle: 'Grow your member base', icon: Megaphone, required: false },
-  { title: 'AI Personalization', subtitle: 'Customize your experience', icon: Sparkles, required: false },
 ]
 
-const WORKING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const LEAD_SOURCES = ['Walk-in', 'Instagram', 'Facebook', 'WhatsApp', 'Referral', 'Google', 'Other']
+/**
+ * Index of the last step, derived rather than written as a literal.
+ *
+ * The removal turned up how fragile the literal was: `6` appeared in handleNext, handleSkip,
+ * the Skip button's visibility test and the Next/Complete switch, and `7` appeared again in
+ * the progress percentage. Five places encoding the same fact, any one of which would have
+ * silently stranded the wizard — miss the percentage and the bar never fills; miss the
+ * Next/Complete switch and the last step has no way to submit.
+ */
+const LAST_STEP = STEPS.length - 1
+const COMPLETE_TIMEOUT_MS = 20_000
+
+interface OnboardingApiResponse {
+  success?: boolean
+  error?: {
+    code?: string
+    message?: string
+    retryable?: boolean
+  }
+  data?: { gymId?: string | null }
+}
+
+/**
+ * Validate the only required setup step before letting the owner leave it, then repeat the
+ * same check before the final request in case an old or hand-edited localStorage draft was
+ * restored. Server validation remains authoritative; this is for immediate, useful feedback.
+ */
+function validateGymDetails(details: GymDetailsData): string | null {
+  if (details.gymName.trim().length < 2) {
+    return 'Enter a gym name with at least 2 characters.'
+  }
+  if (!Number.isInteger(details.branchCount) || details.branchCount < 1 || details.branchCount > 100) {
+    return 'Number of branches must be between 1 and 100.'
+  }
+  const latestOpeningYear = new Date().getFullYear() + 1
+  if (!Number.isInteger(details.openingYear) || details.openingYear < 1900 || details.openingYear > latestOpeningYear) {
+    return `Opening year must be between 1900 and ${latestOpeningYear}.`
+  }
+  if (details.phone && !/^\d{10}$/.test(details.phone)) {
+    return 'Enter a complete 10-digit phone number, or clear the phone field.'
+  }
+  return null
+}
+
+/**
+ * Client-owned copy for operational failures. The API provides messages too, but database
+ * and internal codes deliberately map to fixed text here so a future server regression can
+ * never put a Supabase/Postgres message back into the page.
+ */
+function onboardingErrorMessage(response: Response, payload: OnboardingApiResponse | null): string {
+  const code = payload?.error?.code
+
+  if (code === 'VALIDATION_ERROR') {
+    const message = payload?.error?.message
+    return typeof message === 'string' && message.length <= 240
+      ? message
+      : 'Some setup details are invalid. Review Gym Details and try again.'
+  }
+  if (code === 'UNAUTHORIZED' || response.status === 401) {
+    return 'Your session has expired. Sign in again, then return to setup—your details are saved on this device.'
+  }
+  if (code === 'RATE_LIMITED' || response.status === 429) {
+    return 'Too many setup attempts. Wait a minute, then try again.'
+  }
+  if (code === 'GYM_NOT_FOUND' || response.status === 404) {
+    return 'We could not find this gym on your account. Refresh the page and try again.'
+  }
+  if (code === 'PLAN_SYNC_ERROR') {
+    return 'Your gym details were saved, but membership prices did not sync. Please try again.'
+  }
+  if (response.status >= 500) {
+    return 'We could not save your setup right now. Your details are safe on this device—please try again.'
+  }
+  return 'We could not complete your setup. Review your details and try again.'
+}
 
 // --- Props --------------------------------------------------------------------
 
@@ -169,70 +186,72 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [draftReady, setDraftReady] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
+  const errorRef = useRef<HTMLDivElement>(null)
+  const submittingRef = useRef(false)
 
-  // Restore from localStorage on mount
+  // Restore from localStorage before autosaving. The ready flag prevents the initial
+  // default render from overwriting a saved draft before this effect can restore it.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
+        /*
+          Only the two surviving sections are restored. A draft saved before the four steps
+          were removed will still have their keys in localStorage; picking just what is named
+          here drops them, so a half-finished old draft cannot reintroduce fields that no
+          longer have a type, a form or a reader.
+        */
         const parsed = JSON.parse(saved) as Partial<OnboardingData>
         setData(prev => ({
           gymDetails: { ...prev.gymDetails, ...parsed.gymDetails },
           plans: parsed.plans ?? prev.plans,
-          metrics: { ...prev.metrics, ...parsed.metrics },
-          operations: { ...prev.operations, ...parsed.operations },
-          marketing: { ...prev.marketing, ...parsed.marketing },
-          aiPersonalization: { ...prev.aiPersonalization, ...parsed.aiPersonalization },
         }))
       }
     } catch {
-      // ignore corrupt storage
+      // A corrupt draft cannot be restored. Remove it so later valid edits can be saved.
+      // If storage itself is blocked, removeItem will throw for the same reason getItem did;
+      // this effect must not take the onboarding page down with it.
+      try {
+        localStorage.removeItem(STORAGE_KEY)
+      } catch {
+        // Storage is unavailable; the API still owns durable persistence.
+      }
+    } finally {
+      setDraftReady(true)
     }
   }, [])
 
-  // Autosave to localStorage on every data change
+  // Keep the draft — including phone — until the server confirms success. This used to
+  // autosave on the initial render and had a separate "clear on unmount" effect whose
+  // cleanup also ran whenever `submitting` changed. Starting a request therefore erased
+  // the very draft the error message claimed was safe. Success is the only removal site.
   useEffect(() => {
+    if (!draftReady || success) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     } catch {
-      // ignore storage errors
+      // Storage may be disabled or full. Submission still works; the API owns persistence.
     }
-  }, [data])
+  }, [data, draftReady, success])
 
-  // Clear on unmount if not successfully completed
   useEffect(() => {
-    return () => {
-      if (!submitting && !success) {
-        // Optional: you can choose to remove it here, or let the user resume.
-        // For security as requested, removing it to avoid lingering data.
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    }
-  }, [submitting, success])
+    if (!error) return
+    // Let React commit the alert before moving focus. Screen-reader users hear the new
+    // message immediately, and keyboard users land where recovery guidance is shown.
+    const frame = requestAnimationFrame(() => errorRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [error])
 
   const updateGymDetails = useCallback((patch: Partial<GymDetailsData>) => {
+    setError('')
     setData(prev => ({ ...prev, gymDetails: { ...prev.gymDetails, ...patch } }))
   }, [])
 
-  const updateMetrics = useCallback((patch: Partial<BusinessMetricsData>) => {
-    setData(prev => ({ ...prev, metrics: { ...prev.metrics, ...patch } }))
-  }, [])
-
-  const updateOperations = useCallback((patch: Partial<OperationsData>) => {
-    setData(prev => ({ ...prev, operations: { ...prev.operations, ...patch } }))
-  }, [])
-
-  const updateMarketing = useCallback((patch: Partial<MarketingData>) => {
-    setData(prev => ({ ...prev, marketing: { ...prev.marketing, ...patch } }))
-  }, [])
-
-  const updateAI = useCallback((patch: Partial<AIPersonalizationData>) => {
-    setData(prev => ({ ...prev, aiPersonalization: { ...prev.aiPersonalization, ...patch } }))
-  }, [])
-
   const updatePlan = useCallback((index: number, patch: Partial<MembershipPlan>) => {
+    setError('')
     setData(prev => {
       const plans = [...prev.plans]
       plans[index] = { ...plans[index], ...patch }
@@ -241,6 +260,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }, [])
 
   const addPlan = useCallback(() => {
+    setError('')
     setData(prev => ({
       ...prev,
       plans: [...prev.plans, { planName: '', category: 'both', duration: 'monthly', price: 0, joiningFee: 0, hasDiscount: false, discountPercent: 0, hasFreezeOption: false, customDurationMonths: 1 }],
@@ -248,10 +268,12 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }, [])
 
   const removePlan = useCallback((index: number) => {
+    setError('')
     setData(prev => ({ ...prev, plans: prev.plans.filter((_, i) => i !== index) }))
   }, [])
 
   const navigate = (nextStep: number) => {
+    setError('')
     setDirection(nextStep > currentStep ? 'forward' : 'back')
     setAnimating(true)
     setTimeout(() => {
@@ -261,7 +283,14 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }
 
   const handleNext = () => {
-    if (currentStep < 6) navigate(currentStep + 1)
+    if (currentStep === 0) {
+      const validationError = validateGymDetails(data.gymDetails)
+      if (validationError) {
+        setError(validationError)
+        return
+      }
+    }
+    if (currentStep < LAST_STEP) navigate(currentStep + 1)
   }
 
   const handleBack = () => {
@@ -269,16 +298,37 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   }
 
   const handleSkip = () => {
-    if (currentStep < 6) navigate(currentStep + 1)
+    if (currentStep < LAST_STEP) navigate(currentStep + 1)
   }
 
   const handleComplete = async () => {
+    if (submittingRef.current) return
+
+    // Repeat client validation here because a legacy or hand-edited localStorage draft can
+    // bypass the first-step Next button. Bring the owner back to the field that needs work.
+    const validationError = validateGymDetails(data.gymDetails)
+    if (validationError) {
+      setDirection('back')
+      setAnimating(false)
+      setCurrentStep(0)
+      setError(validationError)
+      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    submittingRef.current = true
     setSubmitting(true)
     setError('')
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), COMPLETE_TIMEOUT_MS)
+
     try {
       const res = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        signal: controller.signal,
         body: JSON.stringify({
           gymId,
           gymName: data.gymDetails.gymName,
@@ -289,33 +339,55 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
           phone: data.gymDetails.phone,
           city: data.gymDetails.city,
           plans: data.plans,
-          metrics: data.metrics,
-          operations: data.operations,
-          marketing: data.marketing,
-          aiPersonalization: data.aiPersonalization,
         }),
       })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        setError(json.error?.message ?? 'Something went wrong. Please try again.')
-        setSubmitting(false)
+
+      /*
+        Do not assume an error response is JSON. A proxy, platform outage or middleware crash
+        can return HTML or an empty body; calling res.json() used to throw and mislabel those
+        cases as a network error. Parse defensively, then map by status/code below.
+      */
+      let payload: OnboardingApiResponse | null = null
+      const responseText = await res.text()
+      if (responseText) {
+        try {
+          payload = JSON.parse(responseText) as OnboardingApiResponse
+        } catch {
+          // The fixed client copy below is safer and more useful than showing an HTML body.
+        }
+      }
+
+      if (!res.ok || !payload?.success) {
+        setError(onboardingErrorMessage(res, payload))
         return
       }
-      localStorage.removeItem(STORAGE_KEY)
+
+      try {
+        localStorage.removeItem(STORAGE_KEY)
+      } catch {
+        // Server persistence succeeded. A blocked storage API must not turn success into error.
+      }
       setSuccess(true)
-      // `?tour=welcome` starts the guided tour on arrival. Passing it explicitly
-      // makes the first run deterministic rather than depending on the
-      // onboarding_data write above having landed before the dashboard reads it.
+
+      // `?tour=welcome` starts the guided tour on arrival. Passing it explicitly makes the
+      // first run deterministic rather than depending on onboarding_data being reread first.
       setTimeout(() => router.push('/owner/dashboard?tour=welcome'), 2800)
-    } catch {
-      setError('Network error. Please check your connection and try again.')
+    } catch (requestError: unknown) {
+      if (requestError instanceof DOMException && requestError.name === 'AbortError') {
+        setError('Saving is taking longer than expected. Your details are safe on this device—please try again.')
+      } else {
+        setError('We could not reach the server. Check your internet connection and try again—your details are saved on this device.')
+      }
+    } finally {
+      window.clearTimeout(timeout)
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
 
   const step = STEPS[currentStep]
   const StepIcon = step.icon
-  const progressPercent = ((currentStep + 1) / 7) * 100
+  const progressPercent = ((currentStep + 1) / STEPS.length) * 100
 
   if (success) {
     return (
@@ -338,8 +410,40 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col md:flex-row overflow-hidden">
       {/* -- Left Sidebar (Desktop Only) -- */}
-      <div className="hidden md:flex md:w-72 lg:w-80 xl:w-96 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex-col justify-between p-5 lg:p-6 border-r border-slate-800 flex-shrink-0">
-        <div className="space-y-8">
+      <div className="hidden md:flex md:w-72 lg:w-80 xl:w-96 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex-col justify-between p-5 lg:p-6 border-r border-slate-800 flex-shrink-0 relative isolate">
+        {/*
+          The character grid from /auth, in reverse polarity: white ink here rather than
+          black, since this panel is dark. absolute rather than the fixed used on /auth
+          because it belongs to this column, not the viewport — CharGrid measures its own
+          container and watches it with a ResizeObserver, so it tracks the md/lg/xl width
+          steps on its own.
+
+          isolate scopes the z-indices to this panel: the gradient paints as the element's
+          own background, the canvas sits above it at z-0, and the two content blocks below
+          are lifted to z-10.
+
+          The default minWidth of 768 lines up exactly with this panel's `hidden md:flex`,
+          so there is no width at which the grid mounts inside a hidden parent and pays for
+          a canvas nobody sees.
+
+          ── Why 0.12 and not the 0.26 used on /auth ──────────────────────────────────
+          Same contrast-ceiling logic, different arithmetic. White ink at opacity a over
+          slate-900 lifts the worst backdrop to a*255 + (1-a)*15/23/42 per channel, and the
+          binding constraint is the 10px slate-400 step subtitles: they measure 7.02 on the
+          bare gradient, and a full mark at 0.26 would drop them to 2.99, well under the 4.5
+          floor. At 0.12 they hold 4.98. The disabled slate-500 steps land lower, but those
+          are inactive controls and exempt — and they were already at 3.75 before the grid.
+        */}
+        <AsciiBackdrop
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.12]"
+          color="#ffffff"
+          colorTint="#94a3b8"
+          scale={4}
+          intensity={1.099}
+          contrast={2.501}
+        />
+
+        <div className="relative z-10 space-y-8">
           {/* Logo row */}
           <div className="flex items-center gap-2.5">
             <img src="/logo_only.png" alt="Gymflow Logo" className="w-9 h-9 object-contain" />
@@ -396,7 +500,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         </div>
 
         {/* Tip panel / Footer */}
-        <div className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl">
+        <div className="relative z-10 bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl">
           <div className="flex items-center gap-2 mb-2 text-brand-400">
             <Sparkles className="w-4 h-4 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-wider">Quick Setup Tip</span>
@@ -404,11 +508,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
           <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
             {currentStep === 0 && "Fill in your basic gym info. This helps us customize default membership packages and tax records."}
             {currentStep === 1 && "Define plans you sell to members. You can customize discounts, admission/joining charges, and freeze options."}
-            {currentStep === 2 && "Enter your current monthly indicators to initialize your operational dashboard metrics and forecasts."}
-            {currentStep === 3 && "Configure daily operating times. This controls automated booking schedules and check-in window logic."}
-            {currentStep === 4 && "Upload or scan your UPI QR code so members can pay directly via QR at the counter."}
-            {currentStep === 5 && "Configure lead generation fields. These details initialize automated WhatsApp & payment reminder schedules."}
-            {currentStep === 6 && "Identify key optimization issues to let our AI personalize your dashboard action list recommendations."}
+            {currentStep === 2 && "Upload or scan your UPI QR code so members can pay directly via QR at the counter."}
           </p>
         </div>
       </div>
@@ -487,26 +587,19 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <StepMembershipPlans plans={data.plans} onUpdate={updatePlan} onAdd={addPlan} onRemove={removePlan} />
               )}
               {currentStep === 2 && (
-                <StepBusinessMetrics data={data.metrics} onChange={updateMetrics} />
-              )}
-              {currentStep === 3 && (
-                <StepOperations data={data.operations} onChange={updateOperations} />
-              )}
-              {currentStep === 4 && (
                 <StepPaymentSettings gymId={gymId} />
-              )}
-              {currentStep === 5 && (
-                <StepMarketing data={data.marketing} onChange={updateMarketing} />
-              )}
-              {currentStep === 6 && (
-                <StepAIPersonalization data={data.aiPersonalization} onChange={updateAI} />
               )}
             </div>
 
             {error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2">
-                <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                {error}
+              <div
+                ref={errorRef}
+                role="alert"
+                tabIndex={-1}
+                className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+              >
+                <X className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                <span>{error}</span>
               </div>
             )}
           </div>
@@ -525,13 +618,13 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
             )}
 
             <div className="flex-1 flex gap-3">
-              {!step.required && currentStep < 6 && (
+              {!step.required && currentStep < LAST_STEP && (
                 <button onClick={handleSkip} className="btn-secondary">
                   Skip
                 </button>
               )}
 
-              {currentStep < 6 ? (
+              {currentStep < LAST_STEP ? (
                 <button onClick={handleNext} className="btn-primary">
                   Next
                   <ChevronRight className="w-4 h-4" />
@@ -540,6 +633,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <button
                   onClick={handleComplete}
                   disabled={submitting}
+                  aria-busy={submitting}
                   className="btn-primary"
                 >
                   {submitting ? (
@@ -917,376 +1011,7 @@ function StepMembershipPlans({
   )
 }
 
-// --- Step 3: Business Metrics -------------------------------------------------
-
-function StepBusinessMetrics({ data, onChange }: { data: BusinessMetricsData; onChange: (p: Partial<BusinessMetricsData>) => void }) {
-  const fields: { key: keyof BusinessMetricsData; label: string; icon: React.ReactNode; prefix?: string }[] = [
-    { key: 'activeMembers', label: 'Active Members', icon: <Users className="w-4 h-4 text-brand-500" /> },
-    { key: 'monthlyJoins', label: 'Monthly New Joins', icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
-    { key: 'cancellations', label: 'Monthly Cancellations', icon: <X className="w-4 h-4 text-red-400" /> },
-    { key: 'trainersCount', label: 'Number of Trainers', icon: <Dumbbell className="w-4 h-4 text-purple-500" /> },
-    { key: 'monthlyRevenue', label: 'Monthly Revenue', icon: <BarChart2 className="w-4 h-4 text-blue-500" />, prefix: '?' },
-    { key: 'monthlyExpenses', label: 'Monthly Expenses', icon: <BarChart2 className="w-4 h-4 text-orange-400" />, prefix: '?' },
-  ]
-
-  return (
-    <div className="card p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {fields.map(f => (
-          <div key={f.key}>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
-              {f.icon}
-              {f.label}
-            </label>
-            <div className="relative">
-              {f.prefix && (
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{f.prefix}</span>
-              )}
-              <input
-                type="number"
-                min={0}
-                value={data[f.key] === 0 ? '' : data[f.key]}
-                onChange={e => onChange({ [f.key]: parseInt(e.target.value) || 0 } as Partial<BusinessMetricsData>)}
-                className={`input-field ${f.prefix ? 'pl-7' : ''}`}
-                placeholder="0"
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// --- Step 4: Operations -------------------------------------------------------
-
-function StepOperations({ data, onChange }: { data: OperationsData; onChange: (p: Partial<OperationsData>) => void }) {
-  const toggleDay = (day: string) => {
-    const days = data.workingDays.includes(day)
-      ? data.workingDays.filter(d => d !== day)
-      : [...data.workingDays, day]
-    onChange({ workingDays: days })
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="card p-4 space-y-4">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between py-1 border-b border-slate-100 pb-3">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Split Timings / Mid-day Break</p>
-              <p className="text-xs text-slate-500">Open morning & evening, closed in-between</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onChange({ hasSplitShift: !data.hasSplitShift })}
-              className={`relative w-11 h-6 rounded-full transition-colors ${
-                data.hasSplitShift ? 'bg-brand-500' : 'bg-slate-200'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  data.hasSplitShift ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          {!data.hasSplitShift ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
-                  <Clock className="w-4 h-4 text-brand-500" />
-                  Opening Time
-                </label>
-                <input
-                  type="time"
-                  value={data.openTime}
-                  onChange={e => onChange({ openTime: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
-                  <Clock className="w-4 h-4 text-slate-400" />
-                  Closing Time
-                </label>
-                <input
-                  type="time"
-                  value={data.closeTime}
-                  onChange={e => onChange({ closeTime: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Shift 1 (Morning)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Open</label>
-                    <input
-                      type="time"
-                      value={data.openTime}
-                      onChange={e => onChange({ openTime: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Close</label>
-                    <input
-                      type="time"
-                      value={data.closeTime}
-                      onChange={e => onChange({ closeTime: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Shift 2 (Evening)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Open</label>
-                    <input
-                      type="time"
-                      value={data.openTime2 || '16:00'}
-                      onChange={e => onChange({ openTime2: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Close</label>
-                    <input
-                      type="time"
-                      value={data.closeTime2 || '21:00'}
-                      onChange={e => onChange({ closeTime2: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Working Days</label>
-          <div className="flex flex-wrap gap-2">
-            {WORKING_DAYS.map(day => (
-              <button
-                key={day}
-                type="button"
-                onClick={() => toggleDay(day)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  data.workingDays.includes(day)
-                    ? 'bg-brand-500 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {day}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Attendance Method</label>
-          <select
-            value={data.attendanceMethod}
-            onChange={e => onChange({ attendanceMethod: e.target.value })}
-            className="input-field"
-          >
-            {['Manual', 'Biometric', 'App', 'Card'].map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Existing Software (if any)</label>
-          <input
-            type="text"
-            value={data.existingSoftware}
-            onChange={e => onChange({ existingSoftware: e.target.value })}
-            className="input-field"
-            placeholder="e.g. Excel, Gymmaster, None"
-          />
-        </div>
-
-        <div className="flex items-center justify-between py-1">
-          <div>
-            <p className="text-sm font-medium text-slate-700">Import Existing Data</p>
-            <p className="text-xs text-slate-500">Migrate members from your old system</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onChange({ wantsToImportData: !data.wantsToImportData })}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              data.wantsToImportData ? 'bg-brand-500' : 'bg-slate-200'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                data.wantsToImportData ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// --- Step 5: Marketing --------------------------------------------------------
-
-function StepMarketing({ data, onChange }: { data: MarketingData; onChange: (p: Partial<MarketingData>) => void }) {
-  const toggleSource = (source: string) => {
-    const sources = data.leadSources.includes(source)
-      ? data.leadSources.filter(s => s !== source)
-      : [...data.leadSources, source]
-    onChange({ leadSources: sources })
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="card p-4 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Lead Sources</label>
-          <div className="flex flex-wrap gap-2">
-            {LEAD_SOURCES.map(source => (
-              <button
-                key={source}
-                type="button"
-                onClick={() => toggleSource(source)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  data.leadSources.includes(source)
-                    ? 'bg-brand-500 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {source}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Instagram Profile Link</label>
-          <input
-            type="text"
-            value={data.instagramLink}
-            onChange={e => onChange({ instagramLink: e.target.value })}
-            className="input-field"
-            placeholder="https://instagram.com/yourgym"
-          />
-        </div>
-
-        <div className="space-y-3 pt-1">
-          {[
-            { key: 'whatsappMarketing' as const, label: 'WhatsApp Marketing', desc: 'Send promotions via WhatsApp' },
-            { key: 'paymentReminders' as const, label: 'Payment Reminders', desc: 'Remind members about pending dues' },
-            { key: 'renewalReminders' as const, label: 'Renewal Reminders', desc: 'Alert members before membership expires' },
-          ].map(item => (
-            <div key={item.key} className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                <p className="text-xs text-slate-500">{item.desc}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onChange({ [item.key]: !data[item.key] } as Partial<MarketingData>)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  data[item.key] ? 'bg-brand-500' : 'bg-slate-200'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                    data[item.key] ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {data.renewalReminders && (
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Remind Days Before Expiry</label>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              value={data.reminderDaysBefore}
-              onChange={e => onChange({ reminderDaysBefore: parseInt(e.target.value) || 7 })}
-              className="input-field"
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// --- Step 6: AI Personalization -----------------------------------------------
-
-function StepAIPersonalization({ data, onChange }: { data: AIPersonalizationData; onChange: (p: Partial<AIPersonalizationData>) => void }) {
-  return (
-    <div className="space-y-4">
-      <div className="card p-4 space-y-4">
-        <div className="flex items-start gap-3 p-3 bg-brand-50 rounded-xl border border-brand-100">
-          <Sparkles className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-brand-700">
-            Help us personalize your gymflow experience. We&apos;ll tailor insights and recommendations based on your goals.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Biggest Challenge</label>
-          <select
-            value={data.biggestChallenge}
-            onChange={e => onChange({ biggestChallenge: e.target.value })}
-            className="input-field"
-          >
-            <option value="">Select a challenge...</option>
-            {['Member Retention', 'Revenue Growth', 'Attendance Tracking', 'Staff Management', 'Marketing', 'Other'].map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Main Goal</label>
-          <select
-            value={data.mainGoal}
-            onChange={e => onChange({ mainGoal: e.target.value })}
-            className="input-field"
-          >
-            <option value="">Select your goal...</option>
-            {['Grow to 500 members', 'Increase revenue 2x', 'Automate operations', 'Improve retention', 'Launch new branch', 'Other'].map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Additional Notes</label>
-          <textarea
-            value={data.additionalNotes}
-            onChange={e => onChange({ additionalNotes: e.target.value })}
-            className="input-field resize-none"
-            rows={4}
-            placeholder="Anything else you'd like us to know about your gym or goals..."
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// --- Step 5: Payment Settings (UPI QR Upload) ---------------------------------
+// --- Step 3: Payment Settings (UPI QR Upload) ---------------------------------
 
 function StepPaymentSettings({ gymId }: { gymId: string | null }) {
   return (

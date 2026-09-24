@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ArrowRight, Check, Building2, UserRound, ShieldCheck } from 'lucide-react'
 import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 import { AuthShell } from '@/components/auth/AuthShell'
+import { AuthAside } from '@/components/auth/AuthAside'
+import { AUTH_ASIDE } from '@/components/auth/authAsideContent'
 import {
   authDividerLabel,
   authHeading,
@@ -88,7 +90,7 @@ function RoleSelector({
       /* Opaque neutral track, so the grid never shows through behind the tab labels.
          That is what lets the inactive label sit at neutral-600, below the neutral-700
          floor that applies to text directly on the surface. */
-      className="mb-6 grid grid-cols-2 gap-1 rounded-2xl border border-neutral-200 bg-neutral-100 p-1"
+      className="mb-[var(--auth-gap-md)] grid grid-cols-2 gap-1 rounded-2xl border border-neutral-200 bg-neutral-100 p-1"
     >
       {(['owner', 'member'] as const).map((role) => {
         const active = value === role
@@ -395,8 +397,19 @@ export default function LoginPage() {
   return (
     <AuthShell
       maxWidth={400}
+      /* The left column follows the tab — see authAsideContent for why it has to. */
+      aside={<AuthAside {...AUTH_ASIDE[role]} />}
       footer={
-        <p className="text-xs text-neutral-700">
+        /* Sits on the live grid rather than in the card, and is too small and too far from
+           the aside to be worth its own scrim. Original size, darker ink — neutral-800 at
+           8.05 rather than neutral-700 at 5.52.
+
+           Hidden under 680px of viewport height, on the same reasoning as the aside's trial
+           note: it is reassurance rather than information, and once the fluid spacing has
+           closed as far as it can, the only way to fit a short window is to drop the lines
+           nobody needs in order to sign in. The encryption is a fact about the transport,
+           not an instruction. */
+        <p className="text-xs font-medium text-neutral-800 [@media(max-height:680px)]:hidden">
           Secured with end-to-end encryption
         </p>
       }
@@ -408,7 +421,7 @@ export default function LoginPage() {
       >
         <RoleSelector value={role} onChange={switchRole} disabled={loading} />
 
-        <div className="mb-7">
+        <div className="mb-[var(--auth-gap-md)]">
           <h1 className={authHeading}>{copy.heading}</h1>
           <p className={authSub}>{copy.sub}</p>
         </div>
@@ -448,7 +461,7 @@ export default function LoginPage() {
           role="tabpanel"
           aria-labelledby={`role-tab-${role}`}
           onSubmit={handleLogin}
-          className="space-y-5"
+          className="space-y-[var(--auth-gap-sm)]"
         >
           <div>
             <label htmlFor="email" className={authLabel}>
@@ -519,7 +532,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="my-7 flex items-center gap-4">
+        <div className="my-[var(--auth-gap-md)] flex items-center gap-4">
           <div className="h-px flex-1 bg-neutral-200" />
           <span className={authDividerLabel}>Or</span>
           <div className="h-px flex-1 bg-neutral-200" />

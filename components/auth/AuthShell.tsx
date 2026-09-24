@@ -1,11 +1,15 @@
 'use client'
 
-import Image from 'next/image'
 import { AsciiBackdrop } from '@/components/ui/AsciiBackdrop'
+import { AuthWordmark } from '@/components/auth/AuthWordmark'
 
 /**
- * The shell every /auth page sits in: a single centred column on a white surface, with
- * the character grid running full-bleed behind it.
+ * The shell every /auth page sits in: a white surface with the character grid running
+ * full-bleed behind it, holding either one centred column or two.
+ *
+ * Pass `aside` and the page splits — product copy left, form right in a card. Leave it
+ * out and the form sits alone in the middle. Both layouts collapse to the same single
+ * centred form below lg.
  *
  * This replaced a split layout that had been copy-pasted across three pages — a 55%
  * (45% on setup-password) dark navy panel carrying a logo, a gradient headline, three
@@ -13,8 +17,11 @@ import { AsciiBackdrop } from '@/components/ui/AsciiBackdrop'
  * FeatureCard existed twice verbatim and setup-password had its own drifted third copy,
  * so the same edit had to be made in three places and reliably wasn't.
  *
- * One column rather than two, and nothing decorative between the visitor and the form.
- * The marketing panel was selling to someone who had already decided to sign in.
+ * The split here is not that panel returning. The left column shares the page surface
+ * instead of sitting on a dark slab, carries no duplicated markup — it is one
+ * data-driven component, AuthAside — and is opt-in per page rather than imposed on all
+ * three. What was wrong with the original was the cost of maintaining it and the weight
+ * it put between the visitor and the form, not the idea of saying what the product is.
  *
  * ── Monochrome, and what that does and does not extend to ────────────────────────────
  * Surface is white, type is the neutral ramp, the primary action is near-black. The
@@ -34,20 +41,87 @@ import { AsciiBackdrop } from '@/components/ui/AsciiBackdrop'
  * which is where the placeholders and the inactive tab label live.
  */
 
-const LOGO = '/logo_only.png'
-
 export interface AuthShellProps {
   children: React.ReactNode
   /** Column width. The wider forms (create-account) need more than the sign-in form. */
   maxWidth?: number
   /**
-   * Rendered under the column, outside the measure. Used for the "already have an
-   * account" line and the security note.
+   * Rendered under the form, centred to it — inside the column but outside the card, so
+   * in the split layout it tracks the form rather than the page. Used for the security
+   * note.
    */
   footer?: React.ReactNode
+  /**
+   * Product copy for the left column — see AuthAside. Passing it switches the page from
+   * one centred column to two, with this on the left and the form on the right, and puts
+   * the form in a card so the two columns read as context and task rather than as two
+   * equal blocks of text.
+   *
+   * Omitted on setup-password, which is opened from an email by someone already partway
+   * through signing up. Selling to them there would be noise, and the page already has a
+   * step indicator holding the top of its column.
+   */
+  aside?: React.ReactNode
 }
 
-export function AuthShell({ children, maxWidth = 400, footer }: AuthShellProps) {
+/**
+ * Horizontal padding inside the form card, added back onto `maxWidth` so the fields keep
+ * the same measure whether or not they are in a card. The number a page passes stays the
+ * width of the form itself, which is the thing that was tuned — the card grows around it.
+ *
+ * Fixed at 32px rather than fluid like the vertical spacing below, precisely so this sum
+ * stays correct. Vertical padding is free to shrink; horizontal is not.
+ */
+const CARD_PADDING_X = 32
+
+/**
+ * ── Vertical rhythm ─────────────────────────────────────────────────────────────────
+ * The --auth-* spacing tokens this shell, AuthAside and the three forms all read come from
+ * the .auth-rhythm class in globals.css, not from here. They are clamp(min, vh, max) with a
+ * height-conditional override under 700px, and the reasoning for both halves is documented
+ * at that rule.
+ *
+ * They are not an inline style object on this element for one concrete reason: the override
+ * is a media query, and inline styles cannot carry one.
+ */
+
+export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShellProps) {
+  const split = Boolean(aside)
+  const columnWidth = split ? maxWidth + CARD_PADDING_X * 2 : maxWidth
+
+  const column = (
+    /*
+      relative so the column paints after the aside's scrim. Both are positioned with
+      z-index auto, so source order decides, and the column comes second — without this the
+      scrim's opaque white can reach across the gutter and wash out the card's left edge at
+      narrower widths where the two overlap.
+    */
+    <div className="relative mx-auto w-full" style={{ maxWidth: columnWidth }}>
+      <div
+        className={
+          split
+            ? /*
+                An opaque fill, a hairline and a shadow that is mostly a wide soft
+                spread — enough to lift the form off the grid without reading as a
+                floating dialog. It only appears in the split layout: with copy beside
+                it the form needs an edge to be the obvious target, whereas alone in the
+                middle of the page it already is one.
+
+                Horizontal padding is fixed and vertical is fluid: the first has to stay in
+                step with CARD_PADDING_X, the second is free to give room back on a short
+                window.
+              */
+              'rounded-2xl border border-neutral-200 bg-white px-8 py-[var(--auth-card-pad-y)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.13)]'
+            : undefined
+        }
+      >
+        {children}
+      </div>
+
+      {footer && <div className="mt-[var(--auth-gap-md)] text-center">{footer}</div>}
+    </div>
+  )
+
   return (
     /*
       `isolate` is load-bearing, not decoration. The grid needs to sit above this white
@@ -61,7 +135,7 @@ export function AuthShell({ children, maxWidth = 400, footer }: AuthShellProps) 
       isolation: isolate makes this element a stacking context, so the z-indices below are
       scoped to it: surface first, grid at z-0, column at z-10.
     */
-    <div className="relative isolate min-h-screen bg-white">
+    <div className="auth-rhythm relative isolate min-h-screen bg-white">
       {/*
         fixed rather than absolute, so a form long enough to scroll (create-account) keeps
         the grid still underneath it instead of dragging a 10px lattice up the screen.
@@ -80,27 +154,57 @@ export function AuthShell({ children, maxWidth = 400, footer }: AuthShellProps) 
       />
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="px-5 pt-7 sm:px-8">
-          <a
-            href="/"
-            className="inline-flex items-center gap-2.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
-          >
-            <Image src={LOGO} alt="" width={28} height={28} className="object-contain" aria-hidden />
-            <span className="text-[15px] font-bold tracking-tight text-neutral-950">gymflow</span>
-          </a>
+        {/*
+          relative z-20 is a bug fix, not polish. The scrim behind the aside is a positioned
+          element inside main; this header is in-flow and non-positioned, and CSS paints
+          in-flow block content before positioned descendants regardless of source order. So
+          the scrim's opaque white painted straight over the logo — measured at the wordmark's
+          own box, the region came back 255 with 0% ink present, against 10 and 23.75% with
+          the scrim removed. Hit testing did not catch it because the scrim is
+          pointer-events:none, so elementFromPoint still reported the wordmark on top.
+
+          Giving the header a stacking position puts page furniture above anything a column
+          paints, which is where it belongs.
+        */}
+        <header
+          className={`relative z-20 px-5 pt-[var(--auth-pad-head)] sm:px-8 ${
+            /*
+              In the split layout the logo belongs at the top of the left column, directly
+              above the headline, so the header stands down at lg and up.
+
+              It cannot simply move there, though: that column is `hidden` below lg, and a
+              logo that lives only inside it would disappear on every tablet and phone. So the
+              lockup is rendered in both places with complementary visibility and is never on
+              screen twice — here below lg, in AuthAside at lg and up. `hidden` also drops the
+              inactive one out of the accessibility tree, so there is only ever one home link.
+
+              The centred layout (setup-password, which has no left column) keeps it here at
+              every width.
+            */
+            split ? 'lg:hidden' : ''
+          }`}
+        >
+          <AuthWordmark />
         </header>
 
-        <main className="flex flex-1 items-center justify-center px-5 py-10 sm:px-8">
-          <div className="w-full" style={{ maxWidth }}>
-            {children}
-          </div>
+        <main className="flex flex-1 items-center justify-center px-5 py-[var(--auth-pad-y)] sm:px-8">
+          {split ? (
+            <div className="w-full max-w-[70rem] lg:grid lg:grid-cols-2 lg:items-center lg:gap-14 xl:gap-20">
+              {/*
+                Source order is aside then form, which is also the visual order at lg, so
+                nothing needs reversing and tab order matches what is on screen. Below lg
+                it is display:none rather than reordered — the aside is context, and a
+                phone reaching this page wants the form, not four features to scroll past
+                first. `hidden` also keeps it out of the accessibility tree there, which
+                is correct: it is not content the form depends on.
+              */}
+              <aside className="hidden lg:block">{aside}</aside>
+              {column}
+            </div>
+          ) : (
+            column
+          )}
         </main>
-
-        <footer className="px-5 pb-8 sm:px-8">
-          <div className="mx-auto w-full text-center" style={{ maxWidth }}>
-            {footer}
-          </div>
-        </footer>
       </div>
     </div>
   )

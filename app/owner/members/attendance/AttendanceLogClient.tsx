@@ -241,7 +241,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
           <button 
             onClick={exportToExcel}
             disabled={loading || filteredLogs.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50"
           >
             <Download className="w-4 h-4" /> Export
           </button>
@@ -278,7 +278,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
                   onClick={() => setDateRange(range.id as any)}
                   className={`px-3 py-1.5 text-xs font-semibold whitespace-nowrap rounded-lg transition-all ${
                     dateRange === range.id 
-                      ? 'bg-white text-slate-900 shadow-sm' 
+                      ? 'bg-surface text-slate-900 shadow-sm' 
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
@@ -288,7 +288,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
             </div>
 
             {dateRange === 'custom' && (
-              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+              <div className="flex items-center gap-2 bg-surface border border-slate-200 rounded-lg p-1 shadow-sm">
                 <div className="flex items-center gap-1.5 px-2">
                   <span className="text-xs font-semibold text-slate-500">From:</span>
                   <input 
@@ -315,7 +315,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
           </div>
 
           {/* Time Filter */}
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+          <div className="flex items-center gap-2 bg-surface border border-slate-200 rounded-lg p-1 shadow-sm">
             <div className="flex items-center gap-1.5 px-2">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
                 <input 
@@ -356,7 +356,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 [1, 2, 3, 4, 5, 6].map((i) => (
-                  <tr key={i} className="animate-pulse bg-white">
+                  <tr key={i} className="animate-pulse bg-surface">
                     <td className="px-5 py-4"><div className="h-4 w-24 bg-slate-100 rounded"></div></td>
                     <td className="px-5 py-4"><div className="h-4 w-32 bg-slate-100 rounded mb-1.5"></div><div className="h-3 w-16 bg-slate-50 rounded"></div></td>
                     <td className="px-5 py-4"><div className="h-6 w-20 bg-slate-100 rounded-full"></div></td>

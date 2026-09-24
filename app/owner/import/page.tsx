@@ -718,7 +718,7 @@ export default function ImportPage() {
   if (parsing) {
     return (
       <div className="max-w-2xl mx-auto mt-12 space-y-6">
-        <div className="card p-8 border border-slate-100 bg-white shadow-xl rounded-3xl space-y-6">
+        <div className="card p-8 border border-slate-100 bg-surface shadow-xl rounded-3xl space-y-6">
           <div className="text-center">
             <div className="relative w-20 h-20 mx-auto mb-4">
               <div className="absolute inset-0 rounded-full border-4 border-brand-100" />
@@ -774,7 +774,7 @@ export default function ImportPage() {
           <ArrowLeft className="w-4 h-4" /> Back to Members
         </Link>
 
-        <div className="text-center bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div className="text-center bg-surface border border-slate-100 rounded-2xl p-6 shadow-sm">
           <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <Shuffle className="w-8 h-8 text-brand-500" />
           </div>
@@ -791,7 +791,7 @@ export default function ImportPage() {
             const isMapped = mappedField && mappedField !== "ignore";
 
             return (
-              <div key={header} className={`flex items-center justify-between gap-4 p-4 border rounded-2xl transition-all bg-white shadow-xs ${isMapped ? "border-brand-200 bg-brand-50/10" : "border-slate-200 bg-slate-50/40"}`}>
+              <div key={header} className={`flex items-center justify-between gap-4 p-4 border rounded-2xl transition-all bg-surface shadow-xs ${isMapped ? "border-brand-200 bg-brand-50/10" : "border-slate-200 bg-slate-50/40"}`}>
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                   <span className="text-sm font-bold text-slate-800 truncate">
                     {header}
@@ -808,7 +808,7 @@ export default function ImportPage() {
                   <select
                     value={columnMapping[header] || ""}
                     onChange={(e) => setColumnMapping({ ...columnMapping, [header]: e.target.value })}
-                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-bold min-w-[160px]"
+                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[160px]"
                   >
                     <option value="">Don't import this field</option>
                     <optgroup label="Required Fields">
@@ -838,7 +838,7 @@ export default function ImportPage() {
           })}
         </div>
 
-        <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-xs">
+        <div className="bg-surface border border-slate-100 p-4 rounded-2xl shadow-xs">
           <button
             onClick={() => {
               const mappedDbFields = Object.values(columnMapping);
@@ -883,7 +883,7 @@ export default function ImportPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {unmappedPlans.map((rawPlan) => (
-            <div key={rawPlan} className="flex items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+            <div key={rawPlan} className="flex items-center justify-between gap-4 p-4 bg-surface border border-slate-200 rounded-2xl shadow-sm">
               <span className="text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shadow-inner truncate max-w-[200px]">
                 {rawPlan}
               </span>
@@ -892,7 +892,7 @@ export default function ImportPage() {
                 <select
                   value={planMapping[rawPlan] || "monthly"}
                   onChange={(e) => setPlanMapping({ ...planMapping, [rawPlan]: e.target.value })}
-                  className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-700 font-bold min-w-[180px]"
+                  className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[180px]"
                 >
                   <option value="monthly">Monthly (1 Month)</option>
                   <option value="quarterly">Quarterly (3 Months)</option>
@@ -903,7 +903,7 @@ export default function ImportPage() {
           ))}
         </div>
 
-        <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-xs">
+        <div className="bg-surface border border-slate-100 p-4 rounded-2xl shadow-xs">
           <button
             onClick={applyPlanMappingAndProceed}
             className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
@@ -962,7 +962,7 @@ export default function ImportPage() {
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`flex flex-col items-center justify-center gap-6 py-20 px-8 border-2 border-dashed rounded-3xl cursor-pointer transition-all bg-white min-h-[380px] shadow-sm ${
+        className={`flex flex-col items-center justify-center gap-6 py-20 px-8 border-2 border-dashed rounded-3xl cursor-pointer transition-all bg-surface min-h-[380px] shadow-sm ${
           isDragging ? "border-brand-500 bg-brand-50/30 scale-[1.01] shadow-lg shadow-brand-500/5" : "border-slate-200 hover:border-brand-400 hover:bg-brand-50/5"
         }`}
       >

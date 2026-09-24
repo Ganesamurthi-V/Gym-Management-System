@@ -158,7 +158,7 @@ export default function AdminSubscriptionList({ requests: initial }: Props) {
           Pending ({pending.length})
         </h2>
         {pending.length === 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 px-6 py-10 text-center text-gray-400 text-sm">
+          <div className="bg-surface rounded-xl border border-gray-100 px-6 py-10 text-center text-gray-400 text-sm">
             No pending requests 🎉
           </div>
         )}
@@ -230,7 +230,7 @@ function RequestCard({
   const isRejecting = rejectId === req.id
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-5 py-4 flex flex-wrap items-start gap-3">
         {/* Gym info */}
         <div className="flex-1 min-w-0">
@@ -278,7 +278,7 @@ function RequestCard({
               <select
                 value={planMap[req.id] ?? 'monthly'}
                 onChange={e => onPlanChange(req.id, e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 flex-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 flex-1 bg-surface focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
                 {PLAN_OPTIONS.map(p => (
                   <option key={p.value} value={p.value}>{p.label}</option>
@@ -287,7 +287,7 @@ function RequestCard({
               <button
                 onClick={() => onApprove(req.id)}
                 disabled={isThisLoading}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
               >
                 {isThisLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                 Approve
@@ -310,21 +310,21 @@ function RequestCard({
                 value={rejectReason}
                 onChange={e => onRejectReasonChange(e.target.value)}
                 rows={2}
-                className="w-full text-sm border border-red-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
+                className="w-full text-sm border border-red-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-400 bg-surface"
                 placeholder="e.g. Screenshot unclear, wrong amount..."
               />
               <div className="flex gap-2">
                 <button
                   onClick={() => onConfirmReject(req.id)}
                   disabled={isThisLoading}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-red-500 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
                 >
                   {isThisLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
                   Confirm Reject
                 </button>
                 <button
                   onClick={onCancelReject}
-                  className="px-4 py-1.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-1.5 text-sm font-semibold text-gray-600 bg-surface border border-gray-200 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
                 </button>

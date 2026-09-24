@@ -155,7 +155,7 @@ export default function ActivateClient({ token }: { token: string }) {
           </p>
           <a
             href="/auth/login?role=member"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
           >
             Go to Login
           </a>
@@ -222,7 +222,7 @@ export default function ActivateClient({ token }: { token: string }) {
         )}
 
         {/* Activation Form */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
           <form onSubmit={handleActivate} noValidate className="space-y-4">
             <div>
               <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
@@ -455,7 +455,7 @@ function EmailSentScreen({
           </p>
           <p className="mt-1 text-sm font-bold text-slate-900">{email}</p>
 
-          <div className="mt-5 rounded-xl border border-brand-100 bg-white p-4 text-left">
+          <div className="mt-5 rounded-xl border border-brand-100 bg-surface p-4 text-left">
             <p className="text-xs font-bold uppercase tracking-widest text-brand-600 mb-2">Next Steps</p>
             <ol className="space-y-2 text-sm text-slate-600">
               <li className="flex gap-2">
@@ -501,7 +501,7 @@ function EmailSentScreen({
             type="button"
             onClick={handleResend}
             disabled={resending || cooldown > 0 || linkState !== 'waiting'}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-surface px-4 py-2.5 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {resending
               ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>

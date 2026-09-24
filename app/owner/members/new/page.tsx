@@ -464,7 +464,7 @@ export default function NewMemberPage() {
                   {(['male', 'female', 'other'] as const).map((g) => (
                     <button key={g} type="button" onClick={() => update('gender', form.gender === g ? '' : g)}
                       className={`py-2.5 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                        form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                        form.gender === g ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-surface text-slate-500'
                       }`}
                     >
                       {g === 'male' ? 'Male' : g === 'female' ? 'Female' : 'Other'}
@@ -531,7 +531,7 @@ export default function NewMemberPage() {
                     return (
                       <button key={plan} type="button" onClick={() => selectPlan(plan)}
                         className={`py-2.5 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                          form.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                          form.plan === plan ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-surface text-slate-500'
                         }`}
                       >
                         <span className="block">{plan === 'monthly' ? '1 Month' : plan === 'quarterly' ? '3 Months' : plan === 'annual' ? '1 Year' : 'Custom'}</span>
@@ -560,7 +560,7 @@ export default function NewMemberPage() {
                   {(['strength', 'cardio', 'both'] as const).map((cat) => (
                     <button key={cat} type="button" onClick={() => update('category', cat)}
                       className={`py-2 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                        form.category === cat ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                        form.category === cat ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-surface text-slate-500'
                       }`}
                     >
                       {cat === 'both' ? 'Strength + Cardio' : cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -584,7 +584,7 @@ export default function NewMemberPage() {
                   {(['cash', 'upi', 'card'] as PaymentMode[]).map((mode) => (
                     <button key={mode} type="button" onClick={() => update('payment_mode', mode)}
                       className={`py-2 px-1 rounded-xl border-2 text-sm font-semibold transition-all text-center ${
-                        form.payment_mode === mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500'
+                        form.payment_mode === mode ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-surface text-slate-500'
                       }`}
                     >
                       {mode.toUpperCase()}
@@ -651,8 +651,8 @@ export default function NewMemberPage() {
 
       {/* Add Plan Modal */}
       {showPlanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-slate-800">Add New Plan</h3>
               <button onClick={() => setShowPlanModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">

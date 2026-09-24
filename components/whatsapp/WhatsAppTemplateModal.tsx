@@ -166,7 +166,7 @@ export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate 
       />
 
       {/* Sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl shadow-2xl max-h-[90vh]">
+      <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-surface rounded-t-3xl shadow-2xl max-h-[90vh]">
 
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
@@ -223,7 +223,7 @@ export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate 
                       'w-full flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all disabled:opacity-40',
                       active
                         ? 'border-emerald-400 bg-emerald-50'
-                        : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50',
+                        : 'border-slate-100 bg-surface hover:border-slate-200 hover:bg-slate-50',
                     )}
                   >
                     <span className="text-xl flex-shrink-0">{t.emoji}</span>
@@ -261,7 +261,7 @@ export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate 
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-slate-100 bg-white">
+        <div className="px-5 py-4 border-t border-slate-100 bg-surface">
           <button
             onClick={handleSend}
             disabled={status === 'sending' || status === 'success'}

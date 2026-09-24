@@ -49,7 +49,7 @@ export default function InventoryFilters() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search products, SKUs..."
-          className="input-field pl-9 w-full bg-white shadow-sm"
+          className="input-field pl-9 w-full bg-surface shadow-sm"
         />
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -58,7 +58,7 @@ export default function InventoryFilters() {
           <select
             value={category}
             onChange={handleCategoryChange}
-            className="input-field pl-9 bg-white shadow-sm appearance-none"
+            className="input-field pl-9 bg-surface shadow-sm appearance-none"
           >
             <option value="">All Categories</option>
             <option value="supplements">Supplements</option>

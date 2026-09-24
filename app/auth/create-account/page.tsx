@@ -90,7 +90,7 @@ function EmailSentScreen({ email }: { email: string }) {
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-neutral-200 bg-neutral-50">
           <Mail className="h-9 w-9 text-neutral-800" />
         </div>
-        <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 shadow-md">
+        <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 shadow-md">
           <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
         </div>
       </div>
@@ -388,11 +388,14 @@ export default function CreateAccountPage() {
                     <span
                       className={`flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-900 peer-focus-visible:ring-offset-2 ${
                         agreedTerms
-                          ? 'border-neutral-950 bg-neutral-950'
-                          : 'border-neutral-300 bg-white group-hover:border-neutral-500'
+                          ? 'border-neutral-950 bg-carbon-950 dark:border-neutral-900 dark:bg-neutral-900'
+                          : 'border-neutral-300 bg-surface group-hover:border-neutral-500'
                       }`}
                     >
-                      {agreedTerms && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                      {/* The tick sits on a tile that inverts, so it inverts too — see the
+                          note on authPrimaryButton for why these few controls need explicit
+                          dark rules instead of a themed colour. */}
+                      {agreedTerms && <Check className="h-3 w-3 text-white dark:text-carbon-950" strokeWidth={3} />}
                     </span>
                   </span>
                   <span className="text-sm leading-relaxed text-neutral-700">
@@ -415,11 +418,11 @@ export default function CreateAccountPage() {
                     <span
                       className={`flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-900 peer-focus-visible:ring-offset-2 ${
                         agreedAuthority
-                          ? 'border-neutral-950 bg-neutral-950'
-                          : 'border-neutral-300 bg-white group-hover:border-neutral-500'
+                          ? 'border-neutral-950 bg-carbon-950 dark:border-neutral-900 dark:bg-neutral-900'
+                          : 'border-neutral-300 bg-surface group-hover:border-neutral-500'
                       }`}
                     >
-                      {agreedAuthority && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                      {agreedAuthority && <Check className="h-3 w-3 text-white dark:text-carbon-950" strokeWidth={3} />}
                     </span>
                   </span>
                   <span className="text-sm leading-relaxed text-neutral-700">

@@ -309,7 +309,7 @@ export function AccountClient({
       <div className={`fixed bottom-6 right-6 z-[70] transition-all duration-300 ${
         toast.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
       }`}>
-        <div className="flex items-center gap-2.5 bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl">
+        <div className="flex items-center gap-2.5 bg-emphasis text-emphasis-fg text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl">
           <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
             <Check className="w-3 h-3 text-white" />
           </div>
@@ -320,7 +320,7 @@ export function AccountClient({
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-surface border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -457,7 +457,7 @@ export function AccountClient({
 
       {/* Subscription Details Card */}
       <div className="card relative overflow-hidden border-brand-200">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-50/80 via-white to-brand-50/30 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-50/80 via-surface to-brand-50/30 pointer-events-none" />
         <div className="relative p-5 space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-brand-100 rounded-lg flex items-center justify-center">
@@ -466,11 +466,11 @@ export function AccountClient({
             <p className="text-xs font-bold text-brand-600 uppercase tracking-widest">Subscription Details</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+            <div className="bg-surface rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Plan</p>
               <p className="text-sm font-semibold text-slate-800 mt-0.5 capitalize">{livePlanType || 'Default'}</p>
             </div>
-            <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+            <div className="bg-surface rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Status</p>
               <div className="flex items-center justify-between mt-0.5">
                 <div className="flex items-center gap-1.5">
@@ -497,19 +497,19 @@ export function AccountClient({
               </div>
             </div>
             {liveTrialEndsAt && (
-              <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+              <div className="bg-surface rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Trial Ends At</p>
                 <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatDate(liveTrialEndsAt)}</p>
               </div>
             )}
             {liveSubEndsAt && (
-              <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
+              <div className="bg-surface rounded-xl px-4 py-3 border border-brand-100 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Next Billing</p>
                 <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatDate(liveSubEndsAt)}</p>
               </div>
             )}
             {!liveTrialEndsAt && !liveSubEndsAt && (
-              <div className="bg-white rounded-xl px-4 py-3 border border-brand-100 shadow-sm sm:col-span-2">
+              <div className="bg-surface rounded-xl px-4 py-3 border border-brand-100 shadow-sm sm:col-span-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Access</p>
                 <p className="text-sm font-semibold text-slate-800 mt-0.5">Lifetime (Never Expires)</p>
               </div>
@@ -935,7 +935,7 @@ export function AccountClient({
               <button
                 onClick={handleDeleteGym}
                 disabled={isSaving || !deleteGymReady}
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
               >
                 {isSaving ? 'Deleting…' : 'Delete Everything'}
               </button>
@@ -962,7 +962,7 @@ function Modal({
 }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden animate-pop-in shadow-2xl">
+      <div className="bg-surface rounded-2xl w-full max-w-md overflow-hidden animate-pop-in shadow-2xl">
         <div className={`flex items-center justify-between px-5 py-4 border-b ${danger ? 'border-red-100 bg-red-50' : 'border-slate-100'}`}>
           <h3 className={`font-bold ${danger ? 'text-red-800' : 'text-slate-900'}`}>{title}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">

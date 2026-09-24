@@ -109,12 +109,17 @@ export interface AuthAsideProps {
  *     every frame, which is also why the type needs no compensation of its own and the
  *     original scale could be restored.
  */
+/*
+  The colour comes from --c-grid-scrim rather than a literal white so it follows the theme.
+  Hardcoded it bleached this entire column on a dark page and took the headings with it — an
+  inline gradient is invisible to Tailwind, so no utility could have corrected it.
+*/
 const SCRIM_GRADIENT =
   'radial-gradient(85% 75% at 42% 50%, ' +
-  'rgba(255,255,255,1) 0%, ' +
-  'rgba(255,255,255,1) 72%, ' +
-  'rgba(255,255,255,0.6) 88%, ' +
-  'rgba(255,255,255,0) 100%)'
+  'rgb(var(--c-grid-scrim) / 1) 0%, ' +
+  'rgb(var(--c-grid-scrim) / 1) 72%, ' +
+  'rgb(var(--c-grid-scrim) / 0.6) 88%, ' +
+  'rgb(var(--c-grid-scrim) / 0) 100%)'
 
 export function AuthAside({ heading, sub, features, note }: AuthAsideProps) {
   return (
@@ -170,7 +175,7 @@ export function AuthAside({ heading, sub, features, note }: AuthAsideProps) {
               */}
               <span
                 aria-hidden="true"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white shadow-sm"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-surface shadow-sm"
               >
                 <Icon className="h-[1.125rem] w-[1.125rem] text-neutral-800" strokeWidth={1.75} />
               </span>

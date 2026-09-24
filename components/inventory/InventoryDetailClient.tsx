@@ -314,7 +314,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
       {/* Header */}
       <div className="flex-none flex flex-col xs:flex-row xs:items-center justify-between gap-3">
         <div className="flex items-center gap-2 xs:gap-3">
-          <Link href="/owner/inventory" className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all flex-shrink-0">
+          <Link href="/owner/inventory" className="w-8 h-8 xs:w-9 xs:h-9 flex items-center justify-center rounded-xl bg-surface border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all flex-shrink-0">
             <ArrowLeft className="w-4 h-4 xs:w-5 xs:h-5" />
           </Link>
           <div className="min-w-0">
@@ -325,7 +325,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setShowEditModal(true)}
-            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
             Edit
@@ -333,7 +333,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           <button
             onClick={() => setShowSellModal(true)}
             disabled={product.initial_stock === 0}
-            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors border border-blue-600"
+            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors border border-blue-600"
           >
             <ShoppingCart className="w-3.5 h-3.5" />
             <span className="hidden xs:inline">Sell Stock</span>
@@ -341,7 +341,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-white border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+            className="h-9 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-surface border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span className="hidden xs:inline">Delete</span>
@@ -465,7 +465,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
         {/* Right Col: Sales History */}
         <div className="md:col-span-2 xl:col-span-3 flex flex-col min-h-0 h-full">
           <div className="card flex flex-col h-full overflow-hidden">
-            <div className="flex-none px-5 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
+            <div className="flex-none px-5 py-4 border-b border-slate-100 bg-surface flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                   <ShoppingCart className="w-4 h-4" />
@@ -476,7 +476,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                 </div>
               </div>
               
-              <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-sm text-slate-600">
+              <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-1.5 bg-surface text-sm text-slate-600">
                 <Clock className="w-4 h-4 text-slate-400" />
                 <input 
                   type="date" 
@@ -518,7 +518,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                       <th className="px-5 py-3 w-10"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                  <tbody className="divide-y divide-slate-100 bg-surface">
                     {filteredSales.map(sale => (
                       <tr key={sale.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-5 py-3 text-sm text-slate-600 font-medium">
@@ -580,7 +580,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
           
           {/* Recent Activity Card */}
           <div className="card flex flex-col mt-4 flex-none">
-            <div className="flex-none px-5 py-4 border-b border-slate-100 bg-white flex items-center gap-2.5">
+            <div className="flex-none px-5 py-4 border-b border-slate-100 bg-surface flex items-center gap-2.5">
               <div className="w-6 h-6 rounded bg-blue-50 flex items-center justify-center text-blue-600">
                 <Tag className="w-3.5 h-3.5" />
               </div>
@@ -621,9 +621,9 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
 
       {/* ============ EDIT MODAL ============ */}
       {showEditModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-surface z-10">
               <h3 className="font-bold text-slate-900">Edit Product</h3>
               <button onClick={() => setShowEditModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100">
                 <X className="w-5 h-5" />
@@ -765,7 +765,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                 />
               </div>
             </div>
-            <div className="p-5 border-t border-slate-100 flex justify-end gap-2 sticky bottom-0 bg-white">
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-2 sticky bottom-0 bg-surface">
               <button onClick={() => setShowEditModal(false)} className="btn-secondary py-2 px-4 text-xs">Cancel</button>
               <button
                 onClick={handleEdit}
@@ -782,8 +782,8 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
 
       {/* ============ SELL MODAL ============ */}
       {showSellModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-slate-900">Sell Stock</h3>
               <button onClick={() => setShowSellModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100">
@@ -836,8 +836,8 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                       onClick={() => setSellPaymentMode(mode)}
                       className={`py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${
                         sellPaymentMode === mode
-                          ? 'bg-brand-600 text-white border-brand-600'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          ? 'bg-brand-500 text-white border-brand-600'
+                          : 'bg-surface text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
                     >
                       {mode}
@@ -860,7 +860,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
               <button
                 onClick={handleSell}
                 disabled={loading || parseInt(sellQty) < 1 || parseInt(sellQty) > product.initial_stock || isNaN(parseFloat(sellUnitPrice)) || parseFloat(sellUnitPrice) < 0}
-                className="btn-primary py-2 px-6 text-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                className="btn-primary py-2 px-6 text-xs flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-700 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingCart className="w-3.5 h-3.5" />}
                 Confirm Sale
@@ -872,8 +872,8 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
 
       {/* ============ DELETE CONFIRM ============ */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
             <div className="p-6 text-center space-y-4">
               <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto">
                 <Trash2 className="w-7 h-7 text-red-500" />
@@ -889,7 +889,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                 <button
                   onClick={handleDelete}
                   disabled={loading}
-                  className="py-2 px-5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center gap-1.5"
+                  className="py-2 px-5 text-sm font-bold text-white bg-red-500 hover:bg-red-700 rounded-xl transition-colors flex items-center gap-1.5"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   Delete
@@ -902,9 +902,9 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
 
       {/* ============ ADD VARIANT MODAL ============ */}
       {showAddVariantModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-surface z-10">
               <h3 className="font-bold text-slate-900">Add Variant for {product.product_name}</h3>
               <button onClick={() => setShowAddVariantModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100">
                 <X className="w-5 h-5" />
@@ -1003,7 +1003,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-slate-100 flex justify-end gap-2 sticky bottom-0 bg-white">
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-2 sticky bottom-0 bg-surface">
               <button onClick={() => setShowAddVariantModal(false)} className="btn-secondary py-2 px-4 text-xs">Cancel</button>
               <button
                 onClick={handleAddVariant}

@@ -1,6 +1,9 @@
 /* Design tokens shared by the owner console and the member PWA.
    Must stay the first rule in the file — postcss-import hoists @import. */
 @import './design-tokens.css';
+/* Light/dark colour ramps backing the themed Tailwind scales. Imported after the
+   design tokens so its :root block can override --color-* semantics below. */
+@import './theme.css';
 
 @tailwind base;
 @tailwind components;
@@ -23,7 +26,9 @@
   }
 
   body {
-    @apply bg-white;
+    /* surface-secondary, not bg-white: the page sits beneath cards in both themes,
+       so it must be the darkest layer in dark mode rather than the card colour. */
+    @apply bg-surface-secondary text-slate-900;
     /* Minimum safe width — prevents layout breaking below 320px */
     min-width: 320px;
   }
@@ -46,7 +51,7 @@
   }
 
   .btn-secondary {
-    @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-white text-slate-700 font-semibold rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all text-sm;
+    @apply flex items-center justify-center gap-2 w-full py-3 px-4 bg-surface text-slate-700 font-semibold rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all text-sm;
   }
 
   .btn-ghost {
@@ -54,11 +59,11 @@
   }
 
   .input-field {
-    @apply w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all shadow-sm;
+    @apply w-full px-3.5 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all shadow-sm;
   }
 
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+    @apply bg-surface rounded-xl border border-slate-200 shadow-sm;
   }
 
   .status-active {
@@ -143,7 +148,10 @@
   .animate-slide-up { animation: slide-up 0.5s ease-out forwards; }
 
   .glass {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+    /* bg-surface/80 rather than bg-white/80 so the frosted panel darkens with the theme.
+       The hairline stays white/20 on purpose: it is a specular edge, and in dark mode a
+       faint white rim is still what reads as glass. */
+    @apply bg-surface/80 backdrop-blur-md border border-white/20;
   }
 
   @keyframes float-star {

@@ -321,11 +321,13 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
     return (
       <WelcomeTransition
         title={
+          /* Greeting at the neutral-700 floor, brand name at neutral-950 — the brand-blue
+             gradient this used to carry was the last coloured text on the screen, and the
+             emphasis works on weight and ink instead. Matches the default headline that
+             WelcomeTransition renders when no title is passed. */
           <>
-            Welcome to<br />
-            <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-cyan-400 bg-clip-text text-transparent">
-              gymflow
-            </span>
+            <span className="block text-neutral-700">Welcome to</span>
+            <span className="block text-neutral-950">gymflow</span>
           </>
         }
         subtitle="Setup complete! Taking you to your new dashboard..."

@@ -101,6 +101,18 @@ export interface AsciiBackdropProps {
    * download to render nothing.
    */
   minWidth?: number
+  /**
+   * Ceiling on how long to wait for an idle moment before mounting, in ms.
+   *
+   * The default suits a page that sticks around: the form paints, and the backdrop follows
+   * whenever the browser has a spare moment. It is wrong for anything short-lived. The
+   * welcome transition is on screen for about 2.5s before it navigates away, so a 2000ms
+   * ceiling would have the grid fade in just as the screen disappears — or miss it
+   * entirely — which looks like a bug rather than a backdrop. Such callers pass a small
+   * value; there is no competing content to yield to on a screen that is only a backdrop
+   * and a line of text.
+   */
+  deferMs?: number
 }
 
 /**
@@ -122,13 +134,14 @@ export function AsciiBackdrop({
   intensity = 1.099,
   contrast = 2.501,
   minWidth = 768,
+  deferMs = 2000,
 }: AsciiBackdropProps) {
   const wideEnough = useMediaQuery(`(min-width: ${minWidth}px)`)
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const connectionOk = useMemo(() => connectionAllowsDecoration(), [])
 
   const wanted = wideEnough && !reducedMotion && connectionOk
-  const ready = useDeferredUntilIdle(wanted, 2000)
+  const ready = useDeferredUntilIdle(wanted, deferMs)
 
   if (!wanted || !ready) return null
 

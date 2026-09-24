@@ -7,9 +7,9 @@ import { AuthWordmark } from '@/components/auth/AuthWordmark'
  * The shell every /auth page sits in: a white surface with the character grid running
  * full-bleed behind it, holding either one centred column or two.
  *
- * Pass `aside` and the page splits — product copy left, form right in a card. Leave it
- * out and the form sits alone in the middle. Both layouts collapse to the same single
- * centred form below lg.
+ * Pass `aside` and the page splits — product copy left, form right. Leave it out and the
+ * form sits alone in the middle, with no logo. Both layouts collapse to the same single
+ * centred form below lg, and the form is in a card either way.
  *
  * This replaced a split layout that had been copy-pasted across three pages — a 55%
  * (45% on setup-password) dark navy panel carrying a logo, a gradient headline, three
@@ -59,7 +59,8 @@ export interface AuthShellProps {
    *
    * Omitted on setup-password, which is opened from an email by someone already partway
    * through signing up. Selling to them there would be noise, and the page already has a
-   * step indicator holding the top of its column.
+   * step indicator holding the top of its column. Leaving it out also drops the header
+   * logo, since the header only exists as the small-screen fallback for this column.
    */
   aside?: React.ReactNode
 }
@@ -87,7 +88,8 @@ const CARD_PADDING_X = 32
 
 export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShellProps) {
   const split = Boolean(aside)
-  const columnWidth = split ? maxWidth + CARD_PADDING_X * 2 : maxWidth
+  // Every layout is carded now, so the padding is always added back on.
+  const columnWidth = maxWidth + CARD_PADDING_X * 2
 
   const column = (
     /*
@@ -98,22 +100,21 @@ export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShell
     */
     <div className="relative mx-auto w-full" style={{ maxWidth: columnWidth }}>
       <div
-        className={
-          split
-            ? /*
-                An opaque fill, a hairline and a shadow that is mostly a wide soft
-                spread — enough to lift the form off the grid without reading as a
-                floating dialog. It only appears in the split layout: with copy beside
-                it the form needs an edge to be the obvious target, whereas alone in the
-                middle of the page it already is one.
+        /*
+          An opaque fill, a hairline and a shadow that is mostly a wide soft spread — enough
+          to lift the form off the grid without reading as a floating dialog.
 
-                Horizontal padding is fixed and vertical is fluid: the first has to stay in
-                step with CARD_PADDING_X, the second is free to give room back on a short
-                window.
-              */
-              'rounded-2xl border border-neutral-200 bg-white px-8 py-[var(--auth-card-pad-y)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.13)]'
-            : undefined
-        }
+          On every layout, not just the split one. It was originally split-only on the
+          reasoning that a form alone in the middle of the page is already the obvious
+          target, which is true, but it left the centred pages sitting their fields straight
+          on the live grid while the split pages had an opaque base. The card is also what
+          lets the placeholders and the inactive tab label sit below the neutral-700 floor,
+          so applying it everywhere makes that exemption uniform instead of per-layout.
+
+          Horizontal padding is fixed and vertical is fluid: the first has to stay in step
+          with CARD_PADDING_X, the second is free to give room back on a short window.
+        */
+        className="rounded-2xl border border-neutral-200 bg-white px-8 py-[var(--auth-card-pad-y)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.13)]"
       >
         {children}
       </div>
@@ -155,6 +156,17 @@ export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShell
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/*
+          The header exists only to carry the logo on the split layouts below lg, where the
+          left column that normally holds it is hidden. At lg and up the logo is in that
+          column, and the centred layout (setup-password) shows none at all — it is opened
+          from an email by someone already partway through signing up, who does not need to
+          be told whose product this is a third time.
+
+          So: rendered only when there is an aside to fall back from, and hidden at lg where
+          that aside takes over. Between them the lockup is never on screen twice and never
+          absent from a page that wants it. `lg:hidden` also drops it out of the accessibility
+          tree rather than just hiding it, so there is only ever one home link.
+
           relative z-20 is a bug fix, not polish. The scrim behind the aside is a positioned
           element inside main; this header is in-flow and non-positioned, and CSS paints
           in-flow block content before positioned descendants regardless of source order. So
@@ -162,30 +174,12 @@ export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShell
           own box, the region came back 255 with 0% ink present, against 10 and 23.75% with
           the scrim removed. Hit testing did not catch it because the scrim is
           pointer-events:none, so elementFromPoint still reported the wordmark on top.
-
-          Giving the header a stacking position puts page furniture above anything a column
-          paints, which is where it belongs.
         */}
-        <header
-          className={`relative z-20 px-5 pt-[var(--auth-pad-head)] sm:px-8 ${
-            /*
-              In the split layout the logo belongs at the top of the left column, directly
-              above the headline, so the header stands down at lg and up.
-
-              It cannot simply move there, though: that column is `hidden` below lg, and a
-              logo that lives only inside it would disappear on every tablet and phone. So the
-              lockup is rendered in both places with complementary visibility and is never on
-              screen twice — here below lg, in AuthAside at lg and up. `hidden` also drops the
-              inactive one out of the accessibility tree, so there is only ever one home link.
-
-              The centred layout (setup-password, which has no left column) keeps it here at
-              every width.
-            */
-            split ? 'lg:hidden' : ''
-          }`}
-        >
-          <AuthWordmark />
-        </header>
+        {split && (
+          <header className="relative z-20 px-5 pt-[var(--auth-pad-head)] sm:px-8 lg:hidden">
+            <AuthWordmark />
+          </header>
+        )}
 
         <main className="flex flex-1 items-center justify-center px-5 py-[var(--auth-pad-y)] sm:px-8">
           {split ? (

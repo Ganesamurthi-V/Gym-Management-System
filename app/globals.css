@@ -217,3 +217,80 @@
     --pwa-safe-top: 0px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   /auth vertical rhythm
+   ══════════════════════════════════════════════════════════════════════════════
+   Spacing tokens for AuthShell, AuthAside and the three /auth forms. Applied via
+   the .auth-rhythm class on the shell root; every consumer reads them as
+   var(--auth-*), so the whole vertical scale of those pages is set here.
+
+   These live in CSS rather than an inline style object on the shell because they
+   need a height-conditional override, which an inline style cannot express.
+
+   ── Why height-conditional at all ──────────────────────────────────────────
+   The pages were laid out at 900px tall and did not fit shorter windows: login
+   overflowed by 18px at 768, 66px at 720 and 232px at 541.
+
+   clamp(min, vh, max) fixes most of that on its own, and the coefficients below
+   are chosen so each token lands on its original fixed value at ~900px tall —
+   nothing about the design at that height changes, and the gaps close smoothly
+   below it instead of pushing content off the bottom.
+
+   But clamp alone cannot do what is needed under ~700px. To compress harder
+   down there the vh coefficient has to be smaller, and a smaller coefficient
+   also reaches its max later, which would shrink the spacing at 900 too. The
+   two requirements — untouched when tall, aggressive when short — cannot both
+   come out of one clamp. Hence the media query: it keeps the tall case exactly
+   as approved and only tightens where the window is genuinely cramped.
+
+   700px is the threshold because that is roughly where a maximised browser on a
+   768-tall screen lands once chrome is subtracted, which is the most common
+   cramped case rather than an unusual one.
+
+   Control sizes are deliberately absent. Inputs and buttons stay 48px at every
+   height — a short window is not a reason to shrink a hit target. What gives is
+   spacing, the aside headline, and at the very bottom end two lines of
+   reassurance copy that carry no information needed to sign in. */
+.auth-rhythm {
+  --auth-pad-y: clamp(1rem, 4.4vh, 2.5rem);        /* main's vertical padding; was 40px  */
+  --auth-pad-head: clamp(0.75rem, 3vh, 1.75rem);   /* header top padding;     was 28px  */
+  --auth-gap-lg: clamp(1.25rem, 4.5vh, 2.5rem);    /* between major blocks;   was 40px  */
+  --auth-gap-md: clamp(0.75rem, 2.7vh, 1.5rem);    /* feature rows, form gaps; was 24px */
+  --auth-gap-sm: clamp(0.5rem, 2.2vh, 1.25rem);    /* heading to sub, fields;  was 20px */
+  --auth-aside-h2: clamp(1.625rem, 4.2vh, 2.375rem);
+  --auth-card-pad-y: clamp(1.25rem, 3.4vh, 2rem);  /* card vertical padding only        */
+
+  /* Height of the logo lockup; its width follows from the aspect ratio. In the rhythm
+     rather than fixed because at full size it is the largest single block in the left
+     column, and on its own it was enough to push login at 1280x720 and setup-password at
+     1024x600 back into a scroll. The coefficient holds it at its full 5rem from ~900px
+     tall upward. */
+  --auth-logo-h: clamp(4.5rem, 14vh, 9rem);
+}
+
+/* The logo needs one step more than the spacing tokens do.
+   A clamp's middle term is proportional — k * vh — so one coefficient cannot pass through
+   two chosen points. Sized to reach 5rem at 900px tall, k is 8.9vh, which still leaves it
+   at 64px by 720px tall, and 64px there is exactly what put login back into a scroll. The
+   spacing tokens do not have this problem because they are far smaller, so their own taper
+   is enough; this is the one measure big enough to need an earlier knee than the 700px
+   threshold below. */
+@media (max-height: 820px) {
+  .auth-rhythm {
+    --auth-logo-h: clamp(3.25rem, 9vh, 6.5rem);
+  }
+}
+
+@media (max-height: 700px) {
+  .auth-rhythm {
+    --auth-pad-y: clamp(0.75rem, 2.6vh, 1.5rem);
+    --auth-pad-head: clamp(0.625rem, 2vh, 1rem);
+    --auth-gap-lg: clamp(1rem, 3.2vh, 1.75rem);
+    --auth-gap-md: clamp(0.625rem, 2vh, 1.25rem);
+    --auth-gap-sm: clamp(0.5rem, 1.7vh, 1rem);
+    --auth-aside-h2: clamp(1.5rem, 3.4vh, 1.875rem);
+    --auth-card-pad-y: clamp(1rem, 2.4vh, 1.5rem);
+    --auth-logo-h: clamp(2.5rem, 6vh, 3.25rem);
+  }
+}

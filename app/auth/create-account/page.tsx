@@ -6,6 +6,8 @@ import {
   ArrowRight, Check, AlertCircle, PartyPopper, Mail, RefreshCw, ArrowLeft,
 } from 'lucide-react'
 import { AuthShell } from '@/components/auth/AuthShell'
+import { AuthAside } from '@/components/auth/AuthAside'
+import { AUTH_ASIDE } from '@/components/auth/authAsideContent'
 import {
   authDividerLabel,
   authHeading,
@@ -249,8 +251,28 @@ export default function CreateAccountPage() {
   return (
     <AuthShell
       maxWidth={440}
+      /*
+        Always the owner column: this page only creates gym owner accounts. Members are
+        provisioned by their gym and arrive through an activation link, never through here.
+
+        It stays up on the confirm-your-email screen too. That screen asks the visitor to
+        leave and go to their inbox, so the pitch is the last thing they read before
+        deciding whether to come back.
+
+        note is dropped here and only here. The form already states the trial terms, more
+        precisely than the aside does and with the specifics that matter at the point of
+        signing up — 14 days, Pro, activated automatically, no card. Keeping the aside's
+        shorter version would put the same promise on screen twice, a few hundred pixels
+        apart, which reads as marketing rather than information.
+      */
+      aside={<AuthAside {...AUTH_ASIDE.owner} note={undefined} />}
       footer={
-        <p className="text-xs text-neutral-700">Secured with end-to-end encryption</p>
+        /* On the live grid, not inside the card. Original size, darker ink — see the note
+           in AuthAside on why a passing ratio is not the whole story here. Dropped on short
+           windows for the same reason as login's copy of it. */
+        <p className="text-xs font-medium text-neutral-800 [@media(max-height:680px)]:hidden">
+          Secured with end-to-end encryption
+        </p>
       }
     >
       <div
@@ -262,7 +284,7 @@ export default function CreateAccountPage() {
           <EmailSentScreen email={email} />
         ) : (
           <>
-            <div className="mb-7">
+            <div className="mb-[var(--auth-gap-md)]">
               <h1 className={authHeading}>Create your account</h1>
               <p className={authSub}>This will only take 2 minutes</p>
             </div>
@@ -279,7 +301,7 @@ export default function CreateAccountPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-[var(--auth-gap-sm)]">
               <div>
                 <label htmlFor="full-name" className={authLabel}>
                   Your full name
@@ -434,7 +456,7 @@ export default function CreateAccountPage() {
               </button>
             </form>
 
-            <div className="my-7 flex items-center gap-4">
+            <div className="my-[var(--auth-gap-md)] flex items-center gap-4">
               <div className="h-px flex-1 bg-neutral-200" />
               <span className={authDividerLabel}>Or</span>
               <div className="h-px flex-1 bg-neutral-200" />

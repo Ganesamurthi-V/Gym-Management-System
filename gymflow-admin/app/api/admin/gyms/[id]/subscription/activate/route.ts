@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/admin/gyms/[id]/subscription/activate
- * Body: { plan: 'monthly' | 'yearly' | 'lifetime', performed_by?: string, notes?: string }
+ * Body: { plan: 'monthly' | 'half_yearly' | 'yearly' | 'lifetime', performed_by?: string, notes?: string }
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   if (!(await verifyRequestAuth(req))) {
@@ -16,8 +16,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const { id } = await props.params
     const { plan, performed_by = 'admin', notes } = await req.json()
 
-    if (!['monthly', 'yearly', 'lifetime'].includes(plan)) {
-      return NextResponse.json({ error: 'Invalid plan. Must be monthly, yearly, or lifetime.' }, { status: 400 })
+    if (!['monthly', 'half_yearly', 'yearly', 'lifetime'].includes(plan)) {
+      return NextResponse.json({ error: 'Invalid plan. Must be monthly, half_yearly, yearly, or lifetime.' }, { status: 400 })
     }
 
     const supabase = createAdminClient()
@@ -36,6 +36,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     if (plan === 'monthly') {
       const d = new Date(now)
       d.setMonth(d.getMonth() + 1)
+      endsAt = d.toISOString()
+    } else if (plan === 'half_yearly') {
+      const d = new Date(now)
+      d.setMonth(d.getMonth() + 6)
       endsAt = d.toISOString()
     } else if (plan === 'yearly') {
       const d = new Date(now)

@@ -4,7 +4,10 @@ import { parseApiError } from './error-handler';
 // ── Types ─────────────────────────────────────────────────────────
 
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled' | 'suspended';
-export type PlanType = 'trial' | 'monthly' | 'yearly' | 'lifetime';
+export type PlanType = 'trial' | 'monthly' | 'half_yearly' | 'yearly' | 'lifetime';
+
+/** Paid tiers an admin can activate or approve a payment against, and their price. */
+export type PaidPlan = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime';
 
 export type GymFlags = {
   is_vip: boolean;
@@ -114,7 +117,7 @@ export async function fetchSubscriptionDetail(gymId: string): Promise<Subscripti
 
 export async function activateSubscription(
   gymId: string,
-  plan: 'monthly' | 'yearly' | 'lifetime',
+  plan: PaidPlan,
   notes?: string
 ): Promise<void> {
   try {
@@ -148,7 +151,7 @@ export async function expireSubscription(gymId: string, notes?: string): Promise
 export async function approvePayment(
   gymId: string,
   requestId: string,
-  plan: 'monthly' | 'yearly' | 'lifetime',
+  plan: PaidPlan,
   notes?: string
 ): Promise<void> {
   try {

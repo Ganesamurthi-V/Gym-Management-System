@@ -4,7 +4,6 @@ import {
   TextInput, ActivityIndicator, RefreshControl, Modal, Alert,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import {
@@ -12,6 +11,8 @@ import {
   type Gym, type SupportTicket,
 } from '@/lib/api';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
+import { useCachedQuery } from '@/lib/use-cached-query';
+import { CacheKeys } from '@/lib/cache';
 import { AdminInput } from '@/components/AdminInput';
 import { AdminButton } from '@/components/AdminButton';
 import { TicketCard } from '@/components/TicketCard';
@@ -30,8 +31,6 @@ function TabButton({ label, active, onPress, badge }: {
 }
 
 function SendMessageTab() {
-  const [gyms, setGyms] = useState<Gym[]>([]);
-  const [loadingGyms, setLoadingGyms] = useState(true);
   const [selectedGymId, setSelectedGymId] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -45,15 +44,17 @@ function SendMessageTab() {
     { label: 'Success Note', value: 'success' },
   ];
 
-  const loadGyms = useCallback(() => {
-    setLoadingGyms(true);
-    fetchGyms()
-      .then(data => setGyms(data || []))
-      .catch(() => {})
-      .finally(() => setLoadingGyms(false));
-  }, []);
-
-  useFocusEffect(useCallback(() => { loadGyms(); }, [loadGyms]));
+  /*
+    Shares the Gyms tab's cache key, so the recipient picker is populated the
+    instant this tab opens if the gym list has been seen at all this session. This
+    was the third independent caller of /api/gyms — each with its own state and its
+    own focus fetch — and they now converge on one value.
+  */
+  const { data: gymData, loading: loadingGyms } = useCachedQuery<Gym[]>({
+    key: CacheKeys.gyms,
+    fetcher: fetchGyms,
+  });
+  const gyms = gymData ?? [];
 
   async function handleSend() {
     if (!selectedGymId || !subject.trim() || !body.trim()) return;
@@ -160,33 +161,33 @@ function SendMessageTab() {
 }
 
 function TicketsTab() {
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [resolvingTicket, setResolvingTicket] = useState<SupportTicket | null>(null);
   const [replySubject, setReplySubject] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [resolving, setResolving] = useState(false);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    try {
-      const data = await fetchTickets();
-      setTickets(data);
-    } catch {
-      Alert.alert('Error', 'Failed to load tickets');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  /*
+    This tab was the worst offender of the set. Its loader ran `else setLoading(true)`
+    with no "do we already have data" guard, so every focus tore the list down to a
+    full-screen spinner and rebuilt it from the network — a guaranteed blank pause on
+    each visit rather than only the first.
+  */
+  const { data, loading, refresh: load } = useCachedQuery<SupportTicket[]>({
+    key: CacheKeys.tickets,
+    fetcher: fetchTickets,
+  });
+  const tickets = data ?? [];
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
+  }, [load]);
 
   useRealtimeInvalidation({
     channelName: 'admin:support',
     onInvalidate: load,
+    refetchOnSubscribe: false,
   });
 
   function openResolve(ticket: SupportTicket) {
@@ -255,7 +256,7 @@ function TicketsTab() {
         )}
         contentContainerStyle={styles.ticketList}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.indigo} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>

@@ -2,37 +2,33 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchEventLogs, type SentryEvent } from '@/lib/api';
 import { LogRow } from '@/components/LogRow';
+import { useCachedQuery } from '@/lib/use-cached-query';
+import { CacheKeys } from '@/lib/cache';
 
 export default function LogsScreen() {
-  const [events, setEvents] = useState<SentryEvent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Tracks whether we already have data so focus-refetches don't blank the screen
-  const hasDataRef = React.useRef(false);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else if (!hasDataRef.current) setLoading(true);
-    try {
-      const data = await fetchEventLogs();
-      setEvents(data);
-      hasDataRef.current = true;
-      setError(null);
-    } catch (e: any) {
-      setError(e.message ?? 'Failed to load event logs');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  /*
+    Longest TTL of any screen. This endpoint proxies Sentry events, which is the
+    slowest thing the admin API does, and an event feed does not need to be
+    second-accurate — pull-to-refresh is there when it does. Two minutes keeps tab
+    switches free and still surfaces new events promptly.
+  */
+  const { data, loading, error, refresh } = useCachedQuery<SentryEvent[]>({
+    key: CacheKeys.logs,
+    fetcher: fetchEventLogs,
+    ttlMs: 120_000,
+  });
+  const events = data ?? [];
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  }, [refresh]);
 
   if (loading) {
     return (
@@ -62,8 +58,12 @@ export default function LogsScreen() {
         renderItem={({ item }) => <LogRow event={item} />}
         style={styles.list}
         contentContainerStyle={styles.listContent}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.indigo} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>

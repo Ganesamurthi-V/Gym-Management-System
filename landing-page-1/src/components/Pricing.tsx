@@ -11,6 +11,16 @@ import { useReveal } from '../lib/useReveal';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
+/* The three billing tiers a gym owner can buy, matching the in-app subscription
+   (platform_settings in the product DB). The marketing page leads with the monthly
+   figure and shows the longer terms as the saving, so these must stay in step with
+   the numbers rendered in app/owner/subscription — they are the same product. */
+const TIERS = [
+  { label: '1 month', price: 1999, note: 'billed monthly', highlight: false },
+  { label: '6 months', price: 6999, note: 'save vs monthly', highlight: true },
+  { label: '1 year', price: 12999, note: 'best value', highlight: false },
+] as const;
+
 /* One line per module that actually ships. "Smart area detection" used to sit in
    this list and has been removed everywhere it appeared, including the JSON-LD
    featureList in index.html and public/llms.txt — a plan that says "all features"
@@ -32,7 +42,7 @@ const ACTIVATION_STEPS = [
   {
     icon: Smartphone,
     title: 'Make the payment',
-    desc: 'Pay ₹3,000 using any UPI app, net banking, or card.',
+    desc: 'Pay for your chosen plan using any UPI app, net banking, or card.',
   },
   {
     icon: Upload,
@@ -88,14 +98,14 @@ export function Pricing() {
             </div>
 
             <div className="mt-6 flex items-end gap-2">
-              {/* Down from clamp(56px, 8vw, 88px). At 88px the price was taller than
-                  the section heading above it and set the whole card's scale; the
-                  figure still needs to dominate the card, not the page. */}
+              {/* Leads with the monthly figure. Down from clamp(56px, 8vw, 88px): at
+                  88px the price was taller than the section heading and set the whole
+                  card's scale; it still needs to dominate the card, not the page. */}
               <span
                 className="font-medium leading-none tracking-[-0.04em] text-accent-ink"
                 style={{ fontSize: 'clamp(42px, 5.5vw, 64px)' }}
               >
-                ₹3,000
+                ₹1,999
               </span>
               <span className="pb-1.5 text-[14px] text-accent-ink/80">/ month</span>
             </div>
@@ -103,6 +113,28 @@ export function Pricing() {
               Unlimited members. Unlimited WhatsApp messages. Every module, on every
               account.
             </p>
+
+            {/* The longer terms, as the saving. A three-up strip rather than three
+                separate cards so the plan card keeps its single-column rhythm beside
+                the activation card next to it. */}
+            <div className="mt-6 grid grid-cols-3 gap-2">
+              {TIERS.map(tier => (
+                <div
+                  key={tier.label}
+                  className={`rounded-2xl border px-3 py-3 text-center ${
+                    tier.highlight
+                      ? 'border-accent-ink/40 bg-accent-ink/10'
+                      : 'border-accent-ink/15 bg-accent-ink/[0.03]'
+                  }`}
+                >
+                  <p className="text-[11px] font-medium text-accent-ink/70">{tier.label}</p>
+                  <p className="mt-1 text-[17px] font-semibold leading-none text-accent-ink">
+                    ₹{tier.price.toLocaleString('en-IN')}
+                  </p>
+                  <p className="mt-1 text-[10px] text-accent-ink/60">{tier.note}</p>
+                </div>
+              ))}
+            </div>
 
             <div className="my-6 h-px bg-accent-ink/15" />
 
@@ -144,7 +176,7 @@ export function Pricing() {
                 href={APP_URL}
                 className="btn btn-lg flex-1 border border-accent-ink/25 bg-transparent text-accent-ink hover:bg-accent-ink/10"
               >
-                Pay ₹3,000 now
+                See plans
               </a>
             </div>
 

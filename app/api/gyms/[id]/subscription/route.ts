@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 const ROUTE = 'PATCH /api/gyms/[id]/subscription'
 
 const ALLOWED_STATUSES = ['trial', 'active', 'expired', 'cancelled', 'suspended']
-const ALLOWED_PLANS = ['monthly', 'yearly', 'lifetime']
+const ALLOWED_PLANS = ['monthly', 'half_yearly', 'yearly', 'lifetime']
 const DATE_RE = /^\d{4}-\d{2}-\d{2}([T ].*)?$/
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {

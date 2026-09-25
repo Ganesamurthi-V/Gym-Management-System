@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchGymDetail, toggleGymStatus, resetGymPassword } from '@/lib/api';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
+import { useCachedQuery } from '@/lib/use-cached-query';
+import { CacheKeys, invalidate } from '@/lib/cache';
 import { Badge } from '@/components/Badge';
 import { AdminButton } from '@/components/AdminButton';
 import type { RootStackParamList } from '../navigation/types';
@@ -36,40 +38,49 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
 
 export default function GymDetailScreen({ route, navigation }: Props) {
   const { gymId } = route.params;
-  const [detail, setDetail] = useState<GymDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isActive, setIsActive] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
 
-  const loadDetail = useCallback(async () => {
-    try {
-      const data = await fetchGymDetail(gymId);
-      setDetail(data);
-      setIsActive(data.gym.is_active);
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to load gym');
-    } finally {
-      setLoading(false);
-    }
-  }, [gymId]);
-
-  useEffect(() => { void loadDetail(); }, [loadDetail]);
+  /*
+    Cache-first, which matters most on this screen. It is pushed onto the stack, so
+    it mounted fresh on every open and gated its first paint behind a round-trip —
+    the most visible instance of the 3-4s transition. Coming back to a gym you just
+    looked at now paints immediately from cache while it revalidates.
+  */
+  const { data: detail, loading, refresh: loadDetail } = useCachedQuery<GymDetail>({
+    key: CacheKeys.gymDetail(gymId),
+    fetcher: () => fetchGymDetail(gymId),
+  });
 
   useRealtimeInvalidation({
     channelName: 'admin:gyms',
     onInvalidate: loadDetail,
+    refetchOnSubscribe: false,
   });
+
+  /*
+    The switch is optimistic, so it needs its own state, but it must track the
+    server value as it arrives and after a revalidation. Derived-with-override
+    rather than a plain useState seeded once, which would have gone stale the
+    moment the cache refreshed underneath it.
+  */
+  const [statusOverride, setStatusOverride] = useState<boolean | null>(null);
+  const isActive = statusOverride ?? detail?.gym.is_active ?? false;
 
   async function handleToggleStatus(value: boolean) {
     setTogglingStatus(true);
-    setIsActive(value);
+    setStatusOverride(value);
     try {
       await toggleGymStatus(gymId, value);
+      // The gym list shows this flag too, so drop its cache rather than let the
+      // list show a stale badge until its own TTL lapses.
+      invalidate(CacheKeys.gyms);
+      await loadDetail();
+      setStatusOverride(null);
     } catch (e: any) {
-      setIsActive(!value);
+      setStatusOverride(null);
       Alert.alert('Error', e.message ?? 'Failed to update status');
     } finally {
       setTogglingStatus(false);

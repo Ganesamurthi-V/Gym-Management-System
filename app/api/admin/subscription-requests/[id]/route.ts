@@ -54,9 +54,10 @@ export async function POST(
   if (action === 'approve') {
     // Compute subscription end date based on plan type
     const endsAt = new Date(now)
-    if (plan_type === 'monthly')  endsAt.setMonth(endsAt.getMonth() + 1)
-    if (plan_type === 'yearly')   endsAt.setFullYear(endsAt.getFullYear() + 1)
-    if (plan_type === 'lifetime') endsAt.setFullYear(endsAt.getFullYear() + 99)
+    if (plan_type === 'monthly')     endsAt.setMonth(endsAt.getMonth() + 1)
+    if (plan_type === 'half_yearly') endsAt.setMonth(endsAt.getMonth() + 6)
+    if (plan_type === 'yearly')      endsAt.setFullYear(endsAt.getFullYear() + 1)
+    if (plan_type === 'lifetime')    endsAt.setFullYear(endsAt.getFullYear() + 99)
 
     // Update gym to active
     const { error: gymError } = await supabase

@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS gyms (
   subscription_status     TEXT        NOT NULL DEFAULT 'trial'
                                       CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled', 'suspended')),
   plan_type               TEXT        NOT NULL DEFAULT 'trial'
-                                      CHECK (plan_type IN ('trial', 'monthly', 'quarterly', 'yearly', 'lifetime')),
+                                      CHECK (plan_type IN ('trial', 'monthly', 'quarterly', 'half_yearly', 'yearly', 'lifetime')),
   subscription_started_at TIMESTAMPTZ,
   subscription_ends_at    TIMESTAMPTZ,
 
@@ -260,11 +260,13 @@ CREATE TABLE IF NOT EXISTS subscription_requests (
 
 -- ── platform_settings ────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS platform_settings (
-  id              INT     PRIMARY KEY DEFAULT 1,
-  upi_id          TEXT    NOT NULL DEFAULT '',
-  upi_name        TEXT    NOT NULL DEFAULT 'GymFlow',
-  price_monthly   INT     NOT NULL DEFAULT 2999,
-  price_yearly    INT     NOT NULL DEFAULT 29999,
+  id                 INT     PRIMARY KEY DEFAULT 1,
+  upi_id             TEXT    NOT NULL DEFAULT '',
+  upi_name           TEXT    NOT NULL DEFAULT 'GymFlow',
+  price_monthly      INT     NOT NULL DEFAULT 1999,
+  -- Six-month tier, added when the plan set grew from two tiers to three.
+  price_half_yearly  INT     NOT NULL DEFAULT 6999,
+  price_yearly       INT     NOT NULL DEFAULT 12999,
   CHECK (id = 1)
 );
 

@@ -23,7 +23,25 @@ interface SubscriptionRequest {
 }
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected'
-type PlanType = 'monthly' | 'yearly' | 'lifetime'
+type PlanType = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime'
+
+/*
+  The SaaS plans an admin can approve a payment against, with their prices and
+  durations. Kept as one list so the dropdown, the toast and any future summary
+  read from the same source. Prices mirror platform_settings in the product DB
+  (₹1,999 / ₹6,999 / ₹12,999); lifetime has no set price here since it is granted,
+  not sold on this screen.
+
+  If these ever need to be authoritative rather than indicative, they should come
+  from GET /api/subscriptions alongside each request. For now they exist to label
+  the choice, and the expiry math still lives server-side in the approve route.
+*/
+const PLAN_OPTIONS: { value: PlanType; label: string }[] = [
+  { value: 'monthly', label: 'Monthly — ₹1,999 (30d)' },
+  { value: 'half_yearly', label: '6 Months — ₹6,999 (180d)' },
+  { value: 'yearly', label: 'Yearly — ₹12,999 (365d)' },
+  { value: 'lifetime', label: 'Lifetime' },
+]
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; Icon: any }> = {
   pending: { label: 'Pending', cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20', Icon: Clock },
@@ -210,11 +228,11 @@ export default function SubscriptionsPage() {
                         <select
                           value={planMap[req.id] ?? 'monthly'}
                           onChange={e => setPlanMap(p => ({ ...p, [req.id]: e.target.value as PlanType }))}
-                          className="admin-input w-36 text-xs py-1.5"
+                          className="admin-input w-52 text-xs py-1.5"
                         >
-                          <option value="monthly">Monthly (30d)</option>
-                          <option value="yearly">Yearly (365d)</option>
-                          <option value="lifetime">Lifetime</option>
+                          {PLAN_OPTIONS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
                         </select>
                         <button
                           onClick={() => handleApprove(req)}

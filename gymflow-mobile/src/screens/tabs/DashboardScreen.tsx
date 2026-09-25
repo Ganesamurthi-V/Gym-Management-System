@@ -2,10 +2,11 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchDashboardStats, type DashboardStats } from '@/lib/api';
+import { useCachedQuery } from '@/lib/use-cached-query';
+import { CacheKeys } from '@/lib/cache';
 import { StatCard } from '@/components/StatCard';
 import { Badge } from '@/components/Badge';
 
@@ -45,35 +46,27 @@ function MessageRow({ msg }: { msg: DashboardStats['recentMessages'][0] }) {
 }
 
 export default function DashboardScreen() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Tracks whether we already have data so focus-refetches don't blank the screen
-  const hasDataRef = React.useRef(false);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else if (!hasDataRef.current) setLoading(true);
-    try {
-      const data = await fetchDashboardStats();
-      setStats(data);
-      hasDataRef.current = true;
-      setError(null);
-    } catch (e: any) {
-      setError(e.message ?? 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const { data: stats, loading, error, refresh } = useCachedQuery<DashboardStats>({
+    key: CacheKeys.dashboard,
+    fetcher: fetchDashboardStats,
+  });
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  }, [refresh]);
 
+  // Recomputed per render but cheap, and it must not be memoised across a date
+  // rollover while the app sits open overnight.
   const today = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
+  // Only a true cold miss blocks. With anything cached the screen renders its real
+  // content immediately and the refresh happens behind it, so returning to this tab
+  // no longer costs a spinner.
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -87,7 +80,7 @@ export default function DashboardScreen() {
       style={styles.root}
       contentContainerStyle={styles.content}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.indigo} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
       }
     >
       <View style={styles.header}>

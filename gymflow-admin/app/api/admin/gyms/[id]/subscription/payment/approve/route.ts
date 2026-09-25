@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
  * POST /api/admin/gyms/[id]/subscription/payment/approve
  * Body: {
  *   request_id: string,
- *   plan: 'monthly' | 'yearly' | 'lifetime',
+ *   plan: 'monthly' | 'half_yearly' | 'yearly' | 'lifetime',
  *   performed_by?: string,
  *   notes?: string,
  * }
@@ -51,9 +51,12 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     let endsAt: string | null = null
     if (plan === 'monthly') {
       const d = new Date(now); d.setMonth(d.getMonth() + 1); endsAt = d.toISOString()
+    } else if (plan === 'half_yearly') {
+      const d = new Date(now); d.setMonth(d.getMonth() + 6); endsAt = d.toISOString()
     } else if (plan === 'yearly') {
       const d = new Date(now); d.setFullYear(d.getFullYear() + 1); endsAt = d.toISOString()
     }
+    // 'lifetime' intentionally leaves endsAt null (never expires).
 
     // Approve the request
     const { error: approveError } = await supabase

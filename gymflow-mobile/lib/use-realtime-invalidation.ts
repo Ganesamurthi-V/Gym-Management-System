@@ -9,6 +9,15 @@ type Options = {
   onInvalidate: () => void | Promise<void>;
   enabled?: boolean;
   debounceMs?: number;
+  /**
+   * Whether subscribing should itself trigger a converge.
+   *
+   * This used to be unconditional, which meant every screen using this hook fired
+   * a second identical request about `debounceMs` after mounting — once from the
+   * screen's own focus load, once from the channel coming up. Screens that already
+   * fetch on focus pass false; the subscription then only reacts to actual hints.
+   */
+  refetchOnSubscribe?: boolean;
 };
 
 /**
@@ -20,6 +29,7 @@ export function useRealtimeInvalidation({
   onInvalidate,
   enabled = true,
   debounceMs = 1_500,
+  refetchOnSubscribe = true,
 }: Options) {
   const [connectionState, setConnectionState] = useState<RealtimeConnectionState>(
     enabled ? 'connecting' : 'disabled',
@@ -66,7 +76,7 @@ export function useRealtimeInvalidation({
         if (cancelled) return;
         if (status === 'SUBSCRIBED') {
           setConnectionState('connected');
-          schedule();
+          if (refetchOnSubscribe) schedule();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setConnectionState('error');
         } else if (status === 'CLOSED') {
@@ -85,7 +95,7 @@ export function useRealtimeInvalidation({
       timerRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [channelName, debounceMs, enabled]);
+  }, [channelName, debounceMs, enabled, refetchOnSubscribe]);
 
   return {
     connectionState,

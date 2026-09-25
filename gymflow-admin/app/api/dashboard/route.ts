@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getSentryIssues } from '@/lib/sentry-api'
+import { getSentryIssuesFast } from '@/lib/sentry-api'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,8 +18,11 @@ export async function GET(req: NextRequest) {
     supabase.from('members').select('*', { count: 'exact', head: true }),
     supabase.from('attendance').select('*', { count: 'exact', head: true })
       .eq('date', new Date().toISOString().slice(0, 10)),
-    getSentryIssues('level:error is:unresolved', 25),
-    getSentryIssues('level:warning is:unresolved', 25),
+    // Latency-capped and briefly cached. These two were the dominant cost in this
+    // handler: un-timeouted Sentry round-trips that Promise.allSettled had to wait
+    // out before any of the other five results could be returned.
+    getSentryIssuesFast('level:error is:unresolved', 25),
+    getSentryIssuesFast('level:warning is:unresolved', 25),
     supabase.from('admin_messages').select('*, gym:gym_id(name)').order('created_at', { ascending: false }).limit(5),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : null))
 

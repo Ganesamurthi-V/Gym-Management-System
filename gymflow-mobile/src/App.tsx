@@ -9,6 +9,7 @@ import { TouchableOpacity } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { isAuthenticated, clearToken } from '@/lib/auth';
+import { invalidate } from '@/lib/cache';
 
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/tabs/DashboardScreen';
@@ -48,6 +49,10 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
   return (
     <Tab.Navigator
       screenOptions={{
+        // Blurred tabs stop re-rendering instead of reconciling in the background
+        // on every state change elsewhere in the app. react-native-screens is
+        // already a dependency, so this costs nothing to switch on.
+        freezeOnBlur: true,
         tabBarStyle: {
           backgroundColor: Colors.bgCard,
           borderTopColor: Colors.bgCardBorder,
@@ -113,6 +118,10 @@ export default function App() {
   }, []);
 
   function handleLogout() {
+    // Clear cached API data alongside the token. It is persisted to AsyncStorage,
+    // so without this the next person to sign in on this device would briefly see
+    // the previous admin's gym list and dashboard figures from disk.
+    invalidate();
     clearToken().then(() => setAuthed(false));
   }
 

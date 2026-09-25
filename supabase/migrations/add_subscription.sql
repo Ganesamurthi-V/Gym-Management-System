@@ -63,11 +63,12 @@
 
   -- ── 5. platform_settings table (UPI details + prices) ────────
   CREATE TABLE IF NOT EXISTS platform_settings (
-    id             int PRIMARY KEY DEFAULT 1,
-    upi_id         text NOT NULL DEFAULT '',
-    upi_name       text NOT NULL DEFAULT 'GymFlow',
-    price_monthly  int  NOT NULL DEFAULT 2999,
-    price_yearly   int  NOT NULL DEFAULT 29999,
+    id                int PRIMARY KEY DEFAULT 1,
+    upi_id            text NOT NULL DEFAULT '',
+    upi_name          text NOT NULL DEFAULT 'GymFlow',
+    price_monthly     int  NOT NULL DEFAULT 1999,
+    price_half_yearly int  NOT NULL DEFAULT 6999,
+    price_yearly      int  NOT NULL DEFAULT 12999,
     CHECK (id = 1)
   );
 

@@ -22,7 +22,7 @@ interface SubDetail {
   usageStats: any
 }
 
-type PlanType = 'monthly' | 'yearly' | 'lifetime'
+type PlanType = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   trial: { label: 'Trial', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
@@ -164,6 +164,7 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
             <select value={approvePlan} onChange={e => setApprovePlan(e.target.value as PlanType)}
               className="admin-input w-40 text-xs py-1.5">
               <option value="monthly">Monthly</option>
+              <option value="half_yearly">6 Months</option>
               <option value="yearly">Yearly</option>
               <option value="lifetime">Lifetime</option>
             </select>
@@ -208,6 +209,7 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
               <select value={activatePlan} onChange={e => setActivatePlan(e.target.value as PlanType)}
                 className="admin-input flex-1 text-xs py-1.5">
                 <option value="monthly">Monthly</option>
+                <option value="half_yearly">6 Months</option>
                 <option value="yearly">Yearly</option>
                 <option value="lifetime">Lifetime</option>
               </select>

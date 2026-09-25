@@ -85,6 +85,10 @@ const D = {
   qaGreenBorder: '#26a859',
   qaGreenText: '#4ade80',
 
+  qaBlue: '#122036',       // Activate 6 Months bg (dark blue tinted)
+  qaBlueBorder: '#2f6fd0',
+  qaBlueText: '#60a5fa',
+
   qaPurple: '#1e1840',     // Activate Yearly bg (dark purple tinted)
   qaPurpleBorder: '#5b4fcf',
   qaPurpleText: '#818cf8',
@@ -142,6 +146,42 @@ function formatCurrency(amount?: number | null): string {
     grouped = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
   }
   return `${sign}₹${grouped}`;
+}
+
+/*
+  The SaaS tiers an admin can approve/activate, with the price and duration shown
+  in confirm dialogs. Prices mirror platform_settings in the product DB.
+  'lifetime' is granted rather than sold, so it carries no price line.
+*/
+type ApprovablePlan = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime';
+const PLAN_DETAILS: Record<ApprovablePlan, { label: string; price?: number; days?: number }> = {
+  monthly: { label: 'Monthly', price: 1999, days: 30 },
+  half_yearly: { label: '6-Month', price: 6999, days: 180 },
+  yearly: { label: 'Yearly', price: 12999, days: 365 },
+  lifetime: { label: 'Lifetime' },
+};
+
+/*
+  Which plan a pending payment is for. The owner's chosen tier is written into the
+  request notes as "Intended Plan: MONTHLY | HALF_YEARLY | YEARLY" by the product
+  app's subscription flow, so the admin approves the tier the customer actually paid
+  for instead of always defaulting to Monthly. Falls back to monthly when the note
+  is absent or unrecognised (older requests predate this line).
+*/
+function intendedPlanFromNotes(notes?: string | null): ApprovablePlan {
+  const m = notes?.match(/Intended Plan:\s*([A-Z_]+)/i);
+  const raw = m?.[1]?.toLowerCase();
+  if (raw === 'half_yearly' || raw === 'yearly' || raw === 'lifetime' || raw === 'monthly') {
+    return raw;
+  }
+  return 'monthly';
+}
+
+/** "the 6-Month plan (₹6,999) for 180 days" — the human phrase for a confirm dialog. */
+function planPhrase(plan: ApprovablePlan): string {
+  const d = PLAN_DETAILS[plan];
+  if (plan === 'lifetime') return 'the Lifetime plan (permanent access)';
+  return `the ${d.label} plan (${formatCurrency(d.price)}) for ${d.days} days`;
 }
 
 function getStatusColor(status: string) {
@@ -741,7 +781,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       icon: 'check-circle', label: 'Activate Monthly', color: D.emerald,
       onPress: () => confirmAction({
         title: 'Activate Monthly Subscription?',
-        message: 'This will activate a Monthly subscription starting today for 30 days.',
+        message: 'This will activate the Monthly plan (₹1,999) starting today for 30 days.',
         confirmLabel: 'Activate', confirmColor: D.emerald,
         onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')),
       }),
@@ -750,11 +790,12 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       icon: 'credit-card', label: 'Approve Payment', color: D.indigo,
       onPress: () => {
         if (!pendingRequest) { Alert.alert('No Pending Request', 'There is no pending payment request to approve.'); return; }
+        const plan = intendedPlanFromNotes(pendingRequest.notes);
         confirmAction({
           title: 'Approve Payment?',
-          message: `Approve and activate Monthly plan for ${gym.name}?`,
+          message: `Approve and activate ${planPhrase(plan)} for ${gym.name}?`,
           confirmLabel: 'Approve', confirmColor: D.indigo,
-          onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, 'monthly')),
+          onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)),
         });
       },
     },
@@ -789,6 +830,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   const planTypeStr = gym.plan_type as string;
   const planLabel = planTypeStr === 'trial' ? 'Trial Plan'
     : planTypeStr === 'monthly' ? 'Monthly Plan'
+    : planTypeStr === 'half_yearly' ? '6-Month Plan'
     : planTypeStr === 'yearly' ? 'Yearly Plan'
     : planTypeStr === 'lifetime' ? 'Lifetime Plan'
     : `${planTypeStr.charAt(0).toUpperCase() + planTypeStr.slice(1)} Plan`;
@@ -972,13 +1014,19 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 icon="award" label="Activate Monthly"
                 bg={D.qaGreen} border={D.qaGreenBorder} textColor={D.qaGreenText}
                 disabled={actionLoading}
-                onPress={() => confirmAction({ title: 'Activate Monthly Subscription?', message: 'This will activate a Monthly subscription starting today for 30 days.', confirmLabel: 'Activate', confirmColor: D.emerald, onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')) })}
+                onPress={() => confirmAction({ title: 'Activate Monthly Subscription?', message: 'This will activate the Monthly plan (₹1,999) starting today for 30 days.', confirmLabel: 'Activate', confirmColor: D.emerald, onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')) })}
+              />
+              <QuickActionBtn
+                icon="calendar" label="Activate 6 Months"
+                bg={D.qaBlue} border={D.qaBlueBorder} textColor={D.qaBlueText}
+                disabled={actionLoading}
+                onPress={() => confirmAction({ title: 'Activate 6-Month Subscription?', message: 'This will activate the 6-Month plan (₹6,999) starting today for 180 days.', confirmLabel: 'Activate', confirmColor: D.sky, onConfirm: () => doAction(() => activateSubscription(gymId, 'half_yearly')) })}
               />
               <QuickActionBtn
                 icon="calendar" label="Activate Yearly"
                 bg={D.qaPurple} border={D.qaPurpleBorder} textColor={D.qaPurpleText}
                 disabled={actionLoading}
-                onPress={() => confirmAction({ title: 'Activate Yearly Subscription?', message: 'This will activate a Yearly subscription starting today for 365 days.', confirmLabel: 'Activate', confirmColor: D.indigo, onConfirm: () => doAction(() => activateSubscription(gymId, 'yearly')) })}
+                onPress={() => confirmAction({ title: 'Activate Yearly Subscription?', message: 'This will activate the Yearly plan (₹12,999) starting today for 365 days.', confirmLabel: 'Activate', confirmColor: D.indigo, onConfirm: () => doAction(() => activateSubscription(gymId, 'yearly')) })}
               />
               <QuickActionBtn
                 icon="hexagon" label="Activate Lifetime"
@@ -1031,7 +1079,10 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
               )}
               <View style={styles.approveRejectRow}>
                 <TouchableOpacity style={styles.approveBtn} disabled={actionLoading}
-                  onPress={() => confirmAction({ title: 'Approve Payment?', message: `Approve the payment for ${gym.name} and activate Monthly plan?`, confirmLabel: 'Approve', confirmColor: D.emerald, onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, 'monthly')) })}>
+                  onPress={() => {
+                    const plan = intendedPlanFromNotes(pendingRequest.notes);
+                    confirmAction({ title: 'Approve Payment?', message: `Approve the payment for ${gym.name} and activate ${planPhrase(plan)}?`, confirmLabel: 'Approve', confirmColor: D.emerald, onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)) });
+                  }}>
                   <Feather name="check" size={14} color={D.emerald} />
                   <Text style={[styles.approveRejectText, { color: D.emerald }]}>Approve</Text>
                 </TouchableOpacity>

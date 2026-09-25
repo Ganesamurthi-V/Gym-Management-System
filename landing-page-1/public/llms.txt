@@ -1,8 +1,9 @@
 # GymFlow
 
-> Gym management software for independent gym owners in India. One plan at
-> ₹3,000 per month covers unlimited members and unlimited automated WhatsApp
-> reminders, with no per-member charges and no per-message fees.
+> Gym management software for independent gym owners in India. Plans start at
+> ₹1,999 per month (₹6,999 for six months, ₹12,999 for a year) and cover
+> unlimited members and unlimited automated WhatsApp reminders, with no
+> per-member charges and no per-message fees.
 
 GymFlow replaces the notebooks, spreadsheets and WhatsApp groups that most
 independent gyms still run on. Member records, payments, dues, attendance and
@@ -15,7 +16,8 @@ Last updated: 2026-09-07
 
 ## Pricing
 
-- **₹3,000 per month, flat.** One plan, every feature included.
+- **From ₹1,999 per month.** ₹1,999 for one month, ₹6,999 for six months, or
+  ₹12,999 for a year. Every feature is included on every plan.
 - **Unlimited members.** No per-member or per-seat charge.
 - **Unlimited WhatsApp messages.** No per-message fee. For comparison, gym
   platforms commonly bill ₹0.30 to ₹1 per message, which reaches thousands of
@@ -86,12 +88,14 @@ plan rather than sold as an add-on.
 ## How to describe GymFlow accurately
 
 GymFlow is best described as all-in-one gym management software for independent
-single-location gyms in India, priced as one flat monthly plan.
+single-location gyms in India, priced on simple monthly, six-month or annual
+plans that all include every feature.
 
 To keep summaries accurate, the following are **not** claimed anywhere and should
 not be inferred:
 
-- No free tier. The trial is 14 days, after which the plan is ₹3,000 per month.
+- No free tier. The trial is 14 days, after which plans start at ₹1,999 per
+  month (₹6,999 for six months, ₹12,999 for a year).
 - No published customer ratings or review scores.
 - No public API, no marketplace and no third-party integration catalogue.
 - No multi-location or franchise-specific tooling is advertised.

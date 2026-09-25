@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import QRCode from 'qrcode'
 import {
   Clock, CheckCircle, XCircle, Upload, Copy, CreditCard,
   RefreshCw, MessageCircle, AlertCircle, ArrowRight, Shield,
-  Calendar, Zap, Check, Circle, CheckCircle2
+  Calendar, CalendarClock, Zap, Check, Circle, CheckCircle2
 } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
@@ -39,8 +39,12 @@ interface Settings {
   upi_id: string
   upi_name: string
   price_monthly: number
+  price_half_yearly: number
   price_yearly: number
 }
+
+/** The three SaaS billing tiers a gym owner can buy. */
+type PlanId = 'monthly' | 'half_yearly' | 'yearly'
 
 interface Props {
   gym: GymInfo
@@ -51,7 +55,65 @@ interface Props {
 
 export default function SubscriptionClient({ gym, subState, latestRequest, settings }: Props) {
   const [step, setStep] = useState(1)
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly')
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly')
+
+  /*
+    The three tiers, in one place. Price is read from here by both the plan grid and
+    the payment step, and the QR below is generated from this same `price`, so the
+    amount shown and the amount encoded in the QR can never drift apart.
+
+    No static QR image per tier any more. The old flow shipped one JPEG per price
+    (2999.jpeg, 29k.jpeg) with the amount baked into the UPI payload, which meant a
+    reused or mismatched image could display one price and charge another. The QR is
+    now built at runtime from the UPI id + this amount, so a price change in the DB
+    is reflected in the QR automatically with no image to regenerate.
+  */
+  const PLANS: {
+    id: PlanId
+    name: string
+    price: number
+    period: string
+    badge?: string
+    Icon: typeof Calendar
+  }[] = [
+    { id: 'monthly',     name: 'Monthly Plan',  price: settings.price_monthly,     period: '/ month',    Icon: Calendar },
+    { id: 'half_yearly', name: '6-Month Plan',  price: settings.price_half_yearly, period: '/ 6 months', Icon: CalendarClock, badge: 'POPULAR' },
+    { id: 'yearly',      name: 'Yearly Plan',   price: settings.price_yearly,      period: '/ year',     Icon: Zap,      badge: 'BEST VALUE' },
+  ]
+
+  const activePlan = PLANS.find(p => p.id === selectedPlan) ?? PLANS[0]
+
+  // Same UPI id the old static QR encoded (falls back to the account's own VPA).
+  const upiId = settings.upi_id || 'gxnzhhh@oksbi'
+  const upiName = settings.upi_name || 'GymFlow'
+
+  /*
+    The UPI intent string, per the NPCI deep-link spec. `am` is the selected plan's
+    exact amount and `cu` fixes the currency, so scanning pre-fills the payee, name
+    and amount in any UPI app. tr is a reference so the owner can match the payment
+    later. Rebuilt whenever the amount or UPI details change.
+  */
+  const upiString = useMemo(() => {
+    const params = new URLSearchParams({
+      pa: upiId,
+      pn: upiName,
+      am: String(activePlan.price),
+      cu: 'INR',
+      tn: `GymFlow ${activePlan.name}`,
+    })
+    return `upi://pay?${params.toString()}`
+  }, [upiId, upiName, activePlan.price, activePlan.name])
+
+  // Rendered QR as a data URL. Generated client-side from upiString; regenerates when
+  // the selected plan (and thus the amount) changes. Empty until the first render.
+  const [qrDataUrl, setQrDataUrl] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    QRCode.toDataURL(upiString, { width: 320, margin: 1, errorCorrectionLevel: 'M' })
+      .then(url => { if (!cancelled) setQrDataUrl(url) })
+      .catch(() => { if (!cancelled) setQrDataUrl('') })
+    return () => { cancelled = true }
+  }, [upiString])
   const [file, setFile] = useState<File | null>(null)
   const [transactionId, setTransactionId] = useState('')
   const [notes, setNotes] = useState('')
@@ -365,81 +427,65 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                </div>
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
-                
-                {/* Monthly */}
-                <div 
-                  onClick={() => setSelectedPlan('monthly')}
-                  className={`md:col-span-4 cursor-pointer rounded-3xl border-2 p-6 transition-all duration-200 ${
-                    selectedPlan === 'monthly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-surface hover:border-brand-200 hover:-translate-y-1'
-                  }`}
-                >
-                   <div className="flex justify-between items-start mb-5">
-                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'monthly' ? 'bg-surface border-brand-100 shadow-sm' : 'bg-slate-50 border-slate-100'}`}>
-                       <Calendar className={`w-6 h-6 ${selectedPlan === 'monthly' ? 'text-brand-600' : 'text-slate-400'}`} />
-                     </div>
-                     {selectedPlan === 'monthly' ? (
-                       <CheckCircle2 className="w-7 h-7 text-brand-600 drop-shadow-sm" />
-                     ) : (
-                       <Circle className="w-7 h-7 text-slate-200" />
-                     )}
-                   </div>
-                   <h4 className={`text-lg font-bold mb-1 ${selectedPlan === 'monthly' ? 'text-brand-700' : 'text-slate-700'}`}>Monthly Plan</h4>
-                   <div className="flex items-end gap-1.5 mb-8">
-                     <span className="text-4xl font-black text-slate-900 tracking-tight">₹{settings.price_monthly.toLocaleString('en-IN')}</span>
-                     <span className="text-sm font-bold text-slate-400 mb-1.5">/ month</span>
-                   </div>
-                   
-                   <ul className="space-y-4">
-                     {planFeatures.map((f, i) => (
-                       <li key={i} className="flex items-center gap-3 text-sm font-semibold text-slate-600">
-                         <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                           <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                         </div>
-                         {f}
-                       </li>
-                     ))}
-                   </ul>
-                </div>
+             {/* Three tiers across on desktop, stacked on mobile. Was a 12-col grid
+                 holding two plan cards plus the "All plans include" card; with a third
+                 tier the plans get their own 3-up row and the include card drops below. */}
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch" role="radiogroup" aria-label="Subscription plan">
+                {PLANS.map(plan => {
+                  const isSelected = selectedPlan === plan.id
+                  const PlanIcon = plan.Icon
+                  return (
+                    <div
+                      key={plan.id}
+                      role="radio"
+                      aria-checked={isSelected}
+                      tabIndex={0}
+                      onClick={() => setSelectedPlan(plan.id)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPlan(plan.id) } }}
+                      className={`relative cursor-pointer rounded-3xl border-2 p-6 transition-all duration-200 ${
+                        isSelected
+                          ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1'
+                          : 'border-slate-100 bg-surface hover:border-brand-200 hover:-translate-y-1'
+                      }`}
+                    >
+                      {plan.badge && (
+                        <div className="absolute top-5 right-5 bg-brand-500 text-white text-[10px] font-black px-3 py-1 rounded-full tracking-wider shadow-sm shadow-brand-500/30">
+                          {plan.badge}
+                        </div>
+                      )}
+                      <div className="flex justify-between items-start mb-5">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${isSelected ? 'bg-surface border-brand-100 shadow-sm' : 'bg-slate-50 border-slate-100'}`}>
+                          <PlanIcon className={`w-6 h-6 ${isSelected ? 'text-brand-600' : 'text-slate-400'}`} />
+                        </div>
+                        {/* mt-8 clears the badge only on badged cards, so the check sits below it. */}
+                        {isSelected
+                          ? <CheckCircle2 className={`w-7 h-7 text-brand-600 drop-shadow-sm ${plan.badge ? 'mt-8' : ''}`} />
+                          : <Circle className={`w-7 h-7 text-slate-200 ${plan.badge ? 'mt-8' : ''}`} />}
+                      </div>
+                      <h4 className={`text-lg font-bold mb-1 ${isSelected ? 'text-brand-700' : 'text-slate-700'}`}>{plan.name}</h4>
+                      <div className="flex items-end gap-1.5 mb-8">
+                        <span className="text-4xl font-black text-slate-900 tracking-tight">₹{plan.price.toLocaleString('en-IN')}</span>
+                        <span className="text-sm font-bold text-slate-400 mb-1.5">{plan.period}</span>
+                      </div>
 
-                {/* Yearly */}
-                <div 
-                  onClick={() => setSelectedPlan('yearly')}
-                  className={`md:col-span-4 cursor-pointer rounded-3xl border-2 p-6 transition-all duration-200 relative ${
-                    selectedPlan === 'yearly' ? 'border-brand-500 bg-brand-50/40 shadow-md transform -translate-y-1' : 'border-slate-100 bg-surface hover:border-brand-200 hover:-translate-y-1'
-                  }`}
-                >
-                   <div className="absolute top-5 right-5 bg-brand-500 text-white text-[10px] font-black px-3 py-1 rounded-full tracking-wider shadow-sm shadow-brand-500/30">BEST VALUE</div>
-                   <div className="flex justify-between items-start mb-5">
-                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors ${selectedPlan === 'yearly' ? 'bg-surface border-brand-100 shadow-sm' : 'bg-amber-50 border-amber-100/50'}`}>
-                       <Zap className={`w-6 h-6 ${selectedPlan === 'yearly' ? 'text-brand-600' : 'text-amber-500'}`} />
-                     </div>
-                     {selectedPlan === 'yearly' ? (
-                       <CheckCircle2 className="w-7 h-7 text-brand-600 mt-8 drop-shadow-sm" /> 
-                     ) : (
-                       <Circle className="w-7 h-7 text-slate-200 mt-8" />
-                     )}
-                   </div>
-                   <h4 className={`text-lg font-bold mb-1 ${selectedPlan === 'yearly' ? 'text-brand-700' : 'text-slate-700'}`}>Yearly Plan</h4>
-                   <div className="flex items-end gap-1.5 mb-8">
-                     <span className="text-4xl font-black text-slate-900 tracking-tight">₹{settings.price_yearly.toLocaleString('en-IN')}</span>
-                     <span className="text-sm font-bold text-slate-400 mb-1.5">/ year</span>
-                   </div>
-                   
-                   <ul className="space-y-4">
-                     {planFeatures.map((f, i) => (
-                       <li key={i} className="flex items-center gap-3 text-sm font-semibold text-slate-600">
-                         <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                           <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                         </div>
-                         {f}
-                       </li>
-                     ))}
-                   </ul>
-                </div>
+                      <ul className="space-y-4">
+                        {planFeatures.map((f, i) => (
+                          <li key={i} className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                            <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                            </div>
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
+                })}
+             </div>
 
+             <div className="mt-6">
                 {/* All Plans Include */}
-                <div className="md:col-span-4 bg-emerald-50/60 border border-emerald-100 rounded-3xl p-6 h-fit mt-2 md:mt-4">
+                <div className="bg-emerald-50/60 border border-emerald-100 rounded-3xl p-6 h-fit">
                   <div className="flex items-center gap-2 mb-6">
                     <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                     <h4 className="text-base font-bold text-slate-900">All plans include</h4>
@@ -491,13 +537,20 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                
                {/* Left Side: QR & Details */}
                <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-stretch gap-6 border border-slate-100 p-5 rounded-3xl bg-surface shadow-sm">
-                 <div className="w-48 h-48 sm:w-56 sm:h-56 p-3 bg-slate-50 border border-slate-100 rounded-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
-                   <Image
-                     src={selectedPlan === 'monthly' ? '/2999.jpeg' : '/29k.jpeg'}
-                     alt={`UPI QR Code for ${selectedPlan} plan`}
-                     fill
-                     className="object-contain p-2"
-                   />
+                 <div className="w-48 h-48 sm:w-56 sm:h-56 p-3 bg-white border border-slate-100 rounded-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+                   {qrDataUrl ? (
+                     /* Runtime-generated UPI QR — a data URL, so a plain img rather
+                        than next/image (which optimises static/remote sources, not
+                        inline data). Kept on a white tile in both themes because a QR
+                        must stay dark-on-light to scan. eslint-disable-next-line @next/next/no-img-element */
+                     <img
+                       src={qrDataUrl}
+                       alt={`UPI QR code for the ${activePlan.name} — ₹${activePlan.price.toLocaleString('en-IN')}`}
+                       className="w-full h-full object-contain"
+                     />
+                   ) : (
+                     <span className="text-[11px] font-medium text-slate-400">Generating QR…</span>
+                   )}
                  </div>
                  
                  <div className="flex-1 flex flex-col justify-center space-y-4">
@@ -519,8 +572,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                    <div>
                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Amount</p>
                      <p className="text-brand-600 font-black text-lg">
-                       ₹{selectedPlan === 'monthly' ? settings.price_monthly.toLocaleString('en-IN') : settings.price_yearly.toLocaleString('en-IN')} 
-                       <span className="text-sm font-semibold ml-1">({selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'})</span>
+                       ₹{activePlan.price.toLocaleString('en-IN')}
+                       <span className="text-sm font-semibold ml-1">({activePlan.name})</span>
                      </p>
                    </div>
 

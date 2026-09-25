@@ -114,6 +114,61 @@
   --wa-chip-lift: 0 6px 18px -8px rgb(24 24 27 / 22%);
   --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 55%, transparent);
 
+  /* Owner console chrome, for the interactive dashboard mock in the hero.
+
+     Same reasoning as the --wa-* block above: the mock depicts a real product
+     surface, so it is named by its role in that UI rather than by this site's
+     scale, and it follows .dark so the mock switches with the page instead of
+     leaving a white slab in the middle of a black hero.
+
+     Unlike the WhatsApp tokens, these are not this site's interpretation of
+     another app's palette — they are lifted verbatim from the console's own
+     theme (app/theme.css). The light column is Tailwind's slate ramp, which is
+     what the console uses; the dark column is the console's hue-free ramp, which
+     shares one neutral across slate/gray/zinc/neutral/stone precisely so dark
+     mode carries no blue cast. Copying the values rather than approximating them
+     is the whole point: this mock is the product screenshot, so a visitor
+     toggling the hero to dark should see what they will actually get. */
+  --dash-page: #f8fafc;
+  --dash-surface: #ffffff;
+  /* One step above --dash-surface. Elevated controls sit on this. */
+  --dash-raise: #f1f5f9;
+  --dash-border: #e2e8f0;
+  --dash-line: #f1f5f9;
+  --dash-hover: #f8fafc;
+
+  --dash-ink: #0f172a;
+  --dash-ink-soft: #1e293b;
+  --dash-ink-dim: #475569;
+  --dash-ink-muted: #64748b;
+  --dash-ink-faint: #94a3b8;
+
+  /* Three accent roles, because one value cannot serve all of them once the
+     surface goes near-black. --dash-accent is a fill and keeps brand-500 in both
+     themes, since what it needs contrast against is its own white label. The two
+     text roles have to lighten in dark: brand-500 as text measures only ~3.6:1
+     on #171717, so it cannot carry a label there. */
+  --dash-accent: #2563eb;
+  --dash-accent-text: #2563eb;
+  --dash-accent-strong: #1d4ed8;
+  --dash-accent-soft: #eff6ff;
+  --dash-accent-chip: #dbeafe;
+
+  /* --dash-stat-edge is deliberately NOT declared here, and that absence is the
+     mechanism rather than an omission.
+
+     The stat cards each carry their own tone as a border colour, which has to be
+     applied as an inline style: the `* { border-color: var(--border) }` rule further
+     down this file is unlayered, and unlayered CSS beats @layer utilities, so every
+     Tailwind border-<colour> utility in this project silently loses to it. An inline
+     style is the only declaration that outranks it.
+
+     That normally makes a theme override impossible, since nothing can outrank an
+     inline style either. So the inline style reads
+     `var(--dash-stat-edge, <the card's own tone>)`: undefined here, the fallback
+     applies and each card keeps its tone; set under .dark, the one value wins for all
+     six at once and they go neutral. One property instead of six. */
+
   /* Highlight that sweeps through a ShinyText word. Paired with --accent-text as
      the base, so it has to stay legible against the page rather than just look
      bright: the base measures 6.15:1 here and this holds 3.5:1, above the 3:1 AA
@@ -197,6 +252,45 @@
   --wa-chip-lift: 0 0 22px -4px color-mix(in srgb, var(--whatsapp) 45%, transparent);
   --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 30%, transparent);
 
+  /* Console chrome, dark. Verbatim from app/theme.css: --dash-page is the app's
+     --c-surface-secondary, --dash-surface its --c-surface, --dash-raise its
+     --c-surface-card, and the ink ramp is slate-900 down to slate-400 on the
+     console's shared neutral ramp.
+
+     Note the ink values are pure greys (#f5f5f5, #e8e8e8, #bebebe...) rather than
+     the slate-tinted ones light mode uses. That is not a simplification — the
+     console deliberately collapses all five of Tailwind's achromatic families to
+     one hue-free ramp in dark so nothing picks up a blue tint against the
+     near-black surfaces. */
+  --dash-page: #0a0a0a;
+  --dash-surface: #171717;
+  --dash-raise: #262626;
+  --dash-border: #2a2a2a;
+  --dash-line: #202020;
+  --dash-hover: #202020;
+
+  --dash-ink: #f5f5f5;
+  --dash-ink-soft: #e8e8e8;
+  --dash-ink-dim: #bebebe;
+  --dash-ink-muted: #a3a3a3;
+  --dash-ink-faint: #828282;
+
+  /* The fill holds brand-500; the text roles step up to brand-600 and brand-700
+     from the console's dark ramp, and the two tinted surfaces step down to
+     brand-100 and brand-200, which in dark are near-black navies rather than the
+     pale blues they are in light. */
+  --dash-accent: #2563eb;
+  --dash-accent-text: #60a5fa;
+  --dash-accent-strong: #93c5fd;
+  --dash-accent-soft: #0d1533;
+  --dash-accent-chip: #172554;
+
+  /* Collapses all six stat-card borders to one neutral, overriding the per-card tone
+     in their inline styles. See the note in :root for why this is a variable rather
+     than a `dark:` utility. Matches the console, which drops the tint from these
+     cards in dark and keeps the colour in the icon and the number. */
+  --dash-stat-edge: #2a2a2a;
+
   /* White here. The dark-mode base is #93c5fd, so the glint has to be lighter
      than that to read as a highlight, and white is both the brightest option and
      the highest contrast against the page. */
@@ -272,6 +366,31 @@
   --color-whatsapp-ink: var(--whatsapp-ink);
 
   --color-accent-2: var(--accent-2);
+
+  /* Dashboard-mock chrome. Mapped in so the mock's structural colours are plain
+     utilities (bg-dash-surface, text-dash-ink, divide-dash-line) that flip with
+     the class, rather than ~40 dark: variants that each have to be remembered.
+     Per-tone colours inside the mock stay as literal dark: pairs at their call
+     site, because those carry the product's exact values and are easier to audit
+     against it when both sit on one line. */
+  --color-dash-page: var(--dash-page);
+  --color-dash-surface: var(--dash-surface);
+  --color-dash-raise: var(--dash-raise);
+  --color-dash-border: var(--dash-border);
+  --color-dash-line: var(--dash-line);
+  --color-dash-hover: var(--dash-hover);
+
+  --color-dash-ink: var(--dash-ink);
+  --color-dash-ink-soft: var(--dash-ink-soft);
+  --color-dash-ink-dim: var(--dash-ink-dim);
+  --color-dash-ink-muted: var(--dash-ink-muted);
+  --color-dash-ink-faint: var(--dash-ink-faint);
+
+  --color-dash-accent: var(--dash-accent);
+  --color-dash-accent-text: var(--dash-accent-text);
+  --color-dash-accent-strong: var(--dash-accent-strong);
+  --color-dash-accent-soft: var(--dash-accent-soft);
+  --color-dash-accent-chip: var(--dash-accent-chip);
 
   --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;

@@ -1,55 +1,57 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   ActivityIndicator, RefreshControl, TouchableOpacity,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchGyms, type Gym } from '@/lib/api';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
+import { useCachedQuery } from '@/lib/use-cached-query';
+import { CacheKeys } from '@/lib/cache';
 import { GymRow } from '@/components/GymRow';
 import type { RootStackParamList } from '../../navigation/types';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
+/** Module-level constant so the "no data yet" case keeps a stable identity. */
+const EMPTY_GYMS: Gym[] = [];
+
 export default function GymsScreen() {
   const navigation = useNavigation<NavProp>();
-  const [gyms, setGyms] = useState<Gym[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Tracks whether we already have data so focus-refetches don't blank the screen
-  const hasDataRef = React.useRef(false);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else if (!hasDataRef.current) setLoading(true);
-    try {
-      const data = await fetchGyms();
-      setGyms(data || []);
-      hasDataRef.current = true;
-      setError(null);
-    } catch (e: any) {
-      setError(e.message ?? 'Failed to load gyms');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const { data, loading, error, refresh } = useCachedQuery<Gym[]>({
+    key: CacheKeys.gyms,
+    fetcher: fetchGyms,
+  });
+  // Stable empty fallback. `data ?? []` would allocate a fresh array on every
+  // render, which changes the identity useMemo below depends on and makes the
+  // memo useless — the exact thing the memo was added to avoid.
+  const gyms = data ?? EMPTY_GYMS;
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
-
+  // Realtime hints still force a refresh, but no longer fire a duplicate request
+  // on mount — the focus revalidation already covers that (see refetchOnSubscribe).
   useRealtimeInvalidation({
     channelName: 'admin:gyms',
-    onInvalidate: load,
+    onInvalidate: refresh,
+    refetchOnSubscribe: false,
   });
 
-  const filtered = search.trim()
-    ? gyms.filter(g => g.name.toLowerCase().includes(search.toLowerCase()))
-    : gyms;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  }, [refresh]);
+
+  // Memoised so typing in the search box does not re-filter the whole list on
+  // every keystroke for an unchanged dataset.
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? gyms.filter(g => g.name.toLowerCase().includes(q)) : gyms;
+  }, [gyms, search]);
 
   return (
     <View style={styles.root}>
@@ -105,8 +107,14 @@ export default function GymsScreen() {
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          // Windowing limits: the gym list grows with every signup, and the
+          // defaults render far more rows than a phone screen needs.
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.indigo} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>

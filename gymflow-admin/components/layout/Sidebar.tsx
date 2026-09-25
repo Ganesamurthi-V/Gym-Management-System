@@ -47,7 +47,11 @@ export default function Sidebar() {
 
   async function handleLogout() {
     await fetch('/api/auth', { method: 'DELETE' })
-    router.push('/auth')
+    // replace() rather than push() so the authed page cannot be reached with the Back
+    // button after signing out, and refresh() re-runs server components with the cleared
+    // cookie so nothing server-rendered keeps showing stale authed data.
+    router.replace('/auth')
+    router.refresh()
   }
 
   return (

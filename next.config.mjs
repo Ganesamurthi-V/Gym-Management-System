@@ -65,7 +65,27 @@ const withSerwist = withSerwistInit({
 const nextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }]
+    return [
+      { source: '/(.*)', headers: securityHeaders },
+      /*
+        Mark the app-host root as noindex.
+
+        app.gymflow.sbs/ only ever 307-redirects (to /auth/login or the role home),
+        and robots.ts allows `/` to be crawled, so Googlebot fetches it, follows the
+        redirect, and reports it in Search Console as "Page with redirect". A <meta
+        robots> tag cannot fix this because the page never renders — it redirects
+        first — so the signal has to be an HTTP header, which is sent on the redirect
+        response itself.
+
+        Scoped to the exact path `/` only. The security headers above still apply to
+        every route; this adds one extra header to the root and nothing else, so no
+        real content page is affected.
+      */
+      {
+        source: '/',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, follow' }],
+      },
+    ]
   },
   experimental: {
     // Issue 4 fix: Set staleTimes to enable client-side router cache for

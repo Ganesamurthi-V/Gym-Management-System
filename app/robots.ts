@@ -30,6 +30,16 @@ import type { MetadataRoute } from 'next'
  * Search Console. If a public marketing surface is ever added to this host, add
  * `app/sitemap.ts` and reference it here at the same time.
  *
+ * ─── WHY `/` IS CRAWLABLE BUT STILL MARKED noindex ELSEWHERE ─────────────────
+ * `allow: '/'` deliberately lets crawlers reach the root — the disallow list only
+ * covers the private subtrees. But `/` only ever 307-redirects, so Google reports
+ * it as "Page with redirect" in Search Console. A <meta robots> tag cannot suppress
+ * that because the page never renders. The fix lives in next.config.mjs, which sends
+ * `X-Robots-Tag: noindex, follow` on the exact `/` path (a header rides the redirect
+ * response, a meta tag cannot). If you ever need `/` fully out of the crawl instead,
+ * add `/` to the disallow list here — but keep the header too, since robots.txt is a
+ * fetch hint, not an indexing guarantee.
+ *
  * ─── robots.txt IS NOT AN INDEXING GUARANTEE ────────────────────────────────
  * It asks crawlers not to FETCH these URLs. A disallowed URL discovered through
  * an external link can still surface as a bare result with no snippet. The

@@ -17,7 +17,7 @@ const FAQS = [
   },
   {
     q: 'How much does GymFlow cost?',
-    a: '₹3,000 per month, flat. One plan with every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.',
+    a: 'From ₹1,999 per month — or ₹6,999 for 6 months (save 42%) and ₹12,999 for a year (save 46%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.',
   },
   {
     q: 'Are WhatsApp messages really unlimited?',

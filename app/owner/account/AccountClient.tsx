@@ -313,7 +313,9 @@ export function AccountClient({
     setDeleteOtp('')
     setDeleteOtpStatus('idle')
     setDeleteStep('otp')
-    setResendCooldown(60)
+    // Shorter than the 60s OTP expiry so a slow user can get a fresh code without
+    // being stuck waiting for the cooldown after the current code dies.
+    setResendCooldown(30)
   }
 
   // ── Delete account: step 2 — verify the code and delete everything ──────────

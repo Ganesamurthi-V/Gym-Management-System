@@ -6,7 +6,7 @@ import {
   Settings, Copy, Lock, Trash2, AlertTriangle, Eye, EyeOff,
   Building2, Mail, Calendar, Users, CreditCard, CalendarCheck,
   ChevronLeft, Check, X, ShieldAlert, Hash, MapPin, Phone,
-  Edit3,
+  Edit3, Loader2,
 } from 'lucide-react'
 import { signOutViaApi, updatePasswordViaApi } from '@/lib/auth/client-auth'
 import { validatePasswordStrength } from '@/lib/auth/password'
@@ -18,6 +18,13 @@ import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import UPIQRSetup from '@/components/upi/UPIQRSetup'
 import { CodeSlots } from '@/components/ui/CodeSlots'
 import type { UPIConfig } from './upi-actions'
+
+// Length of the Supabase email OTP. This must match the "Email OTP Length"
+// setting in Supabase → Authentication (set it to 6). Kept in one place so the
+// input, the client validation, and the server all agree. Override with
+// NEXT_PUBLIC_OTP_LENGTH if the project setting ever changes.
+const OTP_LENGTH = Number(process.env.NEXT_PUBLIC_OTP_LENGTH) || 6
+const OTP_REGEX = new RegExp(`^\\d{${OTP_LENGTH}}$`)
 
 interface Props {
   email: string
@@ -133,6 +140,7 @@ export function AccountClient({
   // verifies it and performs the deletion.
   const [deleteStep, setDeleteStep] = useState<'warn' | 'otp'>('warn')
   const [deleteOtp, setDeleteOtp] = useState('')
+  const [deleteOtpStatus, setDeleteOtpStatus] = useState<'idle' | 'verifying' | 'error' | 'success'>('idle')
   const [maskedEmail, setMaskedEmail] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
 
@@ -145,6 +153,7 @@ export function AccountClient({
     setDeleteConfirmText('')
     setDeleteStep('warn')
     setDeleteOtp('')
+    setDeleteOtpStatus('idle')
     setMaskedEmail('')
     setResendCooldown(0)
     setNewGymName(gymName)
@@ -168,6 +177,7 @@ export function AccountClient({
     setDeleteConfirmText('')
     setDeleteStep('warn')
     setDeleteOtp('')
+    setDeleteOtpStatus('idle')
   }
 
   // ── Update gym name ──────────────────────────────────────────────────────────
@@ -301,17 +311,16 @@ export function AccountClient({
     }
     setMaskedEmail(json.data?.email ?? '')
     setDeleteOtp('')
+    setDeleteOtpStatus('idle')
     setDeleteStep('otp')
     setResendCooldown(60)
   }
 
   // ── Delete account: step 2 — verify the code and delete everything ──────────
   async function handleDeleteGym() {
-    if (!/^\d{6}$/.test(deleteOtp)) {
-      setMessage({ type: 'error', text: 'Enter the 6-digit code sent to your email.' })
-      return
-    }
+    if (!OTP_REGEX.test(deleteOtp)) return
     setIsSaving(true)
+    setDeleteOtpStatus('verifying')
     setMessage(null)
     const res = await fetch('/api/account/delete-gym', {
       method: 'POST',
@@ -321,10 +330,17 @@ export function AccountClient({
     })
     const json = await res.json()
     if (!json.success) {
+      // Wrong/expired code: flash the slots red, clear them, let the user retry.
+      setDeleteOtpStatus('error')
       setMessage({ type: 'error', text: json.error?.message ?? 'Something went wrong.' })
       setIsSaving(false)
+      setTimeout(() => {
+        setDeleteOtp('')
+        setDeleteOtpStatus('idle')
+      }, 800)
       return
     }
+    setDeleteOtpStatus('success')
     await signOutViaApi()
     router.push('/auth/login')
   }
@@ -957,55 +973,51 @@ export function AccountClient({
 
                 <MessageBanner message={message} />
 
-                <div className="flex gap-2">
-                  <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
-                  <button
-                    onClick={handleRequestDeleteOtp}
-                    disabled={isSaving}
-                    className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-                  >
-                    <Mail className="w-4 h-4" />
-                    {isSaving ? 'Sending code…' : 'Send confirmation code'}
-                  </button>
-                </div>
+                <button
+                  onClick={handleRequestDeleteOtp}
+                  disabled={isSaving}
+                  className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                >
+                  <Mail className="w-4 h-4" />
+                  {isSaving ? 'Sending code…' : 'Send confirmation code'}
+                </button>
               </>
             ) : (
               <>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
-                    Enter the 6-digit code sent to {maskedEmail || 'your email'}
+                    Enter the {OTP_LENGTH}-digit code sent to {maskedEmail || 'your email'}
                   </label>
                   <CodeSlots
                     value={deleteOtp}
                     onChange={setDeleteOtp}
                     onComplete={() => { void handleDeleteGym() }}
+                    length={OTP_LENGTH}
                     disabled={isSaving}
+                    status={deleteOtpStatus}
                   />
                 </div>
 
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={handleRequestDeleteOtp}
-                    disabled={isSaving || resendCooldown > 0}
-                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 disabled:text-slate-400 disabled:cursor-not-allowed"
-                  >
-                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
-                  </button>
-                </div>
+                {/* Auto-verifies once all digits are entered (no submit button). */}
+                {isSaving ? (
+                  <p className="flex items-center justify-center gap-2 text-sm font-semibold text-red-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Verifying & deleting…
+                  </p>
+                ) : (
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={handleRequestDeleteOtp}
+                      disabled={resendCooldown > 0}
+                      className="text-xs font-semibold text-brand-600 hover:text-brand-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    >
+                      {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                    </button>
+                  </div>
+                )}
 
                 <MessageBanner message={message} />
-
-                <div className="flex gap-2">
-                  <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
-                  <button
-                    onClick={handleDeleteGym}
-                    disabled={isSaving || !/^\d{6}$/.test(deleteOtp)}
-                    className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-                  >
-                    {isSaving ? 'Deleting…' : 'Delete Everything'}
-                  </button>
-                </div>
               </>
             )}
           </div>

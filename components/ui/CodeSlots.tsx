@@ -10,6 +10,8 @@ import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react'
  * (a string of up to `length` digits) and receives updates via `onChange`.
  * `onComplete` fires once all slots are filled.
  */
+type CodeSlotsStatus = 'idle' | 'verifying' | 'error' | 'success'
+
 type Props = {
   value: string
   onChange: (value: string) => void
@@ -17,6 +19,8 @@ type Props = {
   length?: number
   disabled?: boolean
   autoFocus?: boolean
+  /** Drives slot animation: pulse while verifying, red shake on error, green on success. */
+  status?: CodeSlotsStatus
 }
 
 export function CodeSlots({
@@ -26,6 +30,7 @@ export function CodeSlots({
   length = 6,
   disabled = false,
   autoFocus = true,
+  status = 'idle',
 }: Props) {
   const inputs = useRef<Array<HTMLInputElement | null>>([])
 
@@ -91,8 +96,22 @@ export function CodeSlots({
     focusSlot(pasted.length)
   }
 
+  // Longer codes (e.g. 8-digit OTPs) need slimmer slots + tighter gaps to stay
+  // on one row inside a narrow modal.
+  const slotSize = length > 6 ? 'w-9 h-12 text-lg' : 'w-11 h-14 text-xl'
+  const gap = length > 6 ? 'gap-1.5' : 'gap-2'
+
+  // Per-status border/ring, applied to every slot for a unified reaction.
+  const statusClass =
+    status === 'verifying' ? 'border-brand-400 animate-pulse'
+    : status === 'error'   ? 'border-red-500 ring-2 ring-red-500/30 animate-shake'
+    : status === 'success' ? 'border-emerald-500 ring-2 ring-emerald-500/30'
+    : ''
+
+  const isBusy = disabled || status === 'verifying' || status === 'success'
+
   return (
-    <div className="flex items-center justify-center gap-2" role="group" aria-label="Verification code">
+    <div className={`flex items-center justify-center ${gap}`} role="group" aria-label="Verification code">
       {digits.map((digit, i) => (
         <input
           key={i}
@@ -102,18 +121,18 @@ export function CodeSlots({
           autoComplete={i === 0 ? 'one-time-code' : 'off'}
           maxLength={1}
           value={digit}
-          disabled={disabled}
+          disabled={isBusy}
           autoFocus={autoFocus && i === 0}
           aria-label={`Digit ${i + 1}`}
           onChange={e => handleChange(i, e.target.value)}
           onKeyDown={e => handleKeyDown(i, e)}
           onPaste={handlePaste}
           onFocus={e => e.target.select()}
-          className={`w-11 h-14 text-center text-xl font-bold rounded-xl border bg-surface text-slate-900
+          className={`${slotSize} text-center font-bold rounded-xl border bg-surface text-slate-900
             transition-all outline-none
-            ${digit ? 'border-brand-500' : 'border-slate-200'}
+            ${statusClass || (digit ? 'border-brand-500' : 'border-slate-200')}
             focus:border-brand-600 focus:ring-2 focus:ring-brand-500/30
-            disabled:opacity-50 disabled:cursor-not-allowed`}
+            disabled:opacity-60 disabled:cursor-not-allowed`}
         />
       ))}
     </div>

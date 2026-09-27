@@ -10,6 +10,7 @@ import {
 import { useState } from 'react';
 import { useReveal } from '../lib/useReveal';
 import RubberSegment from './ui/RubberSegment';
+import Counter from './ui/Counter';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -36,6 +37,21 @@ type TierId = (typeof TIERS)[number]['id'];
 
 /** The 1-month price is the reference rate every saving is measured against. */
 const MONTHLY_RATE = TIERS[0].price;
+
+/* Counter (rolling-digit) sizing, shared by the ₹ glyph and the odometer so they
+   stay the same height. Fixed px because Counter measures its strip height from a
+   number, not a CSS clamp. */
+const PRICE_FONT_SIZE = 38;
+
+/* React Bits Counter renders one slot per entry in `places` and never hides a
+   leading zero, so a fixed [10000,1000,…] would print ₹1,999 as "01999". Sizing
+   the array to the current value's digit count keeps monthly at 4 slots and the
+   6-month / yearly prices at 4–5, and the odometer still animates because only the
+   values inside the shared slots change between two 4-digit tiers. */
+function placesFor(value: number): number[] {
+  const digits = Math.max(1, Math.floor(Math.log10(Math.max(1, value))) + 1);
+  return Array.from({ length: digits }, (_, i) => 10 ** (digits - 1 - i));
+}
 
 /** Whole-percent saving vs paying the monthly rate for the same span. 0 for monthly. */
 function savingPercent(tier: (typeof TIERS)[number]): number {
@@ -113,7 +129,7 @@ export function Pricing() {
         {/* Capped well inside the section's 1240px. The pair used to run the full
             width, which on a wide screen stretched a card holding one price and
             eight short lines across 1240px and left it looking mostly empty. */}
-        <div className="mx-auto mt-12 grid max-w-[1040px] gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-5">
+        <div className="mx-auto mt-10 grid max-w-[920px] gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-4">
           {/* Plan card — filled accent, because this is the one thing on the page
               a visitor is meant to act on.
 
@@ -123,7 +139,7 @@ export function Pricing() {
               mis-clipped until an interaction. Rendering the card in its final layout
               from first paint removes that whole timing race; the section heading above
               still reveals, so the entrance still reads as animated. */}
-          <div className="card-accent relative flex flex-col overflow-hidden p-6 md:p-8">
+          <div className="card-accent relative flex flex-col overflow-hidden p-4 md:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">
                 GymFlow Pro
@@ -134,23 +150,53 @@ export function Pricing() {
               </span>
             </div>
 
-            {/* Reflects the selected tier below. Down from clamp(56px, 8vw, 88px): at
-                88px the price was taller than the section heading and set the whole
-                card's scale; it still needs to dominate the card, not the page. */}
-            <div className="mt-6 flex flex-wrap items-end gap-x-2 gap-y-2">
+            {/* Price line. The saving figure sits to the RIGHT of the unit (the red-box
+                spot) as plain text — no pill — with the percentage on the same rolling
+                Counter odometer as the price, so 42 -> 46 rolls when the term changes. */}
+            <div className="mt-5 flex flex-wrap items-end gap-x-1 gap-y-2">
+              {/* Rupee glyph kept out of the odometer (Counter renders digits only). */}
               <span
                 className="font-medium leading-none tracking-[-0.04em] text-accent-ink"
-                style={{ fontSize: 'clamp(42px, 5.5vw, 64px)' }}
+                style={{ fontSize: PRICE_FONT_SIZE }}
               >
-                ₹{activeTier.price.toLocaleString('en-IN')}
+                ₹
               </span>
+              {/* React Bits rolling-digit Counter: the price digits spring to their new
+                  place when the billing term changes. `places` covers up to 5 digits
+                  (max ₹12,999); leading-zero places collapse via placesFor.
+                  Gradients are transparent — the default black fade would band the
+                  blue accent card. */}
+              <Counter
+                value={activeTier.price}
+                places={placesFor(activeTier.price)}
+                fontSize={PRICE_FONT_SIZE}
+                padding={4}
+                gap={0}
+                horizontalPadding={0}
+                textColor="var(--accent-ink)"
+                fontWeight={500}
+                gradientFrom="transparent"
+                gradientTo="transparent"
+                counterStyle={{ letterSpacing: '-0.04em' }}
+              />
               <span className="pb-1.5 text-[14px] text-accent-ink/80">{activeTier.unit}</span>
-              {/* Saving pill, shown only when there is a real saving (not on monthly).
-                  Reserves its row space either way so switching plans does not nudge the
-                  price line up and down. */}
+
+              {/* Saving figure — plain text, right of the unit, only when the term saves. */}
               {activeSaving > 0 && (
-                <span className="mb-1 ml-1 inline-flex items-center gap-1 rounded-pill bg-accent-ink px-2.5 py-1 text-[11px] font-semibold text-accent">
-                  Save {activeSaving}%
+                <span className="mb-1 ml-2 inline-flex items-center gap-0.5 text-[13px] font-semibold text-accent-ink">
+                  <Counter
+                    value={activeSaving}
+                    places={placesFor(activeSaving)}
+                    fontSize={13}
+                    padding={2}
+                    gap={0}
+                    horizontalPadding={0}
+                    textColor="var(--accent-ink)"
+                    fontWeight={600}
+                    gradientFrom="transparent"
+                    gradientTo="transparent"
+                  />
+                  % off
                 </span>
               )}
             </div>
@@ -168,7 +214,7 @@ export function Pricing() {
                 CTA uses, its text is the card's blue accent, and the resting track/text are
                 translucent accent-ink so unselected terms read as quiet-on-blue. Each label
                 carries its own "Save X%" badge so the discounts stay visible. */}
-            <div className="mt-6">
+            <div className="mt-5">
               <RubberSegment
                 aria-label="Billing term"
                 value={selected}
@@ -179,28 +225,17 @@ export function Pricing() {
                 thumbColor="var(--accent-ink)"
                 textColor="var(--accent-ink)"
                 activeTextColor="var(--accent)"
-                items={TIERS.map(tier => {
-                  const saving = savingPercent(tier);
-                  return {
-                    value: tier.id,
-                    label: (
-                      <span className="flex items-center gap-1.5">
-                        <span className="font-semibold">{tier.label}</span>
-                        {saving > 0 && (
-                          <span className="rounded-pill bg-current/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
-                            Save {saving}%
-                          </span>
-                        )}
-                      </span>
-                    ),
-                  };
-                })}
+                items={TIERS.map(tier => ({
+                  value: tier.id,
+                  // Just the term name — the saving % lives only on the price line above.
+                  label: <span className="font-semibold">{tier.label}</span>,
+                }))}
               />
             </div>
 
-            <div className="my-6 h-px bg-accent-ink/15" />
+            <div className="my-5 h-px bg-accent-ink/15" />
 
-            <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
               {INCLUDED.map(item => (
                 <li key={item} className="flex items-center gap-2.5">
                   <span className="grid h-4.5 w-4.5 shrink-0 place-items-center rounded-full bg-accent-ink">
@@ -226,7 +261,7 @@ export function Pricing() {
               btn-lg stays: on mobile these are full-width, and the larger tap target
               is the reason index.css scopes its shrink to the hero only.
             */}
-            <div className="mt-auto flex flex-col gap-3 pt-7">
+            <div className="mt-auto flex flex-col gap-3 pt-6">
               <a
                 href={APP_URL}
                 className="btn btn-lg w-full border border-accent-ink bg-accent-ink text-accent hover:bg-accent-ink/90"

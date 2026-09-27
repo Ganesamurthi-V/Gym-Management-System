@@ -154,7 +154,15 @@ export default function RubberSegment({
   */
   const insetRight = useTransform([innerW, edgeR], ([w, r]: number[]) => Math.max(0, w - r));
   const insetLeft = useTransform(edgeL, (l: number) => Math.max(0, l));
-  const clipPath = useMotionTemplate`inset(0 ${insetRight}px 0 ${insetLeft}px round ${thumbRadius}px)`;
+  /*
+    Guard against the first-paint frame where innerW/edges are still 0. With all three
+    at 0 the clip resolves to `inset(0 0 0 0)` — the FULL track — so the white thumb
+    briefly covers every segment (it visually "hides" the other terms until the first
+    measure lands). While the control has not been measured yet (innerW === 0), clip the
+    thumb to zero width instead, so it stays hidden rather than covering the labels.
+  */
+  const clipRight = useTransform([innerW, insetRight], ([w, r]: number[]) => (w === 0 ? 999999 : r));
+  const clipPath = useMotionTemplate`inset(0 ${clipRight}px 0 ${insetLeft}px round ${thumbRadius}px)`;
 
   const t = (seconds: number) => seconds / speed;
 

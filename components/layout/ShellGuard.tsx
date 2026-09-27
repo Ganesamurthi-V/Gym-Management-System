@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
 import { ThemeToggle, ThemeToggleButton } from '@/components/theme/ThemeToggle'
+import SupportHeaderButton from '@/components/support/SupportHeaderButton'
 import { signOutViaApi } from '@/lib/auth/client-auth'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -295,6 +296,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             {/* Theme control sits beside the account menu — the segmented group needs room, so
                 it is desktop-only here; the member header carries the compact single button. */}
             <div className="flex items-center gap-2 md:gap-3">
+              <SupportHeaderButton className="hidden md:inline-flex" />
               <ThemeToggle className="hidden md:inline-flex" />
               <ThemeToggleButton className="md:hidden" />
               <AccountMenu

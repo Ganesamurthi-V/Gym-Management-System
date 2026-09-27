@@ -16,9 +16,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
-    const { subject, message, type } = await req.json()
+    const body = await req.json()
+    const type = body?.type
+    const message: string = (body?.message ?? '').toString().trim()
 
-    if (!subject || !message || !type) {
+    const ALLOWED_TYPES = ['query', 'issue', 'bug', 'high_priority', 'feedback']
+    if (!type || !ALLOWED_TYPES.includes(type)) {
+      return NextResponse.json({ error: 'Invalid request type' }, { status: 400 })
+    }
+
+    const isFeedback = type === 'feedback'
+
+    // Feedback carries a 1-5 star rating and needs no subject from the user — we
+    // derive one below. Support tickets require a subject and a message.
+    let rating: number | null = null
+    if (isFeedback) {
+      const raw = Number(body?.rating)
+      if (!Number.isInteger(raw) || raw < 1 || raw > 5) {
+        return NextResponse.json({ error: 'Please choose a rating from 1 to 5' }, { status: 400 })
+      }
+      rating = raw
+      // A comment is optional on feedback, but we must store something non-empty in
+      // the NOT NULL message column, so fall back to the rating summary.
+      if (!message && rating === null) {
+        return NextResponse.json({ error: 'Missing feedback' }, { status: 400 })
+      }
+    }
+
+    const subject: string = isFeedback
+      ? // Derive a readable subject: the category chip (sent as `subject`) or a
+        // generic label, so the admin list shows something meaningful.
+        (body?.subject?.toString().trim() || `Feedback — ${rating}/5`)
+      : (body?.subject ?? '').toString().trim()
+
+    if (!isFeedback && (!subject || !message)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -33,14 +64,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
     }
 
-    // Insert the ticket
+    // Insert the ticket / feedback row. Feedback stores its rating and, when the
+    // owner left no comment, a short stand-in message so the NOT NULL column holds.
     const { error: insertError } = await supabase
       .from('support_tickets')
       .insert({
         gym_id: gym.id,
         subject,
-        message,
+        message: message || (isFeedback ? `Rated ${rating}/5` : message),
         type,
+        rating,
         status: 'open'
       })
 

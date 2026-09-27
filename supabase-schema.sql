@@ -155,7 +155,9 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   gym_id                UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   subject               TEXT        NOT NULL,
   message               TEXT        NOT NULL,
-  type                  TEXT        NOT NULL CHECK (type IN ('query', 'issue', 'bug', 'high_priority')),
+  type                  TEXT        NOT NULL CHECK (type IN ('query', 'issue', 'bug', 'high_priority', 'feedback')),
+  -- Star rating (1-5), populated only by 'feedback' rows; NULL for support tickets.
+  rating                SMALLINT    CHECK (rating IS NULL OR (rating BETWEEN 1 AND 5)),
   status                TEXT        NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
   is_cleared_by_owner   BOOLEAN     DEFAULT false,
   is_cleared_by_admin   BOOLEAN     DEFAULT false,

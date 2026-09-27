@@ -13,11 +13,29 @@ type TicketCardProps = {
 const typeVariant = (type: string): 'error' | 'warning' | 'info' => {
   if (type === 'high_priority') return 'error';
   if (type === 'bug') return 'warning';
+  if (type === 'feedback') return 'warning';
   return 'info';
 };
 
+function StarRow({ rating }: { rating: number }) {
+  return (
+    <View style={styles.stars}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <Feather
+          key={n}
+          name="star"
+          size={13}
+          color={n <= rating ? Colors.amber : Colors.textMuted}
+          style={n <= rating ? styles.starFilled : undefined}
+        />
+      ))}
+    </View>
+  );
+}
+
 export function TicketCard({ ticket, onResolve }: TicketCardProps) {
   const isOpen = ticket.status === 'open';
+  const isFeedback = ticket.type === 'feedback';
   return (
     <View style={[styles.card, !isOpen && styles.resolvedCard]}>
       <View style={styles.header}>
@@ -30,6 +48,7 @@ export function TicketCard({ ticket, onResolve }: TicketCardProps) {
             label={ticket.status}
             variant={isOpen ? 'success' : 'muted'}
           />
+          {isFeedback && ticket.rating != null && <StarRow rating={ticket.rating} />}
         </View>
         <Text style={styles.time}>
           {new Date(ticket.created_at).toLocaleDateString('en-IN')}
@@ -74,8 +93,15 @@ const styles = StyleSheet.create({
   },
   badges: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.xs,
   },
+  stars: {
+    flexDirection: 'row',
+    gap: 1,
+    marginLeft: 2,
+  },
+  starFilled: {},
   time: {
     fontSize: 11,
     color: Colors.textMuted,

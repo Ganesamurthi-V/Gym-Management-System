@@ -16,14 +16,25 @@ export async function GET(req: NextRequest) {
   const rateLimitResponse = await rateLimit(req, 'tickets_list', RATE_LIMITS.TICKET_LIST.limit, RATE_LIMITS.TICKET_LIST.window)
   if (rateLimitResponse) { log.summary(429); return rateLimitResponse }
 
+  // Optional filters so this one route serves the global list AND per-gym feedback:
+  //   ?gymId=<uuid>   scope to a single gym (gym-wise feedback on the detail pages)
+  //   ?type=feedback  restrict to a single ticket type
+  // Both clients (admin web + mobile) share this endpoint; unfiltered calls behave as before.
+  const gymId = req.nextUrl.searchParams.get('gymId')
+  const type = req.nextUrl.searchParams.get('type')
+
   try {
     log.start('DB_QUERY')
     const supabase = createAdminClient()
-    const { data: tickets, error } = await supabase
+    let query = supabase
       .from('support_tickets')
       .select('*, gyms(name, owner_id)')
       .eq('is_cleared_by_admin', false)
-      .order('created_at', { ascending: false })
+
+    if (gymId) query = query.eq('gym_id', gymId)
+    if (type) query = query.eq('type', type)
+
+    const { data: tickets, error } = await query.order('created_at', { ascending: false })
     log.end('DB_QUERY')
 
     if (error) throw error

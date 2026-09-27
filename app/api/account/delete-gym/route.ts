@@ -79,8 +79,11 @@ export const POST = withAuth('ACCOUNT_DELETE_GYM', async (req: NextRequest, ctx)
   if (!user.email) {
     return apiError(400, 'NO_EMAIL', 'Your account has no verified email to confirm this action.')
   }
-  if (!otpToken || !/^\d{6}$/.test(otpToken)) {
-    return apiError(400, 'INVALID_OTP', 'Enter the 6-digit confirmation code sent to your email.')
+  // Supabase email OTP length is a project setting (this project is set to 8).
+  // Accept 6–8 digits so a config change either way still verifies here and lets
+  // GoTrue be the final authority on the actual code.
+  if (!otpToken || !/^\d{6,8}$/.test(otpToken)) {
+    return apiError(400, 'INVALID_OTP', 'Enter the confirmation code sent to your email.')
   }
 
   const { error: otpError } = await supabase.auth.verifyOtp({

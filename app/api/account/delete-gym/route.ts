@@ -50,21 +50,52 @@ const redis = new Redis({
 export const POST = withAuth('ACCOUNT_DELETE_GYM', async (req: NextRequest, ctx) => {
   const { supabase, user, gym, log } = ctx
 
-  // The body is optional, but when a gym_id is supplied it must agree with the
-  // session's gym. A mismatch means a stale client, so refuse rather than
-  // delete something the owner is not currently looking at.
+  // The body carries the OTP and, optionally, a gym_id cross-check. gym_id, when
+  // supplied, must agree with the session's gym — a mismatch means a stale
+  // client, so refuse rather than delete something the owner is not looking at.
   let requestedGymId: string | undefined
+  let otpToken: string | undefined
   try {
-    const body = (await req.json()) as { gym_id?: unknown }
+    const body = (await req.json()) as { gym_id?: unknown; token?: unknown }
     if (typeof body?.gym_id === 'string') requestedGymId = body.gym_id
+    if (typeof body?.token === 'string') otpToken = body.token.trim()
   } catch {
-    // No body is fine — the session already tells us which gym to delete.
+    // Body is required now (it carries the OTP); a missing/invalid body fails
+    // the OTP check below.
   }
 
   if (requestedGymId !== undefined) {
     if (!isValidUUID(requestedGymId) || requestedGymId !== gym.id) {
       return apiError(403, 'FORBIDDEN', 'This gym could not be verified. Please reload and try again.')
     }
+  }
+
+  // ── OTP gate ──────────────────────────────────────────────────────────────
+  // Proof-of-email-control before anything is destroyed. The code was sent by
+  // /request-otp via supabase.auth.reauthenticate(); we redeem it here on the
+  // SAME session client with verifyOtp({ type: 'reauthentication' }). This does
+  // not mint a new session — it just confirms the nonce — so the deletion below
+  // still runs as the current owner.
+  if (!user.email) {
+    return apiError(400, 'NO_EMAIL', 'Your account has no verified email to confirm this action.')
+  }
+  if (!otpToken || !/^\d{6}$/.test(otpToken)) {
+    return apiError(400, 'INVALID_OTP', 'Enter the 6-digit confirmation code sent to your email.')
+  }
+
+  const { error: otpError } = await supabase.auth.verifyOtp({
+    type: 'reauthentication',
+    email: user.email,
+    token: otpToken,
+  })
+
+  if (otpError) {
+    log.error('Delete-gym OTP verification failed', { message: otpError.message })
+    return apiError(
+      400,
+      'INVALID_OTP',
+      'That code is incorrect or has expired. Request a new code and try again.',
+    )
   }
 
   const admin = createAdminClient()

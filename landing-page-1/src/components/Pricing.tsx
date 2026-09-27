@@ -151,10 +151,14 @@ export function Pricing() {
                 selected segment filled (the same accent-ink surface the CTA uses), so it
                 reads as a single control rather than three separate cards. role=radiogroup
                 because exactly one term is active at a time. */}
+            {/* Billing-term selector — three separate buttons. Clicking one updates the
+                headline price, unit and saving pill above. Each is its own bordered,
+                rounded button rather than segments of one shared track, so they read as
+                three distinct choices. role=radiogroup because exactly one is active. */}
             <div
               role="radiogroup"
               aria-label="Billing term"
-              className="mt-6 inline-flex rounded-pill bg-accent-ink/10 p-1"
+              className="mt-6 grid grid-cols-3 gap-2.5"
             >
               {TIERS.map(tier => {
                 const isActive = tier.id === selected;
@@ -166,23 +170,25 @@ export function Pricing() {
                     role="radio"
                     aria-checked={isActive}
                     onClick={() => setSelected(tier.id)}
-                    className={`inline-flex items-center gap-1.5 rounded-pill px-4 py-2 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink/60 ${
+                    className={`flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-3 text-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink/60 ${
                       isActive
-                        ? 'bg-accent-ink text-accent shadow-sm'
-                        : 'text-accent-ink/70 hover:text-accent-ink'
+                        ? 'border-accent-ink bg-accent-ink text-accent shadow-sm'
+                        : 'border-accent-ink/25 bg-transparent text-accent-ink/80 hover:border-accent-ink/50 hover:text-accent-ink'
                     }`}
                   >
-                    {tier.label}
-                    {/* Saving badge sits inline in the segment, like "Save 17%" in the
-                        reference, so the discount advertises itself without a second row. */}
-                    {saving > 0 && (
+                    <span className="text-[13px] font-semibold leading-none">{tier.label}</span>
+                    {/* Saving badge, so each discounted button advertises its own deal. */}
+                    {saving > 0 ? (
                       <span
-                        className={`rounded-pill px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
+                        className={`rounded-pill px-1.5 py-0.5 text-[9.5px] font-semibold leading-none ${
                           isActive ? 'bg-accent/20 text-accent' : 'bg-accent-ink/15 text-accent-ink'
                         }`}
                       >
                         Save {saving}%
                       </span>
+                    ) : (
+                      // Reserve the badge row so all three buttons stay the same height.
+                      <span className="text-[9.5px] leading-none opacity-0" aria-hidden>—</span>
                     )}
                   </button>
                 );

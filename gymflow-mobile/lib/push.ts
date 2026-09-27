@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
-import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+import notifee, { AndroidImportance, AuthorizationStatus, EventType } from '@notifee/react-native';
 
-import { registerPushToken } from './api/notifications.api';
+import { registerPushToken, unregisterPushToken } from './api/notifications.api';
 import { getToken } from './auth';
 
 /**
@@ -60,17 +60,25 @@ export async function initPushNotifications(): Promise<void> {
     const authToken = await getToken();
     if (!authToken) return;
 
-    const authStatus = await messaging().requestPermission();
-    const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-    if (!enabled) return;
-
+    // Create the channel before anything can arrive on it. Android silently
+    // downgrades notifications addressed to a channel that does not exist yet.
     await ensureChannel();
 
-    // Android requires an explicit runtime prompt on 13+, handled by notifee.
+    /*
+      Permission differs by platform and the two must not be conflated:
+      messaging().requestPermission() is the iOS/APNs authorization flow and
+      returns AUTHORIZED on Android without ever asking for POST_NOTIFICATIONS.
+      Gating Android on that result skipped the only prompt that matters on 13+.
+    */
     if (Platform.OS === 'android') {
-      await notifee.requestPermission();
+      const settings = await notifee.requestPermission();
+      if (settings.authorizationStatus === AuthorizationStatus.DENIED) return;
+    } else {
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      if (!enabled) return;
     }
 
     const fcmToken = await messaging().getToken();
@@ -79,6 +87,19 @@ export async function initPushNotifications(): Promise<void> {
     }
   } catch (e) {
     if (__DEV__) console.warn('[push] init failed', e);
+  }
+}
+
+/**
+ * Drops this device's token server-side. Call on sign-out, BEFORE the auth token
+ * is cleared — the endpoint is authenticated.
+ */
+export async function unregisterPushDevice(): Promise<void> {
+  try {
+    const fcmToken = await messaging().getToken();
+    if (fcmToken) await unregisterPushToken(fcmToken);
+  } catch (e) {
+    if (__DEV__) console.warn('[push] unregister failed', e);
   }
 }
 
@@ -96,7 +117,10 @@ export function attachPushListeners(): () => void {
       title,
       body,
       data: (remoteMessage.data as Record<string, string>) ?? {},
-      android: { channelId: CHANNEL_ID, pressAction: { id: 'default' }, smallIcon: 'ic_launcher' },
+      // No explicit smallIcon: it must resolve as a `drawable`, and this app's
+      // launcher icon only exists in `mipmap`, so naming it risked a missing
+      // resource at display time. Notifee's default handles this correctly.
+      android: { channelId: CHANNEL_ID, pressAction: { id: 'default' } },
     });
   });
 
@@ -119,9 +143,25 @@ export function attachPushListeners(): () => void {
       if (remoteMessage) dispatchDeepLink(remoteMessage.data as Record<string, string> | undefined);
     });
 
+  /*
+    FCM rotates registration tokens (app restore, data clear, its own schedule).
+    Without re-registering, the stored token goes stale and the device silently
+    stops receiving push with no visible error anywhere.
+  */
+  const unsubTokenRefresh = messaging().onTokenRefresh(async newToken => {
+    try {
+      const authToken = await getToken();
+      if (!authToken || !newToken) return;
+      await registerPushToken(newToken, Platform.OS === 'ios' ? 'ios' : 'android');
+    } catch (e) {
+      if (__DEV__) console.warn('[push] token refresh registration failed', e);
+    }
+  });
+
   return () => {
     unsubForeground();
     unsubNotifee();
     unsubOpened();
+    unsubTokenRefresh();
   };
 }

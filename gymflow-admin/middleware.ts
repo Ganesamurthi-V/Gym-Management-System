@@ -2,7 +2,17 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { verifyAdminSession, COOKIE_NAME } from './lib/auth'
 import { generateRequestId, REQUEST_ID_HEADER } from './lib/logger'
 
-const PUBLIC_PATHS = ['/auth', '/api/auth']
+/*
+  Paths that bypass the session/Bearer check here because they authenticate
+  themselves.
+
+  /api/push/dispatch is called by Postgres (pg_net) on every new notification and
+  authenticates with CRON_SECRET via the x-cron-secret header — not an admin
+  session. Without this entry the middleware answered 401 before the handler ever
+  ran, so no push was ever sent. The route itself fails closed when CRON_SECRET is
+  unset or mismatched, so it is not actually public.
+*/
+const PUBLIC_PATHS = ['/auth', '/api/auth', '/api/push/dispatch']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

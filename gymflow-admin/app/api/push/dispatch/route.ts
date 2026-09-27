@@ -110,7 +110,11 @@ export async function POST(req: NextRequest) {
 
     const fcm = getFcm()
     const invalidTokens = new Set<string>()
+    // Distinct FCM error codes seen this run, surfaced in the response so a
+    // "sent: 0, pruned: 0" outcome is diagnosable instead of silent.
+    const failureCodes = new Map<string, number>()
     let sent = 0
+    let failed = 0
 
     // 3. Send each notification to all devices.
     for (const n of batch) {
@@ -129,11 +133,19 @@ export async function POST(req: NextRequest) {
       })
 
       sent += res.successCount
+      failed += res.failureCount
 
-      // Collect tokens FCM says are dead so we can prune them.
       res.responses.forEach((r, i) => {
         if (!r.success) {
-          const code = r.error?.code
+          const code = r.error?.code ?? 'unknown'
+          failureCodes.set(code, (failureCodes.get(code) ?? 0) + 1)
+          // Log the full reason once per failure so it lands in Vercel logs.
+          console.error('[PUSH_DISPATCH] FCM send failed', {
+            code,
+            message: r.error?.message,
+            token: tokens[i]?.slice(0, 12) + '…',
+          })
+          // Only prune tokens FCM says are permanently dead.
           if (
             code === 'messaging/registration-token-not-registered' ||
             code === 'messaging/invalid-registration-token' ||
@@ -155,9 +167,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       sent,
+      failed,
       notifications: batch.length,
       devices: tokens.length,
       pruned: invalidTokens.size,
+      // Only present when something failed; e.g. { "messaging/third-party-auth-error": 1 }
+      ...(failureCodes.size > 0 && { failureCodes: Object.fromEntries(failureCodes) }),
     })
   } catch (error: unknown) {
     // The batch was claimed but not delivered — unclaim so it is retried.

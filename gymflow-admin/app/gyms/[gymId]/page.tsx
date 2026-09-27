@@ -5,6 +5,7 @@ import Link from 'next/link'
 import PasswordResetForm from './PasswordResetForm'
 import GymStatusToggle from './GymStatusToggle'
 import SubscriptionPanel from './SubscriptionPanel'
+import GymFeedbackPanel from './GymFeedbackPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -169,6 +170,9 @@ export default async function GymDetailPage({ params }: { params: Promise<{ gymI
 
       {/* Subscription Management */}
       <SubscriptionPanel gymId={gym.id} gymName={gym.name} />
+
+      {/* Owner Feedback (gym-wise) */}
+      <GymFeedbackPanel gymId={gym.id} />
     </div>
   )
 }

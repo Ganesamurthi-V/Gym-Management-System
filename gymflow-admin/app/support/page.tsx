@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2, Wifi, WifiOff } from 'lucide-react'
+import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2, Wifi, WifiOff, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation'
 
@@ -13,12 +13,29 @@ type Ticket = {
   message: string;
   type: string;
   status: string;
+  rating: number | null;
   created_at: string;
   gyms: { name: string; owner_id: string };
 }
 
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <Star
+          key={n}
+          className={`w-4 h-4 ${n <= rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`}
+        />
+      ))}
+      <span className="ml-1.5 text-xs font-bold text-amber-400">{rating}.0</span>
+    </span>
+  )
+}
+
 export default function SupportPage() {
   const [activeTab, setActiveTab] = useState<'send' | 'tickets'>('send')
+  // Distinguish owner feedback (type='feedback', carries a star rating) from support tickets.
+  const [ticketFilter, setTicketFilter] = useState<'all' | 'tickets' | 'feedback'>('all')
   
   // Existing state
   const [gyms, setGyms] = useState<Gym[]>([])
@@ -292,8 +309,31 @@ export default function SupportPage() {
       </form>
       ) : (
         <div className="space-y-4">
-          {hasResolvedTickets && (
-            <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="inline-flex items-center gap-1 p-1 bg-[#0F172A] border border-[#1f2937] rounded-xl">
+              {([
+                { key: 'all', label: 'All' },
+                { key: 'tickets', label: 'Tickets' },
+                { key: 'feedback', label: 'Feedback' },
+              ] as const).map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setTicketFilter(f.key)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                    ticketFilter === f.key ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                  {f.key === 'feedback' && tickets.some(t => t.type === 'feedback') && (
+                    <span className="ml-1.5 text-[10px] text-amber-400">
+                      {tickets.filter(t => t.type === 'feedback').length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {hasResolvedTickets && (
               <button 
                 onClick={() => handleClear()}
                 className="text-xs font-semibold text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-500/10"
@@ -301,20 +341,29 @@ export default function SupportPage() {
                 <Trash2 className="w-3.5 h-3.5" />
                 Clear Resolved Tickets
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
-          {loadingTickets ? (
+          {(() => {
+            const filteredTickets = tickets.filter(t =>
+              ticketFilter === 'all' ? true :
+              ticketFilter === 'feedback' ? t.type === 'feedback' :
+              t.type !== 'feedback'
+            )
+            return loadingTickets ? (
             <div className="p-8 flex justify-center"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
-          ) : tickets.length === 0 ? (
-            <div className="admin-card p-12 text-center text-slate-500">No support tickets found.</div>
+          ) : filteredTickets.length === 0 ? (
+            <div className="admin-card p-12 text-center text-slate-500">
+              {ticketFilter === 'feedback' ? 'No feedback received yet.' : 'No support tickets found.'}
+            </div>
           ) : (
-            tickets.map(ticket => (
+            filteredTickets.map(ticket => (
               <div key={ticket.id} className="admin-card p-5 group relative overflow-hidden">
                 <div className="flex items-start justify-between gap-4 relative z-10">
                   <div className="flex-1 min-w-0 pr-8">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`px-2 py-0.5 text-xs font-bold rounded-md uppercase tracking-wider ${
+                        ticket.type === 'feedback' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                         ticket.type === 'high_priority' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                         ticket.type === 'bug' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                         'bg-blue-500/10 text-blue-400 border border-blue-500/20'
@@ -326,6 +375,9 @@ export default function SupportPage() {
                       }`}>
                         {ticket.status}
                       </span>
+                      {ticket.type === 'feedback' && ticket.rating != null && (
+                        <StarRating rating={ticket.rating} />
+                      )}
                       <span className="text-xs text-slate-500">
                         {new Date(ticket.created_at).toLocaleString()}
                       </span>
@@ -359,7 +411,8 @@ export default function SupportPage() {
                 </div>
               </div>
             ))
-          )}
+          )
+          })()}
         </div>
       )}
 

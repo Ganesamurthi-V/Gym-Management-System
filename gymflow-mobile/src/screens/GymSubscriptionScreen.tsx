@@ -37,9 +37,11 @@ import {
   updateSubscriptionDates,
   executeDangerAction,
   fetchGymActivityLogs,
+  fetchGymFeedback,
   type SubscriptionDetailResponse,
   type AuditLog,
   type GymActivityEvent,
+  type SupportTicket,
 } from '@/lib/api';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import type { RootStackParamList } from '../navigation/types';
@@ -569,6 +571,24 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   const [logsRefreshing, setLogsRefreshing] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);
 
+  // Gym-wise owner feedback (support_tickets, type='feedback', with a star rating).
+  const [feedback, setFeedback] = useState<SupportTicket[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+
+  const loadFeedback = useCallback(async () => {
+    setFeedbackLoading(true);
+    try {
+      const rows = await fetchGymFeedback(gymId);
+      setFeedback(rows);
+    } catch {
+      // Non-fatal: the feedback card just shows an empty state on failure.
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, [gymId]);
+
+  useEffect(() => { loadFeedback(); }, [loadFeedback]);
+
   const loadActivityLogs = useCallback(async (isRefresh = false) => {
     if (isRefresh) setLogsRefreshing(true); else setLogsLoading(true);
     setLogsError(null);
@@ -774,6 +794,11 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   const renewalHistory = timeline.filter(l =>
     l.new_plan && l.new_plan !== 'trial' && l.action.toLowerCase().includes('activat')
   );
+
+  const ratedFeedback = feedback.filter(f => f.rating != null);
+  const avgRating = ratedFeedback.length
+    ? ratedFeedback.reduce((sum, f) => sum + (f.rating ?? 0), 0) / ratedFeedback.length
+    : null;
 
   // FAB actions
   const fabActions: FABAction[] = [
@@ -1119,6 +1144,47 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 </View>
               ))}
             </View>
+          </View>
+
+          {/* ── OWNER FEEDBACK CARD (gym-wise) ── */}
+          <View style={styles.card}>
+            <View style={styles.sectionHeaderRow}>
+              <Feather name="message-square" size={13} color={D.amber} />
+              <Text style={styles.sectionHeaderText}>OWNER FEEDBACK</Text>
+              {avgRating != null && (
+                <View style={fbStyles.avgWrap}>
+                  <Feather name="star" size={12} color={D.amber} />
+                  <Text style={fbStyles.avgText}>{avgRating.toFixed(1)}</Text>
+                  <Text style={fbStyles.avgCount}>({ratedFeedback.length})</Text>
+                </View>
+              )}
+            </View>
+
+            {feedbackLoading ? (
+              <ActivityIndicator color={D.indigo} size="small" style={{ paddingVertical: 16 }} />
+            ) : feedback.length === 0 ? (
+              <Text style={styles.emptyText}>No feedback submitted by this gym yet.</Text>
+            ) : (
+              feedback.map(f => (
+                <View key={f.id} style={fbStyles.item}>
+                  <View style={fbStyles.itemHeader}>
+                    <View style={fbStyles.stars}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <Feather
+                          key={n}
+                          name="star"
+                          size={13}
+                          color={f.rating != null && n <= f.rating ? D.amber : D.textMuted}
+                        />
+                      ))}
+                    </View>
+                    <Text style={fbStyles.date}>{fmtDate(f.created_at)}</Text>
+                  </View>
+                  {f.subject ? <Text style={fbStyles.subject}>{f.subject}</Text> : null}
+                  <Text style={fbStyles.message}>{f.message}</Text>
+                </View>
+              ))
+            )}
           </View>
         </ScrollView>
       )}
@@ -1713,4 +1779,21 @@ const logsStyles = StyleSheet.create({
   summaryLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   summaryLabel: { fontSize: 13, color: D.text, fontWeight: '600' },
   summaryCount: { fontSize: 20, fontWeight: '800' },
+});
+
+// ─── Feedback Card Styles ──────────────────────────────────────────────────────
+
+const fbStyles = StyleSheet.create({
+  avgWrap: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 'auto' },
+  avgText: { fontSize: 13, fontWeight: '800', color: D.amber },
+  avgCount: { fontSize: 11, color: D.textMuted },
+  item: {
+    backgroundColor: D.input, borderRadius: 12,
+    borderWidth: 1, borderColor: D.cardBorder, padding: 12, gap: 6,
+  },
+  itemHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stars: { flexDirection: 'row', gap: 2 },
+  date: { fontSize: 11, color: D.textMuted },
+  subject: { fontSize: 13, fontWeight: '700', color: D.text },
+  message: { fontSize: 13, color: D.textSub, lineHeight: 19 },
 });

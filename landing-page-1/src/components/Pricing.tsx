@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useReveal } from '../lib/useReveal';
+import RubberSegment from './ui/RubberSegment';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -18,13 +19,17 @@ const APP_URL = 'https://app.gymflow.sbs';
 
    `months` drives the savings maths below, so the percentages can never drift from
    the prices: the saving is measured against paying the 1-month rate for that many
-   months, not typed in by hand. Only the real three tiers are here — there is no
-   "quarterly" plan in the product, and offering one the checkout cannot fulfil would
-   break activation. */
+   months, not typed in by hand.
+
+   Labels are the word forms (Monthly / Half-yearly / Yearly). The middle tier is
+   deliberately NOT called "Quarterly": it is a 6-month plan (₹6,999), so "Quarterly"
+   would misdescribe what the customer is charged for. Only the real three tiers are
+   here — there is no 3-month plan in the product, and offering one the checkout
+   cannot fulfil would break activation. */
 const TIERS = [
-  { id: 'monthly', label: '1 month', price: 1999, months: 1, unit: '/ month', tagline: 'Billed monthly.' },
-  { id: 'half_yearly', label: '6 months', price: 6999, months: 6, unit: '/ 6 months', tagline: 'Billed once every 6 months.' },
-  { id: 'yearly', label: '1 year', price: 12999, months: 12, unit: '/ year', tagline: 'Billed once a year.' },
+  { id: 'monthly', label: 'Monthly', price: 1999, months: 1, unit: '/ month', tagline: 'Billed monthly.' },
+  { id: 'half_yearly', label: 'Half-yearly', price: 6999, months: 6, unit: '/ 6 months', tagline: 'Billed once every 6 months.' },
+  { id: 'yearly', label: 'Yearly', price: 12999, months: 12, unit: '/ year', tagline: 'Billed once a year.' },
 ] as const;
 
 type TierId = (typeof TIERS)[number]['id'];
@@ -77,9 +82,10 @@ const ACTIVATION_STEPS = [
 export function Pricing() {
   const scope = useReveal<HTMLElement>({ stagger: 0.09 });
 
-  // The selected billing term. Defaults to yearly, the best-value plan, so the card
-  // opens on the biggest saving; the visitor still sees all three and can switch.
-  const [selected, setSelected] = useState<TierId>('yearly');
+  // The selected billing term. Opens on Monthly so the card first shows the lowest
+  // entry price; the visitor sees all three terms and can switch to the longer,
+  // cheaper-per-month plans.
+  const [selected, setSelected] = useState<TierId>('monthly');
   const activeTier = TIERS.find(t => t.id === selected) ?? TIERS[0];
   const activeSaving = savingPercent(activeTier);
 
@@ -109,8 +115,15 @@ export function Pricing() {
             eight short lines across 1240px and left it looking mostly empty. */}
         <div className="mx-auto mt-12 grid max-w-[1040px] gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-5">
           {/* Plan card — filled accent, because this is the one thing on the page
-              a visitor is meant to act on. */}
-          <div className="reveal card-accent relative flex flex-col overflow-hidden p-6 md:p-8">
+              a visitor is meant to act on.
+
+              No `reveal` on this card, deliberately: it holds the RubberSegment, whose
+              thumb geometry is measured on mount. GSAP's reveal starts the card faded
+              and mid-transform, and measuring the segment in that state left the thumb
+              mis-clipped until an interaction. Rendering the card in its final layout
+              from first paint removes that whole timing race; the section heading above
+              still reveals, so the entrance still reads as animated. */}
+          <div className="card-accent relative flex flex-col overflow-hidden p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">
                 GymFlow Pro
@@ -146,53 +159,43 @@ export function Pricing() {
               module.
             </p>
 
-            {/* Billing-term toggle — a segmented pill switch. Clicking a segment updates
-                the headline price, unit and saving pill above. One rounded track with the
-                selected segment filled (the same accent-ink surface the CTA uses), so it
-                reads as a single control rather than three separate cards. role=radiogroup
-                because exactly one term is active at a time. */}
-            {/* Billing-term selector — three separate buttons. Clicking one updates the
-                headline price, unit and saving pill above. Each is its own bordered,
-                rounded button rather than segments of one shared track, so they read as
-                three distinct choices. role=radiogroup because exactly one is active. */}
-            <div
-              role="radiogroup"
-              aria-label="Billing term"
-              className="mt-6 grid grid-cols-3 gap-2.5"
-            >
-              {TIERS.map(tier => {
-                const isActive = tier.id === selected;
-                const saving = savingPercent(tier);
-                return (
-                  <button
-                    key={tier.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isActive}
-                    onClick={() => setSelected(tier.id)}
-                    className={`flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-3 text-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink/60 ${
-                      isActive
-                        ? 'border-accent-ink bg-accent-ink text-accent shadow-sm'
-                        : 'border-accent-ink/25 bg-transparent text-accent-ink/80 hover:border-accent-ink/50 hover:text-accent-ink'
-                    }`}
-                  >
-                    <span className="text-[13px] font-semibold leading-none">{tier.label}</span>
-                    {/* Saving badge, so each discounted button advertises its own deal. */}
-                    {saving > 0 ? (
-                      <span
-                        className={`rounded-pill px-1.5 py-0.5 text-[9.5px] font-semibold leading-none ${
-                          isActive ? 'bg-accent/20 text-accent' : 'bg-accent-ink/15 text-accent-ink'
-                        }`}
-                      >
-                        Save {saving}%
+            {/* Billing-term selector — React Bits' RubberSegment: a draggable segmented
+                control whose thumb stretches and springs between terms. Selecting a term
+                (click, drag-and-release, or arrow keys) updates the headline price, unit
+                and saving pill above via onChange -> setSelected.
+
+                Themed to the blue plan card: the thumb is the white accent-ink surface the
+                CTA uses, its text is the card's blue accent, and the resting track/text are
+                translucent accent-ink so unselected terms read as quiet-on-blue. Each label
+                carries its own "Save X%" badge so the discounts stay visible. */}
+            <div className="mt-6">
+              <RubberSegment
+                aria-label="Billing term"
+                value={selected}
+                onChange={next => setSelected(next as TierId)}
+                size="lg"
+                radius={16}
+                trackColor="color-mix(in srgb, var(--accent-ink) 12%, transparent)"
+                thumbColor="var(--accent-ink)"
+                textColor="var(--accent-ink)"
+                activeTextColor="var(--accent)"
+                items={TIERS.map(tier => {
+                  const saving = savingPercent(tier);
+                  return {
+                    value: tier.id,
+                    label: (
+                      <span className="flex items-center gap-1.5">
+                        <span className="font-semibold">{tier.label}</span>
+                        {saving > 0 && (
+                          <span className="rounded-pill bg-current/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
+                            Save {saving}%
+                          </span>
+                        )}
                       </span>
-                    ) : (
-                      // Reserve the badge row so all three buttons stay the same height.
-                      <span className="text-[9.5px] leading-none opacity-0" aria-hidden>—</span>
-                    )}
-                  </button>
-                );
-              })}
+                    ),
+                  };
+                })}
+              />
             </div>
 
             <div className="my-6 h-px bg-accent-ink/15" />

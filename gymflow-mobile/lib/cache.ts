@@ -166,4 +166,5 @@ export const CacheKeys = {
   tickets: 'tickets',
   logs: 'logs',
   subscription: (id: string) => `subscription:${id}`,
+  notifications: 'notifications',
 } as const;

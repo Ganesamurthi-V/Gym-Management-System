@@ -6,3 +6,4 @@ export * from './dashboard.api';
 export * from './support.api';
 export * from './logs.api';
 export * from './subscription.api';
+export * from './notifications.api';

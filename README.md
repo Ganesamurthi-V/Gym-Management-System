@@ -13,7 +13,9 @@
 | **Framework** | Next.js 15 (App Router, React Server Components) |
 | **Language** | TypeScript 5 (strict mode) |
 | **Styling** | Tailwind CSS 3, Sora font (Google Fonts) |
-| **Backend** | Supabase (PostgreSQL 15, Auth, Row Level Security, Realtime) |
+| **Backend** | Supabase (PostgreSQL 15, Auth, Row Level Security, Realtime, `pg_net`) |
+| **Admin Mobile** | React Native 0.75 (bare, no Expo) + React Navigation 6 |
+| **Push** | Firebase Cloud Messaging (`@react-native-firebase`) + Notifee, `firebase-admin` server-side |
 | **Caching** | Upstash Redis (Serverless HTTP/REST caching) |
 | **Queue** | Upstash QStash (throttled WhatsApp send queue) |
 | **WhatsApp** | Meta Cloud API via reverse proxy (`graph.gymflow.sbs`) |
@@ -65,9 +67,10 @@
 | **UPI Payments** | Merchant QR upload/scan → auto-parse UPI ID → generate fresh payment QR per transaction. |
 | **WhatsApp Automation** | 6 templates: welcome, renewal, expiry reminder, expired, due reminder, birthday wishes. Throttled queue. |
 | **Subscription System** | Trial → payment proof upload → admin approval → active. Realtime status updates. |
-| **Support System** | In-app messaging + support tickets. Real-time via Supabase Broadcast. |
+| **Support & Feedback** | In-app messaging, support tickets, and star-rated owner feedback. Real-time via Supabase Broadcast. |
 | **Account Settings** | Edit gym name/info, change password, UPI setup, danger zone. |
-| **Super Admin Panel** | Separate app (`/gymflow-admin`): dashboard, gyms, subscriptions, support, errors, logs. |
+| **Super Admin Panel** | Separate app (`/gymflow-admin`): dashboard, gyms, subscriptions, support, feedback, errors, logs. |
+| **Admin Mobile App** | Separate React Native app (`/gymflow-mobile`): same admin API, plus lock-screen push notifications. |
 
 ---
 
@@ -106,7 +109,85 @@ Supports all UPI apps: Google Pay, PhonePe, Paytm, BHIM, Amazon Pay, Cred, and a
 
 ---
 
+## Owner Feedback
+
+Feedback shares the `support_tickets` table with tickets rather than living in its own
+table, so the admin sees tickets and feedback in one queue. Two columns carry it:
+`type = 'feedback'` and a nullable `rating SMALLINT` bounded to 1–5.
+
+| Side | Surface |
+|------|---------|
+| **Owner app** | Support modal, two tabs — "Contact Support" and "Give Feedback" (star rating + topic chips + comment) |
+| **Admin web** | `/support` list with an All / Tickets / Feedback filter and inline star display |
+| **Admin web (per gym)** | `GymFeedbackPanel` on `/gyms/[gymId]` — that gym's feedback with an average rating |
+| **Admin mobile** | Support tab shows stars on feedback cards; gym detail screen has an Owner Feedback card |
+
+Both admin clients read one shared endpoint, `GET /api/support/tickets`, which accepts
+optional `?gymId=` and `?type=` filters — so the same route serves the global queue and
+the per-gym ("gym-wise") view.
+
+---
+
+## Admin Push Notifications
+
+Lock-screen alerts for the admin mobile app, so events are seen even when the app is
+closed. There is **no external cron** — Postgres calls the dispatcher directly.
+
+```
+business event (ticket / feedback / payment proof / new gym)
+      │  AFTER INSERT trigger
+      ▼
+notifications row ──────────────► admin:notifications broadcast (in-app bell)
+      │  AFTER INSERT trigger → pg_net
+      ▼
+POST /api/push/dispatch  (x-cron-secret)
+      │  claims unpushed rows atomically, sends via firebase-admin
+      ▼
+FCM ──► device lock screen        (tokens from device_push_tokens)
+```
+
+### Notified events
+
+| `type` | Fires when |
+|--------|-----------|
+| `ticket` | A support ticket is created |
+| `feedback` | Owner feedback is submitted (rating included in the title) |
+| `payment_request` | A payment proof is submitted for review (`status = 'pending'` only) |
+| `new_gym` | A new gym registers |
+
+### Design notes
+
+- **Instant, cron-free**: a `pg_net` `AFTER INSERT` trigger on `notifications` POSTs to
+  `/api/push/dispatch`. Delivery is immediate and needs no Vercel Pro cron.
+- **No duplicate alerts**: the dispatcher *claims* rows with
+  `UPDATE … SET pushed_at = now() WHERE pushed_at IS NULL AND id IN (…) RETURNING`.
+  Postgres re-checks the predicate after the row lock, so concurrent dispatches (the
+  trigger fires once per row) can never send the same notification twice. A failed send
+  releases the batch for retry.
+- **Trigger is `AFTER INSERT` only**, so the claim `UPDATE` cannot re-trigger a dispatch.
+- **Secrets stay out of the function body**: the dispatch URL and shared secret live in the
+  private `app_config` table, read by a `SECURITY DEFINER` trigger.
+- **Never blocks business writes**: every notification trigger wraps its work in
+  `BEGIN … EXCEPTION WHEN OTHERS` so a logging or network failure cannot roll back the
+  ticket/payment/gym insert that caused it.
+- **Token hygiene**: tokens re-register on FCM rotation (`onTokenRefresh`), are deleted on
+  sign-out (so a signed-out device stops receiving alerts), and are pruned automatically
+  when FCM reports them unregistered.
+- **App-state handling**: background/quit notifications are rendered by the OS via the
+  `admin-alerts` channel; foreground messages are drawn by Notifee. Taps from any state
+  deep-link to the relevant gym.
+
+### Middleware exception
+
+`/api/push/dispatch` is listed in the admin middleware's `PUBLIC_PATHS` because Postgres
+authenticates with the `x-cron-secret` header, not an admin session. It is **not** actually
+public — the route fails closed when `CRON_SECRET` is unset or mismatched.
+
+---
+
 ## Supabase Realtime
+
+### Owner-facing channels
 
 | Channel | Purpose |
 |---------|---------|
@@ -116,6 +197,26 @@ Supports all UPI apps: Google Pay, PhonePe, Paytm, BHIM, Amazon Pay, Cred, and a
 | `admin_subscription_requests_realtime` | New subscription requests to admin panel |
 | `admin_dashboard_realtime` | Live stats updates on admin dashboard |
 | `admin_support_queue_realtime` | New support tickets to admin panel |
+
+### Admin invalidation hints (`admin:*`)
+
+The admin web and mobile clients authenticate with their own app session, not Supabase
+Auth, so they **never** consume row data over Realtime. Postgres `AFTER` triggers emit
+**payload-free** public broadcast hints; each client debounces them and re-fetches
+through the authenticated admin API. Broadcast payloads are never trusted as data.
+
+| Channel | Emitted on changes to |
+|---------|----------------------|
+| `admin:gyms` | `gyms`, `subscription_requests` |
+| `admin:subscriptions` | `gyms`, `subscription_requests` |
+| `admin:support` | `support_tickets`, `admin_messages` |
+| `admin:activity` | `subscription_audit_logs`, `whatsapp_*`, new `members` |
+| `admin:notifications` | `notifications` (drives the in-app bell + unread badge) |
+
+> React Native note: Hermes lacks `TextEncoder`/`TextDecoder`, which
+> `@supabase/realtime-js` needs to encode broadcast frames. `gymflow-mobile/polyfills.js`
+> installs them and **must** be the first import in `index.js`, before any Supabase module
+> is evaluated.
 
 ---
 
@@ -150,16 +251,43 @@ gymflow/
 │       ├── cron/                     # Daily WhatsApp + subscription expiry crons
 │       ├── health/                   # Health check
 │       └── onboarding/              # Complete onboarding
-├── gymflow-admin/                    # Super Admin Panel
+├── gymflow-admin/                    # Super Admin Panel (Next.js)
 │   ├── app/
 │   │   ├── dashboard/               # Stats, Sentry errors, recent messages
-│   │   ├── gyms/                    # Gym list + detail (subscription panel)
+│   │   ├── gyms/[gymId]/            # Gym detail: SubscriptionPanel + GymFeedbackPanel
 │   │   ├── subscriptions/           # All pending payment requests
-│   │   ├── support/                 # Send messages, resolve tickets (realtime)
+│   │   ├── support/                 # Send messages, resolve tickets, feedback filter
 │   │   ├── errors/                  # Sentry error viewer
-│   │   └── logs/                    # Event logs
+│   │   ├── logs/                    # Event logs
+│   │   └── api/
+│   │       ├── support/tickets/     # Shared list (?gymId= / ?type= filters) + resolve
+│   │       ├── notifications/       # GET list + unread count, PATCH mark read
+│   │       └── push/
+│   │           ├── register-token/  # POST register device, DELETE on sign-out
+│   │           └── dispatch/        # Called by pg_net; sends via FCM (CRON_SECRET)
 │   ├── components/                  # Sidebar, error components
-│   └── lib/                         # Auth (JWT), supabase-admin, supabase-browser (realtime)
+│   ├── middleware.ts                # Session/Bearer guard + PUBLIC_PATHS allowlist
+│   └── lib/                         # Auth (JWT), supabase-admin, firebase-admin, logger
+├── gymflow-mobile/                   # Admin Mobile App (bare React Native 0.75)
+│   ├── index.js                     # Polyfills first, then FCM background handler
+│   ├── polyfills.js                 # URL + TextEncoder/TextDecoder for Hermes
+│   ├── src/
+│   │   ├── App.tsx                  # Navigation, push init, deep-link routing
+│   │   ├── navigation/types.ts      # RootStack + Tab param lists
+│   │   └── screens/
+│   │       ├── tabs/                # Dashboard, Gyms, Support, Logs
+│   │       ├── GymDetailScreen.tsx
+│   │       ├── GymSubscriptionScreen.tsx   # Incl. Owner Feedback card
+│   │       └── NotificationsScreen.tsx     # In-app notification centre
+│   ├── components/                  # TicketCard, NotificationBell, Badge, inputs
+│   ├── lib/
+│   │   ├── api/                     # client (axios+Bearer), notifications.api, support.api, …
+│   │   ├── push.ts                  # FCM modular API, permissions, token lifecycle
+│   │   ├── cache.ts                 # Stale-while-revalidate + AsyncStorage
+│   │   ├── use-cached-query.ts      # Cache-first screen data
+│   │   └── use-realtime-invalidation.ts    # admin:* broadcast hints
+│   ├── constants/theme.ts
+│   └── android/                     # google-services.json goes in android/app/ (gitignored)
 ├── components/
 │   ├── layout/                      # ShellGuard, NavClient, AccountMenu, TrialBanner
 │   ├── upi/                         # UPIPaymentModal, UPIQRSetup
@@ -246,6 +374,66 @@ vercel
 - Add all env vars in Vercel dashboard
 - Set Supabase Auth → Site URL: `https://app.gymflow.sbs`
 
+### 5. Admin Mobile App + Push Notifications
+
+**a. Firebase project**
+- Create a project in the [Firebase console](https://console.firebase.google.com)
+- Add an **Android app** with package name `com.gymflowAdminMobile`
+- Download `google-services.json` → place in `gymflow-mobile/android/app/`
+  (gitignored — it is client config, but keep it out of the repo and
+  [restrict the API key](https://cloud.google.com/docs/authentication/api-keys#restricting_api_keys)
+  to that package + SHA-1)
+- For iOS: add an iOS app and upload an APNs Auth Key (requires a paid Apple Developer account)
+
+**b. Server credentials** — Firebase Console → Project Settings → Service Accounts →
+Generate new private key. From that JSON, set in the `gymflow-admin` environment:
+
+| Var | Notes |
+|-----|-------|
+| `FIREBASE_PROJECT_ID` | from `project_id` |
+| `FIREBASE_CLIENT_EMAIL` | from `client_email` |
+| `FIREBASE_PRIVATE_KEY` | from `private_key` — **one line, double-quoted, keeping the literal `\n` escapes** |
+| `CRON_SECRET` | any 32-byte hex string; authorizes `/api/push/dispatch` |
+
+Generate `CRON_SECRET` with:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+**c. Point the DB at the dispatcher.** The migration seeds a placeholder, so after
+running migrations set the shared secret (must equal `CRON_SECRET` above):
+```sql
+update app_config set value = '<YOUR_CRON_SECRET>' where key = 'push_cron_secret';
+
+-- only if the admin app is not at admin.gymflow.sbs
+update app_config set value = 'https://YOUR-ADMIN-HOST/api/push/dispatch'
+where key = 'push_dispatch_url';
+```
+
+**d. Build the app.** Native modules were added, so a JS reload is not enough:
+```bash
+cd gymflow-mobile
+npm install
+npx react-native run-android        # iOS: cd ios && pod install && npx react-native run-ios
+```
+
+### 6. Verifying push end to end
+
+Test bottom-up so a failure localises to one layer:
+
+| Layer | Check | Healthy result |
+|-------|-------|----------------|
+| 1. Device registered | `select * from device_push_tokens;` | At least one row after signing in |
+| 2. Dispatcher reachable | `curl -X POST <host>/api/push/dispatch -H "x-cron-secret: <secret>"` | JSON with `sent`/`notifications` (not `Unauthorized` or `push_not_configured`) |
+| 3. Trigger fires | `insert into notifications (type, title, body) values ('new_gym','Test','Pipeline works');` | Lock-screen alert within ~2s (background the app first) |
+| 4. pg_net result | `select status_code, error_msg from net._http_response order by created desc limit 5;` | `status_code = 200` |
+| 5. Row consumed | `select title, pushed_at from notifications order by created_at desc limit 5;` | `pushed_at` is non-null |
+| 6. Real event | Submit feedback or a ticket from the owner app | Notification arrives automatically |
+
+Shortcut: to test the device/native side alone, send a test message from
+**Firebase Console → Cloud Messaging** using a token from `device_push_tokens`. If that
+arrives, any remaining problem is in the DB → dispatch chain (layers 2–4).
+
 ---
 
 ## Database Schema
@@ -287,8 +475,20 @@ All tables use **Row Level Security** scoped to `gym_id → owner_id = auth.uid(
 
 | Table | Purpose |
 |-------|---------|
-| `support_tickets` | Gym owner tickets |
+| `support_tickets` | Gym owner tickets **and** feedback — `type IN ('query','issue','bug','high_priority','feedback')`, plus nullable `rating SMALLINT` (1–5) for feedback rows |
 | `admin_messages` | Admin-to-gym messages |
+
+### Admin Notification Tables
+
+These are written only by DB triggers and read only through the service-role admin API.
+They have **RLS enabled with zero policies**, which denies `anon`/`authenticated` outright
+while the service role (used by the admin API) bypasses RLS.
+
+| Table | Purpose |
+|-------|---------|
+| `notifications` | Admin event log (`ticket`/`feedback`/`payment_request`/`new_gym`). `is_read` drives the bell badge; `pushed_at` is the push dispatch watermark |
+| `device_push_tokens` | FCM registration tokens, keyed per **device** (admin auth has no per-user identity) |
+| `app_config` | Private key/value store for the push dispatch URL + `CRON_SECRET` used by the `pg_net` trigger |
 
 ---
 
@@ -298,6 +498,11 @@ All tables use **Row Level Security** scoped to `gym_id → owner_id = auth.uid(
 |----------|-------|---------|
 | Daily 03:30 UTC | `/api/cron/whatsapp` | Process all scheduled WhatsApp reminders |
 | Daily 00:00 UTC | `/api/cron/subscription` | Expire lapsed trials and subscriptions |
+
+> **Push dispatch is intentionally not a cron.** `/api/push/dispatch` is invoked by a
+> `pg_net` trigger the moment a notification row is created. A per-minute Vercel cron would
+> require the Pro plan and still add up to 60s of latency; the trigger is both free and
+> instant. Do not add a cron entry for it.
 
 ---
 
@@ -312,27 +517,44 @@ All tables use **Row Level Security** scoped to `gym_id → owner_id = auth.uid(
 
 ---
 
-A VAPID key (Voluntary Application Server Identification) is used for Web Push Notifications. It lets your server send push notifications to browsers/PWAs without needing a third-party push service account.
+## Two Separate Push Systems
 
-It's a public/private key pair:
+The project has two unrelated push mechanisms. Keep them distinct — they use different
+keys, different transports, and different audiences.
 
-NEXT_PUBLIC_VAPID_PUBLIC_KEY — shared with the browser so it can subscribe to push
-VAPID_PRIVATE_KEY — stays on your server to sign outgoing push messages
-How to generate it:
+| | Member PWA (Web Push) | Admin Mobile (FCM) |
+|---|---|---|
+| **Audience** | Gym members in a browser / installed PWA | Super admins on the React Native app |
+| **Transport** | Web Push protocol via the browser's push service | Firebase Cloud Messaging |
+| **Keys** | VAPID key pair | Firebase service account + `google-services.json` |
+| **Sender** | Main app | `gymflow-admin` (`/api/push/dispatch`) |
 
-Run this in any terminal where Node.js is installed:
+### VAPID keys (member PWA)
 
-bash
+A VAPID key (Voluntary Application Server Identification) lets the server send Web Push
+notifications to browsers and PWAs without a third-party push service account. It is a
+public/private pair:
 
+| Var | Purpose |
+|-----|---------|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Shared with the browser so it can subscribe to push |
+| `VAPID_PRIVATE_KEY` | Stays on the server to sign outgoing push messages |
+
+Generate a pair with:
+```bash
 npx web-push generate-vapid-keys
-It will output something like:
+```
 
+### Firebase credentials (admin mobile)
 
-Public Key:
-BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkGs-GDq6QAa...
+See [Setup step 5](#5-admin-mobile-app--push-notifications) — `FIREBASE_PROJECT_ID`,
+`FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, and `CRON_SECRET`.
 
-Private Key:
-UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKc-ls
+> **Never commit either key set.** `.env.local` and `google-services.json` are gitignored.
+> If a service-account key is ever exposed, rotate it in the Firebase console immediately —
+> revoking the old key is the only reliable fix.
+
+---
 
 ## License
 

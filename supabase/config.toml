@@ -231,7 +231,9 @@ max_frequency = "1s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+# Set to the Supabase minimum of 60s for the destructive account-deletion OTP —
+# a short window limits how long a leaked code is usable.
+otp_expiry = 60
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]

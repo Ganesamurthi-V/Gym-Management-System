@@ -7,19 +7,37 @@ import {
   Smartphone,
   Upload,
 } from 'lucide-react';
+import { useState } from 'react';
 import { useReveal } from '../lib/useReveal';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
 /* The three billing tiers a gym owner can buy, matching the in-app subscription
-   (platform_settings in the product DB). The marketing page leads with the monthly
-   figure and shows the longer terms as the saving, so these must stay in step with
-   the numbers rendered in app/owner/subscription — they are the same product. */
+   (platform_settings in the product DB). These must stay in step with the numbers
+   rendered in app/owner/subscription — they are the same product.
+
+   `months` drives the savings maths below, so the percentages can never drift from
+   the prices: the saving is measured against paying the 1-month rate for that many
+   months, not typed in by hand. Only the real three tiers are here — there is no
+   "quarterly" plan in the product, and offering one the checkout cannot fulfil would
+   break activation. */
 const TIERS = [
-  { label: '1 month', price: 1999, note: 'billed monthly', highlight: false },
-  { label: '6 months', price: 6999, note: 'save vs monthly', highlight: true },
-  { label: '1 year', price: 12999, note: 'best value', highlight: false },
+  { id: 'monthly', label: '1 month', price: 1999, months: 1, unit: '/ month', tagline: 'Billed monthly.' },
+  { id: 'half_yearly', label: '6 months', price: 6999, months: 6, unit: '/ 6 months', tagline: 'Billed once every 6 months.' },
+  { id: 'yearly', label: '1 year', price: 12999, months: 12, unit: '/ year', tagline: 'Billed once a year.' },
 ] as const;
+
+type TierId = (typeof TIERS)[number]['id'];
+
+/** The 1-month price is the reference rate every saving is measured against. */
+const MONTHLY_RATE = TIERS[0].price;
+
+/** Whole-percent saving vs paying the monthly rate for the same span. 0 for monthly. */
+function savingPercent(tier: (typeof TIERS)[number]): number {
+  const atMonthlyRate = MONTHLY_RATE * tier.months;
+  if (atMonthlyRate <= tier.price) return 0;
+  return Math.round((1 - tier.price / atMonthlyRate) * 100);
+}
 
 /* One line per module that actually ships. "Smart area detection" used to sit in
    this list and has been removed everywhere it appeared, including the JSON-LD
@@ -59,6 +77,12 @@ const ACTIVATION_STEPS = [
 export function Pricing() {
   const scope = useReveal<HTMLElement>({ stagger: 0.09 });
 
+  // The selected billing term. Defaults to yearly, the best-value plan, so the card
+  // opens on the biggest saving; the visitor still sees all three and can switch.
+  const [selected, setSelected] = useState<TierId>('yearly');
+  const activeTier = TIERS.find(t => t.id === selected) ?? TIERS[0];
+  const activeSaving = savingPercent(activeTier);
+
   return (
     <section
       id="pricing"
@@ -97,43 +121,72 @@ export function Pricing() {
               </span>
             </div>
 
-            <div className="mt-6 flex items-end gap-2">
-              {/* Leads with the monthly figure. Down from clamp(56px, 8vw, 88px): at
-                  88px the price was taller than the section heading and set the whole
-                  card's scale; it still needs to dominate the card, not the page. */}
+            {/* Reflects the selected tier below. Down from clamp(56px, 8vw, 88px): at
+                88px the price was taller than the section heading and set the whole
+                card's scale; it still needs to dominate the card, not the page. */}
+            <div className="mt-6 flex flex-wrap items-end gap-x-2 gap-y-2">
               <span
                 className="font-medium leading-none tracking-[-0.04em] text-accent-ink"
                 style={{ fontSize: 'clamp(42px, 5.5vw, 64px)' }}
               >
-                ₹1,999
+                ₹{activeTier.price.toLocaleString('en-IN')}
               </span>
-              <span className="pb-1.5 text-[14px] text-accent-ink/80">/ month</span>
+              <span className="pb-1.5 text-[14px] text-accent-ink/80">{activeTier.unit}</span>
+              {/* Saving pill, shown only when there is a real saving (not on monthly).
+                  Reserves its row space either way so switching plans does not nudge the
+                  price line up and down. */}
+              {activeSaving > 0 && (
+                <span className="mb-1 ml-1 inline-flex items-center gap-1 rounded-pill bg-accent-ink px-2.5 py-1 text-[11px] font-semibold text-accent">
+                  Save {activeSaving}%
+                </span>
+              )}
             </div>
             <p className="mt-3 text-[13px] text-accent-ink/80">
-              Unlimited members. Unlimited WhatsApp messages. Every module, on every
-              account.
+              {activeTier.tagline} Unlimited members, unlimited WhatsApp messages, every
+              module.
             </p>
 
-            {/* The longer terms, as the saving. A three-up strip rather than three
-                separate cards so the plan card keeps its single-column rhythm beside
-                the activation card next to it. */}
-            <div className="mt-6 grid grid-cols-3 gap-2">
-              {TIERS.map(tier => (
-                <div
-                  key={tier.label}
-                  className={`rounded-2xl border px-3 py-3 text-center ${
-                    tier.highlight
-                      ? 'border-accent-ink/40 bg-accent-ink/10'
-                      : 'border-accent-ink/15 bg-accent-ink/[0.03]'
-                  }`}
-                >
-                  <p className="text-[11px] font-medium text-accent-ink/70">{tier.label}</p>
-                  <p className="mt-1 text-[17px] font-semibold leading-none text-accent-ink">
-                    ₹{tier.price.toLocaleString('en-IN')}
-                  </p>
-                  <p className="mt-1 text-[10px] text-accent-ink/60">{tier.note}</p>
-                </div>
-              ))}
+            {/* Billing-term toggle — a segmented pill switch. Clicking a segment updates
+                the headline price, unit and saving pill above. One rounded track with the
+                selected segment filled (the same accent-ink surface the CTA uses), so it
+                reads as a single control rather than three separate cards. role=radiogroup
+                because exactly one term is active at a time. */}
+            <div
+              role="radiogroup"
+              aria-label="Billing term"
+              className="mt-6 inline-flex rounded-pill bg-accent-ink/10 p-1"
+            >
+              {TIERS.map(tier => {
+                const isActive = tier.id === selected;
+                const saving = savingPercent(tier);
+                return (
+                  <button
+                    key={tier.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    onClick={() => setSelected(tier.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-pill px-4 py-2 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink/60 ${
+                      isActive
+                        ? 'bg-accent-ink text-accent shadow-sm'
+                        : 'text-accent-ink/70 hover:text-accent-ink'
+                    }`}
+                  >
+                    {tier.label}
+                    {/* Saving badge sits inline in the segment, like "Save 17%" in the
+                        reference, so the discount advertises itself without a second row. */}
+                    {saving > 0 && (
+                      <span
+                        className={`rounded-pill px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
+                          isActive ? 'bg-accent/20 text-accent' : 'bg-accent-ink/15 text-accent-ink'
+                        }`}
+                      >
+                        Save {saving}%
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="my-6 h-px bg-accent-ink/15" />
@@ -164,19 +217,13 @@ export function Pricing() {
               btn-lg stays: on mobile these are full-width, and the larger tap target
               is the reason index.css scopes its shrink to the hero only.
             */}
-            <div className="mt-auto flex flex-col gap-3 pt-7 sm:flex-row">
+            <div className="mt-auto flex flex-col gap-3 pt-7">
               <a
                 href={APP_URL}
-                className="btn btn-lg flex-1 border border-accent-ink bg-accent-ink text-accent hover:bg-accent-ink/90"
+                className="btn btn-lg w-full border border-accent-ink bg-accent-ink text-accent hover:bg-accent-ink/90"
               >
                 Start free trial
                 <ArrowRight className="h-4 w-4" />
-              </a>
-              <a
-                href={APP_URL}
-                className="btn btn-lg flex-1 border border-accent-ink/25 bg-transparent text-accent-ink hover:bg-accent-ink/10"
-              >
-                See plans
               </a>
             </div>
 

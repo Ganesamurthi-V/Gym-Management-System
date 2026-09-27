@@ -10,7 +10,10 @@ import { TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { isAuthenticated, clearToken } from '@/lib/auth';
 import { invalidate } from '@/lib/cache';
-import { initPushNotifications, attachPushListeners, setNotificationDeepLinkHandler } from '@/lib/push';
+import {
+  initPushNotifications, attachPushListeners, setNotificationDeepLinkHandler,
+  unregisterPushDevice,
+} from '@/lib/push';
 import { NotificationBell } from '@/components/NotificationBell';
 
 import LoginScreen from './screens/LoginScreen';
@@ -120,7 +123,10 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
 export default function App() {
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
-  const listenersAttached = useRef(false);
+
+  // Read inside the deep-link retry loop, which outlives any single render.
+  const authedRef = useRef(false);
+  authedRef.current = authed;
 
   useEffect(() => {
     isAuthenticated().then(result => {
@@ -129,21 +135,38 @@ export default function App() {
     });
   }, []);
 
-  // Push: attach OS listeners once, and route a notification tap to the gym it
-  // refers to. Deep-link handler uses the navigation ref so it works from a cold
-  // start (the handler replays a pending tap once navigation is ready).
-  useEffect(() => {
-    if (listenersAttached.current) return;
-    listenersAttached.current = true;
+  /*
+    Push: attach OS listeners once and route a notification tap to the gym it
+    refers to.
 
+    A tap that cold-starts the app resolves through getInitialNotification while
+    React is still mounting, so the navigator is not ready and the auth check has
+    not finished. Navigating immediately silently dropped those taps — the app just
+    opened on the dashboard. So retry briefly until navigation is ready AND the
+    session is confirmed, then give up rather than hanging on to it forever.
+  */
+  useEffect(() => {
     setNotificationDeepLinkHandler(payload => {
-      if (payload.gymId && navigationRef.isReady()) {
-        navigationRef.navigate('GymDetail', { gymId: payload.gymId });
-      }
+      const gymId = payload.gymId;
+      if (!gymId) return;
+
+      const attemptNavigate = (attempt = 0) => {
+        if (navigationRef.isReady() && authedRef.current) {
+          try {
+            navigationRef.navigate('GymDetail', { gymId });
+          } catch (e) {
+            if (__DEV__) console.warn('[push] deep link navigation failed', e);
+          }
+          return;
+        }
+        // ~10s of grace: covers a cold start on a slow device, then stops.
+        if (attempt < 40) setTimeout(() => attemptNavigate(attempt + 1), 250);
+      };
+
+      attemptNavigate();
     });
 
-    const detach = attachPushListeners();
-    return detach;
+    return attachPushListeners();
   }, []);
 
   // Register this device's FCM token whenever the admin is signed in.
@@ -151,12 +174,20 @@ export default function App() {
     if (authed) void initPushNotifications();
   }, [authed]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    /*
+      Unregister the device BEFORE the auth token goes away — the endpoint is
+      authenticated. Skipping this left the phone in device_push_tokens, so a
+      signed-out device kept receiving admin alerts with no way to revoke them.
+    */
+    await unregisterPushDevice();
+
     // Clear cached API data alongside the token. It is persisted to AsyncStorage,
     // so without this the next person to sign in on this device would briefly see
     // the previous admin's gym list and dashboard figures from disk.
     invalidate();
-    clearToken().then(() => setAuthed(false));
+    await clearToken();
+    setAuthed(false);
   }
 
   function handleLoginSuccess() {

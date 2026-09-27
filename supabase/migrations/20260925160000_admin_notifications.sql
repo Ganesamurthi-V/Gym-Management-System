@@ -60,21 +60,15 @@ CREATE TABLE IF NOT EXISTS device_push_tokens (
 ALTER TABLE device_push_tokens ENABLE ROW LEVEL SECURITY;
 -- Same as above: service-role only.
 
--- ── Realtime publication + invalidation hint ─────────────────
--- Add notifications to the realtime publication and broadcast a payload-free
--- 'admin:notifications' hint so the in-app centre re-fetches (identical pattern
--- to the existing admin:* hints; broadcast payloads are never trusted as data).
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notifications'
-  ) THEN
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications';
-  END IF;
-END
-$$;
-
+-- ── Realtime invalidation hint ───────────────────────────────
+-- Broadcast a payload-free 'admin:notifications' hint so the in-app centre
+-- re-fetches through the authenticated admin API (identical pattern to the
+-- existing admin:* hints; broadcast payloads are never trusted as data).
+--
+-- Deliberately NOT added to the supabase_realtime publication: that is only
+-- needed for postgres_changes, which no client uses for this table (owner clients
+-- are denied by RLS and admin clients consume broadcast only). Publishing a
+-- frequently-inserted table would add WAL/realtime overhead for nothing.
 DROP TRIGGER IF EXISTS trg_realtime_admin_notifications ON public.notifications;
 CREATE TRIGGER trg_realtime_admin_notifications
   AFTER INSERT OR UPDATE OR DELETE ON public.notifications

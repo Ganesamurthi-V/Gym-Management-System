@@ -16,8 +16,9 @@
 
 BEGIN;
 
--- pg_net ships with Supabase but is not enabled by default.
-CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+-- pg_net ships with Supabase but is not enabled by default. It always creates and
+-- owns its own `net` schema, so it must NOT be given a target schema here.
+CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- ── app_config ───────────────────────────────────────────────
 -- Single-row key/value store for server-side secrets consumed by triggers.
@@ -43,7 +44,7 @@ INSERT INTO app_config (key, value) VALUES
 ON CONFLICT (key) DO NOTHING;
 
 -- ── Trigger: ping the dispatch endpoint on each new notification ──
--- SECURITY DEFINER so it can read app_config and call extensions.net; wrapped in
+-- SECURITY DEFINER so it can read app_config and call net.http_post; wrapped in
 -- its own BEGIN/EXCEPTION so a transient pg_net failure never rolls back the
 -- notification insert (the row still shows in-app and a later insert re-triggers
 -- a dispatch that will pick up any it missed).
@@ -66,13 +67,19 @@ BEGIN
       RETURN NULL;
     END IF;
 
-    PERFORM extensions.net.http_post(
+    -- pg_net lives in the `net` schema (the extension creates it). Fully
+    -- qualified because this function runs with an empty search_path.
+    PERFORM net.http_post(
       url     := v_url,
+      body    := '{}'::jsonb,
       headers := jsonb_build_object(
         'Content-Type',  'application/json',
         'x-cron-secret', v_secret
       ),
-      body    := '{}'::jsonb
+      -- The dispatch endpoint does real work (cold start + FCM fan-out), so allow
+      -- more than the 5s default. pg_net is async: a timeout here only loses the
+      -- response row, never the request, and claimed rows are never re-sent.
+      timeout_milliseconds := 15000
     );
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING 'dispatch_push_on_notification failed: %', SQLERRM;

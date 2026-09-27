@@ -50,3 +50,15 @@ export async function registerPushToken(token: string, platform: 'android' | 'io
     throw new Error(parseApiError(error));
   }
 }
+
+/**
+ * Removes this device's token on sign-out, so a signed-out phone stops receiving
+ * admin alerts. Must be called while the auth token is still present.
+ */
+export async function unregisterPushToken(token: string): Promise<void> {
+  try {
+    await apiClient.delete('/api/push/register-token', { data: { token } });
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}

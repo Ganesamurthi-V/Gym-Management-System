@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getFcm, isPushConfigured } from '@/lib/firebase-admin'
 
+// firebase-admin is a Node-only SDK — it cannot run on the Edge runtime.
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
@@ -35,105 +37,133 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient()
 
-  // 1. Pull a bounded batch of unpushed notifications (oldest first).
-  const { data: pending, error: pendingErr } = await supabase
+  /*
+    1. Pick a bounded batch of candidates, then CLAIM them atomically.
+
+    The trigger fires once per inserted notification, so several dispatch requests
+    can be in flight at the same time and would otherwise all read the same
+    unpushed rows and all send them — the admin gets the same alert two or three
+    times. Stamping pushed_at in an UPDATE guarded by `pushed_at IS NULL` makes the
+    claim atomic: Postgres re-checks that predicate after taking the row lock, so
+    the losing request matches zero rows and sends nothing.
+  */
+  const { data: candidates, error: candidatesErr } = await supabase
     .from('notifications')
-    .select('id, type, title, body, gym_id, entity_id')
+    .select('id')
     .is('pushed_at', null)
     .order('created_at', { ascending: true })
     .limit(50)
 
-  if (pendingErr) {
-    return NextResponse.json({ error: pendingErr.message }, { status: 500 })
+  if (candidatesErr) {
+    return NextResponse.json({ error: candidatesErr.message }, { status: 500 })
   }
-  if (!pending || pending.length === 0) {
+  if (!candidates || candidates.length === 0) {
     return NextResponse.json({ sent: 0, notifications: 0 })
   }
 
-  // 2. Fetch all device tokens once for the whole batch.
-  const { data: tokenRows, error: tokenErr } = await supabase
-    .from('device_push_tokens')
-    .select('token')
+  const candidateIds = candidates.map(c => c.id as string)
 
-  if (tokenErr) {
-    return NextResponse.json({ error: tokenErr.message }, { status: 500 })
-  }
-
-  const tokens = (tokenRows ?? []).map(r => r.token as string)
-
-  // No devices registered — mark the batch pushed so it doesn't pile up, and
-  // return. (The rows remain in the in-app feed regardless.)
-  if (tokens.length === 0) {
-    await supabase
-      .from('notifications')
-      .update({ pushed_at: new Date().toISOString() })
-      .in('id', pending.map(n => n.id))
-    return NextResponse.json({ sent: 0, notifications: pending.length, reason: 'no_devices' })
-  }
-
-  const fcm = getFcm()
-  const invalidTokens = new Set<string>()
-  let sent = 0
-
-  // 3. Send each notification to all devices.
-  for (const n of pending) {
-    const res = await fcm.sendEachForMulticast({
-      tokens,
-      notification: { title: n.title, body: n.body },
-      // Data travels as strings; the app reads these to deep-link on tap.
-      data: {
-        type: String(n.type),
-        gymId: n.gym_id ? String(n.gym_id) : '',
-        entityId: n.entity_id ? String(n.entity_id) : '',
-        notificationId: String(n.id),
-      },
-      android: { priority: 'high', notification: { channelId: 'admin-alerts' } },
-    })
-
-    sent += res.successCount
-
-    // Collect tokens FCM says are dead so we can prune them.
-    res.responses.forEach((r, i) => {
-      if (!r.success) {
-        const code = r.error?.code
-        if (
-          code === 'messaging/registration-token-not-registered' ||
-          code === 'messaging/invalid-registration-token' ||
-          code === 'messaging/invalid-argument'
-        ) {
-          invalidTokens.add(tokens[i])
-        }
-      }
-    })
-  }
-
-  // 4. Stamp the whole batch as pushed.
-  const { error: markErr } = await supabase
+  const { data: claimed, error: claimErr } = await supabase
     .from('notifications')
     .update({ pushed_at: new Date().toISOString() })
-    .in('id', pending.map(n => n.id))
+    .is('pushed_at', null)
+    .in('id', candidateIds)
+    .select('id, type, title, body, gym_id, entity_id, created_at')
 
-  if (markErr) {
-    return NextResponse.json({ error: markErr.message }, { status: 500 })
+  if (claimErr) {
+    return NextResponse.json({ error: claimErr.message }, { status: 500 })
+  }
+  if (!claimed || claimed.length === 0) {
+    // A concurrent dispatch already claimed this batch. Nothing to do.
+    return NextResponse.json({ sent: 0, notifications: 0, reason: 'already_claimed' })
   }
 
-  // 5. Prune dead device tokens.
-  if (invalidTokens.size > 0) {
-    await supabase
+  // RETURNING has no defined order; send oldest-first for a sensible arrival order.
+  const batch = [...claimed].sort(
+    (a, b) => new Date(a.created_at as string).getTime() - new Date(b.created_at as string).getTime()
+  )
+  const claimedIds = batch.map(n => n.id as string)
+
+  /** Hand the batch back so a later trigger retries it, then fail loudly. */
+  async function release() {
+    await supabase.from('notifications').update({ pushed_at: null }).in('id', claimedIds)
+  }
+
+  try {
+    // 2. Fetch all device tokens once for the whole batch.
+    const { data: tokenRows, error: tokenErr } = await supabase
       .from('device_push_tokens')
-      .delete()
-      .in('token', Array.from(invalidTokens))
+      .select('token')
+
+    if (tokenErr) throw new Error(tokenErr.message)
+
+    const tokens = (tokenRows ?? []).map(r => r.token as string)
+
+    /*
+      No devices registered. The rows stay claimed on purpose: they are already
+      visible in the in-app feed, and releasing them would mean the first device to
+      register later gets a flood of historic alerts.
+    */
+    if (tokens.length === 0) {
+      return NextResponse.json({ sent: 0, notifications: batch.length, reason: 'no_devices' })
+    }
+
+    const fcm = getFcm()
+    const invalidTokens = new Set<string>()
+    let sent = 0
+
+    // 3. Send each notification to all devices.
+    for (const n of batch) {
+      const res = await fcm.sendEachForMulticast({
+        tokens,
+        notification: { title: n.title as string, body: n.body as string },
+        // FCM data values must be strings; the app reads these to deep-link on tap.
+        data: {
+          type: String(n.type),
+          gymId: n.gym_id ? String(n.gym_id) : '',
+          entityId: n.entity_id ? String(n.entity_id) : '',
+          notificationId: String(n.id),
+        },
+        android: { priority: 'high', notification: { channelId: 'admin-alerts' } },
+        apns: { payload: { aps: { sound: 'default' } } },
+      })
+
+      sent += res.successCount
+
+      // Collect tokens FCM says are dead so we can prune them.
+      res.responses.forEach((r, i) => {
+        if (!r.success) {
+          const code = r.error?.code
+          if (
+            code === 'messaging/registration-token-not-registered' ||
+            code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/invalid-argument'
+          ) {
+            invalidTokens.add(tokens[i])
+          }
+        }
+      })
+    }
+
+    // 4. Prune dead device tokens.
+    if (invalidTokens.size > 0) {
+      await supabase
+        .from('device_push_tokens')
+        .delete()
+        .in('token', Array.from(invalidTokens))
+    }
+
+    return NextResponse.json({
+      sent,
+      notifications: batch.length,
+      devices: tokens.length,
+      pruned: invalidTokens.size,
+    })
+  } catch (error: unknown) {
+    // The batch was claimed but not delivered — unclaim so it is retried.
+    await release().catch(() => {})
+    const message = error instanceof Error ? error.message : 'Dispatch failed'
+    console.error('[PUSH_DISPATCH] failed, batch released:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  return NextResponse.json({
-    sent,
-    notifications: pending.length,
-    devices: tokens.length,
-    pruned: invalidTokens.size,
-  })
-}
-
-// Vercel Cron pings via GET.
-export async function GET(req: NextRequest) {
-  return POST(req)
 }

@@ -52,3 +52,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to register token' }, { status: 500 })
   }
 }
+
+/**
+ * DELETE /api/push/register-token
+ * Called on sign-out. Without this the device stays in device_push_tokens and a
+ * signed-out phone keeps receiving admin alerts, which is both a privacy leak and
+ * impossible to revoke from the device.
+ */
+export async function DELETE(req: NextRequest) {
+  const log = apiLogger('ADMIN_PUSH_UNREGISTER', req)
+
+  if (!(await verifyRequestAuth(req))) {
+    log.summary(401)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const rateLimitResponse = await rateLimit(req, 'push_unregister', RATE_LIMITS.TICKET_RESOLVE.limit, RATE_LIMITS.TICKET_RESOLVE.window)
+  if (rateLimitResponse) { log.summary(429); return rateLimitResponse }
+
+  try {
+    const body = await req.json().catch(() => null) as { token?: string } | null
+    const token = typeof body?.token === 'string' ? body.token.trim() : ''
+
+    if (!token) {
+      log.summary(400)
+      return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+    }
+
+    const supabase = createAdminClient()
+    const { error } = await supabase.from('device_push_tokens').delete().eq('token', token)
+    if (error) throw error
+
+    log.summary(200)
+    return NextResponse.json({ success: true })
+  } catch (error: unknown) {
+    log.error('Failed to unregister push token', error)
+    log.summary(500)
+    return NextResponse.json({ error: 'Failed to unregister token' }, { status: 500 })
+  }
+}

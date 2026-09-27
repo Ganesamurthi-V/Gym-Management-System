@@ -275,6 +275,41 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 INSERT INTO platform_settings DEFAULT VALUES
   ON CONFLICT (id) DO NOTHING;
 
+-- ── notifications ────────────────────────────────────────────
+-- Admin-facing event log; drives the in-app notification centre and lock-screen
+-- push. Written only by DB triggers (see 20260925160000_admin_notifications.sql)
+-- and read only through the service-role admin API. RLS on, no policies.
+CREATE TABLE IF NOT EXISTS notifications (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  type        TEXT        NOT NULL CHECK (type IN ('ticket', 'feedback', 'payment_request', 'new_gym')),
+  gym_id      UUID        REFERENCES gyms(id) ON DELETE CASCADE,
+  title       TEXT        NOT NULL,
+  body        TEXT        NOT NULL,
+  entity_id   TEXT,
+  is_read     BOOLEAN     NOT NULL DEFAULT false,
+  pushed_at   TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── device_push_tokens ───────────────────────────────────────
+-- FCM registration tokens, keyed per device (admin auth has no per-user id).
+CREATE TABLE IF NOT EXISTS device_push_tokens (
+  token        TEXT        PRIMARY KEY,
+  platform     TEXT        NOT NULL DEFAULT 'android' CHECK (platform IN ('android', 'ios')),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── app_config ───────────────────────────────────────────────
+-- Private server-side key/value store (push dispatch URL + CRON_SECRET). Read
+-- only by SECURITY DEFINER triggers / service role. See
+-- 20260925170000_push_dispatch_pg_net.sql — pg_net calls /api/push/dispatch on
+-- each new notification, so no external cron is needed.
+CREATE TABLE IF NOT EXISTS app_config (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 -- ── subscription_audit_logs ──────────────────────────────────
 CREATE TABLE IF NOT EXISTS subscription_audit_logs (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

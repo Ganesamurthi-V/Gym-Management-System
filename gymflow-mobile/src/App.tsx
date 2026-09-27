@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, StatusBar, Alert } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,8 @@ import { TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { isAuthenticated, clearToken } from '@/lib/auth';
 import { invalidate } from '@/lib/cache';
+import { initPushNotifications, attachPushListeners, setNotificationDeepLinkHandler } from '@/lib/push';
+import { NotificationBell } from '@/components/NotificationBell';
 
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/tabs/DashboardScreen';
@@ -18,11 +20,15 @@ import SupportScreen from './screens/tabs/SupportScreen';
 import LogsScreen from './screens/tabs/LogsScreen';
 import GymDetailScreen from './screens/GymDetailScreen';
 import GymSubscriptionScreen from './screens/GymSubscriptionScreen';
+import NotificationsScreen from './screens/NotificationsScreen';
 
 import type { RootStackParamList, TabParamList } from './navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
+
+// Navigation ref so push-tap deep links can navigate from outside the tree.
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 function LogoutButton({ onLogout }: { onLogout: () => void }) {
   function confirmLogout() {
@@ -69,7 +75,12 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         headerShadowVisible: false,
         headerTintColor: Colors.textPrimary,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
-        headerRight: () => <LogoutButton onLogout={onLogout} />,
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <NotificationBell onPress={() => navigationRef.navigate('Notifications')} />
+            <LogoutButton onLogout={onLogout} />
+          </View>
+        ),
       }}
     >
       <Tab.Screen
@@ -109,6 +120,7 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
 export default function App() {
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
+  const listenersAttached = useRef(false);
 
   useEffect(() => {
     isAuthenticated().then(result => {
@@ -116,6 +128,28 @@ export default function App() {
       setChecking(false);
     });
   }, []);
+
+  // Push: attach OS listeners once, and route a notification tap to the gym it
+  // refers to. Deep-link handler uses the navigation ref so it works from a cold
+  // start (the handler replays a pending tap once navigation is ready).
+  useEffect(() => {
+    if (listenersAttached.current) return;
+    listenersAttached.current = true;
+
+    setNotificationDeepLinkHandler(payload => {
+      if (payload.gymId && navigationRef.isReady()) {
+        navigationRef.navigate('GymDetail', { gymId: payload.gymId });
+      }
+    });
+
+    const detach = attachPushListeners();
+    return detach;
+  }, []);
+
+  // Register this device's FCM token whenever the admin is signed in.
+  useEffect(() => {
+    if (authed) void initPushNotifications();
+  }, [authed]);
 
   function handleLogout() {
     // Clear cached API data alongside the token. It is persisted to AsyncStorage,
@@ -141,7 +175,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!authed ? (
             <Stack.Screen name="Login">
@@ -172,6 +206,18 @@ export default function App() {
                   headerStyle: { backgroundColor: Colors.bg },
                   headerTintColor: Colors.textPrimary,
                   headerTitle: 'Manage Subscription',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="Notifications"
+                component={NotificationsScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: 'Notifications',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
                 }}

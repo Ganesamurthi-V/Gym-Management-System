@@ -1,7 +1,9 @@
 node_modules/
 .expo/
 dist/
+# react-native-dotenv reads .env.local (see babel.config.js) — ignore both forms.
 .env
+.env.local
 *.jks
 *.p8
 *.p12

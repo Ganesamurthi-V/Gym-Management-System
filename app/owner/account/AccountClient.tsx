@@ -16,6 +16,7 @@ import { invalidateAllGymCaches } from './actions'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import UPIQRSetup from '@/components/upi/UPIQRSetup'
+import { CodeSlots } from '@/components/ui/CodeSlots'
 import type { UPIConfig } from './upi-actions'
 
 interface Props {
@@ -123,8 +124,17 @@ export function AccountClient({
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
 
-  // Delete confirmation prompt
+  // "Delete all data (keep login)" still confirms by typing the gym name — it is
+  // recoverable-in-principle (the account survives) and lower risk than full
+  // account deletion, which is OTP-gated below.
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
+
+  // Full-account deletion OTP flow: step 1 emails a code to the owner, step 2
+  // verifies it and performs the deletion.
+  const [deleteStep, setDeleteStep] = useState<'warn' | 'otp'>('warn')
+  const [deleteOtp, setDeleteOtp] = useState('')
+  const [maskedEmail, setMaskedEmail] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   // Shared state
   const [isSaving, setIsSaving] = useState(false)
@@ -133,6 +143,10 @@ export function AccountClient({
   function openModal(type: ModalType) {
     setMessage(null)
     setDeleteConfirmText('')
+    setDeleteStep('warn')
+    setDeleteOtp('')
+    setMaskedEmail('')
+    setResendCooldown(0)
     setNewGymName(gymName)
     setNewPassword('')
     setConfirmPassword('')
@@ -152,6 +166,8 @@ export function AccountClient({
     setActiveModal(null)
     setMessage(null)
     setDeleteConfirmText('')
+    setDeleteStep('warn')
+    setDeleteOtp('')
   }
 
   // ── Update gym name ──────────────────────────────────────────────────────────
@@ -268,10 +284,31 @@ export function AccountClient({
     setIsSaving(false)
   }
 
-  // ── Delete entire gym account ────────────────────────────────────────────────
+  // ── Delete account: step 1 — email a confirmation code ──────────────────────
+  async function handleRequestDeleteOtp() {
+    setIsSaving(true)
+    setMessage(null)
+    const res = await fetch('/api/account/delete-gym/request-otp', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    const json = await res.json()
+    setIsSaving(false)
+    if (!json.success) {
+      setMessage({ type: 'error', text: json.error?.message ?? 'Could not send the code. Please try again.' })
+      return
+    }
+    setMaskedEmail(json.data?.email ?? '')
+    setDeleteOtp('')
+    setDeleteStep('otp')
+    setResendCooldown(60)
+  }
+
+  // ── Delete account: step 2 — verify the code and delete everything ──────────
   async function handleDeleteGym() {
-    if (deleteConfirmText !== gymName) {
-      setMessage({ type: 'error', text: `Type the gym name exactly to confirm.` })
+    if (!/^\d{6}$/.test(deleteOtp)) {
+      setMessage({ type: 'error', text: 'Enter the 6-digit code sent to your email.' })
       return
     }
     setIsSaving(true)
@@ -280,7 +317,7 @@ export function AccountClient({
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-      body: JSON.stringify({ gym_id: gymId }),
+      body: JSON.stringify({ gym_id: gymId, token: deleteOtp }),
     })
     const json = await res.json()
     if (!json.success) {
@@ -292,8 +329,14 @@ export function AccountClient({
     router.push('/auth/login')
   }
 
+  // Tick down the resend cooldown once per second while it is active.
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setInterval(() => setResendCooldown(c => (c <= 1 ? 0 : c - 1)), 1000)
+    return () => clearInterval(t)
+  }, [resendCooldown])
+
   const deleteDataReady = deleteConfirmText === gymName
-  const deleteGymReady  = deleteConfirmText === gymName
 
   const subState = computeSubscriptionState({
     subscription_status: liveSubStatus,
@@ -885,7 +928,7 @@ export function AccountClient({
         </Modal>
       )}
 
-      {/* Delete Entire Gym Modal */}
+      {/* Delete Entire Gym Modal — OTP-gated, two steps */}
       {activeModal === 'delete-gym' && (
         <Modal title="Delete Entire Gym Account" onClose={closeModal} danger>
           <div className="space-y-4">
@@ -904,42 +947,67 @@ export function AccountClient({
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Type <span className="text-red-600 font-mono">{gymName}</span> to confirm
-                </label>
-                <button
-                  type="button"
-                  onClick={() => { navigator.clipboard.writeText(gymName); showToast('Copied to clipboard') }}
-                  className="text-xs text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy
-                </button>
-              </div>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="input-field"
-                placeholder={gymName}
-                autoFocus
-              />
-            </div>
+            {deleteStep === 'warn' ? (
+              <>
+                <p className="text-sm text-slate-500">
+                  To confirm it&apos;s really you, we&apos;ll email a 6-digit code to{' '}
+                  <span className="font-semibold text-slate-700">{email}</span>. You&apos;ll enter it
+                  on the next step.
+                </p>
 
-            <MessageBanner message={message} />
+                <MessageBanner message={message} />
 
-            <div className="flex gap-2">
-              <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button
-                onClick={handleDeleteGym}
-                disabled={isSaving || !deleteGymReady}
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-              >
-                {isSaving ? 'Deleting…' : 'Delete Everything'}
-              </button>
-            </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
+                  <button
+                    onClick={handleRequestDeleteOtp}
+                    disabled={isSaving}
+                    className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                  >
+                    <Mail className="w-4 h-4" />
+                    {isSaving ? 'Sending code…' : 'Send confirmation code'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
+                    Enter the 6-digit code sent to {maskedEmail || 'your email'}
+                  </label>
+                  <CodeSlots
+                    value={deleteOtp}
+                    onChange={setDeleteOtp}
+                    onComplete={() => { void handleDeleteGym() }}
+                    disabled={isSaving}
+                  />
+                </div>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleRequestDeleteOtp}
+                    disabled={isSaving || resendCooldown > 0}
+                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  >
+                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                  </button>
+                </div>
+
+                <MessageBanner message={message} />
+
+                <div className="flex gap-2">
+                  <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
+                  <button
+                    onClick={handleDeleteGym}
+                    disabled={isSaving || !/^\d{6}$/.test(deleteOtp)}
+                    className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                  >
+                    {isSaving ? 'Deleting…' : 'Delete Everything'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}

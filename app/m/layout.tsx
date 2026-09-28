@@ -65,8 +65,12 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#2563EB',
-  colorScheme: 'light',
+  // Theme-aware browser chrome; colorScheme is set at runtime by the app's
+  // ThemeProvider on <html>, so it must not be hard-locked to light here.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#2563EB' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
 }
 
 export default async function MemberLayout({

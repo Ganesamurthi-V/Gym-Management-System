@@ -64,7 +64,7 @@ export default async function HomePage() {
         href="/membership"
         className={`mb-5 flex items-center gap-3 rounded-2xl border p-4 transition-all active:scale-[0.98] ${cfg.bg} ${cfg.border}`}
       >
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/70 ${cfg.colour}`}>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface/70 ${cfg.colour}`}>
           <StatusIcon className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">

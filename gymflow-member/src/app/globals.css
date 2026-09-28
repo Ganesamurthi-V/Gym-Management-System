@@ -27,7 +27,7 @@
   .btn-primary:hover { background: var(--gradient-button-hover); }
   .btn-primary:active { transform: scale(0.98); }
   .btn-secondary {
-    @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-4 text-sm font-semibold text-slate-700 shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-secondary:hover { @apply bg-slate-50; }
   .btn-secondary:active { transform: scale(0.98); }
@@ -36,17 +36,25 @@
   }
   .btn-ghost:active { @apply bg-slate-100; }
   .input-field {
-    @apply h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-base text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-transparent focus:outline-none;
+    @apply h-12 w-full rounded-xl border border-slate-200 bg-surface px-3.5 py-2.5 text-base text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-transparent focus:outline-none;
   }
   .input-field:focus { box-shadow: var(--focus-ring); }
   .input-field[aria-invalid='true'] { border-color: var(--color-expired-border); box-shadow: var(--focus-ring-error); }
-  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+  .card { @apply rounded-xl border border-slate-200 bg-surface shadow-sm; }
   .status-active { @apply border border-emerald-200 bg-emerald-50 text-emerald-700; }
   .status-expiring { @apply border border-amber-200 bg-amber-50 text-amber-700; }
   .status-expired { @apply border border-red-200 bg-red-50 text-red-700; }
   .page-container { @apply mx-auto w-full max-w-lg px-4 xs:px-5 sm:px-6; }
   .tap-target { @apply min-h-11 min-w-11; }
-  .glass { @apply border border-white/20 bg-white/80 backdrop-blur-md; }
+  /* Frosted panel. Uses the --glass-* tokens (defined light + dark in
+     design-tokens.css) so it becomes dark-tinted glass in dark mode instead of a
+     white haze on a black page. */
+  .glass {
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
   .pb-safe-bottom { padding-bottom: var(--pwa-safe-bottom); }
   .pt-safe-top { padding-top: var(--pwa-safe-top); }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -55,7 +63,9 @@
   .skeleton::after {
     content: '';
     @apply absolute inset-0;
-    background: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 70%) 50%, transparent 100%);
+    /* Shimmer sweep colour is a token: a bright white streak on a dark skeleton
+       reads as a harsh flash, so dark mode uses a soft light sweep instead. */
+    background: linear-gradient(90deg, transparent 0%, var(--skeleton-shimmer) 50%, transparent 100%);
     animation: shimmer var(--duration-shimmer) infinite;
   }
 }

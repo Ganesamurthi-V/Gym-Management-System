@@ -3,6 +3,7 @@ import { CheckCircle2, AlertCircle, Clock, CreditCard, QrCode } from 'lucide-rea
 import { getMembershipPageData } from '@/lib/member/member-data'
 import { formatDate, formatPlan, formatCurrency } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
+import MembershipQR from './MembershipQR'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
 // route-level `revalidate` cannot be used for per-user pages.
@@ -20,6 +21,8 @@ export default async function MembershipPage() {
   const { status, daysLeft, latest } = state
 
   done()
+
+  const memberCode = member.member_code ?? `GF${String(member.member_number).padStart(5, '0')}`
 
   const statusConfig = {
     active:   { label: 'Active',         cls: 'status-active',    icon: CheckCircle2, progress: 100 },
@@ -51,9 +54,12 @@ export default async function MembershipPage() {
           className="flex items-center gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-xs font-bold text-brand-700 transition-colors active:bg-brand-100"
         >
           <QrCode className="h-4 w-4" />
-          My Card
+          Full Card
         </Link>
       </header>
+
+      {/* QR code — shown at the top so members can check in without leaving this page */}
+      <MembershipQR memberCode={memberCode} />
 
       {/* Current membership card */}
       {latest ? (

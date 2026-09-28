@@ -63,10 +63,12 @@ function getFrom(): string {
   return from
 }
 
-/** Logo passed to the templates' {{{logo_url}}}; undefined lets the template fallback apply. */
-function getLogoUrl(): string | undefined {
-  return process.env.RESEND_LOGO_URL || undefined
-}
+// The logo is NOT passed from here. Each published template declares its own
+// `logo_url` fallback (owner templates use the landscape lockup; the member
+// confirm-email template uses the members mark), so the correct logo per
+// template is baked into Resend and version-controlled there. Passing a single
+// app-wide override would force one logo onto all three — which is exactly the
+// bug this removed.
 
 const currentYear = () => String(new Date().getFullYear())
 
@@ -119,7 +121,6 @@ export function sendSetPasswordEmail(
 ): Promise<SendEmailResult> {
   return sendTemplate(EMAIL_TEMPLATES.setPassword, to, {
     action_url: actionUrl,
-    ...(getLogoUrl() ? { logo_url: getLogoUrl()! } : {}),
     year: currentYear(),
   })
 }
@@ -134,7 +135,6 @@ export function sendConfirmEmail(
 ): Promise<SendEmailResult> {
   return sendTemplate(EMAIL_TEMPLATES.confirmEmail, to, {
     action_url: actionUrl,
-    ...(getLogoUrl() ? { logo_url: getLogoUrl()! } : {}),
     year: currentYear(),
   })
 }
@@ -152,7 +152,6 @@ export function sendDeleteAccountOtp(
   return sendTemplate(EMAIL_TEMPLATES.deleteAccountOtp, to, {
     otp_code: code,
     expiry_label: expiryLabel,
-    ...(getLogoUrl() ? { logo_url: getLogoUrl()! } : {}),
     year: currentYear(),
   })
 }

@@ -1,10 +1,11 @@
 import {
-  User, Phone, Mail, MapPin, Calendar, Heart, Shield,
+  User, Phone, Mail, MapPin, Calendar, Heart, Shield, Palette,
 } from 'lucide-react'
 import { getMemberWithGym } from '@/lib/member-data'
 import { formatDate } from '@/lib/member-utils'
 import { startPageTimer } from '@/lib/perf'
 import { LogoutButton } from '@/components/auth/LogoutButton'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
 // route-level `revalidate` cannot be used for per-user pages.
@@ -109,6 +110,15 @@ export default async function ProfilePage() {
           </div>
         </section>
       )}
+
+      {/* Appearance */}
+      <section className="card mb-5 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Palette className="h-4 w-4 shrink-0 text-slate-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Appearance</p>
+        </div>
+        <ThemeToggle />
+      </section>
 
       {/* Sign out */}
       <section className="card p-4">

@@ -319,8 +319,15 @@ export function AccountClient({
   }
 
   // ── Delete account: step 2 — verify the code and delete everything ──────────
-  async function handleDeleteGym() {
-    if (!OTP_REGEX.test(deleteOtp)) return
+  //
+  // `code` is passed in by CodeSlots' onComplete rather than read from the
+  // `deleteOtp` state: onComplete fires in the same tick as the setState that
+  // filled the last slot, so `deleteOtp` is still the previous (5-digit) value
+  // here and the regex guard would reject it. Taking the completed string as an
+  // argument makes auto-submit reliable; it falls back to state for any manual
+  // caller.
+  async function handleDeleteGym(code: string = deleteOtp) {
+    if (!OTP_REGEX.test(code)) return
     setIsSaving(true)
     setDeleteOtpStatus('verifying')
     setMessage(null)
@@ -328,7 +335,7 @@ export function AccountClient({
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-      body: JSON.stringify({ gym_id: gymId, token: deleteOtp }),
+      body: JSON.stringify({ gym_id: gymId, token: code }),
     })
     const json = await res.json()
     if (!json.success) {
@@ -993,7 +1000,7 @@ export function AccountClient({
                   <CodeSlots
                     value={deleteOtp}
                     onChange={setDeleteOtp}
-                    onComplete={() => { void handleDeleteGym() }}
+                    onComplete={code => { void handleDeleteGym(code) }}
                     length={OTP_LENGTH}
                     disabled={isSaving}
                     status={deleteOtpStatus}

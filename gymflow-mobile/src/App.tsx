@@ -147,13 +147,44 @@ export default function App() {
   */
   useEffect(() => {
     setNotificationDeepLinkHandler(payload => {
-      const gymId = payload.gymId;
-      if (!gymId) return;
+      const { type, gymId } = payload;
+
+      /*
+        Route by notification type so a tap lands on the screen that actually
+        answers it, instead of always dumping the admin on GymDetail:
+
+          ticket / feedback  → Support tab (where tickets & feedback are triaged)
+          payment_request    → GymSubscription (approve/reject the payment) for the gym
+          new_gym            → GymDetail for the new gym
+          anything else      → GymDetail if we have a gym, otherwise the
+                               Notifications centre so the tap is never a dead end.
+
+        entity_id is carried in the payload for future per-row targeting, but the
+        current screens open at the gym/list level, which is enough to act on.
+      */
+      const navigate = () => {
+        switch (type) {
+          case 'ticket':
+          case 'feedback':
+            navigationRef.navigate('Main', { screen: 'Support' });
+            return;
+          case 'payment_request':
+            if (gymId) { navigationRef.navigate('GymSubscription', { gymId }); return; }
+            break;
+          case 'new_gym':
+            if (gymId) { navigationRef.navigate('GymDetail', { gymId }); return; }
+            break;
+          default:
+            if (gymId) { navigationRef.navigate('GymDetail', { gymId }); return; }
+        }
+        // No gym to open (or unknown type without one): fall back to the feed.
+        navigationRef.navigate('Notifications');
+      };
 
       const attemptNavigate = (attempt = 0) => {
         if (navigationRef.isReady() && authedRef.current) {
           try {
-            navigationRef.navigate('GymDetail', { gymId });
+            navigate();
           } catch (e) {
             if (__DEV__) console.warn('[push] deep link navigation failed', e);
           }

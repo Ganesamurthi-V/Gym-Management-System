@@ -20,7 +20,7 @@ export function Card({
   className?: string
 }) {
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border border-surface-border p-6 ${className}`}>
+    <div className={`bg-surface rounded-2xl shadow-sm border border-surface-border p-6 ${className}`}>
       {children}
     </div>
   )
@@ -64,7 +64,7 @@ export function StatCard({
   badge?: React.ReactNode
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-surface-border p-4">
+    <div className="bg-surface rounded-2xl shadow-sm border border-surface-border p-4">
       <div className="flex items-center gap-2 mb-2">
         {icon && (
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg} ${iconColor}`}>
@@ -209,7 +209,7 @@ export function SearchInput({
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       aria-label={placeholder}
-      className="w-full sm:w-64 px-3 py-2 bg-white border border-surface-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+      className="w-full sm:w-64 px-3 py-2 bg-surface border border-surface-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
     />
   )
 }
@@ -239,7 +239,7 @@ export function ChipFilter<T extends string>({
             className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border transition-colors ${
               active
                 ? 'bg-brand-50 text-brand-700 border-brand-200'
-                : 'bg-white text-slate-500 border-surface-border hover:bg-slate-50'
+                : 'bg-surface text-slate-500 border-surface-border hover:bg-surface-secondary'
             }`}
           >
             {labelFor(option)}
@@ -269,7 +269,7 @@ export function DateRangeFilter({
         type="date"
         value={from}
         onChange={e => onFromChange(e.target.value)}
-        className="px-3 py-2 bg-white border border-surface-border rounded-xl text-sm text-slate-700 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+        className="px-3 py-2 bg-surface border border-surface-border rounded-xl text-sm text-slate-700 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
       />
       <span className="text-slate-400 text-sm">–</span>
       <label className="sr-only" htmlFor="range-to">To date</label>
@@ -278,7 +278,7 @@ export function DateRangeFilter({
         type="date"
         value={to}
         onChange={e => onToChange(e.target.value)}
-        className="px-3 py-2 bg-white border border-surface-border rounded-xl text-sm text-slate-700 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+        className="px-3 py-2 bg-surface border border-surface-border rounded-xl text-sm text-slate-700 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
       />
     </div>
   )

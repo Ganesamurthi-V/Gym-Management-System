@@ -7,8 +7,9 @@
  * the redirect target and on how Supabase's rate limits are reported.
  */
 
-import { createAuthEmailClient } from '@/lib/supabase/auth-email'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { memberAppOrigin } from '@/lib/member/redirect'
+import { sendConfirmEmail } from '@/lib/email/resend'
 
 export type SendResult =
   | { ok: true }
@@ -84,25 +85,44 @@ function classify(message: string): SendResult {
  * app created it when the invitation was sent.
  */
 export async function sendVerificationEmail(email: string): Promise<SendResult> {
-  // MUST be the implicit-flow client. `signInWithOtp` attaches a PKCE code
-  // challenge whenever flowType is 'pkce', and GoTrue then binds the emailed
-  // token to that flow and prefixes it `pkce_`. `{{ .TokenHash }}` would become
-  // a PKCE token, which `verifyOtp()` can never redeem — it would fail for every
-  // member, every time, including on retry. This is the same defect that once
-  // broke owner signup; see lib/supabase/auth-email.ts for the full account.
-  const supabase = createAuthEmailClient()
+  // Mint the magic-link token WITHOUT Supabase sending an email, then deliver it
+  // via Resend. `generateLink({ type: 'magiclink' })` returns a plain (non-PKCE)
+  // `hashed_token` — the same reason the owner flows moved off signInWithOtp on
+  // the implicit client. `shouldCreateUser` is not needed: the auth identity
+  // already exists (the owner app created it when the invitation was sent), and
+  // magiclink generateLink does not create users.
+  const admin = createAdminClient()
 
-  const { error } = await supabase.auth.signInWithOtp({
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'magiclink',
     email,
     options: {
-      shouldCreateUser: false,
-      emailRedirectTo: `${getMemberAppUrl()}${ACTIVATION_LANDING_PATH}`,
+      redirectTo: `${getMemberAppUrl()}${ACTIVATION_LANDING_PATH}`,
     },
   })
 
   if (error) {
-    console.error('[activation-email] send failed:', error.message)
+    console.error('[activation-email] generateLink failed:', error.message)
     return classify(error.message)
+  }
+
+  const hashedToken = data?.properties?.hashed_token
+  if (!hashedToken) {
+    console.error('[activation-email] generateLink returned no token')
+    return { ok: false, kind: 'failed', message: 'Could not prepare the verification link.' }
+  }
+
+  // The verifying page reads `#token_hash=…&type=magiclink` from the URL
+  // fragment (a fragment is never sent in an HTTP request, so mail scanners
+  // cannot consume the one-time token). Keep that exact shape.
+  const actionUrl =
+    `${getMemberAppUrl()}${ACTIVATION_LANDING_PATH}` +
+    `#token_hash=${encodeURIComponent(hashedToken)}&type=magiclink`
+
+  const sent = await sendConfirmEmail(email, actionUrl)
+  if (!sent.ok) {
+    console.error('[activation-email] send failed:', sent.message)
+    return classify(sent.message)
   }
   return { ok: true }
 }

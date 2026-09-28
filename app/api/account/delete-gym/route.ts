@@ -4,6 +4,7 @@ import { withAuth, apiError, apiSuccess, isValidUUID } from '@/lib/api/withAuth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ownerRegistrationIndexKey } from '@/lib/auth/owner-registration'
 import { invalidatePattern } from '@/lib/cache'
+import { verifyDeleteOtp } from '@/lib/account/delete-otp'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,34 +72,29 @@ export const POST = withAuth('ACCOUNT_DELETE_GYM', async (req: NextRequest, ctx)
   }
 
   // ── OTP gate ──────────────────────────────────────────────────────────────
-  // Proof-of-email-control before anything is destroyed. The code was sent by
-  // /request-otp via supabase.auth.reauthenticate(); we redeem it here on the
-  // SAME session client with verifyOtp({ type: 'reauthentication' }). This does
-  // not mint a new session — it just confirms the nonce — so the deletion below
-  // still runs as the current owner.
+  // Proof-of-email-control before anything is destroyed. The 6-digit code was
+  // minted by /request-otp and stored (hashed) in Redis; we verify the typed
+  // code against that store. This replaced supabase.auth reauthentication, whose
+  // session-bound nonce failed as `otp_expired` when the token refreshed between
+  // requesting and verifying — a correct code being rejected. The code is
+  // app-owned and single-use, so nothing about the session can invalidate it.
   if (!user.email) {
     return apiError(400, 'NO_EMAIL', 'Your account has no verified email to confirm this action.')
   }
-  // Supabase email OTP length is a project setting (this project is set to 8).
-  // Accept 6–8 digits so a config change either way still verifies here and lets
-  // GoTrue be the final authority on the actual code.
-  if (!otpToken || !/^\d{6,8}$/.test(otpToken)) {
+  // The code is always 6 digits (we mint it), but tolerate surrounding spaces.
+  if (!otpToken || !/^\d{6}$/.test(otpToken)) {
     return apiError(400, 'INVALID_OTP', 'Enter the confirmation code sent to your email.')
   }
 
-  const { error: otpError } = await supabase.auth.verifyOtp({
-    type: 'reauthentication',
-    email: user.email,
-    token: otpToken,
-  })
+  const otpResult = await verifyDeleteOtp(user.id, otpToken)
 
-  if (otpError) {
-    log.error('Delete-gym OTP verification failed', { message: otpError.message })
-    return apiError(
-      400,
-      'INVALID_OTP',
-      'That code is incorrect or has expired. Request a new code and try again.',
-    )
+  if (!otpResult.ok) {
+    log.error('Delete-gym OTP verification failed', { reason: otpResult.reason })
+    const message =
+      otpResult.reason === 'too_many_attempts'
+        ? 'Too many incorrect attempts. Request a new code and try again.'
+        : 'That code is incorrect or has expired. Request a new code and try again.'
+    return apiError(400, 'INVALID_OTP', message)
   }
 
   const admin = createAdminClient()

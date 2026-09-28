@@ -13,8 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "verify:whatsapp": "tsx scripts/verify-whatsapp-setup.ts",
-    "verify:tour": "tsx scripts/verify-tour-anchors.ts",
-    "verify:email-templates": "tsx scripts/verify-email-templates.ts"
+    "verify:tour": "tsx scripts/verify-tour-anchors.ts"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.0.2",

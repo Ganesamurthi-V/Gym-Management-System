@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { createAuthEmailClient } from '@/lib/supabase/auth-email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   OWNER_REGISTRATION_INDEX_TTL_SECONDS,
@@ -11,6 +10,8 @@ import {
   ownerRegistrationAppMetadata,
   ownerRegistrationIndexKey,
 } from '@/lib/auth/owner-registration'
+import { setupPasswordLinkFromHashedToken } from '@/lib/auth/email-links'
+import { sendSetPasswordEmail } from '@/lib/email/resend'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -148,23 +149,43 @@ export async function POST(req: NextRequest) {
           ex: OWNER_REGISTRATION_INDEX_TTL_SECONDS,
         })
 
-        // Must be the non-PKCE client. `resetPasswordForEmail` sends a code
-        // challenge whenever flowType is 'pkce', which yields a `pkce_` token
-        // that verifyOtp() can never redeem — the same defect that broke the
-        // original confirmation email. See lib/supabase/auth-email.ts.
-        const supabase = createAuthEmailClient()
-        const result = user.email_confirmed_at
-          ? await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo: redirectUrl })
-          : await supabase.auth.resend({
-              type: 'signup',
-              email: normalizedEmail,
-              options: { emailRedirectTo: redirectUrl },
-            })
+        // Mint a fresh token WITHOUT Supabase sending an email, then deliver it
+        // via Resend. A confirmed owner gets a `recovery` link (reset password);
+        // an unconfirmed one gets a `signup` confirmation link. generateLink
+        // returns a plain (non-PKCE) `hashed_token` that verifyOtp() can redeem
+        // — the same reason signup moved off the implicit signUp() client.
+        //
+        // The two branches are split because generateLink's params are a
+        // discriminated union: `signup` requires a password, `recovery` does not.
+        const linkType: 'recovery' | 'signup' = user.email_confirmed_at ? 'recovery' : 'signup'
+        const admin = createAdminClient()
+        const { data: linkData, error: linkError } =
+          linkType === 'recovery'
+            ? await admin.auth.admin.generateLink({
+                type: 'recovery',
+                email: normalizedEmail,
+                options: { redirectTo: redirectUrl },
+              })
+            : await admin.auth.admin.generateLink({
+                type: 'signup',
+                email: normalizedEmail,
+                password: crypto.randomUUID(),
+                options: { redirectTo: redirectUrl },
+              })
 
-        if (result.error) {
-          // Provider state, account existence, and cooldowns remain server-side.
-          // The application-owned limiter above is the only public 429 signal.
-          console.error('[auth/resend] email delivery failed:', result.error.message)
+        const hashedToken = linkData?.properties?.hashed_token
+        if (linkError || !hashedToken) {
+          // Provider state and account existence remain server-side; the
+          // application-owned limiter above is the only public 429 signal.
+          console.error('[auth/resend] generateLink failed:', linkError?.message ?? 'no token')
+        } else {
+          const sent = await sendSetPasswordEmail(
+            normalizedEmail,
+            setupPasswordLinkFromHashedToken(hashedToken, linkType, req.nextUrl.origin),
+          )
+          if (!sent.ok) {
+            console.error('[auth/resend] email delivery failed:', sent.message)
+          }
         }
       }
     } catch (error) {

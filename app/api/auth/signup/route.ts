@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAuthEmailClient } from '@/lib/supabase/auth-email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   OWNER_REGISTRATION_INDEX_TTL_SECONDS,
   ownerRegistrationAppMetadata,
   ownerRegistrationIndexKey,
 } from '@/lib/auth/owner-registration'
+import { setupPasswordLinkFromHashedToken } from '@/lib/auth/email-links'
+import { sendSetPasswordEmail } from '@/lib/email/resend'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -60,45 +61,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
     }
 
-    const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/+$/, '')
-    const redirectUrl = `${appOrigin}/auth/setup-password`
+    const normalizedEmail = email.trim().toLowerCase()
+    const redirectUrl = `${(process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/+$/, '')}/auth/setup-password`
 
-    // Deliberately NOT the cookie-bound SSR client: that one is hard-wired to
-    // flowType 'pkce', which makes GoTrue bind the emailed token to a PKCE flow
-    // and prefix it with `pkce_`. verifyOtp() cannot redeem such a token, so
-    // every confirmation link failed as "expired or already used".
-    // See lib/supabase/auth-email.ts.
-    const supabase = createAuthEmailClient()
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password: crypto.randomUUID(), // random password; user sets theirs via email link
+    // Create the account AND mint the confirmation token in one admin call,
+    // WITHOUT Supabase sending an email — we send it ourselves via Resend below.
+    //
+    // `generateLink({ type: 'signup' })` returns `properties.hashed_token`, a
+    // plain (non-PKCE) one-time token that verifyOtp() can redeem from any
+    // device. That is why this replaced supabase.auth.signUp on the implicit
+    // client: we no longer depend on Supabase's email delivery or its dashboard
+    // template, and we still get a redeemable token-hash link.
+    const admin = createAdminClient()
+    const { data, error: linkError } = await admin.auth.admin.generateLink({
+      type: 'signup',
+      email: normalizedEmail,
+      password: crypto.randomUUID(), // random; the owner sets theirs via the email link
       options: {
         data: {
           full_name: fullName.trim(),
           name: fullName.trim(),
           mobile_number: mobileNumber?.trim() || undefined,
         },
-        emailRedirectTo: redirectUrl,
+        redirectTo: redirectUrl,
       },
     })
 
-    // Email enumeration protection: Supabase returns success with empty identities
-    if (!signUpError && data?.user?.identities?.length === 0) {
-      return NextResponse.json(
-        { error: 'An account with this email already exists. Try signing in instead.', code: 'ALREADY_EXISTS' },
-        { status: 409 }
-      )
-    }
-
-    if (signUpError) {
-      if (signUpError.message.toLowerCase().includes('already registered')) {
+    if (linkError) {
+      const msg = linkError.message.toLowerCase()
+      if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('email exists')) {
         return NextResponse.json(
           { error: 'An account with this email already exists. Try signing in instead.', code: 'ALREADY_EXISTS' },
-          { status: 409 }
+          { status: 409 },
         )
       }
-      console.error('[auth/signup] Supabase signup failed:', signUpError.message)
-      const rateLimited = /rate|wait|too many/i.test(signUpError.message)
+      console.error('[auth/signup] generateLink failed:', linkError.message)
+      const rateLimited = /rate|wait|too many/i.test(linkError.message)
       return NextResponse.json(
         {
           error: rateLimited
@@ -109,8 +107,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!data.user) {
-      console.error('[auth/signup] Supabase returned no user and no error')
+    const hashedToken = data?.properties?.hashed_token
+    if (!data?.user || !hashedToken) {
+      console.error('[auth/signup] generateLink returned no user/token')
       return NextResponse.json(
         { error: 'We could not create your account right now. Please try again.' },
         { status: 500 },
@@ -120,7 +119,6 @@ export async function POST(req: NextRequest) {
     // Mark owner registration in server-controlled app_metadata. Finalization
     // requires this marker (or a tightly checked legacy owner record), so a
     // confirmed member session can never create a gym through this flow.
-    const admin = createAdminClient()
     const { error: markerError } = await admin.auth.admin.updateUserById(data.user.id, {
       app_metadata: ownerRegistrationAppMetadata(data.user),
     })
@@ -137,11 +135,30 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Send the "set your password" email via Resend. If delivery fails, roll the
+    // account back so the owner can retry cleanly rather than being stuck with a
+    // confirmed-less account and no email.
+    const sent = await sendSetPasswordEmail(
+      normalizedEmail,
+      setupPasswordLinkFromHashedToken(hashedToken, 'signup', req.nextUrl.origin),
+    )
+    if (!sent.ok) {
+      console.error('[auth/signup] set-password email failed:', sent.message)
+      const { error: cleanupError } = await admin.auth.admin.deleteUser(data.user.id)
+      if (cleanupError) {
+        console.error('[auth/signup] failed to roll back after email failure:', cleanupError.message)
+      }
+      return NextResponse.json(
+        { error: 'We could not send your confirmation email right now. Please try again.' },
+        { status: 502 },
+      )
+    }
+
     // Best-effort indexed lookup for cross-device resends. The key is a SHA-256
     // digest of the address, not the email itself. A legacy admin lookup remains
     // available if Redis is temporarily unavailable.
     try {
-      await redis.set(ownerRegistrationIndexKey(email), data.user.id, {
+      await redis.set(ownerRegistrationIndexKey(normalizedEmail), data.user.id, {
         ex: OWNER_REGISTRATION_INDEX_TTL_SECONDS,
       })
     } catch (indexError) {

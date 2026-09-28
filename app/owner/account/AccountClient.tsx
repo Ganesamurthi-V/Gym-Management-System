@@ -19,12 +19,17 @@ import UPIQRSetup from '@/components/upi/UPIQRSetup'
 import { CodeSlots } from '@/components/ui/CodeSlots'
 import type { UPIConfig } from './upi-actions'
 
-// Length of the Supabase email OTP. This must match the "Email OTP Length"
-// setting in Supabase → Authentication (set it to 6). Kept in one place so the
-// input, the client validation, and the server all agree. Override with
-// NEXT_PUBLIC_OTP_LENGTH if the project setting ever changes.
-const OTP_LENGTH = Number(process.env.NEXT_PUBLIC_OTP_LENGTH) || 6
-const OTP_REGEX = new RegExp(`^\\d{${OTP_LENGTH}}$`)
+// Account-deletion OTP length. Fixed at 6 because the app now MINTS the code
+// itself as exactly 6 digits (see lib/account/delete-otp.ts issueDeleteOtp), so
+// the input, the client validation, and the server are all bound to 6.
+//
+// This used to read NEXT_PUBLIC_OTP_LENGTH — a leftover from when Supabase Auth
+// generated the code and its length was a project/env setting. That env var is
+// inlined at BUILD time, so a stale Production value of 8 kept rendering 8 slots
+// on the deployed app even after the code moved to 6-digit Resend OTPs. Hardcoding
+// removes that footgun: the length can no longer drift from what the server mints.
+const OTP_LENGTH = 6
+const OTP_REGEX = /^\d{6}$/
 
 interface Props {
   email: string

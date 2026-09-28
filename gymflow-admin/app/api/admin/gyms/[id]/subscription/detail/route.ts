@@ -15,11 +15,16 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     const { id } = await props.params
     const supabase = createAdminClient()
 
-    // Fetch gym + all subscription columns
+    // Fetch gym + all subscription columns.
+    // `phone` and `onboarding_data` are selected so a gym's contact number can be
+    // surfaced — the "Manage Subscription" screen was showing PHONE as "—" only
+    // because neither was fetched here (the sibling /gyms/[gymId] route already
+    // selects them; this one had drifted).
     const { data: gym, error: gymError } = await supabase
       .from('gyms')
       .select(`
         id, name, owner_id, is_active, created_at,
+        phone, onboarding_data,
         subscription_status, plan_type,
         trial_started_at, trial_ends_at,
         subscription_started_at, subscription_ends_at,
@@ -36,20 +41,37 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
 
     // Fetch owner info from auth.users
     let owner = null
+    let ownerMobile: string | null = null
     if (gym.owner_id) {
       const { data: { user } } = await supabase.auth.admin.getUserById(gym.owner_id)
       if (user) {
+        // The number the owner typed at signup lives in user_metadata.mobile_number.
+        // `user.phone` is the native phone-auth field and is empty for email signups,
+        // so it must not be the only source. Same resolution as /gyms/[gymId].
+        ownerMobile =
+          (typeof user.user_metadata?.mobile_number === 'string' && user.user_metadata.mobile_number.trim()) ||
+          user.phone ||
+          null
         owner = {
           email: user.email,
           created_at: user.created_at,
           last_sign_in_at: user.last_sign_in_at,
           email_confirmed_at: user.email_confirmed_at,
-          phone: user.phone,
+          phone: ownerMobile,
           user_metadata: user.user_metadata,
           app_metadata: user.app_metadata,
         }
       }
     }
+
+    // Resolve the phone shown on the gym card. Prefer the gym's own contact number
+    // (column, then the onboarding_data blob it lived in before the column existed),
+    // then fall back to the owner's signup mobile so the field is populated even
+    // when the gym never set a separate contact number.
+    const onboarding = (gym.onboarding_data ?? {}) as Record<string, unknown>
+    const onboardingPhone = typeof onboarding.phone === 'string' ? onboarding.phone.trim() : ''
+    const resolvedGymPhone = (gym.phone?.trim?.() || onboardingPhone || ownerMobile) ?? null
+    const gymWithPhone = { ...gym, phone: resolvedGymPhone }
 
     // Fetch pending subscription request
     const { data: pendingRequest } = await supabase
@@ -107,7 +129,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       .maybeSingle()
 
     return NextResponse.json({
-      gym,
+      gym: gymWithPhone,
       owner,
       pendingRequest: pendingRequestWithUrl,
       lastApprovedRequest: lastApprovedRequestWithUrl,

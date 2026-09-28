@@ -942,13 +942,15 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 <Text style={styles.contactValue} numberOfLines={1}>{owner?.email || gym.owner_id}</Text>
               </View>
 
-              {/* Phone row */}
+              {/* Phone row. Prefer the gym's own contact number; fall back to the
+                  owner's signup mobile so a gym that never set a separate contact
+                  number still shows the number entered at account creation. */}
               <View style={styles.contactIconBox}>
                 <Feather name="phone" size={14} color={D.textSub} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.contactLabel}>Phone</Text>
-                <Text style={styles.contactValue}>{gym.phone || '—'}</Text>
+                <Text style={styles.contactValue}>{gym.phone || owner?.phone || '—'}</Text>
               </View>
             </View>
 

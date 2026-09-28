@@ -400,7 +400,12 @@ export default function CreateAccountPage() {
                   </span>
                   <span className="text-sm leading-relaxed text-neutral-700">
                     I have read and agree to the{' '}
-                    <a href="/terms" className={authLink}>
+                    <a
+                      href="https://www.gymflow.sbs/terms.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={authLink}
+                    >
                       Terms &amp; Conditions
                     </a>{' '}
                     <span className="text-neutral-600">(Required)</span>

@@ -197,12 +197,25 @@ export function Hero() {
             {/* Window chrome — reads as "this is the real product", and costs
                 three dots to say it. */}
             <div className="flex items-center gap-1.5 px-3 py-2.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
-              <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
-              <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
+              {/* Classic macOS traffic-light dots — close/minimise/zoom, red/yellow/green.
+                  Fixed hex so they read the same in light and dark; the window frame is a
+                  product motif, not part of the themed surface. */}
+              <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
               <span className="ml-3 font-mono text-[11px] text-muted-foreground">
                 app.gymflow.sbs
               </span>
+              {/* Sits in the empty right half of the address bar. Only meaningful
+                  when the live canvas is on screen — on narrow viewports the frame
+                  holds a static screenshot, so the "interactive" claim is gated on
+                  the same flag that swaps the mock in. */}
+              {interactive && (
+                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-border-subtle bg-card-primary/10 px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <span aria-hidden className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-card-primary" />
+                  Interactive demo
+                </span>
+              )}
             </div>
             {/*
               The live mock is a fixed 1160px canvas scaled to fit. Below ~1024px

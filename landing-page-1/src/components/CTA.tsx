@@ -4,7 +4,7 @@ import { useReveal } from '../lib/useReveal';
 const APP_URL = 'https://app.gymflow.sbs';
 
 const TRUST_CHIPS = [
-  '500+ gyms',
+  '20+ gyms',
   '14-day free trial',
   'No credit card',
   'Cancel anytime',

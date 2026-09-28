@@ -33,17 +33,23 @@ const COLUMNS = [
  * padding is that overlap plus clearance, so footer content still starts below
  * the card's lower edge. The two values have to move together — shrink the
  * padding without shrinking the margin and the links slide under the card.
+ *
+ * The panel is full-bleed: it runs edge to edge with no side gutters or rounded
+ * corners, so the blue reaches both page edges. The old side padding and the
+ * panel's own max-width/mx-auto did the insetting; both are gone. Readability is
+ * kept by the inner wrapper below, which re-applies the max-w-[1240px] centring
+ * to the *content* rather than the coloured panel.
  */
 export function Footer() {
   return (
-    <footer className="-mt-[70px] px-5 pb-5 md:-mt-[150px] md:px-8 md:pb-8">
+    <footer className="-mt-[70px] md:-mt-[150px]">
       {/* id lives here rather than on <footer> so the #support anchor lands on
           the visible panel instead of a point hidden behind the CTA card. */}
       <div
         id="support"
-        className="mx-auto max-w-[1240px] rounded-card-lg bg-card-primary px-6 pt-[110px] pb-8 md:px-12 md:pt-[190px]"
+        className="bg-card-primary px-6 pt-[110px] pb-8 md:px-12 md:pt-[190px]"
       >
-        <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+        <div className="mx-auto grid max-w-[1240px] gap-12 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           {/* ── Brand ─────────────────────────────────────────────────────── */}
           <div>
             <a href="#" aria-label="GymFlow home" className="inline-flex">
@@ -137,10 +143,12 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Was .rule, which draws with --border and would vanish on the panel */}
-        <div aria-hidden className="mt-14 h-px bg-accent-ink/20" />
+        {/* Was .rule, which draws with --border and would vanish on the panel.
+            Shares the grid's max-w-[1240px] mx-auto so the rule and the bottom
+            bar line up with the content columns, not the full-bleed panel. */}
+        <div aria-hidden className="mx-auto mt-14 h-px max-w-[1240px] bg-accent-ink/20" />
 
-        <div className="flex flex-col-reverse items-center justify-between gap-4 pt-7 sm:flex-row">
+        <div className="mx-auto flex max-w-[1240px] flex-col-reverse items-center justify-between gap-4 pt-7 sm:flex-row">
           <p className="text-center text-[12px] text-accent-ink/80 sm:text-left">
             © 2026 GymFlow. Built for gym owners, by fitness enthusiasts. Made in India.
           </p>

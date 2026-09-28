@@ -81,8 +81,15 @@ export function AuthWordmark({ className }: { className?: string }) {
           no 18 or 19 — so no rule was emitted, the height silently fell back to the height
           attribute, and the responsive taper was gone with it. Worth remembering that a
           class name appearing in the markup is not evidence that any CSS exists for it.
+
+          In dark mode the lockup is knocked out to solid white. The asset's wordmark is a
+          near-black that vanishes against the dark panel, so `brightness(0) invert(1)`
+          flattens the whole lockup — mark and wordmark — to white. This is the same knock-out
+          the landing site's legal pages use for the footer logo, so the two stay consistent.
+          The blue is only preserved in light mode, where the panel is pale and the artwork
+          reads as intended.
         */
-        className="h-[var(--auth-logo-h)] w-auto"
+        className="h-[var(--auth-logo-h)] w-auto dark:[filter:brightness(0)_invert(1)]"
       />
     </a>
   )

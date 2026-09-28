@@ -3,6 +3,7 @@ import {
   Activity,
   AlertCircle,
   AlertTriangle,
+  Calendar,
   CalendarCheck,
   Check,
   CheckSquare,
@@ -19,6 +20,7 @@ import {
   Package,
   Plus,
   Search,
+  Target,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -48,10 +50,11 @@ type ViewId =
   | 'payments'
   | 'dues'
   | 'attendance'
-  | 'inventory';
+  | 'inventory'
+  | 'programs';
 
 interface NavItem {
-  id: ViewId | 'programs' | 'reports';
+  id: ViewId | 'reports';
   label: string;
   icon: typeof Users;
   soon?: boolean;
@@ -64,7 +67,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'dues', label: 'Dues', icon: AlertCircle },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { id: 'inventory', label: 'Inventory', icon: Package },
-  { id: 'programs', label: 'Programs', icon: Activity, soon: true },
+  { id: 'programs', label: 'Programs', icon: Activity },
   { id: 'reports', label: 'Reports', icon: TrendingUp, soon: true },
 ];
 
@@ -196,6 +199,49 @@ const STOCK = [
   { name: 'Shaker Bottle', variant: '700ml', category: 'Accessories', price: '₹350', qty: 24 },
 ];
 
+const PROGRAMS = [
+  {
+    id: 'p1',
+    name: 'Beginner Full Body',
+    summary: 'A 3-day full-body split to build a base of strength and movement quality.',
+    category: 'Strength',
+    weeks: 8,
+    frequency: 3,
+    level: 'Beginner',
+    draft: false,
+  },
+  {
+    id: 'p2',
+    name: 'Fat Loss Circuit',
+    summary: 'High-intensity circuits pairing compound lifts with conditioning finishers.',
+    category: 'Weight Loss',
+    weeks: 6,
+    frequency: 4,
+    level: 'Intermediate',
+    draft: false,
+  },
+  {
+    id: 'p3',
+    name: 'Push Pull Legs',
+    summary: 'Classic 6-day PPL for members chasing hypertrophy and steady volume.',
+    category: 'Hypertrophy',
+    weeks: 12,
+    frequency: 6,
+    level: 'Advanced',
+    draft: false,
+  },
+  {
+    id: 'p4',
+    name: 'Home Dumbbell Plan',
+    summary: 'Minimal-equipment routine for members training from home between visits.',
+    category: 'General',
+    weeks: 4,
+    frequency: 3,
+    level: 'Beginner',
+    draft: true,
+  },
+];
+
 /* Membership status pills. Unlike the stat cards these keep their tint in dark —
    they are small and rely on the fill to be read at a glance, so going neutral
    would leave three identical grey chips separable only by reading the label.
@@ -271,7 +317,7 @@ export function DashboardMock() {
                   alt=""
                   width={160}
                   height={160}
-                  className="mx-auto h-6 w-6 object-contain"
+                  className="mx-auto h-8 w-8 object-contain"
                 />
               ) : (
                 <img
@@ -279,7 +325,7 @@ export function DashboardMock() {
                   alt=""
                   width={400}
                   height={178}
-                  className="h-[22px] w-auto object-contain"
+                  className="h-[32px] w-auto object-contain"
                 />
               )}
               <button
@@ -392,6 +438,7 @@ export function DashboardMock() {
                 />
               )}
               {view === 'inventory' && <InventoryView />}
+              {view === 'programs' && <ProgramsView />}
             </div>
           </div>
         </div>
@@ -1009,6 +1056,117 @@ function InventoryView() {
           ))}
         </div>
       </Panel>
+    </div>
+  );
+}
+
+/* ── Programs ─────────────────────────────────────────────────────────────── */
+
+type ProgramFilter = 'all' | 'published' | 'draft';
+
+function ProgramsView() {
+  const [filter, setFilter] = useState<ProgramFilter>('all');
+
+  const shown = PROGRAMS.filter(p => {
+    if (filter === 'published') return !p.draft;
+    if (filter === 'draft') return p.draft;
+    return true;
+  });
+
+  const FILTERS: ProgramFilter[] = ['all', 'published', 'draft'];
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header — title left, Create Program on the right, mirroring the console */}
+      <div className="flex shrink-0 items-start justify-between">
+        <ViewTitle title="Workout Programs" sub="Manage and assign workout templates" />
+        <button
+          type="button"
+          tabIndex={-1}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] px-3.5 py-2 text-[11.5px] font-semibold text-white shadow-sm shadow-blue-200 transition-transform active:scale-[0.98] dark:shadow-none"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Create Program
+        </button>
+      </div>
+
+      {/* Search + published/draft filter */}
+      <div className="mt-3.5 flex shrink-0 items-center gap-2">
+        <span className="flex flex-1 items-center gap-2 rounded-lg border border-dash-border bg-dash-surface px-3 py-1.5">
+          <Search className="h-3.5 w-3.5 text-dash-ink-faint" />
+          <span className="text-[11px] text-dash-ink-faint">Search programs…</span>
+        </span>
+        <div className="flex shrink-0 gap-1 rounded-xl bg-dash-hover p-1">
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              type="button"
+              tabIndex={-1}
+              onClick={() => setFilter(f)}
+              className={`rounded-lg px-3 py-1 text-[10px] font-bold capitalize transition-colors ${
+                filter === f
+                  ? 'bg-dash-surface text-dash-ink shadow-sm dark:shadow-none'
+                  : 'text-dash-ink-muted hover:text-dash-ink-dim'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Card grid — two columns fit the scaled canvas cleanly */}
+      <div className="mt-3 grid min-h-0 flex-1 grid-cols-2 content-start gap-3 overflow-hidden">
+        {shown.map(program => (
+          <Panel
+            key={program.id}
+            className="flex flex-col p-4 transition-colors hover:border-dash-accent dark:hover:border-[#404040]"
+          >
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`rounded-md px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-widest ${
+                  program.draft
+                    ? 'bg-amber-50 text-amber-600 dark:bg-[#451A03] dark:text-[#FCD34D]'
+                    : 'bg-emerald-50 text-emerald-600 dark:bg-[#022C22] dark:text-[#6EE7B7]'
+                }`}
+              >
+                {program.draft ? 'Draft' : 'Published'}
+              </span>
+              <span className="rounded-md bg-dash-hover px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-widest text-dash-ink-muted">
+                {program.category}
+              </span>
+            </div>
+
+            <p className="mt-3 text-[13.5px] font-bold leading-tight text-dash-ink">
+              {program.name}
+            </p>
+            <p className="mt-1 line-clamp-2 flex-1 text-[10.5px] leading-relaxed text-dash-ink-muted">
+              {program.summary}
+            </p>
+
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-dash-line pt-3">
+              <span className="flex flex-col gap-1">
+                <span className="flex items-center gap-1 text-[8.5px] font-semibold text-dash-ink-faint">
+                  <Calendar className="h-3 w-3" /> Weeks
+                </span>
+                <span className="text-[12px] font-bold text-dash-ink-soft">{program.weeks}</span>
+              </span>
+              <span className="flex flex-col gap-1">
+                <span className="flex items-center gap-1 text-[8.5px] font-semibold text-dash-ink-faint">
+                  <Clock className="h-3 w-3" /> Days/Wk
+                </span>
+                <span className="text-[12px] font-bold text-dash-ink-soft">{program.frequency}</span>
+              </span>
+              <span className="flex flex-col gap-1">
+                <span className="flex items-center gap-1 text-[8.5px] font-semibold text-dash-ink-faint">
+                  <Target className="h-3 w-3" /> Level
+                </span>
+                <span className="text-[12px] font-bold text-dash-ink-soft">{program.level}</span>
+              </span>
+            </div>
+          </Panel>
+        ))}
+      </div>
     </div>
   );
 }

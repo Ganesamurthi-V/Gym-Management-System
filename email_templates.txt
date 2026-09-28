@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set Your Password | GymFlow</title>
+</head>
+
+<body style="margin:0;padding:0;background:#F3F7FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F3F7FF">
+<tr>
+<td align="center" style="padding:40px 16px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:20px;border:1px solid #E6EDFF;">
+
+    <!-- Logo -->
+    <tr>
+        <td align="center" style="padding:50px 40px 30px;">
+
+            <img
+                src="https://lrzacwfypnsnjqyhidpn.supabase.co/storage/v1/object/public/assets/logo_landspace_without_bg.png"
+                width="240"
+                alt="GymFlow"
+                style="display:block;border:0;max-width:240px;width:100%;height:auto;">
+
+        </td>
+    </tr>
+
+    <!-- Heading -->
+    <tr>
+        <td align="center" style="padding:0 48px;">
+
+            <h1 style="
+                margin:0;
+                color:#0F1F8F;
+                font-size:32px;
+                font-weight:700;
+                line-height:40px;
+            ">
+                Set Your Password
+            </h1>
+
+        </td>
+    </tr>
+
+    <!-- Description -->
+    <tr>
+        <td align="center" style="padding:24px 48px 10px;">
+
+            <p style="
+                margin:0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                Welcome to <strong>GymFlow</strong>.
+            </p>
+
+            <p style="
+                margin:18px 0 0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                You're just one step away from getting started.
+                Create your password to activate your account and securely access GymFlow.
+            </p>
+
+        </td>
+    </tr>
+
+    <!-- Gradient Button -->
+    <tr>
+        <td align="center" style="padding:40px 48px;">
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+
+                <tr>
+
+                    <td
+                        style="
+                            border-radius:12px;
+                            background:#0F1F8F;
+                            background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                        ">
+
+                        <a
+                            href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=email"
+                            style="
+                                display:inline-block;
+                                padding:18px 42px;
+                                color:#ffffff;
+                                text-decoration:none;
+                                font-size:16px;
+                                font-weight:700;
+                                border-radius:12px;
+                                background:#0F1F8F;
+                                background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                                mso-padding-alt:18px 42px;
+                            ">
+                            Create Password →
+                        </a>
+
+                    </td>
+
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+
+    <!-- Divider -->
+    <tr>
+        <td style="padding:0 48px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td height="1" bgcolor="#EAEFF8"></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- Backup Link -->
+    <tr>
+        <td style="padding:36px 48px;">
+
+            <p style="
+                margin:0;
+                color:#94A3B8;
+                font-size:13px;
+                font-weight:700;
+                text-transform:uppercase;
+                letter-spacing:1px;
+            ">
+                Button not working?
+            </p>
+
+            <p style="
+                margin:12px 0 16px;
+                color:#64748B;
+                font-size:15px;
+                line-height:24px;
+            ">
+                Copy and paste this link into your browser:
+            </p>
+
+            <p style="
+                margin:0;
+                word-break:break-all;
+            ">
+                <!--
+                  Same fragment link as the button. Never swap this for the
+                  ConfirmationURL variable — see the note at the top of this file.
+                -->
+                <a
+                    href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=email"
+                    style="
+                        color:#1D8CFF;
+                        font-size:14px;
+                        text-decoration:none;
+                    ">{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=email</a>
+            </p>
+
+        </td>
+    </tr>
+
+</table>
+
+<!-- Footer -->
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+
+<tr>
+
+<td align="center" style="padding:28px 24px;">
+
+<p style="
+margin:0;
+color:#64748B;
+font-size:14px;
+line-height:24px;
+">
+This secure link will expire after a short time for your protection.
+If you didn't request this email, you can safely ignore it.
+</p>
+
+<p style="
+margin:22px 0 0;
+color:#94A3B8;
+font-size:13px;
+">
+© 2026 GymFlow. All rights reserved.
+</p>
+
+</td>
+
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm Your Email | GymFlow</title>
+</head>
+
+<body style="margin:0;padding:0;background:#F3F7FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F3F7FF">
+<tr>
+<td align="center" style="padding:40px 16px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:20px;border:1px solid #E6EDFF;">
+
+    <!-- Logo -->
+    <tr>
+        <td align="center" style="padding:50px 40px 30px;">
+            <img
+                src="https://lrzacwfypnsnjqyhidpn.supabase.co/storage/v1/object/public/assets/logo_members_without_bg.png"
+                width="240"
+                alt="GymFlow"
+                style="display:block;border:0;max-width:240px;width:100%;height:auto;">
+        </td>
+    </tr>
+
+    <!-- Heading -->
+    <tr>
+        <td align="center" style="padding:0 48px;">
+            <h1 style="
+                margin:0;
+                color:#0F1F8F;
+                font-size:32px;
+                font-weight:700;
+                line-height:40px;
+            ">
+                Welcome to GymFlow Members
+            </h1>
+        </td>
+    </tr>
+
+    <!-- Description -->
+    <tr>
+        <td align="center" style="padding:24px 48px 10px;">
+
+            <p style="
+                margin:0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                Your GymFlow Members account is almost ready.
+            </p>
+
+            <p style="
+                margin:18px 0 0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                To complete your account setup, please confirm your email address
+                by clicking the button below.
+            </p>
+
+        </td>
+    </tr>
+
+    <!-- Gradient Button -->
+    <tr>
+        <td align="center" style="padding:40px 48px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="
+                        border-radius:12px;
+                        background:#0F1F8F;
+                        background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                    ">
+                        <a
+                            href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=magiclink"
+                            style="
+                                display:inline-block;
+                                padding:18px 42px;
+                                color:#ffffff;
+                                text-decoration:none;
+                                font-size:16px;
+                                font-weight:700;
+                                border-radius:12px;
+                                background:#0F1F8F;
+                                background-image:linear-gradient(135deg,#0F1F8F 0%,#1D8CFF 100%);
+                                mso-padding-alt:18px 42px;
+                            ">
+                            Confirm Email →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- What you'll access -->
+    <tr>
+        <td style="padding:0 48px 32px;">
+            <p style="
+                margin:0 0 16px;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                Once confirmed, you'll have secure access to:
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Membership details
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Workout plans
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Attendance history
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Payment history
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#475569;font-size:15px;line-height:24px;">
+                        ✦  Rewards, achievements &amp; workout streaks
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- Divider -->
+    <tr>
+        <td style="padding:0 48px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td height="1" bgcolor="#EAEFF8"></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- Backup Link -->
+    <tr>
+        <td style="padding:36px 48px;">
+            <p style="
+                margin:0;
+                color:#94A3B8;
+                font-size:13px;
+                font-weight:700;
+                text-transform:uppercase;
+                letter-spacing:1px;
+            ">
+                Button not working?
+            </p>
+
+            <p style="
+                margin:12px 0 16px;
+                color:#64748B;
+                font-size:15px;
+                line-height:24px;
+            ">
+                Copy and paste this link into your browser:
+            </p>
+
+            <p style="
+                margin:0;
+                word-break:break-all;
+            ">
+                <!--
+                  Same fragment link as the button. Never swap either of these
+                  for the ConfirmationURL variable — see the note at the top of
+                  this file. Kept on one line so the '#' stays with the token.
+                -->
+                <a
+                    href="{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=magiclink"
+                    style="
+                        color:#1D8CFF;
+                        font-size:14px;
+                        text-decoration:none;
+                    ">{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=magiclink</a>
+            </p>
+        </td>
+    </tr>
+
+</table>
+
+<!-- Footer -->
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+    <tr>
+        <td align="center" style="padding:28px 24px;">
+            <p style="
+                margin:0;
+                color:#64748B;
+                font-size:14px;
+                line-height:24px;
+            ">
+                This secure link will expire after a short time for your protection.
+                If you didn't request this email, you can safely ignore it.
+            </p>
+            <p style="
+                margin:22px 0 0;
+                color:#94A3B8;
+                font-size:13px;
+            ">
+                © 2026 GymFlow. All rights reserved.
+            </p>
+        </td>
+    </tr>
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
+<title>Confirm Account Deletion | GymFlow</title>
+</head>
+
+<body style="margin:0;padding:0;background:#F3F7FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+
+<!-- Preheader: shown as the inbox preview line, hidden in the body -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
+    Your GymFlow account deletion code is inside. It expires in 60 minutes.
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F3F7FF">
+<tr>
+<td align="center" style="padding:40px 16px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+    style="max-width:600px;background:#ffffff;border-radius:20px;border:1px solid #E6EDFF;">
+
+    <!-- Logo -->
+    <tr>
+        <td align="center" style="padding:50px 40px 30px;">
+
+            <img
+                src="https://lrzacwfypnsnjqyhidpn.supabase.co/storage/v1/object/public/assets/logo_landspace_without_bg.png"
+                width="240"
+                alt="GymFlow"
+                style="display:block;border:0;max-width:240px;width:100%;height:auto;">
+
+        </td>
+    </tr>
+
+    <!-- Heading -->
+    <tr>
+        <td align="center" style="padding:0 48px;">
+
+            <h1 style="
+                margin:0;
+                color:#0F1F8F;
+                font-size:32px;
+                font-weight:700;
+                line-height:40px;
+            ">
+                Confirm Account Deletion
+            </h1>
+
+        </td>
+    </tr>
+
+    <!-- Description -->
+    <tr>
+        <td align="center" style="padding:24px 48px 10px;">
+
+            <p style="
+                margin:0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                We received a request to delete your <strong>GymFlow</strong> account.
+            </p>
+
+            <p style="
+                margin:18px 0 0;
+                color:#475569;
+                font-size:16px;
+                line-height:28px;
+            ">
+                To confirm that you want to permanently delete your account,
+                enter the verification code below.
+            </p>
+
+        </td>
+    </tr>
+
+    <!-- OTP -->
+    <tr>
+        <td align="center" style="padding:36px 48px 30px;">
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+
+                    <td
+                        align="center"
+                        style="
+                            background:#F3F7FF;
+                            border:1px solid #DCE6FF;
+                            border-radius:14px;
+                            padding:18px 34px;
+                        ">
+
+                        <span style="
+                            color:#0F1F8F;
+                            font-size:32px;
+                            font-weight:800;
+                            letter-spacing:6px;
+                            line-height:40px;
+                        ">
+                            {{ .Token }}
+                        </span>
+
+                    </td>
+
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+
+    <!-- Warning -->
+    <tr>
+        <td style="padding:0 48px 40px;">
+
+            <table
+                role="presentation"
+                width="100%"
+                cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="
+                    background:#FFF7ED;
+                    border:1px solid #FED7AA;
+                    border-radius:12px;
+                ">
+
+                <tr>
+                    <td style="padding:18px 20px;">
+
+                        <p style="
+                            margin:0;
+                            color:#9A3412;
+                            font-size:14px;
+                            font-weight:700;
+                            line-height:22px;
+                        ">
+                            Important: Account deletion is permanent.
+                        </p>
+
+                        <p style="
+                            margin:8px 0 0;
+                            color:#9A3412;
+                            font-size:14px;
+                            line-height:22px;
+                        ">
+                            Once your account is deleted, your GymFlow data and
+                            account access can no longer be recovered.
+                        </p>
+
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+
+    <!-- Divider -->
+    <tr>
+        <td style="padding:0 48px;">
+
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td height="1" bgcolor="#EAEFF8"></td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+
+    <!-- Security Notice -->
+    <tr>
+        <td style="padding:36px 48px;">
+
+            <p style="
+                margin:0;
+                color:#94A3B8;
+                font-size:13px;
+                font-weight:700;
+                text-transform:uppercase;
+                letter-spacing:1px;
+            ">
+                Didn't request this?
+            </p>
+
+            <p style="
+                margin:12px 0 0;
+                color:#64748B;
+                font-size:15px;
+                line-height:24px;
+            ">
+                If you did not request account deletion, do not share this
+                verification code and secure your account immediately.
+            </p>
+
+        </td>
+    </tr>
+
+</table>
+
+<!-- Footer -->
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+
+<tr>
+
+<td align="center" style="padding:28px 24px;">
+
+<p style="
+margin:0;
+color:#64748B;
+font-size:14px;
+line-height:24px;
+">
+This verification code will expire in 5 minutes for your protection.
+</p>
+
+<p style="
+margin:22px 0 0;
+color:#94A3B8;
+font-size:13px;
+">
+© 2026 GymFlow. All rights reserved.
+</p>
+
+</td>
+
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>

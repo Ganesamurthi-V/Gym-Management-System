@@ -27,9 +27,19 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
 
-/** Code lifetime. Keep in sync with the {{{expiry_label}}} sent in the email. */
-export const DELETE_OTP_TTL_SECONDS = 60
-export const DELETE_OTP_EXPIRY_LABEL = '60 seconds'
+/**
+ * Code lifetime. Keep in sync with the {{{expiry_label}}} sent in the email.
+ *
+ * 5 minutes, not 60 seconds: the code travels by email, so the usable window
+ * has to cover delivery latency PLUS the person opening their inbox, reading the
+ * code, and typing it. A 60s TTL expired before most people finished that — the
+ * key was already gone by verify time, which surfaced as "that code is
+ * incorrect or has expired" for a genuinely-correct code. Five minutes is a
+ * usable window for an emailed OTP while still limiting how long a leaked code
+ * is live (the 5-attempt cap guards brute force).
+ */
+export const DELETE_OTP_TTL_SECONDS = 5 * 60
+export const DELETE_OTP_EXPIRY_LABEL = '5 minutes'
 
 /** How many wrong guesses before the code is burned and a new one is required. */
 const MAX_ATTEMPTS = 5

@@ -313,8 +313,8 @@ export function AccountClient({
     setDeleteOtp('')
     setDeleteOtpStatus('idle')
     setDeleteStep('otp')
-    // Shorter than the 60s OTP expiry so a slow user can get a fresh code without
-    // being stuck waiting for the cooldown after the current code dies.
+    // Resend cooldown. Well within the 10-minute code lifetime, so a user who
+    // never received the first email can request a fresh one without waiting long.
     setResendCooldown(30)
   }
 

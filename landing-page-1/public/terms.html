@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#141414" />
+
+    <!--
+      Theme bootstrap — identical to privacy.html and index.html. Applies the
+      shared 'gf-theme' choice before first paint so this page opens in the same
+      theme the visitor last picked on the marketing site. Dark is the default.
+    -->
+    <script>
+      (function () {
+        var dark = true;
+        try {
+          dark = localStorage.getItem('gf-theme') !== 'light';
+        } catch (e) {
+          dark = true;
+        }
+        if (dark) document.documentElement.classList.add('dark');
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#141414' : '#f5f5f5');
+      })();
+    </script>
+
+    <title>Terms of Service — GymFlow</title>
+    <meta
+      name="description"
+      content="The terms that govern your use of GymFlow, the gym management platform for independent gym owners."
+    />
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href="https://www.gymflow.sbs/terms.html" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /*
+        Self-contained styles, identical to privacy.html. Served as a static file
+        outside the React/Tailwind build, so it carries its own palette. Light is
+        the default; html.dark (toggled by the bootstrap script from 'gf-theme')
+        supplies the dark palette — NOT prefers-color-scheme, so the page follows
+        the site's manual theme toggle rather than the OS setting.
+      */
+      :root {
+        --bg: #f5f5f5;
+        --surface: #ffffff;
+        --text: #18181b;
+        --muted: #52525b;
+        --border: #e4e4e7;
+        --accent: #2563eb;
+        --accent-soft: #eff4ff;
+        --logo-filter: none;
+      }
+      html.dark {
+        --bg: #141414;
+        --surface: #1c1c1c;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #2a2a2a;
+        --accent: #6b9cff;
+        --accent-soft: #1a2438;
+        --logo-filter: brightness(0) invert(1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial,
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 20px 80px;
+      }
+
+      header.top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 28px;
+        margin-bottom: 32px;
+        border-bottom: 1px solid var(--border);
+      }
+      header.top img {
+        height: 60px;
+        width: auto;
+        filter: var(--logo-filter);
+      }
+      .back {
+        font-size: 13.5px;
+        color: var(--muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      .back:hover {
+        color: var(--text);
+      }
+
+      h1 {
+        font-size: clamp(30px, 5vw, 40px);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        margin: 0 0 8px;
+      }
+      .updated {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0 0 40px;
+      }
+
+      h2 {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 44px 0 12px;
+        scroll-margin-top: 24px;
+      }
+      p {
+        color: var(--text);
+        margin: 0 0 16px;
+      }
+      ul {
+        margin: 0 0 16px;
+        padding-left: 22px;
+      }
+      li {
+        margin-bottom: 8px;
+      }
+      strong {
+        font-weight: 600;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .contact {
+        margin-top: 12px;
+        padding: 20px 22px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+      }
+      .contact dl {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 8px 16px;
+        margin: 0;
+      }
+      .contact dt {
+        color: var(--muted);
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding-top: 2px;
+      }
+      .contact dd {
+        margin: 0;
+      }
+      @media (max-width: 520px) {
+        .contact dl {
+          grid-template-columns: 1fr;
+          gap: 2px 0;
+        }
+        .contact dt {
+          margin-top: 10px;
+        }
+        .contact dt:first-child {
+          margin-top: 0;
+        }
+      }
+
+      .toc {
+        background: var(--accent-soft);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 22px;
+        margin: 0 0 40px;
+      }
+      .toc p {
+        margin: 0 0 10px;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .toc ol {
+        margin: 0;
+        padding-left: 20px;
+        columns: 2;
+        column-gap: 28px;
+        font-size: 14.5px;
+      }
+      .toc li {
+        margin-bottom: 6px;
+      }
+      @media (max-width: 520px) {
+        .toc ol {
+          columns: 1;
+        }
+      }
+
+      footer.foot {
+        margin-top: 56px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 13px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        justify-content: space-between;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <a href="/" aria-label="GymFlow home">
+          <img src="/logo_landspace_without_bg.webp" alt="GymFlow" width="400" height="178" />
+        </a>
+        <a class="back" href="/">← Back to site</a>
+      </header>
+
+      <main>
+        <h1>Terms of Service</h1>
+        <p class="updated">Last updated: September 2026</p>
+
+        <nav class="toc" aria-label="Contents">
+          <p>Contents</p>
+          <ol>
+            <li><a href="#acceptance">Acceptance of terms</a></li>
+            <li><a href="#service">Description of service</a></li>
+            <li><a href="#registration">Account registration</a></li>
+            <li><a href="#subscription">Subscription &amp; payments</a></li>
+            <li><a href="#acceptable-use">Acceptable use</a></li>
+            <li><a href="#whatsapp">WhatsApp integration</a></li>
+            <li><a href="#member-data">Member data &amp; your responsibilities</a></li>
+            <li><a href="#data-ownership">Data ownership</a></li>
+            <li><a href="#third-parties">Third-party services</a></li>
+            <li><a href="#availability">Service availability</a></li>
+            <li><a href="#liability">Limitation of liability</a></li>
+            <li><a href="#termination">Termination</a></li>
+            <li><a href="#changes">Changes to terms</a></li>
+            <li><a href="#governing-law">Governing law</a></li>
+            <li><a href="#contact">Contact us</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="acceptance">1. Acceptance of Terms</h2>
+        <p class="lead">
+          By accessing or using GymFlow ("the Service"), you agree to be bound by these Terms of
+          Service. If you do not agree to these terms, please do not use the Service.
+        </p>
+        <p>
+          These terms apply to gym owners who create an account and to anyone who accesses the
+          Service on a gym's behalf. The Service is operated from India and is intended for gyms in
+          India.
+        </p>
+
+        <h2 id="service">2. Description of Service</h2>
+        <p>
+          GymFlow is a gym management platform that lets gym owners manage members, track payments
+          and dues, record attendance, create membership plans, run reports, and send WhatsApp
+          notifications to members. The Service is provided on a subscription basis with a free
+          trial period, and is delivered over the web at
+          <a href="https://app.gymflow.sbs">app.gymflow.sbs</a>.
+        </p>
+
+        <h2 id="registration">3. Account Registration</h2>
+        <p>To use the Service, you must:</p>
+        <ul>
+          <li>Provide accurate and complete registration information.</li>
+          <li>Maintain the security of your account credentials and keep them confidential.</li>
+          <li>Be at least 18 years old or have the legal authority to enter into this agreement on behalf of your gym.</li>
+          <li>Accept responsibility for all activity that occurs under your account.</li>
+        </ul>
+        <p>
+          You are responsible for any accounts you create for member and for the actions taken under
+          those accounts.
+        </p>
+
+        <h2 id="subscription">4. Subscription and Payments</h2>
+        <p>GymFlow is offered on the following terms:</p>
+        <ul>
+          <li><strong>Free trial</strong> — new gyms get a 14-day free trial with every feature unlocked and no payment required. When the trial ends, access is paused until you activate a paid plan.</li>
+          <li><strong>Plans</strong> — paid plans are available on monthly and longer billing terms, as shown on our <a href="https://www.gymflow.sbs/#pricing">pricing page</a>. Prices are in Indian Rupees (INR).</li>
+          <li><strong>Payment by UPI</strong> — subscription payments are made by UPI. You pay to the UPI details shown in the app and upload a payment reference; we verify it manually and activate your plan. We do not store your card details, we do not keep any payment method on file, and we do not process or hold funds through the platform.</li>
+          <li><strong>No auto-renewal</strong> — plans do not renew automatically. Because there is no payment method on file, you choose to renew each term by making a new payment. We may remind you before your plan expires.</li>
+          <li><strong>No refunds for partial periods</strong> — fees already paid for a billing period are non-refundable, except where required by law.</li>
+        </ul>
+
+        <h2 id="acceptable-use">5. Acceptable Use</h2>
+        <p>You agree not to:</p>
+        <ul>
+          <li>Use the Service for any unlawful purpose or in violation of any applicable law or regulation.</li>
+          <li>Upload malicious code or attempt to probe, scan, or compromise the security of the Service.</li>
+          <li>Share your account credentials with unauthorised users, or resell or sublicense the Service.</li>
+          <li>Send spam, or messages that are not permitted by the WhatsApp integration terms below.</li>
+          <li>Attempt to access data belonging to another gym, or interfere with other users' use of the Service.</li>
+        </ul>
+
+        <h2 id="whatsapp">6. WhatsApp Integration</h2>
+        <p>
+          WhatsApp notifications are a core part of GymFlow and are active for every gym. Messages
+          are sent through the WhatsApp Business Cloud API provided by Meta. When your gym uses this
+          feature, you agree to comply with Meta's WhatsApp Business Platform terms and policies.
+        </p>
+        <p>
+          You are responsible for obtaining appropriate consent from your gym members before they
+          are contacted on WhatsApp, and for ensuring the messages sent through your account are
+          transactional in nature (such as welcome messages, payment confirmations, and membership
+          reminders) and comply with applicable messaging regulations. Misuse of the WhatsApp
+          integration may result in suspension of the feature or your account.
+        </p>
+
+        <h2 id="member-data">7. Member Data &amp; Your Responsibilities</h2>
+        <p>
+          The member records you enter belong to your gym, and you are the controller of that data.
+          You are responsible for having a lawful basis to collect and store member information, for
+          keeping it accurate, and for honouring your members' requests regarding their data. Our
+          handling of personal data is described in our
+          <a href="/privacy.html">Privacy Policy</a>.
+        </p>
+
+        <h2 id="data-ownership">8. Data Ownership</h2>
+        <p>
+          You retain ownership of all data you input into the Service. You grant GymFlow a limited
+          licence to host, process, and use that data solely to provide and improve the Service. We
+          keep regular backups, but you are also responsible for maintaining your own records and
+          for the accuracy of the data you enter.
+        </p>
+
+        <h2 id="third-parties">9. Third-Party Services</h2>
+        <p>
+          GymFlow relies on trusted third-party providers to operate. These currently include
+          Supabase (database, authentication, and file storage), Vercel (hosting), Meta (WhatsApp
+          Business Cloud API), Upstash (message queuing and rate limiting), Sentry (error and
+          performance monitoring), and Google Maps Platform (address autocomplete). Your use of the Service is also subject to
+          these providers' terms where applicable. We may change providers over time to keep the
+          Service reliable.
+        </p>
+
+        <h2 id="availability">10. Service Availability</h2>
+        <p>
+          We work to keep the Service available and reliable, but we do not guarantee uninterrupted
+          access. The Service may be temporarily unavailable for maintenance, updates, or
+          circumstances beyond our control, including outages at the third-party providers listed
+          above. We will provide notice of planned downtime where reasonably possible.
+        </p>
+
+        <h2 id="liability">11. Limitation of Liability</h2>
+        <p>
+          To the maximum extent permitted by law, GymFlow shall not be liable for any indirect,
+          incidental, special, consequential, or punitive damages, including loss of profits, data,
+          goodwill, or business opportunities, arising from your use of, or inability to use, the
+          Service. The Service is provided on an "as is" and "as available" basis. Nothing in these
+          terms limits any liability that cannot be limited under applicable law.
+        </p>
+
+        <h2 id="termination">12. Termination</h2>
+        <p>
+          Either party may terminate this agreement at any time. You can stop using the Service and
+          delete your gym account from your account settings. Upon termination, your access to the
+          Service ends, and your gym and member data are handled as described in the
+          <a href="/privacy.html#retention">Data Retention</a> section of our Privacy Policy. You
+          may request an export of your data before deleting your account. We reserve the right to
+          suspend or terminate accounts that violate these terms.
+        </p>
+
+        <h2 id="changes">13. Changes to Terms</h2>
+        <p>
+          We may update these Terms of Service from time to time. When we make significant changes,
+          we will update the "Last updated" date above and, where appropriate, notify you through
+          the Service or by email. Your continued use of the Service after changes take effect means
+          you accept the revised terms.
+        </p>
+
+        <h2 id="governing-law">14. Governing Law</h2>
+        <p>
+          These terms are governed by the laws of India, and any disputes arising from them or from
+          your use of the Service are subject to the exclusive jurisdiction of the courts of
+          Puducherry, India.
+        </p>
+
+        <h2 id="contact">15. Contact Us</h2>
+        <p>If you have questions about these Terms of Service, please contact us at:</p>
+        <div class="contact">
+          <dl>
+            <dt>Product</dt>
+            <dd>GymFlow</dd>
+            <dt>Email</dt>
+            <dd><a href="mailto:ganesamurthiv@gmail.com">ganesamurthiv@gmail.com</a></dd>
+            <dt>WhatsApp / Phone</dt>
+            <dd><a href="tel:+919384886895">+91 93848 86895</a></dd>
+            <dt>Address</dt>
+            <dd>No. 126, Anbu Nagar, Achariyapuram, Villianur, Puducherry 605110, India</dd>
+            <dt>Website</dt>
+            <dd><a href="https://www.gymflow.sbs">https://www.gymflow.sbs</a></dd>
+          </dl>
+        </div>
+      </main>
+
+      <footer class="foot">
+        <span>© 2026 GymFlow. Made in India.</span>
+        <a href="/">Back to gymflow.sbs</a>
+      </footer>
+    </div>
+  </body>
+</html>

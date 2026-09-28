@@ -44,17 +44,23 @@ interface WelcomeTransitionProps {
 }
 
 /**
- * Centred white wash, same trick and same reasoning as the one in AuthAside: the grid runs
- * behind the copy rather than around it, and small glyph strokes break up against the marks
- * even at a passing contrast ratio. Opaque where the content sits, faded to nothing well
- * before any edge, so there is no boundary to read as a panel.
+ * Centred wash that dims the grid behind the copy rather than around it, so small glyph
+ * strokes break up against the marks even at a passing contrast ratio. Opaque where the
+ * content sits, faded to nothing well before any edge, so there is no boundary to read as
+ * a panel.
+ *
+ * It is keyed to --c-surface, the overlay's own background, NOT --c-grid-scrim. In dark
+ * mode --c-grid-scrim is 10 10 10 while this overlay sits on --c-surface (23 23 23), so the
+ * old scrim painted a #0a0a0a oval on a #171717 field — a visible black vignette that faded
+ * to the lighter surface at its edge. Matching the surface exactly makes the wash blend into
+ * its backdrop in both themes while still masking the grid.
  */
 const SCRIM_GRADIENT =
   'radial-gradient(42% 38% at 50% 50%, ' +
-  'rgb(var(--c-grid-scrim) / 1) 0%, ' +
-  'rgb(var(--c-grid-scrim) / 1) 62%, ' +
-  'rgb(var(--c-grid-scrim) / 0.55) 82%, ' +
-  'rgb(var(--c-grid-scrim) / 0) 100%)'
+  'rgb(var(--c-surface) / 1) 0%, ' +
+  'rgb(var(--c-surface) / 1) 62%, ' +
+  'rgb(var(--c-surface) / 0.55) 82%, ' +
+  'rgb(var(--c-surface) / 0) 100%)'
 
 /** Blocks in the progress meter. */
 const SEGMENTS = 18

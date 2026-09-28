@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#141414" />
+
+    <!--
+      Theme bootstrap — kept in sync with the inline script in index.html and
+      useTheme() in src/lib/useTheme.ts. Runs before first paint so the saved
+      choice is already on <html> when the page renders, matching whatever the
+      visitor last picked on the marketing site (same 'gf-theme' localStorage key,
+      same origin). Dark is the default: no saved choice, or storage unavailable,
+      lands on dark, so this legal page never flashes a different theme than the
+      site the visitor came from.
+    -->
+    <script>
+      (function () {
+        var dark = true;
+        try {
+          dark = localStorage.getItem('gf-theme') !== 'light';
+        } catch (e) {
+          dark = true;
+        }
+        if (dark) document.documentElement.classList.add('dark');
+        // Keep the mobile browser chrome in step with the resolved theme.
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#141414' : '#f5f5f5');
+      })();
+    </script>
+
+    <title>Privacy Policy — GymFlow</title>
+    <meta
+      name="description"
+      content="How GymFlow collects, uses, shares and protects the information of gym owners and their members."
+    />
+    <!-- Legal pages should not compete with the marketing site for ranking. -->
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href="https://www.gymflow.sbs/privacy.html" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /*
+        Self-contained styles. This page is served as a static file outside the
+        React/Tailwind build, so it cannot use src/index.css. The palette below
+        mirrors the site's light/dark surfaces (see index.html theme-color).
+      */
+      /*
+        Light is the default palette; the dark palette is applied via html.dark,
+        which the bootstrap script above toggles from the shared 'gf-theme'
+        choice — NOT via prefers-color-scheme, so this page follows the site's
+        manual theme toggle rather than the OS setting.
+      */
+      :root {
+        --bg: #f5f5f5;
+        --surface: #ffffff;
+        --text: #18181b;
+        --muted: #52525b;
+        --border: #e4e4e7;
+        --accent: #2563eb;
+        --accent-soft: #eff4ff;
+        --logo-filter: none;
+      }
+      html.dark {
+        --bg: #141414;
+        --surface: #1c1c1c;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #2a2a2a;
+        --accent: #6b9cff;
+        --accent-soft: #1a2438;
+        /* The wordmark asset is dark-inked for light backgrounds; crush to black
+           then invert to solid white so it reads on the near-black page. Same
+           trick the site Footer uses (brightness-0 invert). */
+        --logo-filter: brightness(0) invert(1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial,
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 20px 80px;
+      }
+
+      header.top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 28px;
+        margin-bottom: 32px;
+        border-bottom: 1px solid var(--border);
+      }
+      header.top img {
+        height: 60px;
+        width: auto;
+        filter: var(--logo-filter);
+      }
+      .back {
+        font-size: 13.5px;
+        color: var(--muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      .back:hover {
+        color: var(--text);
+      }
+
+      h1 {
+        font-size: clamp(30px, 5vw, 40px);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        margin: 0 0 8px;
+      }
+      .updated {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0 0 40px;
+      }
+
+      h2 {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 44px 0 12px;
+        scroll-margin-top: 24px;
+      }
+      p {
+        color: var(--text);
+        margin: 0 0 16px;
+      }
+      ul {
+        margin: 0 0 16px;
+        padding-left: 22px;
+      }
+      li {
+        margin-bottom: 8px;
+      }
+      strong {
+        font-weight: 600;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .contact {
+        margin-top: 12px;
+        padding: 20px 22px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+      }
+      .contact dl {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 8px 16px;
+        margin: 0;
+      }
+      .contact dt {
+        color: var(--muted);
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding-top: 2px;
+      }
+      .contact dd {
+        margin: 0;
+      }
+      @media (max-width: 520px) {
+        .contact dl {
+          grid-template-columns: 1fr;
+          gap: 2px 0;
+        }
+        .contact dt {
+          margin-top: 10px;
+        }
+        .contact dt:first-child {
+          margin-top: 0;
+        }
+      }
+
+      .toc {
+        background: var(--accent-soft);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 22px;
+        margin: 0 0 40px;
+      }
+      .toc p {
+        margin: 0 0 10px;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .toc ol {
+        margin: 0;
+        padding-left: 20px;
+        columns: 2;
+        column-gap: 28px;
+        font-size: 14.5px;
+      }
+      .toc li {
+        margin-bottom: 6px;
+      }
+      @media (max-width: 520px) {
+        .toc ol {
+          columns: 1;
+        }
+      }
+
+      footer.foot {
+        margin-top: 56px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 13px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        justify-content: space-between;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <a href="/" aria-label="GymFlow home">
+          <img src="/logo_landspace_without_bg.webp" alt="GymFlow" width="400" height="178" />
+        </a>
+        <a class="back" href="/">← Back to site</a>
+      </header>
+
+      <main>
+        <h1>Privacy Policy</h1>
+        <p class="updated">Last updated: September 2026</p>
+
+        <nav class="toc" aria-label="Contents">
+          <p>Contents</p>
+          <ol>
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#information-we-collect">Information we collect</a></li>
+            <li><a href="#how-we-use">How we use your information</a></li>
+            <li><a href="#whatsapp">WhatsApp messaging</a></li>
+            <li><a href="#member-data">Member data &amp; your role</a></li>
+            <li><a href="#sharing">Data sharing</a></li>
+            <li><a href="#analytics">Analytics &amp; error tracking</a></li>
+            <li><a href="#security">Data security</a></li>
+            <li><a href="#retention">Data retention</a></li>
+            <li><a href="#your-rights">Your rights</a></li>
+            <li><a href="#children">Children's privacy</a></li>
+            <li><a href="#changes">Changes to this policy</a></li>
+            <li><a href="#contact">Contact us</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="introduction">1. Introduction</h2>
+        <p class="lead">
+          GymFlow ("we", "our", or "us") is committed to protecting your privacy. This Privacy
+          Policy explains how we collect, use, disclose, and safeguard your information when you
+          use our gym management platform at
+          <a href="https://www.gymflow.sbs">www.gymflow.sbs</a> and the application at
+          <a href="https://app.gymflow.sbs">app.gymflow.sbs</a>.
+        </p>
+        <p>
+          GymFlow is built for independent gym owners in India. When you sign up as a gym owner,
+          you are our customer. The members you add to your gym are your customers — for their
+          data, you are the data controller and GymFlow acts as your processor. This distinction
+          runs throughout this policy.
+        </p>
+
+        <h2 id="information-we-collect">2. Information We Collect</h2>
+        <p>We collect information that you provide directly to us, including:</p>
+        <ul>
+          <li><strong>Account information</strong> — name, email address, phone number, and password.</li>
+          <li><strong>Gym business information</strong> — gym name, address, membership plans and pricing.</li>
+          <li><strong>Member data</strong> — the member records you enter into the platform, such as names, contact numbers, membership plans, attendance and payment history.</li>
+          <li><strong>UPI / payment details</strong> — to help you collect payments, we store your gym's UPI merchant details (such as your UPI ID and payee name) so the platform can generate a UPI QR code. We do not store card numbers, bank credentials, or the raw QR image, and we do not process or hold funds — payments settle directly to your own UPI account.</li>
+          <li><strong>Usage data and analytics</strong> — how you interact with the platform, device and browser information, and diagnostic logs used to keep the service reliable.</li>
+        </ul>
+
+        <h2 id="how-we-use">3. How We Use Your Information</h2>
+        <p>We use the information we collect to:</p>
+        <ul>
+          <li>Provide, maintain, and improve our services.</li>
+          <li>Verify your subscription payments and send related information.</li>
+          <li>Generate UPI QR codes from your gym's UPI details so you can collect payments from members.</li>
+          <li>Send WhatsApp notifications to gym members.</li>
+          <li>Respond to your comments, questions, and support requests.</li>
+          <li>Send transactional emails, such as account verification and security notifications.</li>
+          <li>Monitor and analyse trends, usage, and activity to improve the platform.</li>
+          <li>Detect, prevent, and address technical issues, fraud, and abuse.</li>
+        </ul>
+
+        <h2 id="whatsapp">4. WhatsApp Messaging</h2>
+        <p>
+          WhatsApp notifications are a core part of GymFlow and are active for every gym. We use the
+          WhatsApp Business API (provided by Meta) to send transactional messages to gym members on
+          behalf of their gym. These messages include welcome notifications, payment confirmations,
+          and membership reminders.
+        </p>
+        <p>
+          Because these messages are sent using the member contact details a gym enters, gym owners
+          are responsible for obtaining consent from their members to be contacted on WhatsApp, and
+          for ensuring the messages sent through their account comply with WhatsApp's Business
+          Messaging Policy and applicable law. Members can ask their gym to stop messaging them at
+          any time.
+        </p>
+
+        <h2 id="member-data">5. Member Data &amp; Your Role as a Gym Owner</h2>
+        <p>
+          Member data belongs to the gym that entered it. As a gym owner, you decide what member
+          information to collect and how it is used within your gym. You are responsible for having
+          a lawful basis to collect and store that information, and for honouring your members'
+          requests to access, correct, or delete their data.
+        </p>
+        <p>
+          GymFlow processes member data only to provide the service to you, and never uses one
+          gym's member data to benefit another gym. If you close your account, we handle member
+          data as described in <a href="#retention">Data Retention</a> below.
+        </p>
+
+        <h2 id="sharing">6. Data Sharing</h2>
+        <p>
+          We do not sell your personal information. We share information only with the service
+          providers (sub-processors) that help us run the platform, and only as needed to provide
+          the service:
+        </p>
+        <ul>
+          <li><strong>Supabase</strong> — database, authentication and file storage (for example, gym logos).</li>
+          <li><strong>Vercel</strong> — application hosting and content delivery.</li>
+          <li><strong>Meta (WhatsApp Business Cloud API)</strong> — sending WhatsApp messages to gym members.</li>
+          <li><strong>Upstash</strong> — QStash to queue and rate-limit outgoing WhatsApp messages, and Redis for rate limiting.</li>
+          <li><strong>Sentry</strong> — error and performance monitoring, and session replay, to diagnose problems (see <a href="#analytics">Analytics &amp; Error Tracking</a>).</li>
+          <li><strong>Google Maps Platform</strong> — address autocomplete when you enter your gym's address during onboarding.</li>
+        </ul>
+        <p>These providers process data only on our instructions and under their own security and privacy obligations.</p>
+        <p>We may also disclose information:</p>
+        <ul>
+          <li><strong>To legal authorities</strong> — when required by applicable law, regulation, legal process, or enforceable governmental request.</li>
+          <li><strong>In a business transfer</strong> — in connection with a merger, acquisition, or sale of assets, in which case we will notify you before your information becomes subject to a different privacy policy.</li>
+        </ul>
+
+        <h2 id="analytics">7. Analytics &amp; Error Tracking</h2>
+        <p>
+          To keep the platform reliable, we use <strong>Sentry</strong> to capture errors,
+          performance data, and session replays (recordings of how a page behaved when something
+          went wrong). We have configured Sentry to <strong>not</strong> automatically collect
+          personal data — IP addresses, cookies, and request bodies are stripped before events are
+          sent — so member names, phone numbers, and similar details are kept out of error reports
+          wherever possible.
+        </p>
+        <p>
+          We do not use third-party advertising or cross-site tracking. We monitor overall search
+          performance for our public marketing site using tools such as Google Search Console, which
+          rely on aggregated crawl and search data and do not track individual visitors of the
+          application.
+        </p>
+
+        <h2 id="security">8. Data Security</h2>
+        <p>
+          We implement appropriate technical and organisational measures to protect your data. This
+          includes encryption of data in transit, secure authentication, row-level access controls,
+          and regular backups. Each gym's data is isolated so that it is only accessible to
+          authorised users of that gym.
+        </p>
+        <p>
+          No method of transmission or storage is completely secure, so while we work hard to
+          protect your information, we cannot guarantee absolute security.
+        </p>
+
+        <h2 id="retention">9. Data Retention</h2>
+        <p>
+          We retain your information for as long as your account is active or as needed to provide
+          the service. When you delete your gym account, the associated gym and member data are
+          removed, subject to a short backup-retention window and any records we are legally
+          required to keep. You can request deletion of your data at any time by contacting us.
+        </p>
+
+        <h2 id="your-rights">10. Your Rights</h2>
+        <p>
+          You have the right to access, correct, or delete your personal information. You may also
+          object to certain processing or request a copy of your data in a portable format. To
+          exercise these rights, contact us at
+          <a href="mailto:ganesamurthiv@gmail.com">ganesamurthiv@gmail.com</a>. If you are a gym
+          member, please contact your gym first, as they control your records; we will support your
+          gym in fulfilling your request.
+        </p>
+
+        <h2 id="children">11. Children's Privacy</h2>
+        <p>
+          GymFlow is intended for use by gym owners and their operations. It is not directed at
+          children, and we do not knowingly collect personal information from children. If a gym
+          adds a member who is a minor, the gym is responsible for obtaining any consent required
+          from a parent or guardian.
+        </p>
+
+        <h2 id="changes">12. Changes to This Policy</h2>
+        <p>
+          We may update this Privacy Policy from time to time. When we make material changes, we
+          will update the "Last updated" date above and, where appropriate, notify you through the
+          platform or by email. Your continued use of GymFlow after changes take effect means you
+          accept the revised policy.
+        </p>
+
+        <h2 id="contact">13. Contact Us</h2>
+        <p>If you have questions about this Privacy Policy, please contact us at:</p>
+        <div class="contact">
+          <dl>
+            <dt>Product</dt>
+            <dd>GymFlow</dd>
+            <dt>Email</dt>
+            <dd><a href="mailto:ganesamurthiv@gmail.com">ganesamurthiv@gmail.com</a></dd>
+            <dt>WhatsApp / Phone</dt>
+            <dd><a href="tel:+919384886895">+91 93848 86895</a></dd>
+            <dt>Address</dt>
+            <dd>No. 126, Anbu Nagar, Achariyapuram, Villianur, Puducherry 605110, India</dd>
+            <dt>Website</dt>
+            <dd><a href="https://www.gymflow.sbs">https://www.gymflow.sbs</a></dd>
+          </dl>
+        </div>
+      </main>
+
+      <footer class="foot">
+        <span>© 2026 GymFlow. Made in India.</span>
+        <a href="/">Back to gymflow.sbs</a>
+      </footer>
+    </div>
+  </body>
+</html>

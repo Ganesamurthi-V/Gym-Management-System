@@ -19,8 +19,8 @@ const COLUMNS = [
     heading: 'Company',
     links: [
       { label: 'FAQ', href: '#faq' },
-      { label: 'Privacy', href: '#' },
-      { label: 'Terms', href: '#' },
+      { label: 'Privacy', href: '/privacy.html' },
+      { label: 'Terms', href: '/terms.html' },
       { label: 'Sign in', href: APP_URL },
     ],
   },

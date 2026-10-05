@@ -65,11 +65,32 @@ month_rows AS (
          COALESCE(SUM(c.amount) FILTER (WHERE c.mode = 'cash'), 0) AS cash,
          COALESCE(SUM(c.amount) FILTER (WHERE c.mode = 'upi'), 0) AS upi,
          COALESCE(SUM(c.amount) FILTER (WHERE c.mode = 'card'), 0) AS card,
-         COUNT(c.day) AS transactions,
-         COALESCE(SUM(c.units), 0) AS units
+         COUNT(c.day) AS transactions
   FROM months m
   LEFT JOIN collected c ON c.day >= m.start_dt AND c.day < m.next_dt
   GROUP BY m.idx, m.start_dt
+),
+-- People who joined in each month. Imported members are left out: their rows were
+-- all created on the day of the import, which would read as one enormous month.
+joined AS (
+  SELECT m.idx, COUNT(mb.id) AS n
+  FROM months m
+  LEFT JOIN public.members mb
+    ON mb.gym_id = p_gym_id AND NOT COALESCE(mb.is_imported, false)
+   AND (mb.created_at AT TIME ZONE 'Asia/Kolkata')::date >= m.start_dt
+   AND (mb.created_at AT TIME ZONE 'Asia/Kolkata')::date < m.next_dt
+  GROUP BY m.idx
+),
+-- A renewal is a plan bought by someone who already had one.
+renewed AS (
+  SELECT m.idx, COUNT(ms.id) AS n
+  FROM months m
+  LEFT JOIN public.memberships ms
+    ON ms.gym_id = p_gym_id
+   AND (ms.created_at AT TIME ZONE 'Asia/Kolkata')::date >= m.start_dt
+   AND (ms.created_at AT TIME ZONE 'Asia/Kolkata')::date < m.next_dt
+   AND EXISTS (SELECT 1 FROM public.memberships prev WHERE prev.member_id = ms.member_id AND prev.created_at < ms.created_at)
+  GROUP BY m.idx
 ),
 -- Each member's most recent membership, picked the way the dashboard and the
 -- Members page pick it (latest created), so the counts agree across pages.
@@ -102,6 +123,14 @@ expiring_rows AS (
   WHERE end_date BETWEEN p_today AND p_today + 30
   ORDER BY end_date, name
   LIMIT 20
+),
+-- Plans that ran out in the last 30 days and have not been renewed: the people
+-- who are leaving right now, as opposed to everyone who ever left.
+lapsed AS (
+  SELECT name, phone, end_date, plan FROM latest WHERE end_date < p_today AND end_date >= p_today - 30
+),
+lapsed_top AS (
+  SELECT * FROM lapsed ORDER BY end_date DESC, name LIMIT 20
 ),
 dues_all AS (
   SELECT name, phone, pending_amount
@@ -147,27 +176,14 @@ area_rows AS (
   GROUP BY lower(btrim(area))
   ORDER BY n DESC, area
   LIMIT 10
-),
-recent_sales AS (
-  SELECT product_name, variant_name, quantity, total_price, payment_mode, sold_at
-  FROM public.inventory_sales
-  WHERE gym_id = p_gym_id
-  ORDER BY sold_at DESC
-  LIMIT 10
-),
-wa AS (
-  SELECT template_name, status
-  FROM public.whatsapp_automation_logs
-  WHERE gym_id = p_gym_id AND sent_at >= (p_today - 30)::timestamp AT TIME ZONE 'Asia/Kolkata'
-),
-wa_templates AS (
-  SELECT template_name, COUNT(*) AS n FROM wa WHERE status = 'sent' GROUP BY template_name ORDER BY n DESC, template_name LIMIT 6
 )
 SELECT json_build_object(
   'months', (
     SELECT COALESCE(json_agg(json_build_object(
       'label', label, 'total', total, 'memberships', memberships, 'dues', dues, 'inventory', inventory,
-      'cash', cash, 'upi', upi, 'card', card, 'transactions', transactions, 'units', units
+      'cash', cash, 'upi', upi, 'card', card, 'transactions', transactions,
+      'newMembers', (SELECT n FROM joined j WHERE j.idx = month_rows.idx),
+      'renewals', (SELECT n FROM renewed r WHERE r.idx = month_rows.idx)
     ) ORDER BY idx), '[]'::json) FROM month_rows
   ),
   'members', (
@@ -212,18 +228,11 @@ SELECT json_build_object(
   'areas', (
     SELECT COALESCE(json_agg(json_build_object('area', area, 'count', n) ORDER BY n DESC, area), '[]'::json) FROM area_rows
   ),
-  'recentSales', (
-    SELECT COALESCE(json_agg(json_build_object(
-      'product', product_name, 'variant', variant_name, 'quantity', quantity,
-      'total', total_price, 'mode', payment_mode, 'soldAt', sold_at
-    ) ORDER BY sold_at DESC), '[]'::json) FROM recent_sales
-  ),
-  'whatsapp', json_build_object(
-    'sent', (SELECT COUNT(*) FROM wa WHERE status = 'sent'),
-    'failed', (SELECT COUNT(*) FROM wa WHERE status IN ('failed', 'error')),
-    'templates', (
-      SELECT COALESCE(json_agg(json_build_object('template', template_name, 'count', n)
-        ORDER BY n DESC, template_name), '[]'::json) FROM wa_templates
+  'lapsed', json_build_object(
+    'count', (SELECT COUNT(*) FROM lapsed),
+    'top', (
+      SELECT COALESCE(json_agg(json_build_object('name', name, 'phone', phone, 'endDate', end_date, 'plan', plan)
+        ORDER BY end_date DESC, name), '[]'::json) FROM lapsed_top
     )
   )
 );

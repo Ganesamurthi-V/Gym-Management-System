@@ -138,33 +138,29 @@ export function WeekdayBars({ byDay }: { byDay: Weekday[] }) {
   )
 }
 
-export function InventoryChart({ months }: { months: Month[] }) {
+export function JoinsChart({ months }: { months: Month[] }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={months} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="reportsInventory" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={EMERALD} stopOpacity={0.25} />
-            <stop offset="95%" stopColor={EMERALD} stopOpacity={0.01} />
-          </linearGradient>
-        </defs>
+      <BarChart data={months} margin={{ top: 10, right: 10, left: -10, bottom: 0 }} barGap={4}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
         <XAxis dataKey="label" tickFormatter={shortMonth} dy={8} {...axis} />
-        <YAxis tickFormatter={compactInr} width={48} {...axis} />
+        <YAxis allowDecimals={false} {...axis} />
         <Tooltip
+          cursor={{ fill: GRID, opacity: 0.4 }}
           content={({ active, payload }: TipProps<Month>) => {
             const row = payload?.[0]?.payload
             if (!active || !row) return null
             return (
               <Tip title={row.label}>
-                <p className="font-black text-sm text-emerald-400">{inr(row.inventory)}</p>
-                <p className="text-white/70">{row.units} unit{row.units === 1 ? '' : 's'} sold</p>
+                <p className="font-black text-brand-300">{row.newMembers} new</p>
+                <p className="font-black text-emerald-400">{row.renewals} renewed</p>
               </Tip>
             )
           }}
         />
-        <Area type="monotone" dataKey="inventory" stroke={EMERALD} strokeWidth={3} fill="url(#reportsInventory)" animationDuration={1200} />
-      </AreaChart>
+        <Bar dataKey="newMembers" fill={BRAND} radius={[5, 5, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+        <Bar dataKey="renewals" fill={EMERALD} radius={[5, 5, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+      </BarChart>
     </ResponsiveContainer>
   )
 }

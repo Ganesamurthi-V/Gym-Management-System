@@ -45,6 +45,10 @@ describe('IMPORT_STORAGE_KEYS', () => {
       'import_column_mapping',
       'import_unmapped_plans',
       'import_plan_mapping',
+      'import_plan_mapping_applied',
+      'import_column_mapping_applied',
+      'import_temp_state',
+      'import_max_step',
     ])
   })
 })

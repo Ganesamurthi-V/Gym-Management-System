@@ -35,6 +35,11 @@ export const IMPORT_STORAGE_KEYS = [
   'import_column_mapping',
   'import_unmapped_plans',
   'import_plan_mapping',
+  'import_plan_mapping_applied',
+  'import_column_mapping_applied',
+  // The parsed sheet held while plans are mapped: a full copy of every row.
+  'import_temp_state',
+  'import_max_step',
 ] as const
 
 export type ImportStorageKey = (typeof IMPORT_STORAGE_KEYS)[number]
@@ -47,8 +52,21 @@ export type ImportStorageKey = (typeof IMPORT_STORAGE_KEYS)[number]
  * safe to call twice.
  */
 export function clearImportStorage(): void {
+  removeImportKeys(...IMPORT_STORAGE_KEYS)
+}
+
+/**
+ * Remove some of the wizard's entries — for a step that rebuilds what the later
+ * steps derived from it (re-reading the sheet invalidates the plan mapping and
+ * the area review) while the import itself carries on.
+ *
+ * Wizard pages call this instead of `sessionStorage.removeItem` so that every key
+ * they touch is checked against IMPORT_STORAGE_KEYS by the compiler: a key that
+ * is not in the list, and so would never be cleared at the end, does not compile.
+ */
+export function removeImportKeys(...keys: ImportStorageKey[]): void {
   if (typeof window === 'undefined') return
-  for (const key of IMPORT_STORAGE_KEYS) {
+  for (const key of keys) {
     try {
       sessionStorage.removeItem(key)
     } catch {

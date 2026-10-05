@@ -23,6 +23,10 @@ export default function ImportEditPage() {
   const [originalRows, setOriginalRows] = useState<ImportedRow[]>([]);
   const [dbNums, setDbNums] = useState<Set<number>>(new Set());
   const [hasIdCol, setHasIdCol] = useState(false);
+  // Read in an effect, not during render: sessionStorage does not exist on the
+  // server, so reading it inline made the first client render differ from the
+  // server HTML and React threw a hydration error on every reload of this page.
+  const [hasReviewState, setHasReviewState] = useState(false);
   const [step, setStep] = useState<Step>("edit");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -74,6 +78,7 @@ export default function ImportEditPage() {
     const origStored = sessionStorage.getItem("import_rows_original");
     setOriginalRows(origStored ? JSON.parse(origStored) : parsed.map(r => ({ ...r })));
     setHasIdCol(sessionStorage.getItem("import_has_id_col") === "1");
+    setHasReviewState(!!sessionStorage.getItem("import_review_state"));
     // Load DB nums for live uniqueness validation, but ONLY for numbers present
     // in the file. Served by /api/import/next-member-id, which resolves the gym
     // from the session and returns which of the requested numbers already exist.
@@ -229,8 +234,6 @@ export default function ImportEditPage() {
   const conflictCount = rows.filter(r => r._id_conflict).length;
   const missingIdCount = validRows.filter(r => !r.member_number || !parseInt(r.member_number)).length;
 
-  const hasReviewState = typeof window !== "undefined" && !!sessionStorage.getItem("import_review_state");
-
   function goBackToReview() {
     // Persist current edits so they survive the round-trip
     sessionStorage.setItem("import_rows", JSON.stringify(rows));
@@ -303,7 +306,7 @@ export default function ImportEditPage() {
   if (step === "done") {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
-        <div className="card p-10 text-center animate-pop-in max-w-md w-full border border-slate-100 shadow-2xl rounded-3xl bg-white/80 backdrop-blur-md">
+        <div className="card p-10 text-center animate-pop-in max-w-md w-full border border-slate-100 shadow-2xl rounded-3xl bg-surface/80 backdrop-blur-md">
           <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10">
             <Check className="w-10 h-10 text-emerald-600 stroke-[3]" />
           </div>
@@ -419,7 +422,7 @@ export default function ImportEditPage() {
 
       <div
         ref={mirrorRef}
-        className={`fixed bottom-0 z-30 overflow-x-auto overflow-y-hidden h-3 bg-white/90 backdrop-blur-sm border-t border-slate-200 left-0 right-0 ${sidebarCollapsed ? 'md:left-14' : 'md:left-60'}`}
+        className={`fixed bottom-0 z-30 overflow-x-auto overflow-y-hidden h-3 bg-surface/90 backdrop-blur-sm border-t border-slate-200 left-0 right-0 ${sidebarCollapsed ? 'md:left-14' : 'md:left-60'}`}
       >
         <div style={{ height: 1 }} />
       </div>

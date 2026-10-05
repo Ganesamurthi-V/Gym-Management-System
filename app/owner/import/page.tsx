@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw } from "lucide-react";
-import { clearImportStorage } from "@/lib/import/storage";
+import { clearImportStorage, removeImportKeys } from "@/lib/import/storage";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -433,6 +433,14 @@ const STAGES = [
   { id: 5, emoji: "✅", label: "Finalizing" },
 ];
 
+// The uploaded File cannot be put in sessionStorage, and React state is dropped
+// every time the wizard leaves this page for /review or /edit. Holding it at
+// module level keeps it for the whole visit, so coming back to step 2 through the
+// step icons can still re-read the sheet. Only a full page reload loses it.
+let heldFile: File | null = null;
+
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
 export default function ImportPage() {
   const [detectedColumns, setDetectedColumns] = useState<Record<string, string>>({});
   const [parsing, setParsing] = useState(false);
@@ -456,7 +464,12 @@ export default function ImportPage() {
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [fileSamples, setFileSamples] = useState<Record<string, string>>({});
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
-  const [tempFile, setTempFile] = useState<File | null>(null);
+  const [tempFile, setTempFileState] = useState<File | null>(heldFile);
+  const setTempFile = (file: File | null) => { heldFile = file; setTempFileState(file); };
+  // True when step 2 was asked to re-read a sheet the browser no longer holds.
+  const [needsFile, setNeedsFile] = useState(false);
+  // Whether a member list has already been built (and so later steps hold edits).
+  const [hasRows, setHasRows] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -499,9 +512,19 @@ export default function ImportPage() {
       } catch {}
     }
 
+    const rowsBuilt = !!sessionStorage.getItem("import_rows");
+    setHasRows(rowsBuilt);
+
     if (stepParam === "2") {
       setShowMapping(true);
     } else if (stepParam === "3") {
+      // Step 3 has nothing to show until the sheet has been read: without this the
+      // page claimed "all plans recognized" for a file it never processed, and its
+      // Proceed button bounced off /review straight back to step 2.
+      if (!rowsBuilt && !storedTempState) {
+        router.replace(storedHeaders ? "/owner/import?step=2" : "/owner/import?step=1");
+        return;
+      }
       setShowMapping(false);
     } else if (stepParam === "1") {
       setShowMapping(false);
@@ -531,12 +554,12 @@ export default function ImportPage() {
       }
     }
 
-    if (!currentState) {
-      const storedRows = sessionStorage.getItem("import_rows");
-      if (storedRows) {
-        router.push("/owner/import/review");
-        return;
-      }
+    // Coming back to this step and leaving the durations as they were must not
+    // rebuild the list — that would throw away every edit made in later steps.
+    const applied = sessionStorage.getItem("import_plan_mapping_applied");
+    const unchanged = hasRows && applied !== null && sameJson(JSON.parse(applied), planMapping);
+    if (unchanged || !currentState) {
+      if (hasRows) { router.push("/owner/import/edit"); return; }
       alert("Please upload a file first.");
       return;
     }
@@ -558,9 +581,10 @@ export default function ImportPage() {
       onStage: stage => { if (stage === "ids") setParseStage(5); },
     });
 
-    setUnmappedPlans([]);
-    setTempImportState(null);
-    sessionStorage.setItem("import_unmapped_plans", "[]");
+    // The groups and the parsed sheet stay in storage so this step can be reopened
+    // and a duration changed. The area review is dropped: it described the old list.
+    sessionStorage.setItem("import_plan_mapping_applied", JSON.stringify(planMapping));
+    removeImportKeys("import_review_state");
     setParsing(false);
     proceedWithRows(pipelineRows, !!currentState.detectedColumns.member_number);
   }
@@ -570,9 +594,18 @@ export default function ImportPage() {
     if (file.size > 10 * 1024 * 1024) { alert("File too large. Maximum size is 10MB."); return; }
 
     setFileName(file.name);
+    setNeedsFile(false);
+    // Read before the wipe below: choosing the same sheet again (after a reload
+    // dropped it) should keep the column choices already made for it.
+    const previousHeaders = sessionStorage.getItem("import_file_headers");
+    const previousMapping = sessionStorage.getItem("import_column_mapping");
     if (!userMapping) {
       // Starting a fresh file — drop any PII left over from a previous attempt.
       clearImportStorage();
+      setUnmappedPlans([]);
+      setPlanMapping({});
+      setTempImportState(null);
+      setHasRows(false);
     }
 
     setParsing(true);
@@ -646,6 +679,12 @@ export default function ImportPage() {
       sessionStorage.setItem("import_file_name", file.name);
       sessionStorage.setItem("import_file_headers", JSON.stringify(headers));
       sessionStorage.setItem("import_column_mapping", JSON.stringify(userMapping));
+      sessionStorage.setItem("import_column_mapping_applied", JSON.stringify(userMapping));
+      // Everything downstream is rebuilt from this read of the sheet.
+      removeImportKeys("import_review_state", "import_plan_mapping_applied", "import_unmapped_plans", "import_plan_mapping", "import_temp_state");
+      setUnmappedPlans([]);
+      setPlanMapping({});
+      setTempImportState(null);
     } else {
       colMap = buildColumnMap(headers);
 
@@ -658,10 +697,13 @@ export default function ImportPage() {
       setFileSamples(samples);
 
       // Create initial mapping { fileHeader: dbField }
-      const initialMapping: Record<string, string> = {};
+      let initialMapping: Record<string, string> = {};
       for (const [field, idx] of Object.entries(colMap)) {
         const header = headers[idx - 1];
         if (header) initialMapping[header] = field;
+      }
+      if (previousMapping && previousHeaders === JSON.stringify(headers)) {
+        try { initialMapping = JSON.parse(previousMapping); } catch {}
       }
 
       setColumnMapping(initialMapping);
@@ -675,6 +717,8 @@ export default function ImportPage() {
 
       setShowMapping(true);
       setParsing(false);
+      // The URL names the step, so a reload or the step icons land where the owner was.
+      router.replace("/owner/import?step=2");
       return;
     }
 
@@ -770,8 +814,13 @@ export default function ImportPage() {
       sessionStorage.setItem("import_unmapped_plans", JSON.stringify(unrecognizedGroups));
       sessionStorage.setItem("import_plan_mapping", JSON.stringify(initialMapping));
       sessionStorage.setItem("import_temp_state", JSON.stringify(tempState));
+      removeImportKeys("import_rows", "import_rows_original");
+      setHasRows(false);
 
       setParsing(false);
+      // Without this the page stayed on step 2 whenever it had been opened as
+      // ?step=2 (through the step icons), even though the plans were waiting.
+      router.replace("/owner/import?step=3");
       return;
     }
 
@@ -809,7 +858,10 @@ export default function ImportPage() {
     setColumnMapping({});
     setShowMapping(false);
     setTempFile(null);
+    setNeedsFile(false);
+    setHasRows(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    router.replace("/owner/import?step=1");
   }
 
   // ── PARSING STATE ─────────────────────────────────────────────────────────
@@ -889,8 +941,8 @@ export default function ImportPage() {
             const isMapped = mappedField && mappedField !== "ignore";
 
             return (
-              <div key={header} className={`flex items-center justify-between gap-4 p-4 border rounded-2xl transition-all shadow-xs ${isMapped ? "border-brand-200 bg-brand-50" : "border-slate-200 bg-surface"}`}>
-                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+              <div key={header} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 border rounded-2xl transition-all shadow-xs ${isMapped ? "border-brand-200 bg-brand-50" : "border-slate-200 bg-surface"}`}>
+                <div className="flex flex-col gap-0.5 sm:flex-1 min-w-0">
                   <span className="text-sm font-bold text-slate-800 truncate">
                     {header}
                   </span>
@@ -910,7 +962,8 @@ export default function ImportPage() {
                       setColumnMapping(updated);
                       sessionStorage.setItem("import_column_mapping", JSON.stringify(updated));
                     }}
-                    className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[160px]"
+                    aria-label={`Field for ${header}`}
+                    className="w-full sm:w-auto px-3 py-2.5 sm:py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[160px]"
                   >
                     <option value="">Don't import this field</option>
                     <optgroup label="Required Fields">
@@ -940,6 +993,21 @@ export default function ImportPage() {
           })}
         </div>
 
+        {needsFile && (
+          <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm font-semibold text-amber-800">
+                Please choose {fileName ? <span className="font-extrabold">{fileName}</span> : "your file"} again. The page was reloaded, and your browser does not keep the file itself. Your column choices are saved.
+              </p>
+            </div>
+            <label className="btn-primary cursor-pointer text-sm font-bold px-6 py-2.5 rounded-xl whitespace-nowrap text-center w-full sm:w-auto flex-shrink-0">
+              Choose file
+              <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
+            </label>
+          </div>
+        )}
+
         <div className="bg-surface border border-slate-200 p-4 rounded-2xl shadow-xs">
           <button
             onClick={() => {
@@ -951,11 +1019,21 @@ export default function ImportPage() {
                 return;
               }
 
-              setShowMapping(false);
               if (tempFile) {
+                setShowMapping(false);
                 processFile(tempFile, columnMapping);
-              } else {
+                return;
+              }
+              // No file in memory (the page was reloaded). If the list was already
+              // built from exactly these column choices there is nothing to redo;
+              // otherwise the sheet has to be chosen again — it cannot be re-read.
+              const applied = sessionStorage.getItem("import_column_mapping_applied");
+              const built = !!sessionStorage.getItem("import_rows") || !!sessionStorage.getItem("import_temp_state");
+              if (built && applied !== null && sameJson(JSON.parse(applied), columnMapping)) {
+                setShowMapping(false);
                 router.push("/owner/import?step=3");
+              } else {
+                setNeedsFile(true);
               }
             }}
             className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
@@ -999,10 +1077,10 @@ export default function ImportPage() {
             </p>
             <button
               type="button"
-              onClick={() => router.push("/owner/import/review")}
+              onClick={() => router.push("/owner/import/edit")}
               className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl"
             >
-              Proceed to Assign IDs / Preview <ArrowRight className="w-4 h-4" />
+              Proceed to Preview <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         ) : (
@@ -1067,7 +1145,12 @@ export default function ImportPage() {
               })}
             </div>
 
-            <div className="bg-surface border border-slate-200 p-4 rounded-2xl shadow-xs">
+            <div className="bg-surface border border-slate-200 p-4 rounded-2xl shadow-xs space-y-3">
+              {hasRows && (
+                <p className="text-xs font-semibold text-slate-500 text-center">
+                  Changing a duration here rebuilds the member list, so edits made in the later steps are reset. Leave them as they are to keep your edits.
+                </p>
+              )}
               <button
                 onClick={applyPlanMappingAndProceed}
                 className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
@@ -1088,7 +1171,7 @@ export default function ImportPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Wizard Header */}
-      <WizardHeader currentStep={1} />
+      <WizardHeader key={fileName || "no-file"} currentStep={1} />
 
       {/* Back link */}
       <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">

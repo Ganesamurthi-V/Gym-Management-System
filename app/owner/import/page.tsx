@@ -460,7 +460,12 @@ export default function ImportPage() {
   } | null>(null);
 
   // New states for column mapping
-  const [showMapping, setShowMapping] = useState(false);
+  // Which of this page's three steps is on screen. Held in state rather than read
+  // from the URL at render time: the URL only catches up after a navigation has
+  // finished, and until it did the page drew the step the owner had just left.
+  const [view, setView] = useState<1 | 2 | 3>(1);
+  // False until the wizard's saved state has been read back from sessionStorage.
+  const [restored, setRestored] = useState(false);
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [fileSamples, setFileSamples] = useState<Record<string, string>>({});
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
@@ -474,6 +479,24 @@ export default function ImportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const stepParam = searchParams.get("step");
+
+  // Moving between steps 1–3 never leaves this page, so it goes through the
+  // History API: router.push() on a query-string change makes a server round trip
+  // (~300 ms on 4G) just to re-render the same client component.
+  function goStep(step: 1 | 2 | 3, mode: "push" | "replace" = "replace") {
+    setView(step);
+    const url = `/owner/import?step=${step}`;
+    if (mode === "push") window.history.pushState(null, "", url);
+    else window.history.replaceState(null, "", url);
+  }
+
+  // Leaving for /review or /edit. The progress screen stays up until this page is
+  // unmounted by the new one, so nothing from the old step shows in between.
+  function leaveTo(path: string) {
+    setParseStage(5);
+    setParsing(true);
+    router.push(path);
+  }
 
   // Restore wizard step state from sessionStorage so clicking step icons never loses data
   useEffect(() => {
@@ -515,34 +538,29 @@ export default function ImportPage() {
     const rowsBuilt = !!sessionStorage.getItem("import_rows");
     setHasRows(rowsBuilt);
 
+    let next: 1 | 2 | 3 = 1;
     if (stepParam === "2") {
-      setShowMapping(true);
+      next = 2;
     } else if (stepParam === "3") {
       // Step 3 has nothing to show until the sheet has been read: without this the
       // page claimed "all plans recognized" for a file it never processed, and its
       // Proceed button bounced off /review straight back to step 2.
-      if (!rowsBuilt && !storedTempState) {
-        router.replace(storedHeaders ? "/owner/import?step=2" : "/owner/import?step=1");
-        return;
-      }
-      setShowMapping(false);
-    } else if (stepParam === "1") {
-      setShowMapping(false);
+      next = !rowsBuilt && !storedTempState ? (storedHeaders ? 2 : 1) : 3;
     } else if (!stepParam) {
       // Default: if unmapped plans exist, show step 3; if column mapping exists, show step 2
-      if (storedUnmapped && JSON.parse(storedUnmapped).length > 0) {
-        setShowMapping(false);
-      } else if (storedHeaders && JSON.parse(storedHeaders).length > 0) {
-        setShowMapping(true);
-      }
+      if (storedUnmapped && JSON.parse(storedUnmapped).length > 0) next = 3;
+      else if (storedHeaders && JSON.parse(storedHeaders).length > 0) next = 2;
     }
+    if (stepParam && String(next) !== stepParam) goStep(next);
+    else setView(next);
+    setRestored(true);
   }, [stepParam]);
 
   function proceedWithRows(pipelineRows: ImportedRow[], hasIdCol: boolean) {
     sessionStorage.setItem("import_rows", JSON.stringify(pipelineRows));
     sessionStorage.setItem("import_rows_original", JSON.stringify(pipelineRows.map(r => ({ ...r }))));
     sessionStorage.setItem("import_has_id_col", hasIdCol ? "1" : "0");
-    router.push("/owner/import/edit");
+    leaveTo("/owner/import/edit");
   }
 
   async function applyPlanMappingAndProceed() {
@@ -559,7 +577,7 @@ export default function ImportPage() {
     const applied = sessionStorage.getItem("import_plan_mapping_applied");
     const unchanged = hasRows && applied !== null && sameJson(JSON.parse(applied), planMapping);
     if (unchanged || !currentState) {
-      if (hasRows) { router.push("/owner/import/edit"); return; }
+      if (hasRows) { leaveTo("/owner/import/edit"); return; }
       alert("Please upload a file first.");
       return;
     }
@@ -585,7 +603,6 @@ export default function ImportPage() {
     // and a duration changed. The area review is dropped: it described the old list.
     sessionStorage.setItem("import_plan_mapping_applied", JSON.stringify(planMapping));
     removeImportKeys("import_review_state");
-    setParsing(false);
     proceedWithRows(pipelineRows, !!currentState.detectedColumns.member_number);
   }
 
@@ -715,10 +732,9 @@ export default function ImportPage() {
       sessionStorage.setItem("import_file_samples", JSON.stringify(samples));
       sessionStorage.setItem("import_column_mapping", JSON.stringify(initialMapping));
 
-      setShowMapping(true);
       setParsing(false);
       // The URL names the step, so a reload or the step icons land where the owner was.
-      router.replace("/owner/import?step=2");
+      goStep(2);
       return;
     }
 
@@ -820,7 +836,7 @@ export default function ImportPage() {
       setParsing(false);
       // Without this the page stayed on step 2 whenever it had been opened as
       // ?step=2 (through the step icons), even though the plans were waiting.
-      router.replace("/owner/import?step=3");
+      goStep(3);
       return;
     }
 
@@ -829,7 +845,6 @@ export default function ImportPage() {
       onStage: stage => { if (stage === "ids") setParseStage(5); },
     });
 
-    setParsing(false);
     proceedWithRows(pipelineRows, !!summaryMapping.member_number);
   }
 
@@ -856,12 +871,18 @@ export default function ImportPage() {
     setFileHeaders([]);
     setFileSamples({});
     setColumnMapping({});
-    setShowMapping(false);
     setTempFile(null);
     setNeedsFile(false);
     setHasRows(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    router.replace("/owner/import?step=1");
+    goStep(1);
+  }
+
+  // Step icons: 1–3 are this page, so they switch instantly; 4 and 5 are other pages.
+  function handleStepClick(step: 1 | 2 | 3 | 4 | 5 | 6) {
+    if (step <= 3) goStep(step as 1 | 2 | 3, "push");
+    else if (step === 4) leaveTo("/owner/import/review");
+    else if (step === 5) leaveTo("/owner/import/edit");
   }
 
   // ── PARSING STATE ─────────────────────────────────────────────────────────
@@ -914,11 +935,23 @@ export default function ImportPage() {
     );
   }
 
-  // ── COLUMN MAPPING (STEP 2) ───────────────────────────────────────────────
-  if ((showMapping || stepParam === "2") && fileHeaders.length > 0) {
+  // Until the saved state is read back there is nothing true to draw: rendering a
+  // step here showed the empty upload screen (or a false "all plans recognized")
+  // for a frame every time the owner came back from a later step.
+  if (!restored) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
-        <WizardHeader currentStep={2} />
+        <WizardHeader currentStep={stepParam === "2" ? 2 : stepParam === "3" ? 3 : 1} />
+        <div className="h-64 rounded-3xl skeleton" />
+      </div>
+    );
+  }
+
+  // ── COLUMN MAPPING (STEP 2) ───────────────────────────────────────────────
+  if (view === 2 && fileHeaders.length > 0) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-6">
+        <WizardHeader currentStep={2} onStepClick={handleStepClick} />
 
         <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
           <ArrowLeft className="w-4 h-4" /> Back to Members
@@ -1020,7 +1053,6 @@ export default function ImportPage() {
               }
 
               if (tempFile) {
-                setShowMapping(false);
                 processFile(tempFile, columnMapping);
                 return;
               }
@@ -1030,8 +1062,7 @@ export default function ImportPage() {
               const applied = sessionStorage.getItem("import_column_mapping_applied");
               const built = !!sessionStorage.getItem("import_rows") || !!sessionStorage.getItem("import_temp_state");
               if (built && applied !== null && sameJson(JSON.parse(applied), columnMapping)) {
-                setShowMapping(false);
-                router.push("/owner/import?step=3");
+                goStep(3, "push");
               } else {
                 setNeedsFile(true);
               }
@@ -1049,10 +1080,10 @@ export default function ImportPage() {
   }
 
   // ── UNMAPPED PLANS MAPPING (STEP 3) ───────────────────────────────────────
-  if (stepParam === "3" || (unmappedPlans.length > 0 && !showMapping && stepParam !== "1" && stepParam !== "2")) {
+  if (view === 3) {
     return (
       <section className="max-w-7xl mx-auto space-y-6">
-        <WizardHeader currentStep={3} />
+        <WizardHeader currentStep={3} onStepClick={handleStepClick} />
         <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors w-fit">
           <ArrowLeft className="w-4 h-4" /> Back to Members
         </Link>
@@ -1077,7 +1108,7 @@ export default function ImportPage() {
             </p>
             <button
               type="button"
-              onClick={() => router.push("/owner/import/edit")}
+              onClick={() => leaveTo("/owner/import/edit")}
               className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl"
             >
               Proceed to Preview <ArrowRight className="w-4 h-4" />
@@ -1171,7 +1202,7 @@ export default function ImportPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Wizard Header */}
-      <WizardHeader key={fileName || "no-file"} currentStep={1} />
+      <WizardHeader key={fileName || "no-file"} currentStep={1} onStepClick={handleStepClick} />
 
       {/* Back link */}
       <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">

@@ -12,6 +12,11 @@ import { format } from 'date-fns'
 
 const MAX_IMPORT_ROWS = 500
 
+// Two bulk inserts plus cache invalidation for up to 500 members. Without this the
+// host's default limit (10 s on some plans) cut larger imports off mid-request and
+// answered with an HTML error page instead of JSON.
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
   try {

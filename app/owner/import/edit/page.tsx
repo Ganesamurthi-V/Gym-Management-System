@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, AlertTriangle, Search, Loader2, MapPin, Trash2 } from "lucide-react";
 import { clearImportStorage } from "@/lib/import/storage";
+import { importErrorMessage, messageForApiError, readImportResponse } from "@/lib/import/api-errors";
 import type { ImportedRow } from "../page";
 import WizardHeader from "@/components/import/WizardHeader";
 
@@ -267,9 +268,15 @@ export default function ImportEditPage() {
         body: JSON.stringify({ rows: toInsert }),
       });
 
-      const result = await res.json();
+      // Not res.json(): a timeout or size limit upstream of our route answers with an
+      // HTML page, and parsing that threw a raw JSON syntax error into the banner.
+      const result = await readImportResponse<{
+        success?: boolean;
+        error?: { code?: string; message?: string };
+        data?: { member_ids?: string[] };
+      }>(res);
       if (!res.ok || !result.success) {
-        throw new Error(result.error?.message || "Member insert failed");
+        throw new Error(messageForApiError(result.error));
       }
 
       // The server returns the inserted member IDs in the same order as the rows
@@ -278,7 +285,7 @@ export default function ImportEditPage() {
       // which the old "re-query members by phone" approach could not distinguish.
       const memberIds: string[] = result.data?.member_ids ?? [];
       if (memberIds.length !== toInsert.length) {
-        throw new Error("Import mismatch: server returned a different member count");
+        throw new Error("The import finished, but we could not confirm every member was added. Please check the Members page before trying again.");
       }
 
       // ── Immediately fire expiry/expired reminders for the imported batch ───
@@ -297,7 +304,7 @@ export default function ImportEditPage() {
       setDoneResult({ success: toInsert.length, skipped });
       setStep("done");
     } catch (err: any) {
-      setError(err.message || "Failed to save");
+      setError(err instanceof Error && !(err instanceof TypeError) ? err.message : importErrorMessage(err));
     } finally {
       setLoading(false);
     }

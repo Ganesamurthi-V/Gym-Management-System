@@ -269,7 +269,7 @@ export default function ImportReviewPage() {
     persistReviewState();
 
     setSaveMsg("Proceeding…");
-    setTimeout(() => router.push("/owner/import/edit"), 800);
+    router.push("/owner/import/edit");
   }
 
   const unresolvedCount = rows.filter(r => r._area_matched_by === "unresolved" || (r._area_confidence ?? 0) === 0).length;

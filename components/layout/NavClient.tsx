@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Attendance', href: '/owner/attendance',   icon: CalendarIcon },
   { label: 'Inventory',  href: '/owner/inventory',    icon: BoxIcon },
   { label: 'Programs',   href: '/owner/programs',    icon: ActivityIcon },
-  { label: 'Reports',    href: '#',      icon: ChartIcon, comingSoon: true },
+  { label: 'Reports',    href: '/owner/reports',     icon: ChartIcon },
   { label: 'Member App', href: '/owner/member-app', icon: SmartphoneIcon },
 ]
 

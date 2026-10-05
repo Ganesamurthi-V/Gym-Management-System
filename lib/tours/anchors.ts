@@ -139,8 +139,8 @@ export function tourAttr(key: TourAnchorKey): { 'data-tour': string } {
  * Nav anchors are keyed by label so `NAV_ITEMS` needs one edit to cover both the
  * desktop sidebar and the mobile drawer, which render the same list.
  *
- * Keyed by label rather than href because the "Reports" entry is `comingSoon`
- * with `href: '#'`, so routes are not unique across the list.
+ * Keyed by label rather than href because a `comingSoon` entry has `href: '#'`,
+ * so routes are not guaranteed unique across the list.
  */
 export const NAV_ANCHOR_BY_LABEL: Record<string, TourAnchorKey> = {
   Dashboard: 'navDashboard',

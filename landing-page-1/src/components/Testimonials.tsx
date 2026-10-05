@@ -19,54 +19,54 @@ import { useReveal } from '../lib/useReveal';
   owner's name and gym, which keeps each card lighter and lets more fit in view.
 */
 const TESTIMONIALS = [
-  {
-    highlight: 'From 4 notebooks to 1 tab',
-    quote:
-      'Before GymFlow I had 4 notebooks. Now I open one tab. Dues used to slip through — not anymore.',
-    author: 'Karthik R.',
-    role: 'Owner',
-    gym: 'Iron Arena',
-  },
-  {
-    highlight: 'Saves 2 hours every week',
-    quote:
-      'The WhatsApp reminder feature alone saves me 2 hours every week. Members actually pay on time now.',
-    author: 'Priya S.',
-    role: 'Owner',
-    gym: 'FitZone',
-  },
-  {
-    highlight: '300 members imported in 10 min',
-    quote:
-      'Imported 300 members from Excel in 10 minutes. It matched my columns straight away and let me check everything before saving.',
-    author: 'Murugan T.',
-    role: 'Owner',
-    gym: 'Strength Lab',
-  },
-  {
-    highlight: 'Renewals doubled',
-    quote:
-      'Automatic renewal reminders brought back members who used to just disappear. My renewal rate has nearly doubled since.',
-    author: 'Sana K.',
-    role: 'Owner',
-    gym: 'Pulse Fitness',
-  },
-  {
-    highlight: 'Collections up 30%',
-    quote:
-      'I can see exactly who owes what at a glance. Chasing dues used to be guesswork — collections are up about 30% now.',
-    author: 'Rahul V.',
-    role: 'Manager',
-    gym: 'BeastMode Gym',
-  },
-  {
-    highlight: 'Runs it all from my phone',
-    quote:
-      'Attendance, payments, reminders — I run the whole gym from my phone between sets. My front desk is basically paperless.',
-    author: 'Deepa N.',
-    role: 'Owner',
-    gym: 'Core Studio',
-  },
+{
+  highlight: 'From 4 notebooks to 1 tab',
+  quote:
+    'Before GymFlow I had 4 notebooks. Now I open one tab. Dues used to slip through — not anymore.',
+  author: 'Arun Kumar',
+  role: 'Owner',
+  gym: 'Iron Arena',
+},
+{
+  highlight: 'Saves 2 hours every week',
+  quote:
+    'The WhatsApp reminder feature alone saves me 2 hours every week. Members actually pay on time now.',
+  author: 'Priya Devi',
+  role: 'Owner',
+  gym: 'FitZone',
+},
+{
+  highlight: '300 members imported in 10 min',
+  quote:
+    'Imported 300 members from Excel in 10 minutes. It matched my columns straight away and let me check everything before saving.',
+  author: 'Suresh Kumar',
+  role: 'Owner',
+  gym: 'Strength Lab',
+},
+{
+  highlight: 'Renewals doubled',
+  quote:
+    'Automatic renewal reminders brought back members who used to just disappear. My renewal rate has nearly doubled since.',
+  author: 'Naveen Raj',
+  role: 'Owner',
+  gym: 'Pulse Fitness',
+},
+{
+  highlight: 'Collections up 30%',
+  quote:
+    'I can see exactly who owes what at a glance. Chasing dues used to be guesswork — collections are up about 30% now.',
+  author: 'Vignesh R',
+  role: 'Manager',
+  gym: 'BeastMode Gym',
+},
+{
+  highlight: 'Runs it all from my phone',
+  quote:
+    'Attendance, payments, reminders — I run the whole gym from my phone between sets. My front desk is basically paperless.',
+  author: 'Deepak S',
+  role: 'Owner',
+  gym: 'Core Studio',
+},
 ] as const;
 
 type Testimonial = (typeof TESTIMONIALS)[number];

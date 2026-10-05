@@ -5,7 +5,7 @@ import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap,
 import { clearImportStorage } from "@/lib/import/storage";
 import Link from "next/link";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   cellStr as sharedCellStr,
   excelSerialToDate as sharedExcelSerialToDate,
@@ -18,6 +18,7 @@ import {
   isRecognizedPlan,
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
+import { groupPlanNames, type PlanNameGroup } from "@/lib/import/plan-matching";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
 
@@ -440,7 +441,9 @@ export default function ImportPage() {
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [unmappedPlans, setUnmappedPlans] = useState<string[]>([]);
+  // Plan names the file uses that state no duration, with spellings of the same
+  // name collected into one group so the owner maps "Gold" once, not per spelling.
+  const [unmappedPlans, setUnmappedPlans] = useState<PlanNameGroup[]>([]);
   const [planMapping, setPlanMapping] = useState<Record<string, string>>({});
   const [tempImportState, setTempImportState] = useState<{
     parsedRows: ImportedRow[];
@@ -456,6 +459,61 @@ export default function ImportPage() {
   const [tempFile, setTempFile] = useState<File | null>(null);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const stepParam = searchParams.get("step");
+
+  // Restore wizard step state from sessionStorage so clicking step icons never loses data
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedFileName = sessionStorage.getItem("import_file_name");
+    if (storedFileName) setFileName(storedFileName);
+
+    const storedHeaders = sessionStorage.getItem("import_file_headers");
+    const storedSamples = sessionStorage.getItem("import_file_samples");
+    const storedColMap = sessionStorage.getItem("import_column_mapping");
+
+    if (storedHeaders && storedSamples) {
+      try {
+        const headers = JSON.parse(storedHeaders);
+        const samples = JSON.parse(storedSamples);
+        setFileHeaders(headers);
+        setFileSamples(samples);
+        if (storedColMap) setColumnMapping(JSON.parse(storedColMap));
+      } catch {}
+    }
+
+    const storedUnmapped = sessionStorage.getItem("import_unmapped_plans");
+    const storedPlanMap = sessionStorage.getItem("import_plan_mapping");
+    if (storedUnmapped) {
+      try {
+        setUnmappedPlans(JSON.parse(storedUnmapped));
+        if (storedPlanMap) setPlanMapping(JSON.parse(storedPlanMap));
+      } catch {}
+    }
+
+    const storedTempState = sessionStorage.getItem("import_temp_state");
+    if (storedTempState) {
+      try {
+        setTempImportState(JSON.parse(storedTempState));
+      } catch {}
+    }
+
+    if (stepParam === "2") {
+      setShowMapping(true);
+    } else if (stepParam === "3") {
+      setShowMapping(false);
+    } else if (stepParam === "1") {
+      setShowMapping(false);
+    } else if (!stepParam) {
+      // Default: if unmapped plans exist, show step 3; if column mapping exists, show step 2
+      if (storedUnmapped && JSON.parse(storedUnmapped).length > 0) {
+        setShowMapping(false);
+      } else if (storedHeaders && JSON.parse(storedHeaders).length > 0) {
+        setShowMapping(true);
+      }
+    }
+  }, [stepParam]);
 
   function proceedWithRows(pipelineRows: ImportedRow[], hasIdCol: boolean) {
     sessionStorage.setItem("import_rows", JSON.stringify(pipelineRows));
@@ -465,11 +523,28 @@ export default function ImportPage() {
   }
 
   async function applyPlanMappingAndProceed() {
-    if (!tempImportState) return;
+    let currentState = tempImportState;
+    if (!currentState) {
+      const stored = sessionStorage.getItem("import_temp_state");
+      if (stored) {
+        try { currentState = JSON.parse(stored); } catch {}
+      }
+    }
+
+    if (!currentState) {
+      const storedRows = sessionStorage.getItem("import_rows");
+      if (storedRows) {
+        router.push("/owner/import/review");
+        return;
+      }
+      alert("Please upload a file first.");
+      return;
+    }
+
     setParsing(true);
     setParseStage(4);
 
-    const mappedRows = tempImportState.parsedRows.map(r => {
+    const mappedRows = currentState.parsedRows.map(r => {
       if (r._rawPlan && planMapping[r._rawPlan]) {
         return {
           ...r,
@@ -485,8 +560,9 @@ export default function ImportPage() {
 
     setUnmappedPlans([]);
     setTempImportState(null);
+    sessionStorage.setItem("import_unmapped_plans", "[]");
     setParsing(false);
-    proceedWithRows(pipelineRows, !!tempImportState.detectedColumns.member_number);
+    proceedWithRows(pipelineRows, !!currentState.detectedColumns.member_number);
   }
 
   async function processFile(file: File, userMapping?: Record<string, string>) {
@@ -567,6 +643,9 @@ export default function ImportPage() {
         }
       }
       setDetectedColumns(summaryMapping);
+      sessionStorage.setItem("import_file_name", file.name);
+      sessionStorage.setItem("import_file_headers", JSON.stringify(headers));
+      sessionStorage.setItem("import_column_mapping", JSON.stringify(userMapping));
     } else {
       colMap = buildColumnMap(headers);
 
@@ -588,6 +667,12 @@ export default function ImportPage() {
       setColumnMapping(initialMapping);
       setFileHeaders(headers);
       setTempFile(file);
+
+      sessionStorage.setItem("import_file_name", file.name);
+      sessionStorage.setItem("import_file_headers", JSON.stringify(headers));
+      sessionStorage.setItem("import_file_samples", JSON.stringify(samples));
+      sessionStorage.setItem("import_column_mapping", JSON.stringify(initialMapping));
+
       setShowMapping(true);
       setParsing(false);
       return;
@@ -596,7 +681,7 @@ export default function ImportPage() {
     setParseStage(3);
 
     const parsed: ImportedRow[] = [];
-    const unrecognizedSet = new Set<string>();
+    const unrecognizedCounts: Record<string, number> = {};
     ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
       if (rowIndex <= headerRowIndex) return;
       const name = getCol(row, colMap, "name");
@@ -642,7 +727,8 @@ export default function ImportPage() {
       else if (phone && phone.length !== 10) _error = "Invalid phone";
 
       if (rawPlan && !isRecognizedPlan(rawPlan)) {
-        unrecognizedSet.add(rawPlan.trim());
+        const key = rawPlan.trim();
+        unrecognizedCounts[key] = (unrecognizedCounts[key] ?? 0) + 1;
       }
 
       parsed.push({
@@ -666,19 +752,25 @@ export default function ImportPage() {
       });
     });
 
-    const unrecognizedList = Array.from(unrecognizedSet).filter(Boolean);
-    if (unrecognizedList.length > 0) {
-      setUnmappedPlans(unrecognizedList);
+    const unrecognizedGroups = groupPlanNames(unrecognizedCounts);
+    if (unrecognizedGroups.length > 0) {
+      setUnmappedPlans(unrecognizedGroups);
       const initialMapping: Record<string, string> = {};
-      unrecognizedList.forEach(p => {
+      Object.keys(unrecognizedCounts).forEach(p => {
         initialMapping[p] = "monthly";
       });
       setPlanMapping(initialMapping);
-      setTempImportState({
+      const tempState = {
         parsedRows: parsed,
         detectedColumns: summaryMapping,
         fileName: file.name,
-      });
+      };
+      setTempImportState(tempState);
+
+      sessionStorage.setItem("import_unmapped_plans", JSON.stringify(unrecognizedGroups));
+      sessionStorage.setItem("import_plan_mapping", JSON.stringify(initialMapping));
+      sessionStorage.setItem("import_temp_state", JSON.stringify(tempState));
+
       setParsing(false);
       return;
     }
@@ -705,12 +797,18 @@ export default function ImportPage() {
   }
 
   function resetUpload() {
+    clearImportStorage();
     setDetectedColumns({});
     setFileName("");
     setParseStage(0);
     setUnmappedPlans([]);
     setPlanMapping({});
     setTempImportState(null);
+    setFileHeaders([]);
+    setFileSamples({});
+    setColumnMapping({});
+    setShowMapping(false);
+    setTempFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -718,14 +816,14 @@ export default function ImportPage() {
   if (parsing) {
     return (
       <div className="max-w-2xl mx-auto mt-12 space-y-6">
-        <div className="card p-8 border border-slate-100 bg-surface shadow-xl rounded-3xl space-y-6">
+        <div className="card p-8 border border-slate-200 bg-surface shadow-xl rounded-3xl space-y-6">
           <div className="text-center">
             <div className="relative w-20 h-20 mx-auto mb-4">
               <div className="absolute inset-0 rounded-full border-4 border-brand-100" />
               <div className="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin" />
               <FileSpreadsheet className="absolute inset-0 m-auto w-8 h-8 text-brand-500" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">Processing your file</h2>
+            <h2 className="text-xl font-bold text-slate-800">Processing your file</h2>
             <p className="text-sm text-slate-400 mt-1">{fileName}</p>
           </div>
 
@@ -735,8 +833,8 @@ export default function ImportPage() {
               const active = parseStage === stage.id;
               const pending = parseStage < stage.id;
               return (
-                <div key={stage.id} className={`flex items-center gap-4 p-3.5 rounded-xl transition-all ${active ? "bg-brand-50 border border-brand-200" : done ? "opacity-60" : "opacity-30"}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${done ? "bg-emerald-100" : active ? "bg-brand-100" : "bg-slate-100"}`}>
+                <div key={stage.id} className={`flex items-center gap-4 p-3.5 rounded-xl transition-all ${active ? "bg-brand-50 border border-brand-200" : done ? "opacity-70" : "opacity-40"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${done ? "bg-emerald-100" : active ? "bg-brand-100" : "bg-slate-200"}`}>
                     {done ? <Check className="w-4 h-4 text-emerald-600" /> : active ? <div className="w-3 h-3 rounded-full bg-brand-500 animate-pulse" /> : <span className="text-slate-400 text-xs">{stage.id}</span>}
                   </div>
                   <span className={`text-sm font-semibold ${active ? "text-brand-700" : done ? "text-slate-500" : "text-slate-400"}`}>
@@ -753,7 +851,7 @@ export default function ImportPage() {
             })}
           </div>
 
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full transition-all duration-700 ease-out" 
               style={{ width: `${Math.max(15, (parseStage / STAGES.length) * 100)}%` }}
@@ -764,8 +862,8 @@ export default function ImportPage() {
     );
   }
 
-  // ── COLUMN MAPPING ────────────────────────────────────────────────────────
-  if (showMapping && tempFile) {
+  // ── COLUMN MAPPING (STEP 2) ───────────────────────────────────────────────
+  if ((showMapping || stepParam === "2") && fileHeaders.length > 0) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
         <WizardHeader currentStep={2} />
@@ -774,11 +872,11 @@ export default function ImportPage() {
           <ArrowLeft className="w-4 h-4" /> Back to Members
         </Link>
 
-        <div className="text-center bg-surface border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div className="text-center bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <Shuffle className="w-8 h-8 text-brand-500" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Map Columns</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Map Columns</h2>
           <p className="text-sm text-slate-500 mt-1 max-w-lg mx-auto">
             We've auto-detected columns from your sheet. Review the mappings below and configure any unmatched columns before proceeding.
           </p>
@@ -791,7 +889,7 @@ export default function ImportPage() {
             const isMapped = mappedField && mappedField !== "ignore";
 
             return (
-              <div key={header} className={`flex items-center justify-between gap-4 p-4 border rounded-2xl transition-all bg-surface shadow-xs ${isMapped ? "border-brand-200 bg-brand-50/10" : "border-slate-200 bg-slate-50/40"}`}>
+              <div key={header} className={`flex items-center justify-between gap-4 p-4 border rounded-2xl transition-all shadow-xs ${isMapped ? "border-brand-200 bg-brand-50" : "border-slate-200 bg-surface"}`}>
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                   <span className="text-sm font-bold text-slate-800 truncate">
                     {header}
@@ -807,7 +905,11 @@ export default function ImportPage() {
                   <span className="text-slate-400 font-bold hidden sm:inline">→</span>
                   <select
                     value={columnMapping[header] || ""}
-                    onChange={(e) => setColumnMapping({ ...columnMapping, [header]: e.target.value })}
+                    onChange={(e) => {
+                      const updated = { ...columnMapping, [header]: e.target.value };
+                      setColumnMapping(updated);
+                      sessionStorage.setItem("import_column_mapping", JSON.stringify(updated));
+                    }}
                     className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[160px]"
                   >
                     <option value="">Don't import this field</option>
@@ -838,7 +940,7 @@ export default function ImportPage() {
           })}
         </div>
 
-        <div className="bg-surface border border-slate-100 p-4 rounded-2xl shadow-xs">
+        <div className="bg-surface border border-slate-200 p-4 rounded-2xl shadow-xs">
           <button
             onClick={() => {
               const mappedDbFields = Object.values(columnMapping);
@@ -850,7 +952,11 @@ export default function ImportPage() {
               }
 
               setShowMapping(false);
-              processFile(tempFile, columnMapping);
+              if (tempFile) {
+                processFile(tempFile, columnMapping);
+              } else {
+                router.push("/owner/import?step=3");
+              }
             }}
             className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
           >
@@ -864,61 +970,121 @@ export default function ImportPage() {
     );
   }
 
-  // ── UNMAPPED PLANS MAPPING ────────────────────────────────────────────────
-  if (unmappedPlans.length > 0) {
+  // ── UNMAPPED PLANS MAPPING (STEP 3) ───────────────────────────────────────
+  if (stepParam === "3" || (unmappedPlans.length > 0 && !showMapping && stepParam !== "1" && stepParam !== "2")) {
     return (
       <section className="max-w-7xl mx-auto space-y-6">
         <WizardHeader currentStep={3} />
         <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors w-fit">
           <ArrowLeft className="w-4 h-4" /> Back to Members
         </Link>
-        <div className="text-center bg-white/30 backdrop-blur-lg border border-slate-200 rounded-2xl p-6 shadow-xl">
-          <div className="w-16 h-16 bg-royal-50 border border-royal-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Shuffle className="w-8 h-8 text-royal-500" />
+        <div className="text-center bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="w-16 h-16 bg-brand-50 border border-brand-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Shuffle className="w-8 h-8 text-brand-500" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Map Unrecognized Memberships</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Map Unrecognized Memberships</h2>
           <p className="text-sm text-slate-500 mt-1 max-w-lg mx-auto">
-            We detected plans in your Excel file that don't match our database plans. Map them to correct durations below.
+            These plan names in your file do not say how long they run. Spellings of the same name are grouped together, so choose a duration once for each.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {unmappedPlans.map((rawPlan) => (
-            <div key={rawPlan} className="flex items-center justify-between gap-4 p-4 bg-surface border border-slate-200 rounded-2xl shadow-sm">
-              <span className="text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shadow-inner truncate max-w-[200px]">
-                {rawPlan}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-bold hidden sm:inline">→</span>
-                <select
-                  value={planMapping[rawPlan] || "monthly"}
-                  onChange={(e) => setPlanMapping({ ...planMapping, [rawPlan]: e.target.value })}
-                  className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[180px]"
-                >
-                  <option value="monthly">Monthly (1 Month)</option>
-                  <option value="quarterly">Quarterly (3 Months)</option>
-                  <option value="annual">Annual (1 Year)</option>
-                </select>
-              </div>
-            </div>
-          ))}
-        </div>
 
-        <div className="bg-surface border border-slate-100 p-4 rounded-2xl shadow-xs">
-          <button
-            onClick={applyPlanMappingAndProceed}
-            className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
-          >
-            <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
-              Confirm & Proceed <ArrowRight className="w-4 h-4" />
-            </span>
-            <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-          </button>
-        </div>
+        {unmappedPlans.length === 0 ? (
+          <div className="text-center bg-surface border border-slate-200 rounded-2xl p-8 shadow-sm space-y-4">
+            <div className="w-16 h-16 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <Check className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800">All Plan Durations Recognized</h2>
+            <p className="text-sm text-slate-500 max-w-lg mx-auto">
+              All membership plan names in your file were automatically recognized. No extra plan mapping needed.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/owner/import/review")}
+              className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl"
+            >
+              Proceed to Assign IDs / Preview <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {unmappedPlans.map((group) => {
+                const others = group.variants.slice(1);
+                return (
+                  <div key={group.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 bg-surface border border-slate-200 rounded-2xl shadow-sm">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-700 bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl truncate min-w-0 max-w-[200px]">
+                          {group.label}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-400 whitespace-nowrap flex-shrink-0">
+                          {group.count} {group.count === 1 ? "member" : "members"}
+                        </span>
+                      </div>
+                      {others.length > 0 && (
+                        <p className="text-xs text-slate-500 mt-2">
+                          Also written as{" "}
+                          <span className="font-semibold text-slate-600">{others.map(v => v.raw).join(", ")}</span>
+                          {" · "}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = unmappedPlans.flatMap(g => g === group
+                                ? g.variants.map(v => ({ label: v.raw, variants: [v], count: v.count }))
+                                : [g]);
+                              setUnmappedPlans(updated);
+                              sessionStorage.setItem("import_unmapped_plans", JSON.stringify(updated));
+                            }}
+                            className="font-bold text-brand-600 hover:text-brand-700"
+                          >
+                            Not the same? Separate
+                          </button>
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-slate-400 font-bold hidden sm:inline">→</span>
+                      <select
+                        aria-label={`Duration for ${group.label}`}
+                        value={planMapping[group.label] || "monthly"}
+                        onChange={(e) => {
+                          const nextPlanMap = {
+                            ...planMapping,
+                            ...Object.fromEntries(group.variants.map(v => [v.raw, e.target.value])),
+                          };
+                          setPlanMapping(nextPlanMap);
+                          sessionStorage.setItem("import_plan_mapping", JSON.stringify(nextPlanMap));
+                        }}
+                        className="w-full sm:w-auto px-3 py-2.5 sm:py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[180px]"
+                      >
+                        <option value="monthly">Monthly (1 Month)</option>
+                        <option value="quarterly">Quarterly (3 Months)</option>
+                        <option value="annual">Annual (1 Year)</option>
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="bg-surface border border-slate-200 p-4 rounded-2xl shadow-xs">
+              <button
+                onClick={applyPlanMappingAndProceed}
+                className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
+              >
+                <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
+                  Confirm & Proceed <ArrowRight className="w-4 h-4" />
+                </span>
+                <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+              </button>
+            </div>
+          </>
+        )}
       </section>
     );
   }
 
-  // ── UPLOAD STATE (default) ────────────────────────────────────────────────
+  // ── UPLOAD STATE (STEP 1 default) ────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Wizard Header */}
@@ -928,6 +1094,32 @@ export default function ImportPage() {
       <Link href="/owner/members" className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" /> Back to Members
       </Link>
+
+      {/* Active File Preserved Banner */}
+      {fileName && (
+        <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0">
+              ✓
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">
+                Active File Loaded: <span className="text-emerald-700 font-extrabold">{fileName}</span>
+              </p>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                All your mapped columns and edits are stored. You can click any step icon in the header above to switch steps without losing data.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={resetUpload}
+            className="text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap"
+          >
+            Clear & Upload New File
+          </button>
+        </div>
+      )}
 
       {/* Info Banner Container mirroring image */}
       <div className="bg-brand-50/40 border border-brand-100/80 rounded-3xl p-6 shadow-sm space-y-4">
@@ -973,7 +1165,7 @@ export default function ImportPage() {
           <p className="text-lg font-extrabold text-slate-800 tracking-tight">{isDragging ? "Drop the file here!" : "Drag & Drop your file here"}</p>
           <p className="text-xs text-slate-400 font-semibold">or <span className="text-brand-600 font-bold hover:underline">click to browse computer</span></p>
         </div>
-        <div className="border-t border-slate-100 pt-4 w-full max-w-xs text-center">
+        <div className="border-t border-slate-200 pt-4 w-full max-w-xs text-center">
           <p className="text-[11px] text-slate-400 font-semibold">Supports CSV, XLS, XLSX formats &bull; Up to 10MB</p>
         </div>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />

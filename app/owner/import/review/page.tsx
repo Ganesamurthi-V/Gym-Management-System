@@ -104,6 +104,17 @@ export default function ImportReviewPage() {
     if (cluster) setClusterInfo(JSON.parse(cluster));
   }, []);
 
+  // Sync rows & review state to sessionStorage on every action so navigating steps never loses data
+  useEffect(() => {
+    if (rows.length > 0) {
+      sessionStorage.setItem("import_review_state", JSON.stringify(rows));
+      sessionStorage.setItem(
+        "import_rows",
+        JSON.stringify(rows.map(({ _idx, _original_area, _save_alias, _review_done, suggestions, ai_reasoning, ...rest }) => rest))
+      );
+    }
+  }, [rows]);
+
   const filtered = useMemo(() => {
     return rows
       .filter(r => {

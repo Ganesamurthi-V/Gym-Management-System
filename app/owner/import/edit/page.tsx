@@ -97,6 +97,13 @@ export default function ImportEditPage() {
     loadDbNums();
   }, []);
 
+  // Sync rows to sessionStorage on every edit so navigating steps never loses data
+  useEffect(() => {
+    if (rows.length > 0 && step !== "done") {
+      sessionStorage.setItem("import_rows", JSON.stringify(rows));
+    }
+  }, [rows, step]);
+
   // Sync mirror scrollbar width to table inner width
   useEffect(() => {
     if (tableInnerRef.current && mirrorRef.current) {

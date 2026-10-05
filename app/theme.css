@@ -97,6 +97,7 @@
   --c-surface-card: 241 245 249;
   --c-surface-border: 226 232 240;
   --c-surface-sunken: 241 245 249;
+  --skeleton-shimmer: rgb(255 255 255 / 70%);
 
   /* ── High-emphasis fill (selected chips, solid dark buttons) ─────────────── */
   /* Matches the slate-900 these elements used before, so light mode is unchanged. */
@@ -229,6 +230,9 @@
   --c-surface-card: 38 38 38;       /* raised panel inside a card */
   --c-surface-border: 38 38 38;
   --c-surface-sunken: 10 10 10;     /* wells, table stripes */
+  /* The skeleton bar is only ~9 levels above the card (32 on 23), so the sweep is a
+     faint lift rather than the near-white flash that reads as a glare on a dark UI. */
+  --skeleton-shimmer: rgb(255 255 255 / 7%);
 
   /*
     Emphasis inverts rather than staying dark. A selected chip is dark in light mode because

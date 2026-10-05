@@ -5,6 +5,7 @@
  */
 
 import { format } from "date-fns";
+import { recognizePlanDuration } from "./plan-matching";
 
 export function excelSerialToDate(serial: number): string {
   return format(new Date(Math.round((serial - 25569) * 86400 * 1000)), "yyyy-MM-dd");
@@ -23,31 +24,18 @@ export function cellStr(value: unknown): string {
   return String(value).trim();
 }
 
+/**
+ * The plan a cell maps to. Falls back to "monthly" when the cell does not state a
+ * duration; callers that need to tell the two apart use isRecognizedPlan.
+ */
 export function normalizePlan(raw: string): string {
-  const v = raw.toLowerCase().trim().replace(/[\s\-_]+/g, "");
-  if (["monthly","month","1month","1m","30days","30day","onemonth","mo","mon","mthly","mth"].includes(v)) return "monthly";
-  if (["quarterly","quarter","3months","3month","3m","90days","90day","threemonths","threemonth","3mo","qtrly","qtr","q"].includes(v)) return "quarterly";
-  if (["6months","6month","6m","sixmonths","sixmonth","halfyear","halfyearly","biannual","semiannual","180days","180day"].includes(v)) return "quarterly";
-  if (["annual","annually","yearly","year","1year","12months","12month","12m","365days","365day","oneyear","1yr","yr","yrs","twelvemonths","twelvemonth","pa","perannum"].includes(v)) return "annual";
-  const num = parseInt(v);
-  if (!isNaN(num)) {
-    if (num <= 1) return "monthly";
-    if (num <= 8) return "quarterly";
-    return "annual";
-  }
-  return "monthly";
+  return recognizePlanDuration(raw) ?? "monthly";
 }
 
+/** False for a cell the owner has to map by hand (a tier name such as "Gold"). */
 export function isRecognizedPlan(raw: string): boolean {
-  const v = raw.toLowerCase().trim().replace(/[\s\-_]+/g, "");
-  if (!v) return true; // Empty plan falls back to monthly, no prompt needed
-  if (["monthly","month","1month","1m","30days","30day","onemonth","mo","mon","mthly","mth"].includes(v)) return true;
-  if (["quarterly","quarter","3months","3month","3m","90days","90day","threemonths","threemonth","3mo","qtrly","qtr","q"].includes(v)) return true;
-  if (["6months","6month","6m","sixmonths","sixmonth","halfyear","halfyearly","biannual","semiannual","180days","180day"].includes(v)) return true;
-  if (["annual","annually","yearly","year","1year","12months","12month","12m","365days","365day","oneyear","1yr","yr","yrs","twelvemonths","twelvemonth","pa","perannum"].includes(v)) return true;
-  const num = parseInt(v);
-  if (!isNaN(num)) return true;
-  return false;
+  if (!raw.trim()) return true; // Empty plan falls back to monthly, no prompt needed
+  return recognizePlanDuration(raw) !== null;
 }
 
 export function normalizeGender(raw: string): string {

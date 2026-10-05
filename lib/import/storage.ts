@@ -29,6 +29,12 @@ export const IMPORT_STORAGE_KEYS = [
   'import_review_state',
   'import_cluster',
   'import_has_id_col',
+  'import_file_name',
+  'import_file_headers',
+  'import_file_samples',
+  'import_column_mapping',
+  'import_unmapped_plans',
+  'import_plan_mapping',
 ] as const
 
 export type ImportStorageKey = (typeof IMPORT_STORAGE_KEYS)[number]

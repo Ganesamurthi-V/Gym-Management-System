@@ -1642,3 +1642,13 @@ footer {
     transform: translate3d(0, 0, 0.01px);
   }
 }
+
+/* HeroVideo: the play/pause icon that flashes in the centre after a click or Space. */
+@keyframes hero-video-flash {
+  0% { opacity: 0.95; transform: translate(-50%, -50%) scale(0.8); }
+  60% { opacity: 0.9; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*='hero-video-flash'] { animation-duration: 0.01s !important; }
+}

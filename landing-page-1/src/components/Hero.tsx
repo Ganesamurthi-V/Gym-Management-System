@@ -2,11 +2,10 @@ import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ArrowRight, MapPin } from 'lucide-react';
 import { Marquee } from './Marquee';
-import { DashboardMock } from './DashboardMock';
+import { HeroVideo } from './HeroVideo';
 import { HeroPixels } from './HeroPixels';
 import { ShinyText } from './ShinyText';
 import { prefersReducedMotion } from '../lib/useReveal';
-import { useMediaQuery } from '../lib/useMediaQuery';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -33,7 +32,6 @@ const TRUST_POINTS = ['14-day free trial', 'No credit card', 'Cancel anytime'] a
 
 export function Hero() {
   const scope = useRef<HTMLElement>(null);
-  const interactive = useMediaQuery('(min-width: 1024px)');
 
   useEffect(() => {
     if (prefersReducedMotion()) return;
@@ -191,68 +189,20 @@ export function Hero() {
           </ul>
         </div>
 
-        {/* ── Product shot ──────────────────────────────────────────────── */}
-        <div className="hero-frame mt-16 md:mt-20">
-          <div className="card mx-auto max-w-[1060px] overflow-hidden p-1.5 shadow-[0_40px_90px_-40px_rgba(0,0,0,0.35)]">
-            {/* Window chrome — reads as "this is the real product", and costs
-                three dots to say it. */}
-            <div className="flex items-center gap-1.5 px-3 py-2.5">
-              {/* Classic macOS traffic-light dots — close/minimise/zoom, red/yellow/green.
-                  Fixed hex so they read the same in light and dark; the window frame is a
-                  product motif, not part of the themed surface. */}
-              <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
-              <span className="ml-3 font-mono text-[11px] text-muted-foreground">
-                app.gymflow.sbs
-              </span>
-              {/* Sits in the empty right half of the address bar. Only meaningful
-                  when the live canvas is on screen — on narrow viewports the frame
-                  holds a static screenshot, so the "interactive" claim is gated on
-                  the same flag that swaps the mock in. */}
-              {interactive && (
-                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-border-subtle bg-card-primary/10 px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  <span aria-hidden className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-card-primary" />
-                  Interactive demo
-                </span>
-              )}
-            </div>
-            {/*
-              The live mock is a fixed 1160px canvas scaled to fit. Below ~1024px
-              that scale drops under 0.6 and the dashboard's 9-11px UI text stops
-              being readable — at phone widths it lands around 2.5px. An
-              interactive panel nobody can read or hit is worse than a picture of
-              one, so narrow viewports keep the original screenshot, which also
-              leaves the mobile LCP on a fast cached image.
-            */}
-            {interactive ? (
-              <>
-                {/* The mock is aria-hidden, so this carries what the old alt
-                    attribute did — without it the product shot goes silent. */}
-                <p className="sr-only">
-                  The GymFlow dashboard showing active members, today&apos;s collection,
-                  memberships expiring soon and total outstanding dues. Sidebar
-                  navigation covers members, payments, dues, attendance and inventory.
-                </p>
-                <DashboardMock />
-              </>
-            ) : (
-              <img
-                src="/hero.webp"
-                alt="The GymFlow dashboard showing active members, today's collection, memberships expiring soon and total outstanding dues."
-                width={1160}
-                height={617}
-                // Above the fold: eager + high priority, and never lazy — lazy here
-                // would delay the largest contentful paint on purpose.
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-                className="block w-full rounded-2xl border border-border-subtle"
-              />
-            )}
-          </div>
-        </div>
+      </div>
 
+      {/* ── Product film ──────────────────────────────────────────────────
+          Outside the 1240px column on purpose: the film grows wider than the copy
+          as it is scrolled up. The section's own padding is what keeps a margin
+          at the page edges. .hero-frame is a wrapper because the entrance tween
+          and the scroll growth both write a transform, and they must not share
+          an element. The interactive dashboard demo that used to sit here is in
+          _archived/landing-page-1. */}
+      <div className="hero-frame mt-16 md:mt-20">
+        <HeroVideo />
+      </div>
+
+      <div className="mx-auto max-w-[1240px]">
         {/* ── Coverage marquee ──────────────────────────────────────────── */}
         <div className="hero-marquee mt-16">
           <p className="mb-6 text-center text-xs font-medium tracking-wide text-muted-foreground">

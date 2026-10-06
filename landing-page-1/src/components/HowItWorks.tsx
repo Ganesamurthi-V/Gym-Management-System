@@ -185,7 +185,7 @@ export function HowItWorks() {
       id="how"
       ref={scope}
       aria-labelledby="how-title"
-      className="px-5 py-24 md:px-8 md:py-28"
+      className="has-dots px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto max-w-[1240px]">
         {/* The same two halves as the WhatsApp section above, mirrored: there the copy
@@ -207,7 +207,7 @@ export function HowItWorks() {
             <h2 id="how-title" className="reveal display-2 mt-4 text-balance">
               Up and running
               <br />
-              <span className="text-muted-foreground">in minutes.</span>
+              in <em className="display-accent">minutes.</em>
             </h2>
             <p className="reveal lead mt-6 max-w-[520px]">
               No IT team, no installation, no consultant. Sign up and start entering your

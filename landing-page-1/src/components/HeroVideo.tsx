@@ -8,8 +8,13 @@ import { connectionAllowsDecoration } from '../lib/decorationGates';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const SRC = '/video/gymflow-launch.mp4';
-const POSTER = '/video/gymflow-launch-poster.webp';
+// Two cuts of the same film: the 16:9 one for a laptop and the 9:16 one for a phone. A
+// portrait phone shows a 16:9 film as a thin strip with its text too small to read;
+// the 9:16 cut is laid out for the tall frame, with the same script and narration.
+const FILMS = {
+  wide: { src: '/video/gymflow-launch.mp4', poster: '/video/gymflow-launch-poster.webp', w: 1600, h: 900 },
+  tall: { src: '/video/gymflow-launch-portrait.mp4', poster: '/video/gymflow-launch-portrait-poster.webp', w: 720, h: 1280 },
+} as const;
 
 /** Corner radius as it should look on screen, whatever the frame's scale: [phone, wider]. */
 const RADII = [18, 32] as const;
@@ -34,6 +39,7 @@ export function HeroVideo() {
   const frame = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const wide = useMediaQuery('(min-width: 768px)');
+  const film = wide ? FILMS.wide : FILMS.tall;
 
   // Autoplay is a decision made once: an 8 MB film is not something to start on
   // Data Saver or 2g, and motion that starts by itself is what reduced motion
@@ -142,7 +148,7 @@ export function HeroVideo() {
     );
     io.observe(v);
     return () => io.disconnect();
-  }, [auto]);
+  }, [auto, wide]);
 
   function togglePlay() {
     const v = video.current;
@@ -214,7 +220,11 @@ export function HeroVideo() {
   return (
     <div
       ref={frame}
-      className="relative mx-auto aspect-video w-full max-w-[min(1640px,calc((100svh-100px)*16/9))] origin-top overflow-hidden border border-border-subtle bg-[#eef3ff] shadow-[0_50px_110px_-50px_rgba(37,99,235,0.55)] will-change-transform"
+      className={`relative mx-auto w-full origin-top ${
+        wide
+          ? 'aspect-video max-w-[min(1640px,calc((100svh-100px)*16/9))]'
+          : 'aspect-[9/16] max-w-[min(420px,calc((100svh-100px)*9/16))]'
+      } overflow-hidden border border-border-subtle bg-[#eef3ff] shadow-[0_50px_110px_-50px_rgba(37,99,235,0.55)] will-change-transform`}
       style={{ borderRadius: RADII[wide ? 1 : 0] }}
       onPointerMove={wake}
       onPointerDown={wake}
@@ -225,10 +235,11 @@ export function HeroVideo() {
         ref={video}
         className={`block h-full w-full object-cover ${playing && !awake ? 'cursor-none' : 'cursor-pointer'}`}
         onClick={toggleByUser}
-        src={SRC}
-        poster={POSTER}
-        width={1600}
-        height={900}
+        key={film.src}
+        src={film.src}
+        poster={film.poster}
+        width={film.w}
+        height={film.h}
         muted
         playsInline
         preload="none"

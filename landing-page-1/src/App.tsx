@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { Statement } from './components/Statement';
 import { BentoFeatures } from './components/BentoFeatures';
 import { WhatsAppSection } from './components/WhatsAppSection';
 import { HowItWorks } from './components/HowItWorks';
@@ -36,7 +35,6 @@ function App() {
       <Navbar />
       <main id="main-content">
         <Hero />
-        <Statement />
         <BentoFeatures />
         <WhatsAppSection />
         <HowItWorks />

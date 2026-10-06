@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { Check, CheckCircle2, CreditCard, LayoutDashboard, Users } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
-import { ACCENT_GLOW } from '../lib/borderGlowPresets';
 import BorderGlow from './BorderGlow';
 import { MemberAppCard } from './MemberAppCard';
 
@@ -29,6 +28,13 @@ const MEMBER_ROWS = [
   { initials: 'AR', name: 'Arun R.', plan: 'Quarterly', status: 'Active' },
   { initials: 'PS', name: 'Priya S.', plan: 'Monthly', status: 'Expiring' },
   { initials: 'VK', name: 'Vijay K.', plan: 'Annual', status: 'Active' },
+  { initials: 'DM', name: 'Divya M.', plan: 'Monthly', status: 'Active' },
+] as const;
+
+const PAYMENT_ROWS = [
+  { name: 'Arun R.', mode: 'UPI', amount: '₹5,000' },
+  { name: 'Priya S.', mode: 'Cash', amount: '₹1,500' },
+  { name: 'Vijay K.', mode: 'UPI', amount: '₹9,500' },
 ] as const;
 
 export function BentoFeatures() {
@@ -46,7 +52,7 @@ export function BentoFeatures() {
          viewport the grid stretches so the section fills exactly one screen, and
          on a short one the section grows instead of squeezing the cards into an
          overflow. */
-      className="contain-visible px-5 py-14 md:px-8 md:py-16 lg:flex lg:min-h-screen lg:flex-col lg:py-9"
+      className="has-dots contain-visible px-5 py-14 md:px-8 md:py-16 lg:flex lg:min-h-screen lg:flex-col lg:py-9"
     >
       {/* justify-center pairs with the de-stretched grid: the section still holds
           a full screen, but the header+grid group sits centred in it rather than
@@ -56,7 +62,7 @@ export function BentoFeatures() {
         {/* display-3 rather than display-2, and tighter margins: the section is
             budgeted to one viewport, and at display-2 the header alone took 234px
             of that. */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
           <div className="max-w-[560px]">
             <span className="reveal eyebrow">Core modules</span>
             <h2 id="features-title" className="reveal display-3 mt-3 text-balance">
@@ -65,9 +71,6 @@ export function BentoFeatures() {
               <span className="text-muted-foreground">nothing it doesn&apos;t.</span>
             </h2>
           </div>
-          <p className="reveal max-w-[330px] text-sm leading-relaxed text-muted-foreground lg:text-right">
-            Built specifically for the workflows of independent gyms across India.
-          </p>
         </div>
 
         {/* ── Bento grid ──────────────────────────────────────────────────
@@ -142,56 +145,32 @@ export function BentoFeatures() {
             </div>
           </BentoCard>
 
-          {/* Attendance — the one fully filled block in this row, so the accent
-              lands once and reads as intentional.
-
-              A BorderGlow like the white cards, not a plain article: its hover
-              now tracks the pointer and lights the facing arc instead of
-              swapping the whole border at once. ACCENT_GLOW carries the white
-              rim; .glow-card-accent the resting rim and text colour. */}
-          <BorderGlow
-            as="article"
-            className="reveal glow-card-accent"
-            contentClassName="p-5"
-            {...ACCENT_GLOW}
+          {/* Attendance — a plain card like its neighbours. It used to be the second
+              filled-blue block in this grid, next to the member app card, which made
+              two saturated blocks compete in one bento. The phone card keeps the
+              accent; this one carries it only in the ticks. */}
+          <BentoCard
+            icon={CheckCircle2}
+            title="One-tap attendance"
+            desc="Mark today in a tap."
           >
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-accent-ink" />
-              {/* 17px to match BentoCard's title — this card is hand-rolled
-                  rather than going through it, so the size has to be kept in
-                  step by hand. */}
-              <h3 className="text-[17px] font-medium tracking-tight text-accent-ink">
-                One-tap attendance
-              </h3>
-            </div>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-accent-ink/80">
-              Mark today in a tap.
-            </p>
-
-            <div className="mt-5 flex flex-1 flex-col justify-center gap-2">
+            <div className="flex flex-1 flex-col justify-center gap-2">
               {ATTENDANCE_ROWS.map(row => (
                 <div
                   key={row.name}
-                  className="flex items-center justify-between rounded-xl bg-accent-ink/10 px-3.5 py-2.5"
+                  className="flex items-center justify-between rounded-xl border border-border-subtle bg-subtle px-3.5 py-2.5"
                 >
                   <span className="flex items-center gap-2.5">
-                    <span className="grid h-5 w-5 place-items-center rounded-full bg-accent-ink">
-                      <Check className="h-3 w-3 text-accent" strokeWidth={3} />
+                    <span className="grid h-5 w-5 place-items-center rounded-full bg-accent">
+                      <Check className="h-3 w-3 text-accent-ink" strokeWidth={3} />
                     </span>
-                    <span className="text-[13px] font-medium text-accent-ink">
-                      {row.name}
-                    </span>
+                    <span className="text-[13px] font-medium text-foreground">{row.name}</span>
                   </span>
-                  {/* /90, not the /80 used elsewhere on this card: the row's own
-                      bg-accent-ink/10 lifts the surface to rgb(52,96,220), and
-                      that costs enough contrast to put /80 at 4.09:1, under AA. */}
-                  <span className="font-mono text-[11px] text-accent-ink/90">
-                    {row.time}
-                  </span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{row.time}</span>
                 </div>
               ))}
             </div>
-          </BorderGlow>
+          </BentoCard>
 
           {/* Members — two columns at lg, on the right of row 2. The span sits
               here rather than on Payments because these rows absorb the extra
@@ -242,11 +221,10 @@ export function BentoFeatures() {
             title="Payments & dues"
             desc="Cash, UPI or card. Nudges sent for you."
           >
-            {/* The member app card sets a tall row. Rather than stretch the panel
-                to fill it — which either spreads the three items to the far edges
-                or leaves a large empty bordered box — the panel keeps its natural
-                height and is centred, the same way the member rows above are. */}
-            <div className="flex flex-1 flex-col justify-center">
+            {/* The dues summary on top and the last few payments under it: the Members card
+                beside this one holds three rows, and with the summary alone this card
+                was a single short block floating in the middle of empty space. */}
+            <div className="flex flex-1 flex-col gap-3">
               <div className="rounded-2xl border border-border-subtle bg-subtle p-4">
                 <div className="flex items-baseline justify-between">
                   <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -266,6 +244,23 @@ export function BentoFeatures() {
                     14 reminders sent
                   </span>
                 </div>
+              </div>
+
+              <div className="flex flex-1 flex-col justify-end gap-2">
+                {PAYMENT_ROWS.map(row => (
+                  <div
+                    key={row.name}
+                    className="flex items-center justify-between rounded-xl border border-border-subtle bg-subtle px-3 py-2"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[12.5px] font-medium text-foreground">{row.name}</span>
+                      <span className="shrink-0 rounded-pill bg-accent-soft px-1.5 py-px font-mono text-[9.5px] uppercase text-accent-text">
+                        {row.mode}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[12.5px] font-medium text-foreground">{row.amount}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </BentoCard>

@@ -27,7 +27,9 @@ const COLUMNS = [
 ] as const;
 
 /**
- * Filled accent panel that the CTA card overlaps.
+ * Neutral panel that the CTA card overlaps. It was the filled accent blue, which put the
+ * loudest block on the page at the very end of it; every other saturated block now
+ * stands alone in its own section, and the page closes quietly.
  *
  * The negative top margin pulls the panel up under the card; the panel's top
  * padding is that overlap plus clearance, so footer content still starts below
@@ -35,7 +37,7 @@ const COLUMNS = [
  * padding without shrinking the margin and the links slide under the card.
  *
  * The panel is full-bleed: it runs edge to edge with no side gutters or rounded
- * corners, so the blue reaches both page edges. The old side padding and the
+ * corners, so it reaches both page edges. The old side padding and the
  * panel's own max-width/mx-auto did the insetting; both are gone. Readability is
  * kept by the inner wrapper below, which re-applies the max-w-[1240px] centring
  * to the *content* rather than the coloured panel.
@@ -47,15 +49,15 @@ export function Footer() {
           the visible panel instead of a point hidden behind the CTA card. */}
       <div
         id="support"
-        className="bg-card-primary px-6 pt-[110px] pb-8 md:px-12 md:pt-[190px]"
+        className="border-t border-border-subtle bg-muted px-6 pt-[110px] pb-8 md:px-12 md:pt-[190px]"
       >
         <div className="mx-auto grid max-w-[1240px] gap-12 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           {/* ── Brand ─────────────────────────────────────────────────────── */}
           <div>
             <a href="#" aria-label="GymFlow home" className="inline-flex">
-              {/* The wordmark is dark-inked for light backgrounds. brightness-0
-                  crushes it to black and invert lifts it to solid white, which is
-                  the only way to reuse the one asset on a filled accent panel.
+              {/* The wordmark is dark-inked for light backgrounds. On the dark theme
+                  brightness-0 crushes it to black and invert lifts it to solid white,
+                  which is how the navbar reuses the same asset.
 
                   Responsive: h-12 (48px) on mobile, h-20 (80px) from md up. The
                   footer has room for a large mark on desktop, but h-25 (100px)
@@ -67,16 +69,16 @@ export function Footer() {
                 height={178}
                 loading="lazy"
                 decoding="async"
-                className="h-12 w-auto brightness-0 invert md:h-20"
+                className="h-12 w-auto dark:brightness-0 dark:invert md:h-20"
               />
             </a>
-            <p className="mt-5 max-w-[280px] text-[13px] leading-relaxed text-accent-ink/80">
+            <p className="mt-5 max-w-[280px] text-[13px] leading-relaxed text-muted-foreground">
               All-in-one gym management for independent gym owners. Members, payments,
               attendance, dues and WhatsApp reminders in one place.
             </p>
             <a
               href={APP_URL}
-              className="btn mt-6 bg-accent-ink text-accent hover:bg-accent-ink/90"
+              className="btn btn-primary mt-6"
             >
               Start free trial
             </a>
@@ -85,7 +87,7 @@ export function Footer() {
           {/* ── Link columns ──────────────────────────────────────────────── */}
           {COLUMNS.map(column => (
             <nav key={column.heading} aria-label={column.heading}>
-              <h3 className="font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink/80">
+              <h3 className="font-mono text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
                 {column.heading}
               </h3>
               <ul className="mt-5 flex flex-col gap-3">
@@ -93,7 +95,7 @@ export function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-[13.5px] text-accent-ink/80 transition-colors hover:text-accent-ink"
+                      className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </a>
@@ -110,10 +112,10 @@ export function Footer() {
             can actually see rather than claiming details that appear nowhere.
           */}
           <div>
-            <h3 className="font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink/80">
+            <h3 className="font-mono text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
               Contact
             </h3>
-            <address className="mt-5 flex flex-col gap-3 text-[13px] not-italic text-accent-ink/80">
+            <address className="mt-5 flex flex-col gap-3 text-[13px] not-italic text-muted-foreground">
               <span className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span className="leading-relaxed">
@@ -124,20 +126,20 @@ export function Footer() {
               </span>
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
-                className="flex items-center gap-2.5 transition-colors hover:text-accent-ink"
+                className="flex items-center gap-2.5 transition-colors hover:text-foreground"
               >
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 {SUPPORT_EMAIL}
               </a>
               <a
                 href={`tel:${SUPPORT_PHONE_HREF}`}
-                className="flex items-center gap-2.5 transition-colors hover:text-accent-ink"
+                className="flex items-center gap-2.5 transition-colors hover:text-foreground"
               >
                 <Phone className="h-3.5 w-3.5 shrink-0" />
                 {SUPPORT_PHONE_DISPLAY}
               </a>
             </address>
-            <p className="mt-4 text-[12px] text-accent-ink/80">
+            <p className="mt-4 text-[12px] text-muted-foreground">
               Priority support on WhatsApp, phone and email.
             </p>
           </div>
@@ -146,18 +148,16 @@ export function Footer() {
         {/* Was .rule, which draws with --border and would vanish on the panel.
             Shares the grid's max-w-[1240px] mx-auto so the rule and the bottom
             bar line up with the content columns, not the full-bleed panel. */}
-        <div aria-hidden className="mx-auto mt-14 h-px max-w-[1240px] bg-accent-ink/20" />
+        <div aria-hidden className="mx-auto mt-14 h-px max-w-[1240px] bg-border-subtle" />
 
         <div className="mx-auto flex max-w-[1240px] flex-col-reverse items-center justify-between gap-4 pt-7 sm:flex-row">
-          <p className="text-center text-[12px] text-accent-ink/80 sm:text-left">
+          <p className="text-center text-[12px] text-muted-foreground sm:text-left">
             © 2026 GymFlow. Built for gym owners, by fitness enthusiasts. Made in India.
           </p>
-          <p className="flex items-center gap-2 text-[12px] text-accent-ink/80">
-            {/* bg-accent-ink, not bg-accent: --accent on --card-primary is one
-                step of the same blue and reads as invisible. */}
+          <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
             <span
               aria-hidden
-              className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-ink"
+              className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent"
             />
             All systems operational
           </p>

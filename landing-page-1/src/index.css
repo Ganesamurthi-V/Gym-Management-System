@@ -1282,7 +1282,10 @@ body {
   background: var(--card-primary);
   color: var(--accent-ink);
   border: 1px solid color-mix(in srgb, var(--accent) 70%, #000);
-  border-radius: var(--radius-card-lg);
+  /* Same radius as .card. This was --radius-card-lg, so a filled card sat beside a
+     white one with rounder corners in Features, Testimonials and Pricing. The large
+     radius is kept for free-standing panels (the closing CTA). */
+  border-radius: var(--radius-card);
 }
 
 /* Filled-accent variant of a BorderGlow card.
@@ -1311,7 +1314,7 @@ body {
   background: var(--card-secondary);
   color: var(--card-foreground);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: var(--radius-card-lg);
+  border-radius: var(--radius-card);
 }
 
 /* Phone mock screen. Deliberately stays light in both themes: it depicts the
@@ -1362,6 +1365,36 @@ body {
     transparent 1px
   );
   background-size: 28px 28px;
+}
+
+/* A faint dot field along the top of a section, fading out downward.
+
+   Only the hero had any texture, so the page went from a patterned first screen to
+   flat colour for the rest of its length. This is the hero's dot rhythm at a
+   fraction of the strength, drawn behind the section's header so each section opens
+   on the same surface the page opened on. A pseudo-element, so no section needs extra
+   markup; isolation keeps its negative z-index above the page background rather than
+   behind it. Plain CSS: nothing here costs a frame, which matters on a cheap phone. */
+.has-dots {
+  position: relative;
+  isolation: isolate;
+}
+.has-dots::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 440px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--foreground) 16%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 26px 26px;
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -22,7 +22,7 @@
  */
 export const ACCENT_GLOW = {
   backgroundColor: 'var(--card-primary)',
-  borderRadius: 'var(--radius-card-lg)',
+  borderRadius: 'var(--radius-card)',
   colors: ['var(--accent-ink)', 'rgb(255 255 255 / 65%)', 'var(--accent-ink)'],
   // No inward bleed, same as the white cards: rim only, interior untouched.
   fillOpacity: 0,

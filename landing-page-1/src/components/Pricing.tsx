@@ -110,26 +110,27 @@ export function Pricing() {
       id="pricing"
       ref={scope}
       aria-labelledby="pricing-title"
-      className="px-5 py-24 md:px-8 md:py-28"
+      className="has-dots px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto max-w-[1240px]">
-        {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="mx-auto max-w-[640px] text-center">
+        <div className="grid gap-x-16 gap-y-10 lg:grid-cols-2 lg:gap-x-20">
+          {/* ── Header ────────────────────────────────────────────────────── */}
+          {/* Left-aligned, and in the same grid as the cards. The section used to be a
+              centred heading over a 920px pair, which was the odd one out between
+              left-aligned sections on either side of it. The copy and the activation
+              steps now sit on the left and the plan on the right, the same split as
+              the WhatsApp section, and on a phone the order is heading, plan, steps. */}
+        <div className="lg:col-start-1 lg:row-start-1">
           <span className="reveal eyebrow">Pricing</span>
           <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance">
             One plan. <span className="text-muted-foreground">Everything included.</span>
           </h2>
-          <p className="reveal lead mx-auto mt-5 max-w-[520px]">
+          <p className="reveal lead mt-5 max-w-[520px]">
             No per-member charges, no setup fee, and no modules to unlock later. Start with
             a 14-day free trial — no credit card needed.
           </p>
         </div>
 
-        {/* ── Plan + activation ─────────────────────────────────────────── */}
-        {/* Capped well inside the section's 1240px. The pair used to run the full
-            width, which on a wide screen stretched a card holding one price and
-            eight short lines across 1240px and left it looking mostly empty. */}
-        <div className="mx-auto mt-10 grid max-w-[920px] gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-4">
           {/* Plan card — filled accent, because this is the one thing on the page
               a visitor is meant to act on.
 
@@ -139,7 +140,7 @@ export function Pricing() {
               mis-clipped until an interaction. Rendering the card in its final layout
               from first paint removes that whole timing race; the section heading above
               still reveals, so the entrance still reads as animated. */}
-          <div className="card-accent relative flex flex-col overflow-hidden p-4 md:p-5">
+          <div className="card-accent relative flex flex-col overflow-hidden p-4 md:p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start lg:sticky lg:top-28">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">
                 GymFlow Pro
@@ -282,7 +283,7 @@ export function Pricing() {
               the row takes the taller one's height and the shorter card stretches to
               match: shrinking only one would just move the empty space, not remove
               it. */}
-          <div className="reveal card flex flex-col p-6 md:p-8">
+          <div className="reveal card flex flex-col p-6 md:p-8 lg:col-start-1 lg:row-start-2">
             <h3 className="display-3">Simple 3-step activation</h3>
             <p className="mt-3 text-[13.5px] leading-relaxed text-muted-foreground">
               Payments are verified manually, so there is no card on file and nothing

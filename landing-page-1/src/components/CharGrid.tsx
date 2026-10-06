@@ -421,22 +421,86 @@ export function CharGrid({
     canvas.addEventListener('webglcontextlost', onLost);
     canvas.addEventListener('webglcontextrestored', onRestored);
 
-    const minFrameSeconds = 1 / targetFps;
+    /*
+      Backs off by itself on a device that cannot keep up, and never removes the grid.
+
+      A cheap phone is where this layer can cost more than it is worth: the field pass
+      is cheap per frame but it shares one GPU and one main thread with the page's
+      scroll and the film. The governor watches how long the browser is really taking
+      between animation frames. If the average stays slow it steps down, in this order:
+      fewer redraws a second, then a lower pixel ratio, then a single still frame. The
+      grid stays on screen at every step; only how often it moves changes.
+
+      It only ever steps down. Stepping back up would hand the load back to a device
+      that has just shown it cannot take it, and the page would flap between the two.
+      The measurement is rAF spacing and not render time, because GPU time is not
+      readable from script; a slow GPU shows up as a stretched frame interval anyway.
+    */
+    let fps = targetFps;
+    let level = 0;
+    let ratio = Math.min(window.devicePixelRatio || 1, maxPixelRatio);
+    let probeFrames = 0;
+    let probeSeconds = 0;
+    let lastRaf = performance.now();
+    let frozen = false;
+    const STEP_DOWN = 1000 / 36;       // slower than ~36 fps on average means it is struggling
+
+    // The animation also pauses while the page is being scrolled: the grid is behind
+    // the hero copy, nobody is watching it move mid-scroll, and the main thread is
+    // better spent on the scroll itself.
+    let lastScroll = -1e9;
+    const onScroll = () => {
+      lastScroll = performance.now();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    const stepDown = () => {
+      level += 1;
+      probeFrames = 0;
+      probeSeconds = 0;
+      if (level === 1) fps = Math.max(8, targetFps * 0.6);
+      else if (level === 2) {
+        ratio = Math.min(ratio, 0.75);
+        renderer.setPixelRatio(ratio);
+        setSize();
+        fps = Math.max(6, targetFps * 0.4);
+      } else {
+        frozen = true;            // one last frame is already on the canvas
+      }
+    };
+
+    const minFrameSeconds = () => 1 / fps;
     const slack = 0.002;
-    const maxDelta = minFrameSeconds * 1.5;
+    const maxDelta = () => minFrameSeconds() * 1.5;
     const clock = new THREE.Clock();
     let elapsed = 0;
     let banked = 0;
 
-    let raf = requestAnimationFrame(function tick() {
+    let raf = requestAnimationFrame(function tick(now) {
       raf = requestAnimationFrame(tick);
-      const delta = Math.min(clock.getDelta(), maxDelta);
-      if (lost || !onScreen || document.hidden) return;
+
+      const gap = now - lastRaf;
+      lastRaf = now;
+      if (!frozen && onScreen && !document.hidden && gap < 250) {
+        probeFrames += 1;
+        probeSeconds += gap;
+        if (probeFrames >= 60) {
+          if (probeSeconds / probeFrames > STEP_DOWN) stepDown();
+          else {
+            probeFrames = 0;
+            probeSeconds = 0;
+          }
+        }
+      }
+
+      const delta = Math.min(clock.getDelta(), maxDelta());
+      if (frozen || lost || !onScreen || document.hidden) return;
+      if (now - lastScroll < 140) return;
 
       banked += delta;
-      if (banked + slack < minFrameSeconds) return;
-      const consumed = Math.min(banked, maxDelta);
-      banked = Math.min(banked - consumed, maxDelta);
+      if (banked + slack < minFrameSeconds()) return;
+      const consumed = Math.min(banked, maxDelta());
+      banked = Math.min(banked - consumed, maxDelta());
 
       // Accumulated rather than absolute elapsed time, so a backgrounded tab does
       // not come back with the field jumped forward by the length of the stall.
@@ -452,6 +516,7 @@ export function CharGrid({
 
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
       ro.disconnect();
       io.disconnect();
       canvas.removeEventListener('webglcontextlost', onLost);

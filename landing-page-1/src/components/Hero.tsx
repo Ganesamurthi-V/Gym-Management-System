@@ -212,7 +212,7 @@ export function Hero() {
         {/* ── Coverage marquee ──────────────────────────────────────────── */}
         <div className="hero-marquee mt-16">
           <p className="mb-6 text-center text-xs font-medium tracking-wide text-muted-foreground">
-            Serving independent gyms across India
+            Available for gyms all over India
           </p>
           <Marquee items={CITIES} durationSeconds={38} />
         </div>

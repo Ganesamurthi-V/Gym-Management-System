@@ -4,7 +4,6 @@ import { useReveal } from '../lib/useReveal';
 const APP_URL = 'https://app.gymflow.sbs';
 
 const TRUST_CHIPS = [
-  '20+ gyms',
   '14-day free trial',
   'No credit card',
   'Cancel anytime',
@@ -49,11 +48,11 @@ export function CTA() {
             className="reveal mx-auto max-w-[680px] text-balance font-medium leading-[1.08] tracking-[-0.03em] text-foreground"
             style={{ fontSize: 'clamp(30px, 4.2vw, 52px)' }}
           >
-            Stop managing members. Start growing your gym.
+            Stop managing members. Start <em className="display-accent">growing</em> your gym.
           </h2>
 
           <p className="reveal mx-auto mt-5 max-w-[500px] text-[15.5px] leading-relaxed text-muted-foreground">
-            Join 500+ gym owners already using GymFlow across India.
+            Join 20+ gyms already running on GymFlow, available all over India.
           </p>
 
           <div className="reveal mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">

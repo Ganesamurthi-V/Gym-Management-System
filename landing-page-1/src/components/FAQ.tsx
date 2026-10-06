@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 
-const APP_URL = 'https://app.gymflow.sbs';
-const SUPPORT_EMAIL = 'ganesamurthiv@gmail.com';
 
 /**
  * Kept verbatim in sync with the FAQPage JSON-LD in index.html. Structured data
@@ -57,29 +55,23 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" aria-labelledby="faq-title" className="px-5 py-24 md:px-8 md:py-28">
-      {/* Narrow and centred, where this used to be a 1240px two-column split with a
-          sticky intro. A single column keeps question and answer on one measure and
-          puts the header above the content it introduces. */}
-      <div className="mx-auto max-w-[820px]">
+    <section id="faq" aria-labelledby="faq-title" className="has-dots px-5 py-24 md:px-8 md:py-28">
+      {/* The same two halves as WhatsApp and How it works: the question on the left and
+          the answers on the right, sticky so the heading stays beside a long list. It
+          was a centred column under a centred header, with Start free trial and Contact
+          support in the header; those two buttons are gone, since the closing section
+          two screens down says the same thing. */}
+      <div className="mx-auto max-w-[1240px]">
+        <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
         {/* ── Header ────────────────────────────────────────────────────── */}
-        <div ref={headerScope} className="text-center">
+        <div ref={headerScope} className="lg:sticky lg:top-32 lg:self-start">
           <span className="reveal eyebrow">Frequently asked questions</span>
           <h2 id="faq-title" className="reveal display-2 mt-4 text-balance">
-            Everything you <span className="text-muted-foreground">need to know.</span>
+            Everything you <em className="display-accent">need</em> to know.
           </h2>
-          <p className="reveal lead mx-auto mt-5 max-w-[520px]">
-            Still unsure about something? Ask us directly and we will walk you through
-            it.
+          <p className="reveal lead mt-5 max-w-[440px]">
+            Straight answers on pricing, WhatsApp messages and moving your members over.
           </p>
-          <div className="reveal mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a href={APP_URL} className="btn btn-primary">
-              Start free trial
-            </a>
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="btn btn-outline">
-              Contact support
-            </a>
-          </div>
         </div>
 
         {/* ── Accordion ─────────────────────────────────────────────────── */}
@@ -87,7 +79,7 @@ export function FAQ() {
             the reference; the card itself is the project's own .card, so the radius,
             surface and border come from the design system rather than being
             restated here. */}
-        <ul ref={listScope} className="mt-14 flex flex-col gap-3">
+        <ul ref={listScope} className="flex flex-col gap-3">
           {FAQS.map((item, index) => {
             const expanded = open === index;
             const panelId = `faq-panel-${index}`;
@@ -171,6 +163,7 @@ export function FAQ() {
             );
           })}
         </ul>
+        </div>
       </div>
     </section>
   );

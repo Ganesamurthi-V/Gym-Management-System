@@ -65,6 +65,27 @@ const PHONE = {
   targetFps: 15,
 } as const;
 
+/*
+  A phone that reports four cores or less, or four gigabytes or less, starts on this.
+  It is the same grid with a coarser pitch, a smaller backing store and a slower redraw,
+  so the layer is there from the first frame instead of waiting for CharGrid's governor
+  to notice a struggle. navigator.deviceMemory is Chromium only; where it is missing the
+  core count decides, and where neither exists the normal phone preset is used.
+*/
+const PHONE_LITE = {
+  size: 14,
+  scale: 3,
+  intensity: 1.133,
+  contrast: 2.496,
+  maxPixelRatio: 0.8,
+  targetFps: 10,
+} as const;
+
+function isLowEndDevice(): boolean {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  return (nav.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) <= 4;
+}
+
 const DESKTOP = {
   size: 10,
   scale: 4,
@@ -106,7 +127,8 @@ export function HeroPixels() {
   const ready = useDeferredUntilIdle(wanted, 2500);
   const active = wanted && ready;
 
-  const settings = isPhone ? PHONE : DESKTOP;
+  const lowEnd = useMemo(() => isLowEndDevice(), []);
+  const settings = isPhone ? (lowEnd ? PHONE_LITE : PHONE) : DESKTOP;
 
   /*
     Pure black on pure white, pure white on pure black, which is what the reference

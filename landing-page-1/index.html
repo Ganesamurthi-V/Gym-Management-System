@@ -34,7 +34,7 @@
     <title>GymFlow — Gym Management Software for Indian Gyms</title>
     <meta
       name="description"
-      content="GymFlow is the all-in-one gym management platform for independent gym owners. Track members, payments, attendance and dues, and send unlimited WhatsApp reminders — from ₹1,999/month."
+      content="Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. From ₹1,999/month. Free trial."
     />
 
     <!--
@@ -56,7 +56,13 @@
       alongside app.gymflow.sbs, which is deliberately noindex.
       max-image-preview:large opts into large image thumbnails in search results.
     -->
-    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <!-- Machine-readable companions to this page. Neither is a ranking signal; they are
+         how a crawler or an AI agent that reads the head finds the sitemap and the
+         plain-language product summary without guessing URLs. -->
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <link rel="alternate" type="text/markdown" href="/llms.txt" title="GymFlow summary for language models" />
 
     <!-- Open Graph / social sharing -->
     <meta property="og:type" content="website" />
@@ -127,12 +133,23 @@
         } catch (e) {
           document.documentElement.classList.add('dark');
         }
+        // Marks that scripts run here. The static copy inside #root (see <body>) is for
+        // readers that do not run JavaScript; with this class it is hidden, so a visitor
+        // never sees it flash before React mounts.
+        document.documentElement.classList.add('js');
       })();
     </script>
+    <style>
+      .js #seo-fallback { display: none; }
+      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 48px 20px; font: 16px/1.6 system-ui, sans-serif; }
+      #seo-fallback h1 { font-size: 34px; line-height: 1.15; }
+      #seo-fallback h2 { font-size: 22px; margin-top: 36px; }
+      #seo-fallback h3 { font-size: 17px; margin-top: 20px; }
+    </style>
 
     <!--
       ─── STRUCTURED DATA (JSON-LD) ──────────────────────────────────────────
-      Six nodes, cross-referenced by @id rather than repeated:
+      Seven nodes, cross-referenced by @id rather than repeated:
 
         #organization  the brand / knowledge-panel entity
         #offer         the plan, from ₹1,999 a month, defined once and
@@ -142,6 +159,7 @@
         #software      the product itself
         #howto         the four onboarding steps
         #faq           the six accordion questions
+        #video         the one-minute product film in the hero (VideoObject)
 
       THE GOVERNING RULE, stated precisely, because the distinction matters:
 
@@ -198,7 +216,10 @@
             "contactType": "customer support",
             "telephone": "+91-93848-86895",
             "email": "support@gymflow.sbs",
-            "availableLanguage": ["en"],
+            "availableLanguage": [
+              "en",
+              "ta"
+            ],
             "areaServed": "IN"
           },
           "address": {
@@ -209,7 +230,10 @@
             "postalCode": "605110",
             "addressCountry": "IN"
           },
-          "areaServed": { "@type": "Country", "name": "India" },
+          "areaServed": {
+            "@type": "Country",
+            "name": "India"
+          },
           "makesOffer": {
             "@type": "Offer",
             "@id": "https://www.gymflow.sbs/#offer",
@@ -241,7 +265,9 @@
           "url": "https://www.gymflow.sbs/",
           "name": "GymFlow",
           "description": "Gym management software for independent gyms across India.",
-          "publisher": { "@id": "https://www.gymflow.sbs/#organization" },
+          "publisher": {
+            "@id": "https://www.gymflow.sbs/#organization"
+          },
           "inLanguage": "en-IN"
         },
         {
@@ -249,17 +275,27 @@
           "@id": "https://www.gymflow.sbs/#webpage",
           "url": "https://www.gymflow.sbs/",
           "name": "GymFlow — Gym Management Software for Indian Gyms",
-          "description": "GymFlow is the all-in-one gym management platform for independent gym owners. Track members, payments, attendance and dues, and send unlimited WhatsApp reminders — from ₹1,999/month.",
-          "isPartOf": { "@id": "https://www.gymflow.sbs/#website" },
-          "about": { "@id": "https://www.gymflow.sbs/#organization" },
-          "mainEntity": { "@id": "https://www.gymflow.sbs/#software" },
+          "description": "Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. From ₹1,999/month. Free trial.",
+          "isPartOf": {
+            "@id": "https://www.gymflow.sbs/#website"
+          },
+          "about": {
+            "@id": "https://www.gymflow.sbs/#organization"
+          },
+          "mainEntity": {
+            "@id": "https://www.gymflow.sbs/#software"
+          },
           "primaryImageOfPage": {
             "@type": "ImageObject",
             "url": "https://www.gymflow.sbs/og-image.jpg",
             "width": 1200,
             "height": 630
           },
-          "inLanguage": "en-IN"
+          "inLanguage": "en-IN",
+          "dateModified": "2026-10-06",
+          "video": {
+            "@id": "https://www.gymflow.sbs/#video"
+          }
         },
         {
           "@type": "SoftwareApplication",
@@ -280,8 +316,12 @@
             "caption": "The GymFlow dashboard showing active members, today's collection, memberships expiring soon and total outstanding dues."
           },
           "inLanguage": "en-IN",
-          "publisher": { "@id": "https://www.gymflow.sbs/#organization" },
-          "offers": { "@id": "https://www.gymflow.sbs/#offer" },
+          "publisher": {
+            "@id": "https://www.gymflow.sbs/#organization"
+          },
+          "offers": {
+            "@id": "https://www.gymflow.sbs/#offer"
+          },
           "featureList": [
             "Member management",
             "Payments & dues",
@@ -298,7 +338,9 @@
           "@id": "https://www.gymflow.sbs/#howto",
           "name": "How to set up GymFlow for your gym",
           "description": "No IT team, no installation, no consultant. Sign up and start entering your first members the same day.",
-          "isPartOf": { "@id": "https://www.gymflow.sbs/#webpage" },
+          "isPartOf": {
+            "@id": "https://www.gymflow.sbs/#webpage"
+          },
           "step": [
             {
               "@type": "HowToStep",
@@ -333,7 +375,9 @@
         {
           "@type": "FAQPage",
           "@id": "https://www.gymflow.sbs/#faq",
-          "isPartOf": { "@id": "https://www.gymflow.sbs/#webpage" },
+          "isPartOf": {
+            "@id": "https://www.gymflow.sbs/#webpage"
+          },
           "mainEntity": [
             {
               "@type": "Question",
@@ -384,13 +428,124 @@
               }
             }
           ]
+        },
+        {
+          "@type": "VideoObject",
+          "@id": "https://www.gymflow.sbs/#video",
+          "name": "GymFlow in one minute",
+          "description": "How independent gyms are run today on notebooks, spreadsheets and chats, and how GymFlow's owner console and member app replace them: members, check-ins, payments, reports, WhatsApp reminders and Excel import.",
+          "thumbnailUrl": "https://www.gymflow.sbs/video/gymflow-launch-poster.webp",
+          "contentUrl": "https://www.gymflow.sbs/video/gymflow-launch.mp4",
+          "uploadDate": "2026-10-06T00:00:00+05:30",
+          "duration": "PT1M1S",
+          "inLanguage": "en-IN",
+          "publisher": {
+            "@id": "https://www.gymflow.sbs/#organization"
+          },
+          "isPartOf": {
+            "@id": "https://www.gymflow.sbs/#webpage"
+          }
         }
       ]
     }
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        ─── STATIC COPY FOR READERS THAT DO NOT RUN JAVASCRIPT ─────────────────
+        This page is a client-rendered React app, so without this block the HTML a
+        crawler downloads has an empty body. Googlebot renders JavaScript and sees the
+        real page; GPTBot, ClaudeBot, PerplexityBot and most other AI crawlers do not,
+        and saw nothing but the <head>. That is the difference between being quoted in
+        an AI answer and not existing.
+
+        React's createRoot replaces everything inside #root on mount, and the .js rule
+        in <head> hides this block as soon as scripts run, so visitors never see it.
+        It is not hidden content in the spam sense: every line is copy the rendered
+        page shows (hero, features, steps, pricing, FAQ, contact).
+
+        KEEP IT IN STEP with the components and with the JSON-LD above. The FAQ and
+        the four steps here are the same text as the FAQPage and HowTo nodes.
+      -->
+      <main id="seo-fallback">
+        <h1>GymFlow: gym management, made effortless.</h1>
+        <p>
+          Gym management software for independent gyms across India. Members, payments,
+          attendance, dues and WhatsApp automation in one place, without the notebooks.
+          From ₹1,999 per month, with a 14-day free trial, no credit card, and you can cancel anytime.
+        </p>
+        <p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="#pricing">See pricing</a></p>
+
+        <h2 id="features">Everything your gym needs</h2>
+        <ul>
+          <li>Member management</li>
+          <li>Payments &amp; dues</li>
+          <li>Attendance tracking</li>
+          <li>Member app &amp; workouts</li>
+          <li>Reports &amp; analytics</li>
+          <li>Unlimited WhatsApp reminders</li>
+          <li>CSV / Excel import &amp; export</li>
+          <li>Priority support</li>
+        </ul>
+        <p>
+          The owner dashboard shows active members, today's collection, memberships expiring
+          soon and total outstanding dues on one screen. Members get their own app with a digital
+          gym card on their own phone, with no app store download.
+        </p>
+
+        <h2 id="whatsapp">Unlimited WhatsApp, built in and not billed extra</h2>
+        <p>Every GymFlow account includes fully automated WhatsApp messaging, with zero extra cost.</p>
+        <ul>
+          <li>Welcome message: sent the moment a member joins, with their plan and expiry.</li>
+          <li>Renewal reminder: goes out before a membership lapses, not after.</li>
+          <li>Payment due alert: nudges the members who still owe, without you asking twice.</li>
+        </ul>
+        <p>No per-message fees, no monthly caps, no third-party integrations.</p>
+
+        <h2 id="how">How to set up GymFlow for your gym</h2>
+        <ol>
+          <li><strong>Sign up and onboard.</strong> A six-step wizard walks you through your gym name, membership plans, pricing and WhatsApp details. It autosaves, so you can stop and come back.</li>
+          <li><strong>Import your members.</strong> Upload the CSV or Excel sheet you already keep. GymFlow matches your column headings to its own fields and shows you a preview, so you can fix anything odd before a single record is saved.</li>
+          <li><strong>Run the day to day.</strong> Mark attendance, record payments, and send WhatsApp reminders for dues — from one dashboard that works just as well on your phone.</li>
+          <li><strong>Analyse and grow.</strong> Monthly revenue charts, plan distribution, joining and expiry trends, and PDF reports you can download. Know exactly where the gym stands before the month closes.</li>
+        </ol>
+
+        <h2 id="pricing">Pricing: one plan, everything included</h2>
+        <ul>
+          <li>Monthly: ₹1,999 per month</li>
+          <li>Half-yearly: ₹6,999 for 6 months (save 42%)</li>
+          <li>Yearly: ₹12,999 for a year (save 46%)</li>
+        </ul>
+        <p>
+          No per-member charges, no setup fee, and no modules to unlock later. To activate: make the
+          payment by UPI, net banking or card, upload the payment screenshot on the Payments page, and
+          the account is switched on after verification.
+        </p>
+
+        <h2 id="faq">Frequently asked questions</h2>
+        <h3>Is there a free trial?</h3>
+        <p>Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run a full week of operations before you decide.</p>
+        <h3>How much does GymFlow cost?</h3>
+        <p>₹3,000 per month, flat. One plan with every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.</p>
+        <h3>Are WhatsApp messages really unlimited?</h3>
+        <p>Yes. Welcome messages, renewal reminders, and payment due alerts are all included. Most gym platforms bill ₹0.30 to ₹1 per message, which becomes thousands a month once you pass 200 members.</p>
+        <h3>Can I move my existing members from Excel?</h3>
+        <p>Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm, and most gyms finish a few hundred members in under 15 minutes.</p>
+        <h3>Is my gym&#x27;s data safe?</h3>
+        <p>Each gym&#x27;s records are isolated and reachable only from your own account. Data is encrypted in transit, backed up regularly, and never shared with other gyms or sold on.</p>
+        <h3>How do I reach support?</h3>
+        <p>Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.</p>
+
+        <h2>Contact</h2>
+        <p>
+          Email <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>, phone and WhatsApp
+          <a href="tel:+919384886895">+91 93848 86895</a>. No. 126, Anbu Nagar, Achariyapuram,
+          Villianur, Puducherry 605110, India.
+        </p>
+        <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/llms.txt">Summary for AI assistants</a></p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

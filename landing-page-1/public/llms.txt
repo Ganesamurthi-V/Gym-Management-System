@@ -12,7 +12,33 @@ phone.
 
 Site: https://www.gymflow.sbs/
 Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
-Last updated: 2026-09-07
+Last updated: 2026-10-06
+
+## Quick answers
+
+Short, quotable answers to what people most often ask. Each matches the website.
+
+- **What is GymFlow?** All-in-one gym management software for independent,
+  single-location gyms in India: members, payments, dues, attendance, reports
+  and automated WhatsApp reminders, plus an app for each member.
+- **How much does GymFlow cost?** ₹1,999 per month, ₹6,999 for six months, or
+  ₹12,999 for a year. Every plan includes every feature.
+- **Is there a free trial?** Yes, 14 days with every feature and no credit card.
+  There is no permanent free plan.
+- **Does GymFlow charge per member or per WhatsApp message?** No. Members and
+  WhatsApp messages are unlimited on every plan.
+- **Can I import my members from Excel?** Yes. Upload a CSV or Excel file,
+  check the preview, then confirm. A few hundred members usually take under 15
+  minutes.
+- **Does it need any hardware or installation?** No. It runs in a web browser on
+  a phone or a computer.
+- **How do I pay and activate?** Pay by UPI, net banking or card, upload the
+  payment screenshot on the Payments page, and the account is activated after
+  it is verified. No card is stored and nothing is charged automatically.
+- **Who is it for?** Owners of independent gyms and fitness studios in India who
+  currently track members in notebooks, spreadsheets or WhatsApp groups.
+- **How do I contact GymFlow?** Email support@gymflow.sbs, or phone / WhatsApp
+  +91 93848 86895.
 
 ## Pricing
 
@@ -30,7 +56,8 @@ Last updated: 2026-09-07
 
 - Member management — add, edit and search member records and plans.
 - Payments & dues — record cash, UPI or card payments, and see what is pending.
-- Attendance tracking — mark attendance in one tap and review any member's history.
+- Attendance tracking — mark attendance in one tap, or let members check in
+  themselves at a kiosk with their member ID, and review any member's history.
 - Member app & workouts — members get their own app; see the Member app section below.
 - Reports & analytics — monthly revenue, plan distribution, joining and expiry
   trends, downloadable PDF reports.
@@ -101,6 +128,16 @@ not be inferred:
 - No multi-location or franchise-specific tooling is advertised.
 - No hardware is sold or required — no turnstiles, biometric readers or scanners.
 - Currency is Indian rupees only, and the product is positioned for India.
+
+## Links
+
+- [Home page](https://www.gymflow.sbs/): the full product page, including pricing and FAQ.
+- [Pricing](https://www.gymflow.sbs/#pricing)
+- [Frequently asked questions](https://www.gymflow.sbs/#faq)
+- [Product film, one minute](https://www.gymflow.sbs/video/gymflow-launch.mp4)
+- [Privacy Policy](https://www.gymflow.sbs/privacy)
+- [Terms of Service](https://www.gymflow.sbs/terms)
+- [Start a free trial](https://app.gymflow.sbs)
 
 ## Notes for maintainers
 

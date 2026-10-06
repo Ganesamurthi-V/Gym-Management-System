@@ -125,6 +125,13 @@ Allow: /
 User-agent: Perplexity-User
 Allow: /
 
+# Anthropic's search and live-answer fetchers, separate from ClaudeBot above.
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
 User-agent: Meta-ExternalFetcher
 Allow: /
 

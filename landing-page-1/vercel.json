@@ -1,3 +1,23 @@
 {
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- .",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "gymflow.sbs" }],
+      "destination": "https://www.gymflow.sbs/:path*",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/llms.txt",
+      "headers": [{ "key": "Content-Type", "value": "text/markdown; charset=utf-8" }]
+    },
+    {
+      "source": "/video/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }]
+    }
+  ]
 }

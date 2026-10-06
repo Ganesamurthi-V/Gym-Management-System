@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   <url>
     <loc>https://www.gymflow.sbs/</loc>
-    <lastmod>2026-09-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <lastmod>2026-10-06</lastmod>
+    <video:video>
+      <video:thumbnail_loc>https://www.gymflow.sbs/video/gymflow-launch-poster.webp</video:thumbnail_loc>
+      <video:title>GymFlow in one minute</video:title>
+      <video:description>How independent gyms are run today, and how GymFlow's owner console and member app replace notebooks, spreadsheets and chats.</video:description>
+      <video:content_loc>https://www.gymflow.sbs/video/gymflow-launch.mp4</video:content_loc>
+      <video:duration>61</video:duration>
+    </video:video>
   </url>
 </urlset>

@@ -96,3 +96,21 @@ export function htmlToText(html: string): string {
 export function newMessageId(domain: string): string {
   return `<${crypto.randomUUID()}@${domain}>`
 }
+
+/**
+ * The new text of a message without the quoted history under it ("On Mon, X wrote:",
+ * "-----Original Message-----", or lines starting with ">"). Used so the AI sees only what
+ * the customer just wrote, which also keeps the request small.
+ */
+export function stripQuotedReply(text: string): string {
+  const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const cut = lines.findIndex((line, i) =>
+    /^on .{5,200} wrote:\s*$/i.test(line.trim()) ||
+    /^-{2,}\s*original message\s*-{2,}$/i.test(line.trim()) ||
+    /^_{5,}$/.test(line.trim()) ||
+    /^from:\s.+@/i.test(line.trim()) && i > 2 ||
+    (line.startsWith('>') && i > 0),
+  )
+  const kept = cut > 0 ? lines.slice(0, cut) : lines
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}

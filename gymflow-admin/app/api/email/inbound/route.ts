@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { getResend, getWebhookSecret } from '@/lib/email'
 import { ingestReceivedEmail } from '@/lib/email-inbox'
+import { draftForThread } from '@/lib/ai-draft'
 import { apiLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+// The AI draft runs after the response is sent, but inside this function's lifetime: it
+// may spend up to ~28 s across its model fallbacks.
+export const maxDuration = 60
 
 /**
  * POST /api/email/inbound  - Resend's `email.received` webhook.
@@ -54,6 +58,15 @@ export async function POST(req: NextRequest) {
     log.start('INGEST')
     const result = await ingestReceivedEmail(event.data.email_id)
     log.end('INGEST')
+
+    // Draft a reply once Resend has its 200. after() runs when the response has been sent,
+    // so a slow, rate-limited or failing model can neither delay the mail nor make Resend
+    // retry it. draftForThread never throws and skips auto-mail itself.
+    if (result.status === 'stored' && process.env.AI_API_KEY) {
+      const threadId = result.threadId
+      after(async () => { await draftForThread(threadId) })
+    }
+
     log.summary(200)
     return NextResponse.json({ ok: true, ...result })
   } catch (error) {

@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { sanitizeUUID } from '@/lib/sanitize'
+import { draftForThread } from '@/lib/ai-draft'
 import { apiLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 /**
  * GET /api/email/threads/[id]
@@ -35,7 +37,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     log.start('DB_QUERY')
     const [thread, messages] = await Promise.all([
       db.from('email_threads')
-        .select('id, subject, counterparty_email, counterparty_name, gym_id, status, unread_count, last_message_at, gyms(name)')
+        .select('id, subject, counterparty_email, counterparty_name, gym_id, status, unread_count, last_message_at, ai_draft, ai_draft_status, ai_draft_message_id, ai_needs_human, gyms(name)')
         .eq('id', threadId)
         .maybeSingle(),
       db.from('email_messages')
@@ -60,8 +62,29 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       ])
     }
 
+    // A draft that was left queued because every model was out of budget is written now,
+    // when the admin actually looks. No cron and no retry loop: opening the thread is the
+    // trigger, and the lock inside draftForThread makes repeated opens harmless.
+    if (thread.data.ai_draft_status === 'queued' && process.env.AI_API_KEY) {
+      after(async () => { await draftForThread(threadId, { force: true }) })
+    }
+
+    // The draft is only offered while it still answers the newest inbound message.
+    const newestInbound = [...(messages.data ?? [])].reverse().find(m => m.direction === 'inbound')
+    const draftIsCurrent =
+      thread.data.ai_draft_status === 'ready' && thread.data.ai_draft_message_id === newestInbound?.id
+    const { ai_draft_message_id: _drop, ...threadOut } = thread.data
+
     log.summary(200)
-    return NextResponse.json({ thread: { ...thread.data, unread_count: 0 }, messages: messages.data ?? [] })
+    return NextResponse.json({
+      thread: {
+        ...threadOut,
+        unread_count: 0,
+        ai_draft: draftIsCurrent ? threadOut.ai_draft : null,
+        ai_draft_status: draftIsCurrent || threadOut.ai_draft_status !== 'ready' ? threadOut.ai_draft_status : 'none',
+      },
+      messages: messages.data ?? [],
+    })
   } catch (error) {
     log.error('Failed to load email thread', error)
     log.summary(500)

@@ -1,7 +1,7 @@
 import { Mail, MapPin, MessageCircle } from 'lucide-react';
 
 const APP_URL = 'https://app.gymflow.sbs';
-const SUPPORT_EMAIL = 'ganesamurthiv@gmail.com';
+const SUPPORT_EMAIL = 'support@gymflow.sbs';
 const SUPPORT_PHONE_DISPLAY = '+91 93848 86895';
 const SUPPORT_PHONE_HREF = '+919384886895';
 // A mailto link with the subject and body already filled in, so the visitor's mail app

@@ -47,8 +47,16 @@ export type EmailMessage = {
   created_at: string;
 };
 
+export type AiDraftStatus = 'none' | 'ready' | 'queued' | 'failed' | 'skipped';
+
 export type EmailThreadDetail = {
-  thread: Omit<EmailThread, 'snippet' | 'last_direction'>;
+  thread: Omit<EmailThread, 'snippet' | 'last_direction'> & {
+    /** A suggested reply, present only while it answers the newest inbound message. */
+    ai_draft: string | null;
+    ai_draft_status: AiDraftStatus;
+    /** The model judged this needs a person; the draft is only a holding reply. */
+    ai_needs_human: boolean;
+  };
   messages: EmailMessage[];
 };
 
@@ -95,6 +103,32 @@ export async function replyToEmailThread(
 ): Promise<void> {
   try {
     await apiClient.post(`/api/email/threads/${id}/reply`, { text, retryMessageId });
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+export type RegenerateDraftResponse = {
+  outcome: string;
+  draft: string | null;
+  status: AiDraftStatus;
+  needsHuman: boolean;
+};
+
+/** Writes a fresh AI draft. Server-side budgeting means this cannot exhaust the free quota. */
+export async function regenerateEmailDraft(id: string): Promise<RegenerateDraftResponse> {
+  try {
+    const { data } = await apiClient.post<RegenerateDraftResponse>(`/api/email/threads/${id}/draft`);
+    return data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+/** Dismiss: drops the draft. Nothing is sent. */
+export async function dismissEmailDraft(id: string): Promise<void> {
+  try {
+    await apiClient.delete(`/api/email/threads/${id}/draft`);
   } catch (error) {
     throw new Error(parseApiError(error));
   }

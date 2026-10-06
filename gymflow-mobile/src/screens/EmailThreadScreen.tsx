@@ -12,6 +12,7 @@ import { useCachedQuery } from '@/lib/use-cached-query';
 import { refreshEmailInbox, useEmailRefresher } from '@/lib/email-sync';
 import {
   fetchEmailThread, replyToEmailThread, setEmailThreadStatus, fetchEmailAttachmentLink,
+  regenerateEmailDraft, dismissEmailDraft,
   type EmailAttachment, type EmailMessage, type EmailThreadDetail,
 } from '@/lib/api';
 import { timeAgo } from '@/components/EmailRow';
@@ -108,6 +109,9 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // The draft the admin already pulled into the box, so its banner steps aside.
+  const [usedDraft, setUsedDraft] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
 
   const { data, loading, error, refresh } = useCachedQuery<EmailThreadDetail>({
     key: CacheKeys.emailThread(threadId),
@@ -118,6 +122,38 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
 
   const thread = data?.thread;
   const messages = data?.messages ?? [];
+
+  // A draft left "queued" (every model was out of free-tier budget) is written by the server
+  // when the thread is opened. Look once more shortly after, instead of leaving the banner
+  // waiting for a manual refresh.
+  useEffect(() => {
+    if (thread?.ai_draft_status !== 'queued') return;
+    const t = setTimeout(() => { void refresh(); }, 9_000);
+    return () => clearTimeout(t);
+  }, [thread?.ai_draft_status, refresh]);
+
+  const regenerate = useCallback(async () => {
+    if (drafting) return;
+    setDrafting(true);
+    try {
+      await regenerateEmailDraft(threadId);
+      setUsedDraft(null);
+      await refresh();
+    } catch (e: any) {
+      Alert.alert('Could not write a draft', e?.message ?? 'Please try again in a minute.');
+    } finally {
+      setDrafting(false);
+    }
+  }, [drafting, threadId, refresh]);
+
+  const dismissDraft = useCallback(async () => {
+    try {
+      await dismissEmailDraft(threadId);
+      await refresh();
+    } catch (e: any) {
+      Alert.alert('Could not dismiss', e?.message ?? 'Please try again.');
+    }
+  }, [threadId, refresh]);
 
   // Archive / restore, and a shortcut to the gym when the sender owns one.
   useEffect(() => {
@@ -231,6 +267,50 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
         )}
       />
 
+      {/* The AI draft. Only ever a suggestion: Use draft fills the box below for editing, and
+          nothing is sent until the send button is pressed. */}
+      {thread && thread.ai_draft && thread.ai_draft !== usedDraft && (
+        <View style={[styles.aiBanner, thread.ai_needs_human && styles.aiBannerHuman]}>
+          <View style={styles.aiHead}>
+            <Feather name={thread.ai_needs_human ? 'user' : 'cpu'} size={13} color={thread.ai_needs_human ? Colors.amber : Colors.purple} />
+            <Text style={[styles.aiTitle, thread.ai_needs_human && { color: Colors.amber }]}>
+              {thread.ai_needs_human ? 'Needs a person. Holding reply drafted' : 'AI draft ready. Review before sending'}
+            </Text>
+          </View>
+          <Text style={styles.aiPreview} numberOfLines={3}>{thread.ai_draft}</Text>
+          <View style={styles.aiActions}>
+            <TouchableOpacity
+              style={styles.aiUse}
+              onPress={() => { setDraft(thread.ai_draft as string); setUsedDraft(thread.ai_draft); }}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.aiUseText}>Use draft</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { void regenerate(); }} disabled={drafting} hitSlop={8} accessibilityRole="button">
+              {drafting ? <ActivityIndicator size="small" color={Colors.textSecondary} /> : <Text style={styles.aiLink}>Regenerate</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { void dismissDraft(); }} hitSlop={8} accessibilityRole="button">
+              <Text style={styles.aiLink}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {thread && !thread.ai_draft && thread.ai_draft_status === 'queued' && (
+        <View style={styles.aiNote}>
+          <ActivityIndicator size="small" color={Colors.textMuted} />
+          <Text style={styles.aiNoteText}>Preparing a draft. The AI is busy, so it will appear here in a moment.</Text>
+        </View>
+      )}
+      {thread && !thread.ai_draft && (thread.ai_draft_status === 'failed' || thread.ai_draft_status === 'skipped') && (
+        <TouchableOpacity style={styles.aiNote} onPress={() => { void regenerate(); }} disabled={drafting} activeOpacity={0.8}>
+          <Feather name="cpu" size={13} color={Colors.textMuted} />
+          <Text style={styles.aiNoteText}>
+            {thread.ai_draft_status === 'skipped' ? "Today's AI draft limit was reached. Tap to try again." : 'No draft could be written. Tap to try again.'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {sendError && (
         <View style={styles.sendError}>
           <Feather name="alert-circle" size={13} color={Colors.red} />
@@ -293,6 +373,17 @@ const styles = StyleSheet.create({
   retry: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   retryText: { fontSize: 11, fontWeight: '700', color: Colors.red },
 
+  aiBanner: { marginHorizontal: Spacing.md, marginTop: Spacing.sm, padding: Spacing.md, gap: Spacing.sm, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.purpleBg, backgroundColor: Colors.purpleBg },
+  aiBannerHuman: { borderColor: Colors.amberBorder, backgroundColor: Colors.amberBg },
+  aiHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aiTitle: { fontSize: 12, fontWeight: '800', color: Colors.purple },
+  aiPreview: { fontSize: 12, lineHeight: 17, color: Colors.textSecondary },
+  aiActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
+  aiUse: { paddingHorizontal: Spacing.lg, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.indigo },
+  aiUseText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  aiLink: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  aiNote: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: Spacing.md, marginTop: Spacing.sm, paddingVertical: 6 },
+  aiNoteText: { flex: 1, fontSize: 11, color: Colors.textMuted },
   sendError: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, backgroundColor: Colors.redBg },
   sendErrorText: { flex: 1, fontSize: 12, color: Colors.red },
   composer: {

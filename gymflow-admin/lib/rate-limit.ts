@@ -60,6 +60,7 @@ export const RATE_LIMITS = {
   // Support inbox
   EMAIL_SEND: { limit: 20, window: 300 },           // 20 replies per 5 minutes
   EMAIL_READ: { limit: 200, window: 60 },           // 200 reads per minute
+  EMAIL_DRAFT: { limit: 10, window: 300 },          // 10 AI drafts per 5 minutes
 
   // Lenient limits for lightweight operations
   TICKET_COUNT: { limit: 300, window: 60 },         // 300 requests per minute

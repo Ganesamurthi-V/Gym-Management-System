@@ -15,15 +15,18 @@ import {
   unregisterPushDevice,
 } from '@/lib/push';
 import { NotificationBell } from '@/components/NotificationBell';
+import { EmailRealtime, useOpenEmailThreads } from '@/lib/email-sync';
 
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/tabs/DashboardScreen';
 import GymsScreen from './screens/tabs/GymsScreen';
 import SupportScreen from './screens/tabs/SupportScreen';
+import InboxScreen from './screens/tabs/InboxScreen';
 import LogsScreen from './screens/tabs/LogsScreen';
 import GymDetailScreen from './screens/GymDetailScreen';
 import GymSubscriptionScreen from './screens/GymSubscriptionScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
+import EmailThreadScreen from './screens/EmailThreadScreen';
 
 import type { RootStackParamList, TabParamList } from './navigation/types';
 
@@ -55,7 +58,13 @@ function LogoutButton({ onLogout }: { onLogout: () => void }) {
 
 function TabNavigator({ onLogout }: { onLogout: () => void }) {
   const insets = useSafeAreaInsets();
+  // Unread mail across the open inbox, for the tab badge. Shares its cache with the
+  // Inbox screen, so this costs no extra request.
+  const unreadMail = useOpenEmailThreads().data?.unreadTotal ?? 0;
   return (
+    <>
+    {/* The single realtime subscription for the inbox; see lib/email-sync.ts. */}
+    <EmailRealtime />
     <Tab.Navigator
       screenOptions={{
         // Blurred tabs stop re-rendering instead of reconciling in the background
@@ -108,6 +117,15 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         }}
       />
       <Tab.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{
+          tabBarBadge: unreadMail > 0 ? (unreadMail > 99 ? '99+' : unreadMail) : undefined,
+          tabBarBadgeStyle: { backgroundColor: Colors.indigo, color: '#fff', fontSize: 10 },
+          tabBarIcon: ({ color, size }) => <Feather name="mail" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
         name="Logs"
         component={LogsScreen}
         options={{
@@ -117,6 +135,7 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         }}
       />
     </Tab.Navigator>
+    </>
   );
 }
 
@@ -147,13 +166,14 @@ export default function App() {
   */
   useEffect(() => {
     setNotificationDeepLinkHandler(payload => {
-      const { type, gymId } = payload;
+      const { type, gymId, entityId } = payload;
 
       /*
         Route by notification type so a tap lands on the screen that actually
         answers it, instead of always dumping the admin on GymDetail:
 
           ticket / feedback  → Support tab (where tickets & feedback are triaged)
+          email              → the conversation itself (EmailThread)
           payment_request    → GymSubscription (approve/reject the payment) for the gym
           new_gym            → GymDetail for the new gym
           anything else      → GymDetail if we have a gym, otherwise the
@@ -167,6 +187,11 @@ export default function App() {
           case 'ticket':
           case 'feedback':
             navigationRef.navigate('Main', { screen: 'Support' });
+            return;
+          case 'email':
+            // entityId is the thread id, so the tap opens that conversation directly.
+            if (entityId) { navigationRef.navigate('EmailThread', { threadId: entityId }); return; }
+            navigationRef.navigate('Main', { screen: 'Inbox' });
             return;
           case 'payment_request':
             if (gymId) { navigationRef.navigate('GymSubscription', { gymId }); return; }
@@ -268,6 +293,18 @@ export default function App() {
                   headerStyle: { backgroundColor: Colors.bg },
                   headerTintColor: Colors.textPrimary,
                   headerTitle: 'Manage Subscription',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="EmailThread"
+                component={EmailThreadScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: 'Conversation',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
                 }}

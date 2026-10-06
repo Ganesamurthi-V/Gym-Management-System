@@ -57,6 +57,10 @@ export const RATE_LIMITS = {
   GYM_LIST: { limit: 100, window: 60 },             // 100 requests per minute
   TICKET_LIST: { limit: 100, window: 60 },          // 100 requests per minute
   
+  // Support inbox
+  EMAIL_SEND: { limit: 20, window: 300 },           // 20 replies per 5 minutes
+  EMAIL_READ: { limit: 200, window: 60 },           // 200 reads per minute
+
   // Lenient limits for lightweight operations
   TICKET_COUNT: { limit: 300, window: 60 },         // 300 requests per minute
 } as const

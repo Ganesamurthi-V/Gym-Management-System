@@ -11,8 +11,11 @@ import { generateRequestId, REQUEST_ID_HEADER } from './lib/logger'
   session. Without this entry the middleware answered 401 before the handler ever
   ran, so no push was ever sent. The route itself fails closed when CRON_SECRET is
   unset or mismatched, so it is not actually public.
+
+  /api/email/inbound is Resend's inbound-mail webhook. It authenticates with a Svix
+  signature over the raw body, and answers 401 to anything unsigned or wrongly signed.
 */
-const PUBLIC_PATHS = ['/auth', '/api/auth', '/api/push/dispatch']
+const PUBLIC_PATHS = ['/auth', '/api/auth', '/api/push/dispatch', '/api/email/inbound']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

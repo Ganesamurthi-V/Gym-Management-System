@@ -11,6 +11,8 @@ export type RootStackParamList = {
   GymDetail: { gymId: string };
   GymSubscription: { gymId: string };
   Notifications: undefined;
+  // An email conversation in the support inbox. Push taps and the inbox list open it.
+  EmailThread: { threadId: string };
 };
 
 // Bottom tabs
@@ -18,6 +20,7 @@ export type TabParamList = {
   Dashboard: undefined;
   Gyms: undefined;
   Support: undefined;
+  Inbox: undefined;
   Logs: undefined;
 };
 

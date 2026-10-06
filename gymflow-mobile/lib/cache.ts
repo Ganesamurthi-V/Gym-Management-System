@@ -167,4 +167,6 @@ export const CacheKeys = {
   logs: 'logs',
   subscription: (id: string) => `subscription:${id}`,
   notifications: 'notifications',
+  emailThreads: (status: 'open' | 'archived') => `email:threads:${status}`,
+  emailThread: (id: string) => `email:thread:${id}`,
 } as const;

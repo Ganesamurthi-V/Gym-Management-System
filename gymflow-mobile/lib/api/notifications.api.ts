@@ -3,7 +3,7 @@ import { parseApiError } from './error-handler';
 
 export type AdminNotification = {
   id: string;
-  type: 'ticket' | 'feedback' | 'payment_request' | 'new_gym';
+  type: 'ticket' | 'feedback' | 'payment_request' | 'new_gym' | 'email';
   gym_id: string | null;
   title: string;
   body: string;

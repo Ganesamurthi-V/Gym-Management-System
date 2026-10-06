@@ -22,6 +22,7 @@ const TYPE_META: Record<AdminNotification['type'], { icon: string; color: string
   feedback: { icon: 'star', color: Colors.amber },
   payment_request: { icon: 'credit-card', color: Colors.emerald },
   new_gym: { icon: 'home', color: Colors.indigo },
+  email: { icon: 'mail', color: Colors.purple },
 };
 
 function timeAgo(iso: string): string {
@@ -60,7 +61,9 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (!n.is_read) {
       markNotificationRead(n.id).then(refresh).catch(() => {});
     }
-    if (n.gym_id) {
+    if (n.type === 'email' && n.entity_id) {
+      navigation.navigate('EmailThread', { threadId: n.entity_id });
+    } else if (n.gym_id) {
       navigation.navigate('GymDetail', { gymId: n.gym_id });
     }
   }, [navigation, refresh]);

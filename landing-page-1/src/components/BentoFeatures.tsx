@@ -135,7 +135,7 @@ export function BentoFeatures() {
                         these readable at a glance — but 24 was too far: at xl a
                         tile has 93px of content and "₹12,400" needs 90 of it at
                         24px, leaving no margin for a longer figure. */}
-                    <p className="mt-2.5 text-[22px] font-medium leading-none tracking-tight text-foreground">
+                    <p className="mt-2.5 text-[22px] font-medium leading-none tracking-tight text-foreground tabular-nums">
                       {stat.value}
                     </p>
                   </div>

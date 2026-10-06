@@ -139,7 +139,10 @@ export function HeroVideo() {
       ([entry]) => {
         inView.current = entry.isIntersecting;
         if (entry.isIntersecting) {
-          if (auto && !heldByUser.current) v.play().catch(() => { });
+          // Show the controls for a moment each time the film comes into view and starts.
+          // On a phone there is no cursor to hover with, so without this nobody would
+          // learn that the film has a Pause button or a sound button until they tapped.
+          if (auto && !heldByUser.current) v.play().then(() => wake(3000)).catch(() => { });
         } else {
           v.pause();
         }
@@ -162,10 +165,10 @@ export function HeroVideo() {
     }
   }
 
-  function wake() {
+  function wake(ms = 2500) {
     setAwake(true);
     window.clearTimeout(idle.current);
-    idle.current = window.setTimeout(() => setAwake(false), 2500);
+    idle.current = window.setTimeout(() => setAwake(false), ms);
   }
 
   function sleep() {
@@ -226,10 +229,10 @@ export function HeroVideo() {
           : 'aspect-[9/16] max-w-[min(420px,calc((100svh-100px)*9/16))]'
       } overflow-hidden border border-border-subtle bg-[#eef3ff] shadow-[0_50px_110px_-50px_rgba(37,99,235,0.55)] will-change-transform`}
       style={{ borderRadius: RADII[wide ? 1 : 0] }}
-      onPointerMove={wake}
-      onPointerDown={wake}
+      onPointerMove={() => wake()}
+      onPointerDown={() => wake()}
       onPointerLeave={sleep}
-      onFocus={wake}
+      onFocus={() => wake()}
     >
       <video
         ref={video}

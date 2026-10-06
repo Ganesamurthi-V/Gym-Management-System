@@ -436,11 +436,23 @@ body {
 }
 
 /* Visible focus ring for keyboard users only — mouse users never see it, so the
-   pill buttons stay clean without sacrificing keyboard navigability. */
+   pill buttons stay clean without sacrificing keyboard navigability.
+
+   No border-radius here. It used to set 4px, which squared off every pill button
+   the moment it took keyboard focus; browsers now draw the outline along the
+   element's own radius, so each control keeps its shape. */
 :focus-visible {
   outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline-offset: 3px;
+}
+
+/* Headings break evenly instead of leaving one word alone on the last line, and body
+   copy avoids a single-word last line too. */
+h1, h2, h3, .display-1, .display-2, .display-3 {
+  text-wrap: balance;
+}
+p, blockquote, figcaption, li {
+  text-wrap: pretty;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

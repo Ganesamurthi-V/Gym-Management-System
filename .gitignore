@@ -29,3 +29,6 @@ public/sw.js.map
 public/swe-worker-*.js
 
 /output
+/.agents
+/.claude
+skills-lock.json

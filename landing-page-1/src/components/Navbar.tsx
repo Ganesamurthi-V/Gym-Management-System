@@ -102,6 +102,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [section, setSection] = useState<string | null>(null);
   const navRef = useRef<HTMLElement>(null);
 
   const isDesktop = useMediaQuery(`(min-width: ${DESKTOP_AT}px)`);
@@ -119,6 +120,21 @@ export function Navbar() {
     press out of step with what is on screen.
   */
   const sheetOpen = mobileOpen && !isDesktop;
+
+  // Which section is across the middle of the screen. One observer on the sections the
+  // nav points at; a thin band at the vertical centre means exactly one is "current".
+  useEffect(() => {
+    const ids = ['features', 'whatsapp', 'how', 'testimonials', 'pricing', 'faq'];
+    const els = ids.map(id => document.getElementById(id)).filter((e): e is HTMLElement => !!e);
+    const io = new IntersectionObserver(
+      entries => {
+        for (const e of entries) if (e.isIntersecting) setSection(e.target.id);
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    els.forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     let ticking = false;
@@ -245,6 +261,7 @@ export function Navbar() {
             columns={2}
             openMenu={openMenu}
             setOpenMenu={setOpenMenu}
+            current={section === 'features' || section === 'whatsapp'}
           />
           <DropdownTrigger
             id="resources"
@@ -253,12 +270,17 @@ export function Navbar() {
             columns={1}
             openMenu={openMenu}
             setOpenMenu={setOpenMenu}
+            current={section === 'how' || section === 'testimonials' || section === 'faq'}
           />
           <a
             href="#pricing"
-            className="rounded-pill px-3.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground"
+            aria-current={section === 'pricing' ? 'location' : undefined}
+            className={`inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[13.5px] font-medium transition-colors ${
+              section === 'pricing' ? 'text-foreground' : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
+            }`}
           >
             Pricing
+            {section === 'pricing' && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />}
           </a>
         </div>
 
@@ -352,6 +374,8 @@ interface DropdownTriggerProps {
   columns: 1 | 2;
   openMenu: MenuId | null;
   setOpenMenu: (id: MenuId | null) => void;
+  /** The section the visitor is reading belongs to this menu. */
+  current?: boolean;
 }
 
 function DropdownTrigger({
@@ -361,6 +385,7 @@ function DropdownTrigger({
   columns,
   openMenu,
   setOpenMenu,
+  current = false,
 }: DropdownTriggerProps) {
   const isOpen = openMenu === id;
   const panelId = `nav-panel-${id}`;
@@ -382,10 +407,17 @@ function DropdownTrigger({
         aria-controls={isOpen ? panelId : undefined}
         onClick={() => setOpenMenu(isOpen ? null : id)}
         className={`inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[13.5px] font-medium transition-colors ${
-          isOpen ? 'bg-subtle text-foreground' : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
+          isOpen
+            ? 'bg-subtle text-foreground'
+            : current
+              ? 'text-foreground'
+              : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
         }`}
       >
         {label}
+        {/* A small accent dot marks the menu whose section is on screen, so the nav
+            answers "where am I" on a one-page site. */}
+        {current && !isOpen && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />}
         <ChevronDown
           className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
         />

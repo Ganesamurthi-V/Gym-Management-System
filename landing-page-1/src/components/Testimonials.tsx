@@ -155,7 +155,7 @@ function Result({ item, phone }: { item: WithStat; phone: boolean }) {
         phone ? 'max-md:w-[86%] max-md:shrink-0 max-md:snap-center' : 'max-md:hidden'
       }`}
     >
-      <span className="text-[44px] font-medium leading-none tracking-[-0.04em] text-accent-text md:text-[52px]">
+      <span className="text-[44px] font-medium leading-none tracking-[-0.04em] text-accent-text tabular-nums md:text-[52px]">
         {item.stat}
       </span>
       <span className="mt-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">

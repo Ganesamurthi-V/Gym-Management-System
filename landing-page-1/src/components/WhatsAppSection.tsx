@@ -42,16 +42,22 @@ const MESSAGE_TYPES = [
     icon: UserPlus,
     title: 'Welcome message',
     desc: 'Sent the moment a member joins, with their plan and expiry.',
+    when: 'On joining',
+    sample: 'Hi Naveen! Welcome to Fit Zone Gym. We’re excited to have you on board.',
   },
   {
     icon: BellRing,
     title: 'Renewal reminder',
     desc: 'Goes out before a membership lapses, not after.',
+    when: 'Before expiry',
+    sample: 'Hi Vignesh! A friendly reminder that your membership expires today.',
   },
   {
     icon: Wallet,
     title: 'Payment due alert',
     desc: 'Nudges the members who still owe, without you asking twice.',
+    when: 'Every 3 days',
+    sample: 'Hi Karthik, you have a pending payment of ₹3,000. Please clear your dues at the earliest.',
   },
 ] as const;
 
@@ -141,26 +147,31 @@ export function WhatsAppSection() {
               Every GymFlow account includes fully automated WhatsApp messaging, with <ShinyText text="zero extra cost." speed={2.8} spread={120} />
             </p>
 
-            {/* Bare rows, not cards. With border, background and a hover lift
-                these were three more boxes competing with the phone and the
-                comparison block for the same attention; stripped back they read
-                as a caption to the phone, which is what they are. */}
-            <ul className="mt-9 flex flex-col gap-6">
+            {/* Cards again. They were bare icon-and-line rows, which read as a caption and
+                left the left column thin beside the tall phone. Each card now also says
+                when the message goes out and shows the message itself in a WhatsApp
+                bubble, so the column carries real content and the phone has a list of
+                what else it sends. Quiet surfaces, no hover lift: three boxes should
+                not outweigh the phone they sit beside. */}
+            <ul className="mt-8 flex flex-col gap-2.5">
               {MESSAGE_TYPES.map(type => {
                 const Icon = type.icon;
                 return (
-                  <li key={type.title} className="reveal flex gap-4">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-whatsapp-soft">
-                      <Icon className="h-4 w-4 text-whatsapp-ink" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[14px] font-medium text-foreground">
+                  <li key={type.title} className="reveal card px-4 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-whatsapp-soft">
+                        <Icon className="h-4 w-4 text-whatsapp-ink" />
+                      </span>
+                      <span className="min-w-0 flex-1 text-[14px] font-medium tracking-tight text-foreground">
                         {type.title}
                       </span>
-                      <span className="mt-1 block text-[13px] leading-relaxed text-muted-foreground">
-                        {type.desc}
+                      <span className="shrink-0 rounded-pill bg-whatsapp-soft px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-whatsapp-ink">
+                        {type.when}
                       </span>
-                    </span>
+                    </div>
+                    <p className="mt-2.5 rounded-xl rounded-tl-sm bg-whatsapp-soft px-3 py-2 text-[12px] leading-snug text-foreground">
+                      {type.sample}
+                    </p>
                   </li>
                 );
               })}
@@ -182,6 +193,10 @@ export function WhatsAppSection() {
               A narrower phone also widens the orbit's visible arc — the band
               hidden behind it shrinks with its width — so the chips keep their
               clearance. */}
+          {/* The phone and, under it, what the messages never cost. A column rather than
+              the phone alone so the fee line has a place of its own on every screen: the
+              phone is hidden below md, and this list stays. */}
+          <div className="flex flex-col items-center gap-9 md:gap-12">
           <div className="reveal relative mx-auto hidden w-full max-w-[300px] shrink-0 md:block">
             {/* Soft green bloom — WhatsApp's own colour, kept to a backdrop so it
                 never competes with the blue accent for brand attention. Also what
@@ -216,64 +231,17 @@ export function WhatsAppSection() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ── The commercial argument ─────────────────────────────────────
-            Promoted out of the left column into a full-width band. This is the
-            reason the section exists, and it was the smallest, lowest-contrast
-            thing on screen, tucked into a bottom corner. As a band it closes
-            the section — claim, what it sends, then what it costs — and the one
-            saturated blue lands in the middle of the composition instead of in
-            the bottom-left corner. */}
-        <div className="reveal card mt-16 overflow-hidden md:mt-20">
-          <div className="grid md:grid-cols-3">
-            <div className="border-b border-border-subtle p-6 md:border-b-0 md:border-r">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Typical gym platform
-              </p>
-              <p className="mt-3 text-[30px] font-medium tracking-tight text-foreground">
-                <span className="text-[21px] text-muted-foreground">₹</span>0.30–1
-              </p>
-              <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
-                per message. At 200 members that runs into thousands a month, just on
-                notifications.
-              </p>
-            </div>
-
-            {/* Centre cell, so the block a visitor should remember sits at the
-                optical centre of the band rather than at one end.
-
-                bg-card-primary rather than bg-accent: this cell carries two
-                levels of white text, and --accent is too light a blue to keep
-                the dimmer level above AA. */}
-            <div className="bg-card-primary p-6">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-accent-ink/80">
-                GymFlow
-              </p>
-              <p className="mt-3 text-[30px] font-medium tracking-tight text-accent-ink">
-                Included
-              </p>
-              <p className="mt-2 text-[12.5px] leading-relaxed text-accent-ink/80">
-                Unlimited messages at zero extra cost, on every account.
-              </p>
-            </div>
-
-            <div className="border-t border-border-subtle p-6 md:border-l md:border-t-0">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                What you never pay for
-              </p>
-              <ul className="mt-3 flex flex-col gap-2.5">
-                {NEVER_PAY_FOR.map(item => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-2.5 text-[13px] font-medium text-foreground"
-                  >
-                    <Ban className="h-3.5 w-3.5 shrink-0 text-accent" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* Plain text again, set a little lower than the phone so the orbit's ring and the
+                phone's shadow clear it. */}
+            <ul className="reveal mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 md:mt-10">
+              {NEVER_PAY_FOR.map(item => (
+                <li key={item} className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+                  <Ban className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                  No {item.toLowerCase()}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>

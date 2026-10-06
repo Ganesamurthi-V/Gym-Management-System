@@ -1,9 +1,46 @@
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { Mail, MapPin, MessageCircle } from 'lucide-react';
 
 const APP_URL = 'https://app.gymflow.sbs';
 const SUPPORT_EMAIL = 'ganesamurthiv@gmail.com';
 const SUPPORT_PHONE_DISPLAY = '+91 93848 86895';
 const SUPPORT_PHONE_HREF = '+919384886895';
+// A mailto link with the subject and body already filled in, so the visitor's mail app
+// opens on a ready-to-send message. encodeURIComponent turns the line breaks and spaces
+// into the %0A and %20 a mailto needs.
+const MAIL_BODY = [
+  'Hi GymFlow team,',
+  '',
+  'I saw your website and would like to know more about GymFlow for my gym.',
+  '',
+  'Name:',
+  'Gym name:',
+  'City:',
+  'Phone number:',
+  'Thank you.',
+].join('\n');
+const MAIL_URL = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+  'Enquiry about GymFlow',
+)}&body=${encodeURIComponent(MAIL_BODY)}`;
+// The same message as a Gmail compose window. Most laptops have no mail app registered
+// for mailto, so a click there does nothing; webmail is where those visitors actually are.
+const GMAIL_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+  SUPPORT_EMAIL,
+)}&su=${encodeURIComponent('Enquiry about GymFlow')}&body=${encodeURIComponent(MAIL_BODY)}`;
+
+// Phones and tablets keep the mailto link, which opens their mail app. A mouse-and-keyboard
+// device opens Gmail compose in a new tab instead. The href stays the mailto, so copying
+// the link, middle-click and screen readers still get the real address.
+function openMail(e: React.MouseEvent<HTMLAnchorElement>) {
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  e.preventDefault();
+  window.open(GMAIL_URL, '_blank', 'noopener,noreferrer');
+}
+// wa.me wants the number as digits only, country code first, no + or spaces. The text is
+// what appears in the visitor's message box, ready to send, so the first message tells
+// support who is writing and why.
+const WHATSAPP_URL = `https://wa.me/${SUPPORT_PHONE_HREF.replace(/\D/g, '')}?text=${encodeURIComponent(
+  'Hi GymFlow, I saw your website and would like to know more about GymFlow for my gym.',
+)}`;
 
 const COLUMNS = [
   {
@@ -125,17 +162,21 @@ export function Footer() {
                 </span>
               </span>
               <a
-                href={`mailto:${SUPPORT_EMAIL}`}
+                href={MAIL_URL}
+                onClick={openMail}
                 className="flex items-center gap-2.5 transition-colors hover:text-foreground"
               >
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 {SUPPORT_EMAIL}
               </a>
               <a
-                href={`tel:${SUPPORT_PHONE_HREF}`}
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Message GymFlow on WhatsApp at ${SUPPORT_PHONE_DISPLAY}`}
                 className="flex items-center gap-2.5 transition-colors hover:text-foreground"
               >
-                <Phone className="h-3.5 w-3.5 shrink-0" />
+                <MessageCircle className="h-3.5 w-3.5 shrink-0" />
                 {SUPPORT_PHONE_DISPLAY}
               </a>
             </address>

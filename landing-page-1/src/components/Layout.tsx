@@ -5,8 +5,11 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  // overflow-x-clip, not -hidden: hidden turns this wrapper into a scroll container,
+  // and position: sticky then sticks to it instead of the viewport — which is to say
+  // not at all. clip cuts the same horizontal overflow without that side effect.
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background font-sans text-foreground">
+    <div className="relative min-h-screen overflow-x-clip bg-background font-sans text-foreground">
       {/*
         Skip link. Visually hidden until focused, then pinned top-left — a
         keyboard visitor should not have to tab through the whole header and its

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   FileSpreadsheet,
@@ -9,6 +9,7 @@ import {
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { prefersReducedMotion, useReveal } from '../lib/useReveal';
+import { HowItWorksVisual } from './HowItWorksVisual';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -50,6 +51,27 @@ export function HowItWorks() {
   const track = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const fill = useRef<HTMLDivElement>(null);
+  // Which step the picture beside the list is showing.
+  const [active, setActive] = useState(0);
+
+  // The picture follows the reader: it shows the last step whose row has passed
+  // the middle of the viewport. Enter and leave-back rather than "which row is in
+  // the band now", because the final row is short and a fast scroll can carry it
+  // straight through the band without it ever being the one inside.
+  useEffect(() => {
+    const rows = track.current?.querySelectorAll<HTMLElement>('li');
+    if (!rows?.length) return;
+    const triggers = [...rows].map((el, i) =>
+      ScrollTrigger.create({
+        trigger: el,
+        start: 'top 55%',
+        end: 'max',
+        onEnter: () => setActive(i),
+        onLeaveBack: () => setActive(Math.max(0, i - 1)),
+      }),
+    );
+    return () => triggers.forEach(t => t.kill());
+  }, []);
 
   /*
     Scroll-linked progress rail beside the steps.
@@ -166,30 +188,37 @@ export function HowItWorks() {
       className="px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto max-w-[1240px]">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-20">
-          {/* ── Sticky intro ────────────────────────────────────────────── */}
-          <div className="lg:sticky lg:top-28 lg:self-start">
+        {/* The same two halves as the WhatsApp section above, mirrored: there the copy
+            is on the left and the product on the right, here the product is on the
+            left and the copy on the right. Same grid, same gap, same heading scale,
+            so the two read as a pair rather than as two unrelated layouts. */}
+        <div className="grid gap-14 lg:grid-cols-2 lg:gap-20">
+          {/* ── The product, following the steps ────────────────────────────
+              Sticky, so it stays beside the list while the list scrolls past.
+              Hidden below lg for the reason the WhatsApp phone is hidden on small
+              screens: stacked above the steps it is a tall block that repeats what
+              they say, on the viewport with the least room for it. */}
+          <div className="reveal hidden lg:sticky lg:top-36 lg:block lg:self-start">
+            <HowItWorksVisual active={active} />
+          </div>
+
+          <div>
             <span className="reveal eyebrow">How it works</span>
             <h2 id="how-title" className="reveal display-2 mt-4 text-balance">
               Up and running
               <br />
               <span className="text-muted-foreground">in minutes.</span>
             </h2>
-            <p className="reveal lead mt-5 max-w-[360px]">
+            <p className="reveal lead mt-6 max-w-[520px]">
               No IT team, no installation, no consultant. Sign up and start entering your
               first members the same day.
             </p>
-            <a href={APP_URL} className="reveal btn btn-primary btn-lg mt-8">
-              Start free trial
-              <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
 
           {/* ── Steps ───────────────────────────────────────────────────── */}
           {/* No left padding for the rail to sit in: it runs at left-6, which is the
               centre of the 48px badge column, so it is already inside the row rather
               than beside it. */}
-          <div ref={track} className="relative">
+          <div ref={track} className="relative mt-12">
             {/*
               Progress rail. top and height are set from the badge positions in the
               effect above, so nothing here fixes them.
@@ -222,7 +251,7 @@ export function HowItWorks() {
                     two badges be exactly the padding, and what makes last:pb-0 stop
                     the list at the final step instead of leaving a trailing gap.
                   */
-                  className="reveal flex gap-5 pb-24 last:pb-0 md:pb-36"
+                  className="reveal flex gap-5 pb-20 last:pb-0 md:pb-28"
                 >
                   <span
                     data-step-badge
@@ -248,6 +277,12 @@ export function HowItWorks() {
                 </li>
               ))}
             </ol>
+          </div>
+
+            <a href={APP_URL} className="reveal btn btn-primary btn-lg mt-14">
+              Start free trial
+              <ArrowRight className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </div>

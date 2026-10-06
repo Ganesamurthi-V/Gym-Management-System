@@ -191,26 +191,31 @@ export function Hero() {
 
       </div>
 
-      {/* ── Product film ──────────────────────────────────────────────────
-          Outside the 1240px column on purpose: the film grows wider than the copy
-          as it is scrolled up. The section's own padding is what keeps a margin
-          at the page edges. .hero-frame is a wrapper because the entrance tween
-          and the scroll growth both write a transform, and they must not share
-          an element. The interactive dashboard demo that used to sit here is in
-          _archived/landing-page-1. */}
-      <div className="hero-frame mt-16 md:mt-20">
-        <HeroVideo />
-      </div>
-
       <div className="mx-auto max-w-[1240px]">
         {/* ── Coverage marquee ──────────────────────────────────────────── */}
-        <div className="hero-marquee mt-16">
+        <div className="hero-marquee mt-10">
           <p className="mb-6 text-center text-xs font-medium tracking-wide text-muted-foreground">
             Serving independent gyms across India
           </p>
           <Marquee items={CITIES} durationSeconds={38} />
         </div>
       </div>
+
+      {/* ── Product film ──────────────────────────────────────────────────
+          Outside the 1240px column on purpose: the film grows wider than the copy
+          as it is scrolled up. The section's own padding is what keeps a margin
+          at the page edges. .hero-frame is a wrapper because the entrance tween
+          and the scroll growth both write a transform, and they must not share
+          an element. The interactive dashboard demo that used to sit here is in
+          _archived/landing-page-1.
+
+          Placed after the coverage strip, and HeroVideo pushes it down until its top
+          edge is below the first screen: a sliver of the film showing under the
+          trust points read as a cut-off box, not as the start of a video. */}
+      <div className="hero-frame mt-14 md:mt-16">
+        <HeroVideo />
+      </div>
+
     </section>
   );
 }

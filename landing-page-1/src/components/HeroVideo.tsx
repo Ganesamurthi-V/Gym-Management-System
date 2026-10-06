@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react';
@@ -57,6 +57,37 @@ export function HeroVideo() {
   // The icon that flashes in the centre after a click or Space, so the toggle is seen to land.
   const [flash, setFlash] = useState<{ icon: 'play' | 'pause'; n: number } | null>(null);
 
+  // Keep the film's top edge below the first screen. At load only the hero copy
+  // should be visible: a strip of the film peeking in under the trust points looks
+  // like a clipped box. The gap is measured, not guessed, because how much of the
+  // page the copy fills depends on the screen. offsetTop rather than a bounding
+  // rect so the entrance tween's transform on the wrapper does not skew it.
+  useLayoutEffect(() => {
+    const wrap = frame.current?.parentElement;
+    if (!wrap) return;
+    const place = () => {
+      wrap.style.marginTop = '';
+      let top = 0;
+      for (let e: HTMLElement | null = wrap; e; e = e.offsetParent as HTMLElement | null) top += e.offsetTop;
+      const base = parseFloat(getComputedStyle(wrap).marginTop) || 0;
+      const extra = Math.min(640, Math.max(0, window.innerHeight + 16 - top));
+      if (extra > 0) wrap.style.marginTop = `${base + extra}px`;
+      ScrollTrigger.refresh();
+    };
+    place();
+    let timer: number | undefined;
+    const onResize = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(place, 150);
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.clearTimeout(timer);
+      wrap.style.marginTop = '';
+    };
+  }, []);
+
   useEffect(() => {
     const el = frame.current;
     if (!el || prefersReducedMotion()) return;
@@ -102,7 +133,7 @@ export function HeroVideo() {
       ([entry]) => {
         inView.current = entry.isIntersecting;
         if (entry.isIntersecting) {
-          if (auto && !heldByUser.current) v.play().catch(() => {});
+          if (auto && !heldByUser.current) v.play().catch(() => { });
         } else {
           v.pause();
         }
@@ -118,7 +149,7 @@ export function HeroVideo() {
     if (!v) return;
     if (v.paused) {
       heldByUser.current = false;
-      v.play().catch(() => {});
+      v.play().catch(() => { });
     } else {
       heldByUser.current = true;
       v.pause();
@@ -171,7 +202,7 @@ export function HeroVideo() {
     if (!next) {
       v.currentTime = 0;
       heldByUser.current = false;
-      if (v.paused) v.play().catch(() => {});
+      if (v.paused) v.play().catch(() => { });
     }
     v.muted = next;
     setMuted(next);
@@ -259,9 +290,8 @@ export function HeroVideo() {
           invisible button can never be clicked by accident. */}
       {started && (
         <div
-          className={`absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-[#0b1220]/45 to-transparent px-3 pb-3 pt-14 transition-opacity duration-300 md:px-5 md:pb-5 ${
-            playing && !awake ? 'pointer-events-none opacity-0' : 'opacity-100'
-          }`}
+          className={`absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-[#0b1220]/45 to-transparent px-3 pb-3 pt-14 transition-opacity duration-300 md:px-5 md:pb-5 ${playing && !awake ? 'pointer-events-none opacity-0' : 'opacity-100'
+            }`}
         >
           <button type="button" onClick={toggleByUser} className={control}>
             {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}

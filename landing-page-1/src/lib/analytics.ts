@@ -14,13 +14,12 @@ import Clarity from '@microsoft/clarity';
 const PROJECT_ID = import.meta.env.VITE_CLARITY_PROJECT_ID as string | undefined;
 
 /**
- * Google Analytics 4. The measurement id is public (it ships in the page source of every
- * site using GA), so it is the default here; the env var can point a preview build at a
- * different property. The tag is injected only after the visitor accepts cookies: pasting
- * Google's snippet into index.html would load it, and set its cookies, for everyone.
+ * Google Analytics 4 is loaded by the snippet in index.html, in Google's Consent Mode with
+ * analytics storage denied: the tag is present (so Google's own checker can detect it) but
+ * sets no cookies and stores nothing on the device. Here we only flip it to "granted" when
+ * the visitor allows visit counting. Injecting the tag from JavaScript after consent was
+ * the first version; Google's detector never saw it, because it never clicks the banner.
  */
-const GA_ID = (import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined) || 'G-X851XRNHBD';
-
 declare global {
   interface Window {
     dataLayer?: unknown[];
@@ -29,28 +28,13 @@ declare global {
 }
 
 let started = false;
-let gaStarted = false;
 
-function startGA() {
-  if (gaStarted || !GA_ID) return;
-  gaStarted = true;
-  window.dataLayer = window.dataLayer || [];
-  // gtag.js reads `arguments` objects from the dataLayer, so this must be a plain function,
-  // not an arrow function that would pass an array instead.
-  window.gtag = function gtag() {
-    // eslint-disable-next-line prefer-rest-params
-    window.dataLayer!.push(arguments);
-  };
-  window.gtag('js', new Date());
-  window.gtag('config', GA_ID);
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`;
-  document.head.appendChild(script);
+function grantGA() {
+  window.gtag?.('consent', 'update', { analytics_storage: 'granted' });
 }
 
 function start() {
-  if (getConsent()?.ga) startGA();
+  if (getConsent()?.ga) grantGA();
   if (started || !PROJECT_ID || !getConsent()?.clarity) return;
   started = true;
   Clarity.init(PROJECT_ID);

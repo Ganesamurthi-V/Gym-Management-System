@@ -479,6 +479,39 @@
       ]
     }
     </script>
+    <!--
+      Google Analytics 4, in Consent Mode. analytics_storage starts "denied": the tag loads
+      (so Google's tag checker detects it) but sets no cookies and keeps no identifier until
+      the visitor allows visit counting in the cookie card, which calls
+      gtag('consent', 'update', ...) (src/lib/analytics.ts). A returning visitor who already
+      allowed it is granted straight away from the saved choice. Only on the real domain, so
+      local and preview builds never count.
+    -->
+    <script>
+      (function () {
+        if (!/(^|\.)gymflow\.sbs$/.test(location.hostname)) return;
+        var ID = 'G-X851XRNHBD';
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        window.gtag = gtag;
+        var allowed = false;
+        try {
+          allowed = JSON.parse(localStorage.getItem('gf-cookie-consent-v2') || 'null').ga === true;
+        } catch (e) {}
+        gtag('consent', 'default', {
+          analytics_storage: allowed ? 'granted' : 'denied',
+          ad_storage: 'denied',
+          ad_user_data: 'denied',
+          ad_personalization: 'denied',
+        });
+        gtag('js', new Date());
+        gtag('config', ID);
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID;
+        document.head.appendChild(s);
+      })();
+    </script>
   </head>
   <body>
     <div id="root">

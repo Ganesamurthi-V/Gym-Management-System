@@ -180,9 +180,12 @@ function makeFakeClient() {
 // Import AFTER mocks are registered.
 import {
   runDailyWhatsAppAutomation,
+  runImportBatchAutomation,
   cancelReminderCycles,
   sendWelcomeMessage,
 } from '@/lib/whatsapp/automation'
+import { drainSendQueue } from '@/lib/whatsapp/queue'
+import type { TemplateId, TemplateContext, SendResult } from '@/types/whatsapp'
 
 const DAY = 86_400_000
 const START = Date.UTC(2026, 6, 6, 12, 0, 0) // 2026-07-06 12:00 UTC
@@ -201,7 +204,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'x'.repeat(120)
 
-  h.store.gyms = [{ id: 'gym-1', name: 'Iron Temple', onboarding_completed: true, subscription_status: 'active' }]
+  h.store.gyms = [{ id: 'gym-1', name: 'Iron Temple', onboarding_completed: true, subscription_status: 'active', whatsapp_enabled: true }]
   h.store.members = []
   h.store.whatsapp_automation_logs = []
   h.store.whatsapp_send_queue = []
@@ -565,5 +568,128 @@ describe('runDailyWhatsAppAutomation stats', () => {
     const stats = await runDailyWhatsAppAutomation()
     expect(stats.processed).toBe(0)
     expect(sendCountFor('payment_due_reminder')).toBe(0)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The per-gym WhatsApp switch (gyms.whatsapp_enabled)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('per-gym WhatsApp switch', () => {
+  function addGym(id: string, whatsapp_enabled: boolean) {
+    h.store.gyms.push({ id, name: id, onboarding_completed: true, subscription_status: 'active', whatsapp_enabled })
+  }
+  function addMemberTo(gymId: string, id: string) {
+    h.store.members.push({
+      id, gym_id: gymId, name: id, phone: '9876543210', date_of_birth: null, pending_amount: 500, memberships: [],
+    })
+  }
+
+  it('sends the daily reminders of a gym that has WhatsApp on', async () => {
+    addMember({ pending_amount: 500 })
+    await runDailyWhatsAppAutomation()
+    expect(sendCountFor('payment_due_reminder')).toBe(1)
+  })
+
+  it('processes, queues and logs nothing for a gym with WhatsApp off', async () => {
+    h.store.gyms[0].whatsapp_enabled = false
+    addMember({ pending_amount: 500 })
+    const stats = await runDailyWhatsAppAutomation()
+    expect(stats.processed).toBe(0)
+    expect(stats.queued).toBe(0)
+    expect(h.sendMock).not.toHaveBeenCalled()
+    expect(h.store.whatsapp_send_queue).toHaveLength(0)
+    expect(h.store.whatsapp_automation_logs).toHaveLength(0)
+  })
+
+  it('switches off ONLY the gym that was switched off; other gyms keep sending', async () => {
+    h.store.gyms = []
+    addGym('gym-on', true)
+    addGym('gym-off', false)
+    addMemberTo('gym-on', 'mem-on')
+    addMemberTo('gym-off', 'mem-off')
+    await runDailyWhatsAppAutomation()
+    const sentTo = h.sendMock.mock.calls.map(c => c[1].memberName)
+    expect(sentTo).toEqual(['mem-on'])
+  })
+
+  it('a fixture gym with no switch value is not processed (the filter is an explicit = true)', async () => {
+    delete h.store.gyms[0].whatsapp_enabled
+    addMember({ pending_amount: 500 })
+    // The daily query filters on whatsapp_enabled = true, which is what the real column holds
+    // for every existing gym. A fixture row with no value mirrors none of them, so this only
+    // pins that the filter is an explicit "= true" and an absent value is not sent.
+    await runDailyWhatsAppAutomation()
+    expect(h.sendMock).not.toHaveBeenCalled()
+  })
+
+  it('sends no welcome message for a gym with WhatsApp off, and leaves no log row', async () => {
+    h.store.gyms[0].whatsapp_enabled = false
+    addMember()
+    await sendWelcomeMessage({
+      gymId: 'gym-1', gymName: 'Iron Temple', memberId: 'mem-1', memberName: 'Arjun',
+      phone: '9876543210', plan: 'Monthly', startDate: label(0),
+    })
+    expect(h.sendMock).not.toHaveBeenCalled()
+    expect(h.store.whatsapp_automation_logs).toHaveLength(0)
+  })
+
+  it('sends the welcome message again once WhatsApp is switched back on', async () => {
+    h.store.gyms[0].whatsapp_enabled = false
+    addMember()
+    const args = {
+      gymId: 'gym-1', gymName: 'Iron Temple', memberId: 'mem-1', memberName: 'Arjun',
+      phone: '9876543210', plan: 'Monthly', startDate: label(0),
+    }
+    await sendWelcomeMessage(args)
+    h.store.gyms[0].whatsapp_enabled = true
+    await sendWelcomeMessage(args)
+    expect(sendCountFor('_gymflow_welcome_member')).toBe(1)
+    // and the gym id travels with the send, so the sender's own check can see it
+    expect(h.sendMock.mock.calls[0][1].gymId).toBe('gym-1')
+  })
+
+  it('an import batch for a gym with WhatsApp off sends nothing', async () => {
+    h.store.gyms[0].whatsapp_enabled = false
+    addMember({ pending_amount: 0 })
+    const stats = await runImportBatchAutomation({ gymId: 'gym-1', memberIds: ['mem-1'] })
+    expect(stats.queued).toBe(0)
+    expect(stats.skipped).toBe(1)
+    expect(h.sendMock).not.toHaveBeenCalled()
+  })
+
+  it('reminders resume after the switch is turned back on (a skipped send does not close the cycle)', async () => {
+    h.store.gyms[0].whatsapp_enabled = false
+    addMember({ pending_amount: 500 })
+    setDay(0)
+    await runDailyWhatsAppAutomation()
+    h.store.gyms[0].whatsapp_enabled = true
+    setDay(1)
+    await runDailyWhatsAppAutomation()
+    expect(sendCountFor('payment_due_reminder')).toBe(1)
+  })
+
+  it('a send that was already queued is stopped, not retried, when the gym is switched off', async () => {
+    h.store.whatsapp_send_queue.push({
+      id: 'q1', gym_id: 'gym-1', template_name: 'payment_due_reminder',
+      context: { phone: '9876543210', gymName: 'Iron Temple', memberName: 'Arjun', dueAmount: 500 },
+      log_row_id: null, attempts: 0, max_attempts: 3, status: 'pending',
+      scheduled_at: new Date(Date.now() - 1000).toISOString(),
+    })
+    // Stand-in for sendTemplate's own check: what it returns for a gym that is switched off.
+    const sender = vi.fn(async (_template: TemplateId, _ctx: TemplateContext): Promise<SendResult> => ({
+      success: false, skipped: true, error: 'WhatsApp is turned off for this gym',
+    }))
+    const stats = await drainSendQueue({
+      supabase: makeFakeClient() as any,
+      sender,
+      takeToken: async () => ({ success: true, remaining: 100 }),
+      reschedule: async () => true,
+    })
+    expect(sender).toHaveBeenCalledTimes(1)
+    expect(sender.mock.calls[0][1]).toMatchObject({ gymId: 'gym-1' })
+    expect(h.store.whatsapp_send_queue[0].status).toBe('cancelled')
+    expect(stats.retried).toBe(0)
+    expect(stats.failed).toBe(0)
   })
 })

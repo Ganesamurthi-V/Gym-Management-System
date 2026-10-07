@@ -281,11 +281,30 @@ export async function POST(req: NextRequest) {
       gymName,
       memberName: member.name,
       invitationToken: token,
+      gymId: gym.id,
     })
     log.end('SEND_WHATSAPP')
 
     // Invalidate member app cache
     await deleteCache(cacheKeys.memberApp(gym.id))
+
+    if (sendResult.skipped) {
+      // The platform admin has switched WhatsApp off for this gym: nothing was sent.
+      log.warn('WhatsApp invitation not sent: gym switch is off')
+      log.summary(403)
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'WHATSAPP_DISABLED',
+            message: 'WhatsApp messages are turned off for your gym, so the invitation was not sent. Please contact GymFlow support.',
+          },
+          data: { memberId, invitationCreated: true, whatsappSent: false },
+          meta: { request_id: log.requestId },
+        },
+        { status: 403, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
 
     if (!sendResult.success) {
       log.warn('WhatsApp send failed but invitation is active', { error: sendResult.error })

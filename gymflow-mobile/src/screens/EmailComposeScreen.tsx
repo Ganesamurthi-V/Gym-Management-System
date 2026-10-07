@@ -166,7 +166,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
     setSending(true);
     try {
       if (isNew) {
-        await sendNewEmail({ to: contact!.email, subject: subject.trim(), text: body.trim(), attachments: files });
+        await sendNewEmail({ to: contact!.email, toName: contact!.name, subject: subject.trim(), text: body.trim(), attachments: files });
       } else {
         await replyToEmailThread(threadId!, body.trim(), retryMessageId, files);
       }
@@ -483,6 +483,13 @@ function ContactPicker({
     setQuery('');
   };
 
+  // An address that is not in the list can simply be typed. Offered as the first choice, and
+  // also taken when the keyboard's Done is pressed.
+  const typed = query.trim().toLowerCase();
+  const typedIsEmail = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(typed);
+  const typedKnown = results.some(r => r.email === typed);
+  const chooseTyped = () => pick({ email: typed, name: null, gymName: null, lastAt: '' });
+
   if (value) {
     const name = value.name || value.email;
     return (
@@ -508,7 +515,10 @@ function ContactPicker({
           value={query}
           onChangeText={setQuery}
           onFocus={() => setOpen(true)}
-          placeholder="Search by name or email"
+          onSubmitEditing={() => { if (typedIsEmail) chooseTyped(); }}
+          returnKeyType="done"
+          keyboardType="email-address"
+          placeholder="Name, gym or email address"
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -524,12 +534,25 @@ function ContactPicker({
 
       {open && (
         <View style={styles.dropdown}>
+          {typedIsEmail && !typedKnown && (
+            <TouchableOpacity style={styles.option} onPress={chooseTyped} activeOpacity={0.7}>
+              <View style={styles.typedIcon}>
+                <Feather name="mail" size={16} color={Colors.indigo} />
+              </View>
+              <View style={styles.optionText}>
+                <Text style={styles.optionName} numberOfLines={1}>Send to {typed}</Text>
+                <Text style={styles.optionEmail}>New address</Text>
+              </View>
+            </TouchableOpacity>
+          )}
           {failed ? (
             <Text style={styles.dropdownEmpty}>{failed}</Text>
           ) : results.length === 0 && !loading ? (
-            <Text style={styles.dropdownEmpty}>
-              {query ? 'No one who has emailed support matches that.' : 'No one has emailed support yet.'}
-            </Text>
+            typedIsEmail ? null : (
+              <Text style={styles.dropdownEmpty}>
+                {query ? 'No customer matches that. Type a full email address to write to someone new.' : 'No customers yet.'}
+              </Text>
+            )
           ) : (
             results.map(c => (
               <TouchableOpacity key={c.email} style={styles.option} onPress={() => pick(c)} activeOpacity={0.7}>
@@ -598,6 +621,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.bgCardBorder,
   },
   optionText: { flex: 1 },
+  typedIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.indigoBg },
   optionName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   optionEmail: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
   optionGym: {

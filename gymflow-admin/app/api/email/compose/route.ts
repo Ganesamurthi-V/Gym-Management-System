@@ -16,11 +16,11 @@ export const dynamic = 'force-dynamic'
  *   JSON { to, subject, text }, or multipart form data with the same fields plus files under
  *   "attachments" (same limits and markup as a reply, see lib/email-reply-input.ts).
  *
- * Starts a new conversation with someone who has already written to the support address.
- * That rule is enforced here, not only in the app: the recipient must match the address of an
- * existing thread, so this route cannot be used to mail an arbitrary address from
- * support@. The sent mail carries a fresh Message-ID, so the customer's reply lands back in
- * the same conversation through the usual threading.
+ * Starts a new conversation with any valid address: an existing correspondent or customer
+ * picked from the search, or a new address the admin typed. The route is admin-only and rate
+ * limited (20 sends per 5 minutes). When the address matches a gym owner or an earlier thread,
+ * the new conversation is linked to that gym and name. The sent mail carries a fresh
+ * Message-ID, so the reply lands back in the same conversation through the usual threading.
  *
  * If the send fails, the conversation created for it is removed again and the request fails:
  * nothing is left half-made, and the admin simply presses Send again with everything intact.
@@ -58,17 +58,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cannot write to our own address' }, { status: 400 })
     }
 
-    // The recipient must already be a correspondent. The newest thread also supplies the name
-    // and the gym link, so the new conversation shows up with the same details.
+    // Name and gym for the new conversation: from an earlier thread with this address, else
+    // from the gym this address owns (if any), else none.
     const { data: known } = await db
       .from('email_threads')
       .select('counterparty_name, gym_id')
       .eq('counterparty_email', to)
       .order('last_message_at', { ascending: false })
       .limit(1)
-    if (!known?.length) {
-      log.summary(403)
-      return NextResponse.json({ error: 'You can only write to people who have emailed support' }, { status: 403 })
+    const counterpartyName: string | null = known?.[0]?.counterparty_name ?? input.toName ?? null
+    let gymId: string | null = known?.[0]?.gym_id ?? null
+    if (!gymId) {
+      const { data: owned } = await db.rpc('gym_id_for_owner_email', { p_email: to })
+      gymId = (owned as string | null) ?? null
     }
 
     const { data: thread, error: threadError } = await db
@@ -76,8 +78,8 @@ export async function POST(req: NextRequest) {
       .insert({
         subject: normalizeSubject(subject),
         counterparty_email: to,
-        counterparty_name: known[0].counterparty_name,
-        gym_id: known[0].gym_id,
+        counterparty_name: counterpartyName,
+        gym_id: gymId,
       })
       .select('id')
       .single()

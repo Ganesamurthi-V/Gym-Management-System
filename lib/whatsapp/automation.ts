@@ -23,6 +23,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
+import { isWhatsAppEnabledForGym } from './gymGate'
 import type { TemplateId, TemplateContext, SendResult } from './sender'
 import { enqueueSend, kickDrain } from './queue'
 import { finalizeSendRow } from './finalize'
@@ -397,6 +398,9 @@ export async function sendWelcomeMessage({
     memberId: formatMemberId(memberData?.member_number),
   }
 
+  // WhatsApp switched off for this gym: send nothing, and leave no log row behind.
+  if (!(await isWhatsAppEnabledForGym(gymId, supabase))) return
+
   const cycleKey = `_gymflow_welcome_member:${memberId}:${startDate}`
 
   // Claim before sending so two concurrent submits (double-click / retry) can
@@ -412,7 +416,7 @@ export async function sendWelcomeMessage({
   })
   if (!claim.claimed) return
 
-  const result = await sendWhatsAppTemplate('_gymflow_welcome_member', ctx)
+  const result = await sendWhatsAppTemplate('_gymflow_welcome_member', { ...ctx, gymId })
   await finalizeSendRow(supabase, claim.id, result)
 }
 
@@ -467,7 +471,7 @@ export async function sendRenewalMessage({
   })
   if (!claim.claimed) return
 
-  const result = await sendWhatsAppTemplate('membership_renewed', ctx)
+  const result = await sendWhatsAppTemplate('membership_renewed', { ...ctx, gymId })
   await finalizeSendRow(supabase, claim.id, result)
 }
 
@@ -496,6 +500,9 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
       .select('id, name')
       .eq('onboarding_completed', true)
       .in('subscription_status', ['active', 'trial'])
+      // A gym with WhatsApp switched off is not processed at all: no reminders are worked
+      // out, queued or logged for it.
+      .eq('whatsapp_enabled', true)
 
     if (gymErr || !gyms) {
       stats.errors.push(`Failed to fetch gyms: ${gymErr?.message}`)
@@ -550,12 +557,17 @@ export async function runImportBatchAutomation({
 
   const { data: gymRow, error: gymErr } = await supabase
     .from('gyms')
-    .select('id, name')
+    .select('id, name, whatsapp_enabled')
     .eq('id', gymId)
     .single()
 
   if (gymErr || !gymRow) {
     stats.errors.push(`Import batch: gym ${gymId} not found: ${gymErr?.message}`)
+    return stats
+  }
+  // Switched off for this gym: the import still succeeds, it just sends no reminders.
+  if ((gymRow as { whatsapp_enabled?: boolean }).whatsapp_enabled === false) {
+    stats.skipped += memberIds.length
     return stats
   }
   const gym = gymRow as GymRow

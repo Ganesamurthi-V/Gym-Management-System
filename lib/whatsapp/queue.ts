@@ -47,6 +47,7 @@ export interface EnqueueParams {
 
 interface QueueRow {
   id: string
+  gym_id: string | null
   template_name: TemplateId
   context: TemplateContext
   log_row_id: string | null
@@ -202,7 +203,7 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     // status='pending' so two concurrent drains can't grab the same row.
     const { data: candidate } = await supabase
       .from('whatsapp_send_queue')
-      .select('id, template_name, context, log_row_id, attempts, max_attempts')
+      .select('id, gym_id, template_name, context, log_row_id, attempts, max_attempts')
       .eq('status', 'pending')
       .lte('scheduled_at', nowIso())
       .order('scheduled_at', { ascending: true })
@@ -226,7 +227,9 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
 
     let result: SendResult
     try {
-      result = await sender(row.template_name, row.context)
+      // gymId rides along so sendTemplate can check the gym's WhatsApp switch at the moment of
+      // sending: a message queued before the admin turned WhatsApp off is stopped here.
+      result = await sender(row.template_name, { ...row.context, gymId: row.gym_id ?? row.context.gymId })
     } catch (err) {
       result = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
@@ -240,6 +243,12 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
         .update({ status: 'sent', message_id: result.messageId ?? null, sent_at: nowIso(), last_error: null })
         .eq('id', row.id)
       stats.sent++
+    } else if (result.skipped) {
+      // Deliberately not sent (the gym's WhatsApp switch is off): finished, no retry.
+      await supabase
+        .from('whatsapp_send_queue')
+        .update({ status: 'cancelled', last_error: result.error ?? null })
+        .eq('id', row.id)
     } else if (row.attempts + 1 < row.max_attempts) {
       // Transient — back to pending, delayed one interval for the next batch.
       const next = new Date(Date.now() + DRAIN_INTERVAL_MINUTES * 60_000).toISOString()

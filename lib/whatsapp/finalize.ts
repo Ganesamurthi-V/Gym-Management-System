@@ -32,6 +32,7 @@ export function isTransientFailure(result: SendResult): boolean {
  *   permanent 4xx      → downgrade to 'failed' (keeps the slot consumed)
  *   transient/systemic → downgrade to 'error' (releases the slot; getCycleState
  *                        and resolveDueCycleKey ignore it, so the next run retries)
+ *   skipped (gym switch off) → also 'error', for the same reason
  */
 export async function finalizeSendRow(
   supabase: SupabaseClient,
@@ -42,6 +43,12 @@ export async function finalizeSendRow(
 
   const update: Record<string, unknown> = result.success
     ? { message_id: result.messageId ?? null }
+    : result.skipped
+    // Switched off on purpose (the gym's WhatsApp switch): nothing was sent. Recorded as
+    // 'error' and NOT 'cancelled': 'error' releases the reminder slot, so when WhatsApp is
+    // switched back on the next run sends the reminder. 'cancelled' would close the cycle
+    // for good (it means "the due was paid") and the member would never be reminded.
+    ? { status: 'error', error_message: result.error ?? null }
     : {
         status: isTransientFailure(result) ? 'error' : 'failed',
         error_message: result.error ?? null,

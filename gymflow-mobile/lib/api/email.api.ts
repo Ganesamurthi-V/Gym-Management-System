@@ -131,8 +131,15 @@ export async function replyToEmailThread(
   }
 }
 
-/** Someone who has emailed support: the only people a new message can be written to. */
-export type EmailContact = { email: string; name: string | null; gymName: string | null; lastAt: string };
+/** A person a new message can go to: a correspondent, a gym owner, or a typed-in address. */
+export type EmailContact = {
+  email: string;
+  name: string | null;
+  gymName: string | null;
+  lastAt: string;
+  /** Where the suggestion came from; absent for an address that was typed in. */
+  source?: 'mail' | 'gym';
+};
 
 /** Searches by name or address; an empty query lists the most recent correspondents. */
 export async function searchEmailContacts(q: string): Promise<EmailContact[]> {
@@ -150,6 +157,7 @@ export async function searchEmailContacts(q: string): Promise<EmailContact[]> {
  */
 export async function sendNewEmail(input: {
   to: string;
+  toName?: string | null;
   subject: string;
   text: string;
   attachments?: LocalAttachment[];
@@ -158,12 +166,13 @@ export async function sendNewEmail(input: {
   try {
     if (attachments.length === 0) {
       const { data } = await apiClient.post<{ threadId: string }>('/api/email/compose', {
-        to: input.to, subject: input.subject, text: input.text,
+        to: input.to, toName: input.toName ?? undefined, subject: input.subject, text: input.text,
       });
       return data;
     }
     const form = new FormData();
     form.append('to', input.to);
+    if (input.toName) form.append('toName', input.toName);
     form.append('subject', input.subject);
     form.append('text', input.text);
     for (const a of attachments) {

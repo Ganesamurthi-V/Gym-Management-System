@@ -78,11 +78,23 @@ export async function POST(req: NextRequest) {
 
     const { templateId, context } = parsed.data
 
+    // The gym comes from the logged-in owner, never from the request body, so the gym's
+    // WhatsApp switch cannot be sidestepped by sending someone else's (or no) gym id.
+    const { data: ownGym } = await supabase
+      .from('gyms')
+      .select('id')
+      .eq('owner_id', user.id)
+      .limit(1)
+      .maybeSingle()
+    if (!ownGym) {
+      return NextResponse.json({ success: false, error: 'No gym found for this account' }, { status: 403 })
+    }
+
     // Send
-    const result = await sendWhatsAppTemplate(templateId, context as TemplateContext)
+    const result = await sendWhatsAppTemplate(templateId, { ...(context as TemplateContext), gymId: ownGym.id })
 
     if (!result.success) {
-      return NextResponse.json({ success: false, error: result.error }, { status: 502 })
+      return NextResponse.json({ success: false, error: result.error }, { status: result.skipped ? 403 : 502 })
     }
 
     return NextResponse.json({ success: true, messageId: result.messageId })

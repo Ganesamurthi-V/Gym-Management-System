@@ -23,10 +23,10 @@ export interface UploadedFile { filename: string; contentType: string; buffer: B
  * with the same fields plus files under "attachments". `text` is the editor's markup.
  */
 export async function readInput(req: NextRequest): Promise<
-  | { ok: true; text: string; retryMessageId?: string; to?: string; subject?: string; files: UploadedFile[] }
+  | { ok: true; text: string; retryMessageId?: string; to?: string; toName?: string; subject?: string; files: UploadedFile[] }
   | { ok: false; error: string }
 > {
-  let raw: { text?: unknown; retryMessageId?: unknown; to?: unknown; subject?: unknown } | null
+  let raw: { text?: unknown; retryMessageId?: unknown; to?: unknown; toName?: unknown; subject?: unknown } | null
   const files: UploadedFile[] = []
 
   if ((req.headers.get('content-type') ?? '').includes('multipart/form-data')) {
@@ -36,6 +36,7 @@ export async function readInput(req: NextRequest): Promise<
       text: form.get('text'),
       retryMessageId: form.get('retryMessageId') || undefined,
       to: form.get('to') || undefined,
+      toName: form.get('toName') || undefined,
       subject: form.get('subject') || undefined,
     }
     for (const entry of form.getAll('attachments')) {
@@ -73,6 +74,7 @@ const bodySchema = z.object({
   retryMessageId: z.string().uuid().optional(),
   // Only used when writing a new message (lib: /api/email/compose); a reply ignores them.
   to: z.string().trim().toLowerCase().email('Choose who to write to').max(254).optional(),
+  toName: z.string().trim().max(120).optional(),
   subject: z.string().trim().min(1, 'Add a subject').max(200).transform(s => s.replace(/[\r\n]+/g, ' ')).optional(),
 })
 

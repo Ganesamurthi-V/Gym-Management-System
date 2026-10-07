@@ -20,6 +20,7 @@
  */
 
 import { fetchJson }              from '@/lib/fetch'
+import { getGymWhatsAppState, WHATSAPP_DISABLED_MESSAGE } from '@/lib/whatsapp/gymGate'
 import { logger }                 from '@/lib/logger'
 import { formatDate } from '@/lib/utils'
 import { GRAPH_PROXY_SECRET_HEADER, getGraphProxySecret } from '@/lib/graph-domain'
@@ -149,6 +150,20 @@ export async function sendTemplate(
   templateId: TemplateId,
   ctx: TemplateContext,
 ): Promise<SendResult> {
+  // The per-gym switch, checked here because every send (welcome, renewal, daily reminders
+  // through the queue, invitations, the owner's manual send) ends up in this function.
+  if (ctx.gymId) {
+    const state = await getGymWhatsAppState(ctx.gymId)
+    if (state !== 'enabled') {
+      logger.info('sendTemplate skipped: gym WhatsApp switch', { templateId, gymId: ctx.gymId, state })
+      return {
+        success: false,
+        skipped: true,
+        error: state === 'disabled' ? WHATSAPP_DISABLED_MESSAGE : 'Could not confirm WhatsApp is enabled for this gym',
+      }
+    }
+  }
+
   const digits = ctx.phone.replace(/\D/g, '')
   if (digits.length < 10) {
     return { success: false, error: 'Invalid phone number' }

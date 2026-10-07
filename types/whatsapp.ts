@@ -194,6 +194,12 @@ export interface TemplateContext {
   memberId?: string
   /** Secure token for the member_app_invitation dynamic URL button. */
   invitationToken?: string
+  /**
+   * The gym this message is sent on behalf of. When present, sendTemplate checks that gym's
+   * WhatsApp switch (gyms.whatsapp_enabled) and refuses to send while it is off. Always set
+   * it from a server-resolved gym, never from a request body.
+   */
+  gymId?: string
 }
 
 export interface SendResult {
@@ -203,6 +209,11 @@ export interface SendResult {
   error?: string
   /** HTTP status from Meta, if available */
   httpStatus?: number
+  /**
+   * True when nothing was sent on purpose (the gym has WhatsApp switched off). Not a failure
+   * to retry: callers record it as cancelled rather than failed.
+   */
+  skipped?: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

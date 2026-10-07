@@ -75,6 +75,7 @@ Route classification lives in `lib/protected-routes.ts` and `lib/member/redirect
 - `lib/whatsapp/` — automation engine (scheduling, idempotency, queue, sender); `services/whatsapp/` — Graph API client and webhook processors; `repositories/whatsapp/` — DB access; `config/whatsapp.ts` — config.
 - Event sends (welcome, renewal) fire inline with claim-then-send. Scheduled sends go through `whatsapp_send_queue`, drained 5 msgs / 5 min by QStash at `/api/whatsapp/queue/drain`.
 - Crons (`vercel.json`): `/api/cron/whatsapp` 03:30 UTC, `/api/cron/subscription` 00:00 UTC, both authenticated by `CRON_SECRET`.
+- **Per-gym switch:** `gyms.whatsapp_enabled` (admin app → Manage Subscription → WhatsApp Enabled) stops all sends for that one gym. It is checked fresh, never cached, in `sendTemplate` (every send passes through it, so callers must set `TemplateContext.gymId` from a server-resolved gym) and the daily cron skips such gyms. A skipped send is recorded as `error`, not `cancelled`, so reminders resume when it is switched back on. See `lib/whatsapp/gymGate.ts`.
 - Template names and parameters must match Meta-approved templates exactly. This area is covered by tests in `__tests__/whatsapp/` — run them after any change.
 
 ### Other modules

@@ -93,8 +93,8 @@ npm install
 
 ### 2. Environment
 
-Create `.env.local` in `gymflow-mobile/` (the path configured for
-`react-native-dotenv` in `babel.config.js`):
+Copy `.env.example` to `.env.local` in `gymflow-mobile/` (the path configured for
+`react-native-dotenv` in `babel.config.js`) and fill it in:
 
 ```bash
 ADMIN_API_BASE=http://192.168.x.x:3001     # dev only; release builds force production
@@ -104,6 +104,11 @@ SUPABASE_ANON_KEY=<anon key>
 
 `lib/api/client.ts` only honours `ADMIN_API_BASE` when `__DEV__` is true — release builds
 always use `https://admin.gymflow.sbs`, so a stale localhost value cannot ship.
+
+> **Running your own deployment?** Two values in the code point at gymflow.sbs and must be
+> changed for a release build: `defaultBaseUrl` in `lib/api/client.ts` (your admin panel's
+> URL) and the fallback Supabase URL in `lib/supabase-realtime.ts`. These values are compiled
+> into the app, so keep them public ones only: never a service-role key.
 
 ### 3. Firebase / push notifications
 
@@ -204,3 +209,7 @@ per-admin identity, which is why push tokens are keyed per **device**.
   spinner. `NotificationBell` deliberately avoids it: that hook uses `useFocusEffect`,
   which needs a screen navigation context the header does not have.
 - Path alias `@/` maps to the project root (configured in babel + tsconfig).
+
+## License
+
+[GNU AGPL v3.0](../LICENSE), the same as the rest of the repository.

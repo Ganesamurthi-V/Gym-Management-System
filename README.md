@@ -1,12 +1,136 @@
-# GymFlow — Gym Management SaaS
+<p align="center">
+  <img src="public/logo_landspace.png" alt="GymFlow" width="720">
+</p>
 
-> Know exactly who paid, who didn't, and who's about to expire — without using notebooks.
+<h1 align="center">GymFlow</h1>
 
-**GymFlow** is a full-stack gym management SaaS built for small to mid-size gyms in **Tamil Nadu and Puducherry, India**. It features WhatsApp automation, UPI payment collection via QR codes, real-time notifications, and complete multi-tenant data isolation.
+<p align="center">
+  <em>Know exactly who paid, who didn't, and who's about to expire, without notebooks.</em>
+</p>
+
+<p align="center">
+  <a href="https://www.gymflow.sbs">Website</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="SELF_HOSTING.md">Self-hosting</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="LICENSE">AGPL-3.0</a>
+</p>
+
+**GymFlow** is open-source gym management software for small, single-location gyms. It was
+built for gyms in Tamil Nadu and Puducherry, India, so it is mobile-first, prices are in INR,
+payments are collected by UPI QR code, and members are reached on WhatsApp.
+
+It is a multi-tenant SaaS: one deployment serves many gyms, and each gym's data is isolated
+with Postgres Row Level Security.
+
+- **Owner console**: members, payments and dues, attendance kiosk, reports, bulk Excel/CSV import
+- **Member app (PWA)**: digital gym card with QR, attendance, membership details, workouts, rewards
+- **WhatsApp automation**: welcome messages, renewal reminders and payment-due alerts
+- **Super-admin panel and mobile app**: subscriptions, support inbox, push notifications
+- **Marketing site**
+
+The hosted version runs at [gymflow.sbs](https://www.gymflow.sbs). This repository is the same
+code.
+
+## Contents
+
+- [Repository layout](#repository-layout)
+- [Quick start](#quick-start)
+- [Which services do I need?](#which-services-do-i-need)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
+- [Self-hosting](#self-hosting)
+- [Contributing](#contributing)
+- [License](#license)
+
+Everything from [Domains & Architecture](#domains--architecture) down is a deeper reference.
 
 ---
 
-## Tech Stack
+## Repository layout
+
+The repository root **is** the main Next.js app. The other folders are separate projects with
+their own `package.json` and `node_modules`, deployed on their own.
+
+| Path | What it is | Dev command | README |
+|------|-----------|-------------|--------|
+| `/` (root) | Owner console + member PWA (Next.js 15) | `npm run dev` → http://localhost:3004 | this file |
+| `gymflow-admin/` | Super-admin panel (Next.js) | `npm run dev` → http://localhost:3001 | [gymflow-admin/README.md](gymflow-admin/README.md) |
+| `gymflow-mobile/` | Admin mobile app (React Native 0.75, Android/iOS) | `npm run android` | [gymflow-mobile/README.md](gymflow-mobile/README.md) |
+| `landing-page-1/` | Marketing site (Vite + React) | `npm run dev` | [landing-page-1/README.md](landing-page-1/README.md) |
+| `supabase-schema.sql` | The complete database schema as one runnable file | run once in the SQL editor | [SELF_HOSTING.md](SELF_HOSTING.md#2-database) |
+| `supabase/migrations/` | The same schema as individual change files (history) | for existing databases | |
+| `emails/` | Source HTML of the transactional email templates | published to Resend | [SELF_HOSTING.md](SELF_HOSTING.md#5-email-resend) |
+| `_archived/` | Dead code kept for reference. Not built, not imported. | | |
+
+You only need the root app to try GymFlow. The admin panel, mobile app and marketing site are
+optional.
+
+---
+
+## Quick start
+
+This gets the owner console and member app running on your machine against your own Supabase
+project. About 15 minutes.
+
+**You need:** Node.js 20 or newer, npm, and a free [Supabase](https://supabase.com) project.
+
+```bash
+git clone <your-fork-url> gymflow
+cd gymflow
+npm install
+cp .env.example .env.local
+```
+
+1. **Create the database.** In the Supabase dashboard, open the SQL editor and run the single
+   file `supabase-schema.sql`. It contains the whole schema (tables, indexes, RLS, functions,
+   triggers, realtime and storage) with every migration already merged in. See
+   [SELF_HOSTING.md](SELF_HOSTING.md#2-database) for what to set afterwards.
+2. **Fill in `.env.local`.** Only the three Supabase values and the two app URLs are required
+   to boot. `.env.example` marks every variable as required or optional and says what each one
+   switches on.
+3. **Run it.**
+
+   ```bash
+   npm run dev          # http://localhost:3004
+   ```
+
+4. **Create an account** at http://localhost:3004/auth/create-account and go through the
+   onboarding wizard. Signup emails need Resend (see the table below); without it, confirm the
+   user by hand in Supabase under Authentication → Users.
+
+Before you push a change:
+
+```bash
+npm run build          # the real typecheck; there is no CI
+npm test               # vitest
+npm run lint
+```
+
+---
+
+## Which services do I need?
+
+Only Supabase is required. Everything else switches on one feature, and the app is written to
+keep working without it.
+
+| Service | Needed for | Without it |
+|---------|-----------|------------|
+| **Supabase** (Postgres, Auth, Storage) | Everything | The app does not start |
+| **Upstash Redis** | Caching and rate limiting | Both degrade gracefully: no cache, no rate limits |
+| **Resend** | Signup, member activation and account-deletion emails | Those emails are not sent; confirm users by hand |
+| **Meta WhatsApp Cloud API** | All WhatsApp messages | No messages are sent; the rest of the app is unaffected |
+| **Upstash QStash** | The throttled WhatsApp send queue | Queued sends are not drained; trigger the drain by hand in dev |
+| **Google Maps Platform** | Address autocomplete in onboarding | Type the address by hand |
+| **Sentry** | Error and performance monitoring | No error reports |
+| **Firebase** | Push notifications to the admin mobile app (set in `gymflow-admin`) | No push; the admin app still works |
+| **Groq** | AI reply drafts in the support inbox (set in `gymflow-admin`) | No drafts; replies are written by hand |
+
+WhatsApp needs approved message templates in your own Meta Business account, and their names
+and parameters must match the code exactly. See [lib/whatsapp/README.md](lib/whatsapp/README.md).
+
+---
+## Tech stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -36,9 +160,10 @@
 
 | Domain | Purpose | Served By |
 |--------|---------|-----------|
-| `app.gymflow.sbs` | GymFlow frontend + API | Main Next.js app |
+| `app.gymflow.sbs` | Owner console (`/owner`), member PWA (`/m`) and API | Main Next.js app |
+| `admin.gymflow.sbs` | Super-admin panel and the API the mobile app calls | `gymflow-admin/` |
 | `graph.gymflow.sbs` | WhatsApp Graph API reverse proxy (API-only) | Same Vercel project, domain-isolated |
-| `gymflow.sbs` | Bare domain → 301 redirect to `app.gymflow.sbs` | Middleware redirect |
+| `www.gymflow.sbs` | Marketing site (`landing-page-1/`); `gymflow.sbs` redirects here | Separate static deployment |
 
 ### Domain Isolation Security
 
@@ -220,108 +345,46 @@ through the authenticated admin API. Broadcast payloads are never trusted as dat
 
 ---
 
-## Project Structure
+## Project structure
+
+Root app only. Each sibling project documents its own layout in its README.
 
 ```
-gymflow/
+/
 ├── app/
-│   ├── auth/                         # Login, create-account, setup-password
-│   ├── onboarding/                   # 7-step wizard with UPI setup
-│   ├── dashboard/                    # Live stats, quick actions
-│   ├── members/                      # CRUD, bulk-edit, detail, attendance log
-│   ├── payments/                     # History, export, dues
-│   ├── attendance/                   # Self-service check-in/out
-│   ├── dues/                         # Pending dues with inline collection
-│   ├── inventory/                    # Products, variants, sales
-│   ├── import/                       # Bulk import pipeline (upload, edit, review)
-│   ├── subscription/                 # Payment proof submission, status
-│   ├── account/                      # Settings, UPI config
-│   ├── admin/                        # Super admin dashboard + subscriptions
-│   └── api/
-│       ├── auth/                     # Login (rate-limited), admin auth
-│       ├── members/                  # Member CRUD
-│       ├── payments/                 # Payment API
-│       ├── attendance/               # Attendance API
-│       ├── import/                   # Bulk import confirm + next-member-id
-│       ├── inventory/                # Sell, delete, sales
-│       ├── subscription/             # Request, status
-│       ├── support/                  # Tickets, clear
-│       ├── whatsapp/                 # Send, webhook, automation (welcome/renewal/due-cleared/import-batch), queue drain
-│       ├── graph/[...path]/          # Secure reverse proxy to Meta Graph API
-│       ├── cron/                     # Daily WhatsApp + subscription expiry crons
-│       ├── health/                   # Health check
-│       └── onboarding/              # Complete onboarding
-├── gymflow-admin/                    # Super Admin Panel (Next.js)
-│   ├── app/
-│   │   ├── dashboard/               # Stats, Sentry errors, recent messages
-│   │   ├── gyms/[gymId]/            # Gym detail: SubscriptionPanel + GymFeedbackPanel
-│   │   ├── subscriptions/           # All pending payment requests
-│   │   ├── support/                 # Send messages, resolve tickets, feedback filter
-│   │   ├── errors/                  # Sentry error viewer
-│   │   ├── logs/                    # Event logs
-│   │   └── api/
-│   │       ├── support/tickets/     # Shared list (?gymId= / ?type= filters) + resolve
-│   │       ├── notifications/       # GET list + unread count, PATCH mark read
-│   │       └── push/
-│   │           ├── register-token/  # POST register device, DELETE on sign-out
-│   │           └── dispatch/        # Called by pg_net; sends via FCM (CRON_SECRET)
-│   ├── components/                  # Sidebar, error components
-│   ├── middleware.ts                # Session/Bearer guard + PUBLIC_PATHS allowlist
-│   └── lib/                         # Auth (JWT), supabase-admin, firebase-admin, logger
-├── gymflow-mobile/                   # Admin Mobile App (bare React Native 0.75)
-│   ├── index.js                     # Polyfills first, then FCM background handler
-│   ├── polyfills.js                 # URL + TextEncoder/TextDecoder for Hermes
-│   ├── src/
-│   │   ├── App.tsx                  # Navigation, push init, deep-link routing
-│   │   ├── navigation/types.ts      # RootStack + Tab param lists
-│   │   └── screens/
-│   │       ├── tabs/                # Dashboard, Gyms, Support, Logs
-│   │       ├── GymDetailScreen.tsx
-│   │       ├── GymSubscriptionScreen.tsx   # Incl. Owner Feedback card
-│   │       └── NotificationsScreen.tsx     # In-app notification centre
-│   ├── components/                  # TicketCard, NotificationBell, Badge, inputs
-│   ├── lib/
-│   │   ├── api/                     # client (axios+Bearer), notifications.api, support.api, …
-│   │   ├── push.ts                  # FCM modular API, permissions, token lifecycle
-│   │   ├── cache.ts                 # Stale-while-revalidate + AsyncStorage
-│   │   ├── use-cached-query.ts      # Cache-first screen data
-│   │   └── use-realtime-invalidation.ts    # admin:* broadcast hints
-│   ├── constants/theme.ts
-│   └── android/                     # google-services.json goes in android/app/ (gitignored)
-├── components/
-│   ├── layout/                      # ShellGuard, NavClient, AccountMenu, TrialBanner
-│   ├── upi/                         # UPIPaymentModal, UPIQRSetup
-│   ├── support/                     # SupportTabsClient, SupportHeaderClient
-│   ├── inventory/                   # InventoryDetailClient, InventoryFilters
-│   ├── import/                      # WizardHeader
-│   └── ui/                          # WelcomeTransition, FitnessLoader
+│   ├── owner/            # Owner console. Its layout mounts AppShell, which is also the paywall
+│   ├── m/                # Member PWA. Its layout is the authorization boundary
+│   ├── auth/             # Unified login, create account, set password
+│   ├── activate/         # Public member activation flow, reached from WhatsApp links
+│   ├── api/              # Route handlers for both experiences, crons, webhooks
+│   └── sw.ts             # Service worker (Serwist): static assets only
+├── components/           # Shared React components
+├── features/             # Feature folders (components / hooks / services / types)
 ├── lib/
-│   ├── supabase/                    # Client (browser), server, admin
-│   ├── whatsapp/                    # Automation engine, queue, scheduling, sender, finalize, idempotency
-│   ├── upi/                         # parseUPIQRCode, generateUPILink, generateQRCode
-│   ├── import/                      # normalizers.ts, pipeline.ts
-│   ├── hooks/                       # useRealtimeChannel
-│   ├── graph-domain.ts             # Domain isolation config + helpers
-│   ├── subscription-utils.ts       # Pure subscription state computation
-│   ├── cache.ts                    # Redis cache wrapper
-│   ├── cache-keys.ts              # Centralized cache key definitions
-│   ├── rateLimit.ts               # Upstash rate limiter
-│   ├── fetch.ts                   # Production fetch with timeout + retry + backoff
-│   ├── dal.ts                     # Data Access Layer (auth, gym, subscription)
-│   ├── redis.ts                   # Redis client singleton
-│   ├── logger.ts                  # APM-style RequestLogger
-│   └── utils.ts                   # cn(), formatDate, formatCurrency, etc.
-├── services/
-│   └── whatsapp/                   # graph.ts, messageProcessor, statusProcessor, validateTemplate, templateSpec
-├── repositories/
-│   └── whatsapp/                   # DB operations for messages, webhook logs
-├── types/
-│   ├── index.ts                    # Member, Membership, Attendance, DashboardStats
-│   └── whatsapp.ts                # TemplateId, SendResult, webhook types
-├── middleware.ts                   # Domain isolation + auth guard + subscription guard
-├── vercel.json                    # Cron schedules
-└── supabase/migrations/           # All DB migrations
+│   ├── supabase/         # Server and service-role clients, env access
+│   ├── api/              # withAuth wrapper, API client, response helpers
+│   ├── dal.ts            # Cached data access for Server Components
+│   ├── whatsapp/         # Automation engine: scheduling, idempotency, queue, sender
+│   ├── import/           # Bulk Excel/CSV import pipeline
+│   ├── upi/              # UPI QR parse, link and QR generation
+│   ├── member/           # Member app logic
+│   ├── tours/            # Owner onboarding tours (driver.js)
+│   ├── cache.ts          # Redis cache; keys in cache-keys.ts
+│   └── logger.ts         # Structured logger with redaction
+├── services/whatsapp/    # Graph API client and webhook processors
+├── repositories/         # Database access for WhatsApp
+├── config/               # App configuration
+├── types/                # Shared TypeScript types
+├── __tests__/            # Vitest tests
+├── middleware.ts         # Host isolation, legacy redirects, auth
+├── supabase/migrations/  # Database schema
+└── vercel.json           # Cron schedules
 ```
+
+`CLAUDE.md` at the root is a compact, current description of the architecture and its rules
+(auth, data access, caching, styling). It is written for AI coding agents but is the fastest
+way for a person to get oriented too.
+
 
 ---
 
@@ -351,30 +414,13 @@ gymflow/
 
 ## Setup Instructions
 
-### 1. Create Supabase Project
-- Go to [supabase.com](https://supabase.com) → New project (Mumbai/Singapore region)
-- Run `supabase-schema.sql` in SQL Editor
+The [Quick start](#quick-start) covers local development. For a full production deployment
+(domains, email templates, WhatsApp, crons, the admin panel) follow
+[SELF_HOSTING.md](SELF_HOSTING.md).
 
-### 2. Run Migrations
-Run all files in `supabase/migrations/` in order via SQL Editor.
+The steps below cover the admin mobile app and push notifications.
 
-### 3. Local Development
-```bash
-cd gymflow
-npm install
-cp .env.example .env.local   # Fill in values
-npm run dev                   # http://localhost:3004
-```
-
-### 4. Deploy to Vercel
-```bash
-vercel
-```
-- Attach domains: `app.gymflow.sbs`, `graph.gymflow.sbs`
-- Add all env vars in Vercel dashboard
-- Set Supabase Auth → Site URL: `https://app.gymflow.sbs`
-
-### 5. Admin Mobile App + Push Notifications
+### Admin mobile app + push notifications
 
 **a. Firebase project**
 - Create a project in the [Firebase console](https://console.firebase.google.com)
@@ -417,7 +463,7 @@ npm install
 npx react-native run-android        # iOS: cd ios && pod install && npx react-native run-ios
 ```
 
-### 6. Verifying push end to end
+### Verifying push end to end
 
 Test bottom-up so a failure localises to one layer:
 
@@ -519,6 +565,10 @@ while the service role (used by the admin API) bypasses RLS.
 
 ## Two Separate Push Systems
 
+> **Note.** Only the Firebase (admin mobile) system exists in the current code. Web Push with
+> VAPID keys belonged to the standalone member app, which has been merged into the root app
+> without it. The VAPID notes below are kept for anyone who wants to add Web Push back.
+
 The project has two unrelated push mechanisms. Keep them distinct — they use different
 keys, different transports, and different audiences.
 
@@ -556,8 +606,34 @@ See [Setup step 5](#5-admin-mobile-app--push-notifications) — `FIREBASE_PROJEC
 
 ---
 
+## Self-hosting
+
+GymFlow can be run by anyone, but it was written for one deployment, so a number of things are
+specific to `gymflow.sbs`: domain names in the middleware, email sender addresses, WhatsApp
+template names, links in the marketing site. [SELF_HOSTING.md](SELF_HOSTING.md) lists
+every one of them and what to change.
+
+---
+
+## Contributing
+
+Bug reports, fixes and improvements are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first:
+it covers the workflow, the checks to run, and the rules that keep tenants isolated.
+
+Found a security problem? Please do not open a public issue. See [SECURITY.md](SECURITY.md).
+
+---
+
 ## License
 
-Private. Built for gym owners, by fitness enthusiasts.
+GymFlow is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
 
-© 2025 GymFlow. Tamil Nadu & Puducherry, India...
+In short: you may use, modify and self-host it, including commercially. If you run a modified
+version as a service that other people use over a network, you must make your modified source
+available to those users under the same license. The [LICENSE](LICENSE) file is the
+authoritative text.
+
+"GymFlow" and the GymFlow logo are names and marks of the original project. The license covers
+the code, not the brand: if you run your own service, please give it your own name and logo.
+
+© GymFlow contributors. Built for gym owners, by fitness enthusiasts.

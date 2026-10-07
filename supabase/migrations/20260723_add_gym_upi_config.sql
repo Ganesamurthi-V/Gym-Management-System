@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS gym_upi_config (
   gym_id UUID NOT NULL UNIQUE REFERENCES gyms(id) ON DELETE CASCADE,
 
   -- Normalized merchant data (extracted from the QR code)
-  upi_id TEXT NOT NULL,                -- pa: payee VPA e.g. 9384271126@ibl
+  upi_id TEXT NOT NULL,                -- pa: payee VPA e.g. yourname@bank
   merchant_name TEXT NOT NULL,         -- pn: display name
   merchant_code TEXT,                  -- mc: merchant category code (optional)
   currency TEXT NOT NULL DEFAULT 'INR',-- cu: currency

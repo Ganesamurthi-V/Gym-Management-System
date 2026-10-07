@@ -147,13 +147,10 @@ npm test __tests__/whatsapp/webhook.test.ts
 ### Test Signature Verification
 
 ```bash
-# See docs/WHATSAPP_EXAMPLES.md for complete testing commands
 ```
 
 ## 📚 Documentation
 
-- [Complete Setup Guide](../../docs/WHATSAPP_WEBHOOK.md)
-- [Example Payloads & Testing](../../docs/WHATSAPP_EXAMPLES.md)
 - [Meta WhatsApp Docs](https://developers.facebook.com/docs/whatsapp)
 
 ## 🐛 Troubleshooting

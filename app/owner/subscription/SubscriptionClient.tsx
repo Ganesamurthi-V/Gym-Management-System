@@ -83,8 +83,10 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
 
   const activePlan = PLANS.find(p => p.id === selectedPlan) ?? PLANS[0]
 
-  // Same UPI id the old static QR encoded (falls back to the account's own VPA).
-  const upiId = settings.upi_id || 'gxnzhhh@oksbi'
+  // Comes only from platform_settings.upi_id. There is deliberately no hard-coded fallback:
+  // a forked deployment that has not set it must show "not set up" rather than send an
+  // owner's payment to someone else's account.
+  const upiId = settings.upi_id
   const upiName = settings.upi_name || 'GymFlow'
 
   /*
@@ -94,6 +96,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     later. Rebuilt whenever the amount or UPI details change.
   */
   const upiString = useMemo(() => {
+    if (!upiId) return ''
     const params = new URLSearchParams({
       pa: upiId,
       pn: upiName,
@@ -109,6 +112,10 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const [qrDataUrl, setQrDataUrl] = useState('')
   useEffect(() => {
     let cancelled = false
+    if (!upiString) {
+      setQrDataUrl('')
+      return
+    }
     QRCode.toDataURL(upiString, { width: 320, margin: 1, errorCorrectionLevel: 'M' })
       .then(url => { if (!cancelled) setQrDataUrl(url) })
       .catch(() => { if (!cancelled) setQrDataUrl('') })
@@ -219,6 +226,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const isRejected = liveRequest?.status === 'rejected'
 
   function copyUpi() {
+    if (!settings.upi_id) return
     navigator.clipboard.writeText(settings.upi_id)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -549,7 +557,9 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                        className="w-full h-full object-contain"
                      />
                    ) : (
-                     <span className="text-[11px] font-medium text-slate-400">Generating QR…</span>
+                     <span className="px-3 text-center text-[11px] font-medium text-slate-400">
+                       {upiId ? 'Generating QR…' : 'Payment details are not set up yet'}
+                     </span>
                    )}
                  </div>
                  
@@ -557,7 +567,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                    <div>
                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">UPI ID</p>
                      <div className="flex items-center gap-3">
-                       <p className="text-lg font-black text-slate-900">{settings.upi_id || 'gxnzhhh@oksbi'}</p>
+                       <p className="text-lg font-black text-slate-900">{settings.upi_id || 'Not set up'}</p>
                        <button onClick={copyUpi} className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors" title="Copy UPI ID">
                          {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                        </button>

@@ -252,7 +252,7 @@ function printResults(): void {
     console.log('   Review the warnings before deploying.')
   } else {
     console.log('❌ Configuration incomplete. Fix the failed checks before deploying.')
-    console.log('   See docs/WHATSAPP_WEBHOOK.md for setup instructions.')
+    console.log('   See lib/whatsapp/README.md for setup instructions.')
     process.exit(1)
   }
   

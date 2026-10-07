@@ -32,3 +32,5 @@ public/swe-worker-*.js
 /.agents
 /.claude
 skills-lock.json
+# Internal notes, audits and AI hand-off prompts. Not part of the public repository.
+/docs/

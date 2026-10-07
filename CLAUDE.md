@@ -111,7 +111,7 @@ Default theme is light; dark is opt-in (`lib/theme/theme.ts`). Verify UI changes
 ## Database
 
 - Supabase Postgres. Schema changes go in a new file under `supabase/migrations/` (timestamp-prefixed, e.g. `20260928150000_name.sql`). Migrations are applied manually through the Supabase SQL editor, so write them idempotently and tell the user when one needs to be run.
-- `supabase-schema.sql` is the original baseline; do not treat it as current.
+- `supabase-schema.sql` is the complete schema as one runnable file: a baseline (Part 1) plus every migration appended in order (Part 2). **When you add a migration, also append it to Part 2** under a `-- MIGRATION: <file name>` heading, so a fresh install stays complete. Every statement must be idempotent (`drop policy if exists` before `create policy`, and likewise for triggers).
 
 ## Environment
 
@@ -119,4 +119,4 @@ Copy `.env.example` to `.env.local`. Without Upstash vars, rate limiting and cac
 
 ## Docs
 
-`README.md` and `docs/` contain deep dives (WhatsApp, subscription, observability, deployment runbook). Some are out of date: `docs/AGENT.md` and parts of the README project tree predate the `/owner` + `/m` merge and reference removed code (`lib/geo/`, `app/reports/`, `lib/supabase/client`). When docs and code disagree, trust the code.
+`README.md` and `SELF_HOSTING.md` are the contributor-facing docs; `lib/whatsapp/README.md` covers the WhatsApp engine. Where docs and code disagree, trust the code.

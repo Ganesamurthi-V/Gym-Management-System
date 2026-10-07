@@ -13,6 +13,7 @@ import {
 } from './definitions'
 import type { TourChapterId, TourStatus } from './progress'
 import { requestTourNav, setTourActive } from './tour-state'
+import { mountTourAscii, unmountTourAscii } from './ascii-card'
 
 /**
  * lib/tours/useOwnerTour.ts
@@ -346,6 +347,10 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
       const entry = flat[position]
       if (!entry) return
 
+      // The character-grid animation behind the card (same as the login page). Idempotent,
+      // so it is safe on every step whether or not Driver.js reuses the card.
+      mountTourAscii(popover.wrapper)
+
       // Progress rail down the card's left edge, filling downward. Driver's own
       // "N of M" text stays in the footer, but across 27 steps a filling rail is
       // what actually tells the owner how much is left. Vertical, so the height
@@ -454,6 +459,7 @@ export function useOwnerTour(options?: { onEnd?: () => void }) {
 
       onDestroyed: () => {
         setTourActive(false)
+        unmountTourAscii()
 
         // Hand the navigation menu back to the owner's own preference — a drawer
         // left open, or a sidebar we expanded, must not outlive the tour.

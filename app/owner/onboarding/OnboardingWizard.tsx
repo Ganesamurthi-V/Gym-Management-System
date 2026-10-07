@@ -410,7 +410,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col md:flex-row overflow-hidden">
       {/* -- Left Sidebar (Desktop Only) -- */}
-      <div className="hidden md:flex md:w-72 lg:w-80 xl:w-96 bg-gradient-to-b from-ink-900 to-ink-800 text-white flex-col justify-between p-5 lg:p-6 border-r border-slate-800 flex-shrink-0 relative isolate">
+      <div className="hidden md:flex md:w-72 lg:w-80 xl:w-96 bg-gradient-to-b from-carbon-900 to-carbon-950 text-white flex-col justify-between p-5 lg:p-6 border-r border-white/10 flex-shrink-0 relative isolate">
         {/*
           The character grid from /auth, in reverse polarity: white ink here rather than
           black, since this panel is dark. absolute rather than the fixed used on /auth
@@ -426,18 +426,18 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
           so there is no width at which the grid mounts inside a hidden parent and pays for
           a canvas nobody sees.
 
-          ── Why 0.12 and not the 0.26 used on /auth ──────────────────────────────────
-          Same contrast-ceiling logic, different arithmetic. White ink at opacity a over
-          slate-900 lifts the worst backdrop to a*255 + (1-a)*15/23/42 per channel, and the
-          binding constraint is the 10px slate-400 step subtitles: they measure 7.02 on the
-          bare gradient, and a full mark at 0.26 would drop them to 2.99, well under the 4.5
-          floor. At 0.12 they hold 4.98. The disabled slate-500 steps land lower, but those
-          are inactive controls and exempt — and they were already at 3.75 before the grid.
+          ── Colours on this panel ────────────────────────────────────────────────────
+          The panel is dark in both themes, so every colour on it is a literal (carbon for the
+          fills, white at an opacity for the text). The slate-* text classes it used before are
+          themed: in dark mode slate-300 becomes #404040, so the tip text and the step subtitles
+          nearly vanished against the panel. Mixed with white ink at 0.12, white/55 holds about
+          5.5:1 on carbon-900, above the 4.5 floor; the disabled steps are inactive controls and
+          exempt.
         */}
         <AsciiBackdrop
           className="pointer-events-none absolute inset-0 z-0 opacity-[0.12]"
           color="#ffffff"
-          colorTint="#94a3b8"
+          colorTint="#a3a3a3"
           scale={4}
           intensity={1.099}
           contrast={2.501}
@@ -452,7 +452,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
 
           {/* Stepper container */}
           <div className="space-y-6">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Onboarding Progress</h3>
+            <h3 className="text-xs font-bold text-white/55 uppercase tracking-widest">Onboarding Progress</h3>
             <div className="space-y-4">
               {STEPS.map((s, i) => {
                 const Icon = s.icon
@@ -468,7 +468,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                         ? 'bg-white/10 text-white border border-white/10 shadow-xs'
                         : done
                         ? 'text-emerald-400 hover:bg-white/5 cursor-pointer'
-                        : 'text-slate-500 cursor-not-allowed'
+                        : 'text-white/40 cursor-not-allowed'
                     }`}
                   >
                     <div
@@ -477,7 +477,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                           ? 'bg-emerald-500/20 border border-emerald-500/30'
                           : active
                           ? 'bg-brand-500 text-white shadow-xs shadow-brand-500/30'
-                          : 'bg-ink-800 text-slate-600'
+                          : 'bg-white/5 text-white/35'
                       }`}
                     >
                       {done ? (
@@ -487,10 +487,10 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-xs font-bold ${active ? 'text-white' : done ? 'text-slate-300' : 'text-slate-500'}`}>
+                      <p className={`text-xs font-bold ${active ? 'text-white' : done ? 'text-white/75' : 'text-white/45'}`}>
                         {s.title}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">{s.subtitle}</p>
+                      <p className="text-[10px] text-white/55 font-medium truncate mt-0.5">{s.subtitle}</p>
                     </div>
                   </button>
                 )
@@ -500,12 +500,12 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
         </div>
 
         {/* Tip panel / Footer */}
-        <div className="relative z-10 bg-ink-800/40 border border-slate-700/30 p-4 rounded-2xl">
+        <div className="relative z-10 bg-white/5 border border-white/10 p-4 rounded-2xl">
           <div className="flex items-center gap-2 mb-2 text-brand-400">
             <Sparkles className="w-4 h-4 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-wider">Quick Setup Tip</span>
           </div>
-          <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
+          <p className="text-[11px] text-white/75 leading-relaxed font-medium">
             {currentStep === 0 && "Fill in your basic gym info. This helps us customize default membership packages and tax records."}
             {currentStep === 1 && "Define plans you sell to members. You can customize discounts, admission/joining charges, and freeze options."}
             {currentStep === 2 && "Upload or scan your UPI QR code so members can pay directly via QR at the counter."}

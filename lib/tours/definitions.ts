@@ -355,7 +355,37 @@ export const TOUR_CHAPTERS: TourChapter[] = [
     ],
   },
 
-  // ── 9. Member App ──────────────────────────────────────────────────────────
+  // ── 9. Reports ─────────────────────────────────────────────────────────────
+  {
+    id: 'reports',
+    label: 'Reports',
+    route: '/owner/reports',
+    steps: [
+      {
+        navTarget: 'navReports',
+        title: 'Next: Reports',
+        description: 'How your gym is doing, in plain words.',
+      },
+      {
+        anchor: 'reportsQuestions',
+        title: 'Five questions about your gym',
+        description:
+          'Members, money, dues, who is leaving and who is turning up: each card is a question with its answer right on it. <strong>Tap a card</strong> to see the details underneath, with charts and the people behind the numbers. No accounting knowledge needed, and it fills in on its own as you add members and payments.',
+        side: 'bottom',
+        align: 'center',
+      },
+      {
+        anchor: 'reportsPdf',
+        title: 'Take it with you',
+        description:
+          'Download the report as a <strong>PDF</strong> to print it, send it to a partner or keep a copy for the month. Anyone can read it, even if they never open GymFlow.',
+        side: 'bottom',
+        align: 'end',
+      },
+    ],
+  },
+
+  // ── 10. Member App ─────────────────────────────────────────────────────────
   {
     id: 'member-app',
     label: 'Member App',

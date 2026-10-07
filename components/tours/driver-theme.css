@@ -42,6 +42,52 @@
   animation: gf-tour-pop-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ── Two looks, one set of rules ─────────────────────────────────────────────
+   Every colour on the card is a variable declared here, once for light and once for dark
+   (`.dark` is the class the theme provider puts on <html>; the card is appended to <body>,
+   so it sits under it). The rules below only read them. Light is the white card it has
+   always been; dark is a near-black card with hairline white edges, like the rest of the
+   dark console, instead of a bright white slab on a dark page. */
+.driver-popover.gymflow-tour-popover {
+  --gf-surface-top: #ffffff;
+  --gf-surface-bottom: #fcfdff;
+  --gf-border: rgb(15 23 42 / 7%);
+  --gf-hairline: rgb(15 23 42 / 7%);
+  --gf-text: #0f172a;
+  --gf-text-2: #475569;
+  --gf-text-3: #94a3b8;
+  --gf-hover: #f1f5f9;
+  --gf-track: #f1f5f9;
+  --gf-pill-bg: #eff6ff;
+  --gf-pill-text: #1e40af;
+  --gf-pill-border: rgb(37 99 235 / 14%);
+  --gf-highlight: rgb(255 255 255 / 90%);
+  --gf-shadow-1: rgb(15 23 42 / 6%);
+  --gf-shadow-2: rgb(15 23 42 / 16%);
+  --gf-shadow-3: rgb(15 23 42 / 26%);
+  --gf-ascii-opacity: 0.1;
+}
+
+.dark .driver-popover.gymflow-tour-popover {
+  --gf-surface-top: #1c1c1c;
+  --gf-surface-bottom: #121212;
+  --gf-border: rgb(255 255 255 / 11%);
+  --gf-hairline: rgb(255 255 255 / 10%);
+  --gf-text: #f5f5f5;
+  --gf-text-2: #b4b4b4;
+  --gf-text-3: #8a8a8a;
+  --gf-hover: rgb(255 255 255 / 8%);
+  --gf-track: rgb(255 255 255 / 10%);
+  --gf-pill-bg: rgb(37 99 235 / 20%);
+  --gf-pill-text: #bfdbfe;
+  --gf-pill-border: rgb(96 165 250 / 32%);
+  --gf-highlight: rgb(255 255 255 / 7%);
+  --gf-shadow-1: rgb(0 0 0 / 40%);
+  --gf-shadow-2: rgb(0 0 0 / 45%);
+  --gf-shadow-3: rgb(0 0 0 / 60%);
+  --gf-ascii-opacity: 0.12;
+}
+
 .driver-popover.gymflow-tour-popover {
   --gf-radius: 18px;
   --driver-popover-font-family: inherit;
@@ -49,22 +95,46 @@
   min-width: 300px;
   max-width: 384px;
   padding: 22px 22px 15px;
-  color: var(--color-text-primary, #0f172a);
+  color: var(--gf-text);
 
   /* Barely-there vertical gradient. Reads as a lit surface rather than flat
      white, which is most of what separates a premium card from a plain one. */
-  background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
-  border: 1px solid rgb(15 23 42 / 7%);
+  background: linear-gradient(180deg, var(--gf-surface-top) 0%, var(--gf-surface-bottom) 100%);
+  border: 1px solid var(--gf-border);
   border-radius: var(--gf-radius);
 
   /* Layered elevation: a hairline, a tight contact shadow, then two wide soft
      casts. A single large shadow reads as a smudge; stacking them reads as
      depth. The inset highlight catches the top edge like real glass. */
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 90%),
-    0 1px 2px rgb(15 23 42 / 6%),
-    0 12px 24px -10px rgb(15 23 42 / 16%),
-    0 32px 64px -24px rgb(15 23 42 / 26%);
+    inset 0 1px 0 var(--gf-highlight),
+    0 1px 2px var(--gf-shadow-1),
+    0 12px 24px -10px var(--gf-shadow-2),
+    0 32px 64px -24px var(--gf-shadow-3);
+}
+
+/* ── Character grid behind the card ───────────────────────────────────────
+   Mounted by lib/tours/ascii-card.ts as the card's first child. It fills the card and is
+   clipped to its rounded corners by its own overflow (the card itself cannot clip, or driver's
+   arrow, which sits outside the box, would be cut off). Faint on purpose: the card's text
+   has to keep its contrast over the densest cell, so the opacity is a variable per theme.
+   Everything real in the card is lifted above it. */
+.driver-popover.gymflow-tour-popover .gf-tour-ascii {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--gf-ascii-opacity);
+}
+
+.driver-popover.gymflow-tour-popover .gf-tour-chapter,
+.driver-popover.gymflow-tour-popover .driver-popover-title,
+.driver-popover.gymflow-tour-popover .driver-popover-description,
+.driver-popover.gymflow-tour-popover .driver-popover-footer {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Progress rail, down the left edge ─────────────────────────────────────
@@ -84,7 +154,7 @@
   left: 0;
   width: 3px;
   overflow: hidden;
-  background: var(--color-surface-sunken, #f1f5f9);
+  background: var(--gf-track);
   border-radius: 0 3px 3px 0;
 }
 
@@ -111,9 +181,9 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-brand-700, #1e40af);
-  background: var(--color-brand-50, #eff6ff);
-  border: 1px solid rgb(37 99 235 / 14%);
+  color: var(--gf-pill-text);
+  background: var(--gf-pill-bg);
+  border: 1px solid var(--gf-pill-border);
   border-radius: 999px;
 }
 
@@ -124,7 +194,7 @@
   font-weight: 700;
   line-height: 1.35;
   letter-spacing: -0.018em;
-  color: var(--color-text-primary, #0f172a);
+  color: var(--gf-text);
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-description {
@@ -132,12 +202,12 @@
   font-size: 13.5px;
   font-weight: 400;
   line-height: 1.65;
-  color: var(--color-text-secondary, #475569);
+  color: var(--gf-text-2);
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-description strong {
   font-weight: 600;
-  color: var(--color-text-primary, #0f172a);
+  color: var(--gf-text);
 }
 
 /* ── Close button ──────────────────────────────────────────────────────────
@@ -150,15 +220,15 @@
   font-size: 18px;
   font-weight: 300;
   line-height: 26px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--gf-text-3);
   border-radius: 999px;
   transition: color 0.15s, background-color 0.15s;
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-close-btn:hover,
 .driver-popover.gymflow-tour-popover .driver-popover-close-btn:focus-visible {
-  color: var(--color-text-primary, #0f172a);
-  background-color: var(--color-surface-sunken, #f1f5f9);
+  color: var(--gf-text);
+  background-color: var(--gf-hover);
 }
 
 /* ── Footer ────────────────────────────────────────────────────────────────
@@ -168,7 +238,7 @@
   gap: 10px;
   margin-top: 18px;
   padding-top: 13px;
-  border-top: 1px solid rgb(15 23 42 / 7%);
+  border-top: 1px solid var(--gf-hairline);
 }
 
 .driver-popover.gymflow-tour-popover .driver-popover-progress-text {
@@ -177,7 +247,7 @@
   letter-spacing: 0.01em;
   /* Tabular figures stop the label jittering as the step number changes. */
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--gf-text-3);
 }
 
 /* ── Buttons ───────────────────────────────────────────────────────────────*/
@@ -194,15 +264,15 @@
 /* Secondary — "Back". Deliberately borderless so there is exactly one thing
    in the footer competing for attention. */
 .driver-popover.gymflow-tour-popover .driver-popover-prev-btn {
-  color: var(--color-text-secondary, #475569);
+  color: var(--gf-text-2);
   background-color: transparent;
   border: 1px solid transparent;
 }
 
 .driver-popover.gymflow-tour-popover
   .driver-popover-prev-btn:hover:not(.driver-popover-btn-disabled) {
-  color: var(--color-text-primary, #0f172a);
-  background-color: var(--color-surface-sunken, #f1f5f9);
+  color: var(--gf-text);
+  background-color: var(--gf-hover);
 }
 
 /* Primary — "Next" / "Finish". */
@@ -246,13 +316,13 @@
   padding: 8px 4px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--gf-text-3);
   border-radius: 6px;
   transition: color 0.15s;
 }
 
 .driver-popover.gymflow-tour-popover .gf-tour-skip:hover {
-  color: var(--color-text-secondary, #475569);
+  color: var(--gf-text-2);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -264,7 +334,7 @@
 
 /* Matches the card's top edge so the arrow reads as part of the same surface. */
 .driver-popover.gymflow-tour-popover .driver-popover-arrow {
-  border-color: #ffffff;
+  border-color: var(--gf-surface-top);
 }
 
 /* ── Spotlit element ───────────────────────────────────────────────────────

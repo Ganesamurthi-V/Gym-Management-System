@@ -221,13 +221,19 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         {/* ── Logo row ── */}
         <div className="flex items-center justify-between h-16 border-b border-slate-100 flex-shrink-0 px-3 relative">
           <div className="flex items-center flex-1 min-w-0 py-2 overflow-hidden">
-            <Image 
-              src="/logo_landspace_without_bg.png" 
-              alt={`${liveGymName || 'GymFlow'} Logo`} 
-              width={140} 
-              height={40} 
-              className={`object-contain object-left transition-all duration-200 ${collapsed ? 'opacity-0 w-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto' : 'opacity-100 w-auto'}`} 
-            />
+            {/* The colour wordmark has a navy "Gym" that disappears on a dark background, so dark
+                mode swaps in an all-white version of the same file (same size and shape). */}
+            {(['light', 'dark'] as const).map(mode => (
+              <Image
+                key={mode}
+                src={mode === 'dark' ? '/logo_landspace_white.png' : '/logo_landspace_without_bg.png'}
+                alt={mode === 'dark' ? '' : `${liveGymName || 'GymFlow'} Logo`}
+                aria-hidden={mode === 'dark' ? true : undefined}
+                width={140}
+                height={40}
+                className={`object-contain object-left transition-all duration-200 ${mode === 'dark' ? 'hidden dark:block' : 'dark:hidden'} ${collapsed ? 'opacity-0 w-0 group-hover/sidebar:opacity-100 group-hover/sidebar:w-auto' : 'opacity-100 w-auto'}`}
+              />
+            ))}
             {collapsed && (
               <Image 
                 src="/logo_only.png" 

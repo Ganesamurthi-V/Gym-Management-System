@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { AlertTriangle, CalendarClock, ChevronRight, Download, Dumbbell, IndianRupee, MessageCircle, Users } from 'lucide-react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { buildCustomWhatsAppLink, cn, formatDate } from '@/lib/utils'
+import { tourAttr } from '@/lib/tours/anchors'
 import type { ReportData } from './report-data'
 import { monthChange, runRate, weekdayInsight } from './insights'
 
@@ -195,6 +196,7 @@ export function ReportsClient({ data, gymName, today }: Props) {
         </div>
         <div className="flex-shrink-0 text-right">
           <button
+            {...tourAttr('reportsPdf')}
             onClick={exportPdf}
             disabled={exporting}
             className="flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold text-slate-700 bg-surface border border-slate-200 rounded-xl hover:bg-slate-50 active:scale-95 transition-all disabled:opacity-60"
@@ -207,7 +209,7 @@ export function ReportsClient({ data, gymName, today }: Props) {
       </div>
 
       {/* The five questions. Tapping one shows its details below. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 md:gap-3">
+      <div {...tourAttr('reportsQuestions')} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 md:gap-3">
         {questions.map(q => {
           const selected = topic === q.id
           return (

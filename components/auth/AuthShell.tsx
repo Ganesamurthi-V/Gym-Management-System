@@ -3,6 +3,7 @@
 import { AsciiBackdrop } from '@/components/ui/AsciiBackdrop'
 import { AuthWordmark } from '@/components/auth/AuthWordmark'
 import { useTheme } from '@/components/theme/ThemeProvider'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 /**
  * The shell every /auth page sits in: a white surface with the character grid running
@@ -177,6 +178,19 @@ export function AuthShell({ children, maxWidth = 400, footer, aside }: AuthShell
         intensity={1.099}
         contrast={2.501}
       />
+
+      {/*
+        Light / Dark / System, in the corner of every /auth page. The pages already follow the
+        theme (surface, ink and the grid colour all read it), so a visitor who has not signed
+        in yet, and so has no console header toggle, can still pick one. Same control and same
+        stored choice as the owner console, so the pick carries over after signing in.
+
+        z-30 puts it above the column (z-10) and the small-screen header (z-20); the corner
+        offsets leave the header's logo, at the opposite edge, untouched.
+      */}
+      <div className="absolute right-4 top-4 z-30 sm:right-6 sm:top-5">
+        <ThemeToggle />
+      </div>
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/*

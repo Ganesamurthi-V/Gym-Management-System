@@ -100,6 +100,10 @@ export const TOUR_ANCHORS = {
   programsSearch: 'programs-search',
   programsFilter: 'programs-filter',
 
+  // ── Reports ────────────────────────────────────────────────────────────────
+  reportsQuestions: 'reports-questions',
+  reportsPdf: 'reports-pdf',
+
   // ── Member App ─────────────────────────────────────────────────────────────
   memberAppOverview: 'member-app-overview',
   memberAppTabs: 'member-app-tabs',

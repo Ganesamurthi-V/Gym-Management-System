@@ -38,6 +38,7 @@ export const TOUR_CHAPTER_IDS = [
   'attendance',
   'inventory',
   'programs',
+  'reports',
   'member-app',
   'wrap-up',
 ] as const

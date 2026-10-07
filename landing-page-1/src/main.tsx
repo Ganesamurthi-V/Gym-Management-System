@@ -5,8 +5,10 @@ import App from './App';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { initAnalytics } from './lib/analytics';
 
 gsap.registerPlugin(ScrollTrigger);
+initAnalytics();
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Layout } from './components/Layout';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
+import { CookieBanner } from './components/CookieBanner';
 
 // Everything under the hero is a separate chunk, so the first download is only what the
 // opening screen needs. See BelowFold.tsx.
@@ -69,6 +70,7 @@ function App() {
           <BelowFoldFooter />
         </Suspense>
       )}
+      <CookieBanner />
     </Layout>
   );
 }

@@ -195,6 +195,13 @@ export function Footer() {
           <p className="text-center text-[12px] text-muted-foreground sm:text-left">
             © 2026 GymFlow. Built for gym owners, by fitness enthusiasts. Made in India.
           </p>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('gf:open-cookie-settings'))}
+            className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Cookie settings
+          </button>
           <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
             <span
               aria-hidden

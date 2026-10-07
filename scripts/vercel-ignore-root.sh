@@ -27,7 +27,7 @@ set -uo pipefail
 
 # Directories deployed as their own Vercel project, plus docs, which the Next
 # build never reads. Kept in sync with the "exclude" list in tsconfig.json.
-UNRELATED='^(landing-page|landing-page-1|gymflow-admin|gymflow-member|gymflow-mobile|docs)/'
+UNRELATED='^(landing-page|landing-page-1|gymflow-admin|gymflow-mobile|docs)/'
 
 # No reachable parent commit: the first commit on a branch, or a clone too
 # shallow to diff. Build rather than guess.

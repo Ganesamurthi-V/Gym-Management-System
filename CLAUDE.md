@@ -16,7 +16,6 @@ The repo root **is** the main Next.js app. Sibling folders are separate projects
 | `gymflow-admin/` | Super-admin panel (Next.js, own JWT session, service-role DB access) | `npm run dev` → :3001 |
 | `gymflow-mobile/` | Admin mobile app (bare React Native 0.75, FCM push) | `npm run android` |
 | `landing-page-1/` | Marketing site (Vite + React, oxlint) | `npm run dev` |
-| `gymflow-member/` | **Legacy.** Old standalone member app, merged into root under `app/m/` + `lib/member/`. Do not add features here. |
 | `_archived/` | Dead code kept for reference. Do not import from it. |
 
 Run commands from the folder of the project you are changing; each has its own `node_modules`.

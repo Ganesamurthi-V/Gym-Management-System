@@ -31,7 +31,6 @@ const SKIP_DIRS = new Set([
   '.vercel',
   '.husky',
   'gymflow-admin',
-  'gymflow-member',
   'gymflow-mobile',
   'landing-page',
   'demo',

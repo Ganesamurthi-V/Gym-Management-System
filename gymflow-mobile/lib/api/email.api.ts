@@ -131,6 +131,85 @@ export async function replyToEmailThread(
   }
 }
 
+/** Someone who has emailed support: the only people a new message can be written to. */
+export type EmailContact = { email: string; name: string | null; gymName: string | null; lastAt: string };
+
+/** Searches by name or address; an empty query lists the most recent correspondents. */
+export async function searchEmailContacts(q: string): Promise<EmailContact[]> {
+  try {
+    const { data } = await apiClient.get<{ contacts: EmailContact[] }>('/api/email/contacts', { params: { q } });
+    return data.contacts;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+/**
+ * Starts a new conversation with someone who has written to support. Same body shape as a
+ * reply (markup text, optional files), plus the recipient and subject. Returns the new thread.
+ */
+export async function sendNewEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  attachments?: LocalAttachment[];
+}): Promise<{ threadId: string }> {
+  const attachments = input.attachments ?? [];
+  try {
+    if (attachments.length === 0) {
+      const { data } = await apiClient.post<{ threadId: string }>('/api/email/compose', {
+        to: input.to, subject: input.subject, text: input.text,
+      });
+      return data;
+    }
+    const form = new FormData();
+    form.append('to', input.to);
+    form.append('subject', input.subject);
+    form.append('text', input.text);
+    for (const a of attachments) {
+      form.append('attachments', { uri: a.uri, name: a.name, type: a.type } as unknown as Blob);
+    }
+    const { data } = await apiClient.post<{ threadId: string }>('/api/email/compose', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 90_000,
+      transformRequest: d => d,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+/**
+ * Asks the AI to write an email from the admin's instruction. Nothing is sent or saved: the
+ * text goes into the editor. Pass `to` (a contact) or `threadId` (the conversation being
+ * answered) so the AI knows who it is writing to.
+ */
+export async function aiComposeEmail(input: {
+  instruction: string;
+  to?: string;
+  threadId?: string;
+}): Promise<{ subject: string; body: string }> {
+  try {
+    const { data } = await apiClient.post<{ subject: string; body: string }>('/api/email/ai-compose', input, {
+      timeout: 60_000,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+/** Deletes ONE message from a conversation. `threadDeleted` is true when it was the last one. */
+export async function deleteEmailMessage(id: string): Promise<{ threadDeleted: boolean }> {
+  try {
+    const { data } = await apiClient.delete<{ threadDeleted: boolean }>(`/api/email/messages/${id}`);
+    return data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
 /** Deletes the conversation and all its messages for good. */
 export async function deleteEmailThread(id: string): Promise<void> {
   try {

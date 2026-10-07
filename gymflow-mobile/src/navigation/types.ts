@@ -15,14 +15,16 @@ export type RootStackParamList = {
   EmailThread: { threadId: string };
   // Writing a reply: Gmail-style composer with formatting and attachments. `initialText`
   // carries an AI draft or the text of a failed reply; `retryMessageId` reuses the failed row.
+  // With no threadId it is a NEW message: the recipient is picked from people who have
+  // written to support, and the subject is typed.
   EmailCompose: {
-    threadId: string;
-    subject: string;
-    toName: string | null;
-    toEmail: string;
+    threadId?: string;
+    subject?: string;
+    toName?: string | null;
+    toEmail?: string;
     initialText?: string;
     retryMessageId?: string;
-  };
+  } | undefined;
 };
 
 // Bottom tabs

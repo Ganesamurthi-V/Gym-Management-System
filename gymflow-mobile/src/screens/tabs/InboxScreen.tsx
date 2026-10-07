@@ -5,9 +5,9 @@ import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { CacheKeys, invalidate, peek, write } from '@/lib/cache';
 import { useCachedQuery } from '@/lib/use-cached-query';
-import { useEmailRefresher, useOpenEmailThreads } from '@/lib/email-sync';
+import { refreshEmailInbox, useEmailRefresher, useOpenEmailThreads } from '@/lib/email-sync';
 import {
-  fetchEmailThreads, deleteEmailThread, deleteAllEmailThreads,
+  fetchEmailThreads, deleteEmailThread, deleteAllEmailThreads, setEmailThreadStatus,
   type EmailThread, type EmailThreadStatus, type EmailThreadsResponse,
 } from '@/lib/api';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -90,6 +90,29 @@ export default function InboxScreen({ navigation }: Props) {
     });
   }, [status, current]);
 
+  // Swipe left: archive (from Inbox) or move back to the inbox (from Archived). The row has
+  // already slid away, so it leaves this list at once; the other list is marked stale so it
+  // shows the thread the next time it is opened.
+  const onMoveOne = useCallback((t: EmailThread) => {
+    const target: EmailThreadStatus = status === 'open' ? 'archived' : 'open';
+    const key = CacheKeys.emailThreads(status);
+    const cur = peek<EmailThreadsResponse>(key)?.data;
+    if (cur) {
+      write<EmailThreadsResponse>(key, {
+        ...cur,
+        threads: cur.threads.filter(x => x.id !== t.id),
+        unreadTotal: status === 'open' ? Math.max(0, cur.unreadTotal - t.unread_count) : cur.unreadTotal,
+      });
+    }
+    setExtra(prev => prev.filter(x => x.id !== t.id));
+    setEmailThreadStatus(t.id, target)
+      .then(() => { invalidate(CacheKeys.emailThreads(target)); void refreshEmailInbox(); })
+      .catch(e => {
+        Alert.alert('Could not move', e?.message ?? 'Please try again.');
+        void current.refresh();
+      });
+  }, [status, current]);
+
   const onDeleteAll = useCallback(() => {
     const label = status === 'open' ? 'Inbox' : 'Archived';
     Alert.alert(
@@ -139,7 +162,7 @@ export default function InboxScreen({ navigation }: Props) {
 
       {threads.length > 0 && (
         <View style={styles.toolbar}>
-          <Text style={styles.hint}>Swipe right to delete</Text>
+          <Text style={styles.hint}>Swipe right to delete · left to {status === 'open' ? 'archive' : 'restore'}</Text>
           <TouchableOpacity style={styles.deleteAllBtn} onPress={onDeleteAll} activeOpacity={0.75} accessibilityRole="button">
             <Feather name="trash-2" size={13} color={Colors.red} />
             <Text style={styles.deleteAllText}>Delete all</Text>
@@ -155,7 +178,13 @@ export default function InboxScreen({ navigation }: Props) {
         onEndReached={loadMore}
         onEndReachedThreshold={0.4}
         renderItem={({ item }) => (
-          <SwipeToDelete onDelete={() => onDeleteOne(item)} radius={0}>
+          <SwipeToDelete
+            onDelete={() => onDeleteOne(item)}
+            onSwipeLeft={() => onMoveOne(item)}
+            leftLabel={status === 'open' ? 'Archive' : 'Move to inbox'}
+            leftIcon={status === 'open' ? 'archive' : 'inbox'}
+            radius={0}
+          >
             <EmailRow thread={item} onPress={() => navigation.navigate('EmailThread', { threadId: item.id })} />
           </SwipeToDelete>
         )}
@@ -174,12 +203,32 @@ export default function InboxScreen({ navigation }: Props) {
           )
         }
       />
+
+      {/* Gmail's Compose button: write a new email to someone who has written to support. */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('EmailCompose')}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Write a new email"
+      >
+        <Feather name="edit-2" size={18} color="#fff" />
+        <Text style={styles.fabText}>Compose</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
+  fab: {
+    position: 'absolute', right: Spacing.lg, bottom: Spacing.xl,
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    paddingHorizontal: Spacing.xl, height: 52, borderRadius: Radius.full,
+    backgroundColor: Colors.indigo,
+    elevation: 6, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+  },
+  fabText: { fontSize: 15, fontWeight: '800', color: '#fff' },
   tabs: {
     flexDirection: 'row', margin: Spacing.lg, marginBottom: 0, padding: 3,
     backgroundColor: Colors.bgCard, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.bgCardBorder,
@@ -192,7 +241,7 @@ const styles = StyleSheet.create({
   hint: { fontSize: 11, color: Colors.textMuted },
   deleteAllBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
   deleteAllText: { fontSize: 12, fontWeight: '700', color: Colors.red },
-  list: { paddingTop: Spacing.sm, paddingBottom: Spacing.xxxl },
+  list: { paddingTop: Spacing.sm, paddingBottom: 96 },
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: Spacing.xxxl, gap: Spacing.sm },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary, marginTop: Spacing.sm },
   emptyText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 },

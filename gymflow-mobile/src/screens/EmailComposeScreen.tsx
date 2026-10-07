@@ -9,7 +9,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { refreshEmailInbox } from '@/lib/email-sync';
-import { replyToEmailThread, type LocalAttachment } from '@/lib/api';
+import {
+  replyToEmailThread, sendNewEmail, searchEmailContacts, aiComposeEmail,
+  type LocalAttachment, type EmailContact,
+} from '@/lib/api';
 import {
   toggleWrap, toggleList, insertLink, normalizeUrl, type Selection,
 } from '@/lib/email-markup';
@@ -27,6 +30,13 @@ const MAX_FILES = 5;
 const MAX_FILE_BYTES = 3 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 4 * 1024 * 1024;
 
+const AI_IDEAS = [
+  'Invite them to a free demo this week',
+  'Follow up on their pricing question',
+  'Thank them for their feedback',
+  'Tell them their issue is fixed',
+];
+
 const fmtSize = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 function fileIcon(type: string): string {
@@ -36,17 +46,29 @@ function fileIcon(type: string): string {
 }
 
 /**
- * Writing a reply, laid out like Gmail's composer: To and Subject at the top, the message
- * below, files attached as chips, and a formatting bar (bold, italic, underline, bullets,
- * numbers, link) above the keyboard. Send and Attach live in the header.
+ * Writing an email, laid out like Gmail's composer. Two modes share this screen:
  *
- * Formatting is written as light markers around the text (see lib/email-markup.ts); Preview
- * shows them as real bold and lists, and the server turns the same markers into the HTML
- * email the customer receives.
+ *   Reply  (a threadId is given): To and Subject are fixed.
+ *   New    (no threadId): To is a searchable list of people who have already emailed support,
+ *          and the subject is typed.
+ *
+ * Below the fields: the message, files attached as chips, and a formatting bar (bold,
+ * italic, underline, bullets, numbers, link) above the keyboard. "Write with AI" lets the
+ * admin describe the email and have it written into the editor, to read and change before
+ * sending. Send and Attach live in the header.
+ *
+ * Formatting is written as light markers (see lib/email-markup.ts); Preview shows them as
+ * real bold and lists, and the server turns the same markers into the HTML email.
  */
 export default function EmailComposeScreen({ route, navigation }: Props) {
-  const { threadId, subject, toName, toEmail, initialText = '', retryMessageId } = route.params;
+  const p = route.params ?? {};
+  const { threadId, initialText = '', retryMessageId } = p;
+  const isNew = !threadId;
 
+  const [contact, setContact] = useState<EmailContact | null>(
+    p.toEmail ? { email: p.toEmail, name: p.toName ?? null, gymName: null, lastAt: '' } : null,
+  );
+  const [subject, setSubject] = useState(p.subject ?? '');
   const [body, setBody] = useState(initialText);
   const [sel, setSel] = useState<Selection>({ start: initialText.length, end: initialText.length });
   // Set only when a toolbar button moves the cursor; otherwise the box manages its own.
@@ -57,18 +79,24 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkLabel, setLinkLabel] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
   const sentRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
 
-  const canSend = body.trim().length > 0 && !sending;
-  const dirty = body.trim() !== initialText.trim() || files.length > 0;
+  const canSend =
+    body.trim().length > 0 && !sending && (!isNew || (!!contact && subject.trim().length > 0));
+  const dirty = isNew
+    ? !!contact || subject.trim() !== '' || body.trim() !== '' || files.length > 0
+    : body.trim() !== initialText.trim() || files.length > 0;
 
   // ── leaving with unsent work asks first ────────────────────────────────────────────────
   useEffect(() => {
     return navigation.addListener('beforeRemove', e => {
       if (sentRef.current || !dirty || sending) return;
       e.preventDefault();
-      Alert.alert('Discard this reply?', 'What you wrote and attached will be lost.', [
+      Alert.alert('Discard this email?', 'What you wrote and attached will be lost.', [
         { text: 'Keep editing', style: 'cancel' },
         { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
       ]);
@@ -113,18 +141,18 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
         copyTo: 'cachesDirectory',
       });
       const next = [...files];
-      for (const p of picked) {
-        const uri = p.fileCopyUri ?? p.uri;
-        const size = p.size ?? 0;
-        const name = p.name ?? 'attachment';
+      for (const f of picked) {
+        const uri = f.fileCopyUri ?? f.uri;
+        const size = f.size ?? 0;
+        const name = f.name ?? 'attachment';
         if (next.length >= MAX_FILES) { Alert.alert('Too many files', `You can attach up to ${MAX_FILES} files.`); break; }
         if (size > MAX_FILE_BYTES) { Alert.alert('File too large', `${name} is ${fmtSize(size)}. Each file can be up to 3 MB.`); continue; }
-        if (next.reduce((n, f) => n + f.size, 0) + size > MAX_TOTAL_BYTES) {
+        if (next.reduce((n, x) => n + x.size, 0) + size > MAX_TOTAL_BYTES) {
           Alert.alert('Too much attached', 'Attachments together can be up to 4 MB.');
           break;
         }
-        if (next.some(f => f.uri === uri)) continue;
-        next.push({ uri, name, type: p.type ?? 'application/octet-stream', size });
+        if (next.some(x => x.uri === uri)) continue;
+        next.push({ uri, name, type: f.type ?? 'application/octet-stream', size });
       }
       setFiles(next);
     } catch (e) {
@@ -137,7 +165,11 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
     if (!canSend) return;
     setSending(true);
     try {
-      await replyToEmailThread(threadId, body.trim(), retryMessageId, files);
+      if (isNew) {
+        await sendNewEmail({ to: contact!.email, subject: subject.trim(), text: body.trim(), attachments: files });
+      } else {
+        await replyToEmailThread(threadId!, body.trim(), retryMessageId, files);
+      }
       sentRef.current = true;
       void refreshEmailInbox();
       navigation.goBack();
@@ -147,11 +179,11 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
     } finally {
       setSending(false);
     }
-  }, [canSend, threadId, body, retryMessageId, files, navigation]);
+  }, [canSend, isNew, contact, subject, body, threadId, retryMessageId, files, navigation]);
 
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: 'Reply',
+      headerTitle: isNew ? 'New message' : 'Reply',
       headerRight: () => (
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => { void attach(); }} hitSlop={10} accessibilityLabel="Attach files" disabled={sending}>
@@ -165,28 +197,90 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, attach, send, canSend, sending]);
+  }, [navigation, isNew, attach, send, canSend, sending]);
 
-  const who = toName || toEmail;
+  // ── write with AI ───────────────────────────────────────────────────────────────────────
+  const runAi = useCallback(async () => {
+    const instruction = aiText.trim();
+    if (instruction.length < 3 || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const result = await aiComposeEmail({ instruction, to: contact?.email, threadId });
+      const fill = () => {
+        if (isNew && !subject.trim() && result.subject) setSubject(result.subject);
+        setBody(result.body);
+        setSel({ start: result.body.length, end: result.body.length });
+        setPreview(false);
+      };
+      setAiOpen(false);
+      if (body.trim()) {
+        Alert.alert('Replace what you wrote?', 'The AI email will take the place of the current text.', [
+          { text: 'Keep mine', style: 'cancel' },
+          { text: 'Replace', onPress: fill },
+        ]);
+      } else {
+        fill();
+      }
+    } catch (e: any) {
+      Alert.alert('The AI could not write it', e?.message ?? 'Please try again.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [aiText, aiBusy, contact, threadId, isNew, subject, body]);
+
+  const who = contact ? (contact.name || contact.email) : '';
 
   return (
     <KeyboardSafeView style={styles.root} safeBottom>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
-        {/* To / From / Subject, as Gmail lays them out */}
+        {/* From / To / Subject, as Gmail lays them out */}
         <View style={styles.fieldRow}>
           <Text style={styles.fieldLabel}>From</Text>
           <Text style={styles.fieldValue} numberOfLines={1}>GymFlow Support</Text>
         </View>
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>To</Text>
-          <View style={styles.chip}>
-            <Avatar name={who} seed={toEmail} size={22} />
-            <Text style={styles.chipText} numberOfLines={1}>{who}</Text>
+
+        {isNew ? (
+          <ContactPicker value={contact} onChange={setContact} disabled={sending} />
+        ) : (
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>To</Text>
+            <View style={styles.chip}>
+              <Avatar name={who} seed={contact?.email ?? ''} size={22} />
+              <Text style={styles.chipText} numberOfLines={1}>{who}</Text>
+            </View>
           </View>
-        </View>
+        )}
+
         <View style={styles.fieldRow}>
           <Text style={styles.fieldLabel}>Subject</Text>
-          <Text style={styles.fieldValue} numberOfLines={2}>{subject}</Text>
+          {isNew ? (
+            <TextInput
+              style={styles.subjectInput}
+              value={subject}
+              onChangeText={setSubject}
+              placeholder="Subject"
+              placeholderTextColor={Colors.textMuted}
+              maxLength={200}
+              editable={!sending}
+              returnKeyType="next"
+            />
+          ) : (
+            <Text style={styles.fieldValue} numberOfLines={2}>{p.subject}</Text>
+          )}
+        </View>
+
+        <View style={styles.aiRow}>
+          <TouchableOpacity
+            style={styles.aiPill}
+            onPress={() => setAiOpen(true)}
+            activeOpacity={0.8}
+            disabled={sending}
+            accessibilityRole="button"
+            accessibilityLabel="Write with AI"
+          >
+            <Feather name="cpu" size={13} color={Colors.purple} />
+            <Text style={styles.aiPillText}>Write with AI</Text>
+          </TouchableOpacity>
         </View>
 
         {preview ? (
@@ -207,7 +301,6 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
             maxLength={MAX_CHARS}
             editable={!sending}
             textAlignVertical="top"
-            autoFocus={!initialText}
           />
         )}
 
@@ -256,6 +349,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       </View>
 
+      {/* Insert link */}
       <Modal visible={linkOpen} transparent animationType="fade" onRequestClose={() => setLinkOpen(false)}>
         <KeyboardSafeView style={styles.overlay}>
           <View style={styles.dialog}>
@@ -291,7 +385,171 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
           </View>
         </KeyboardSafeView>
       </Modal>
+
+      {/* Write with AI */}
+      <Modal visible={aiOpen} transparent animationType="slide" onRequestClose={() => !aiBusy && setAiOpen(false)}>
+        <KeyboardSafeView style={styles.sheetOverlay} safeBottom>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetTitleRow}>
+              <Feather name="cpu" size={16} color={Colors.purple} />
+              <Text style={styles.sheetTitle}>Write with AI</Text>
+            </View>
+            <Text style={styles.sheetSub}>
+              Say what the email should do. The AI writes it into the editor, and you can change anything before sending.
+            </Text>
+
+            <TextInput
+              style={styles.aiInput}
+              value={aiText}
+              onChangeText={setAiText}
+              placeholder="e.g. Invite him for a free demo this week and ask what time suits him"
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              maxLength={1000}
+              editable={!aiBusy}
+              textAlignVertical="top"
+              autoFocus
+            />
+
+            <View style={styles.ideas}>
+              {AI_IDEAS.map(idea => (
+                <TouchableOpacity key={idea} style={styles.idea} onPress={() => setAiText(idea)} disabled={aiBusy} activeOpacity={0.7}>
+                  <Text style={styles.ideaText}>{idea}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.dialogActions}>
+              <TouchableOpacity onPress={() => setAiOpen(false)} style={styles.dialogCancel} disabled={aiBusy}>
+                <Text style={styles.dialogCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { void runAi(); }}
+                style={[styles.aiWrite, (aiText.trim().length < 3 || aiBusy) && { opacity: 0.45 }]}
+                disabled={aiText.trim().length < 3 || aiBusy}
+                accessibilityRole="button"
+              >
+                {aiBusy ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="zap" size={15} color="#fff" />}
+                <Text style={styles.aiWriteText}>{aiBusy ? 'Writing…' : 'Write email'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardSafeView>
+      </Modal>
     </KeyboardSafeView>
+  );
+}
+
+/**
+ * The "To" field of a new message: a searchable dropdown of people who have emailed support,
+ * found by name or address. Opening it lists the most recent correspondents; typing narrows
+ * the list. The list comes from the server, which is also what refuses any other address.
+ */
+function ContactPicker({
+  value, onChange, disabled,
+}: { value: EmailContact | null; onChange: (c: EmailContact | null) => void; disabled?: boolean }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<EmailContact[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const ticket = useRef(0);
+
+  // Search as the admin types, a moment after the last keystroke. An older, slower answer
+  // must never overwrite a newer one, hence the ticket.
+  useEffect(() => {
+    if (!open) return;
+    const mine = ++ticket.current;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const found = await searchEmailContacts(query.trim());
+        if (mine !== ticket.current) return;
+        setResults(found);
+        setFailed(null);
+      } catch (e: any) {
+        if (mine === ticket.current) setFailed(e?.message ?? 'Could not load contacts');
+      } finally {
+        if (mine === ticket.current) setLoading(false);
+      }
+    }, query ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [query, open]);
+
+  const pick = (c: EmailContact) => {
+    onChange(c);
+    setOpen(false);
+    setQuery('');
+  };
+
+  if (value) {
+    const name = value.name || value.email;
+    return (
+      <View style={styles.fieldRow}>
+        <Text style={styles.fieldLabel}>To</Text>
+        <View style={styles.chip}>
+          <Avatar name={name} seed={value.email} size={22} />
+          <Text style={styles.chipText} numberOfLines={1}>{name}</Text>
+          <TouchableOpacity onPress={() => onChange(null)} hitSlop={10} disabled={disabled} accessibilityLabel="Change recipient">
+            <Feather name="x" size={15} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.fieldLabel}>To</Text>
+        <TextInput
+          style={styles.subjectInput}
+          value={query}
+          onChangeText={setQuery}
+          onFocus={() => setOpen(true)}
+          placeholder="Search by name or email"
+          placeholderTextColor={Colors.textMuted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!disabled}
+        />
+        {loading && <ActivityIndicator size="small" color={Colors.textMuted} />}
+        {open && !loading && (
+          <TouchableOpacity onPress={() => { setOpen(false); setQuery(''); }} hitSlop={10} accessibilityLabel="Close list">
+            <Feather name="chevron-up" size={18} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {open && (
+        <View style={styles.dropdown}>
+          {failed ? (
+            <Text style={styles.dropdownEmpty}>{failed}</Text>
+          ) : results.length === 0 && !loading ? (
+            <Text style={styles.dropdownEmpty}>
+              {query ? 'No one who has emailed support matches that.' : 'No one has emailed support yet.'}
+            </Text>
+          ) : (
+            results.map(c => (
+              <TouchableOpacity key={c.email} style={styles.option} onPress={() => pick(c)} activeOpacity={0.7}>
+                <Avatar name={c.name || c.email} seed={c.email} size={34} />
+                <View style={styles.optionText}>
+                  <Text style={styles.optionName} numberOfLines={1}>{c.name || c.email}</Text>
+                  {c.name ? <Text style={styles.optionEmail} numberOfLines={1}>{c.email}</Text> : null}
+                </View>
+                {c.gymName ? (
+                  <View style={styles.optionGym}>
+                    <Feather name="home" size={10} color={Colors.sky} />
+                    <Text style={styles.optionGymText} numberOfLines={1}>{c.gymName}</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -322,18 +580,44 @@ const styles = StyleSheet.create({
   },
   fieldLabel: { width: 56, fontSize: 14, color: Colors.textMuted },
   fieldValue: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  subjectInput: { flex: 1, fontSize: 15, color: Colors.textPrimary, paddingVertical: 4 },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%',
+    flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1,
     paddingVertical: 3, paddingLeft: 3, paddingRight: 12, borderRadius: Radius.full,
     backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.bgCardBorder,
   },
   chipText: { flexShrink: 1, fontSize: 13, color: Colors.textPrimary },
 
+  dropdown: {
+    marginHorizontal: Spacing.lg, marginVertical: Spacing.sm, borderRadius: Radius.md,
+    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.bgCardBorder, overflow: 'hidden',
+  },
+  dropdownEmpty: { padding: Spacing.lg, fontSize: 13, color: Colors.textMuted },
+  option: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.bgCardBorder,
+  },
+  optionText: { flex: 1 },
+  optionName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  optionEmail: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
+  optionGym: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: 110,
+    paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full, backgroundColor: Colors.skyBg,
+  },
+  optionGymText: { fontSize: 10, fontWeight: '700', color: Colors.sky },
+
+  aiRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  aiPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.md, height: 30,
+    borderRadius: Radius.full, backgroundColor: Colors.purpleBg, borderWidth: 1, borderColor: 'rgba(192,132,252,0.3)',
+  },
+  aiPillText: { fontSize: 12, fontWeight: '800', color: Colors.purple },
+
   input: {
-    minHeight: 260, paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.lg,
+    minHeight: 240, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.lg,
     fontSize: 16, lineHeight: 23, color: Colors.textPrimary,
   },
-  previewBox: { minHeight: 260, padding: Spacing.lg },
+  previewBox: { minHeight: 240, padding: Spacing.lg },
   placeholder: { fontSize: 14, color: Colors.textMuted },
 
   files: { gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
@@ -367,9 +651,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.bgCardBorder, borderRadius: Radius.md,
     paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2, color: Colors.textPrimary, fontSize: 15,
   },
-  dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.md, marginTop: Spacing.lg },
+  dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.lg },
   dialogCancel: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 2 },
   dialogCancelText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
   dialogOk: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm + 2, borderRadius: Radius.full, backgroundColor: Colors.indigo },
   dialogOkText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: Colors.bgCard, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    padding: Spacing.xl, gap: Spacing.md, borderWidth: 1, borderColor: Colors.bgCardBorder,
+  },
+  sheetHandle: { alignSelf: 'center', width: 38, height: 4, borderRadius: 2, backgroundColor: Colors.bgCardBorder, marginBottom: Spacing.xs },
+  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sheetTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
+  sheetSub: { fontSize: 13, lineHeight: 19, color: Colors.textSecondary },
+  aiInput: {
+    minHeight: 96, maxHeight: 160, backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.bgCardBorder,
+    borderRadius: Radius.md, padding: Spacing.md, color: Colors.textPrimary, fontSize: 15, lineHeight: 21,
+  },
+  ideas: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  idea: { paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.bgCardBorder },
+  ideaText: { fontSize: 12, color: Colors.textSecondary },
+  aiWrite: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.xl, height: 42,
+    borderRadius: Radius.full, backgroundColor: '#9333ea',
+  },
+  aiWriteText: { fontSize: 14, fontWeight: '800', color: '#fff' },
 });

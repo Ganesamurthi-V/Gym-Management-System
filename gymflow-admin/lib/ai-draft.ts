@@ -28,7 +28,7 @@ import {
 /** Whole-request ceiling: half of Groq's 8K tokens per minute, so two drafts fit a minute. */
 const REQUEST_BUDGET = 4_000
 /** Covers the model's hidden reasoning plus the reply. Reasoning effort is set low below. */
-const MAX_COMPLETION = 800
+export const MAX_COMPLETION = 800
 /** Never feed the model more than this of one email, whatever the budget allows. */
 const MAX_EMAIL_CHARS = 4_000
 const MIN_EMAIL_CHARS = 400
@@ -38,7 +38,7 @@ const CALL_TIMEOUT_MS = 15_000
 /** A rate-limited model is retried only if it says the wait is this short. */
 const MAX_RETRY_WAIT_SEC = 8
 
-const DEFAULT_MODELS = 'openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b'
+export const DEFAULT_MODELS = 'openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b'
 const DEFAULT_BASE_URL = 'https://api.groq.com/openai/v1'
 
 /** Links a draft may contain. Anything else is removed, whatever the model was talked into. */
@@ -161,7 +161,7 @@ async function gymNamesForThread(
   return (owned ?? []).map(g => (g.name as string | null)?.trim() ?? '').filter(Boolean)
 }
 
-function oneLine(s: string, max: number): string {
+export function oneLine(s: string, max: number): string {
   const flat = s.replace(/\s+/g, ' ').trim()
   return flat.length > max ? `${flat.slice(0, max)}...` : flat
 }
@@ -248,14 +248,14 @@ function spaceLikeTemplate(text: string): string {
 }
 
 // ── The model call ────────────────────────────────────────────────────────────────────────
-type CallResult =
+export type CallResult =
   | { kind: 'ok'; text: string; usedTokens: number | null; remainingTokens: number | null }
   | { kind: 'rate'; retryAfterSec: number | null }
   | { kind: 'toolarge' }
   | { kind: 'badparam' }
   | { kind: 'error'; message: string }
 
-async function callModel(
+export async function callModel(
   model: string,
   messages: { role: string; content: string }[],
   withReasoningParam: boolean,

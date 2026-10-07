@@ -14,15 +14,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { CacheKeys } from '@/lib/cache';
+import { CacheKeys, invalidate, peek, write } from '@/lib/cache';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { refreshEmailInbox, useEmailRefresher } from '@/lib/email-sync';
 import {
-  fetchEmailThread, setEmailThreadStatus, fetchEmailAttachmentLink,
+  fetchEmailThread, setEmailThreadStatus, fetchEmailAttachmentLink, deleteEmailMessage,
   regenerateEmailDraft, dismissEmailDraft,
   type EmailAttachment, type EmailMessage, type EmailThreadDetail,
 } from '@/lib/api';
 import { Avatar } from '@/components/EmailRow';
+import { SwipeToDelete } from '@/components/SwipeToDelete';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmailThread'>;
@@ -267,6 +268,38 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     });
   }, [thread, navigation, refresh]);
 
+  // Swipe left on the conversation: archive it (or restore it from Archived).
+  const swipeArchive = useCallback(async () => {
+    if (!thread) return;
+    const archived = thread.status === 'archived';
+    try {
+      await setEmailThreadStatus(thread.id, archived ? 'open' : 'archived');
+      invalidate(CacheKeys.emailThreads(archived ? 'archived' : 'open'));
+      void refreshEmailInbox();
+      if (!archived) navigation.goBack();
+      else await refresh();
+    } catch (e: any) {
+      Alert.alert('Could not update', e?.message ?? 'Please try again.');
+    }
+  }, [thread, navigation, refresh]);
+
+  // Swipe right on a message: delete THAT message only, straight away. The card has already
+  // slid out, so it is dropped from the cached conversation and the server is told. When it
+  // was the last message the conversation is empty, so the screen closes.
+  const swipeDelete = useCallback((messageId: string) => {
+    const cur = peek<EmailThreadDetail>(CacheKeys.emailThread(threadId))?.data;
+    const remaining = cur ? cur.messages.filter(m => m.id !== messageId) : [];
+    if (cur) write<EmailThreadDetail>(CacheKeys.emailThread(threadId), { ...cur, messages: remaining });
+    if (cur && remaining.length === 0) navigation.goBack();
+
+    deleteEmailMessage(messageId)
+      .then(() => { invalidate(CacheKeys.emailThreads('archived')); void refreshEmailInbox(); })
+      .catch(e => {
+        Alert.alert('Could not delete', e?.message ?? 'Please try again.');
+        void refresh();
+      });
+  }, [threadId, navigation, refresh]);
+
   const openCompose = useCallback((opts?: { initialText?: string; retryMessageId?: string }) => {
     if (!thread) return;
     navigation.navigate('EmailCompose', {
@@ -321,6 +354,9 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
         ListHeaderComponent={
           <View style={styles.subjectBlock}>
             <Text style={styles.subject}>{thread?.subject}</Text>
+            <Text style={styles.swipeHint}>
+              Swipe a message right to delete it · left to {thread?.status === 'archived' ? 'restore' : 'archive'} the conversation
+            </Text>
             <View style={styles.chips}>
               <View style={styles.chip}>
                 <Text style={styles.chipText}>{thread?.status === 'archived' ? 'Archived' : 'Inbox'}</Text>
@@ -335,13 +371,23 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
           </View>
         }
         renderItem={({ item }) => (
-          <MessageCard
-            message={item}
-            expanded={isExpanded(item.id)}
-            onToggle={() => toggle(item.id)}
-            onEditRetry={m => openCompose({ initialText: m.body_text ?? '', retryMessageId: m.id })}
-            onOpenAttachment={openAttachment}
-          />
+          <SwipeToDelete
+            mode="dismiss"
+            leftMode="action"
+            radius={0}
+            onDelete={() => swipeDelete(item.id)}
+            onSwipeLeft={() => { void swipeArchive(); }}
+            leftLabel={thread?.status === 'archived' ? 'Move to inbox' : 'Archive'}
+            leftIcon={thread?.status === 'archived' ? 'inbox' : 'archive'}
+          >
+            <MessageCard
+              message={item}
+              expanded={isExpanded(item.id)}
+              onToggle={() => toggle(item.id)}
+              onEditRetry={m => openCompose({ initialText: m.body_text ?? '', retryMessageId: m.id })}
+              onOpenAttachment={openAttachment}
+            />
+          </SwipeToDelete>
         )}
       />
 
@@ -408,6 +454,7 @@ const styles = StyleSheet.create({
 
   subjectBlock: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.lg, gap: Spacing.sm },
   subject: { fontSize: 21, lineHeight: 28, fontWeight: '700', color: Colors.textPrimary },
+  swipeHint: { fontSize: 11, color: Colors.textMuted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 200,

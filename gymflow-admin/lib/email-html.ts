@@ -37,8 +37,8 @@ export function renderReplyHtml(text: string): string {
       <td align="center" style="padding:32px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:20px;border:1px solid #E6EDFF;">
           <tr>
-            <td align="left" style="padding:32px 40px 8px;">
-              <img src="${escapeHtml(logo)}" width="180" alt="GymFlow" style="display:block;border:0;max-width:180px;width:100%;height:auto;">
+            <td align="center" style="padding:36px 40px 12px;text-align:center;">
+              <img src="${escapeHtml(logo)}" width="220" alt="GymFlow" style="display:block;margin:0 auto;border:0;max-width:220px;width:100%;height:auto;">
             </td>
           </tr>
           <tr>

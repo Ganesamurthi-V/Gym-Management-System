@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers static assets. Without not_found_handling the platform answers every
+  // unknown path with index.html and a 200 (a "soft 404" that Search Console reports and that
+  // wastes crawl budget). "404-page" serves dist/404.html with a real 404 status instead.
+  "name": "gymflow-landing-page",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  }
+}

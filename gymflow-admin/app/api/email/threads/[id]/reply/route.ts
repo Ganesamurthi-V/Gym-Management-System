@@ -1,3 +1,4 @@
+import { renderReplyHtml } from '@/lib/email-html'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { verifyRequestAuth } from '@/lib/auth'
@@ -18,9 +19,6 @@ const bodySchema = z.object({
   // of leaving a failed duplicate behind.
   retryMessageId: z.string().uuid().optional(),
 })
-
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 /**
  * POST /api/email/threads/[id]/reply  { text }
@@ -139,7 +137,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         to: [thread.counterparty_email],
         subject,
         text,
-        html: `<div style="white-space:pre-wrap;font-family:system-ui,sans-serif;font-size:14px;line-height:1.5">${escapeHtml(text)}</div>`,
+        html: renderReplyHtml(text),
         headers: {
           'Message-ID': messageId,
           ...(inReplyTo && { 'In-Reply-To': inReplyTo }),

@@ -3,8 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Alert,
   TouchableOpacity,
@@ -17,6 +15,7 @@ import { loginWithPassword } from '@/lib/api';
 import { AdminInput } from '@/components/AdminInput';
 import { AdminButton } from '@/components/AdminButton';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { KeyboardSafeView } from '@/components/KeyboardSafeView';
 
 type Props = {
   onLoginSuccess: () => void;
@@ -42,10 +41,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardSafeView style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -117,7 +113,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
           </Text>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }
 

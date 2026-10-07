@@ -62,3 +62,21 @@ export async function unregisterPushToken(token: string): Promise<void> {
     throw new Error(parseApiError(error));
   }
 }
+
+/** Deletes one notification. */
+export async function deleteNotification(id: string): Promise<void> {
+  try {
+    await apiClient.delete('/api/notifications', { data: { id } });
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+/** Deletes every notification. */
+export async function deleteAllNotifications(): Promise<void> {
+  try {
+    await apiClient.delete('/api/notifications', { data: { all: true } });
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}

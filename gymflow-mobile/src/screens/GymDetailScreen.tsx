@@ -20,6 +20,7 @@ import { CacheKeys, invalidate } from '@/lib/cache';
 import { Badge } from '@/components/Badge';
 import { AdminButton } from '@/components/AdminButton';
 import type { RootStackParamList } from '../navigation/types';
+import { KeyboardSafeView } from '@/components/KeyboardSafeView';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GymDetail'>;
 type GymDetail = Awaited<ReturnType<typeof fetchGymDetail>>;
@@ -143,6 +144,7 @@ export default function GymDetailScreen({ route, navigation }: Props) {
   });
 
   return (
+    <KeyboardSafeView style={styles.root}>
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
@@ -271,6 +273,7 @@ export default function GymDetailScreen({ route, navigation }: Props) {
         />
       </View>
     </ScrollView>
+    </KeyboardSafeView>
   );
 }
 

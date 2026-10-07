@@ -27,6 +27,7 @@ import GymDetailScreen from './screens/GymDetailScreen';
 import GymSubscriptionScreen from './screens/GymSubscriptionScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import EmailThreadScreen from './screens/EmailThreadScreen';
+import EmailComposeScreen from './screens/EmailComposeScreen';
 
 import type { RootStackParamList, TabParamList } from './navigation/types';
 
@@ -307,6 +308,20 @@ export default function App() {
                   headerTitle: 'Conversation',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="EmailCompose"
+                component={EmailComposeScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: 'Reply',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                  // A sheet, as in Gmail: slides up over the conversation it answers.
+                  animation: 'slide_from_bottom',
                 }}
               />
               <Stack.Screen

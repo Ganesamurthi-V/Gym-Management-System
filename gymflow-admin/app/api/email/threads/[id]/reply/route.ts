@@ -1,27 +1,22 @@
-import { renderReplyHtml } from '@/lib/email-html'
+import { renderReplyHtmlFromBody } from '@/lib/email-html'
+import { markupToHtml, markupToPlain } from '@/lib/email-format'
+import { readInput } from '@/lib/email-reply-input'
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getResend, getSupportMailbox } from '@/lib/email'
-import { newMessageId, normalizeSubject } from '@/lib/email-threading'
+import { newMessageId, normalizeSubject, stripQuotedReply } from '@/lib/email-threading'
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { sanitizeUUID } from '@/lib/sanitize'
 import { apiLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
-const MAX_REPLY_CHARS = 10_000
-
-const bodySchema = z.object({
-  text: z.string().trim().min(1, 'Write a reply first').max(MAX_REPLY_CHARS),
-  // Set when the app retries a reply that failed to send, so it reuses that row instead
-  // of leaving a failed duplicate behind.
-  retryMessageId: z.string().uuid().optional(),
-})
-
 /**
- * POST /api/email/threads/[id]/reply  { text }
+ * POST /api/email/threads/[id]/reply
+ *   JSON { text, retryMessageId? }, or multipart form data with the same fields plus files
+ *   under "attachments" (up to 5, 3 MB each, 4 MB together). `text` uses the editor's markup
+ *   (**bold**, _italic_, ++underline++, [link](url), lists), see lib/email-format.ts.
  *
  * Sends the admin's reply and stores it in the thread. Two rules are fixed here so the
  * app cannot bend them:
@@ -46,12 +41,18 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (limited) { log.summary(429); return limited }
 
   const threadId = sanitizeUUID((await props.params).id)
-  const parsed = bodySchema.safeParse(await req.json().catch(() => null))
-  if (!threadId || !parsed.success) {
+  const input = await readInput(req)
+  if (!threadId || !input.ok) {
     log.summary(400)
-    return NextResponse.json({ error: parsed.success ? 'Invalid thread id' : parsed.error.issues[0].message }, { status: 400 })
+    return NextResponse.json({ error: input.ok ? 'Invalid thread id' : input.error }, { status: 400 })
   }
-  const { text, retryMessageId } = parsed.data
+  const { retryMessageId, files } = input
+  // The editor's markup, turned into the three forms it is needed in.
+  const bodyPlain = markupToPlain(input.text)
+  const bodyHtml = markupToHtml(input.text)
+  const attachmentMeta = files.map(f => ({
+    id: crypto.randomUUID(), filename: f.filename, content_type: f.contentType, size: f.buffer.length,
+  }))
 
   try {
     const db = createAdminClient()
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     const { data: history } = await db
       .from('email_messages')
-      .select('id, direction, message_id, created_at, status')
+      .select('id, direction, message_id, created_at, status, body_text, from_name, from_email')
       .eq('thread_id', threadId)
       .order('created_at', { ascending: true })
 
@@ -84,6 +85,20 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const references = [...new Set(reachable.map(m => m.message_id as string))]
     const lastInbound = [...reachable].reverse().find(m => m.direction === 'inbound')
     const inReplyTo = (lastInbound?.message_id ?? references[references.length - 1]) as string | undefined
+
+    // The message being answered, quoted under the reply like a mail client does. It goes
+    // in the sent mail only; the copy kept in the thread holds just what was written.
+    const answered = [...reachable].reverse().find(m => m.direction === 'inbound')
+    const quoteText = answered ? stripQuotedReply((answered.body_text as string | null) ?? '').trim().slice(0, 1_500) : ''
+    const quote = answered && quoteText
+      ? {
+          header: `On ${new Date(answered.created_at as string).toUTCString().replace(' GMT', ' UTC')}, ${(answered.from_name as string | null) || answered.from_email} wrote:`,
+          text: quoteText,
+        }
+      : undefined
+    const textPart = quote
+      ? `${bodyPlain}\n\n${quote.header}\n${quote.text.split('\n').map(l => `> ${l}`).join('\n')}`
+      : bodyPlain
 
     const subject = `Re: ${normalizeSubject(thread.subject)}`
     const domain = mailbox.address.split('@')[1] ?? 'gymflow.sbs'
@@ -106,7 +121,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       }
       messageRowId = failed.id as string
       messageId = failed.message_id as string
-      await db.from('email_messages').update({ status: 'sending', error: null, body_text: text }).eq('id', messageRowId)
+      await db.from('email_messages').update({ status: 'sending', error: null, body_text: bodyPlain, body_html: bodyHtml, attachments: attachmentMeta }).eq('id', messageRowId)
     } else {
       messageId = newMessageId(domain)
       const { data: row, error: insertError } = await db
@@ -121,7 +136,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
           from_name: 'GymFlow Support',
           to_emails: [thread.counterparty_email],
           subject,
-          body_text: text,
+          body_text: bodyPlain,
+          body_html: bodyHtml,
+          attachments: attachmentMeta,
           status: 'sending',
         })
         .select('id')
@@ -136,8 +153,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         from: mailbox.from,
         to: [thread.counterparty_email],
         subject,
-        text,
-        html: renderReplyHtml(text),
+        text: textPart,
+        html: renderReplyHtmlFromBody(bodyHtml, quote),
+        ...(files.length && { attachments: files.map(f => ({ filename: f.filename, content: f.buffer })) }),
         headers: {
           'Message-ID': messageId,
           ...(inReplyTo && { 'In-Reply-To': inReplyTo }),

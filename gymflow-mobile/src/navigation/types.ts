@@ -13,6 +13,16 @@ export type RootStackParamList = {
   Notifications: undefined;
   // An email conversation in the support inbox. Push taps and the inbox list open it.
   EmailThread: { threadId: string };
+  // Writing a reply: Gmail-style composer with formatting and attachments. `initialText`
+  // carries an AI draft or the text of a failed reply; `retryMessageId` reuses the failed row.
+  EmailCompose: {
+    threadId: string;
+    subject: string;
+    toName: string | null;
+    toEmail: string;
+    initialText?: string;
+    retryMessageId?: string;
+  };
 };
 
 // Bottom tabs

@@ -92,17 +92,58 @@ export async function setEmailThreadStatus(id: string, status: EmailThreadStatus
   }
 }
 
+/** A file picked on the phone, waiting to be sent with a reply. */
+export type LocalAttachment = { uri: string; name: string; type: string; size: number };
+
 /**
  * The recipient is decided by the server (always the thread's other party), so this takes
- * no address. `retryMessageId` re-sends a reply that failed, reusing its row.
+ * no address. `text` is the editor's markup (**bold**, _italic_, lists, links); the server
+ * turns it into the email. `retryMessageId` re-sends a reply that failed, reusing its row.
+ *
+ * With attachments the request is multipart form data (the phone streams each file by its
+ * uri, no base64); without them it stays a small JSON body.
  */
 export async function replyToEmailThread(
   id: string,
   text: string,
   retryMessageId?: string,
+  attachments: LocalAttachment[] = [],
 ): Promise<void> {
   try {
-    await apiClient.post(`/api/email/threads/${id}/reply`, { text, retryMessageId });
+    if (attachments.length === 0) {
+      await apiClient.post(`/api/email/threads/${id}/reply`, { text, retryMessageId });
+      return;
+    }
+    const form = new FormData();
+    form.append('text', text);
+    if (retryMessageId) form.append('retryMessageId', retryMessageId);
+    for (const a of attachments) {
+      // React Native's FormData reads the file from the uri when the request is sent.
+      form.append('attachments', { uri: a.uri, name: a.name, type: a.type } as unknown as Blob);
+    }
+    await apiClient.post(`/api/email/threads/${id}/reply`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 90_000,
+      transformRequest: data => data,
+    });
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+/** Deletes the conversation and all its messages for good. */
+export async function deleteEmailThread(id: string): Promise<void> {
+  try {
+    await apiClient.delete(`/api/email/threads/${id}`);
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
+/** "Delete all" for one list (the tab the admin is looking at). */
+export async function deleteAllEmailThreads(status: EmailThreadStatus): Promise<void> {
+  try {
+    await apiClient.delete('/api/email/threads', { params: { status } });
   } catch (error) {
     throw new Error(parseApiError(error));
   }

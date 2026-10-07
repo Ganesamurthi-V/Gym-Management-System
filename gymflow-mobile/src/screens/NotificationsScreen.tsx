@@ -1,18 +1,20 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { CacheKeys } from '@/lib/cache';
+import { CacheKeys, peek, write } from '@/lib/cache';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import {
   fetchNotifications, markNotificationRead, markAllNotificationsRead,
+  deleteNotification, deleteAllNotifications,
   type AdminNotification, type NotificationsResponse,
 } from '@/lib/api';
+import { SwipeToDelete } from '@/components/SwipeToDelete';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
@@ -74,14 +76,61 @@ export default function NotificationsScreen({ navigation }: Props) {
 
   const hasUnread = notifications.some(n => !n.is_read);
 
+  // The row has already slid away, so drop it from the shared cache straight away (the bell's
+  // unread badge reads the same cache) and tell the server. If the server refuses, the
+  // refresh puts the real list back.
+  const onDeleteOne = useCallback((n: AdminNotification) => {
+    const cur = peek<NotificationsResponse>(CacheKeys.notifications)?.data;
+    if (cur) {
+      write<NotificationsResponse>(CacheKeys.notifications, {
+        notifications: cur.notifications.filter(x => x.id !== n.id),
+        unread: Math.max(0, cur.unread - (n.is_read ? 0 : 1)),
+      });
+    }
+    deleteNotification(n.id).catch(e => {
+      Alert.alert('Could not delete', e?.message ?? 'Please try again.');
+      void refresh();
+    });
+  }, [refresh]);
+
+  const onDeleteAll = useCallback(() => {
+    Alert.alert(
+      'Delete all notifications?',
+      'This clears the whole list. It cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete all',
+          style: 'destructive',
+          onPress: () => {
+            write<NotificationsResponse>(CacheKeys.notifications, { notifications: [], unread: 0 });
+            deleteAllNotifications().catch(e => {
+              Alert.alert('Could not delete', e?.message ?? 'Please try again.');
+              void refresh();
+            });
+          },
+        },
+      ],
+    );
+  }, [refresh]);
+
   return (
     <View style={styles.root}>
-      {hasUnread && (
+      {notifications.length > 0 && (
         <View style={styles.toolbar}>
-          <TouchableOpacity style={styles.markAllBtn} onPress={onMarkAll} activeOpacity={0.75}>
-            <Feather name="check-circle" size={13} color={Colors.indigo} />
-            <Text style={styles.markAllText}>Mark all read</Text>
-          </TouchableOpacity>
+          <Text style={styles.hint}>Swipe right to delete</Text>
+          <View style={styles.toolbarActions}>
+            {hasUnread && (
+              <TouchableOpacity style={styles.markAllBtn} onPress={onMarkAll} activeOpacity={0.75}>
+                <Feather name="check-circle" size={13} color={Colors.indigo} />
+                <Text style={styles.markAllText}>Mark all read</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.markAllBtn} onPress={onDeleteAll} activeOpacity={0.75} accessibilityRole="button">
+              <Feather name="trash-2" size={13} color={Colors.red} />
+              <Text style={[styles.markAllText, { color: Colors.red }]}>Delete all</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -95,6 +144,7 @@ export default function NotificationsScreen({ navigation }: Props) {
         renderItem={({ item }) => {
           const meta = TYPE_META[item.type] ?? { icon: 'bell', color: Colors.textSecondary };
           return (
+            <SwipeToDelete onDelete={() => onDeleteOne(item)}>
             <TouchableOpacity
               style={[styles.card, !item.is_read && styles.cardUnread]}
               onPress={() => openItem(item)}
@@ -112,6 +162,7 @@ export default function NotificationsScreen({ navigation }: Props) {
                 <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
               </View>
             </TouchableOpacity>
+            </SwipeToDelete>
           );
         }}
         ListEmptyComponent={
@@ -129,7 +180,9 @@ export default function NotificationsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  toolbar: { flexDirection: 'row', justifyContent: 'flex-end', padding: Spacing.md },
+  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm },
+  toolbarActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  hint: { fontSize: 11, color: Colors.textMuted },
   markAllBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
   markAllText: { fontSize: 12, fontWeight: '700', color: Colors.indigo },
   list: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxxl },

@@ -18,8 +18,6 @@ import {
   Animated,
   Linking,
   RefreshControl,
-  Platform,
-  KeyboardAvoidingView,
   StatusBar,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -45,6 +43,7 @@ import {
 } from '@/lib/api';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import type { RootStackParamList } from '../navigation/types';
+import { KeyboardSafeView } from '@/components/KeyboardSafeView';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GymSubscription'>;
 
@@ -221,10 +220,7 @@ function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={dialogStyles.overlay}
-      >
+      <KeyboardSafeView style={dialogStyles.overlay}>
         <View style={dialogStyles.box}>
           <Text style={dialogStyles.title}>{title}</Text>
           <Text style={dialogStyles.message}>{message}</Text>
@@ -249,7 +245,7 @@ function ConfirmDialog({
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardSafeView>
     </Modal>
   );
 }
@@ -867,7 +863,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
     : planTypeStr;
 
   return (
-    <View style={styles.root}>
+    <KeyboardSafeView style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={D.bg} />
 
       <StatusBar barStyle="light-content" backgroundColor={D.bg} />
@@ -1501,7 +1497,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
         onInputChange={confirmDialog.onInputChange}
         inputKeyboardType={confirmDialog.inputKeyboardType}
       />
-    </View>
+    </KeyboardSafeView>
   );
 }
 

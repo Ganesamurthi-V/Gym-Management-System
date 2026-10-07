@@ -1,9 +1,16 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, ActivityIndicator, Alert, Linking,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Linking,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -11,16 +18,14 @@ import { CacheKeys } from '@/lib/cache';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { refreshEmailInbox, useEmailRefresher } from '@/lib/email-sync';
 import {
-  fetchEmailThread, replyToEmailThread, setEmailThreadStatus, fetchEmailAttachmentLink,
+  fetchEmailThread, setEmailThreadStatus, fetchEmailAttachmentLink,
   regenerateEmailDraft, dismissEmailDraft,
   type EmailAttachment, type EmailMessage, type EmailThreadDetail,
 } from '@/lib/api';
-import { timeAgo } from '@/components/EmailRow';
+import { Avatar } from '@/components/EmailRow';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmailThread'>;
-
-const MAX_REPLY_CHARS = 10_000;
 
 /**
  * Splits a message into what the person wrote and the quoted history under it ("On Mon,
@@ -39,78 +44,137 @@ function splitQuoted(text: string): { fresh: string; quoted: string } {
   return { fresh: lines.slice(0, cut).join('\n').trim(), quoted: lines.slice(cut).join('\n').trim() };
 }
 
-function MessageBubble({
-  message, onRetry, onOpenAttachment,
+const fmtSize = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+function fileIcon(type: string): string {
+  if (type.startsWith('image/')) return 'image';
+  if (type === 'application/pdf') return 'file-text';
+  return 'file';
+}
+
+function fullDate(iso: string): string {
+  return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function shortDate(iso: string): string {
+  const d = new Date(iso);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay
+    ? d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+/**
+ * One message of the conversation, drawn the way Gmail does it: a full-width card with the
+ * sender's circle and name, "to me" under it, and the date on the right. Older messages
+ * are folded to a single line; tapping opens them. The arrow next to "to me" shows the full
+ * From / To / Date details.
+ */
+function MessageCard({
+  message, expanded, onToggle, onEditRetry, onOpenAttachment,
 }: {
   message: EmailMessage;
-  onRetry: (m: EmailMessage) => void;
+  expanded: boolean;
+  onToggle: () => void;
+  onEditRetry: (m: EmailMessage) => void;
   onOpenAttachment: (m: EmailMessage, a: EmailAttachment) => void;
 }) {
   const [showQuoted, setShowQuoted] = useState(false);
+  const [details, setDetails] = useState(false);
   const mine = message.direction === 'outbound';
+  const name = mine ? 'GymFlow Support' : (message.from_name || message.from_email);
   const { fresh, quoted } = splitQuoted(message.body_text ?? '');
   const dmarcFailed = message.auth_result?.dmarc === 'fail';
   const failed = message.status === 'failed';
+  const recipient = mine ? (message.to_emails[0] ?? '') : 'me';
+
+  const oneLine = (fresh || '(no text)').replace(/\s+/g, ' ');
 
   return (
-    <View style={[styles.bubbleWrap, mine && styles.bubbleWrapMine]}>
-      <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, failed && styles.bubbleFailed]}>
-        {!mine && (
-          <Text style={styles.sender} numberOfLines={1}>{message.from_name || message.from_email}</Text>
-        )}
-
-        {dmarcFailed && (
-          <View style={styles.warn}>
-            <Feather name="alert-triangle" size={12} color={Colors.amber} />
-            <Text style={styles.warnText}>Sender could not be verified. Be careful with links.</Text>
+    <View style={[styles.card, failed && styles.cardFailed]}>
+      <TouchableOpacity style={styles.cardHead} onPress={onToggle} activeOpacity={0.7} accessibilityRole="button" accessibilityState={{ expanded }}>
+        <Avatar name={name} seed={mine ? 'support' : message.from_email} />
+        <View style={styles.headText}>
+          <View style={styles.headTop}>
+            <Text style={styles.sender} numberOfLines={1}>{name}</Text>
+            <Text style={styles.date}>{shortDate(message.created_at)}</Text>
           </View>
-        )}
-        {message.is_auto && <Text style={styles.autoTag}>Automatic reply</Text>}
-
-        <Text style={styles.bodyText} selectable>{fresh || '(no text)'}</Text>
-
-        {quoted ? (
-          <>
-            <TouchableOpacity onPress={() => setShowQuoted(v => !v)} hitSlop={8} accessibilityRole="button">
-              <Text style={styles.quotedToggle}>{showQuoted ? 'Hide earlier messages' : '•••  Show earlier messages'}</Text>
+          {expanded ? (
+            <TouchableOpacity style={styles.toRow} onPress={() => setDetails(v => !v)} hitSlop={8} accessibilityRole="button">
+              <Text style={styles.toText} numberOfLines={1}>to {recipient}</Text>
+              <Feather name={details ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textMuted} />
             </TouchableOpacity>
-            {showQuoted && <Text style={styles.quotedText} selectable>{quoted}</Text>}
-          </>
-        ) : null}
-
-        {message.attachments.map(a => (
-          <TouchableOpacity key={a.id} style={styles.attachment} onPress={() => onOpenAttachment(message, a)} activeOpacity={0.8}>
-            <Feather name="paperclip" size={13} color={Colors.sky} />
-            <Text style={styles.attachmentText} numberOfLines={1}>{a.filename ?? 'attachment'}</Text>
-            <Text style={styles.attachmentSize}>{Math.max(1, Math.round(a.size / 1024))} KB</Text>
-          </TouchableOpacity>
-        ))}
-
-        <View style={styles.metaRow}>
-          <Text style={styles.time}>{timeAgo(message.created_at)}</Text>
-          {mine && message.status === 'sending' && <Text style={styles.time}> · sending…</Text>}
-          {mine && message.status === 'sent' && <Feather name="check" size={11} color={Colors.textMuted} style={{ marginLeft: 4 }} />}
+          ) : (
+            <Text style={styles.collapsedLine} numberOfLines={1}>{oneLine}</Text>
+          )}
         </View>
+      </TouchableOpacity>
 
-        {failed && (
-          <TouchableOpacity style={styles.retry} onPress={() => onRetry(message)} activeOpacity={0.8}>
-            <Feather name="refresh-cw" size={12} color={Colors.red} />
-            <Text style={styles.retryText}>Not sent. Tap to retry</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {expanded && (
+        <View style={styles.cardBody}>
+          {details && (
+            <View style={styles.details}>
+              <Text style={styles.detailLine}><Text style={styles.detailKey}>From  </Text>{message.from_name ? `${message.from_name} <${message.from_email}>` : message.from_email}</Text>
+              <Text style={styles.detailLine}><Text style={styles.detailKey}>To  </Text>{message.to_emails.join(', ') || 'me'}</Text>
+              <Text style={styles.detailLine}><Text style={styles.detailKey}>Date  </Text>{fullDate(message.created_at)}</Text>
+            </View>
+          )}
+
+          {dmarcFailed && (
+            <View style={styles.warn}>
+              <Feather name="alert-triangle" size={13} color={Colors.amber} />
+              <Text style={styles.warnText}>Sender could not be verified. Be careful with links.</Text>
+            </View>
+          )}
+          {message.is_auto && <Text style={styles.autoTag}>Automatic reply</Text>}
+
+          <Text style={styles.bodyText} selectable>{fresh || '(no text)'}</Text>
+
+          {quoted ? (
+            <>
+              <TouchableOpacity onPress={() => setShowQuoted(v => !v)} style={styles.dots} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show trimmed content">
+                <Feather name="more-horizontal" size={16} color={Colors.textSecondary} />
+              </TouchableOpacity>
+              {showQuoted && <Text style={styles.quotedText} selectable>{quoted}</Text>}
+            </>
+          ) : null}
+
+          {message.attachments.length > 0 && (
+            <View style={styles.files}>
+              {message.attachments.map(a => (
+                <TouchableOpacity key={a.id} style={styles.file} onPress={() => onOpenAttachment(message, a)} activeOpacity={0.8}>
+                  <View style={styles.fileIcon}>
+                    <Feather name={fileIcon(a.content_type) as any} size={18} color={Colors.sky} />
+                  </View>
+                  <View style={styles.fileText}>
+                    <Text style={styles.fileName} numberOfLines={1}>{a.filename ?? 'attachment'}</Text>
+                    <Text style={styles.fileSize}>{fmtSize(a.size)}</Text>
+                  </View>
+                  {!mine && <Feather name="download" size={16} color={Colors.textSecondary} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {mine && message.status === 'sending' && <Text style={styles.sendingNote}>Sending…</Text>}
+
+          {failed && (
+            <TouchableOpacity style={styles.retry} onPress={() => onEditRetry(message)} activeOpacity={0.8}>
+              <Feather name="refresh-cw" size={13} color={Colors.red} />
+              <Text style={styles.retryText}>Not sent. Tap to edit and send again</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
 export default function EmailThreadScreen({ route, navigation }: Props) {
   const { threadId } = route.params;
-  const listRef = useRef<FlatList<EmailMessage>>(null);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  // The draft the admin already pulled into the box, so its banner steps aside.
-  const [usedDraft, setUsedDraft] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [drafting, setDrafting] = useState(false);
 
   const { data, loading, error, refresh } = useCachedQuery<EmailThreadDetail>({
@@ -121,7 +185,18 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
   useEmailRefresher(refresh);
 
   const thread = data?.thread;
-  const messages = data?.messages ?? [];
+  const messages = useMemo(() => data?.messages ?? [], [data?.messages]);
+  const lastId = messages[messages.length - 1]?.id;
+
+  // The newest message is open, as in Gmail; the admin can open or fold any other one.
+  const isExpanded = (id: string) => (id === lastId ? !collapsedIds.has(id) : expandedIds.has(id));
+  const toggle = (id: string) => {
+    if (id === lastId) {
+      setCollapsedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    } else {
+      setExpandedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    }
+  };
 
   // A draft left "queued" (every model was out of free-tier budget) is written by the server
   // when the thread is opened. Look once more shortly after, instead of leaving the banner
@@ -137,7 +212,6 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     setDrafting(true);
     try {
       await regenerateEmailDraft(threadId);
-      setUsedDraft(null);
       await refresh();
     } catch (e: any) {
       Alert.alert('Could not write a draft', e?.message ?? 'Please try again in a minute.');
@@ -160,7 +234,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     if (!thread) return;
     const archived = thread.status === 'archived';
     navigation.setOptions({
-      headerTitle: thread.counterparty_name || thread.counterparty_email,
+      headerTitle: '',
       headerRight: () => (
         <View style={styles.headerActions}>
           {thread.gym_id ? (
@@ -169,7 +243,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
               hitSlop={10}
               accessibilityLabel="Open this gym"
             >
-              <Feather name="home" size={19} color={Colors.sky} />
+              <Feather name="home" size={20} color={Colors.sky} />
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
@@ -186,35 +260,30 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
             hitSlop={10}
             accessibilityLabel={archived ? 'Move back to inbox' : 'Archive'}
           >
-            <Feather name={archived ? 'inbox' : 'archive'} size={19} color={Colors.textSecondary} />
+            <Feather name={archived ? 'inbox' : 'archive'} size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
       ),
     });
   }, [thread, navigation, refresh]);
 
-  const send = useCallback(async (text: string, retryMessageId?: string) => {
-    const body = text.trim();
-    if (!body || sending) return;
-    setSending(true);
-    setSendError(null);
-    try {
-      await replyToEmailThread(threadId, body, retryMessageId);
-      if (!retryMessageId) setDraft('');
-      await refresh();
-      void refreshEmailInbox();
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
-    } catch (e: any) {
-      // The server keeps a failed row for this reply, so it shows in the thread with a
-      // retry button. The draft stays in the box either way: nothing typed is lost.
-      setSendError(e?.message ?? 'Could not send the reply.');
-      await refresh().catch(() => {});
-    } finally {
-      setSending(false);
-    }
-  }, [threadId, sending, refresh]);
+  const openCompose = useCallback((opts?: { initialText?: string; retryMessageId?: string }) => {
+    if (!thread) return;
+    navigation.navigate('EmailCompose', {
+      threadId,
+      subject: `Re: ${thread.subject.replace(/^(re|fwd?):\s*/gi, '')}`,
+      toName: thread.counterparty_name,
+      toEmail: thread.counterparty_email,
+      ...opts,
+    });
+  }, [navigation, thread, threadId]);
 
   const openAttachment = useCallback(async (message: EmailMessage, attachment: EmailAttachment) => {
+    // A file we sent is not kept as a download, only listed; one we received can be opened.
+    if (message.direction === 'outbound') {
+      Alert.alert(attachment.filename ?? 'Attachment', 'This file was sent with your reply.');
+      return;
+    }
     try {
       const link = await fetchEmailAttachmentLink(message.id, attachment.id);
       await Linking.openURL(link.url);
@@ -243,33 +312,42 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     );
   }
 
-  const canSend = draft.trim().length > 0 && !sending;
-
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
+    <View style={styles.root}>
       <FlatList
-        ref={listRef}
         data={messages}
         keyExtractor={m => m.id}
         contentContainerStyle={styles.list}
-        ListHeaderComponent={<Text style={styles.subject}>{thread?.subject}</Text>}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        ListHeaderComponent={
+          <View style={styles.subjectBlock}>
+            <Text style={styles.subject}>{thread?.subject}</Text>
+            <View style={styles.chips}>
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>{thread?.status === 'archived' ? 'Archived' : 'Inbox'}</Text>
+              </View>
+              {thread?.gyms?.name ? (
+                <View style={[styles.chip, styles.chipGym]}>
+                  <Feather name="home" size={11} color={Colors.sky} />
+                  <Text style={[styles.chipText, { color: Colors.sky }]} numberOfLines={1}>{thread.gyms.name}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        }
         renderItem={({ item }) => (
-          <MessageBubble
+          <MessageCard
             message={item}
-            onRetry={m => { void send(m.body_text ?? '', m.id); }}
+            expanded={isExpanded(item.id)}
+            onToggle={() => toggle(item.id)}
+            onEditRetry={m => openCompose({ initialText: m.body_text ?? '', retryMessageId: m.id })}
             onOpenAttachment={openAttachment}
           />
         )}
       />
 
-      {/* The AI draft. Only ever a suggestion: Use draft fills the box below for editing, and
-          nothing is sent until the send button is pressed. */}
-      {thread && thread.ai_draft && thread.ai_draft !== usedDraft && (
+      {/* The AI draft. Only ever a suggestion: Use draft opens it in the editor for review,
+          and nothing is sent until Send is pressed there. */}
+      {thread && thread.ai_draft && (
         <View style={[styles.aiBanner, thread.ai_needs_human && styles.aiBannerHuman]}>
           <View style={styles.aiHead}>
             <Feather name={thread.ai_needs_human ? 'user' : 'cpu'} size={13} color={thread.ai_needs_human ? Colors.amber : Colors.purple} />
@@ -281,7 +359,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
           <View style={styles.aiActions}>
             <TouchableOpacity
               style={styles.aiUse}
-              onPress={() => { setDraft(thread.ai_draft as string); setUsedDraft(thread.ai_draft); }}
+              onPress={() => openCompose({ initialText: thread.ai_draft as string })}
               activeOpacity={0.8}
               accessibilityRole="button"
             >
@@ -311,67 +389,67 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       )}
 
-      {sendError && (
-        <View style={styles.sendError}>
-          <Feather name="alert-circle" size={13} color={Colors.red} />
-          <Text style={styles.sendErrorText} numberOfLines={2}>{sendError}</Text>
-        </View>
-      )}
-
-      <View style={styles.composer}>
-        <TextInput
-          style={styles.input}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={`Reply to ${thread?.counterparty_name || thread?.counterparty_email}`}
-          placeholderTextColor={Colors.textMuted}
-          multiline
-          maxLength={MAX_REPLY_CHARS}
-          editable={!sending}
-          textAlignVertical="top"
-        />
-        <TouchableOpacity
-          style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
-          onPress={() => { void send(draft); }}
-          disabled={!canSend}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Send reply"
-        >
-          {sending ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="send" size={17} color="#fff" />}
+      {/* Gmail's bottom action: one wide Reply button that opens the full editor. */}
+      <View style={[styles.actionBar, { paddingBottom: Spacing.md + insets.bottom }]}>
+        <TouchableOpacity style={styles.replyBtn} onPress={() => openCompose()} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Reply">
+          <Feather name="corner-up-left" size={18} color={Colors.textPrimary} />
+          <Text style={styles.replyText}>Reply</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   center: { alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xxxl },
-  list: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xl },
-  subject: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, marginBottom: Spacing.sm },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg, marginRight: Spacing.lg },
+  list: { paddingBottom: Spacing.xl },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xl, marginRight: Spacing.lg },
 
-  bubbleWrap: { alignItems: 'flex-start' },
-  bubbleWrapMine: { alignItems: 'flex-end' },
-  bubble: { maxWidth: '88%', borderRadius: Radius.lg, padding: Spacing.md, gap: Spacing.xs, borderWidth: 1 },
-  bubbleTheirs: { backgroundColor: Colors.bgCard, borderColor: Colors.bgCardBorder, borderTopLeftRadius: 4 },
-  bubbleMine: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder, borderTopRightRadius: 4 },
-  bubbleFailed: { borderColor: Colors.redBorder, backgroundColor: Colors.redBg },
-  sender: { fontSize: 11, fontWeight: '800', color: Colors.purple },
-  bodyText: { fontSize: 14, lineHeight: 20, color: Colors.textPrimary },
-  quotedToggle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, marginTop: 2 },
-  quotedText: { fontSize: 12, lineHeight: 17, color: Colors.textMuted, borderLeftWidth: 2, borderLeftColor: Colors.bgCardBorder, paddingLeft: Spacing.sm },
+  subjectBlock: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.lg, gap: Spacing.sm },
+  subject: { fontSize: 21, lineHeight: 28, fontWeight: '700', color: Colors.textPrimary },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 200,
+    paddingHorizontal: Spacing.md, paddingVertical: 3, borderRadius: Radius.sm,
+    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.bgCardBorder,
+  },
+  chipGym: { backgroundColor: Colors.skyBg, borderColor: 'transparent' },
+  chipText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+
+  card: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.bgCardBorder },
+  cardFailed: { backgroundColor: Colors.redBg },
+  cardHead: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
+  headText: { flex: 1, gap: 2 },
+  headTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
+  sender: { flex: 1, fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  date: { fontSize: 12, color: Colors.textMuted },
+  toRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  toText: { fontSize: 13, color: Colors.textMuted, maxWidth: 240 },
+  collapsedLine: { fontSize: 13, color: Colors.textMuted },
+
+  cardBody: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, paddingLeft: Spacing.lg + 40 + Spacing.md, gap: Spacing.sm },
+  details: { gap: 3, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: Colors.bgCard },
+  detailLine: { fontSize: 12, color: Colors.textSecondary },
+  detailKey: { color: Colors.textMuted, fontWeight: '700' },
+  bodyText: { fontSize: 15, lineHeight: 23, color: Colors.textPrimary },
+  dots: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 2, borderRadius: Radius.sm, backgroundColor: Colors.bgCard },
+  quotedText: { fontSize: 13, lineHeight: 19, color: Colors.textMuted, borderLeftWidth: 2, borderLeftColor: Colors.bgCardBorder, paddingLeft: Spacing.sm },
   autoTag: { fontSize: 10, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
   warn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: Spacing.sm, borderRadius: Radius.sm, backgroundColor: Colors.amberBg },
-  warnText: { flex: 1, fontSize: 11, color: Colors.amber, fontWeight: '600' },
-  attachment: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: Spacing.sm, borderRadius: Radius.sm, backgroundColor: Colors.skyBg, marginTop: 2 },
-  attachmentText: { flex: 1, fontSize: 12, color: Colors.sky, fontWeight: '600' },
-  attachmentSize: { fontSize: 10, color: Colors.textMuted },
-  metaRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 2 },
-  time: { fontSize: 10, color: Colors.textMuted },
+  warnText: { flex: 1, fontSize: 12, color: Colors.amber, fontWeight: '600' },
+  files: { gap: Spacing.sm, marginTop: Spacing.xs },
+  file: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.sm,
+    borderRadius: Radius.md, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.bgCardBorder,
+  },
+  fileIcon: { width: 36, height: 36, borderRadius: Radius.sm, backgroundColor: Colors.skyBg, alignItems: 'center', justifyContent: 'center' },
+  fileText: { flex: 1 },
+  fileName: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  fileSize: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+  sendingNote: { fontSize: 12, color: Colors.textMuted },
   retry: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  retryText: { fontSize: 11, fontWeight: '700', color: Colors.red },
+  retryText: { fontSize: 12, fontWeight: '700', color: Colors.red },
 
   aiBanner: { marginHorizontal: Spacing.md, marginTop: Spacing.sm, padding: Spacing.md, gap: Spacing.sm, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.purpleBg, backgroundColor: Colors.purpleBg },
   aiBannerHuman: { borderColor: Colors.amberBorder, backgroundColor: Colors.amberBg },
@@ -384,18 +462,14 @@ const styles = StyleSheet.create({
   aiLink: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
   aiNote: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: Spacing.md, marginTop: Spacing.sm, paddingVertical: 6 },
   aiNoteText: { flex: 1, fontSize: 11, color: Colors.textMuted },
-  sendError: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, backgroundColor: Colors.redBg },
-  sendErrorText: { flex: 1, fontSize: 12, color: Colors.red },
-  composer: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, padding: Spacing.md,
-    borderTopWidth: 1, borderTopColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard,
+
+  actionBar: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.bgCardBorder, backgroundColor: Colors.bg },
+  replyBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, height: 46,
+    borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.textMuted, backgroundColor: Colors.bgCard,
   },
-  input: {
-    flex: 1, maxHeight: 140, minHeight: 42, backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.bgCardBorder,
-    borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 2, color: Colors.textPrimary, fontSize: 14,
-  },
-  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.indigo, alignItems: 'center', justifyContent: 'center' },
-  sendBtnDisabled: { opacity: 0.4 },
+  replyText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+
   emptyText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
   retryBtn: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, borderRadius: Radius.full, backgroundColor: Colors.indigoBg },
   retryBtnText: { fontSize: 13, fontWeight: '700', color: Colors.indigo },

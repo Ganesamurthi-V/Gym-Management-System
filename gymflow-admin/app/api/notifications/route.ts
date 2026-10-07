@@ -3,6 +3,7 @@ import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { apiLogger } from '@/lib/logger'
+import { sanitizeUUID } from '@/lib/sanitize'
 
 /**
  * GET /api/notifications
@@ -92,5 +93,46 @@ export async function PATCH(req: NextRequest) {
     log.error('Failed to mark notifications read', error)
     log.summary(500)
     return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/notifications
+ * Removes one notification ({ id }) or every notification ({ all: true }). A hard delete:
+ * these rows are only an in-app feed of events that live on in their own tables (tickets,
+ * requests, gyms, email threads), so nothing is lost by clearing them.
+ */
+export async function DELETE(req: NextRequest) {
+  const log = apiLogger('ADMIN_NOTIFICATIONS_DELETE', req)
+  log.adminAction = 'notifications_delete'
+
+  if (!(await verifyRequestAuth(req))) {
+    log.summary(401)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const rateLimitResponse = await rateLimit(req, 'notifications_delete', RATE_LIMITS.TICKET_RESOLVE.limit, RATE_LIMITS.TICKET_RESOLVE.window)
+  if (rateLimitResponse) { log.summary(429); return rateLimitResponse }
+
+  try {
+    const body = await req.json().catch(() => null) as { id?: string; all?: boolean } | null
+    const id = body?.id ? sanitizeUUID(body.id) : null
+    if (!body || (!id && body.all !== true)) {
+      log.summary(400)
+      return NextResponse.json({ error: 'Provide a valid id or all=true' }, { status: 400 })
+    }
+
+    const supabase = createAdminClient()
+    // Supabase refuses a delete with no filter; "id is not null" matches every row.
+    const query = supabase.from('notifications').delete()
+    const { error } = id ? await query.eq('id', id) : await query.not('id', 'is', null)
+    if (error) throw error
+
+    log.summary(200)
+    return NextResponse.json({ success: true })
+  } catch (error: unknown) {
+    log.error('Failed to delete notifications', error)
+    log.summary(500)
+    return NextResponse.json({ error: 'Failed to delete notifications' }, { status: 500 })
   }
 }

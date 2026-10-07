@@ -17,33 +17,60 @@ export function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
+// Mail apps colour each sender's circle so a list is easy to scan. The colour is derived from
+// the address, so the same sender is always the same colour.
+const AVATAR_COLORS = ['#ef4444', '#f97316', '#d97706', '#16a34a', '#0d9488', '#0284c7', '#4f46e5', '#9333ea', '#db2777'];
+
+export function avatarColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+export function Avatar({ name, seed, size = 40 }: { name: string; seed: string; size?: number }) {
+  return (
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: avatarColor(seed) }]}>
+      <Text style={[styles.avatarText, { fontSize: size * 0.42 }]}>{name.trim().charAt(0).toUpperCase() || '?'}</Text>
+    </View>
+  );
+}
+
 type Props = { thread: EmailThread; onPress: () => void };
 
-/** One conversation in the inbox list. Unread threads get the indigo tint and a count. */
+/**
+ * One conversation in the inbox, laid out like Gmail: a coloured sender circle, the sender
+ * and time on the first line, the subject on the second, the start of the message on the
+ * third. Unread conversations are bold, as in Gmail.
+ */
 export function EmailRow({ thread, onPress }: Props) {
   const unread = thread.unread_count > 0;
   const who = thread.counterparty_name || thread.counterparty_email;
 
   return (
     <TouchableOpacity
-      style={[styles.card, unread && styles.cardUnread]}
+      style={styles.row}
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={`${unread ? `${thread.unread_count} unread. ` : ''}${who}. ${thread.subject}`}
     >
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{who.trim().charAt(0).toUpperCase() || '?'}</Text>
-      </View>
+      <Avatar name={who} seed={thread.counterparty_email} />
 
       <View style={styles.body}>
         <View style={styles.topRow}>
-          <Text style={[styles.who, unread && styles.whoUnread]} numberOfLines={1}>{who}</Text>
-          <Text style={styles.time}>{timeAgo(thread.last_message_at)}</Text>
+          <Text style={[styles.who, unread && styles.bold]} numberOfLines={1}>{who}</Text>
+          <Text style={[styles.time, unread && styles.timeUnread]}>{timeAgo(thread.last_message_at)}</Text>
         </View>
-        <Text style={[styles.subject, unread && styles.subjectUnread]} numberOfLines={1}>
-          {thread.subject}
-        </Text>
+
+        <View style={styles.midRow}>
+          <Text style={[styles.subject, unread && styles.bold]} numberOfLines={1}>{thread.subject}</Text>
+          {unread && thread.unread_count > 1 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{thread.unread_count > 9 ? '9+' : thread.unread_count}</Text>
+            </View>
+          )}
+        </View>
+
         <View style={styles.bottomRow}>
           <Text style={styles.snippet} numberOfLines={1}>
             {thread.last_direction === 'outbound' ? 'You: ' : ''}
@@ -55,11 +82,6 @@ export function EmailRow({ thread, onPress }: Props) {
               <Text style={styles.gymTagText} numberOfLines={1}>{thread.gyms.name}</Text>
             </View>
           ) : null}
-          {unread && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{thread.unread_count > 9 ? '9+' : thread.unread_count}</Text>
-            </View>
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -67,26 +89,24 @@ export function EmailRow({ thread, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row', gap: Spacing.md,
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, padding: Spacing.lg,
+  row: {
+    flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start',
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+    backgroundColor: Colors.bg,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.bgCardBorder,
   },
-  cardUnread: { borderColor: Colors.indigoBorder, backgroundColor: Colors.indigoBg },
-  avatar: {
-    width: 40, height: 40, borderRadius: Radius.full,
-    backgroundColor: Colors.purpleBg, alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: Colors.purple, fontWeight: '800', fontSize: 15 },
-  body: { flex: 1, gap: 2 },
+  avatar: { alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  avatarText: { color: '#fff', fontWeight: '700' },
+  body: { flex: 1, gap: 1 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  who: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  whoUnread: { color: Colors.textPrimary, fontWeight: '800' },
-  time: { fontSize: 11, color: Colors.textMuted },
-  subject: { fontSize: 13, color: Colors.textSecondary },
-  subjectUnread: { color: Colors.textPrimary, fontWeight: '700' },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: 2 },
-  snippet: { flex: 1, fontSize: 12, color: Colors.textMuted },
+  who: { flex: 1, fontSize: 15, color: Colors.textSecondary },
+  bold: { color: Colors.textPrimary, fontWeight: '800' },
+  time: { fontSize: 12, color: Colors.textMuted },
+  timeUnread: { color: Colors.textPrimary, fontWeight: '700' },
+  midRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  subject: { flex: 1, fontSize: 14, color: Colors.textSecondary },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  snippet: { flex: 1, fontSize: 13, color: Colors.textMuted },
   gymTag: {
     flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: 110,
     paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full, backgroundColor: Colors.skyBg,

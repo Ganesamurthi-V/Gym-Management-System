@@ -21,8 +21,21 @@ function bodyHtml(text: string): string {
   )
 }
 
+/** Plain text in, the original look out (kept for callers that have no formatting). */
 export function renderReplyHtml(text: string): string {
+  return renderReplyHtmlFromBody(`<div style="white-space:pre-wrap;">${bodyHtml(text)}</div>`)
+}
+
+/**
+ * The branded wrapper around a body that is already HTML (see lib/email-format.ts), with the
+ * message being answered quoted underneath, the way a mail client does it.
+ */
+export function renderReplyHtmlFromBody(body: string, quote?: { header: string; text: string }): string {
   const logo = process.env.SUPPORT_EMAIL_LOGO_URL || DEFAULT_LOGO_URL
+  const quoted = quote
+    ? `<div style="margin-top:22px;color:#64748B;font-size:13px;line-height:20px;">${escapeHtml(quote.header)}</div>
+              <blockquote style="margin:8px 0 0;padding:2px 0 2px 14px;border-left:3px solid #CBD5E1;color:#64748B;font-size:14px;line-height:22px;white-space:pre-wrap;">${escapeHtml(quote.text)}</blockquote>`
+    : ''
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,7 +56,8 @@ export function renderReplyHtml(text: string): string {
           </tr>
           <tr>
             <td style="padding:16px 40px 32px;">
-              <div style="white-space:pre-wrap;color:#334155;font-size:16px;line-height:26px;">${bodyHtml(text)}</div>
+              <div style="color:#334155;font-size:16px;line-height:26px;">${body}</div>
+              ${quoted}
             </td>
           </tr>
           <tr>

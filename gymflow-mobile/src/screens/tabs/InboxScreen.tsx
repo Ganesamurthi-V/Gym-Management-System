@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { CacheKeys } from '@/lib/cache';
+import { CacheKeys, invalidate, peek, write } from '@/lib/cache';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useEmailRefresher, useOpenEmailThreads } from '@/lib/email-sync';
-import { fetchEmailThreads, type EmailThread, type EmailThreadStatus, type EmailThreadsResponse } from '@/lib/api';
+import {
+  fetchEmailThreads, deleteEmailThread, deleteAllEmailThreads,
+  type EmailThread, type EmailThreadStatus, type EmailThreadsResponse,
+} from '@/lib/api';
+import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { EmailRow } from '@/components/EmailRow';
 import type { TabScreenProps } from '../../navigation/types';
 
@@ -65,6 +69,55 @@ export default function InboxScreen({ navigation }: Props) {
 
   const threads = [...first, ...extra];
 
+  // The row has already slid away: remove it from the shared first-page cache (which also
+  // fixes the tab's unread badge) and from any older pages held here, then tell the server.
+  // A refusal puts the real list back through the refresh.
+  const onDeleteOne = useCallback((t: EmailThread) => {
+    const key = CacheKeys.emailThreads(status);
+    const cur = peek<EmailThreadsResponse>(key)?.data;
+    if (cur) {
+      write<EmailThreadsResponse>(key, {
+        ...cur,
+        threads: cur.threads.filter(x => x.id !== t.id),
+        unreadTotal: status === 'open' ? Math.max(0, cur.unreadTotal - t.unread_count) : cur.unreadTotal,
+      });
+    }
+    setExtra(prev => prev.filter(x => x.id !== t.id));
+    invalidate(CacheKeys.emailThread(t.id));
+    deleteEmailThread(t.id).catch(e => {
+      Alert.alert('Could not delete', e?.message ?? 'Please try again.');
+      void current.refresh();
+    });
+  }, [status, current]);
+
+  const onDeleteAll = useCallback(() => {
+    const label = status === 'open' ? 'Inbox' : 'Archived';
+    Alert.alert(
+      `Delete all in ${label}?`,
+      'Every conversation in this list is deleted for good, with its messages. It cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete all',
+          style: 'destructive',
+          onPress: () => {
+            const key = CacheKeys.emailThreads(status);
+            const cur = peek<EmailThreadsResponse>(key)?.data;
+            write<EmailThreadsResponse>(key, {
+              threads: [], nextCursor: null, unreadTotal: status === 'open' ? 0 : (cur?.unreadTotal ?? 0),
+            });
+            setExtra([]);
+            setCursor(null);
+            deleteAllEmailThreads(status).catch(e => {
+              Alert.alert('Could not delete', e?.message ?? 'Please try again.');
+              void current.refresh();
+            });
+          },
+        },
+      ],
+    );
+  }, [status, current]);
+
   return (
     <View style={styles.root}>
       <View style={styles.tabs}>
@@ -84,6 +137,16 @@ export default function InboxScreen({ navigation }: Props) {
         ))}
       </View>
 
+      {threads.length > 0 && (
+        <View style={styles.toolbar}>
+          <Text style={styles.hint}>Swipe right to delete</Text>
+          <TouchableOpacity style={styles.deleteAllBtn} onPress={onDeleteAll} activeOpacity={0.75} accessibilityRole="button">
+            <Feather name="trash-2" size={13} color={Colors.red} />
+            <Text style={styles.deleteAllText}>Delete all</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         data={threads}
         keyExtractor={item => item.id}
@@ -92,7 +155,9 @@ export default function InboxScreen({ navigation }: Props) {
         onEndReached={loadMore}
         onEndReachedThreshold={0.4}
         renderItem={({ item }) => (
-          <EmailRow thread={item} onPress={() => navigation.navigate('EmailThread', { threadId: item.id })} />
+          <SwipeToDelete onDelete={() => onDeleteOne(item)} radius={0}>
+            <EmailRow thread={item} onPress={() => navigation.navigate('EmailThread', { threadId: item.id })} />
+          </SwipeToDelete>
         )}
         ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.indigo} style={{ marginVertical: Spacing.lg }} /> : null}
         ListEmptyComponent={
@@ -123,7 +188,11 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: Colors.indigoBg },
   tabText: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
   tabTextActive: { color: Colors.indigo },
-  list: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxxl },
+  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  hint: { fontSize: 11, color: Colors.textMuted },
+  deleteAllBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
+  deleteAllText: { fontSize: 12, fontWeight: '700', color: Colors.red },
+  list: { paddingTop: Spacing.sm, paddingBottom: Spacing.xxxl },
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: Spacing.xxxl, gap: Spacing.sm },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary, marginTop: Spacing.sm },
   emptyText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 },

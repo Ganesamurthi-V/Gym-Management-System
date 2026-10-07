@@ -194,6 +194,17 @@ per-admin identity, which is why push tokens are keyed per **device**.
 - Tapping a notification deep-links to the relevant gym, including from a cold start
   (the handler retries until the navigator is ready and the session is confirmed).
 
+## Email: Gmail-style inbox and composer
+
+- **Inbox** (`InboxScreen`, `EmailRow`): coloured sender circles, bold unread, swipe right to delete.
+- **Conversation** (`EmailThreadScreen`): full-width message cards, older ones folded, a Reply button.
+- **Composer** (`EmailComposeScreen`): To / Subject, formatting bar (bold, italic, underline,
+  bullets, numbers, link), Preview, and attachments (up to 5 files, 3 MB each, 4 MB in total).
+- Formatting is written as markers (`**bold**`, `_italic_`, `++underline++`, `[text](url)`) by
+  `lib/email-markup.ts`; `gymflow-admin/lib/email-format.ts` turns the same markers into the
+  HTML email. Keep the two grammars in step.
+- Attachments need the native `react-native-document-picker`: rebuild the app after pulling.
+
 ## Notes
 
 - **No Expo dependencies** — all screens live under `src/screens/`.

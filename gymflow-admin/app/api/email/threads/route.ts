@@ -64,3 +64,38 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to load inbox' }, { status: 500 })
   }
 }
+
+/**
+ * DELETE /api/email/threads?status=open|archived
+ *
+ * "Delete all" for one list. The status is required and must match a list, so a malformed
+ * request can never mean "delete everything": the app sends the tab the admin is looking at.
+ */
+export async function DELETE(req: NextRequest) {
+  const log = apiLogger('EMAIL_THREADS_DELETE_ALL', req)
+  log.adminAction = 'email_threads_delete_all'
+
+  if (!(await verifyRequestAuth(req))) {
+    log.summary(401)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const limited = await rateLimit(req, 'email_threads_delete_all', RATE_LIMITS.EMAIL_READ.limit, RATE_LIMITS.EMAIL_READ.window)
+  if (limited) { log.summary(429); return limited }
+
+  const status = req.nextUrl.searchParams.get('status')
+  if (status !== 'open' && status !== 'archived') {
+    log.summary(400)
+    return NextResponse.json({ error: 'status must be open or archived' }, { status: 400 })
+  }
+
+  try {
+    const { error } = await createAdminClient().from('email_threads').delete().eq('status', status)
+    if (error) throw error
+    log.summary(200)
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    log.error('Failed to delete email threads', error)
+    log.summary(500)
+    return NextResponse.json({ error: 'Failed to delete emails' }, { status: 500 })
+  }
+}

@@ -1,8 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, RefreshControl, Modal, Alert,
-  KeyboardAvoidingView, Platform,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  RefreshControl,
+  Modal,
+  Alert,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -16,6 +24,7 @@ import { CacheKeys } from '@/lib/cache';
 import { AdminInput } from '@/components/AdminInput';
 import { AdminButton } from '@/components/AdminButton';
 import { TicketCard } from '@/components/TicketCard';
+import { KeyboardSafeView } from '@/components/KeyboardSafeView';
 
 type Tab = 'send' | 'tickets';
 
@@ -74,7 +83,7 @@ function SendMessageTab() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+    <KeyboardSafeView style={{ flex: 1 }}>
       <ScrollView
         style={styles.tabContent}
         contentContainerStyle={styles.tabContentInner}
@@ -156,7 +165,7 @@ function SendMessageTab() {
           />
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }
 
@@ -267,7 +276,7 @@ function TicketsTab() {
       />
 
       <Modal visible={!!resolvingTicket} transparent animationType="slide" onRequestClose={() => setResolvingTicket(null)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardSafeView style={styles.modalOverlay} safeBottom>
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Resolve Ticket</Text>
@@ -300,7 +309,7 @@ function TicketsTab() {
               />
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
       </Modal>
     </>
   );

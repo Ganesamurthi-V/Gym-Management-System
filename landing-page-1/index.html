@@ -37,10 +37,29 @@
       because the sole thing it sets is the emphasised words in the hero heading.
       Asking for the roman too would double the payload for glyphs never drawn.
     -->
+    <!--
+      Non-blocking. A plain rel="stylesheet" here stops the first paint until Google Fonts
+      answers (about a second on a throttled mobile connection, the largest single item in
+      the Lighthouse render-blocking report). rel="preload" fetches it at once without
+      blocking, and onload turns it into a stylesheet. display=swap shows the fallback font
+      meanwhile. The <noscript> copy keeps fonts working with scripts off.
+    -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
-      rel="stylesheet"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+      />
+    </noscript>
+    <style>
+      /* Dark is the default theme, so paint it from the very first frame instead of white. */
+      html.dark { background: #141414; color-scheme: dark; }
+    </style>
 
     <title>GymFlow — Gym Management Software for Indian Gyms</title>
     <meta

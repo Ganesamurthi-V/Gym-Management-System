@@ -56,8 +56,8 @@ const COLUMNS = [
     heading: 'Company',
     links: [
       { label: 'FAQ', href: '#faq' },
-      { label: 'Privacy', href: '/privacy.html' },
-      { label: 'Terms', href: '/terms.html' },
+      { label: 'Privacy', href: '/privacy' },
+      { label: 'Terms', href: '/terms' },
       { label: 'Sign in', href: APP_URL },
     ],
   },

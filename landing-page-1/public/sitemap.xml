@@ -11,4 +11,12 @@
       <video:duration>61</video:duration>
     </video:video>
   </url>
+  <url>
+    <loc>https://www.gymflow.sbs/privacy</loc>
+    <lastmod>2026-10-07</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/terms</loc>
+    <lastmod>2026-10-07</lastmod>
+  </url>
 </urlset>

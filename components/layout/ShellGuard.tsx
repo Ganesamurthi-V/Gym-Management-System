@@ -7,6 +7,7 @@ import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
 import { ThemeToggle, ThemeToggleButton } from '@/components/theme/ThemeToggle'
 import SupportHeaderButton from '@/components/support/SupportHeaderButton'
+import FeedbackPrompt from '@/components/support/FeedbackPrompt'
 import { signOutViaApi } from '@/lib/auth/client-auth'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -325,6 +326,10 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           </div>
         </main>
       </div>
+
+      {/* New-owner feedback pop-up. The server decides whether it appears (first 30 days, every
+          3 days, until feedback is sent); only in the shell, so never during onboarding. */}
+      <FeedbackPrompt />
 
       {/* ── Mobile nav ── */}
       <MobileNav />

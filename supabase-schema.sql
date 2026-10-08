@@ -6661,3 +6661,93 @@ END $$;
 --    (repeat per constraint name above)
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- MIGRATION: 20261008160000_hide_admin_notes_from_owners.sql
+-- ============================================================
+
+-- ============================================================
+-- Hide gyms.admin_notes (super-admin private notes) from gym owners
+-- Idempotent. Run in the Supabase SQL editor.
+-- ============================================================
+--
+-- Why: owners could read their own gyms row through PostgREST with their JWT,
+-- including admin_notes. Only gymflow-admin (service role) and the admin mobile
+-- app (via the admin API) ever read or write that column; no owner/member code
+-- selects it (checked: owner queries use explicit column lists, the admin
+-- dashboard counts with the service role).
+--
+-- Postgres cannot revoke a single column from a table-level grant, so the
+-- table-level SELECT is replaced by a column-level grant of every column
+-- except admin_notes. service_role / postgres are unaffected.
+--
+-- MAINTENANCE: a column added to gyms in future is NOT readable by owners until
+-- it is granted, e.g.
+--     GRANT SELECT (new_column) ON public.gyms TO authenticated;
+-- That fails closed on purpose; a forgotten grant shows up as
+-- "permission denied for column" in the first test, instead of leaking.
+-- INSERT/UPDATE privileges are untouched (the guard trigger from
+-- 20261008140000 restricts what owners can write).
+
+DO $$
+DECLARE
+  v_cols TEXT;
+BEGIN
+  IF to_regclass('public.gyms') IS NULL THEN
+    RAISE NOTICE 'public.gyms missing, skipping';
+    RETURN;
+  END IF;
+
+  SELECT string_agg(format('%I', column_name), ', ' ORDER BY ordinal_position)
+    INTO v_cols
+    FROM information_schema.columns
+   WHERE table_schema = 'public'
+     AND table_name   = 'gyms'
+     AND column_name <> 'admin_notes';
+
+  REVOKE SELECT ON public.gyms FROM anon, authenticated;
+  EXECUTE format('GRANT SELECT (%s) ON public.gyms TO authenticated', v_cols);
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- MIGRATION: 20261008170000_lock_platform_settings.sql
+-- ============================================================
+
+-- ============================================================
+-- Lock platform_settings (platform UPI id + plan prices)
+-- Idempotent. Run in the Supabase SQL editor.
+-- ============================================================
+--
+-- Why: platform_settings never had ROW LEVEL SECURITY enabled. With Supabase's
+-- default grants, any signed-in gym owner (or even the public anon key) could
+-- PATCH /rest/v1/platform_settings and change upi_id/upi_name — redirecting
+-- every owner's subscription payment to an attacker's UPI — or change prices.
+--
+-- Owners must still READ it (app/owner/subscription and /api/subscription/status
+-- use the user client to show where to pay). Writes happen only through the
+-- service role (admin app), which bypasses RLS and these grants.
+DO $$
+BEGIN
+  IF to_regclass('public.platform_settings') IS NULL THEN
+    RAISE NOTICE 'platform_settings missing, skipping';
+    RETURN;
+  END IF;
+
+  ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
+
+  DROP POLICY IF EXISTS "Gym owners can read platform settings" ON public.platform_settings;
+  CREATE POLICY "Gym owners can read platform settings"
+    ON public.platform_settings FOR SELECT
+    TO authenticated
+    USING (true);
+
+  REVOKE ALL ON public.platform_settings FROM PUBLIC, anon;
+  REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.platform_settings FROM authenticated;
+  GRANT SELECT ON public.platform_settings TO authenticated;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

@@ -2,6 +2,18 @@
 
 Guidance for Claude Code when working in this repository.
 
+## Agent usage
+
+For any big or complex task — multi-file analysis, schema verification, security audits, bulk code generation, Docker-based testing — always delegate to a sub-agent via the Agent tool rather than doing it inline. This keeps the main context window clean. Choose the model based on task complexity:
+
+| Task type | Model |
+|-----------|-------|
+| Simple lookups, file reads, grep/search, counting | `haiku` |
+| Multi-file analysis, code generation, migrations, refactors | `sonnet` |
+| Deep security audits, architectural reasoning, complex multi-step plans | `opus` |
+
+Use the cheapest model that can do the job well. Step up only when a simpler model would produce poor output.
+
 ## What this is
 
 GymFlow is a multi-tenant gym management SaaS for small gyms in Tamil Nadu / Puducherry, India. Users are gym owners with limited tech experience on phones over 4G, so the UI is mobile-first and navigation latency is treated as a feature. Currency is INR, payments are UPI, and member messaging is WhatsApp.
@@ -112,7 +124,10 @@ Default theme is light; dark is opt-in (`lib/theme/theme.ts`). Verify UI changes
 ## Database
 
 - Supabase Postgres. Schema changes go in a new file under `supabase/migrations/` (timestamp-prefixed, e.g. `20260928150000_name.sql`). Migrations are applied manually through the Supabase SQL editor, so write them idempotently and tell the user when one needs to be run.
-- `supabase-schema.sql` is the complete schema as one runnable file: a baseline (Part 1) plus every migration appended in order (Part 2). **When you add a migration, also append it to Part 2** under a `-- MIGRATION: <file name>` heading, so a fresh install stays complete. Every statement must be idempotent (`drop policy if exists` before `create policy`, and likewise for triggers).
+- `supabase-schema.sql` is the **canonical final state** of the database as one runnable file, organised by object type (extensions → tables → cross-table constraints → indexes → functions → triggers → views → RLS/policies → privileges → realtime → storage → seeds). It is not a history: a fresh install runs only this file and must not also run `supabase/migrations/*`, which exist solely to upgrade databases that already exist.
+- **When you add a migration, also fold its end state into the matching section of `supabase-schema.sql`** — edit the object in place rather than appending, so the file keeps exactly one definition per object. The two must always describe the same end state.
+- Every statement in both must be idempotent (`drop policy if exists` before `create policy`, and likewise for triggers; `if not exists` for tables and indexes; `create or replace` for functions and views). The canonical file is expected to run twice in a row with no errors.
+- A migration may be written defensively (`not valid` foreign keys, `to_regclass` guards, backfills for legacy rows); the canonical file states the clean end result instead, and carries no backfills, since a fresh database has no history to repair.
 
 ## Environment
 

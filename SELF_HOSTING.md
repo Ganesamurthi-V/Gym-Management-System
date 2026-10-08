@@ -61,7 +61,7 @@ error) and switch it on.
 
 1. Open **SQL Editor → New query**.
 2. Open `supabase-schema.sql` from this repository, select everything, and paste it into the
-   editor. It is about 6,200 lines, so give it a moment.
+   editor. It is about 3,700 lines, so give it a moment.
 3. Click **Run**. It takes a few seconds and should end with **Success. No rows returned.**
 
 If it stops with an error, the message names the failing statement. Fix the cause (usually a
@@ -169,7 +169,7 @@ file under `supabase/migrations/`, run just that file in the SQL Editor. Running
 |---|---|
 | `permission denied for schema …` or an extension error | Enable the extension under Database → Extensions (step 2), run again |
 | `relation "…" does not exist` partway through | The run was cut off or edited. Run the unmodified file again from the top |
-| Query runs forever or the editor freezes | Very large paste. Run it in two halves: split at the line `-- PART 2 — MIGRATIONS (chronological)`, and run Part 1 first, then Part 2 |
+| Query runs forever or the editor freezes | Very large paste. Run it in two halves: split at the `-- 5 — FUNCTIONS` section header, and run the first half first, then the second |
 | App says the database is unreachable | `SUPABASE_URL` or a key in `.env.local` is wrong, or the dev server was not restarted after editing it |
 | Signup email never arrives | Resend is not set up. Confirm the user by hand (step 5) |
 

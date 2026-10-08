@@ -1,48 +1,36 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  ArrowRight,
-  FileSpreadsheet,
-  LayoutDashboard,
-  TrendingUp,
-  UserPlus,
-} from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { ArrowRight, FileSpreadsheet, LayoutDashboard, UserPlus } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { prefersReducedMotion, useReveal } from '../lib/useReveal';
-import { HowItWorksVisual } from './HowItWorksVisual';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const APP_URL = 'https://app.gymflow.sbs';
 
-/*
-  Icons rather than the 01-04 numerals this used to show.
+/* Three steps, each a title of two or three words and one plain sentence.
 
-  The list is still an <ol>, so the ordering is carried semantically and the numbers
-  were only ever repeating what the markup already said. Dropping them also drops
-  the one hover state these rows had, which was decoration on something that is not
-  interactive: there is no link on a step.
-*/
+   This used to be four steps with a 30-40 word paragraph apiece plus a sticky
+   picture that swapped as you scrolled — a lot to read and track for what is
+   really "sign up, add members, run the gym". The reporting step is covered by
+   the features section, so it is not repeated here.
+
+   Still an <ol>, so the order is carried by the markup. */
 const STEPS = [
   {
     icon: UserPlus,
-    title: 'Sign up and onboard',
-    desc: 'A six-step wizard walks you through your gym name, membership plans, pricing and WhatsApp details. It autosaves, so you can stop and come back.',
+    title: 'Sign up',
+    desc: 'Set up your gym in about 5 minutes.',
   },
   {
     icon: FileSpreadsheet,
-    title: 'Import your members',
-    desc: 'Upload the CSV or Excel sheet you already keep. GymFlow matches your column headings to its own fields and shows you a preview, so you can fix anything odd before a single record is saved.',
+    title: 'Add members',
+    desc: 'Upload your Excel sheet, or add them one by one.',
   },
   {
     icon: LayoutDashboard,
-    title: 'Run the day to day',
-    desc: 'Mark attendance, record payments, and send WhatsApp reminders for dues — from one dashboard that works just as well on your phone.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Analyse and grow',
-    desc: 'Monthly revenue charts, plan distribution, joining and expiry trends, and PDF reports you can download. Know exactly where the gym stands before the month closes.',
+    title: 'Run your gym',
+    desc: 'Attendance, payments and WhatsApp reminders, all from your phone.',
   },
 ] as const;
 
@@ -51,60 +39,27 @@ export function HowItWorks() {
   const track = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const fill = useRef<HTMLDivElement>(null);
-  // Which step the picture beside the list is showing.
-  const [active, setActive] = useState(0);
-
-  // The picture follows the reader: it shows the last step whose row has passed
-  // the middle of the viewport. Enter and leave-back rather than "which row is in
-  // the band now", because the final row is short and a fast scroll can carry it
-  // straight through the band without it ever being the one inside.
-  useEffect(() => {
-    const rows = track.current?.querySelectorAll<HTMLElement>('li');
-    if (!rows?.length) return;
-    const triggers = [...rows].map((el, i) =>
-      ScrollTrigger.create({
-        trigger: el,
-        start: 'top 55%',
-        end: 'max',
-        onEnter: () => setActive(i),
-        onLeaveBack: () => setActive(Math.max(0, i - 1)),
-      }),
-    );
-    return () => triggers.forEach(t => t.kill());
-  }, []);
 
   /*
     Scroll-linked progress rail beside the steps.
 
-    scaleY rather than the height the reference implementation animates. Height is
-    a layout property, so driving it every frame reflows the list; scaleY is a
-    compositor transform and the rail is a plain rectangle, so nothing is lost by
-    scaling it. transformOrigin has to be set explicitly because GSAP defaults to
-    the centre, which would grow the fill in both directions from the middle.
+    scaleY rather than height: height is a layout property, so driving it every
+    frame reflows the list, while scaleY is a compositor transform on a plain
+    rectangle. transformOrigin is set explicitly because GSAP defaults to the
+    centre, which would grow the fill both ways from the middle.
 
-    The window is the reference site's, measured rather than guessed: the fill
-    starts when the list's top passes 30% down the viewport and completes when its
-    bottom reaches 70%. Sampled there, rect.top +200 gave 0.61% and -600 gave 100%,
-    which is exactly (0.3vh - top) / (height - 0.4vh). ScrollTrigger expresses that
-    directly, so the arithmetic stays out of here.
+    The fill starts when the list's top passes 30% down the viewport and completes
+    when its bottom reaches 70%. Tracking the list rather than the whole section on
+    purpose: the section's padding is not what the progress is about, and including
+    it would leave the rail visibly unfinished once the last step had been read.
 
-    Tracking the list rather than the whole section on purpose. The section also
-    holds the sticky intro and 24 to 28 units of vertical padding, none of which the
-    progress is about, and including them would leave the rail visibly unfinished
-    once the last step had been read.
-
-    The rail's own extent is measured rather than expressed in CSS, because it runs
-    badge centre to badge centre and neither end is a percentage of anything. The
-    last step's text drops well below its badge, so a rail sized to the list would
-    overshoot into empty space; the reference site hides this by hard-coding
-    calc(100% - 6rem), which is only correct for its own last item's height.
-
-    Measured with offsetTop and offsetHeight, not getBoundingClientRect, and that is
-    load-bearing. useReveal is declared above this hook so its effect runs first,
-    which means at this moment every row is still sitting 28px low under its opening
-    tween. Rects would capture that displacement and the rail would end up 28px out
-    once the reveal settled. The offset properties come from layout and ignore
-    transforms entirely.
+    The rail runs badge centre to badge centre, measured rather than expressed in
+    CSS, because neither end is a percentage of anything. Measured with offsetTop
+    and offsetHeight, not getBoundingClientRect, and that is load-bearing:
+    useReveal is declared above this hook so its effect runs first, which means
+    every row is still sitting low under its opening tween. Rects would capture
+    that displacement and the rail would end up out once the reveal settled. The
+    offset properties come from layout and ignore transforms entirely.
   */
   useEffect(() => {
     const trackEl = track.current;
@@ -138,8 +93,7 @@ export function HowItWorks() {
     if (!layoutRail()) return;
 
     // Full rather than empty: this is scroll-linked, so there is no animation to
-    // shorten, only a final state to show. Matches useReveal, which likewise bails
-    // out leaving its targets in their resolved state.
+    // shorten, only a final state to show.
     if (prefersReducedMotion()) {
       gsap.set(fillEl, { scaleY: 1, transformOrigin: 'top' });
       return;
@@ -163,10 +117,8 @@ export function HowItWorks() {
       },
     );
 
-    // Text rewraps at every width, which moves the badges and so changes both the
-    // rail's extent and the scroll distance the tween is mapped over. Re-measure,
-    // then let ScrollTrigger recache: without the refresh the fill would keep
-    // running on the old start and end offsets.
+    // Text rewraps at every width, which moves the badges and changes both the
+    // rail's extent and the scroll distance the tween is mapped over.
     const observer = new ResizeObserver(() => {
       layoutRail();
       ScrollTrigger.refresh();
@@ -188,21 +140,10 @@ export function HowItWorks() {
       className="has-dots px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto max-w-[1240px]">
-        {/* The same two halves as the WhatsApp section above, mirrored: there the copy
-            is on the left and the product on the right, here the product is on the
-            left and the copy on the right. Same grid, same gap, same heading scale,
-            so the two read as a pair rather than as two unrelated layouts. */}
         <div className="grid gap-14 lg:grid-cols-2 lg:gap-20">
-          {/* ── The product, following the steps ────────────────────────────
-              Sticky, so it stays beside the list while the list scrolls past.
-              Hidden below lg for the reason the WhatsApp phone is hidden on small
-              screens: stacked above the steps it is a tall block that repeats what
-              they say, on the viewport with the least room for it. */}
-          <div className="reveal hidden lg:sticky lg:top-36 lg:block lg:self-start">
-            <HowItWorksVisual active={active} />
-          </div>
-
-          <div>
+          {/* Heading, line and button stay put while the steps scroll past. Sticky
+              from lg only; below that the two halves simply stack. */}
+          <div className="lg:sticky lg:top-36 lg:self-start">
             <span className="reveal eyebrow">How it works</span>
             <h2 id="how-title" className="reveal display-2 mt-4 text-balance">
               Up and running
@@ -213,76 +154,51 @@ export function HowItWorks() {
               No IT team, no installation, no consultant. Sign up and start entering your
               first members the same day.
             </p>
+            <a href={APP_URL} className="reveal btn btn-primary btn-lg mt-10">
+              Start free trial
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
 
-          {/* ── Steps ───────────────────────────────────────────────────── */}
-          {/* No left padding for the rail to sit in: it runs at left-6, which is the
-              centre of the 48px badge column, so it is already inside the row rather
-              than beside it. */}
-          <div ref={track} className="relative mt-12">
-            {/*
-              Progress rail. top and height are set from the badge positions in the
-              effect above, so nothing here fixes them.
-
-              2px, and centred on the badges by -translate-x-1/2 against left-6. The
-              row dividers that used to make this section a set of 1px hairlines are
-              gone, so a 2px accent line is now the section's own weight rather than
-              the heaviest thing in it. Rounded caps on the track only: the fill is
-              driven by scaleY, and a radius on a scaled element is squashed with it,
-              so the fill's leading edge stays square.
-            */}
+          <div ref={track} className="relative">
+            {/* Progress rail. top and height are set from the badge positions in the
+                effect above. 2px, centred on the 48px badges by -translate-x-1/2
+                against left-6. Rounded caps on the track only: the fill is driven by
+                scaleY, and a radius on a scaled element is squashed with it. */}
             <div
               ref={rail}
               aria-hidden
               className="pointer-events-none absolute left-6 w-0.5 -translate-x-1/2 rounded-full bg-border-subtle"
             >
-              <div
-                ref={fill}
-                className="h-full w-full origin-top scale-y-0 bg-accent will-change-transform"
-              />
+              <div className="h-full w-full origin-top scale-y-0 bg-accent will-change-transform" ref={fill} />
             </div>
 
             <ol className="relative flex flex-col">
               {STEPS.map(step => (
                 <li
                   key={step.title}
-                  /*
-                    The gap is the bottom padding, not a flex gap, so that it belongs
-                    to the row above it. That is what lets the rail segment between
-                    two badges be exactly the padding, and what makes last:pb-0 stop
-                    the list at the final step instead of leaving a trailing gap.
-                  */
-                  className="reveal flex gap-5 pb-20 last:pb-0 md:pb-28"
+                  /* The gap is the bottom padding, not a flex gap, so it belongs to
+                     the row above it: the rail segment between two badges is exactly
+                     the padding, and last:pb-0 stops the list at the final step. */
+                  className="reveal flex gap-5 pb-32 last:pb-0 md:pb-48"
                 >
                   <span
                     data-step-badge
                     aria-hidden
-                    /*
-                      relative z-10 so the badge paints over the rail running behind
-                      it. accent-ink, not accent-text: this sits on a solid accent
-                      fill, which is exactly the case that token exists for.
-                    */
                     className="relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent"
                   >
                     <step.icon className="h-5 w-5 text-accent-ink" />
                   </span>
 
-                  {/* Nudged down to sit the heading's cap height level with the
-                      badge's centre rather than its top. */}
                   <div className="min-w-0 pt-1.5">
                     <h3 className="display-3 text-balance">{step.title}</h3>
-                    <p className="mt-3 max-w-[560px] text-[14.5px] leading-relaxed text-muted-foreground">
+                    <p className="mt-3 max-w-[460px] text-[16px] leading-relaxed text-muted-foreground">
                       {step.desc}
                     </p>
                   </div>
                 </li>
               ))}
             </ol>
-          </div>
-
-            <a href={APP_URL} className="reveal btn btn-primary btn-lg mt-14">
-              Start free trial
-              <ArrowRight className="h-4 w-4" />
-            </a>
           </div>
         </div>
       </div>

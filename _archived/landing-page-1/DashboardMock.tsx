@@ -177,20 +177,20 @@ const MEMBERS = [
   { code: 'GF0043', name: 'Naveen Verma', plan: 'Quarterly', expires: '18 Jul (3d)', status: 'Expiring' },
   { code: 'GF0059', name: 'Aakash Das', plan: 'Annual', expires: '17 Apr 2027', status: 'Active' },
   { code: 'GF0024', name: 'Priya Suresh', plan: 'Annual', expires: '17 May 2027', status: 'Active' },
-  { code: 'GF0018', name: 'Karthik R.', plan: 'Monthly', expires: '02 Jun', status: 'Expired' },
+  { code: 'GF0018', name: 'Ganesh V.', plan: 'Monthly', expires: '02 Jun', status: 'Expired' },
 ];
 
 const PAYMENTS = [
   { id: '#85', name: 'Arun Kumar', plan: 'Quarterly', mode: 'UPI', amount: '₹5,000' },
   { id: '#84', name: 'Priya Suresh', plan: 'Monthly', mode: 'UPI', amount: '₹7,500' },
   { id: '#83', name: 'Ragul M.', plan: 'Annual', mode: 'CASH', amount: '₹7,500' },
-  { id: '#82', name: 'Ganesh V.', plan: 'Annual', mode: 'CASH', amount: '₹9,500' },
+  { id: '#82', name: 'Ganesh V. V.', plan: 'Annual', mode: 'CASH', amount: '₹9,500' },
 ];
 
 const DUES = [
   { id: '#85', name: 'Arun Kumar', phone: '9876543210', due: '₹1,500' },
   { id: '#83', name: 'Ragul M.', phone: '9384886895', due: '₹3,000' },
-  { id: '#82', name: 'Ganesh V.', phone: '9384886895', due: '₹3,500' },
+  { id: '#82', name: 'Ganesh V. V.', phone: '9384886895', due: '₹3,500' },
 ];
 
 const STOCK = [
@@ -306,9 +306,8 @@ export function DashboardMock() {
         <div className="flex h-full w-full overflow-hidden font-sans text-dash-ink-soft">
           {/* ── Sidebar ─────────────────────────────────────────────────── */}
           <aside
-            className={`flex shrink-0 flex-col border-r border-dash-line bg-dash-surface transition-[width] duration-300 ${
-              collapsed ? 'w-[68px]' : 'w-[208px]'
-            }`}
+            className={`flex shrink-0 flex-col border-r border-dash-line bg-dash-surface transition-[width] duration-300 ${collapsed ? 'w-[68px]' : 'w-[208px]'
+              }`}
           >
             <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-dash-line px-3">
               {collapsed ? (
@@ -332,14 +331,12 @@ export function DashboardMock() {
                 type="button"
                 tabIndex={-1}
                 onClick={() => setCollapsed(c => !c)}
-                className={`grid h-5 w-5 shrink-0 place-items-center rounded text-dash-ink-faint transition-colors hover:bg-dash-raise hover:text-dash-ink-dim ${
-                  collapsed ? 'absolute left-[46px]' : ''
-                }`}
+                className={`grid h-5 w-5 shrink-0 place-items-center rounded text-dash-ink-faint transition-colors hover:bg-dash-raise hover:text-dash-ink-dim ${collapsed ? 'absolute left-[46px]' : ''
+                  }`}
               >
                 <ChevronLeft
-                  className={`h-3.5 w-3.5 transition-transform duration-300 ${
-                    collapsed ? 'rotate-180' : ''
-                  }`}
+                  className={`h-3.5 w-3.5 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
             </div>
@@ -355,18 +352,16 @@ export function DashboardMock() {
                     tabIndex={-1}
                     onClick={() => !item.soon && setView(item.id as ViewId)}
                     title={item.soon ? `${item.label} — coming soon` : item.label}
-                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${
-                      active
-                        ? 'bg-dash-accent-soft text-dash-accent-text'
-                        : item.soon
-                          ? 'cursor-not-allowed text-dash-ink-faint'
-                          : 'text-dash-ink-muted hover:bg-dash-hover hover:text-dash-ink-dim'
-                    }`}
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${active
+                      ? 'bg-dash-accent-soft text-dash-accent-text'
+                      : item.soon
+                        ? 'cursor-not-allowed text-dash-ink-faint'
+                        : 'text-dash-ink-muted hover:bg-dash-hover hover:text-dash-ink-dim'
+                      }`}
                   >
                     <Icon
-                      className={`h-[15px] w-[15px] shrink-0 ${
-                        active ? 'text-dash-accent-text' : 'text-dash-ink-faint'
-                      }`}
+                      className={`h-[15px] w-[15px] shrink-0 ${active ? 'text-dash-accent-text' : 'text-dash-ink-faint'
+                        }`}
                       strokeWidth={active ? 2.4 : 2}
                     />
                     {!collapsed && (
@@ -498,9 +493,8 @@ function RemindButton({
       type="button"
       tabIndex={-1}
       onClick={onClick}
-      className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-white transition-colors ${
-        sent ? 'bg-[#047857]' : 'bg-[#10B981] hover:bg-[#059669]'
-      }`}
+      className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-white transition-colors ${sent ? 'bg-[#047857]' : 'bg-[#10B981] hover:bg-[#059669]'
+        }`}
     >
       {sent ? <Check className="h-3 w-3" strokeWidth={3} /> : <MessageCircle className="h-3 w-3" />}
       {sent ? 'Sent' : compact ? '' : 'Remind'}
@@ -621,9 +615,8 @@ function DashboardView({
                 Expiring This Week
               </span>
               <ChevronDown
-                className={`h-3.5 w-3.5 text-dash-ink-faint transition-transform duration-300 ${
-                  expiringOpen ? '' : '-rotate-90'
-                }`}
+                className={`h-3.5 w-3.5 text-dash-ink-faint transition-transform duration-300 ${expiringOpen ? '' : '-rotate-90'
+                  }`}
               />
             </button>
             <button
@@ -735,13 +728,12 @@ function MembersView({
             key={chip}
             type="button"
             tabIndex={-1}
-            className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors ${
-              i === 0
-                ? // Inverts in dark, the way the console's own selected filter chip does:
-                  // a near-black pill would vanish into a near-black panel.
-                  'bg-slate-900 text-white dark:bg-[#F5F5F5] dark:text-[#0A0A0A]'
-                : 'border border-dash-border bg-dash-surface text-dash-ink-dim hover:bg-dash-hover'
-            }`}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors ${i === 0
+              ? // Inverts in dark, the way the console's own selected filter chip does:
+              // a near-black pill would vanish into a near-black panel.
+              'bg-slate-900 text-white dark:bg-[#F5F5F5] dark:text-[#0A0A0A]'
+              : 'border border-dash-border bg-dash-surface text-dash-ink-dim hover:bg-dash-hover'
+              }`}
           >
             {chip}
           </button>
@@ -777,9 +769,8 @@ function MembersView({
               <span className="w-[104px] text-[10.5px] text-dash-ink-muted">{member.expires}</span>
               <span className="flex w-[112px] items-center justify-end gap-1.5">
                 <span
-                  className={`rounded border px-1.5 py-px text-[9px] font-bold ${
-                    STATUS_STYLES[member.status]
-                  }`}
+                  className={`rounded border px-1.5 py-px text-[9px] font-bold ${STATUS_STYLES[member.status]
+                    }`}
                 >
                   {member.status}
                 </span>
@@ -858,11 +849,10 @@ function PaymentsView() {
               <span className="w-[84px] text-[11px] text-dash-ink-dim">{payment.plan}</span>
               <span className="w-[70px]">
                 <span
-                  className={`rounded border px-1.5 py-px text-[9px] font-bold uppercase ${
-                    payment.mode === 'CASH'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-[#064E3B] dark:bg-[#022C22] dark:text-[#6EE7B7]'
-                      : 'border-blue-200 bg-blue-50 text-dash-accent-strong dark:border-[#1E3A8A] dark:bg-[#172554]'
-                  }`}
+                  className={`rounded border px-1.5 py-px text-[9px] font-bold uppercase ${payment.mode === 'CASH'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-[#064E3B] dark:bg-[#022C22] dark:text-[#6EE7B7]'
+                    : 'border-blue-200 bg-blue-50 text-dash-accent-strong dark:border-[#1E3A8A] dark:bg-[#172554]'
+                    }`}
                 >
                   {payment.mode}
                 </span>
@@ -1103,11 +1093,10 @@ function ProgramsView() {
               type="button"
               tabIndex={-1}
               onClick={() => setFilter(f)}
-              className={`rounded-lg px-3 py-1 text-[10px] font-bold capitalize transition-colors ${
-                filter === f
-                  ? 'bg-dash-surface text-dash-ink shadow-sm dark:shadow-none'
-                  : 'text-dash-ink-muted hover:text-dash-ink-dim'
-              }`}
+              className={`rounded-lg px-3 py-1 text-[10px] font-bold capitalize transition-colors ${filter === f
+                ? 'bg-dash-surface text-dash-ink shadow-sm dark:shadow-none'
+                : 'text-dash-ink-muted hover:text-dash-ink-dim'
+                }`}
             >
               {f}
             </button>
@@ -1124,11 +1113,10 @@ function ProgramsView() {
           >
             <div className="flex items-center gap-1.5">
               <span
-                className={`rounded-md px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-widest ${
-                  program.draft
-                    ? 'bg-amber-50 text-amber-600 dark:bg-[#451A03] dark:text-[#FCD34D]'
-                    : 'bg-emerald-50 text-emerald-600 dark:bg-[#022C22] dark:text-[#6EE7B7]'
-                }`}
+                className={`rounded-md px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-widest ${program.draft
+                  ? 'bg-amber-50 text-amber-600 dark:bg-[#451A03] dark:text-[#FCD34D]'
+                  : 'bg-emerald-50 text-emerald-600 dark:bg-[#022C22] dark:text-[#6EE7B7]'
+                  }`}
               >
                 {program.draft ? 'Draft' : 'Published'}
               </span>

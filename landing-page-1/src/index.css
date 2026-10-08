@@ -1435,6 +1435,15 @@ p, blockquote, figcaption, li {
   }
 }
 
+.wa-swap {
+  animation: fadeInUp 320ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wa-swap {
+    animation: none;
+  }
+}
+
 @keyframes floatY {
   0%,
   100% {

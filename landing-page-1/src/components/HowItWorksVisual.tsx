@@ -107,7 +107,7 @@ function Daily() {
       <div className="mt-2.5 grid gap-2.5">
         {[
           ['Vignesh Das', 'Today'],
-          ['Karthik R.', '3 days left'],
+          ['Ganesh V.', '3 days left'],
           ['Deepa Nair', '6 days left'],
         ].map(([name, left]) => (
           <div key={name} className={row}>
@@ -193,9 +193,8 @@ export function HowItWorksVisual({ active }: { active: number }) {
           {SCREENS.map((Screen, i) => (
             <div
               key={PATHS[i]}
-              className={`col-start-1 row-start-1 p-6 transition-[opacity,transform] duration-500 ease-out ${
-                i === active ? 'opacity-100' : 'pointer-events-none translate-y-2 opacity-0'
-              }`}
+              className={`col-start-1 row-start-1 p-6 transition-[opacity,transform] duration-500 ease-out ${i === active ? 'opacity-100' : 'pointer-events-none translate-y-2 opacity-0'
+                }`}
             >
               <Screen />
             </div>

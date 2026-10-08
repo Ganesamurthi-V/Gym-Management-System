@@ -196,7 +196,7 @@ function PhoneMock() {
                   Member card
                 </span>
                 <span className="mt-1 block truncate text-[15px] font-semibold text-accent-ink">
-                  Karthik R.
+                  Ganesh V.
                 </span>
               </span>
               <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-ink/15">

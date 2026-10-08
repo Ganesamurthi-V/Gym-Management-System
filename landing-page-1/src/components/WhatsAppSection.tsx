@@ -1,85 +1,40 @@
+import { useEffect, useState } from 'react';
 import { Ban, BellRing, UserPlus, Wallet } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { AutomationOrbit, type OrbitChip } from './AutomationOrbit';
 import { ShinyText } from './ShinyText';
 import { WhatsAppThread, type ThreadMessage } from './WhatsAppThread';
 
-/* The three chips orbiting the phone, reusing MESSAGE_TYPES' icons so the ring
-   visibly answers to the list beside it.
- 
-   Positions and arc dots are hand-placed rather than derived from an angle: the
-   chips sit a little outside the ellipse with their dot on it, which is what the
-   reference does, so solving for points on the curve would have fought the look.
-   Dot coordinates are in the orbit SVG's 640x680 space, whose centre (320,340)
-   lands on the phone's centre. */
-/* Positions are set by bearing from the phone's centre, because that is what
-   decides whether a chip is visible. The phone is 330px wide, so anything whose
-   x falls inside ±165 is behind it; at these radii that hides any chip whose
-   bearing is roughly 50-130 degrees or 230-310.
- 
-   All three sit near due-left or due-right with at least 20 degrees of headroom
-   before their centre crosses into that band, which is what lets the sway run at
-   ±20 without any of them disappearing:
- 
-     welcome  200 degrees, r 264   (was 216 — only 11 degrees of headroom)
-     payment  169 degrees, r 248
-     renewal  340 degrees, r 250   (was 334 — only 3 degrees of headroom)
- 
-   Radii stay in the 248-264 band. Anything further out and the chip clips the
-   section's right edge at xl, which is overflow-hidden; keeping them close also
-   reads as one shared orbit rather than chips flung to different distances.
- 
-   Dots are the point where each chip's bearing crosses the ellipse, so every chip
-   has a node on the arc beside it. */
+/* Chips orbiting the phone. Positions are by bearing from the phone's centre
+   (330px wide, so anything with x inside ±165 is hidden behind it), each with at
+   least 20 degrees of headroom so the sway never tucks a chip behind the device:
+   welcome 200deg r264, payment 169deg r248, renewal 340deg r250. Radii stay in
+   the 248-264 band so they read as one shared orbit and do not clip the section's
+   right edge at xl. Dots are where each bearing crosses the ellipse, in the orbit
+   SVG's 640x680 space (centre 320,340 = phone centre). */
 const ORBIT_CHIPS: readonly OrbitChip[] = [
   { icon: UserPlus, label: 'Welcome', position: '-left-[109px] top-[28%]', dot: { x: 94, y: 256 } },
   { icon: Wallet, label: 'Payment', position: '-left-[104px] top-[54%]', dot: { x: 86, y: 386 } },
-  { icon: BellRing, label: 'Renewal', position: '-right-[95px] top-[29%]', dot: { x: 546, y: 256 } },
+  { icon: BellRing, label: 'Expired', position: '-right-[95px] top-[29%]', dot: { x: 546, y: 256 } },
 ];
 
+/* One entry per tab. `message` is the rendered artefact shown in the phone;
+   `desc` and `sample` serve the mobile layout, where the phone is hidden and the
+   active tab shows a plain bubble instead. Bodies use the live templates'
+   asterisk-bold syntax so what the phone shows is what a member receives. */
 const MESSAGE_TYPES = [
   {
+    id: 'welcome',
     icon: UserPlus,
-    title: 'Welcome message',
+    title: 'Welcome',
     desc: 'Sent the moment a member joins, with their plan and expiry.',
     when: 'On joining',
-    sample: 'Hi Naveen! Welcome to Fit Zone Gym. We’re excited to have you on board.',
-  },
-  {
-    icon: BellRing,
-    title: 'Renewal reminder',
-    desc: 'Goes out before a membership lapses, not after.',
-    when: 'Before expiry',
-    sample: 'Hi Vignesh! A friendly reminder that your membership expires today.',
-  },
-  {
-    icon: Wallet,
-    title: 'Payment due alert',
-    desc: 'Nudges the members who still owe, without you asking twice.',
-    when: 'Every 3 days',
-    sample: 'Hi Karthik, you have a pending payment of ₹3,000. Please clear your dues at the earliest.',
-  },
-] as const;
-
-/* Verbatim from the live template, asterisk bolding and all, so what the phone
-   shows is what a member actually receives.
- 
-   Kept separate from MESSAGE_TYPES rather than hanging off it: the list above
-   describes behaviour in one line, this is the rendered artefact, with a banner,
-   a details block and a sign-off. Sharing one field between the two shapes meant
-   padding whichever one did not fit.
- 
-   Module scope, so the phone is not handed a newly allocated array per render.
- 
-   Just the welcome message. It is the one every member gets, and showing it
-   alone means the phone depicts the true head of a new member's thread, which is
-   why the mock now carries the date and encryption notices WhatsApp puts there. */
-const THREAD: readonly ThreadMessage[] = [
-  {
-    banner: true,
-    time: '11:50',
-    footer: 'Powered by Gym Flow',
-    body: `Hi Ganesh! 👋
+    label: 'A new member’s phone showing the automated welcome message: a branded confirmation that their annual membership is active, with member ID, plan and start date.',
+    message: {
+      banner: true,
+      time: '11:50',
+      footer: 'Powered by Gym Flow',
+      body: `Hi Ganesh! 👋
 
 Your membership has been successfully *activated*.
 
@@ -88,8 +43,55 @@ Membership Plan: *Annual (12 Months)*
 Start Date: *07 Sep 2026*
 
 Thank you for choosing *Fit zone gym*. We're excited to be part of your fitness journey.❤️`,
+    } satisfies ThreadMessage,
+    sample: 'Hi Naveen! Welcome to Fit Zone Gym. We’re excited to have you on board.',
   },
-];
+  {
+    id: 'expired',
+    icon: BellRing,
+    title: 'Expired',
+    desc: 'Tells a member their plan has lapsed and asks them to renew.',
+    when: 'On expiry',
+    label: 'A member’s phone showing an automated WhatsApp message from their gym saying their membership has expired, with member ID and expiry date, asking them to renew.',
+    message: {
+      banner: true,
+      time: '09:39',
+      footer: 'Powered by Gym Flow',
+      body: `Hi Ganesh! 👋
+
+Your membership with *Vivi gym* has expired.
+
+ Member ID: *GF001*
+Expired On: *26/07/2026*
+
+To continue uninterrupted access to the gym, please *renew* your membership at your earliest convenience.❤️`,
+    } satisfies ThreadMessage,
+    sample: 'Hi Ganesh! Your membership with Vivi gym has expired.',
+  },
+  {
+    id: 'payment',
+    icon: Wallet,
+    title: 'Payment due',
+    desc: 'Nudges the members who still owe, without you asking twice.',
+    when: 'Every 3 days',
+    label: 'A member’s phone showing an automated WhatsApp payment due alert from their gym.',
+    message: {
+      banner: true,
+      time: '09:40',
+      footer: 'Powered by Gym Flow',
+      body: `Hi Ganesh! 👋
+
+This is a reminder that your membership payment is *due*.
+
+Amount : *₹2000*
+
+Please complete your payment before the due date to keep your membership active. ❤️`,
+    } satisfies ThreadMessage,
+    sample: 'Hi Ganesh! This is a reminder that your membership payment is due. Amount : ₹2000',
+  },
+] as const;
+
+const CYCLE_MS = 5000;
 
 /* Phrased as bare nouns, not "No per-message fees". The cell they sit in is
    already labelled "What you never pay for", and keeping the "No" prefix made
@@ -102,6 +104,22 @@ const NEVER_PAY_FOR = [
 
 export function WhatsAppSection() {
   const scope = useReveal<HTMLElement>({ stagger: 0.09 });
+  const [index, setIndex] = useState(0);
+  const [auto, setAuto] = useState(true);
+
+  /* Cycles until the visitor picks a tab themselves — after that the choice is
+     theirs and it must not move under them. Skipped for reduced-motion users. */
+  useEffect(() => {
+    if (!auto) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(
+      () => setIndex(i => (i + 1) % MESSAGE_TYPES.length),
+      CYCLE_MS
+    );
+    return () => window.clearInterval(timer);
+  }, [auto]);
+
+  const active = MESSAGE_TYPES[index];
 
   return (
     <section
@@ -111,130 +129,94 @@ export function WhatsAppSection() {
       className="relative overflow-hidden border-y border-border-subtle bg-muted px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto max-w-[1240px]">
-        {/* ── Claim + what it sends, beside the product itself ────────────
-            Two columns that mean it. This used to be grid-cols-2 with the
-            right-hand cell split again into a phone and a card column, so a
-            600px half was doing the work of two columns: the phone took 300px
-            and the message cards got what was left, which is why their copy
-            wrapped to three lines and the whole side read as cramped. The
-            message types now live with the copy they belong to, and the phone
-            has the cell to itself. */}
         <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-20">
           <div>
             <span className="reveal eyebrow">WhatsApp automation</span>
 
-            {/* "Unlimited" gets the same emphasis the hero gives "effortless":
-                serif italic in the accent colour, with the shine sweeping through
-                it. It is the load-bearing word in this section — the whole claim
-                is that messaging is not metered — and reusing one treatment keeps
-                the site to a single emphasis language rather than inventing a
-                second one per section. */}
             <h2 id="whatsapp-title" className="reveal display-2 mt-4 text-balance">
               <em className="display-accent">
                 <ShinyText text="Unlimited" speed={2.8} spread={120} />
               </em>{' '}
               WhatsApp.
               <br />
-              <span className="text-muted-foreground">Built in, not billed extra.</span>
+              <span className="text-foreground">Built in, not billed extra.</span>
             </h2>
 
-            {/* No longer enumerates the three message types. It used to list
-                them in prose immediately above the cards that list them again,
-                so the reader parsed the same three items twice. The "own
-                number" line that used to float under the cards as a stray list
-                item is folded in here instead. */}
             <p className="reveal lead mt-6 max-w-[520px]">
               Every GymFlow account includes fully automated WhatsApp messaging, with <ShinyText text="zero extra cost." speed={2.8} spread={120} />
             </p>
 
-            {/* Cards again. They were bare icon-and-line rows, which read as a caption and
-                left the left column thin beside the tall phone. Each card now also says
-                when the message goes out and shows the message itself in a WhatsApp
-                bubble, so the column carries real content and the phone has a list of
-                what else it sends. Quiet surfaces, no hover lift: three boxes should
-                not outweigh the phone they sit beside. */}
-            <ul className="mt-8 flex flex-col gap-2.5">
-              {MESSAGE_TYPES.map(type => {
-                const Icon = type.icon;
-                return (
-                  <li key={type.title} className="reveal card px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-whatsapp-soft">
-                        <Icon className="h-4 w-4 text-whatsapp-ink" />
-                      </span>
-                      <span className="min-w-0 flex-1 text-[14px] font-medium tracking-tight text-foreground">
-                        {type.title}
-                      </span>
-                      <span className="shrink-0 rounded-pill bg-whatsapp-soft px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-whatsapp-ink">
-                        {type.when}
-                      </span>
-                    </div>
-                    <p className="mt-2.5 rounded-xl rounded-tl-sm bg-whatsapp-soft px-3 py-2 text-[12px] leading-snug text-foreground">
-                      {type.sample}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+            {/* Tabs replace the three stacked cards: one compact control, and the
+                phone beside it carries the message itself. */}
+            <div className="reveal mt-8">
+              <div
+                role="tablist"
+                aria-label="Automated WhatsApp messages"
+                className="flex flex-wrap gap-2"
+              >
+                {MESSAGE_TYPES.map((type, i) => {
+                  const Icon = type.icon;
+                  const selected = i === index;
+                  return (
+                    <button
+                      key={type.id}
+                      type="button"
+                      role="tab"
+                      id={`wa-tab-${type.id}`}
+                      aria-selected={selected}
+                      aria-controls="wa-panel"
+                      tabIndex={selected ? 0 : -1}
+                      onClick={() => {
+                        setAuto(false);
+                        setIndex(i);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+                        e.preventDefault();
+                        const step = e.key === 'ArrowRight' ? 1 : -1;
+                        setAuto(false);
+                        setIndex((i + step + MESSAGE_TYPES.length) % MESSAGE_TYPES.length);
+                        document
+                          .getElementById(`wa-tab-${MESSAGE_TYPES[(i + step + MESSAGE_TYPES.length) % MESSAGE_TYPES.length].id}`)
+                          ?.focus();
+                      }}
+                      className={`inline-flex items-center gap-2 rounded-pill border px-4 py-2.5 text-[14px] font-medium tracking-tight transition-colors ${
+                        selected
+                          ? 'border-transparent bg-whatsapp-soft text-whatsapp-ink'
+                          : 'border-border-subtle bg-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                      {type.title}
+                    </button>
+                  );
+                })}
+              </div>
 
-          {/* Hidden below md. On a phone the mock stacks under the copy as a
-              second full-width block that only restates what the three rows above
-              already say, and it is the tallest thing in the section — so on the
-              viewport with the least room it costs the most scroll for the least
-              new information. The message rows and the price band carry the point
-              on mobile; the device returns from md up where the grid gives it a
-              column of its own. Hiding the wrapper also drops its bloom, tilt and
-              orbit in one move.
-
-              Capped at 300 (was 330): the mock holds a real 9/16 screen, so
-              width drives height directly. Narrower than this and the banner
-              image and the message text inside the thread start to feel cramped.
-              A narrower phone also widens the orbit's visible arc — the band
-              hidden behind it shrinks with its width — so the chips keep their
-              clearance. */}
-          {/* The phone and, under it, what the messages never cost. A column rather than
-              the phone alone so the fee line has a place of its own on every screen: the
-              phone is hidden below md, and this list stays. */}
-          <div className="flex flex-col items-center gap-9 md:gap-12">
-          <div className="reveal relative mx-auto hidden w-full max-w-[300px] shrink-0 md:block">
-            {/* Soft green bloom — WhatsApp's own colour, kept to a backdrop so it
-                never competes with the blue accent for brand attention. Also what
-                fills the column either side of a phone this narrow. */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10 scale-125"
-              style={{
-                background:
-                  'radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--whatsapp) 26%, transparent) 0%, transparent 68%)',
-                filter: 'blur(12px)',
-              }}
-            />
-            {/* Three nested elements, each owning exactly one job, because they
-                all want the `transform` property and only one can have it:
-
-                  phone-scene  perspective for the 3D tilt below
-                  phone-bob    the animated float
-                  phone-tilt   the static 3D rotation
-
-                The orbit is a sibling of phone-bob rather than a child. It used
-                to ride the same float, which made the ring look painted onto the
-                device; on its own clock and easing it reads as surrounding it.
-                It stays outside phone-tilt too — rotating the chips would skew
-                their icons, and in the reference they read flat. */}
-            <div className="phone-scene relative">
-              <AutomationOrbit chips={ORBIT_CHIPS} />
-              <div className="phone-bob">
-                <div className="phone-tilt">
-                  <WhatsAppThread messages={THREAD} />
+              <div
+                id="wa-panel"
+                role="tabpanel"
+                aria-labelledby={`wa-tab-${active.id}`}
+                aria-live={auto ? 'off' : 'polite'}
+                className="mt-5 min-h-[132px]"
+              >
+                <div key={active.id} className="wa-swap">
+                  <span className="inline-block rounded-pill bg-whatsapp-soft px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-whatsapp-ink">
+                    {active.when}
+                  </span>
+                  <p className="mt-3 max-w-[460px] text-[15px] leading-relaxed text-muted-foreground">
+                    {active.desc}
+                  </p>
+                  {/* The phone is hidden below md, so on mobile the message shows
+                      here as a plain bubble. */}
+                  <p className="mt-4 max-w-[420px] rounded-xl rounded-tl-sm bg-whatsapp-soft px-3.5 py-2.5 text-[13px] leading-snug text-foreground md:hidden">
+                    {active.sample}
+                  </p>
                 </div>
               </div>
             </div>
-          </div>
 
-            {/* Plain text again, set a little lower than the phone so the orbit's ring and the
-                phone's shadow clear it. */}
-            <ul className="reveal mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 md:mt-10">
+            <ul className="reveal mt-6 flex flex-wrap items-center gap-x-6 gap-y-2.5">
               {NEVER_PAY_FOR.map(item => (
                 <li key={item} className="flex items-center gap-2 text-[13px] font-medium text-foreground">
                   <Ban className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
@@ -242,6 +224,38 @@ export function WhatsAppSection() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* The phone is hidden below md, so the column is too, rather than
+              leaving an empty grid cell and its gap on mobile. */}
+          <div className="hidden flex-col items-center md:flex">
+            <div className="reveal relative mx-auto hidden w-full max-w-[300px] shrink-0 md:block">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 -z-10 scale-125"
+                style={{
+                  background:
+                    'radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--whatsapp) 26%, transparent) 0%, transparent 68%)',
+                  filter: 'blur(12px)',
+                }}
+              />
+              {/* phone-scene / phone-bob / phone-tilt each own one transform. The
+                  orbit is a sibling of phone-bob so it runs on its own clock and
+                  reads as surrounding the phone, not painted onto it. The keyed
+                  wrapper inside re-mounts on tab change so only the screen
+                  content fades, not the float or tilt. */}
+              <div className="phone-scene relative">
+                <AutomationOrbit chips={ORBIT_CHIPS} />
+                <div className="phone-bob">
+                  <div className="phone-tilt">
+                    <div key={active.id} className="wa-swap">
+                      <WhatsAppThread messages={[active.message]} label={active.label} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

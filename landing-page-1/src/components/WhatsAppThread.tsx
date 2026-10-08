@@ -50,11 +50,20 @@ function renderBold(line: string) {
  * a screen reader walks the fake chrome and reads sample member data as page
  * content — and the message types are already described in prose beside this.
  */
-export function WhatsAppThread({ messages }: { messages: readonly ThreadMessage[] }) {
+const DEFAULT_LABEL =
+  "A new member's phone showing the automated WhatsApp message from their gym: a branded confirmation that their annual membership is active, listing their member ID, plan and start date, and signed Powered by Gym Flow.";
+
+export function WhatsAppThread({
+  messages,
+  label = DEFAULT_LABEL,
+}: {
+  messages: readonly ThreadMessage[];
+  label?: string;
+}) {
   return (
     <div
       role="img"
-      aria-label="A new member's phone showing the automated WhatsApp message from their gym: a branded confirmation that their annual membership is active, listing their member ID, plan and start date, and signed Powered by Gym Flow."
+      aria-label={label}
       /* The bezel stays dark in both themes. A phone frame is dark whatever the
          app on it is doing, and at 10px it is the only thing separating a light
          screen from a light page. */

@@ -17,6 +17,7 @@ import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import UPIQRSetup from '@/components/upi/UPIQRSetup'
 import { CodeSlots } from '@/components/ui/CodeSlots'
+import HoldButton from '@/components/ui/HoldButton'
 import type { UPIConfig } from './upi-actions'
 
 // Account-deletion OTP length. Fixed at 6 because the app now MINTS the code
@@ -717,12 +718,21 @@ export function AccountClient({
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => openModal('delete-gym')}
-              className="flex-shrink-0 px-3.5 py-2 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-all whitespace-nowrap"
+            <HoldButton
+              className="flex-shrink-0 whitespace-nowrap"
+              size="sm"
+              radius={12}
+              holdTime={1500}
+              resetAfter={800}
+              backgroundColor="var(--hb-del-bg)"
+              textColor="var(--hb-del-text)"
+              fillColor="var(--hb-del-fill)"
+              fillTextColor="var(--hb-del-fill-text)"
+              doneLabel="Opening…"
+              onHold={() => openModal('delete-gym')}
             >
-              Delete All
-            </button>
+              Hold to delete
+            </HoldButton>
           </div>
         </div>
       </div>

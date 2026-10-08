@@ -120,7 +120,7 @@ export default function GamificationPanel({
             {CONFIG_CARDS.map(card => (
               <div
                 key={card.key}
-                className="p-4 bg-white rounded-xl border border-surface-border flex flex-col gap-2"
+                className="p-4 bg-surface-secondary rounded-xl border border-surface-border flex flex-col gap-2"
               >
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">

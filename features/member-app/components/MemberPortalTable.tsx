@@ -298,7 +298,7 @@ function BulkButton({
       type="button"
       onClick={() => onRun(action)}
       disabled={isBusy}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-brand-200 text-brand-700 text-xs font-semibold rounded-lg hover:bg-brand-100/50 disabled:opacity-50 transition-colors"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-brand-200 text-brand-700 text-xs font-semibold rounded-lg hover:bg-brand-100/50 disabled:opacity-50 transition-colors"
     >
       {pending && <Loader2 className="w-3 h-3 animate-spin" />}
       {label}
@@ -371,7 +371,7 @@ function RowMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 w-52 bg-white rounded-xl shadow-lg border border-surface-border py-1"
+          className="absolute right-0 z-50 mt-1 w-52 bg-surface-card rounded-xl shadow-lg border border-surface-border py-1"
         >
           {items.map(item => (
             <button

@@ -135,17 +135,35 @@ export function readTourProgress(onboardingData: unknown): TourProgress {
 }
 
 /**
- * Should the tour start by itself for this gym?
+ * How long after the gym was created the tour may still start on its own, as a fallback.
  *
- * Only for an owner who has never seen it. Someone who finished it, or closed it
- * on purpose, is never auto-prompted again — they replay it from the account
- * menu instead.
+ * The normal way in is onboarding, which sends the owner to `/owner/dashboard?tour=welcome`.
+ * The fallback covers an owner who finished setup but never arrived through that link (the tab
+ * was closed during the 2.8s hand-off, say) and opens the dashboard later the same day. It is
+ * deliberately short: an owner who has been using the app for days did not just finish
+ * onboarding, so the tour must not appear out of nowhere.
  */
-export function shouldAutoStartTour(progress: TourProgress): boolean {
-  return progress.status === 'not_started'
-}
+export const FIRST_RUN_WINDOW_MS = 24 * 60 * 60 * 1000
 
-/** Is there a partially finished tour worth resuming? */
-export function shouldResumeTour(progress: TourProgress): boolean {
-  return progress.status === 'in_progress' && progress.chapterId !== null
+/**
+ * Should the tour start by itself for this gym, on an ordinary dashboard visit?
+ *
+ * Only for an owner who is brand new: the tour has never started AND the gym was created
+ * within the last day. Everyone else is never prompted unasked, and replays the tour from the
+ * account menu if they want it:
+ *   - someone who finished it or closed it on purpose;
+ *   - someone who stopped halfway (there is no automatic "resume": coming back a week later to
+ *     a tour that pops up over real work is the thing this avoids);
+ *   - an existing owner who set up long ago and never took it.
+ */
+export function shouldAutoStartTour(
+  progress: TourProgress,
+  gymCreatedAt: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (progress.status !== 'not_started') return false
+  const created = gymCreatedAt ? Date.parse(gymCreatedAt) : NaN
+  if (Number.isNaN(created)) return false
+  const age = now.getTime() - created
+  return age >= 0 && age < FIRST_RUN_WINDOW_MS
 }

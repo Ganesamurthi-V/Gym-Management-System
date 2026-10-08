@@ -178,6 +178,10 @@ export type Database = {
         Args: Record<never, never>
         Returns: string
       }
+      get_member_gym: {
+        Args: Record<never, never>
+        Returns: GymsRow[]
+      }
       record_member_login: {
         Args: { p_member_id: string }
         Returns: void

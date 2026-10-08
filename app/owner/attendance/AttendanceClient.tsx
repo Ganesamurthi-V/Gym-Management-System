@@ -167,7 +167,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
       
       {/* Session Toggle */}
       <div {...tourAttr('attendanceSession')} className="absolute top-3 right-3 xs:top-4 xs:right-4 md:top-8 md:right-8 z-20">
-        <div className="bg-white/80 backdrop-blur-md rounded-full p-1 shadow-md border border-slate-200 flex items-center">
+        <div className="bg-surface-card/90 backdrop-blur-md rounded-full p-1 shadow-md border border-surface-border flex items-center">
           <button
             type="button"
             onClick={() => { setSessionType('morning'); inputRef.current?.focus() }}
@@ -232,7 +232,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
             type="submit"
             disabled={isLoading || !memberId.trim()}
             {...tourAttr('attendanceSubmit')}
-            className="w-full max-w-sm mt-8 xs:mt-10 bg-emphasis hover:bg-emphasis-hover text-emphasis-fg rounded-full py-3.5 xs:py-4 md:py-5 font-bold text-base xs:text-lg md:text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-ink-900/20"
+            className="w-full max-w-sm mt-8 xs:mt-10 bg-emphasis hover:bg-emphasis-hover text-emphasis-fg rounded-full py-3.5 xs:py-4 md:py-5 font-bold text-base xs:text-lg md:text-xl transition-all active:scale-[0.98] disabled:active:scale-100 disabled:bg-surface-secondary disabled:text-slate-400 disabled:border disabled:border-surface-border disabled:shadow-none disabled:hover:bg-surface-secondary flex items-center justify-center gap-3 shadow-xl shadow-ink-900/20"
           >
             {isLoading ? (
               <Loader2 className="w-6 h-6 xs:w-8 xs:h-8 animate-spin" />

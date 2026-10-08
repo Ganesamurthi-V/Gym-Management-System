@@ -23,8 +23,8 @@
  *    cookie locally). The JWT is still verified — by PostgREST, on every
  *    query. See the security note on `getSessionUserId()` below.
  *
- * 2. `members` + `gyms` are fetched in ONE request using a PostgREST embedded
- *    join, instead of two sequential requests.
+ * 2. `members` + gym branding (get_member_gym RPC) are fetched in PARALLEL, not
+ *    sequentially. Members cannot SELECT `gyms` directly (admin columns).
  *
  * 3. `memberships`, `attendance` and `workout_programs` all have RLS policies
  *    that scope rows to `auth.uid()` already, so they do not need a
@@ -47,7 +47,6 @@ import type { Member, Gym, Membership, Attendance, WorkoutProgram } from '@/type
 // NOTE: `gyms` has no city/phone columns (it has `location`). Selecting a
 // column that does not exist makes PostgREST fail the whole request with 42703.
 
-const GYM_COLUMNS = 'id, name, location, created_at'
 const MEMBERSHIP_COLUMNS =
   'id, member_id, gym_id, plan, category, start_date, end_date, amount, admission_fee, due_amount, payment_mode, created_at'
 const ATTENDANCE_COLUMNS = 'id, member_id, gym_id, date, session, check_out_time, created_at'
@@ -93,13 +92,10 @@ export type MemberWithGym = {
   gym: Gym
 }
 
-/** Shape returned by the embedded join before we split it apart. */
-type MemberJoinRow = Member & { gyms: Gym | null }
-
 /**
- * Returns the logged-in member's own row and their gym's branding info in a
- * single request, using a PostgREST embedded join over the
- * `members.gym_id → gyms.id` foreign key.
+ * Returns the logged-in member's own row and their gym's branding info using
+ * parallel requests (members row + get_member_gym RPC; no embedded join,
+ * since members have no direct SELECT on `gyms`).
  *
  * Returns null if the member can't be found (avoids redirect loops).
  * Deduped per request by `cache()`.
@@ -110,16 +106,21 @@ export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> =>
 
   const supabase = await getServerClient()
 
-  const { data, error } = await timed('member + gym (joined)', () =>
-    supabase
-      .from('members')
-      .select(`*, gyms!inner(${GYM_COLUMNS})`)
-      .eq('auth_user_id', userId)
-      .maybeSingle(),
+  // Two PARALLEL requests instead of an embedded join: members have no direct
+  // SELECT on `gyms` (it holds admin_notes and billing columns, and RLS cannot
+  // restrict columns), so branding comes from the get_member_gym() definer RPC,
+  // which resolves the caller's own gym server-side. Parallel, so the wall-clock
+  // cost is still one round trip.
+  const [memberRes, gymRes] = await timed('member + gym (parallel)', () =>
+    Promise.all([
+      supabase.from('members').select('*').eq('auth_user_id', userId).maybeSingle(),
+      supabase.rpc('get_member_gym').maybeSingle(),
+    ]),
   )
 
-  if (error || !data) {
-    console.error('[getMemberWithGym] joined member+gym query failed', {
+  const { data: member, error } = memberRes
+  if (error || !member) {
+    console.error('[getMemberWithGym] member query failed', {
       authUserId: userId,
       code: error?.code,
       message: error?.message,
@@ -127,17 +128,18 @@ export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> =>
     return null
   }
 
-  const { gyms, ...member } = data as unknown as MemberJoinRow
-
-  if (!gyms) {
+  const gym = gymRes.data as Gym | null
+  if (gymRes.error || !gym) {
     console.error('[getMemberWithGym] member has no readable gym', {
       memberId: member.id,
       gymId: member.gym_id,
+      code: gymRes.error?.code,
+      message: gymRes.error?.message,
     })
     return null
   }
 
-  return { member: member as Member, gym: gyms as Gym }
+  return { member: member as Member, gym }
 })
 
 // ─── Membership status helpers ───────────────────────────────────────────────

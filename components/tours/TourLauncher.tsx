@@ -7,11 +7,7 @@ import 'driver.js/dist/driver.css'
 import './driver-theme.css'
 
 import { api } from '@/lib/api/client'
-import {
-  sanitizeTourProgress,
-  shouldAutoStartTour,
-  shouldResumeTour,
-} from '@/lib/tours/progress'
+import { sanitizeTourProgress, shouldAutoStartTour } from '@/lib/tours/progress'
 import { subscribeTourRestart } from '@/lib/tours/tour-state'
 import { useOwnerTour } from '@/lib/tours/useOwnerTour'
 
@@ -19,6 +15,15 @@ import { useOwnerTour } from '@/lib/tours/useOwnerTour'
  * components/tours/TourLauncher.tsx
  * ────────────────────────────────
  * Decides whether the guided tour should run, and starts it. Renders nothing.
+ *
+ * WHEN IT STARTS BY ITSELF
+ * ------------------------
+ * Once, when the owner first opens the app after onboarding: onboarding sends them to
+ * `/owner/dashboard?tour=welcome`, which starts it. As a fallback, a brand-new gym (created in
+ * the last day) that never started the tour starts it on the first dashboard visit. After that
+ * it never appears unasked: not after it was finished, closed or left halfway, and not for an
+ * owner who has been using the app for a while. The account menu's "Take the tour again" is
+ * how anyone gets it back.
  *
  * Mounted once inside `ShellGuard`, so it survives every `/owner/*` navigation
  * and the tour it owns can span pages without restarting.
@@ -59,7 +64,7 @@ const RESUME_DELAY_MS = 400
  */
 let decidedThisPageLoad = false
 
-export default function TourLauncher() {
+export default function TourLauncher({ gymCreatedAt }: { gymCreatedAt?: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -114,20 +119,15 @@ export default function TourLauncher() {
 
         const progress = sanitizeTourProgress(response?.data)
 
-        if (shouldAutoStartTour(progress)) {
+        if (shouldAutoStartTour(progress, gymCreatedAt)) {
           void startTour({ delayMs: WELCOME_DELAY_MS })
-        } else if (shouldResumeTour(progress) && progress.chapterId) {
-          void startTour({
-            from: { chapterId: progress.chapterId, stepIndex: progress.stepIndex },
-            delayMs: RESUME_DELAY_MS,
-          })
         }
       } catch {
         // The tour is a nice-to-have. If progress cannot be read — offline, rate
         // limited, whatever — the dashboard must still work untouched.
       }
     })()
-  }, [pathname, startTour])
+  }, [pathname, startTour, gymCreatedAt])
 
   return null
 }

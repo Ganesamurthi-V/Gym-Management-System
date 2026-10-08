@@ -342,7 +342,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
       {/* First-run guided tour. Renders nothing until it decides to start, and
           lives here so one tour instance survives every /owner/* navigation. */}
-      <TourLauncher />
+      <TourLauncher gymCreatedAt={initialGym?.created_at} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw } from "lucide-react";
+import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw, FolderOpen, Search, Hash, CheckCircle2 } from "lucide-react";
 import { clearImportStorage, removeImportKeys } from "@/lib/import/storage";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -426,11 +426,11 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 const STAGES = [
-  { id: 1, emoji: "📂", label: "Reading file" },
-  { id: 2, emoji: "🔍", label: "Detecting columns" },
-  { id: 3, emoji: "⚡", label: "Processing rows" },
-  { id: 4, emoji: "🆔", label: "Assigning member IDs" },
-  { id: 5, emoji: "✅", label: "Finalizing" },
+  { id: 1, Icon: FolderOpen, label: "Reading file" },
+  { id: 2, Icon: Search, label: "Detecting columns" },
+  { id: 3, Icon: Zap, label: "Processing rows" },
+  { id: 4, Icon: Hash, label: "Assigning member IDs" },
+  { id: 5, Icon: CheckCircle2, label: "Finalizing" },
 ];
 
 // The uploaded File cannot be put in sessionStorage, and React state is dropped
@@ -910,8 +910,9 @@ export default function ImportPage() {
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${done ? "bg-emerald-100" : active ? "bg-brand-100" : "bg-slate-200"}`}>
                     {done ? <Check className="w-4 h-4 text-emerald-600" /> : active ? <div className="w-3 h-3 rounded-full bg-brand-500 animate-pulse" /> : <span className="text-slate-400 text-xs">{stage.id}</span>}
                   </div>
-                  <span className={`text-sm font-semibold ${active ? "text-brand-700" : done ? "text-slate-500" : "text-slate-400"}`}>
-                    {stage.emoji} {stage.label}
+                  <span className={`flex items-center gap-2 text-sm font-semibold ${active ? "text-brand-700" : done ? "text-slate-500" : "text-slate-400"}`}>
+                    <stage.Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                    {stage.label}
                     {active && (stage as any).note && (
                       <span className="ml-2 text-xs font-normal text-brand-500 opacity-80">
                         ({(stage as any).note})

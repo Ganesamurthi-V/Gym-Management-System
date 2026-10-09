@@ -67,7 +67,6 @@ export const THEME_BOOTSTRAP_SCRIPT = `
     root.classList.toggle('${DARK_CLASS}', dark);
     root.style.colorScheme = dark ? 'dark' : 'light';
   } catch (e) {
-    /* Storage unavailable — the default theme from CSS stands. */
   }
 })();
 `.trim()

@@ -9,7 +9,12 @@ import { withSentryConfig } from '@sentry/nextjs'
  * carried over unchanged.
  */
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 const securityHeaders = [
+  // Pages and static assets are same-origin only. Explicit so no proxy default of
+  // `Access-Control-Allow-Origin: *` is inherited; API routes set CORS themselves.
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-site' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -27,10 +32,16 @@ const securityHeaders = [
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://fonts.googleapis.com",
+      // 'unsafe-eval' is only needed by React's dev-mode stack reconstruction;
+      // production bundles never eval, so it is dev-only. 'unsafe-inline' stays
+      // for Next's inline bootstrap + the theme script (a nonce would force every
+      // page dynamic and defeat the static-asset caching this app relies on).
+      `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://maps.googleapis.com https://fonts.googleapis.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // `blob:` is required by the member membership-card QR renderer.
-      "img-src 'self' blob: data: https:",
+      // `blob:` is required by the member membership-card QR renderer. Remote
+      // images are limited to the hosts the app actually loads (Supabase storage,
+      // Google Maps tiles) instead of any https origin.
+      "img-src 'self' blob: data: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://*.googleusercontent.com",
       "connect-src 'self' https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io",
       "font-src 'self' data: https://fonts.gstatic.com",
       "frame-ancestors 'none'",
@@ -81,6 +92,11 @@ const nextConfig = {
         every route; this adds one extra header to the root and nothing else, so no
         real content page is affected.
       */
+      // Auth pages can carry state in the URL; keep them out of shared caches.
+      {
+        source: '/auth/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, max-age=0' }],
+      },
       {
         source: '/',
         headers: [{ key: 'X-Robots-Tag', value: 'noindex, follow' }],

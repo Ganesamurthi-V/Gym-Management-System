@@ -22,13 +22,10 @@ import type { MetadataRoute } from 'next'
  * the URL — `/activate/verifying#token_hash=…` and
  * `/auth/setup-password#token_hash=…`. They must never be crawled.
  *
- * ─── WHY THERE IS NO sitemap ENTRY ──────────────────────────────────────────
- * This host is a pure application, not a marketing site. `app/page.tsx` redirects
- * to `/auth/login` or the role home, so `/` has no indexable content, and every
- * other route is auth-gated or token-bearing. A sitemap here would either be
- * empty or list a redirect, and declaring one that 404s shows up as an error in
- * Search Console. If a public marketing surface is ever added to this host, add
- * `app/sitemap.ts` and reference it here at the same time.
+ * ─── WHY THE SITEMAP IS TINY ────────────────────────────────────────────────
+ * This host is a pure application, so app/sitemap.ts lists only the public
+ * sign-in page. Every other route is auth-gated or token-bearing. If a public
+ * marketing surface is ever added here, list it in app/sitemap.ts.
  *
  * ─── WHY `/` IS CRAWLABLE BUT STILL MARKED noindex ELSEWHERE ─────────────────
  * `allow: '/'` deliberately lets crawlers reach the root — the disallow list only
@@ -60,5 +57,6 @@ export default function robots(): MetadataRoute.Robots {
         '/api/',
       ],
     },
+    sitemap: 'https://app.gymflow.sbs/sitemap.xml',
   }
 }

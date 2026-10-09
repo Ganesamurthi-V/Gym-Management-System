@@ -159,6 +159,16 @@ export default function LoginPage() {
     setMounted(true)
     const params = new URLSearchParams(window.location.search)
 
+    // Credentials must never sit in the address bar (history, referrers, logs).
+    // The email is read below for the post-registration prefill, then removed.
+    if (params.has('password') || params.has('email')) {
+      const clean = new URLSearchParams(window.location.search)
+      clean.delete('password')
+      clean.delete('email')
+      const qs = clean.toString()
+      window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+    }
+
     const roleParam = params.get('role')
     if (roleParam === 'member' || roleParam === 'owner') setRole(roleParam)
 
@@ -180,7 +190,7 @@ export default function LoginPage() {
     if (params.get('registered') === '1') {
       setShowRegBanner(true)
       const emailParam = params.get('email')
-      if (emailParam) setEmail(decodeURIComponent(emailParam))
+      if (emailParam) setEmail(emailParam)
       const t = setTimeout(() => setShowRegBanner(false), 6000)
       return () => clearTimeout(t)
     }

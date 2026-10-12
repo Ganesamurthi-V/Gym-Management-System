@@ -346,7 +346,7 @@ export default function VerifyingPage() {
     return (
       <main className="flex min-h-dvh items-center justify-center px-4">
         <div className="flex flex-col items-center gap-4">
-          <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="rounded-2xl shadow-md" />
+          <Image src="/favicon-192.png" alt="GymFlow" width={48} height={48} className="rounded-full shadow-md" />
           <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
           <p className="text-sm font-medium text-slate-600">Completing activation…</p>
         </div>
@@ -360,7 +360,7 @@ export default function VerifyingPage() {
       <main className="flex min-h-dvh items-center justify-center px-4 py-10">
         <div className="w-full max-w-md text-center">
           <div className="mb-6 flex flex-col items-center">
-            <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="mb-4 rounded-2xl shadow-md" />
+            <Image src="/favicon-192.png" alt="GymFlow" width={48} height={48} className="mb-4 rounded-full shadow-md" />
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-surface p-6 shadow-sm">
@@ -408,7 +408,7 @@ export default function VerifyingPage() {
     return (
       <main className="flex min-h-dvh items-center justify-center px-4">
         <div className="flex flex-col items-center gap-4">
-          <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="rounded-2xl shadow-md" />
+          <Image src="/favicon-192.png" alt="GymFlow" width={48} height={48} className="rounded-full shadow-md" />
           <div className="flex items-center gap-2 text-emerald-600">
             <CheckCircle2 className="h-6 w-6" />
             <span className="text-sm font-semibold">Account activated! Redirecting…</span>
@@ -424,7 +424,7 @@ export default function VerifyingPage() {
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md text-center">
         <div className="mb-6 flex flex-col items-center">
-          <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="mb-4 rounded-2xl shadow-md" />
+          <Image src="/favicon-192.png" alt="GymFlow" width={48} height={48} className="mb-4 rounded-full shadow-md" />
         </div>
 
         <div className={`rounded-2xl border p-6 ${consumed ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>

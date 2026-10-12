@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, Loader2, Sun, Moon } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { CheckCircle2, XCircle, Loader2, Sun, Moon, Undo2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
@@ -23,6 +24,8 @@ type MessageState = {
     memberId: string
     expiryDate: string
   }
+  /** What the server just did, so "entered the wrong number?" can reverse exactly that. */
+  undo?: { attendanceId: string; action: 'check_in' | 'check_out' }
   attendanceInfo?: {
     checkInTime: string
     checkOutTime?: string
@@ -40,6 +43,11 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
   const [totalPresent, setTotalPresent] = useState(initialPresent)
   const [sessionType, setSessionType] = useState<'morning' | 'evening'>('morning')
   const inputRef = useRef<HTMLInputElement>(null)
+  const [undoing, setUndoing] = useState(false)
+  // The card is rendered into document.body (see the overlay below), which needs a
+  // client-only mount guard so the server render and first client render agree.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   
   const displayDate = format(new Date(today), 'EEEE, dd MMM yyyy')
 
@@ -61,10 +69,46 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
         setMessage({ type: null, text: '' })
         setMemberId('')
         inputRef.current?.focus()
-      }, 4000)
+        // Long enough to read the name and reach "Entered wrong number?"
+      }, message.memberInfo && message.type !== 'error' ? 7000 : 4000)
       return () => clearTimeout(t)
     }
   }, [message])
+
+  /**
+   * "Entered wrong number?" — the kiosk is shared, so a mistyped ID checks in the
+   * wrong person. This reverses what that entry just did (a check-in is removed, a
+   * check-out is cleared) and gives the owner a clean input to try again. For an
+   * "already checked out" card nothing was changed, so it only dismisses.
+   */
+  async function handleWrongNumber() {
+    const undo = message.undo
+    if (undo) {
+      setUndoing(true)
+      try {
+        const res = await fetch('/api/attendance/undo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ attendance_id: undo.attendanceId, action: undo.action }),
+        })
+        const json = await res.json().catch(() => null)
+        if (!res.ok || !json?.success) {
+          setMessage({ type: 'error', text: json?.error?.message || 'Could not undo that entry.' })
+          return
+        }
+        if (undo.action === 'check_in' && json.data?.undone) setTotalPresent(p => Math.max(0, p - 1))
+        router.refresh()
+      } catch {
+        setMessage({ type: 'error', text: 'Could not undo that entry. Check the connection.' })
+        return
+      } finally {
+        setUndoing(false)
+      }
+    }
+    setMessage({ type: null, text: '' })
+    setMemberId('')
+    inputRef.current?.focus()
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -96,7 +140,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
         return
       }
 
-      const { action, member, expiry_date, check_in_time, check_out_time, duration_minutes } = json.data
+      const { action, member, expiry_date, check_in_time, check_out_time, duration_minutes, attendance_id } = json.data
       const formattedId = `GF${String(member.member_number).padStart(4, '0')}`
       const expiryText = expiry_date ? format(new Date(expiry_date), 'dd MMM yyyy') : 'No active plan'
 
@@ -117,6 +161,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
           type: 'success',
           text: 'Checked IN successfully.',
           memberInfo,
+          undo: attendance_id ? { attendanceId: attendance_id, action: 'check_in' } : undefined,
           attendanceInfo: { checkInTime: format(new Date(check_in_time), 'hh:mm a') },
         })
       } else if (action === 'check_out') {
@@ -131,6 +176,7 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
           type: 'success',
           text: 'Checked OUT successfully.',
           memberInfo,
+          undo: attendance_id ? { attendanceId: attendance_id, action: 'check_out' } : undefined,
           attendanceInfo: {
             checkInTime: format(new Date(check_in_time), 'hh:mm a'),
             checkOutTime: format(new Date(check_out_time), 'hh:mm a'),
@@ -257,9 +303,13 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
       </div>
 
-      {/* Success / Error Overlay Modal */}
-      <div className={cn(
-        "absolute inset-0 z-50 flex flex-col items-center justify-center p-4 text-center transition-all duration-300 rounded-3xl",
+      {/* Success / Error Overlay Modal.
+          Portalled to <body> and fixed to the viewport so the card covers the whole screen,
+          sidebar and header included. Inside the page it was clipped by this component's
+          own overflow-hidden/rounded box and by the AppShell. */}
+      {mounted && createPortal(
+      <div role="dialog" aria-modal="true" aria-live="polite" className={cn(
+        "fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 text-center transition-all duration-300",
         message.type !== null ? 'bg-ink-900/40 backdrop-blur-md opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
       )}>
         
@@ -323,8 +373,21 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
               </div>
             </div>
           )}
+
+          {message.memberInfo && (
+            <button
+              type="button"
+              onClick={handleWrongNumber}
+              disabled={undoing}
+              className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 bg-red-50 text-sm font-bold text-red-600 hover:bg-red-100 active:scale-[0.98] transition disabled:opacity-60"
+            >
+              {undoing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
+              Entered wrong number? Re-enter ID
+            </button>
+          )}
         </div>
-      </div>
+      </div>,
+      document.body)}
     </div>
   )
 }

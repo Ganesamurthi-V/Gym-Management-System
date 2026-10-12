@@ -13,7 +13,7 @@ export default function ActivateSuccessPage() {
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md text-center">
         <div className="mb-6 flex flex-col items-center">
-          <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="mb-4 rounded-2xl shadow-md" />
+          <Image src="/favicon-192.png" alt="GymFlow" width={48} height={48} className="mb-4 rounded-full shadow-md" />
         </div>
 
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">

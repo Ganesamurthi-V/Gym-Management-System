@@ -24,7 +24,7 @@ export default function ActivateErrorPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="flex flex-col items-center gap-4">
-        <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} className="rounded-2xl shadow-md" />
+        <Image src="/favicon-192.png" alt="GymFlow" width={48} height={48} className="rounded-full shadow-md" />
         <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
         <p className="text-sm font-medium text-slate-600">Checking verification…</p>
       </div>

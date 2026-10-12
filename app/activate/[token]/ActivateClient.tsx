@@ -195,7 +195,7 @@ export default function ActivateClient({ token }: { token: string }) {
       <section className="relative z-10 w-full max-w-md">
         {/* Header */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <Image src="/icons/icon.svg" alt="GymFlow" width={56} height={56} priority className="mb-3 rounded-2xl shadow-lg" />
+          <Image src="/favicon-192.png" alt="GymFlow" width={56} height={56} priority className="mb-3 rounded-full shadow-lg" />
           <h1 className="text-2xl font-bold text-slate-900">Activate Your Account</h1>
           <p className="mt-1 text-sm text-slate-500">Set up your login credentials to get started.</p>
         </div>
@@ -440,7 +440,7 @@ function EmailSentScreen({
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md text-center">
         <div className="mb-6 flex flex-col items-center">
-          <Image src="/icons/icon.svg" alt="GymFlow" width={48} height={48} priority className="mb-4 rounded-2xl shadow-md" />
+          <Image src="/favicon-192.png" alt="GymFlow" width={48} height={48} priority className="mb-4 rounded-full shadow-md" />
         </div>
 
         <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6">

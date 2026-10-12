@@ -82,7 +82,7 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
 
   if (!attData) {
     // Check In
-    const { error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await supabase
       .from('attendance')
       .insert({
         gym_id: gym.id,
@@ -91,6 +91,8 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
         session,
         created_at: now.toISOString(),
       })
+      .select('id')
+      .single()
 
     if (insertError) {
       return NextResponse.json(
@@ -103,6 +105,8 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
       success: true,
       data: {
         action: 'check_in',
+        // Lets the kiosk offer "entered the wrong number?" and undo exactly this row.
+        attendance_id: inserted?.id ?? null,
         member: { id: memberData.id, name: memberData.name, member_number: memberData.member_number },
         expiry_date: latestEndDate || null,
         check_in_time: now.toISOString(),
@@ -130,6 +134,7 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
       success: true,
       data: {
         action: 'check_out',
+        attendance_id: attData.id,
         member: { id: memberData.id, name: memberData.name, member_number: memberData.member_number },
         expiry_date: latestEndDate || null,
         check_in_time: attData.created_at,

@@ -1,13 +1,19 @@
 /**
  * WhatsApp Automation Engine
  *
- * Implements all 6 automated template sending rules:
+ * Implements the automated template sending rules:
  *  1. _gymflow_welcome_member     — on new member registration (event-driven)
  *  2. membership_renewed         — on renewal payment (event-driven)
  *  3. membership_expiry_reminder — scheduled, every 3 days, up to 7 times
  *  4. membership_expired         — scheduled, every 3 days, up to 7 times
  *  5. payment_due_reminder       — scheduled, every 3 days, up to 7 times
  *  6. _birthday_wishes            — scheduled, once per year
+ *  7. gamification nudges         — scheduled, at most one per member per day:
+ *       gym_streak_at_risk, gym_weekly_goal_reached, gym_leaderboard_rank_up
+ *  8. gym_prize_awarded           — on the owner's "Mark prize awarded" (event-driven)
+ *
+ * 7 and 8 use templates that are OFF until listed in ENABLED_GAMIFICATION_TEMPLATES
+ * (config/whatsapp.ts); see runGamificationNudges / sendPrizeAwardedMessage below.
  *
  * All scheduled sends go through the cron endpoint: POST /api/cron/whatsapp
  * Event-driven sends are called directly from server actions.
@@ -40,6 +46,20 @@ import {
 } from './scheduling'
 import { format } from 'date-fns'
 import { formatMemberId } from '@/types'
+import { isGamificationTemplateEnabled } from '@/config/whatsapp'
+import { computeStreak } from '@/lib/gamification/streak'
+import { addDays, istToday } from '@/lib/gamification/periods'
+import { normalizeSettings } from '@/lib/gamification/settings'
+import {
+  NUDGE_PRIORITY,
+  RANK_UP_COOLDOWN_DAYS,
+  hasSendablePhone,
+  selectNudges,
+  type NudgeLogRow,
+  type NudgeMember,
+  type NudgeTemplateId,
+} from './gamificationNudges'
+import type { AttendanceStamp } from '@/lib/gamification/types'
 
 // ─── DB Client ────────────────────────────────────────────────────────────────
 
@@ -83,6 +103,28 @@ interface Stats {
   skipped: number
   failed: number
   errors: string[]
+  /** The gamification step of the daily run. All zero while no gym_* template is enabled. */
+  gamification: GamificationStats
+}
+
+interface GamificationStats {
+  /** Gyms the step actually ran for (WhatsApp on, leaderboards on, a template enabled). */
+  gyms: number
+  /** Nudges enqueued, in total and per template. Also counted in Stats.queued. */
+  queued: number
+  streakAtRisk: number
+  weeklyGoalReached: number
+  rankUp: number
+  /** Selected but not queued: another run already holds today's slot. */
+  skipped: number
+  failed: number
+}
+
+function newStats(): Stats {
+  return {
+    processed: 0, sent: 0, queued: 0, skipped: 0, failed: 0, errors: [],
+    gamification: { gyms: 0, queued: 0, streakAtRisk: 0, weeklyGoalReached: 0, rankUp: 0, skipped: 0, failed: 0 },
+  }
 }
 
 /** The three cyclic reminder templates managed by the scheduler. */
@@ -486,12 +528,14 @@ export async function sendRenewalMessage({
  *  - membership_expired         (members expired within the window)
  *  - payment_due_reminder       (members with pending_amount > 0)
  *  - _birthday_wishes            (members whose birthday is today)
+ *  - gamification nudges         (streak at risk / weekly goal reached / took the lead),
+ *                                only for templates in ENABLED_GAMIFICATION_TEMPLATES
  */
 export async function runDailyWhatsAppAutomation(): Promise<Stats> {
   const supabase = getAdminClient()
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  const stats: Stats = { processed: 0, sent: 0, queued: 0, skipped: 0, failed: 0, errors: [] }
+  const stats = newStats()
 
   try {
     // ── Fetch all active gyms ──────────────────────────────────────────────
@@ -516,6 +560,25 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
         const msg = err instanceof Error ? err.message : String(err)
         stats.errors.push(`Gym ${gym.id}: ${msg}`)
         console.error(`[WA Automation] Error processing gym ${gym.id}:`, msg)
+      }
+    }
+
+    // ── Gamification nudges ────────────────────────────────────────────────
+    // After the reminders, so a failure here can never hold back an expiry or due
+    // reminder. Same gym list: a gym with WhatsApp switched off is not in it.
+    if (enabledNudgeTemplates().length > 0) {
+      const now = new Date()
+      const settingsByGym = await fetchGamificationSettings(supabase, (gyms as GymRow[]).map(g => g.id), stats)
+      if (settingsByGym) {
+        for (const gym of gyms as GymRow[]) {
+          try {
+            await runGamificationNudges(supabase, gym, settingsByGym.get(gym.id) ?? null, now, stats)
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            stats.errors.push(`Gym ${gym.id} gamification: ${msg}`)
+            console.error(`[WA Automation] Gamification step failed for gym ${gym.id}:`, msg)
+          }
+        }
       }
     }
   } catch (err) {
@@ -549,7 +612,7 @@ export async function runImportBatchAutomation({
   gymId: string
   memberIds: string[]
 }): Promise<Stats> {
-  const stats: Stats = { processed: 0, sent: 0, queued: 0, skipped: 0, failed: 0, errors: [] }
+  const stats = newStats()
   if (!memberIds.length) return stats
 
   const supabase = getAdminClient()
@@ -931,5 +994,367 @@ export async function cancelReminderCycles({
       errorMessage: 'Cancelled — member renewed or paid',
       triggerDate: triggerDate ?? latest.cycle_key.split(':').pop(),
     })
+  }
+}
+
+// ─── Gamification nudges (scheduled, inside the daily run) ────────────────────
+
+/** Attendance loaded for every member of a gym: enough for the 7-day board plus a margin. */
+const NUDGE_WINDOW_DAYS = 10
+/**
+ * A streak that fills the whole first window may be longer than the window, so those few
+ * members get a second, deeper read. A streak older than this is reported as this long.
+ */
+const STREAK_LOOKBACK_DAYS = 400
+/** PostgREST returns at most 1000 rows per request; a busy gym has more attendance than that. */
+const PAGE_SIZE = 1000
+/** Ids per `.in()` filter, to keep the request URL short. */
+const ID_CHUNK = 100
+
+/** The scheduled nudge templates that are switched on, in priority order. Empty by default. */
+function enabledNudgeTemplates(): NudgeTemplateId[] {
+  return NUDGE_PRIORITY.filter(template => isGamificationTemplateEnabled(template))
+}
+
+/** Read every row of a query, one page at a time. The query must have a stable order. */
+async function fetchAllRows<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message?: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await page(from, from + PAGE_SIZE - 1)
+    if (error) throw new Error(error.message ?? 'query failed')
+    const batch = (data ?? []) as T[]
+    rows.push(...batch)
+    if (batch.length < PAGE_SIZE) return rows
+  }
+}
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+  return out
+}
+
+/**
+ * Settings rows for the gyms of this run, keyed by gym id. A gym with no row is simply
+ * absent (it uses the defaults). Returns null when the read failed: "no row" means
+ * leaderboards are ON, so an unreadable table must not be mistaken for it.
+ */
+async function fetchGamificationSettings(
+  supabase: AdminClient,
+  gymIds: string[],
+  stats: Stats,
+): Promise<Map<string, unknown> | null> {
+  const byGym = new Map<string, unknown>()
+  for (const ids of chunk(gymIds, ID_CHUNK)) {
+    const { data, error } = await supabase
+      .from('gym_gamification_settings')
+      .select('gym_id, leaderboards_enabled, weekly_goal_days')
+      .in('gym_id', ids)
+    if (error) {
+      stats.errors.push(`Gamification settings fetch: ${error.message}`)
+      return null
+    }
+    for (const row of (data ?? []) as Array<{ gym_id: string }>) byGym.set(row.gym_id, row)
+  }
+  return byGym
+}
+
+/**
+ * The gamification step of the daily run, for ONE gym: work out today's nudges and put
+ * them on the send queue.
+ *
+ * Runs only when all three hold, checked in this order and before anything is written:
+ *   1. at least one nudge template is in ENABLED_GAMIFICATION_TEMPLATES (none by default),
+ *   2. the gym has WhatsApp on (the caller only passes gyms from the daily list, which
+ *      filters on gyms.whatsapp_enabled; sendTemplate checks it again at send time),
+ *   3. the gym has leaderboards on (gym_gamification_settings; no row = on).
+ *
+ * Cost per gym: members, one attendance read for the last NUDGE_WINDOW_DAYS days, and the
+ * recent gamification log rows. Who gets what is decided by the pure selectNudges().
+ *
+ * Idempotent like the reminders: each nudge claims the member's daily slot for that
+ * template before it is queued, and a member who already has a gamification row today
+ * is not selected at all, so a second run on the same day queues nothing.
+ *
+ * `gym` must be a server-resolved gym (here: a row the service-role client just read).
+ */
+export async function runGamificationNudges(
+  supabase: AdminClient,
+  gym: GymRow,
+  settingsRow: unknown,
+  now: Date,
+  stats: Stats,
+): Promise<void> {
+  const enabled = enabledNudgeTemplates()
+  if (enabled.length === 0) return
+
+  const settings = normalizeSettings(settingsRow)
+  if (!settings.leaderboardsEnabled) return
+
+  const g = stats.gamification
+  g.gyms++
+
+  const today = istToday(now)
+
+  const members = await fetchAllRows<{ id: string; name: string; phone: string | null; show_on_leaderboard: boolean | null }>(
+    (from, to) => supabase
+      .from('members')
+      .select('id, name, phone, show_on_leaderboard')
+      .eq('gym_id', gym.id)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
+  if (members.length === 0) return
+
+  type AttendanceRow = { member_id: string; date: string; created_at: string | null }
+  const attendance = await fetchAllRows<AttendanceRow>((from, to) => supabase
+    .from('attendance')
+    .select('member_id, date, created_at')
+    .eq('gym_id', gym.id)
+    .gte('date', addDays(today, -(NUDGE_WINDOW_DAYS - 1)))
+    .order('id', { ascending: true })
+    .range(from, to))
+  // Nobody came in during the window: no streak, no goal, no board.
+  if (attendance.length === 0) return
+
+  const rowsByMember = new Map<string, AttendanceStamp[]>()
+  const collect = (rows: AttendanceRow[], into: Map<string, AttendanceStamp[]>) => {
+    for (const row of rows) {
+      const list = into.get(row.member_id)
+      const stamp = { date: row.date, createdAt: row.created_at }
+      if (list) list.push(stamp)
+      else into.set(row.member_id, [stamp])
+    }
+  }
+  collect(attendance, rowsByMember)
+
+  // A streak that reaches the edge of the window is cut off by it. Re-read those members
+  // further back so the number in the message is the real one.
+  const longStreakIds = [...rowsByMember.entries()]
+    .filter(([, rows]) => computeStreak(rows, now).streak >= NUDGE_WINDOW_DAYS - 2)
+    .map(([memberId]) => memberId)
+  if (enabled.includes('gym_streak_at_risk') && longStreakIds.length > 0) {
+    const deep = new Map<string, AttendanceStamp[]>()
+    for (const ids of chunk(longStreakIds, ID_CHUNK)) {
+      collect(
+        await fetchAllRows<AttendanceRow>((from, to) => supabase
+          .from('attendance')
+          .select('member_id, date, created_at')
+          .eq('gym_id', gym.id)
+          .in('member_id', ids)
+          .gte('date', addDays(today, -STREAK_LOOKBACK_DAYS))
+          .order('id', { ascending: true })
+          .range(from, to)),
+        deep,
+      )
+    }
+    for (const [memberId, rows] of deep) rowsByMember.set(memberId, rows)
+  }
+
+  // Recent gamification rows for the caps. 'error' rows are left out, as everywhere else:
+  // a released slot (transient failure, gym switched off) must not count as a message.
+  const since = new Date(now.getTime() - (RANK_UP_COOLDOWN_DAYS + 1) * 86_400_000).toISOString()
+  const logRows = await fetchAllRows<{ member_id: string; template_name: string; cycle_key: string; sent_at: string }>(
+    (from, to) => supabase
+      .from('whatsapp_automation_logs')
+      .select('member_id, template_name, cycle_key, sent_at')
+      .eq('gym_id', gym.id)
+      .in('template_name', [...NUDGE_PRIORITY])
+      .in('status', ['sent', 'failed'])
+      .gte('sent_at', since)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
+  const history: NudgeLogRow[] = logRows.map(r => ({
+    memberId: r.member_id,
+    templateName: r.template_name,
+    cycleKey: r.cycle_key,
+    sentAt: r.sent_at,
+  }))
+
+  const nudgeMembers: NudgeMember[] = members.map(m => ({
+    id: m.id,
+    name: m.name,
+    phone: m.phone,
+    // The column defaults to true; only an explicit false is an opt-out.
+    showOnLeaderboard: m.show_on_leaderboard !== false,
+    attendance: rowsByMember.get(m.id) ?? [],
+  }))
+
+  const picks = selectNudges({
+    members: nudgeMembers,
+    weeklyGoalDays: settings.weeklyGoalDays,
+    isEnabled: template => enabled.includes(template),
+    history,
+    now,
+  })
+
+  for (const pick of picks) {
+    // Claim before queueing, exactly like the reminders: if an overlapping run already
+    // holds this member's slot for this template today, the unique index rejects the
+    // insert and nothing is queued.
+    const claim = await claimDailySlot(supabase, {
+      gymId: gym.id,
+      memberId: pick.memberId,
+      phone: pick.phone,
+      templateName: pick.template,
+      cycleKey: pick.cycleKey,
+      sendCount: 1,
+      triggerDate: pick.triggerDate,
+      metadata: pick.context,
+    })
+    if (!claim.claimed) {
+      g.skipped++
+      continue
+    }
+
+    const enq = await enqueueSend(supabase, {
+      gymId: gym.id,
+      memberId: pick.memberId,
+      templateName: pick.template,
+      context: { phone: pick.phone, gymName: gym.name, memberName: pick.memberName, ...pick.context },
+      cycleKey: pick.cycleKey,
+      triggerDate: pick.triggerDate,
+      logRowId: claim.id,
+    })
+
+    if (enq.enqueued) {
+      stats.queued++ // so the run kicks the drain
+      g.queued++
+      if (pick.template === 'gym_streak_at_risk') g.streakAtRisk++
+      else if (pick.template === 'gym_weekly_goal_reached') g.weeklyGoalReached++
+      else g.rankUp++
+    } else {
+      // Couldn't enqueue — release the claimed slot so the next run retries.
+      await finalizeSendRow(supabase, claim.id, { success: false, error: 'enqueue failed' })
+      g.failed++
+    }
+  }
+}
+
+// ─── Gamification prize (event-driven) ────────────────────────────────────────
+
+export interface PrizeMessageResult {
+  sent: boolean
+  /** Why nothing was sent. Absent when sent is true. */
+  reason?:
+    | 'template_disabled'
+    | 'whatsapp_disabled'
+    | 'not_found'
+    | 'no_phone'
+    | 'already_sent'
+    | 'send_failed'
+  error?: string
+}
+
+/**
+ * Tell a member they have been given a prize (template gym_prize_awarded). Sent inline with
+ * claim-then-send, like the welcome and renewal messages. Never throws.
+ *
+ * Call it from the owner's "Mark prize awarded" server action, AFTER the gamification_awards
+ * row is written, with the gym the action resolved on the server (never an id from the
+ * request). It need not block the response:
+ *
+ *   const gym = ...                                // resolved on the server for this owner
+ *   // ...insert into gamification_awards...
+ *   void sendPrizeAwardedMessage({ gymId: gym.id, memberId, prize, periodLabel, board })
+ *
+ * The member is looked up inside that gym, so a member id from another gym sends nothing.
+ * Safe to call twice: the same member + board + period is messaged once. Returns
+ * { sent: false, reason: 'template_disabled' } and touches nothing until gym_prize_awarded
+ * is in ENABLED_GAMIFICATION_TEMPLATES.
+ *
+ * Note: the claim index allows one gym_prize_awarded message per member per day, so a
+ * second prize marked for the same member on the same day is recorded but not messaged.
+ */
+export async function sendPrizeAwardedMessage({
+  gymId,
+  memberId,
+  prize,
+  periodLabel,
+  board,
+}: {
+  gymId: string
+  memberId: string
+  prize: string
+  periodLabel: string
+  /** The board the prize is for ('week', 'month', ...). Only used to tell two awards apart. */
+  board?: string
+}): Promise<PrizeMessageResult> {
+  // Before anything else: an un-enabled template reads and writes nothing.
+  if (!isGamificationTemplateEnabled('gym_prize_awarded')) return { sent: false, reason: 'template_disabled' }
+
+  try {
+    const prizeText = prize.trim()
+    const period = periodLabel.trim()
+    if (!prizeText || !period) return { sent: false, reason: 'send_failed', error: 'Prize and period are required' }
+
+    const supabase = getAdminClient()
+
+    const { data: gym } = await supabase
+      .from('gyms')
+      .select('id, name, whatsapp_enabled')
+      .eq('id', gymId)
+      .maybeSingle()
+    if (!gym) return { sent: false, reason: 'not_found' }
+    // WhatsApp switched off for this gym: send nothing, and leave no log row behind.
+    if ((gym as { whatsapp_enabled?: boolean | null }).whatsapp_enabled === false) {
+      return { sent: false, reason: 'whatsapp_disabled' }
+    }
+
+    const { data: member } = await supabase
+      .from('members')
+      .select('id, name, phone')
+      .eq('id', memberId)
+      .eq('gym_id', gymId)
+      .maybeSingle()
+    if (!member) return { sent: false, reason: 'not_found' }
+
+    const { name, phone } = member as { name: string; phone: string | null }
+    if (!hasSendablePhone(phone)) return { sent: false, reason: 'no_phone' }
+
+    const cycleKey = `gym_prize_awarded:${memberId}:${board ?? 'board'}:${period}`
+
+    const { data: earlier } = await supabase
+      .from('whatsapp_automation_logs')
+      .select('id')
+      .eq('member_id', memberId)
+      .eq('template_name', 'gym_prize_awarded')
+      .eq('cycle_key', cycleKey)
+      .in('status', ['sent', 'failed'])
+      .limit(1)
+    if (earlier && earlier.length > 0) return { sent: false, reason: 'already_sent' }
+
+    // Claim before sending so a double tap on "Mark prize awarded" can't dispatch twice.
+    const claim = await claimDailySlot(supabase, {
+      gymId,
+      memberId,
+      phone,
+      templateName: 'gym_prize_awarded',
+      cycleKey,
+      sendCount: 1,
+      triggerDate: istToday(),
+      metadata: { prize: prizeText, periodLabel: period, board: board ?? null },
+    })
+    if (!claim.claimed) return { sent: false, reason: 'already_sent' }
+
+    const result = await sendWhatsAppTemplate('gym_prize_awarded', {
+      phone,
+      gymName: (gym as { name: string }).name,
+      memberName: name,
+      prize: prizeText,
+      periodLabel: period,
+      gymId,
+    })
+    await finalizeSendRow(supabase, claim.id, result)
+
+    if (result.success) return { sent: true }
+    return result.skipped
+      ? { sent: false, reason: 'whatsapp_disabled', error: result.error }
+      : { sent: false, reason: 'send_failed', error: result.error }
+  } catch (err) {
+    return { sent: false, reason: 'send_failed', error: err instanceof Error ? err.message : String(err) }
   }
 }

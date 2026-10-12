@@ -126,6 +126,8 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
   return [...m, ...s, ...d].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 }
 
+const PAGE_SIZE = 20
+
 export function PaymentsClient({ payments, productSales = [], duePayments = [], pendingMembers, gymId, gymName }: Props) {
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
@@ -218,7 +220,17 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
   }, [filtered])
 
   const totalPending = useMemo(() => localPending.reduce((s, m) => s + m.pending_amount, 0), [localPending])
-  const displayTransactions = activeTab === 'membership' ? membershipTransactions : activeTab === 'inventory' ? inventoryTransactions : dueTransactions
+  const allDisplayTransactions = activeTab === 'membership' ? membershipTransactions : activeTab === 'inventory' ? inventoryTransactions : dueTransactions
+
+  // Twenty rows at a time keeps the list short on a phone. The page number is
+  // tied to the filters that produced the list, so changing any of them starts
+  // again from page 1 without an effect.
+  const pageKey = [activeTab, period, modeFilter, search, idSearch, customFrom, customTo].join('|')
+  const [pageState, setPageState] = useState({ key: pageKey, page: 0 })
+  const pageCount = Math.max(1, Math.ceil(allDisplayTransactions.length / PAGE_SIZE))
+  const page = Math.min(pageState.key === pageKey ? pageState.page : 0, pageCount - 1)
+  const displayTransactions = allDisplayTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const goToPage = (next: number) => setPageState({ key: pageKey, page: next })
 
   const modeConfig = {
     cash: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <Banknote className="w-4 h-4 text-emerald-600" /> },
@@ -497,7 +509,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
               className="input-field w-40" />
           </div>
           {customFrom && customTo && (
-            <span className="text-xs text-slate-400 font-medium">{displayTransactions.length} result{displayTransactions.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-slate-400 font-medium">{allDisplayTransactions.length} result{allDisplayTransactions.length !== 1 ? 's' : ''}</span>
           )}
         </div>
       )}
@@ -650,6 +662,28 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           </table>
         </div>
       </div>
+
+      {allDisplayTransactions.length > PAGE_SIZE && (
+        <nav aria-label="Transactions pages" className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => goToPage(page - 1)}
+            disabled={page === 0}
+            className="px-4 py-2.5 rounded-xl text-sm font-bold bg-surface border border-slate-200 text-slate-700 disabled:opacity-40 active:scale-95 transition-transform"
+          >
+            Previous
+          </button>
+          <p className="text-xs font-semibold text-slate-500 text-center tabular-nums" aria-live="polite">
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, allDisplayTransactions.length)} of {allDisplayTransactions.length}
+          </p>
+          <button
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= pageCount - 1}
+            className="px-4 py-2.5 rounded-xl text-sm font-bold bg-surface border border-slate-200 text-slate-700 disabled:opacity-40 active:scale-95 transition-transform"
+          >
+            Next
+          </button>
+        </nav>
+      )}
 
       {showExportModal && (
         <div className="fixed inset-0 z-50 bg-ink-900/40 backdrop-blur-sm flex items-center justify-center p-4">

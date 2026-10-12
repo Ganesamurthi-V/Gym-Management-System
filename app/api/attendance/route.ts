@@ -32,7 +32,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 })
     }
 
-    const { member_id, date, status } = body
+    const { member_id, date } = body
+
+    // The unique key is (member_id, date, session), so the row must always
+    // carry a session for the upsert below to have a conflict target. Callers
+    // that predate sessions send none; they get the column default, 'morning'.
+    const session = body.session ?? 'morning'
+    if (session !== 'morning' && session !== 'evening') {
+      log.summary(400)
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'session must be morning or evening' } }, { status: 400 })
+    }
 
     log.start('GET_GYM')
     const gym = await getGymForUser(supabase, user.id)
@@ -56,11 +65,13 @@ export async function POST(req: NextRequest) {
     }
 
     log.start('DB_UPSERT')
+    // onConflict must name the real unique constraint. 'member_id,date' matched
+    // no unique index, so Postgres rejected every call with 42P10.
     const { data, error } = await supabase
       .from('attendance')
       .upsert(
-        { member_id, date, gym_id: gym.id },
-        { onConflict: 'member_id,date' }
+        { member_id, date, session, gym_id: gym.id },
+        { onConflict: 'member_id,date,session' }
       )
       .select('id')
       .single()

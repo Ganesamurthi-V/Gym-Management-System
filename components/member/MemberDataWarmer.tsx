@@ -12,6 +12,7 @@ const WARM_ROUTES = [
   '/m/workout',
   '/m/progress',
   '/m/rewards',
+  '/m/leaderboard',
   '/m/profile',
   '/m/membership',
   '/m/attendance',

@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Flame } from 'lucide-react'
 import type { Achievement, AchievementRarity } from '@/lib/member/achievements/types'
 import { RARITY_ORDER } from '@/lib/member/achievements/types'
+import { StreakBadge } from '@/components/member/StreakBadge'
+import { LeaderboardEntryCard } from '@/components/member/LeaderboardEntryCard'
+import { formatCount } from '@/lib/gamification/leaderboardDisplay'
 import AchievementCard from './AchievementCard'
 
 // ─── Rarity visual config ────────────────────────────────────────────────────
@@ -28,6 +32,11 @@ interface Props {
   earned: Achievement[]
   locked: Achievement[]
   allAchievements: Achievement[]
+  streak: number
+  streakPending: boolean
+  longestStreak: number
+  /** The gym's switch; hides the leaderboard entry when off. */
+  leaderboardsEnabled: boolean
 }
 
 export default function RewardsClient({
@@ -41,8 +50,26 @@ export default function RewardsClient({
   earned,
   locked,
   allAchievements,
+  streak,
+  streakPending,
+  longestStreak,
+  leaderboardsEnabled,
 }: Props) {
   const [tab, setTab] = useState<TabId>('all')
+
+  // `isNew` is true only on the server render that recorded the unlock. The
+  // member shell re-renders this page in the background every 30 s
+  // (useMemberRealtime), and on that render the same badge is no longer new, so
+  // without remembering it here the highlight would vanish half a minute after
+  // it appeared. Kept for as long as this screen stays mounted.
+  const [newIds, setNewIds] = useState<ReadonlySet<string>>(
+    () => new Set(allAchievements.filter(a => a.isNew).map(a => a.id)),
+  )
+  useEffect(() => {
+    const fresh = allAchievements.filter(a => a.isNew).map(a => a.id)
+    if (fresh.length === 0) return
+    setNewIds(prev => (fresh.every(id => prev.has(id)) ? prev : new Set([...prev, ...fresh])))
+  }, [allAchievements])
 
   const displayed = tab === 'earned' ? earned : tab === 'locked' ? locked : allAchievements
 
@@ -102,6 +129,28 @@ export default function RewardsClient({
         </div>
       </div>
 
+      {/* ─── Streak ──────────────────────────────────────────────────────── */}
+      <div className="mb-3 flex items-center gap-3 rounded-2xl border border-slate-200 bg-surface p-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+          <Flame aria-hidden="true" className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <StreakBadge
+            streak={streak}
+            pending={streakPending}
+            size="md"
+            suffix="day streak"
+            hideFlame
+            showLabel
+          />
+          <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
+            Longest streak: {formatCount(longestStreak)} {longestStreak === 1 ? 'day' : 'days'}
+          </p>
+        </div>
+      </div>
+
+      {leaderboardsEnabled && <LeaderboardEntryCard className="mb-5" />}
+
       {/* ─── Tabs ────────────────────────────────────────────────────────── */}
       <div className="mb-4 flex border-b border-slate-200">
         {([
@@ -139,7 +188,7 @@ export default function RewardsClient({
             <RarityHeader rarity={rarity} count={achievements.length} />
             <div className="grid grid-cols-2 gap-3">
               {achievements.map(a => (
-                <AchievementCard key={a.id} achievement={a} />
+                <AchievementCard key={a.id} achievement={a} isNew={newIds.has(a.id)} />
               ))}
             </div>
           </section>

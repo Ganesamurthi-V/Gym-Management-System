@@ -11,6 +11,35 @@
  */
 
 import { z } from 'zod'
+import type { GamificationTemplateId } from '@/types/whatsapp'
+
+// ─── Gamification templates: the enable-list ──────────────────────────────────
+
+/**
+ * THE switch for the gamification WhatsApp messages. Default: empty = nothing is sent.
+ *
+ * The four gym_* templates are specified in code (services/whatsapp/templateSpec.ts) before
+ * they exist in Meta. Sending a template Meta has not approved fails for every member, so a
+ * template is sent only once its name is in this list. Until then the engine does not work
+ * the message out, does not claim a slot, does not queue it and does not call Meta.
+ *
+ * To switch one on: create it in WhatsApp Manager from lib/whatsapp/GAMIFICATION_TEMPLATES.md,
+ * wait for Meta to mark it APPROVED, then add its name here and deploy. Add them one at a
+ * time as each is approved, e.g.
+ *
+ *   export const ENABLED_GAMIFICATION_TEMPLATES: readonly GamificationTemplateId[] = [
+ *     'gym_streak_at_risk',
+ *   ]
+ *
+ * This is deliberately code and not an environment variable: enabling a template is a
+ * reviewed change that ships together with the wording it was approved with.
+ */
+export const ENABLED_GAMIFICATION_TEMPLATES: readonly GamificationTemplateId[] = []
+
+/** True only for a gamification template listed in ENABLED_GAMIFICATION_TEMPLATES. */
+export function isGamificationTemplateEnabled(templateId: GamificationTemplateId): boolean {
+  return ENABLED_GAMIFICATION_TEMPLATES.includes(templateId)
+}
 
 // ─── Environment schema ───────────────────────────────────────────────────────
 

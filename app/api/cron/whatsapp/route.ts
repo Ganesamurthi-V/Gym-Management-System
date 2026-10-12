@@ -7,6 +7,17 @@
  *  - payment_due_reminder        (every 3 days, up to 7 times)
  *  - _birthday_wishes             (once per year on member's birthday)
  *
+ * and, as one more step of the same run, the gamification nudges (at most ONE per
+ * member per day, in this priority; gyms with leaderboards switched off are skipped):
+ *  - gym_streak_at_risk          (streak of 3+ days still waiting for today's check-in)
+ *  - gym_weekly_goal_reached     (weekly goal reached; once per ISO week)
+ *  - gym_leaderboard_rank_up     (alone at #1 on the last-7-days board; once per 7 days)
+ * These are OFF until each template is approved in Meta and listed in
+ * ENABLED_GAMIFICATION_TEMPLATES (config/whatsapp.ts). Counts are in stats.gamification.
+ *
+ * Nothing is sent from here directly: every message is queued in whatsapp_send_queue
+ * and delivered by /api/whatsapp/queue/drain.
+ *
  * Security: Protected by CRON_SECRET header.
  * Vercel Cron calls this automatically based on vercel.json schedule.
  *

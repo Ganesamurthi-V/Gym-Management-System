@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { CheckCircle2, XCircle, Loader2, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -32,6 +33,7 @@ type MessageState = {
 export function AttendanceClient({ gymId, gymName, today, totalPresent: initialPresent }: Props) {
   // Auto-refresh when attendance records are added/modified.
   useGymRealtime(gymId, ['attendance'])
+  const router = useRouter()
   const [memberId, setMemberId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<MessageState>({ type: null, text: '' })
@@ -106,6 +108,11 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
 
       if (action === 'check_in') {
         setTotalPresent(p => p + 1)
+        // A check-in moves the gamification boards (XP, streaks, ranks). The
+        // Router Cache keeps other owner pages for 180 s, so without this the
+        // Member App leaderboard opened right after a kiosk check-in would be
+        // rendered from a payload that predates it.
+        router.refresh()
         setMessage({
           type: 'success',
           text: 'Checked IN successfully.',

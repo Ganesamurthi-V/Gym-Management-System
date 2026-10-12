@@ -4,13 +4,25 @@ import Link from 'next/link'
 import { BarChart3, Dumbbell, Home, Trophy, UserRound } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
-const navItems = [
+/**
+ * Five tabs is the limit on a 360px phone: a sixth leaves 60px per tab, which
+ * cannot fit an 11px "Leaderboard" label and squeezes the tap targets. So the
+ * leaderboard has no tab of its own; it is reached from cards on Home and
+ * Rewards, and `alsoActiveFor` keeps the Rewards tab lit while it is open so
+ * the member still sees where they are.
+ */
+const navItems: ReadonlyArray<{
+  href: string
+  label: string
+  icon: typeof Home
+  alsoActiveFor?: readonly string[]
+}> = [
   { href: '/m/home', label: 'Home', icon: Home },
   { href: '/m/workout', label: 'Workout', icon: Dumbbell },
   { href: '/m/progress', label: 'Progress', icon: BarChart3 },
-  { href: '/m/rewards', label: 'Rewards', icon: Trophy },
+  { href: '/m/rewards', label: 'Rewards', icon: Trophy, alsoActiveFor: ['/m/leaderboard'] },
   { href: '/m/profile', label: 'Profile', icon: UserRound },
-] as const
+]
 
 export function BottomNav() {
   const pathname = usePathname()
@@ -18,8 +30,10 @@ export function BottomNav() {
   return (
     <nav aria-label="Primary navigation" className="fixed inset-x-0 bottom-0 z-[var(--z-sticky)] border-t border-surface-border bg-surface/90 backdrop-blur-md pb-safe-bottom">
       <div className="mx-auto flex h-[var(--bottom-nav-height)] max-w-lg items-stretch">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`)
+        {navItems.map(({ href, label, icon: Icon, alsoActiveFor }) => {
+          const active = [href, ...(alsoActiveFor ?? [])].some(
+            (base) => pathname === base || pathname.startsWith(`${base}/`),
+          )
           return (
             <Link
               key={href}

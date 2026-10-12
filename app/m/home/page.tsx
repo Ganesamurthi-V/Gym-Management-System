@@ -1,9 +1,13 @@
 import Link from 'next/link'
 import {
   Activity, CreditCard, Dumbbell, QrCode,
-  AlertCircle, CheckCircle2, Clock,
+  AlertCircle, CheckCircle2, Clock, Flame,
 } from 'lucide-react'
-import { getMembershipPageData, recordMemberLogin } from '@/lib/member/member-data'
+import { getMembershipPageData, getMemberGamification, recordMemberLogin } from '@/lib/member/member-data'
+import { StreakBadge } from '@/components/member/StreakBadge'
+import { WeeklyGoalRing } from '@/components/member/WeeklyGoalRing'
+import { LeaderboardEntryCard } from '@/components/member/LeaderboardEntryCard'
+import { weeklyGoalProgress } from '@/lib/gamification/leaderboardDisplay'
 import { formatDate } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
 
@@ -16,8 +20,13 @@ import { startPageTimer } from '@/lib/perf'
 export default async function HomePage() {
   const done = startPageTimer('home')
 
-  // member + gym + memberships fetched in parallel (one round trip, not three)
-  const data = await getMembershipPageData()
+  // member + gym + memberships fetched in parallel (one round trip, not three).
+  // The gamification RPC resolves the member from the session, so it joins the
+  // same parallel batch instead of waiting for the member row.
+  const [data, game] = await Promise.all([
+    getMembershipPageData(),
+    getMemberGamification(),
+  ])
   if (!data) {
     done()
     return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load your profile. Please try logging out and back in.</p></div>
@@ -32,6 +41,7 @@ export default async function HomePage() {
   done()
 
   const firstName = member.name.split(' ')[0]
+  const goal = weeklyGoalProgress(game.daysLast7, game.weeklyGoalDays)
 
   const statusConfig = {
     active:   { icon: CheckCircle2, text: `Active · ${daysLeft} days left`,   colour: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -78,6 +88,47 @@ export default async function HomePage() {
         </div>
         <span className="text-slate-300">›</span>
       </Link>
+
+      {/* Streak + weekly goal */}
+      <section aria-label="Your streak and weekly goal" className="mb-5 grid grid-cols-2 gap-3">
+        <div className="card rounded-2xl p-4">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <Flame aria-hidden="true" className={`h-3.5 w-3.5 ${game.streak > 0 ? 'text-orange-500' : 'text-slate-300'}`} />
+            Streak
+          </p>
+          {/* The number is attended days only; the hourglass (inside StreakBadge)
+              is the whole "today is still open" message. */}
+          <StreakBadge
+            streak={game.streak}
+            pending={game.streakPending}
+            size="lg"
+            suffix={game.streak === 1 ? 'day' : 'days'}
+            hideFlame
+            showLabel
+            className="mt-2"
+          />
+          {!game.streakPending && (
+            <p className={`mt-2 text-xs font-semibold ${game.attendedToday ? 'text-emerald-600' : 'text-slate-500'}`}>
+              {game.attendedToday ? 'Checked in today' : 'Check in to start a streak'}
+            </p>
+          )}
+        </div>
+
+        <div className="card flex items-center gap-3 rounded-2xl p-4">
+          <WeeklyGoalRing days={game.daysLast7} goal={game.weeklyGoalDays} />
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Weekly goal</p>
+            <p className={`mt-1 text-xs font-bold leading-snug ${goal.reached ? 'text-emerald-600' : 'text-slate-700'}`}>
+              {goal.reached
+                ? 'Goal reached'
+                : `${goal.target - goal.done} more ${goal.target - goal.done === 1 ? 'day' : 'days'} to go`}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-400">Last 7 days</p>
+          </div>
+        </div>
+      </section>
+
+      {game.leaderboardsEnabled && <LeaderboardEntryCard className="mb-5" />}
 
       {/* Hero card */}
       <section className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 text-white shadow-lg shadow-brand-200">

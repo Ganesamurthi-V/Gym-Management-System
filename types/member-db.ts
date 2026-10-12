@@ -29,6 +29,9 @@ type MembersRow = {
   invitation_sent_at: string | null
   portal_activated_at: string | null
   last_portal_login: string | null
+  // Member's own leaderboard opt-out (20261012 gamification migration). Written
+  // only through the set_leaderboard_visibility() RPC.
+  show_on_leaderboard: boolean
   created_at: string
 }
 
@@ -186,9 +189,24 @@ export type Database = {
         Args: { p_member_id: string }
         Returns: void
       }
+      // Gamification RPCs take no member/gym id: the caller is resolved from
+      // auth.uid() in SQL. Shapes: lib/gamification/mapMemberGamification.ts
+      // and lib/gamification/mapLeaderboard.ts.
       get_member_gamification: {
-        Args: { p_member_id: string }
+        Args: Record<never, never>
         Returns: unknown
+      }
+      get_gym_leaderboard: {
+        Args: { p_board?: 'week' | 'month' | 'streak' | 'all'; p_limit?: number }
+        Returns: unknown[]
+      }
+      set_leaderboard_visibility: {
+        Args: { p_visible: boolean }
+        Returns: boolean | null
+      }
+      record_member_achievements: {
+        Args: { p_codes: string[] }
+        Returns: { code: string; earned_at: string; is_new: boolean }[]
       }
     }
     Enums: Record<string, never>

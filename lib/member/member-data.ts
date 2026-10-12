@@ -42,6 +42,9 @@ import { after } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { timed } from '@/lib/perf'
 import type { Member, Gym, Membership, Attendance, WorkoutProgram } from '@/types/member-db'
+import { mapMemberGamification } from '@/lib/gamification/mapMemberGamification'
+import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
+import type { LeaderboardBoard, LeaderboardRow, MemberGamification } from '@/lib/gamification/types'
 
 // ─── Column lists ────────────────────────────────────────────────────────────
 // NOTE: `gyms` has no city/phone columns (it has `location`). Selecting a
@@ -313,6 +316,49 @@ export const getAssignedWorkoutPrograms = cache(async (): Promise<WorkoutProgram
     return []
   }
   return (data ?? []) as WorkoutProgram[]
+})
+
+// ─── Gamification (XP, streak, weekly goal, leaderboard) ─────────────────────
+
+/**
+ * The logged-in member's XP, streak and goal numbers.
+ *
+ * `get_member_gamification()` takes no argument: it resolves the member from
+ * `auth.uid()`, so like the readers above it does not wait for the member row
+ * and can run inside the same `Promise.all` as the page's other queries.
+ *
+ * Wrapped in `cache()` so a page that shows the numbers in two places still
+ * makes one RPC call per request. On an error (or before the 20261012 migration
+ * has been run) the mapper returns a zero state with leaderboards on, so pages
+ * render empty rather than failing.
+ */
+export const getMemberGamification = cache(async (): Promise<MemberGamification> => {
+  const supabase = await getServerClient()
+  const { data, error } = await timed('gamification (rpc)', () => supabase.rpc('get_member_gamification'))
+
+  if (error) {
+    console.error('[getMemberGamification] failed', { code: error.code, message: error.message })
+  }
+  return mapMemberGamification(error ? null : data)
+})
+
+/**
+ * First paint of a leaderboard, rendered on the server so the page does not
+ * open on a spinner. After that the client polls `/api/gamification/leaderboard`
+ * (see `lib/hooks/useLeaderboard.ts`). Tenant scoping, name masking and the
+ * gym's on/off switch are all enforced inside the RPC.
+ */
+export const getMemberLeaderboard = cache(async (board: LeaderboardBoard): Promise<LeaderboardRow[]> => {
+  const supabase = await getServerClient()
+  const { data, error } = await timed(`leaderboard ${board} (rpc)`, () =>
+    supabase.rpc('get_gym_leaderboard', leaderboardRpcArgs(board)),
+  )
+
+  if (error) {
+    console.error('[getMemberLeaderboard] failed', { code: error.code, message: error.message })
+    return []
+  }
+  return mapLeaderboard(data)
 })
 
 // Keep the old helper available for the /api/member/bundle route which may

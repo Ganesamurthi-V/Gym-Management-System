@@ -12,8 +12,29 @@ import { createClient } from '@/lib/supabase/server'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { hasOwnerRegistrationMarker } from '@/lib/auth/owner-registration'
+import { z } from 'zod'
+import { getAuthUser, getGym } from '@/lib/dal'
+import { logger } from '@/lib/logger'
+import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
+import {
+  GAMIFICATION_SETTINGS_COLUMNS,
+  gamificationSettingsPatchSchema,
+  normalizeSettings,
+} from '@/lib/gamification/settings'
+import {
+  PRIZE_BOARDS,
+  awardPeriodLabel,
+  badgeRulesProblem,
+  fieldErrors,
+  mapAward,
+  patchToRow,
+  pickLeaders,
+  prizeFor,
+} from '@/features/member-app/utils/gamificationConfig'
 import type {
   ActionResult,
+  GamificationAwardResult,
+  GamificationSettingsResult,
   MemberActivityType,
   MemberBulkAction,
   MemberRowAction,
@@ -487,5 +508,219 @@ export async function memberBulkAction(
 
     default:
       return { success: false, message: 'Unknown action' }
+  }
+}
+
+// ─── Gamification ────────────────────────────────────────────────────────────
+
+const gamificationLog = logger.child({ component: 'MEMBER_APP_GAMIFICATION' })
+
+/**
+ * Owner + gym for the gamification actions, through the DAL.
+ *
+ * `getAuthUser()` verifies the JWT signature locally (getClaims), and the gym
+ * is looked up by that verified user id, so the gym id below is never something
+ * the browser supplied. A signed-in MEMBER owns no gym and gets null here. RLS
+ * on both tables is still the real boundary: every statement runs on the
+ * cookie-session client.
+ */
+async function getOwnerGym(): Promise<{ gymId: string } | null> {
+  const { user } = await getAuthUser()
+  if (!user) return null
+  const { gym } = await getGym(user.id)
+  return gym ? { gymId: gym.id } : null
+}
+
+const SETTINGS_SAVE_FAILED = 'Could not save the settings. Please try again.'
+const AWARD_FAILED = 'Could not mark the prize. Please try again.'
+const UNDO_FAILED = 'Could not undo that award. Please try again.'
+
+/**
+ * Saves one card of the Gamification tab (or just the Leaderboards toggle).
+ *
+ * `patch` is untrusted: it is whatever the browser posted to the action
+ * endpoint, so it is re-validated here with the same schema the forms use.
+ * Only the fields present in the patch are written (see `patchToRow`).
+ */
+export async function updateGamificationSettings(patch: unknown): Promise<GamificationSettingsResult> {
+  const owner = await getOwnerGym()
+  if (!owner) return { success: false, message: 'Unauthorized' }
+
+  const parsed = gamificationSettingsPatchSchema.safeParse(patch)
+  if (!parsed.success) {
+    // The forms show field-level messages before submitting; reaching this
+    // means the client and server disagree, so one readable line is enough.
+    const first = Object.values(fieldErrors(parsed.error))[0]
+    return { success: false, message: first ? `Check the values and try again: ${first}` : SETTINGS_SAVE_FAILED }
+  }
+
+  const row = patchToRow(parsed.data)
+  if (Object.keys(row).length === 0) return { success: false, message: 'Nothing to save.' }
+
+  if (parsed.data.badgeRules !== undefined) {
+    const problem = badgeRulesProblem(parsed.data.badgeRules)
+    if (problem) return { success: false, message: problem }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('gym_gamification_settings')
+    // `updated_at` is set explicitly: the table's trigger only fires on UPDATE,
+    // and the first save for a gym is an INSERT.
+    .upsert({ gym_id: owner.gymId, ...row, updated_at: new Date().toISOString() }, { onConflict: 'gym_id' })
+    .select(GAMIFICATION_SETTINGS_COLUMNS)
+    .single()
+
+  if (error || !data) {
+    gamificationLog.error('settings save failed', { code: error?.code, detail: error?.message })
+    return { success: false, message: SETTINGS_SAVE_FAILED }
+  }
+
+  await invalidateMemberAppCache(owner.gymId)
+  return { success: true, message: 'Gamification settings saved', settings: normalizeSettings(data) }
+}
+
+const awardInputSchema = z.object({
+  board: z.enum(PRIZE_BOARDS),
+  memberId: z.string().uuid(),
+})
+
+/**
+ * `gamification_awards` has TWO foreign keys to members, so the embed must name
+ * the constraint or PostgREST answers PGRST201.
+ */
+const AWARD_COLUMNS =
+  'id, member_id, board, period_label, prize, awarded_at, member:members!fk_gamification_awards_member_same_gym(name)'
+
+/**
+ * Records that the owner handed the configured prize to a board's current
+ * leader.
+ *
+ * The browser only says WHICH board and WHICH member. Everything else is
+ * resolved here: the prize text comes from the saved settings, the period label
+ * from the server clock, and the member must be in first place on a fresh read
+ * of the board. The page the owner tapped on can be a poll interval old, and a
+ * prize must not be recorded for someone who has just been overtaken.
+ */
+export async function markGamificationPrizeAwarded(input: unknown): Promise<GamificationAwardResult> {
+  const owner = await getOwnerGym()
+  if (!owner) return { success: false, message: 'Unauthorized' }
+
+  const parsed = awardInputSchema.safeParse(input)
+  if (!parsed.success) return { success: false, message: AWARD_FAILED }
+  const { board, memberId } = parsed.data
+
+  const supabase = await createClient()
+
+  const [settingsRes, boardRes] = await Promise.all([
+    supabase
+      .from('gym_gamification_settings')
+      .select(GAMIFICATION_SETTINGS_COLUMNS)
+      .eq('gym_id', owner.gymId)
+      .maybeSingle(),
+    // Ties share rank 1, so read a few rows rather than only the first.
+    supabase.rpc('get_gym_leaderboard', leaderboardRpcArgs(board, 10)),
+  ])
+
+  if (settingsRes.error || boardRes.error) {
+    gamificationLog.error('award precheck failed', {
+      settings: settingsRes.error?.code,
+      board: boardRes.error?.code,
+    })
+    return { success: false, message: AWARD_FAILED }
+  }
+
+  const prize = prizeFor(normalizeSettings(settingsRes.data), board)
+  if (!prize) return { success: false, message: 'Add a prize in Achievement Config first.' }
+
+  const isLeader = pickLeaders(mapLeaderboard(boardRes.data), 10).some(row => row.memberId === memberId)
+  if (!isLeader) {
+    return { success: false, message: 'The leader has changed. Check the board and try again.' }
+  }
+
+  const periodLabel = awardPeriodLabel(board)
+  const { data, error } = await supabase
+    .from('gamification_awards')
+    .insert({ gym_id: owner.gymId, member_id: memberId, board, period_label: periodLabel, prize })
+    .select(AWARD_COLUMNS)
+    .single()
+
+  if (error) {
+    // 23505 = the unique key (gym, member, board, period): a double tap or a
+    // second device already recorded it. That is the state the owner wanted.
+    if (error.code === '23505') {
+      const { data: existing } = await supabase
+        .from('gamification_awards')
+        .select(AWARD_COLUMNS)
+        .eq('gym_id', owner.gymId)
+        .eq('member_id', memberId)
+        .eq('board', board)
+        .eq('period_label', periodLabel)
+        .maybeSingle()
+      return {
+        success: true,
+        message: 'Prize already marked as awarded',
+        award: mapAward(existing) ?? undefined,
+      }
+    }
+    gamificationLog.error('award insert failed', { code: error.code, detail: error.message })
+    return { success: false, message: AWARD_FAILED }
+  }
+
+  await invalidateMemberAppCache(owner.gymId)
+
+  // Tell the winner on WhatsApp. Awaited (a serverless function can be frozen
+  // the moment the action returns) but never allowed to fail the action: the
+  // award row is the record, the message is a courtesy. It is a no-op until
+  // `gym_prize_awarded` is approved in Meta and added to the enable-list, and it
+  // honours the per-gym WhatsApp switch inside sendTemplate.
+  try {
+    const { sendPrizeAwardedMessage } = await import('@/lib/whatsapp/automation')
+    await sendPrizeAwardedMessage({
+      gymId: owner.gymId,
+      memberId,
+      prize,
+      periodLabel: board === 'week' ? 'the last 7 days' : 'the last 30 days',
+      board,
+    })
+  } catch (err) {
+    gamificationLog.error('prize message failed', { detail: err instanceof Error ? err.message : String(err) })
+  }
+
+  const award = mapAward(data) ?? undefined
+  return {
+    success: true,
+    message: award ? `Prize marked as awarded to ${award.memberName}` : 'Prize marked as awarded',
+    award,
+  }
+}
+
+/** Undo for a mis-tap: deletes one award row of the caller's own gym. */
+export async function undoGamificationAward(awardId: unknown): Promise<ActionResult> {
+  const owner = await getOwnerGym()
+  if (!owner) return { success: false, message: 'Unauthorized' }
+
+  const parsed = z.string().uuid().safeParse(awardId)
+  if (!parsed.success) return { success: false, message: UNDO_FAILED }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('gamification_awards')
+    .delete()
+    .eq('id', parsed.data)
+    // Belt and braces with RLS: an id from another gym matches no row.
+    .eq('gym_id', owner.gymId)
+    .select('id')
+
+  if (error) {
+    gamificationLog.error('award delete failed', { code: error.code, detail: error.message })
+    return { success: false, message: UNDO_FAILED }
+  }
+
+  await invalidateMemberAppCache(owner.gymId)
+  // Already gone (undone on another device) is the outcome that was asked for.
+  return {
+    success: true,
+    message: data && data.length > 0 ? 'Award removed' : 'That award was already removed',
   }
 }

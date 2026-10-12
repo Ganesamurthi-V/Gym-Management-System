@@ -38,6 +38,8 @@ export interface Achievement {
   badgeSize?: number
   unlocked: boolean
   unlockedAt?: string // ISO timestamp
+  /** Recorded for the first time on this page load (see merge.ts). */
+  isNew?: boolean
   /** Current progress toward requirement. Omit if not measurable. */
   progress?: number
   /** If true, the underlying data source is not yet available */

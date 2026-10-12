@@ -17,6 +17,7 @@
 export const ONLINE_THRESHOLD_MINUTES = 15
 
 import type { TemplateId } from '@/types/whatsapp'
+import type { GamificationSettings, LeaderboardBoard, LeaderboardRow } from '@/lib/gamification/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1 — Overview
@@ -171,20 +172,46 @@ export interface WhatsAppTemplateStatus {
 // Section 7 — Gamification
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** One "prize awarded" record (`gamification_awards`), with the member's name resolved. */
+export interface GamificationAward {
+  id: string
+  memberId: string
+  memberName: string
+  board: LeaderboardBoard
+  /** The rolling window the prize was for, 'YYYY-MM-DD..YYYY-MM-DD'. */
+  periodLabel: string
+  prize: string
+  /** ISO datetime */
+  awardedAt: string
+}
+
 export interface GamificationSummary {
   totalXpEarned: number
   badgesUnlocked: number
+  /** Members whose streak is above 0. */
   activeStreaks: number
-  challengesCompleted: number
+  /** Members with at least one attended day in the rolling last 7 days. */
+  checkedInLast7Days: number
+  /** Same value as `settings.leaderboardsEnabled`; kept flat for the toggle. */
   leaderboardsEnabled: boolean
+  /** The gym's saved rules, or the defaults when it has never saved any. */
+  settings: GamificationSettings
+  /** Most recent first. Covers the current periods and the "Recently awarded" list. */
+  awards: GamificationAward[]
+  /**
+   * `period_label` of the current rolling window per prize board, computed on
+   * the server so the panel and the award action agree on which period "now" is.
+   */
+  periods: { week: string; month: string }
 }
 
-export interface LeaderboardEntry {
-  rank: number
-  memberId: string
-  memberName: string
-  xp: number
-  badges: number
+/** Result of saving gamification settings: the saved settings come back so the panel need not wait for a refresh. */
+export interface GamificationSettingsResult extends ActionResult {
+  settings?: GamificationSettings
+}
+
+export interface GamificationAwardResult extends ActionResult {
+  award?: GamificationAward
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,7 +289,8 @@ export interface MemberAppData {
   portalRows: MemberPortalRow[]
   invitations: InvitationActivity[]
   gamification: GamificationSummary
-  leaderboard: LeaderboardEntry[]
+  /** Server-rendered first page of the default board (last 7 days); the panel polls from there. */
+  leaderboard: LeaderboardRow[]
 }
 
 /** Result shape returned by every mock/real mutation in the service layer. */

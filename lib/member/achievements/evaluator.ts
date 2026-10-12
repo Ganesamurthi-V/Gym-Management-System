@@ -7,6 +7,7 @@
 
 import type { Achievement, MemberStats } from './types'
 import { ACHIEVEMENT_DEFINITIONS } from './definitions'
+import { applyBadgeRule } from './merge'
 
 type AchievementDef = Omit<Achievement, 'unlocked' | 'unlockedAt' | 'progress'>
 
@@ -22,12 +23,22 @@ type AchievementDef = Omit<Achievement, 'unlocked' | 'unlockedAt' | 'progress'>
  * - special: only evaluate if the required data field is present
  *
  * Achievements with `pendingBackend: true` whose data is undefined are excluded.
+ *
+ * `badgeRules` are the gym's threshold overrides keyed by achievement id; they
+ * replace a definition's `requirement` before it is evaluated, so the unlock
+ * test, the progress bar and the description all use the same number.
+ *
+ * This reports what is met RIGHT NOW. Unlocks that were recorded earlier stay
+ * unlocked through `mergeRecordedAchievements` (merge.ts), not here.
  */
-export function evaluateAchievements(stats: MemberStats): Achievement[] {
+export function evaluateAchievements(
+  stats: MemberStats,
+  badgeRules?: Record<string, number> | null,
+): Achievement[] {
   const results: Achievement[] = []
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
-    const result = evaluateOne(def, stats)
+    const result = evaluateOne(applyBadgeRule(def, badgeRules), stats)
     if (result) results.push(result)
   }
 

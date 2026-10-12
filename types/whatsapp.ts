@@ -170,6 +170,17 @@ export interface ProcessedStatus {
 // Outbound templates
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Gamification templates. They are part of the template contract (spec, payload builder,
+ * validator) but stay OFF until each one is approved in Meta and listed in
+ * ENABLED_GAMIFICATION_TEMPLATES (config/whatsapp.ts).
+ */
+export type GamificationTemplateId =
+  | 'gym_streak_at_risk'
+  | 'gym_weekly_goal_reached'
+  | 'gym_leaderboard_rank_up'
+  | 'gym_prize_awarded'
+
 export type TemplateId =
   | '_gymflow_welcome_member'
   | 'membership_renewed'
@@ -178,6 +189,7 @@ export type TemplateId =
   | 'payment_due_reminder'
   | '_birthday_wishes'
   | 'member_app_invitation'
+  | GamificationTemplateId
 
 export interface TemplateContext {
   /** 10-digit or E.164 */
@@ -194,6 +206,18 @@ export interface TemplateContext {
   memberId?: string
   /** Secure token for the member_app_invitation dynamic URL button. */
   invitationToken?: string
+  /** gym_streak_at_risk: length of the member's current streak, in days. */
+  streakDays?: number
+  /** gym_weekly_goal_reached: days attended in the last 7 days. */
+  daysAttended?: number
+  /** gym_leaderboard_rank_up: the member's position on the board (1 = first). */
+  rank?: number
+  /** gym_leaderboard_rank_up: the board's name as it reads in a sentence, e.g. "last 7 days". */
+  boardName?: string
+  /** gym_prize_awarded: the prize text the owner wrote. */
+  prize?: string
+  /** gym_prize_awarded: what the prize was for, e.g. "Last 7 days". */
+  periodLabel?: string
   /**
    * The gym this message is sent on behalf of. When present, sendTemplate checks that gym's
    * WhatsApp switch (gyms.whatsapp_enabled) and refuses to send while it is off. Always set

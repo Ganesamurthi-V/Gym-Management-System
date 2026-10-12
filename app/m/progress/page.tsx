@@ -1,5 +1,8 @@
-import { BarChart3, CalendarCheck, TrendingUp, Award } from 'lucide-react'
-import { getProgressPageData } from '@/lib/member/member-data'
+import { BarChart3, CalendarCheck, TrendingUp, Award, Flame, Zap } from 'lucide-react'
+import { getProgressPageData, getMemberGamification } from '@/lib/member/member-data'
+import { StreakBadge } from '@/components/member/StreakBadge'
+import { formatCount } from '@/lib/gamification/leaderboardDisplay'
+import { levelFromXp } from '@/lib/gamification/xp'
 import { formatDate, formatPlan } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
 
@@ -11,7 +14,8 @@ export default async function ProgressPage() {
 
   // member + gym + memberships + attendance all in parallel (one round trip).
   // Previously the member query had to resolve first to supply member.id.
-  const data = await getProgressPageData()
+  // The gamification RPC needs no member id either, so it rides in the same batch.
+  const [data, game] = await Promise.all([getProgressPageData(), getMemberGamification()])
   if (!data) {
     done()
     return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load progress data.</p></div>
@@ -20,6 +24,8 @@ export default async function ProgressPage() {
   const { status, latest } = state
 
   done()
+
+  const { level } = levelFromXp(game.xp, game.xpPerLevel)
 
   const stats = [
     { label: 'Total check-ins',  value: attendance.totalCount,    icon: CalendarCheck, colour: 'text-brand-600',   bg: 'bg-brand-50' },
@@ -47,6 +53,25 @@ export default async function ProgressPage() {
             <p className="mt-0.5 text-xs font-semibold text-slate-400">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Streak + XP. Same two tiles as the grid above, kept separate because the
+          streak is not a plain number: it carries the pending state. */}
+      <div className="mb-5 grid grid-cols-2 gap-3">
+        <div className="card p-4">
+          <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+            <Flame aria-hidden="true" className="h-4 w-4" />
+          </span>
+          <StreakBadge streak={game.streak} pending={game.streakPending} size="lg" hideFlame />
+          <p className="mt-0.5 text-xs font-semibold text-slate-400">Day streak · best {formatCount(game.longestStreak)}</p>
+        </div>
+        <div className="card p-4">
+          <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <Zap aria-hidden="true" className="h-4 w-4" />
+          </span>
+          <p className="text-2xl font-bold tabular-nums text-slate-900">{formatCount(game.xp)}</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-400">Total XP · level {level}</p>
+        </div>
       </div>
 
       {/* Current plan summary */}

@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
 import { LogoutButton } from '@/components/member/LogoutButton'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
+import { LeaderboardVisibilitySwitch } from './LeaderboardVisibilitySwitch'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
 // route-level `revalidate` cannot be used for per-user pages.
@@ -116,6 +117,14 @@ export default async function ProfilePage() {
           </div>
         </section>
       )}
+
+      {/* Leaderboard opt-out. Seeded from the member row this page already
+          loads, so the switch costs no extra query. `!== false`: before the
+          20261012 migration the column is absent, and the default is shown. */}
+      <section className="card mb-5 p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Privacy</p>
+        <LeaderboardVisibilitySwitch initialVisible={member.show_on_leaderboard !== false} />
+      </section>
 
       {/* Sign out */}
       <section className="card p-4">

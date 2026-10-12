@@ -121,6 +121,73 @@ function redact(obj: Record<string, unknown>): Record<string, unknown> {
 /** Exported for tests — the redaction rules are security-relevant. */
 export const __redactForTests = { redact, isSensitiveKey }
 
+// ─── Human-readable output (local development) ───────────────────────────────
+
+/**
+ * `npm run dev` prints one readable line per event instead of a JSON blob:
+ *
+ *   14:02:11 INFO  whatsapp  Template sent  template=welcome_new status=sent (a1b2c3d4)
+ *
+ * Production keeps single-line JSON for Vercel / Datadog. Force either with
+ * LOG_FORMAT=json | pretty.
+ */
+function usePrettyOutput(): boolean {
+  const forced = process.env.LOG_FORMAT?.toLowerCase()
+  if (forced === 'json') return false
+  if (forced === 'pretty') return true
+  return process.env.NODE_ENV === 'development'
+}
+
+const ANSI = {
+  reset: '[0m',
+  dim: '[2m',
+  bold: '[1m',
+  cyan: '[36m',
+  yellow: '[33m',
+  red: '[31m',
+  gray: '[90m',
+} as const
+
+const LEVEL_STYLE: Record<Level, { label: string; colour: string }> = {
+  debug: { label: 'DEBUG', colour: ANSI.gray },
+  info:  { label: 'INFO ', colour: ANSI.cyan },
+  warn:  { label: 'WARN ', colour: ANSI.yellow },
+  error: { label: 'ERROR', colour: ANSI.red },
+}
+
+const HIDDEN_FIELDS = new Set(['ts', 'level', 'message', 'component', 'requestId', 'stack'])
+
+function formatValue(value: unknown): string {
+  if (typeof value === 'string') return /[\s=]/.test(value) || value === '' ? JSON.stringify(value) : value
+  if (value === null || typeof value !== 'object') return String(value)
+  const json = JSON.stringify(value)
+  return json.length > 160 ? `${json.slice(0, 157)}…` : json
+}
+
+function formatPretty(line: Record<string, unknown>): string {
+  const level = line.level as Level
+  const style = LEVEL_STYLE[level] ?? LEVEL_STYLE.info
+  const time = new Date(String(line.ts)).toLocaleTimeString('en-GB', { hour12: false })
+  const component = typeof line.component === 'string' ? line.component : ''
+  const fields = Object.entries(line)
+    .filter(([key]) => !HIDDEN_FIELDS.has(key))
+    .map(([key, value]) => `${ANSI.dim}${key}=${ANSI.reset}${formatValue(value)}`)
+    .join(' ')
+  const requestId = typeof line.requestId === 'string' ? ` ${ANSI.dim}(${line.requestId})${ANSI.reset}` : ''
+
+  let out =
+    `${ANSI.dim}${time}${ANSI.reset} ${style.colour}${ANSI.bold}${style.label}${ANSI.reset} ` +
+    `${component ? `${ANSI.dim}${component.padEnd(10)}${ANSI.reset} ` : ''}` +
+    `${line.message}${fields ? `  ${fields}` : ''}${requestId}`
+
+  if (typeof line.stack === 'string') {
+    // Keep the first frames only: the rest is framework internals.
+    const frames = line.stack.split('\n').slice(1, 6).map(frame => `         ${ANSI.dim}${frame.trim()}${ANSI.reset}`)
+    out += `\n${frames.join('\n')}`
+  }
+  return out
+}
+
 // ─── Logger implementation ────────────────────────────────────────────────────
 
 export interface LogContext {
@@ -152,14 +219,14 @@ export class Logger {
       ...(extra ? redact(extra) : {}),
     }
 
-    const json = JSON.stringify(line)
+    const output = usePrettyOutput() ? formatPretty(line) : JSON.stringify(line)
 
     if (level === 'error') {
-      console.error(json)
+      console.error(output)
     } else if (level === 'warn') {
-      console.warn(json)
+      console.warn(output)
     } else {
-      console.log(json)
+      console.log(output)
     }
   }
 

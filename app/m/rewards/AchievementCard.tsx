@@ -2,6 +2,7 @@
 
 import { Lock } from 'lucide-react'
 import type { Achievement, AchievementRarity } from '@/lib/member/achievements/types'
+import { formatDate } from '@/lib/member/member-utils'
 
 /**
  * Rarity-themed achievement card with badge images.
@@ -57,8 +58,15 @@ const BADGE_STYLES: Record<AchievementRarity, {
   },
 }
 
-export default function AchievementCard({ achievement }: { achievement: Achievement }) {
-  const { unlocked, rarity, name, description, icon, badgeImage, badgeSize, progress, requirement } = achievement
+export default function AchievementCard({
+  achievement,
+  isNew = false,
+}: {
+  achievement: Achievement
+  /** Unlocked for the first time on this visit. */
+  isNew?: boolean
+}) {
+  const { unlocked, unlockedAt, rarity, name, description, icon, badgeImage, badgeSize, progress, requirement } = achievement
   const style = BADGE_STYLES[rarity]
 
   const showProgress = !unlocked && progress !== undefined && requirement > 0
@@ -76,10 +84,18 @@ export default function AchievementCard({ achievement }: { achievement: Achievem
           ? `${style.border} ${style.glow}`
           : 'border-slate-100 shadow-sm'
         }
+        ${isNew ? `ring-2 ${style.ring}` : ''}
       `}
       role="article"
-      aria-label={`${name}. ${unlocked ? 'Earned' : 'Locked'}. ${rarity} rarity.`}
+      aria-label={`${name}. ${isNew ? 'Newly earned' : unlocked ? 'Earned' : 'Locked'}. ${rarity} rarity.`}
     >
+      {/* New-unlock marker (top right, where the lock sits on locked cards) */}
+      {isNew && (
+        <span className="absolute right-2.5 top-2.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
+          New
+        </span>
+      )}
+
       {/* Lock icon (top right) */}
       {!unlocked && (
         <div className="absolute top-3 right-3">
@@ -141,11 +157,16 @@ export default function AchievementCard({ achievement }: { achievement: Achievem
         </div>
       )}
 
-      {/* Rarity label */}
-      <div className="mt-2.5">
+      {/* Rarity label + the date the unlock was recorded. Recorded unlocks are
+          permanent, so the date is what tells a member "you still have this"
+          when the progress it was earned with (e.g. a streak) has since reset. */}
+      <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${unlocked ? style.labelText : 'text-slate-300'}`}>
           {rarity}
         </span>
+        {unlocked && unlockedAt && (
+          <span className="text-[10px] font-semibold text-slate-400">Earned on {formatDate(unlockedAt)}</span>
+        )}
       </div>
     </div>
   )

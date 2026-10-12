@@ -25,15 +25,30 @@ const h = vi.hoisted(() => {
       gyms: [] as any[], 
       members: [] as any[], 
       whatsapp_automation_logs: [] as any[],
-      whatsapp_send_queue: [] as any[]
+      whatsapp_send_queue: [] as any[],
+      attendance: [] as any[],
+      gym_gamification_settings: [] as any[],
     },
     sendMock: vi.fn(),
+    /** null = the real enable-list (empty by default); an array = pretend these are enabled. */
+    enabledGamification: null as string[] | null,
   }
 })
 
 vi.mock('@/lib/whatsapp/sender', () => ({
   sendWhatsAppTemplate: (...args: any[]) => h.sendMock(...args),
 }))
+
+// The gamification enable-list ships empty. Tests that need a template "approved" set
+// h.enabledGamification; everything else runs against the real list.
+vi.mock('@/config/whatsapp', async (importOriginal) => {
+  const actual = await importOriginal<any>()
+  return {
+    ...actual,
+    isGamificationTemplateEnabled: (id: string) =>
+      h.enabledGamification ? h.enabledGamification.includes(id) : actual.isGamificationTemplateEnabled(id),
+  }
+})
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => makeFakeClient(),
@@ -83,6 +98,7 @@ class FakeQuery {
   private filters: Array<(r: any) => boolean> = []
   private _order: { col: string; ascending: boolean } | null = null
   private _limit: number | null = null
+  private _range: [number, number] | null = null
   private _mode: 'select' | 'insert' | 'update' = 'select'
   private _row: any = null
   private _updates: any = null
@@ -109,6 +125,7 @@ class FakeQuery {
     return this
   }
   limit(n: number) { this._limit = n; return this }
+  range(from: number, to: number) { this._range = [from, to]; return this }
   insert(row: any) { this._mode = 'insert'; this._row = row; return this }
 
   private runSelect() {
@@ -120,6 +137,7 @@ class FakeQuery {
       )
     }
     if (this._limit != null) rows = rows.slice(0, this._limit)
+    if (this._range) rows = rows.slice(this._range[0], this._range[1] + 1)
     return { data: this._single ? (rows[0] ?? null) : rows, error: null }
   }
 
@@ -183,6 +201,7 @@ import {
   runImportBatchAutomation,
   cancelReminderCycles,
   sendWelcomeMessage,
+  sendPrizeAwardedMessage,
 } from '@/lib/whatsapp/automation'
 import { drainSendQueue } from '@/lib/whatsapp/queue'
 import type { TemplateId, TemplateContext, SendResult } from '@/types/whatsapp'
@@ -208,6 +227,9 @@ beforeEach(() => {
   h.store.members = []
   h.store.whatsapp_automation_logs = []
   h.store.whatsapp_send_queue = []
+  h.store.attendance = []
+  h.store.gym_gamification_settings = []
+  h.enabledGamification = null
   h.sendMock.mockReset()
   h.sendMock.mockImplementation(async (template: string) => ({
     success: true,
@@ -691,5 +713,315 @@ describe('per-gym WhatsApp switch', () => {
     expect(h.store.whatsapp_send_queue[0].status).toBe('cancelled')
     expect(stats.retried).toBe(0)
     expect(stats.failed).toBe(0)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Gamification nudges (one more step of the daily run) + the prize message
+// ═══════════════════════════════════════════════════════════════════════════
+
+const NUDGES = ['gym_streak_at_risk', 'gym_weekly_goal_reached', 'gym_leaderboard_rank_up']
+const NO_GAMIFICATION = { gyms: 0, queued: 0, streakAtRisk: 0, weeklyGoalReached: 0, rankUp: 0, skipped: 0, failed: 0 }
+
+/** Check a member in on the given day offsets (relative to day 0), each saved at 10:00 IST that day. */
+function attend(memberId: string, dayOffsets: number[], gymId = 'gym-1') {
+  for (const n of dayOffsets) {
+    const date = label(n)
+    h.store.attendance.push({
+      id: `att_${String(h.store.attendance.length + 1).padStart(5, '0')}`,
+      member_id: memberId,
+      gym_id: gymId,
+      date,
+      created_at: `${date}T04:30:00.000Z`,
+    })
+  }
+}
+
+function gamificationSends() {
+  return h.sendMock.mock.calls.filter(c => String(c[0]).startsWith('gym_')).map(c => c[0])
+}
+
+describe('gamification nudges: off until a template is enabled', () => {
+  it('queues, claims and sends nothing with the shipped (empty) enable-list', async () => {
+    addMember()
+    attend('mem-1', [-4, -3, -2, -1]) // a 4-day streak, the weekly goal, and nobody to beat
+    const stats = await runDailyWhatsAppAutomation()
+    expect(h.sendMock).not.toHaveBeenCalled()
+    expect(h.store.whatsapp_send_queue).toHaveLength(0)
+    expect(h.store.whatsapp_automation_logs).toHaveLength(0)
+    expect(stats.gamification).toEqual(NO_GAMIFICATION)
+    expect(stats.queued).toBe(0)
+  })
+
+  it('sends only the templates that are enabled', async () => {
+    h.enabledGamification = ['gym_weekly_goal_reached']
+    addMember()
+    attend('mem-1', [-4, -3, -2, -1]) // streak applies too, but that template is not enabled
+    await runDailyWhatsAppAutomation()
+    expect(gamificationSends()).toEqual(['gym_weekly_goal_reached'])
+    expect(logsFor('gym_streak_at_risk')).toHaveLength(0)
+  })
+})
+
+describe('gamification nudges: the daily step', () => {
+  beforeEach(() => { h.enabledGamification = [...NUDGES] })
+
+  it('queues a streak-at-risk nudge through the send queue with the claim row attached', async () => {
+    addMember()
+    attend('mem-1', [-3, -2, -1])
+    const stats = await runDailyWhatsAppAutomation()
+
+    expect(stats.gamification).toEqual({ ...NO_GAMIFICATION, gyms: 1, queued: 1, streakAtRisk: 1 })
+    expect(stats.queued).toBe(1)
+    expect(stats.errors).toEqual([])
+
+    // claimed in the automation log...
+    const logs = logsFor('gym_streak_at_risk')
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({
+      gym_id: 'gym-1', member_id: 'mem-1', status: 'sent', send_count: 1,
+      cycle_key: `gym_streak_at_risk:mem-1:${label(-1)}`,
+    })
+    // ...queued, not sent inline, and reconciled by the drain
+    expect(h.store.whatsapp_send_queue).toHaveLength(1)
+    expect(h.store.whatsapp_send_queue[0]).toMatchObject({
+      gym_id: 'gym-1', member_id: 'mem-1', template_name: 'gym_streak_at_risk', log_row_id: logs[0].id, status: 'sent',
+    })
+    expect(logs[0].message_id).toMatch(/^wamid\./)
+
+    // the gym id rides along so sendTemplate can check the gym's WhatsApp switch
+    expect(h.sendMock).toHaveBeenCalledTimes(1)
+    expect(h.sendMock.mock.calls[0][0]).toBe('gym_streak_at_risk')
+    expect(h.sendMock.mock.calls[0][1]).toMatchObject({
+      gymId: 'gym-1', gymName: 'Iron Temple', memberName: 'Arjun', phone: '9876543210', streakDays: 3,
+    })
+  })
+
+  it('reports the real length of a streak longer than the first attendance window', async () => {
+    addMember()
+    attend('mem-1', Array.from({ length: 15 }, (_, i) => -(i + 1)))
+    await runDailyWhatsAppAutomation()
+    expect(h.sendMock.mock.calls[0][1].streakDays).toBe(15)
+  })
+
+  it('queues nothing on a second run the same day', async () => {
+    addMember()
+    attend('mem-1', [-4, -3, -2, -1])
+    await runDailyWhatsAppAutomation()
+    const again = await runDailyWhatsAppAutomation()
+    expect(gamificationSends()).toEqual(['gym_streak_at_risk'])
+    expect(again.gamification).toEqual({ ...NO_GAMIFICATION, gyms: 1 })
+    expect(h.store.whatsapp_send_queue).toHaveLength(1)
+  })
+
+  it('does not double-send when a second run overlaps the first mid-send', async () => {
+    addMember()
+    attend('mem-1', [-3, -2, -1])
+    let reentered = false
+    h.sendMock.mockImplementationOnce(async (template: string) => {
+      if (!reentered) {
+        reentered = true
+        await runDailyWhatsAppAutomation()
+      }
+      return { success: true, messageId: `wamid.${template}` }
+    })
+    await runDailyWhatsAppAutomation()
+    expect(gamificationSends()).toEqual(['gym_streak_at_risk'])
+  })
+
+  it('sends one message per member per day, by priority: streak first, then rank the next day', async () => {
+    addMember({ id: 'mem-1' })
+    addMember({ id: 'mem-2', name: 'Bala' })
+    attend('mem-1', [-4, -3, -2, -1]) // streak 4 + weekly goal 4 + alone at #1
+    attend('mem-2', [-1])
+
+    setDay(0)
+    await runDailyWhatsAppAutomation()
+    expect(gamificationSends()).toEqual(['gym_streak_at_risk'])
+    expect(logsFor('gym_weekly_goal_reached')).toHaveLength(0)
+    expect(logsFor('gym_leaderboard_rank_up')).toHaveLength(0)
+
+    // Next morning, no new check-in: the streak is gone, the goal message is no longer
+    // fresh, and mem-1 still leads the board.
+    setDay(1)
+    await runDailyWhatsAppAutomation()
+    expect(gamificationSends()).toEqual(['gym_streak_at_risk', 'gym_leaderboard_rank_up'])
+    expect(h.sendMock.mock.calls[1][1]).toMatchObject({ memberName: 'Arjun', rank: 1, boardName: 'last 7 days' })
+
+    // Still #1 the day after: not told again within 7 days.
+    setDay(2)
+    await runDailyWhatsAppAutomation()
+    expect(gamificationSends()).toHaveLength(2)
+  })
+
+  it('uses the gym\'s weekly goal from its settings row', async () => {
+    h.enabledGamification = ['gym_weekly_goal_reached']
+    h.store.gym_gamification_settings.push({ gym_id: 'gym-1', leaderboards_enabled: true, weekly_goal_days: 2 })
+    addMember()
+    attend('mem-1', [-2, -1])
+    await runDailyWhatsAppAutomation()
+    expect(gamificationSends()).toEqual(['gym_weekly_goal_reached'])
+    expect(h.sendMock.mock.calls[0][1]).toMatchObject({ daysAttended: 2 })
+  })
+
+  it('skips a member with an invalid phone number', async () => {
+    addMember({ phone: '123' })
+    attend('mem-1', [-3, -2, -1])
+    const stats = await runDailyWhatsAppAutomation()
+    expect(h.sendMock).not.toHaveBeenCalled()
+    expect(stats.gamification.queued).toBe(0)
+  })
+
+  it('does not disturb the reminders: a due reminder and a nudge both go out', async () => {
+    addMember({ pending_amount: 500 })
+    attend('mem-1', [-3, -2, -1])
+    const stats = await runDailyWhatsAppAutomation()
+    expect(h.sendMock.mock.calls.map(c => c[0]).sort()).toEqual(['gym_streak_at_risk', 'payment_due_reminder'])
+    expect(stats.queued).toBe(2)
+  })
+})
+
+describe('gamification nudges: gym switches', () => {
+  beforeEach(() => { h.enabledGamification = [...NUDGES] })
+
+  it('queues, claims and sends nothing for a gym with WhatsApp switched off', async () => {
+    h.store.gyms[0].whatsapp_enabled = false
+    addMember()
+    attend('mem-1', [-3, -2, -1])
+    const stats = await runDailyWhatsAppAutomation()
+    expect(h.sendMock).not.toHaveBeenCalled()
+    expect(h.store.whatsapp_send_queue).toHaveLength(0)
+    expect(h.store.whatsapp_automation_logs).toHaveLength(0)
+    expect(stats.gamification).toEqual(NO_GAMIFICATION)
+  })
+
+  it('queues, claims and sends nothing for a gym with leaderboards switched off', async () => {
+    h.store.gym_gamification_settings.push({ gym_id: 'gym-1', leaderboards_enabled: false, weekly_goal_days: 4 })
+    addMember()
+    attend('mem-1', [-4, -3, -2, -1])
+    const stats = await runDailyWhatsAppAutomation()
+    expect(h.sendMock).not.toHaveBeenCalled()
+    expect(h.store.whatsapp_send_queue).toHaveLength(0)
+    expect(h.store.whatsapp_automation_logs).toHaveLength(0)
+    expect(stats.gamification).toEqual(NO_GAMIFICATION)
+  })
+
+  it('a gym with no settings row uses the defaults (leaderboards on)', async () => {
+    addMember()
+    attend('mem-1', [-3, -2, -1])
+    const stats = await runDailyWhatsAppAutomation()
+    expect(stats.gamification.gyms).toBe(1)
+    expect(gamificationSends()).toEqual(['gym_streak_at_risk'])
+  })
+
+  it('skips ONLY the gyms that are switched off; the others still get their nudges', async () => {
+    const gym = (id: string, whatsapp_enabled: boolean) =>
+      ({ id, name: id, onboarding_completed: true, subscription_status: 'active', whatsapp_enabled })
+    h.store.gyms.push(gym('gym-no-boards', true), gym('gym-no-whatsapp', false))
+    h.store.gym_gamification_settings.push({ gym_id: 'gym-no-boards', leaderboards_enabled: false, weekly_goal_days: 4 })
+
+    addMember({ id: 'mem-1' })
+    for (const [id, gymId] of [['mem-b', 'gym-no-boards'], ['mem-w', 'gym-no-whatsapp']]) {
+      h.store.members.push({ id, gym_id: gymId, name: id, phone: '9876543210', date_of_birth: null, pending_amount: 0, memberships: [] })
+      attend(id, [-3, -2, -1], gymId)
+    }
+    attend('mem-1', [-3, -2, -1])
+
+    const stats = await runDailyWhatsAppAutomation()
+    expect(h.sendMock.mock.calls.map(c => [c[0], c[1].memberName])).toEqual([['gym_streak_at_risk', 'Arjun']])
+    expect(stats.gamification.gyms).toBe(1)
+  })
+
+  it('reads attendance of the gym being processed only', async () => {
+    // A row for mem-1 filed under another gym must not extend mem-1's streak here.
+    addMember()
+    attend('mem-1', [-2, -1])
+    attend('mem-1', [-3], 'some-other-gym')
+    await runDailyWhatsAppAutomation()
+    expect(logsFor('gym_streak_at_risk')).toHaveLength(0)
+  })
+})
+
+describe('gym_prize_awarded (event send)', () => {
+  const args = { gymId: 'gym-1', memberId: 'mem-1', prize: 'Free protein shaker', periodLabel: 'Last 7 days', board: 'week' }
+
+  it('sends nothing and writes nothing while the template is not enabled (the default)', async () => {
+    addMember()
+    const result = await sendPrizeAwardedMessage(args)
+    expect(result).toEqual({ sent: false, reason: 'template_disabled' })
+    expect(h.sendMock).not.toHaveBeenCalled()
+    expect(h.store.whatsapp_automation_logs).toHaveLength(0)
+  })
+
+  describe('once enabled', () => {
+    beforeEach(() => { h.enabledGamification = ['gym_prize_awarded'] })
+
+    it('claims, sends inline with the gym id, and records the message id', async () => {
+      addMember()
+      const result = await sendPrizeAwardedMessage(args)
+      expect(result).toEqual({ sent: true })
+      expect(h.sendMock).toHaveBeenCalledTimes(1)
+      expect(h.sendMock.mock.calls[0][0]).toBe('gym_prize_awarded')
+      expect(h.sendMock.mock.calls[0][1]).toMatchObject({
+        gymId: 'gym-1', gymName: 'Iron Temple', memberName: 'Arjun', phone: '9876543210',
+        prize: 'Free protein shaker', periodLabel: 'Last 7 days',
+      })
+      const logs = logsFor('gym_prize_awarded')
+      expect(logs).toHaveLength(1)
+      expect(logs[0]).toMatchObject({ status: 'sent', cycle_key: 'gym_prize_awarded:mem-1:week:Last 7 days' })
+      expect(logs[0].message_id).toMatch(/^wamid\./)
+      expect(h.store.whatsapp_send_queue).toHaveLength(0) // event send: not queued
+    })
+
+    it('sends once for the same member, board and period, even on a later day', async () => {
+      addMember()
+      await sendPrizeAwardedMessage(args)
+      expect(await sendPrizeAwardedMessage(args)).toEqual({ sent: false, reason: 'already_sent' })
+      setDay(3)
+      expect(await sendPrizeAwardedMessage(args)).toEqual({ sent: false, reason: 'already_sent' })
+      expect(sendCountFor('gym_prize_awarded')).toBe(1)
+    })
+
+    it('survives a double tap racing mid-send', async () => {
+      addMember()
+      let reentered = false
+      h.sendMock.mockImplementationOnce(async (template: string) => {
+        if (!reentered) {
+          reentered = true
+          await sendPrizeAwardedMessage(args)
+        }
+        return { success: true, messageId: `wamid.${template}` }
+      })
+      await sendPrizeAwardedMessage(args)
+      expect(sendCountFor('gym_prize_awarded')).toBe(1)
+    })
+
+    it('sends nothing, and leaves no log row, for a gym with WhatsApp switched off', async () => {
+      h.store.gyms[0].whatsapp_enabled = false
+      addMember()
+      expect(await sendPrizeAwardedMessage(args)).toEqual({ sent: false, reason: 'whatsapp_disabled' })
+      expect(h.sendMock).not.toHaveBeenCalled()
+      expect(h.store.whatsapp_automation_logs).toHaveLength(0)
+    })
+
+    it('does not message a member of another gym', async () => {
+      h.store.gyms.push({ id: 'gym-2', name: 'Other', onboarding_completed: true, subscription_status: 'active', whatsapp_enabled: true })
+      addMember() // mem-1 belongs to gym-1
+      expect(await sendPrizeAwardedMessage({ ...args, gymId: 'gym-2' })).toEqual({ sent: false, reason: 'not_found' })
+      expect(h.sendMock).not.toHaveBeenCalled()
+    })
+
+    it('skips a member with no usable phone number', async () => {
+      addMember({ phone: '123' })
+      expect(await sendPrizeAwardedMessage(args)).toEqual({ sent: false, reason: 'no_phone' })
+      expect(h.sendMock).not.toHaveBeenCalled()
+    })
+
+    it('releases the slot on a transient failure so the owner can retry', async () => {
+      addMember()
+      h.sendMock.mockResolvedValueOnce({ success: false, error: 'network timeout' })
+      expect(await sendPrizeAwardedMessage(args)).toMatchObject({ sent: false, reason: 'send_failed' })
+      expect(await sendPrizeAwardedMessage(args)).toEqual({ sent: true })
+    })
   })
 })

@@ -150,3 +150,73 @@ describe('buildTemplatePayload — _birthday_wishes', () => {
     expect(header.parameters[0].type).toBe('image')
   })
 })
+
+// ─── Gamification templates ──────────────────────────────────────────────────
+// Body order must equal GAMIFICATION_TEMPLATE_COPY (services/whatsapp/templateSpec.ts)
+// and lib/whatsapp/GAMIFICATION_TEMPLATES.md, which is what is typed into Meta.
+
+function expectImageHeader(p: any) {
+  const header = p.template.components.find((c: any) => c.type === 'header')
+  expect(header.parameters[0].type).toBe('image')
+  expect(header.parameters[0].image.link).toMatch(/logo_landspace\.png$/)
+}
+function componentTypes(p: any): string[] {
+  return p.template.components.map((c: any) => c.type)
+}
+
+describe('buildTemplatePayload — gym_streak_at_risk', () => {
+  it('maps first name, streak days, gym in order with an image header and no button', () => {
+    const p = buildTemplatePayload('gym_streak_at_risk', { ...base, memberName: 'Arjun Kumar', streakDays: 5 }) as any
+    expect(p.template.name).toBe('gym_streak_at_risk')
+    expect(p.template.language.code).toBe('en')
+    expect(p.to).toBe('919876543210')
+    expect(bodyTexts(p)).toEqual(['Arjun', '5', 'Iron Temple'])
+    expect(componentTypes(p)).toEqual(['header', 'body'])
+    expectImageHeader(p)
+  })
+
+  it('leaves the streak blank when it is missing, so the validator blocks the send', () => {
+    const p = buildTemplatePayload('gym_streak_at_risk', base) as any
+    expect(bodyTexts(p)[1]).toBe('')
+  })
+})
+
+describe('buildTemplatePayload — gym_weekly_goal_reached', () => {
+  it('maps first name, days attended, gym in order', () => {
+    const p = buildTemplatePayload('gym_weekly_goal_reached', { ...base, daysAttended: 4 }) as any
+    expect(p.template.name).toBe('gym_weekly_goal_reached')
+    expect(bodyTexts(p)).toEqual(['Arjun', '4', 'Iron Temple'])
+    expect(componentTypes(p)).toEqual(['header', 'body'])
+    expectImageHeader(p)
+  })
+})
+
+describe('buildTemplatePayload — gym_leaderboard_rank_up', () => {
+  it('maps first name, rank, board name, gym in order', () => {
+    const p = buildTemplatePayload('gym_leaderboard_rank_up', { ...base, rank: 1, boardName: 'last 7 days' }) as any
+    expect(p.template.name).toBe('gym_leaderboard_rank_up')
+    expect(bodyTexts(p)).toEqual(['Arjun', '1', 'last 7 days', 'Iron Temple'])
+    expect(componentTypes(p)).toEqual(['header', 'body'])
+    expectImageHeader(p)
+  })
+})
+
+describe('buildTemplatePayload — gym_prize_awarded', () => {
+  it('maps first name, prize, period, gym in order', () => {
+    const p = buildTemplatePayload('gym_prize_awarded', {
+      ...base, prize: 'Free protein shaker', periodLabel: 'Last 7 days',
+    }) as any
+    expect(p.template.name).toBe('gym_prize_awarded')
+    expect(bodyTexts(p)).toEqual(['Arjun', 'Free protein shaker', 'Last 7 days', 'Iron Temple'])
+    expect(componentTypes(p)).toEqual(['header', 'body'])
+    expectImageHeader(p)
+  })
+
+  it('flattens line breaks and runs of spaces in owner-written text (Meta rejects them)', () => {
+    const p = buildTemplatePayload('gym_prize_awarded', {
+      ...base, prize: 'Free shaker\n+  1 month\tfree', periodLabel: '  Last 7 days ',
+    }) as any
+    expect(bodyTexts(p)[1]).toBe('Free shaker + 1 month free')
+    expect(bodyTexts(p)[2]).toBe('Last 7 days')
+  })
+})

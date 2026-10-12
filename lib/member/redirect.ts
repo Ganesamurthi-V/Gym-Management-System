@@ -21,6 +21,7 @@ export const MEMBER_ROUTE_PREFIXES = [
   '/m/workout',
   '/m/progress',
   '/m/rewards',
+  '/m/leaderboard',
   '/m/profile',
   '/m/membership',
   '/m/attendance',

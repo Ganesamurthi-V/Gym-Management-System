@@ -46,10 +46,3 @@ export function useAsyncAction() {
     isBusy: pendingKey !== null,
   }
 }
-
-/** Placeholder for configuration surfaces that are not built yet. */
-export function useComingSoon() {
-  return useCallback((feature: string) => {
-    toast(`${feature} configuration is coming soon`, { icon: '🚧' })
-  }, [])
-}

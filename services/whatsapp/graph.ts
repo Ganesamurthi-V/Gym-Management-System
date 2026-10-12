@@ -25,6 +25,8 @@ import { logger }                 from '@/lib/logger'
 import { formatDate } from '@/lib/utils'
 import { GRAPH_PROXY_SECRET_HEADER, getGraphProxySecret } from '@/lib/graph-domain'
 import { validateTemplatePayload, formatValidationError } from './validateTemplate'
+import { isGamificationTemplate } from './templateSpec'
+import { isGamificationTemplateEnabled } from '@/config/whatsapp'
 import type {
   SendResult,
   TemplateId,
@@ -138,6 +140,8 @@ export async function sendMessage(body: Record<string, unknown>): Promise<SendRe
 
 // ─── sendTemplate ─────────────────────────────────────────────────────────────
 
+export const GAMIFICATION_TEMPLATE_DISABLED_MESSAGE = 'This WhatsApp template is not enabled yet'
+
 /**
  * Build and send an approved Meta template message.
  *
@@ -150,6 +154,15 @@ export async function sendTemplate(
   templateId: TemplateId,
   ctx: TemplateContext,
 ): Promise<SendResult> {
+  // Gamification templates are off until listed in ENABLED_GAMIFICATION_TEMPLATES. The
+  // automation already checks this before it claims or queues anything; this is the last
+  // line, so a row queued while a template was on is not sent after it is taken off the
+  // list, and no other caller can send a template Meta has not approved.
+  if (isGamificationTemplate(templateId) && !isGamificationTemplateEnabled(templateId)) {
+    logger.info('sendTemplate skipped: gamification template not enabled', { templateId })
+    return { success: false, skipped: true, error: GAMIFICATION_TEMPLATE_DISABLED_MESSAGE }
+  }
+
   // The per-gym switch, checked here because every send (welcome, renewal, daily reminders
   // through the queue, invitations, the owner's manual send) ends up in this function.
   if (ctx.gymId) {
@@ -319,6 +332,27 @@ function headerImageComponent(): Record<string, unknown> {
   }
 }
 
+/**
+ * Meta rejects a text parameter that contains a line break, a tab, or more than four spaces
+ * in a row (error 132018). Owner-written values (the prize text) can contain any of them.
+ */
+function oneLine(value: string | undefined): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/** "Arjun Kumar" → "Arjun". The gamification templates greet by first name. */
+function firstName(name: string): string {
+  return oneLine(name).split(' ')[0] ?? ''
+}
+
+/**
+ * A number for a gamification template. A missing value becomes '' on purpose: the
+ * validator then blocks the send, instead of a member being told about a "0 day streak".
+ */
+function count(value: number | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
+}
+
 export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContext): Record<string, unknown> {
   const to  = normalisePhone(ctx.phone)
   const txt = (text: string) => ({ type: 'text', text })
@@ -475,6 +509,87 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
             index: '0',
             parameters: [
               txt(ctx.invitationToken ?? ''),
+            ],
+          },
+        ],
+      },
+    },
+
+    // ── Gamification. Body order must match GAMIFICATION_TEMPLATE_COPY in templateSpec.ts
+    //    (and lib/whatsapp/GAMIFICATION_TEMPLATES.md, which is what gets typed into Meta).
+    gym_streak_at_risk: {
+      ...base,
+      template: {
+        name: 'gym_streak_at_risk',
+        language: { code: 'en' },
+        components: [
+          headerImageComponent(),
+          {
+            type: 'body',
+            // [first name, streak days, gym] → {{1}}..{{3}}
+            parameters: [
+              txt(firstName(ctx.memberName)),
+              txt(count(ctx.streakDays)),
+              txt(oneLine(ctx.gymName)),
+            ],
+          },
+        ],
+      },
+    },
+    gym_weekly_goal_reached: {
+      ...base,
+      template: {
+        name: 'gym_weekly_goal_reached',
+        language: { code: 'en' },
+        components: [
+          headerImageComponent(),
+          {
+            type: 'body',
+            // [first name, days attended, gym] → {{1}}..{{3}}
+            parameters: [
+              txt(firstName(ctx.memberName)),
+              txt(count(ctx.daysAttended)),
+              txt(oneLine(ctx.gymName)),
+            ],
+          },
+        ],
+      },
+    },
+    gym_leaderboard_rank_up: {
+      ...base,
+      template: {
+        name: 'gym_leaderboard_rank_up',
+        language: { code: 'en' },
+        components: [
+          headerImageComponent(),
+          {
+            type: 'body',
+            // [first name, rank, board name, gym] → {{1}}..{{4}}
+            parameters: [
+              txt(firstName(ctx.memberName)),
+              txt(count(ctx.rank)),
+              txt(oneLine(ctx.boardName)),
+              txt(oneLine(ctx.gymName)),
+            ],
+          },
+        ],
+      },
+    },
+    gym_prize_awarded: {
+      ...base,
+      template: {
+        name: 'gym_prize_awarded',
+        language: { code: 'en' },
+        components: [
+          headerImageComponent(),
+          {
+            type: 'body',
+            // [first name, prize, period, gym] → {{1}}..{{4}}
+            parameters: [
+              txt(firstName(ctx.memberName)),
+              txt(oneLine(ctx.prize)),
+              txt(oneLine(ctx.periodLabel)),
+              txt(oneLine(ctx.gymName)),
             ],
           },
         ],

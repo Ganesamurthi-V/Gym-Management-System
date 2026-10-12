@@ -6,13 +6,18 @@
  * Removed: Activity, Logins, Templates, Analytics, Maintenance, Settings.
  */
 
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
+import { GAMIFICATION_SETTINGS_COLUMNS, normalizeSettings } from '@/lib/gamification/settings'
+import type { GamificationSettings, LeaderboardBoard, LeaderboardRow } from '@/lib/gamification/types'
+import { OWNER_BOARD_LIMIT, awardPeriodLabel, mapAward } from '@/features/member-app/utils/gamificationConfig'
 import type {
   ActionResult,
+  GamificationAward,
   GamificationSummary,
   InvitationActivity,
   InvitationStatus,
-  LeaderboardEntry,
   MemberAppData,
   MemberAppOverview,
   MemberBulkAction,
@@ -182,66 +187,134 @@ export async function getInvitationActivity(gymId: string): Promise<InvitationAc
 // ─── Section 7 — Gamification (computed from attendance + memberships) ────────
 
 /**
- * Aggregates gamification stats for all members in the gym by calling the
- * `get_gym_leaderboard` RPC and summing across all entries. Previously this
- * was a placeholder returning all zeros.
+ * One owner leaderboard read.
+ *
+ * The RPC takes no gym id: it derives the gym from the signed-in owner, so a
+ * forged id cannot read another gym (the old `(p_gym_id, p_limit)` signature
+ * trusted whatever was passed).
+ *
+ * Wrapped in React `cache()` (keyed by board + limit) so two callers in the
+ * same render share one RPC (PostgREST latency grows with concurrent requests —
+ * see getMemberAppOverview).
+ */
+const getBoard = cache(async (board: LeaderboardBoard, limit: number): Promise<LeaderboardRow[]> => {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('get_gym_leaderboard', leaderboardRpcArgs(board, limit))
+  if (error) return []
+  return mapLeaderboard(data)
+})
+
+/** Whole-gym aggregates (XP, badges, streaks) are summed from this board. */
+const SUMMARY_BOARD_LIMIT = 200
+
+/**
+ * Badge count as the owner panel has always shown it. The RPC no longer
+ * returns a `badges` column (achievements moved to `member_achievements`), so
+ * the six legacy badges are re-derived here from the same row — now from
+ * attended DAYS, not session rows.
+ */
+function legacyBadgeCount(row: LeaderboardRow): number {
+  let badges = 0
+  if (row.totalDays >= 1) badges++    // First Check-in
+  if (row.daysLast7 >= 5) badges++    // Week Warrior
+  if (row.daysLast30 >= 10) badges++  // Month Hustler
+  if (row.totalDays >= 25) badges++   // Dedicated
+  if (row.totalDays >= 50) badges++   // Consistency King
+  if (row.totalDays >= 100) badges++  // Century Club
+  return badges
+}
+
+/**
+ * The gym's gamification rules. A missing row means "never customised" and
+ * yields the defaults; so does a failed read, because the panel must still
+ * render (and the save action re-validates everything anyway).
+ *
+ * NOT cached in Redis: `leaderboards_enabled` decides whether members see the
+ * board at all, and a cached copy would keep showing the old toggle position
+ * after a save. One primary-key lookup per page load is the price.
+ */
+export async function getGamificationSettings(gymId: string): Promise<GamificationSettings> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('gym_gamification_settings')
+    .select(GAMIFICATION_SETTINGS_COLUMNS)
+    .eq('gym_id', gymId)
+    .maybeSingle()
+
+  return normalizeSettings(error ? null : data)
+}
+
+/** Enough to cover both current periods plus the "Recently awarded" list. */
+const AWARDS_LIMIT = 20
+
+/**
+ * `gamification_awards` has TWO foreign keys to members (the plain one and the
+ * same-gym composite), so the embed must name the constraint or PostgREST
+ * answers PGRST201 "more than one relationship".
+ */
+const AWARD_COLUMNS =
+  'id, member_id, board, period_label, prize, awarded_at, member:members!fk_gamification_awards_member_same_gym(name)'
+
+export async function getGamificationAwards(gymId: string): Promise<GamificationAward[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('gamification_awards')
+    .select(AWARD_COLUMNS)
+    .eq('gym_id', gymId)
+    .order('awarded_at', { ascending: false })
+    .limit(AWARDS_LIMIT)
+
+  if (error || !data) return []
+  return (data as unknown[]).map(mapAward).filter((a): a is GamificationAward => a !== null)
+}
+
+/**
+ * Gamification payload for the owner panel: gym-wide stats from the all-time
+ * board, the saved rules, and the prize records.
+ *
+ * The stats come from the top 200 by XP. Every board row carries the member's
+ * streak and last-7-days count, so one RPC answers all four stat cards.
  */
 export async function getGamificationSummary(gymId: string): Promise<GamificationSummary> {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase.rpc('get_gym_leaderboard', {
-    p_gym_id: gymId,
-    p_limit: 200,
-  })
-
-  if (error || !data || data.length === 0) {
-    return {
-      totalXpEarned: 0,
-      badgesUnlocked: 0,
-      activeStreaks: 0,
-      challengesCompleted: 0,
-      leaderboardsEnabled: true,
-    }
-  }
+  const [rows, settings, awards] = await Promise.all([
+    getBoard('all', SUMMARY_BOARD_LIMIT),
+    getGamificationSettings(gymId),
+    getGamificationAwards(gymId),
+  ])
 
   let totalXp = 0
   let totalBadges = 0
   let activeStreaks = 0
+  let checkedInLast7Days = 0
 
-  for (const row of data) {
-    totalXp += row.xp ?? 0
-    totalBadges += row.badges ?? 0
-    if ((row.streak ?? 0) > 0) activeStreaks++
+  for (const row of rows) {
+    totalXp += row.xp
+    totalBadges += legacyBadgeCount(row)
+    if (row.streak > 0) activeStreaks++
+    if (row.daysLast7 > 0) checkedInLast7Days++
   }
+
+  const now = new Date()
 
   return {
     totalXpEarned: totalXp,
     badgesUnlocked: totalBadges,
     activeStreaks,
-    challengesCompleted: 0, // No challenges system yet
-    leaderboardsEnabled: true,
+    checkedInLast7Days,
+    leaderboardsEnabled: settings.leaderboardsEnabled,
+    settings,
+    awards,
+    periods: { week: awardPeriodLabel('week', now), month: awardPeriodLabel('month', now) },
   }
 }
 
-export async function getLeaderboard(gymId: string): Promise<LeaderboardEntry[]> {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase.rpc('get_gym_leaderboard', {
-    p_gym_id: gymId,
-    p_limit: 10,
-  })
-
-  if (error || !data) return []
-
-  return (data as Array<{ member_id: string; member_name: string; xp: number; badges: number }>).map(
-    (row, idx) => ({
-      rank: idx + 1,
-      memberId: row.member_id,
-      memberName: row.member_name,
-      xp: row.xp,
-      badges: row.badges,
-    }),
-  )
+/**
+ * First page of the default board ("Last 7 days") so the preview paints with
+ * data; `useLeaderboard` takes over and polls from there. `_gymId` is unused:
+ * the RPC resolves the gym from the session.
+ */
+export async function getLeaderboard(_gymId: string): Promise<LeaderboardRow[]> {
+  return getBoard('week', OWNER_BOARD_LIMIT)
 }
 
 // ─── Mutations ───────────────────────────────────────────────────────────────

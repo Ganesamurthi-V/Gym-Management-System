@@ -124,6 +124,18 @@ Meta → POST /webhook → Verify Signature → Validate Schema
   → Save to DB → Return 200 (< 500ms)
 ```
 
+## Gamification messages
+
+Four extra templates support the leaderboards: `gym_streak_at_risk`, `gym_weekly_goal_reached`, `gym_leaderboard_rank_up` (scheduled) and `gym_prize_awarded` (event).
+
+- **No new cron or route.** The three scheduled nudges are one more step of `runDailyWhatsAppAutomation()` (`automation.ts` → `runGamificationNudges()`), run per gym after the reminders. They claim a slot in `whatsapp_automation_logs` and are delivered through `whatsapp_send_queue` like every other scheduled send. Counts are returned in `stats.gamification`.
+- **Off by default.** The templates do not exist in Meta until they are created by hand, so a template is sent only when its name is in `ENABLED_GAMIFICATION_TEMPLATES` in `config/whatsapp.ts` (empty by default). The check runs before anything is read, claimed or queued, and again in `sendTemplate`.
+- **Gates.** A gym is skipped when `gyms.whatsapp_enabled` is off or when its Leaderboards switch (`gym_gamification_settings.leaderboards_enabled`) is off.
+- **Caps.** One gamification message per member per day (priority: streak, weekly goal, rank). Streak: once per streak-day. Weekly goal: once per ISO week. Rank: once per 7 days.
+- **Who gets what** is decided by the pure `selectNudges()` in `gamificationNudges.ts`, using the streak and day rules in `lib/gamification/`.
+- **Prize message.** `sendPrizeAwardedMessage({ gymId, memberId, prize, periodLabel, board })` in `automation.ts` is an inline claim-then-send, to be called from the owner's "Mark prize awarded" server action with a server-resolved gym.
+- **Copy for Meta** (names, categories, body text, variables, how to enable): [`GAMIFICATION_TEMPLATES.md`](./GAMIFICATION_TEMPLATES.md). It is checked against `services/whatsapp/templateSpec.ts` by `__tests__/whatsapp/gamificationTemplatesDoc.test.ts`.
+
 ## 🛠️ Development
 
 ### Local Testing with ngrok

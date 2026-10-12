@@ -28,6 +28,12 @@ const full: TemplateContext = {
   daysRemaining: 14,
   dueAmount: 1500,
   memberId: 'GF001',
+  streakDays: 5,
+  daysAttended: 4,
+  rank: 1,
+  boardName: 'last 7 days',
+  prize: 'Free protein shaker',
+  periodLabel: 'Last 7 days',
 }
 
 const ALL_TEMPLATES: TemplateId[] = [
@@ -37,6 +43,10 @@ const ALL_TEMPLATES: TemplateId[] = [
   'membership_expired',
   'payment_due_reminder',
   '_birthday_wishes',
+  'gym_streak_at_risk',
+  'gym_weekly_goal_reached',
+  'gym_leaderboard_rank_up',
+  'gym_prize_awarded',
 ]
 
 describe('validateTemplatePayload — every approved template passes', () => {
@@ -114,6 +124,19 @@ describe('validateTemplatePayload — rejects contract violations', () => {
     const result = validateTemplatePayload('_gymflow_welcome_member', payload)
     expect(result.valid).toBe(false)
     expect(result.errors.join(' ')).toMatch(/header image is required/i)
+  })
+
+  it('rejects a gamification payload whose number is missing', () => {
+    // No streak in the context: the builder leaves {{2}} empty rather than sending "0".
+    const payload = buildTemplatePayload('gym_streak_at_risk', base)
+    const result = validateTemplatePayload('gym_streak_at_risk', payload)
+    expect(result.valid).toBe(false)
+    expect(result.errors.join(' ')).toMatch(/\{\{2\}\} \(streakDays\) is null, undefined, or empty/)
+  })
+
+  it('rejects a prize message with no prize text', () => {
+    const payload = buildTemplatePayload('gym_prize_awarded', { ...full, prize: '  ' })
+    expect(validateTemplatePayload('gym_prize_awarded', payload).valid).toBe(false)
   })
 
   it('rejects an image header whose link is empty', () => {

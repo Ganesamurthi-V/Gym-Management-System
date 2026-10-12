@@ -25,6 +25,17 @@
     overflow-x: hidden;
   }
 
+  /* Tailwind's space-x-* / space-y-* put a margin on every child after the first.
+     A full-screen `fixed inset-0` backdrop rendered inside such a container (the
+     usual place for a modal in a page component) was pushed down by that margin,
+     leaving an undimmed, unblurred strip of the page above it. A backdrop that
+     fills the viewport never wants a margin, so reset it here once rather than
+     hoisting every modal out of its page. */
+  [class*='space-x-'] > .fixed.inset-0,
+  [class*='space-y-'] > .fixed.inset-0 {
+    margin: 0 !important;
+  }
+
   body {
     /* surface-secondary, not bg-white: the page sits beneath cards in both themes,
        so it must be the darkest layer in dark mode rather than the card colour. */

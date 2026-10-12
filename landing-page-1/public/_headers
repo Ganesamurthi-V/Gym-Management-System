@@ -1,0 +1,4 @@
+# Cloudflare static-assets headers. A sitemap is a crawl aid, not a page: without
+# this, Search Console lists /sitemap.xml under "Crawled - currently not indexed".
+/sitemap.xml
+  X-Robots-Tag: noindex

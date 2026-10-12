@@ -22,10 +22,10 @@ import type { MetadataRoute } from 'next'
  * the URL — `/activate/verifying#token_hash=…` and
  * `/auth/setup-password#token_hash=…`. They must never be crawled.
  *
- * ─── WHY THE SITEMAP IS TINY ────────────────────────────────────────────────
- * This host is a pure application, so app/sitemap.ts lists only the public
- * sign-in page. Every other route is auth-gated or token-bearing. If a public
- * marketing surface is ever added here, list it in app/sitemap.ts.
+ * ─── WHY THE SITEMAP IS EMPTY AND NOT ADVERTISED ────────────────────────────
+ * This host is a pure application and all search visibility lives on
+ * www.gymflow.sbs. app/sitemap.ts exists only so /sitemap.xml is a valid empty
+ * urlset instead of a 404; it is not referenced here on purpose.
  *
  * ─── WHY `/` IS CRAWLABLE BUT STILL MARKED noindex ELSEWHERE ─────────────────
  * `allow: '/'` deliberately lets crawlers reach the root — the disallow list only
@@ -57,6 +57,5 @@ export default function robots(): MetadataRoute.Robots {
         '/api/',
       ],
     },
-    sitemap: 'https://app.gymflow.sbs/sitemap.xml',
   }
 }

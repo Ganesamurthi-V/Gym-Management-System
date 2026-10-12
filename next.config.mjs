@@ -36,13 +36,13 @@ const securityHeaders = [
       // production bundles never eval, so it is dev-only. 'unsafe-inline' stays
       // for Next's inline bootstrap + the theme script (a nonce would force every
       // page dynamic and defeat the static-asset caching this app relies on).
-      `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://maps.googleapis.com https://fonts.googleapis.com`,
+      `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://maps.googleapis.com https://fonts.googleapis.com https://static.cloudflareinsights.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // `blob:` is required by the member membership-card QR renderer. Remote
       // images are limited to the hosts the app actually loads (Supabase storage,
       // Google Maps tiles) instead of any https origin.
       "img-src 'self' blob: data: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://*.googleusercontent.com",
-      "connect-src 'self' https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io",
+      "connect-src 'self' https://api.groq.com https://content-crawdad-120459.upstash.io https://maps.googleapis.com https://maps.gstatic.com https://*.sentry.io https://cloudflareinsights.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "frame-ancestors 'none'",
       "worker-src 'self' blob:",

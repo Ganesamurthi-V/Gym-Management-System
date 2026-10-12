@@ -301,6 +301,14 @@ export default function ImportEditPage() {
       // left `import_review_state` behind — a full third copy of every imported
       // member's name, phone, age and DOB, readable for the rest of the session.
       clearImportStorage();
+
+      // The server already dropped its Redis keys, but the browser's Router Cache
+      // holds the Members / Payments / Dashboard payloads for up to 180s
+      // (next.config.mjs staleTimes). Without this the owner lands on those pages
+      // straight after the import and still sees the pre-import zeros.
+      // router.refresh() discards the whole client cache, not just this route.
+      router.refresh();
+
       setDoneResult({ success: toInsert.length, skipped });
       setStep("done");
     } catch (err: any) {

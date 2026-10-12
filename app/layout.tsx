@@ -33,10 +33,6 @@ export const metadata: Metadata = {
   title: 'gymflow — Gym Management',
   description:
     'A powerful, intelligent management system for modern fitness centers in Tamil Nadu and Puducherry.',
-  icons: {
-    icon: '/logo_only.png',
-    apple: '/logo_only.png',
-  },
 }
 
 export const viewport: Viewport = {

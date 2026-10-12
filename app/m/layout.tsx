@@ -37,10 +37,6 @@ export const metadata: Metadata = {
   },
   description: 'Your gym membership, workouts, and progress — all in one place.',
   manifest: '/manifest-member.json',
-  icons: {
-    icon: '/logo_only.png',
-    apple: '/logo_only.png',
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

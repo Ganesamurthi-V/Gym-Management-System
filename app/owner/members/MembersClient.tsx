@@ -71,6 +71,17 @@ function MembersContent({ members, gymId, totalCount }: Props) {
   
   // Load More state
   const [membersList, setMembersList] = useState(members)
+  // useState(members) only reads the prop on the FIRST render. After
+  // router.refresh() (or a return to this page) the server sends a fresh
+  // `members` array, but without this the list kept showing the old rows and
+  // counts. Adjusting state during render (rather than in an effect) swaps the
+  // data in the same pass, so there is no flash of stale rows. Rows appended by
+  // "Load Next 200" are dropped on refresh; the user can load them again.
+  const [prevMembers, setPrevMembers] = useState(members)
+  if (members !== prevMembers) {
+    setPrevMembers(members)
+    setMembersList(members)
+  }
   const [loadingMore, setLoadingMore] = useState(false)
   const hasMore = membersList.length < totalCount
 

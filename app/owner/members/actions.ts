@@ -30,7 +30,7 @@ export async function exportMembersToExcelAction(
       .from('members')
       .select(`
         id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id,
-        memberships(
+        memberships!fk_memberships_member_same_gym(
           plan, start_date, end_date, amount, category, created_at
         )
       `)
@@ -144,7 +144,7 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
       .from('members')
       .select(`
         id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id,
-        memberships(
+        memberships!fk_memberships_member_same_gym(
           id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id
         )
       `)

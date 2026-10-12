@@ -370,7 +370,7 @@ export const TOUR_CHAPTERS: TourChapter[] = [
         anchor: 'reportsQuestions',
         title: 'Five questions about your gym',
         description:
-          'Members, money, dues, who is leaving and who is turning up: each card is a question with its answer right on it. <strong>Tap a card</strong> to see the details underneath, with charts and the people behind the numbers. No accounting knowledge needed, and it fills in on its own as you add members and payments.',
+          'Members, money, dues, who is leaving and who is turning up: each tab is a question, and the answer opens right underneath in one line. <strong>Tap a tab</strong> to see the people behind the numbers, with a chart when it helps. A red number means members are waiting on you. No accounting knowledge needed, and it fills in on its own as you add members and payments.',
         side: 'bottom',
         align: 'center',
       },

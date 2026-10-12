@@ -17,7 +17,7 @@ export const GET = withAuth('DASHBOARD_EXPIRING', async (req: NextRequest, { sup
 
   const { data: membershipsData, error } = await supabase
     .from('memberships')
-    .select('member_id, end_date, member:members(id, name, phone, member_number)')
+    .select('member_id, end_date, member:members!fk_memberships_member_same_gym(id, name, phone, member_number)')
     .eq('gym_id', gym.id)
     .gte('end_date', monthStart)
     .lte('end_date', monthEnd)

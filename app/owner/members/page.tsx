@@ -41,13 +41,21 @@ async function getMembersData(gymId: string, logger: RequestLogger) {
       .from('members')
       .select(
         'id, gym_id, member_number, name, phone, gender, age, area, pending_amount, created_at, legacy_member_id,' +
-        ' memberships(id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id)',
+        ' memberships!fk_memberships_member_same_gym(id, plan, start_date, end_date, amount, payment_mode, category, created_at, member_id, gym_id)',
         { count: 'exact' }
       )
       .eq('gym_id', gymId)
       .order('created_at', { ascending: false })
       .limit(PAGE_SIZE)
   )
+
+  // A failed query used to fall through to `data ?? []`, which rendered an empty
+  // Members page (0 members) while the dashboard, on a different query, still
+  // showed the real numbers. Fail loudly so the error boundary reports it.
+  if (membersRes.error) {
+    logger.error('FETCH_MEMBERS_FAILED', membersRes.error)
+    throw new Error(`Could not load members: ${membersRes.error.message}`)
+  }
 
   const members = membersRes.data ?? []
   const count = membersRes.count ?? 0

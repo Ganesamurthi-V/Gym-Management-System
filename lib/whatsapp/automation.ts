@@ -576,7 +576,7 @@ export async function runImportBatchAutomation({
     .from('members')
     .select(`
       id, gym_id, member_number, name, phone, date_of_birth, pending_amount,
-      memberships(plan, end_date, category, created_at)
+      memberships!fk_memberships_member_same_gym(plan, end_date, category, created_at)
     `)
     .eq('gym_id', gymId)
     .in('id', memberIds)
@@ -622,7 +622,7 @@ async function processGym(
     .from('members')
     .select(`
       id, gym_id, member_number, name, phone, date_of_birth, pending_amount,
-      memberships(plan, end_date, category, created_at)
+      memberships!fk_memberships_member_same_gym(plan, end_date, category, created_at)
     `)
     .eq('gym_id', gym.id)
     .not('phone', 'is', null)

@@ -24,7 +24,7 @@ export async function getAllTimePayments(gymId: string) {
     const [paymentsRes, productSalesRes, duePaymentsRes] = await Promise.all([
       supabase
         .from('memberships')
-        .select('id, member_id, plan, start_date, end_date, amount, admission_fee, due_amount, payment_mode, created_at, member:members(id, name, phone, member_number)')
+        .select('id, member_id, plan, start_date, end_date, amount, admission_fee, due_amount, payment_mode, created_at, member:members!fk_memberships_member_same_gym(id, name, phone, member_number)')
         .eq('gym_id', gymId)
         .order('created_at', { ascending: false })
         .limit(5000),
@@ -36,7 +36,7 @@ export async function getAllTimePayments(gymId: string) {
         .limit(2000),
       supabase
         .from('due_payments')
-        .select('id, member_id, amount, payment_mode, created_at, member:members(id, name, phone, member_number)')
+        .select('id, member_id, amount, payment_mode, created_at, member:members!fk_due_payments_member_same_gym(id, name, phone, member_number)')
         .eq('gym_id', gymId)
         .order('created_at', { ascending: false })
         .limit(2000),

@@ -50,7 +50,7 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
       id, 
       name,
       member_number,
-      memberships(end_date)
+      memberships!fk_memberships_member_same_gym(end_date)
     `)
     .eq('gym_id', gym.id)
     .eq('member_number', member_number)

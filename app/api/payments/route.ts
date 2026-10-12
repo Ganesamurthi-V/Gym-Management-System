@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     log.start('DB_QUERY')
     const { data, error } = await supabase
       .from('memberships')
-      .select('id, member_id, plan, amount, start_date, end_date, created_at, members(name)')
+      .select('id, member_id, plan, amount, start_date, end_date, created_at, members!fk_memberships_member_same_gym(name)')
       .order('created_at', { ascending: false })
       .limit(limit)
       .eq('gym_id', gym.id)

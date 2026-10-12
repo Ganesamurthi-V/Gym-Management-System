@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger'
 import { startPageTimer, timed } from '@/lib/perf'
 import { reportSchema } from './report-data'
 import { ReportsClient } from './ReportsClient'
+import { parseTopic } from './topics'
 
 /**
  * Deliberately not Redis-cached, unlike the version of this page that was
@@ -16,7 +17,8 @@ import { ReportsClient } from './ReportsClient'
  * ~511ms per Upstash GET, set against one RPC; and repeat visits are already
  * absorbed by the 180s Router Cache.
  */
-export default async function ReportsPage() {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ topic?: string | string[] }> }) {
+  const { topic } = await searchParams
   const done = startPageTimer('reports')
   const { user } = await getAuthUser()
   if (!user) return null
@@ -56,5 +58,5 @@ export default async function ReportsPage() {
     )
   }
 
-  return <ReportsClient data={report.data} gymName={gym.name} today={today} />
+  return <ReportsClient data={report.data} gymName={gym.name} today={today} initialTopic={parseTopic(topic)} />
 }

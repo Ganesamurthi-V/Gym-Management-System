@@ -1,8 +1,8 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useSyncExternalStore, type ReactNode } from 'react'
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceLine,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, ReferenceLine,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { ReportData } from './report-data'
@@ -13,7 +13,6 @@ const GRID = 'rgb(var(--c-slate-200))'
 const TICK = 'rgb(var(--c-slate-500))'
 const BRAND = '#2563EB'
 const EMERALD = '#10B981'
-const VIOLET = '#8B5CF6'
 const ORANGE = '#EA580C'
 
 const inr = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
@@ -41,9 +40,20 @@ interface TipProps<Row> {
   payload?: ReadonlyArray<{ payload?: Row }>
 }
 
+// Recharts draws its entrance animation itself, so the media query has to be
+// read here; someone who asked for less motion gets the finished chart.
+const subscribeMotion = (notify: () => void) => {
+  const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+  query.addEventListener('change', notify)
+  return () => query.removeEventListener('change', notify)
+}
+const useAnimate = () =>
+  useSyncExternalStore(subscribeMotion, () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches, () => false)
+
 const axis = { stroke: TICK, fontSize: 10, tickLine: false, axisLine: false } as const
 
 export function CollectionsChart({ months, average }: { months: Month[]; average: number | null }) {
+  const animate = useAnimate()
   const current = months[months.length - 1]?.label
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -74,36 +84,8 @@ export function CollectionsChart({ months, average }: { months: Month[]; average
         {average !== null && average > 0 && (
           <ReferenceLine y={average} stroke={TICK} strokeDasharray="6 4" />
         )}
-        <Area type="monotone" dataKey="total" stroke={BRAND} strokeWidth={3} fill="url(#reportsCollected)" animationDuration={1200} />
+        <Area type="monotone" dataKey="total" stroke={BRAND} strokeWidth={3} fill="url(#reportsCollected)" isAnimationActive={animate} animationDuration={1200} />
       </AreaChart>
-    </ResponsiveContainer>
-  )
-}
-
-export function PaymentModeDonut({ upi, cash, card }: { upi: number; cash: number; card: number }) {
-  const slices = [
-    { name: 'UPI', value: upi, color: BRAND },
-    { name: 'Cash', value: cash, color: EMERALD },
-    { name: 'Card', value: card, color: VIOLET },
-  ]
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie data={slices} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none" animationDuration={1000}>
-          {slices.map(slice => <Cell key={slice.name} fill={slice.color} />)}
-        </Pie>
-        <Tooltip
-          content={({ active, payload }: TipProps<(typeof slices)[number]>) => {
-            const row = payload?.[0]?.payload
-            if (!active || !row) return null
-            return (
-              <Tip title={row.name}>
-                <p className="font-black text-brand-300">{inr(row.value)}</p>
-              </Tip>
-            )
-          }}
-        />
-      </PieChart>
     </ResponsiveContainer>
   )
 }
@@ -111,6 +93,7 @@ export function PaymentModeDonut({ upi, cash, card }: { upi: number; cash: numbe
 type Weekday = ReportData['attendance']['byDay'][number]
 
 export function WeekdayBars({ byDay }: { byDay: Weekday[] }) {
+  const animate = useAnimate()
   const peak = Math.max(...byDay.map(day => day.count))
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -130,8 +113,10 @@ export function WeekdayBars({ byDay }: { byDay: Weekday[] }) {
             )
           }}
         />
-        <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={32} animationDuration={1200}>
+        <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={32} isAnimationActive={animate} animationDuration={1200}>
           {byDay.map(day => <Cell key={day.name} fill={peak > 0 && day.count === peak ? ORANGE : '#3B82F6'} />)}
+          {/* The value sits on the bar: the tooltip needs a hover a phone does not have. */}
+          <LabelList dataKey="count" position="top" fill={TICK} fontSize={11} fontWeight={700} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -158,8 +143,12 @@ export function JoinsChart({ months }: { months: Month[] }) {
             )
           }}
         />
-        <Bar dataKey="newMembers" fill={BRAND} radius={[5, 5, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-        <Bar dataKey="renewals" fill={EMERALD} radius={[5, 5, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+        <Bar dataKey="newMembers" fill={BRAND} radius={[5, 5, 0, 0]} maxBarSize={22} isAnimationActive={false}>
+          <LabelList dataKey="newMembers" position="top" fill={TICK} fontSize={10} fontWeight={700} />
+        </Bar>
+        <Bar dataKey="renewals" fill={EMERALD} radius={[5, 5, 0, 0]} maxBarSize={22} isAnimationActive={false}>
+          <LabelList dataKey="renewals" position="top" fill={TICK} fontSize={10} fontWeight={700} />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )

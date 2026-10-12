@@ -15,7 +15,7 @@ export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (req: NextRequest, {
   const [membershipsRes, newMembersRes] = await Promise.all([
     supabase
       .from('memberships')
-      .select('amount, admission_fee, payment_mode, plan, category, member:members(name, member_number)')
+      .select('amount, admission_fee, payment_mode, plan, category, member:members!fk_memberships_member_same_gym(name, member_number)')
       .eq('gym_id', gym.id)
       .eq('start_date', today),
     supabase

@@ -33,7 +33,7 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
     const [membershipsRes, attendanceRes, todayPaymentsRes, duesRes] = await Promise.all([
       supabase
         .from('memberships')
-        .select('member_id, end_date, member:members(id, name, phone, member_number)')
+        .select('member_id, end_date, member:members!fk_memberships_member_same_gym(id, name, phone, member_number)')
         .eq('gym_id', gymId)
         .gte('end_date', oneYearAgo)
         .order('created_at', { ascending: false }),

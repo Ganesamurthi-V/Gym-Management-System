@@ -15,7 +15,7 @@ export default async function DuesPage() {
   // Filter pending_amount > 0 in DB, only fetch needed columns
   const { data: members } = await supabase
     .from('members')
-    .select('id, name, phone, member_number, pending_amount, memberships(end_date)')
+    .select('id, name, phone, member_number, pending_amount, memberships!fk_memberships_member_same_gym(end_date)')
     .eq('gym_id', gym.id)
     .gt('pending_amount', 0)
     .order('pending_amount', { ascending: false })

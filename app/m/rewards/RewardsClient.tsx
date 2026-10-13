@@ -8,6 +8,7 @@ import { StreakBadge } from '@/components/member/StreakBadge'
 import { LeaderboardEntryCard } from '@/components/member/LeaderboardEntryCard'
 import { formatCount } from '@/lib/gamification/leaderboardDisplay'
 import AchievementCard from './AchievementCard'
+import MemberEvents from './MemberEvents'
 
 // ─── Rarity visual config ────────────────────────────────────────────────────
 
@@ -128,6 +129,8 @@ export default function RewardsClient({
           </div>
         </div>
       </div>
+
+      <MemberEvents />
 
       {/* ─── Streak ──────────────────────────────────────────────────────── */}
       <div className="mb-3 flex items-center gap-3 rounded-2xl border border-slate-200 bg-surface p-4">

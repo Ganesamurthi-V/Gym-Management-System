@@ -12,6 +12,8 @@ import type { MemberGamification } from './types'
 /** The JSON object exactly as the RPC returns it. */
 export interface MemberGamificationRpc {
   xp: number
+  /** Part of xp that came from completed gym events (already included in xp). */
+  event_xp?: number
   level_xp_per_level: number
   streak: number
   streak_pending: boolean

@@ -20,6 +20,10 @@ const read = (file: string) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\
 
 const SCHEMA = read('supabase-schema.sql')
 const MIGRATION = read('supabase/migrations/20261012120000_gamification.sql')
+// Events add completion XP to the two read RPCs, so this later migration carries
+// their current definition; the canonical schema must match the newest one.
+const EVENTS_MIGRATION = read('supabase/migrations/20261013120000_gamification_events.sql')
+const REDEFINED_BY_EVENTS = new Set(['get_member_gamification', 'get_gym_leaderboard'])
 
 /** The CREATE FUNCTION statement for `name`, from its header to the closing `$$;`. */
 function functionSource(sql: string, name: string): { args: string; full: string } {
@@ -155,7 +159,8 @@ describe('migration and canonical schema describe the same functions', () => {
   ]
   for (const name of names) {
     it(`${name} is identical in both files`, () => {
-      expect(functionSource(MIGRATION, name).full).toBe(functionSource(SCHEMA, name).full)
+      const latest = REDEFINED_BY_EVENTS.has(name) ? EVENTS_MIGRATION : MIGRATION
+      expect(functionSource(latest, name).full).toBe(functionSource(SCHEMA, name).full)
     })
   }
 })

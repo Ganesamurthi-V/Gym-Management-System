@@ -5,6 +5,7 @@
  *   XP = round( sum over attended DAYS of xpPerCheckin * factor(day) )
  *      + xpPerRenewal * (number of membership rows)
  *      + xpPortalActivation (once, if the portal was activated)
+ *      + sum of xp_awarded over the member's completed gym events (eventXp)
  *
  * factor(day) is the HIGHEST factor among the multipliers that match the day,
  * or 1 when none matches. Multipliers never stack.
@@ -88,12 +89,15 @@ export function computeXp(input: {
   memberships: number
   portalActivated: boolean
   settings: XpSettings
+  /** Sum of gym_event_completions.xp_awarded (snapshots). Defaults to 0. */
+  eventXp?: number
 }): number {
-  const { days, memberships, portalActivated, settings } = input
+  const { days, memberships, portalActivated, settings, eventXp = 0 } = input
   return (
     checkinXp(days, settings) +
     settings.xpPerRenewal * Math.max(0, Math.floor(memberships)) +
-    (portalActivated ? settings.xpPortalActivation : 0)
+    (portalActivated ? settings.xpPortalActivation : 0) +
+    (Number.isFinite(eventXp) ? Math.max(0, Math.floor(eventXp)) : 0)
   )
 }
 

@@ -81,3 +81,22 @@ export const DEFAULT_GAMIFICATION_SETTINGS: GamificationSettings = {
   weeklyPrize: null,
   monthlyPrize: null,
 }
+
+/**
+ * Bounds for owner-defined events. Shared by the zod schemas and mirrored by the
+ * CHECK constraints on gym_events (supabase-schema.sql). Change both together.
+ */
+export const EVENT_LIMITS = {
+  titleMax: 60,
+  descriptionMax: 200,
+  goalTarget: { min: 1, max: 365 },
+  minSessionMinutes: { min: 15, max: 720 },
+  /** end_date - start_date, i.e. a window of at most 366 days inclusive. */
+  maxWindowSpanDays: 365,
+  rewardXp: { min: 0, max: 1000 },
+  rewardTextMax: 80,
+  maxActiveEvents: 20,
+} as const
+
+export const EVENT_GOAL_TYPES = ['checkin_days', 'streak_days', 'long_sessions'] as const
+export const EVENT_SESSION_FILTERS = ['morning', 'evening'] as const

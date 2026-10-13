@@ -22,6 +22,7 @@ import {
 } from '../utils/gamificationConfig'
 import { AchievementConfigEditor, BadgeRulesEditor, XpMultipliersEditor } from './GamificationEditors'
 import { CurrentLeaders, LeaderboardPreview } from './GamificationBoards'
+import GamificationEvents from './GamificationEvents'
 import { Card, SectionHeader, StatCard, Toggle } from './ui'
 
 type EditorId = 'xp' | 'badges' | 'achievements'
@@ -234,6 +235,8 @@ export default function GamificationPanel({
         onUndo={undoAward}
         onEditPrizes={() => setEditor('achievements')}
       />
+
+      <GamificationEvents />
 
       <Card>
         <SectionHeader title="Configuration" description="Tune how gamification behaves in the member app." />

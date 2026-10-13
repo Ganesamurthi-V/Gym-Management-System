@@ -77,6 +77,11 @@ module.exports = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    // Feature folders hold components too. Without this, a class used only inside
+    // them (e.g. `sm:max-w-lg` in features/member-app/components/Modal.tsx) is never
+    // generated, and the modal renders edge to edge on desktop.
+    './features/**/*.{js,ts,jsx,tsx,mdx}',
+    './lib/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   /**
    * Class-based, not the `media` default.

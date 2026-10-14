@@ -8,24 +8,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=4" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#141414" />
+    <meta name="theme-color" content="#f5f5f5" />
 
     <!--
-      Theme bootstrap — identical to privacy.html and index.html. Applies the
-      shared 'gf-theme' choice before first paint so this page opens in the same
-      theme the visitor last picked on the marketing site. Dark is the default.
+      Theme bootstrap: every visit opens in the light theme, like the marketing site.
+      Nothing is read from storage and the OS colour scheme is ignored.
     -->
     <script>
       (function () {
-        var dark = true;
-        try {
-          dark = localStorage.getItem('gf-theme') !== 'light';
-        } catch (e) {
-          dark = true;
-        }
-        if (dark) document.documentElement.classList.add('dark');
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', dark ? '#141414' : '#f5f5f5');
+        // Light for every visitor on every visit, matching the marketing site.
+        document.documentElement.classList.remove('dark');
       })();
     </script>
 
@@ -48,7 +40,7 @@
       /*
         Self-contained styles, identical to privacy.html. Served as a static file
         outside the React/Tailwind build, so it carries its own palette. Light is
-        the default; html.dark (toggled by the bootstrap script from 'gf-theme')
+        the default; html.dark (not applied by the bootstrap script, so it stays light)
         supplies the dark palette — NOT prefers-color-scheme, so the page follows
         the site's manual theme toggle rather than the OS setting.
       */

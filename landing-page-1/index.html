@@ -25,12 +25,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!--
-      Two theme-colors, one per scheme, so the mobile browser chrome matches the
-      surface it sits above instead of fighting it. These are the exact
-      --background values from src/index.css; if those change, change these.
+      The site always opens in the light theme, whatever the visitor's OS setting, so
+      the browser chrome is light for every scheme. Matches --background in src/index.css.
     -->
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f5f5" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141414" />
+    <meta name="theme-color" content="#f5f5f5" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -59,7 +57,8 @@
       />
     </noscript>
     <style>
-      /* Dark is the default theme, so paint it from the very first frame instead of white. */
+      /* Light is the only theme a visit starts in; the toggle can still switch for the current visit. */
+      html { background: #f5f5f5; color-scheme: light; }
       html.dark { background: #141414; color-scheme: dark; }
     </style>
 
@@ -149,22 +148,14 @@
 
       Inline and synchronous on purpose: a deferred or external script would run
       after paint and defeat the point. Kept in sync with useTheme() in
-      src/lib/useTheme.ts, which reads the same 'gf-theme' key.
+      src/lib/useTheme.ts (light always; nothing is stored).
     -->
     <script>
       (function () {
-        // Dark is the default: a visitor with no saved choice always opens dark,
-        // regardless of their OS setting. An explicit choice via the toggle still
-        // wins for the rest of that visit. Because dark is the fallback, the
-        // catch (storage disabled / private mode) also lands on dark rather than
-        // needing to re-add the class.
-        try {
-          if (localStorage.getItem('gf-theme') !== 'light') {
-            document.documentElement.classList.add('dark');
-          }
-        } catch (e) {
-          document.documentElement.classList.add('dark');
-        }
+        // Every visit opens in the light theme, for every visitor: no saved choice and no OS
+        // setting is consulted. The toggle still switches the theme for the rest of that
+        // visit, but nothing is persisted, so the next visit starts light again.
+        document.documentElement.classList.remove('dark');
         // Marks that scripts run here. The static copy inside #root (see <body>) is for
         // readers that do not run JavaScript; with this class it is hidden, so a visitor
         // never sees it flash before React mounts.
@@ -190,7 +181,7 @@
         #webpage       this page, and what it is about
         #software      the product itself
         #howto         the four onboarding steps
-        #faq           the six accordion questions
+        #faq           the seven accordion questions
         #video         the one-minute product film in the hero (VideoObject)
 
       THE GOVERNING RULE, stated precisely, because the distinction matters:
@@ -217,12 +208,12 @@
       when real, verifiable reviews exist to point at.
 
       ─── HowTo MIRRORS src/components/HowItWorks.tsx ────────────────────────
-      Four steps, names and text taken verbatim from the STEPS array there.
+      Four steps, kept word for word in step with the onboarding steps shown on the page.
       No totalTime: the section says "in minutes", and converting that into a
       precise ISO duration would be inventing precision the page never claims.
 
       ─── FAQPage MIRRORS src/components/FAQ.tsx ─────────────────────────────
-      The six visible accordion items, verbatim.
+      The seven visible accordion items, verbatim.
     -->
     <script type="application/ld+json">
     {
@@ -378,29 +369,29 @@
               "@type": "HowToStep",
               "position": 1,
               "url": "https://www.gymflow.sbs/#how",
-              "name": "Sign up and onboard",
-              "text": "A six-step wizard walks you through your gym name, membership plans, pricing and WhatsApp details. It autosaves, so you can stop and come back."
+              "name": "Create your gym account",
+              "text": "Sign up on the web; no card needed for the 14-day free trial."
             },
             {
               "@type": "HowToStep",
               "position": 2,
               "url": "https://www.gymflow.sbs/#how",
-              "name": "Import your members",
-              "text": "Upload the CSV or Excel sheet you already keep. GymFlow matches your column headings to its own fields and shows you a preview, so you can fix anything odd before a single record is saved."
+              "name": "Import your member records",
+              "text": "Upload your Excel, CSV or XLS member list; GymFlow normalises phone numbers and matches your plans."
             },
             {
               "@type": "HowToStep",
               "position": 3,
               "url": "https://www.gymflow.sbs/#how",
-              "name": "Run the day to day",
-              "text": "Mark attendance, record payments, and send WhatsApp reminders for dues — from one dashboard that works just as well on your phone."
+              "name": "Configure memberships and payments",
+              "text": "Set up plans, prices and payment details in the app."
             },
             {
               "@type": "HowToStep",
               "position": 4,
               "url": "https://www.gymflow.sbs/#how",
-              "name": "Analyse and grow",
-              "text": "Monthly revenue charts, plan distribution, joining and expiry trends, and PDF reports you can download. Know exactly where the gym stands before the month closes."
+              "name": "Start managing your gym",
+              "text": "Track members, attendance, payments, reports and WhatsApp reminders from one place."
             }
           ]
         },
@@ -416,7 +407,7 @@
               "name": "Is there a free trial?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run a full week of operations before you decide."
+                "text": "Yes — a 14-day free trial with every feature unlocked and no credit card required. Import your members and send WhatsApp reminders before you decide."
               }
             },
             {
@@ -448,7 +439,7 @@
               "name": "Is my gym's data safe?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Each gym's records are isolated and reachable only from your own account. Data is encrypted in transit, backed up regularly, and never shared with other gyms or sold on."
+                "text": "Each gym's data is kept separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym's data from account settings."
               }
             },
             {
@@ -457,6 +448,14 @@
               "acceptedAnswer": {
                 "@type": "Answer",
                 "text": "Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How fast does support reply?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Every plan includes priority support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours."
               }
             }
           ]
@@ -570,10 +569,10 @@
 
         <h2 id="how">How to set up GymFlow for your gym</h2>
         <ol>
-          <li><strong>Sign up and onboard.</strong> A six-step wizard walks you through your gym name, membership plans, pricing and WhatsApp details. It autosaves, so you can stop and come back.</li>
-          <li><strong>Import your members.</strong> Upload the CSV or Excel sheet you already keep. GymFlow matches your column headings to its own fields and shows you a preview, so you can fix anything odd before a single record is saved.</li>
-          <li><strong>Run the day to day.</strong> Mark attendance, record payments, and send WhatsApp reminders for dues — from one dashboard that works just as well on your phone.</li>
-          <li><strong>Analyse and grow.</strong> Monthly revenue charts, plan distribution, joining and expiry trends, and PDF reports you can download. Know exactly where the gym stands before the month closes.</li>
+          <li><strong>Create your gym account.</strong> Sign up on the web; no card needed for the 14-day free trial.</li>
+          <li><strong>Import your member records.</strong> Upload your Excel, CSV or XLS member list; GymFlow normalises phone numbers and matches your plans.</li>
+          <li><strong>Configure memberships and payments.</strong> Set up plans, prices and payment details in the app.</li>
+          <li><strong>Start managing your gym.</strong> Track members, attendance, payments, reports and WhatsApp reminders from one place.</li>
         </ol>
 
         <h2 id="pricing">Pricing: one plan, everything included</h2>
@@ -590,7 +589,7 @@
 
         <h2 id="faq">Frequently asked questions</h2>
         <h3>Is there a free trial?</h3>
-        <p>Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run a full week of operations before you decide.</p>
+        <p>Yes — a 14-day free trial with every feature unlocked and no credit card required. Import your members and send WhatsApp reminders before you decide.</p>
         <h3>How much does GymFlow cost?</h3>
         <p>From ₹1,999 per month — or ₹6,999 for 6 months (save 42%) and ₹12,999 for a year (save 46%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.</p>
         <h3>Are WhatsApp messages really unlimited?</h3>
@@ -598,9 +597,19 @@
         <h3>Can I move my existing members from Excel?</h3>
         <p>Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm, and most gyms finish a few hundred members in under 15 minutes.</p>
         <h3>Is my gym&#x27;s data safe?</h3>
-        <p>Each gym&#x27;s records are isolated and reachable only from your own account. Data is encrypted in transit, backed up regularly, and never shared with other gyms or sold on.</p>
+        <p>Each gym&#x27;s data is kept separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym&#x27;s data from account settings.</p>
         <h3>How do I reach support?</h3>
         <p>Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.</p>
+        <h3>How fast does support reply?</h3>
+        <p>Every plan includes priority support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.</p>
+
+        <h2 id="security">Security and privacy</h2>
+        <p>
+          Each gym&#x27;s data is kept separate and is reached through that gym&#x27;s own account.
+          The site and app are served over HTTPS. Owners can export members, attendance and payments
+          to Excel and reports to PDF, and can delete their gym&#x27;s data from account settings. Read
+          the <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.
+        </p>
 
         <h2>Contact</h2>
         <p>

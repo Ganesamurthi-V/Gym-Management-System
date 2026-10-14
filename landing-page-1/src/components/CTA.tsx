@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
+import { SUPPORT_PROMISE } from '../data/support';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -52,7 +53,7 @@ export function CTA() {
           </h2>
 
           <p className="reveal mx-auto mt-5 max-w-[500px] text-[15.5px] leading-relaxed text-muted-foreground">
-            Join 20+ gyms already running on GymFlow, available all over India.
+            {SUPPORT_PROMISE}
           </p>
 
           <div className="reveal mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">

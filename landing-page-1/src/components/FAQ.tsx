@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
+import { PLANS, formatINR, savingPercent } from '../data/plans';
+
+const [MONTHLY, HALF, YEARLY] = PLANS;
 
 
 /**
@@ -11,11 +14,11 @@ import { useReveal } from '../lib/useReveal';
 const FAQS = [
   {
     q: 'Is there a free trial?',
-    a: 'Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run a full week of operations before you decide.',
+    a: 'Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the 14-day free trial before you decide.',
   },
   {
     q: 'How much does GymFlow cost?',
-    a: 'From ₹1,999 per month — or ₹6,999 for 6 months (save 42%) and ₹12,999 for a year (save 46%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.',
+    a: `From ${formatINR(MONTHLY.price)} per month — or ${formatINR(HALF.price)} for 6 months (save ${savingPercent(HALF)}%) and ${formatINR(YEARLY.price)} for a year (save ${savingPercent(YEARLY)}%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.`,
   },
   {
     q: 'Are WhatsApp messages really unlimited?',
@@ -27,7 +30,11 @@ const FAQS = [
   },
   {
     q: "Is my gym's data safe?",
-    a: "Each gym's records are isolated and reachable only from your own account. Data is encrypted in transit, backed up regularly, and never shared with other gyms or sold on.",
+    a: "Each gym's data is kept separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym's data from account settings.",
+  },
+  {
+    q: 'How fast does support reply?',
+    a: 'Every plan includes priority support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
   },
   {
     q: 'How do I reach support?',

@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
+import { TrustStrip } from './components/TrustStrip';
+import { ProductDemo } from './components/ProductDemo';
+import { SecurityPrivacy } from './components/SecurityPrivacy';
 import { BentoFeatures } from './components/BentoFeatures';
 import { WhatsAppSection } from './components/WhatsAppSection';
 import { HowItWorks } from './components/HowItWorks';
-import { Testimonials } from './components/Testimonials';
 import { Pricing } from './components/Pricing';
 import { FAQ } from './components/FAQ';
 import { CTA } from './components/CTA';
@@ -20,10 +22,12 @@ export function BelowFoldSections() {
   usePauseOffscreenAnimations();
   return (
     <>
+      <TrustStrip />
+      <ProductDemo />
       <BentoFeatures />
+      <SecurityPrivacy />
       <WhatsAppSection />
       <HowItWorks />
-      <Testimonials />
       <Pricing />
       <FAQ />
       <CTA />

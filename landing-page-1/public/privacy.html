@@ -8,29 +8,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=4" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#141414" />
+    <meta name="theme-color" content="#f5f5f5" />
 
     <!--
-      Theme bootstrap — kept in sync with the inline script in index.html and
-      useTheme() in src/lib/useTheme.ts. Runs before first paint so the saved
-      choice is already on <html> when the page renders, matching whatever the
-      visitor last picked on the marketing site (same 'gf-theme' localStorage key,
-      same origin). Dark is the default: no saved choice, or storage unavailable,
-      lands on dark, so this legal page never flashes a different theme than the
-      site the visitor came from.
+      Theme bootstrap: every visit opens in the light theme, like the marketing site.
+      Nothing is read from storage and the OS colour scheme is ignored.
     -->
     <script>
       (function () {
-        var dark = true;
-        try {
-          dark = localStorage.getItem('gf-theme') !== 'light';
-        } catch (e) {
-          dark = true;
-        }
-        if (dark) document.documentElement.classList.add('dark');
-        // Keep the mobile browser chrome in step with the resolved theme.
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', dark ? '#141414' : '#f5f5f5');
+        // Light for every visitor on every visit, matching the marketing site.
+        document.documentElement.classList.remove('dark');
       })();
     </script>
 
@@ -58,8 +45,7 @@
       */
       /*
         Light is the default palette; the dark palette is applied via html.dark,
-        which the bootstrap script above toggles from the shared 'gf-theme'
-        choice — NOT via prefers-color-scheme, so this page follows the site's
+        which the bootstrap script above leaves off — NOT via prefers-color-scheme, so this page follows the site's
         manual theme toggle rather than the OS setting.
       */
       :root {
@@ -265,6 +251,7 @@
     </style>
   </head>
   <body>
+    <!-- DRAFT FOR LEGAL REVIEW: updated to match product behaviour; not reviewed by counsel. -->
     <div class="wrap">
       <header class="top">
         <a href="/" aria-label="GymFlow home">
@@ -275,7 +262,7 @@
 
       <main>
         <h1>Privacy Policy</h1>
-        <p class="updated">Last updated: September 2026</p>
+        <p class="updated">Last updated: October 2026</p>
 
         <nav class="toc" aria-label="Contents">
           <p>Contents</p>
@@ -289,6 +276,7 @@
             <li><a href="#analytics">Analytics &amp; error tracking</a></li>
             <li><a href="#security">Data security</a></li>
             <li><a href="#retention">Data retention</a></li>
+            <li><a href="#export-delete">Exporting and deleting your data</a></li>
             <li><a href="#your-rights">Your rights</a></li>
             <li><a href="#children">Children's privacy</a></li>
             <li><a href="#changes">Changes to this policy</a></li>
@@ -374,6 +362,8 @@
           <li><strong>Meta (WhatsApp Business Cloud API)</strong> — sending WhatsApp messages to gym members.</li>
           <li><strong>Upstash</strong> — QStash to queue and rate-limit outgoing WhatsApp messages, and Redis for rate limiting.</li>
           <li><strong>Sentry</strong> — error and performance monitoring, and session replay, to diagnose problems (see <a href="#analytics">Analytics &amp; Error Tracking</a>).</li>
+          <li><strong>Resend</strong> — sending transactional email, such as account verification and security notifications.</li>
+          <li><strong>Groq</strong> — generating draft replies to emails sent to our support inbox. The sender's name, the gym name on their account and the text of their message are sent to it so our team can review and edit a draft; nothing is sent automatically, and member records are not sent.</li>
           <li><strong>Google Maps Platform</strong> — address autocomplete when you enter your gym's address during onboarding.</li>
         </ul>
         <p>These providers process data only on our instructions and under their own security and privacy obligations.</p>
@@ -419,8 +409,9 @@
         <h2 id="security">8. Data Security</h2>
         <p>
           We implement appropriate technical and organisational measures to protect your data. This
-          includes encryption of data in transit, secure authentication, row-level access controls,
-          and regular backups. Each gym's data is isolated so that it is only accessible to
+          includes encryption of data in transit, secure authentication and row-level access controls.
+          Our database provider maintains its own backups under its terms; we do not currently
+          offer customer-initiated restore. Each gym's data is isolated so that it is only accessible to
           authorised users of that gym.
         </p>
         <p>
@@ -432,8 +423,17 @@
         <p>
           We retain your information for as long as your account is active or as needed to provide
           the service. When you delete your gym account, the associated gym and member data are
-          removed, subject to a short backup-retention window and any records we are legally
-          required to keep. You can request deletion of your data at any time by contacting us.
+          removed: the owner deletes the gym, its members and the associated login, confirmed by a
+          one-time code. Our database provider maintains its own backups under its terms; we do not
+          currently offer customer-initiated restore. We may keep records we are legally required to
+          keep. You can also request deletion of your data by contacting us.
+        </p>
+
+        <h2 id="export-delete">Exporting and deleting your data</h2>
+        <p>
+          Owners can export members, attendance and payments to Excel and reports to PDF. Owners can
+          delete all members, or the whole gym, from account settings. Members can ask their gym, or
+          write to <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>.
         </p>
 
         <h2 id="your-rights">10. Your Rights</h2>

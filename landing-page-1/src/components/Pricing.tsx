@@ -11,32 +11,20 @@ import { useState } from 'react';
 import { useReveal } from '../lib/useReveal';
 import RubberSegment from './ui/RubberSegment';
 import Counter from './ui/Counter';
+import { PLANS, savingPercent, type PlanId } from '../data/plans';
+import { SUPPORT_PROMISE } from '../data/support';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
-/* The three billing tiers a gym owner can buy, matching the in-app subscription
-   (platform_settings in the product DB). These must stay in step with the numbers
-   rendered in app/owner/subscription — they are the same product.
+/* Display-only copy for each tier. Prices, labels and months come from src/data/plans.ts. */
+const TIER_COPY = {
+  monthly: { unit: '/ month', tagline: 'Billed monthly.' },
+  half_yearly: { unit: '/ 6 months', tagline: 'Billed once every 6 months.' },
+  yearly: { unit: '/ year', tagline: 'Billed once a year.' },
+} as const;
 
-   `months` drives the savings maths below, so the percentages can never drift from
-   the prices: the saving is measured against paying the 1-month rate for that many
-   months, not typed in by hand.
-
-   Labels are the word forms (Monthly / Half-yearly / Yearly). The middle tier is
-   deliberately NOT called "Quarterly": it is a 6-month plan (₹6,999), so "Quarterly"
-   would misdescribe what the customer is charged for. Only the real three tiers are
-   here — there is no 3-month plan in the product, and offering one the checkout
-   cannot fulfil would break activation. */
-const TIERS = [
-  { id: 'monthly', label: 'Monthly', price: 1999, months: 1, unit: '/ month', tagline: 'Billed monthly.' },
-  { id: 'half_yearly', label: 'Half-yearly', price: 6999, months: 6, unit: '/ 6 months', tagline: 'Billed once every 6 months.' },
-  { id: 'yearly', label: 'Yearly', price: 12999, months: 12, unit: '/ year', tagline: 'Billed once a year.' },
-] as const;
-
-type TierId = (typeof TIERS)[number]['id'];
-
-/** The 1-month price is the reference rate every saving is measured against. */
-const MONTHLY_RATE = TIERS[0].price;
+const TIERS = PLANS.map(p => ({ ...p, ...TIER_COPY[p.id] }));
+type TierId = PlanId;
 
 /* Counter (rolling-digit) sizing, shared by the ₹ glyph and the odometer so they
    stay the same height. Fixed px because Counter measures its strip height from a
@@ -51,13 +39,6 @@ const PRICE_FONT_SIZE = 38;
 function placesFor(value: number): number[] {
   const digits = Math.max(1, Math.floor(Math.log10(Math.max(1, value))) + 1);
   return Array.from({ length: digits }, (_, i) => 10 ** (digits - 1 - i));
-}
-
-/** Whole-percent saving vs paying the monthly rate for the same span. 0 for monthly. */
-function savingPercent(tier: (typeof TIERS)[number]): number {
-  const atMonthlyRate = MONTHLY_RATE * tier.months;
-  if (atMonthlyRate <= tier.price) return 0;
-  return Math.round((1 - tier.price / atMonthlyRate) * 100);
 }
 
 /* One line per module that actually ships. "Smart area detection" used to sit in
@@ -93,6 +74,17 @@ const ACTIVATION_STEPS = [
     title: 'Get activated',
     desc: 'We verify it and switch your account on shortly after.',
   },
+] as const;
+
+const PLAN_DETAILS = [
+  { term: 'Free trial', detail: '14 days with every feature unlocked.' },
+  { term: 'To start', detail: 'No card or payment details needed.' },
+  { term: 'Payment', detail: 'Pay upfront for the term you choose, by UPI.' },
+  { term: 'Renewal', detail: 'No automatic renewal. Nothing charges you on its own.' },
+  { term: 'Support', detail: SUPPORT_PROMISE },
+  { term: 'If a plan ends', detail: 'Your account is paused and your data stays.' },
+  { term: 'Refunds', detail: 'Fees for a period that has started are not refunded.' },
+  { term: 'Limits', detail: 'No limits on members.' },
 ] as const;
 
 export function Pricing() {
@@ -341,6 +333,30 @@ export function Pricing() {
             </div>
           </div>
         </div>
+
+        {/* Plan details: the terms a buyer asks about before paying, stated plainly.
+            Each line is how the product and billing actually behave. */}
+        <section aria-labelledby="plan-details-title" className="reveal card mt-10 p-6 md:p-8">
+          <h3 id="plan-details-title" className="display-3">Plan details</h3>
+          <dl className="mt-6 grid gap-x-10 gap-y-5 sm:grid-cols-2">
+            {PLAN_DETAILS.map(item => (
+              <div key={item.term}>
+                <dt className="text-[13.5px] font-medium text-foreground">{item.term}</dt>
+                <dd className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{item.detail}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-6 text-[13px] text-muted-foreground">
+            Full terms are on the{' '}
+            <a
+              href="/terms"
+              className="rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Terms page
+            </a>
+            .
+          </p>
+        </section>
       </div>
     </section>
   );

@@ -1,26 +1,13 @@
 import { Mail, MapPin, MessageCircle } from 'lucide-react';
+import {
+  MAIL_BODY,
+  MAIL_URL,
+  SUPPORT_EMAIL,
+  SUPPORT_PHONE_DISPLAY,
+  WHATSAPP_URL,
+} from '../data/support';
 
 const APP_URL = 'https://app.gymflow.sbs';
-const SUPPORT_EMAIL = 'support@gymflow.sbs';
-const SUPPORT_PHONE_DISPLAY = '+91 93848 86895';
-const SUPPORT_PHONE_HREF = '+919384886895';
-// A mailto link with the subject and body already filled in, so the visitor's mail app
-// opens on a ready-to-send message. encodeURIComponent turns the line breaks and spaces
-// into the %0A and %20 a mailto needs.
-const MAIL_BODY = [
-  'Hi GymFlow team,',
-  '',
-  'I saw your website and would like to know more about GymFlow for my gym.',
-  '',
-  'Name:',
-  'Gym name:',
-  'City:',
-  'Phone number:',
-  'Thank you.',
-].join('\n');
-const MAIL_URL = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-  'Enquiry about GymFlow',
-)}&body=${encodeURIComponent(MAIL_BODY)}`;
 // The same message as a Gmail compose window. Most laptops have no mail app registered
 // for mailto, so a click there does nothing; webmail is where those visitors actually are.
 const GMAIL_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
@@ -35,13 +22,6 @@ function openMail(e: React.MouseEvent<HTMLAnchorElement>) {
   e.preventDefault();
   window.open(GMAIL_URL, '_blank', 'noopener,noreferrer');
 }
-// wa.me wants the number as digits only, country code first, no + or spaces. The text is
-// what appears in the visitor's message box, ready to send, so the first message tells
-// support who is writing and why.
-const WHATSAPP_URL = `https://wa.me/${SUPPORT_PHONE_HREF.replace(/\D/g, '')}?text=${encodeURIComponent(
-  'Hi GymFlow, I saw your website and would like to know more about GymFlow for my gym.',
-)}`;
-
 const COLUMNS = [
   {
     heading: 'Product',
@@ -49,6 +29,9 @@ const COLUMNS = [
       { label: 'Features', href: '#features' },
       { label: 'WhatsApp automation', href: '#whatsapp' },
       { label: 'How it works', href: '#how' },
+      { label: 'Demo', href: '#demo' },
+      { label: 'Security', href: '#security' },
+      { label: 'Privacy and data', href: '#privacy-data' },
       { label: 'Pricing', href: '#pricing' },
     ],
   },
@@ -58,6 +41,8 @@ const COLUMNS = [
       { label: 'FAQ', href: '#faq' },
       { label: 'Privacy', href: '/privacy' },
       { label: 'Terms', href: '/terms' },
+      // Public status page (Better Stack). Opens in a new tab; it is a separate host.
+      { label: 'System status', href: 'https://status.gymflow.sbs', external: true },
       { label: 'Sign in', href: APP_URL },
     ],
   },
@@ -132,6 +117,7 @@ export function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
+                      {...('external' in link && link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                       className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
@@ -202,13 +188,16 @@ export function Footer() {
           >
             Cookie settings
           </button>
-          <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
-            <span
-              aria-hidden
-              className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent"
-            />
-            All systems operational
-          </p>
+          {/* Not a hard-coded "all systems operational": that was a claim with nothing behind it.
+              The live state is on the status page, backed by real monitors. */}
+          <a
+            href="https://status.gymflow.sbs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Live system status
+          </a>
         </div>
       </div>
     </footer>

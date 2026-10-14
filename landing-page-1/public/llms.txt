@@ -12,7 +12,7 @@ phone.
 
 Site: https://www.gymflow.sbs/
 Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
-Last updated: 2026-10-06
+Last updated: 2026-10-14
 
 ## Quick answers
 
@@ -37,6 +37,8 @@ Short, quotable answers to what people most often ask. Each matches the website.
   it is verified. No card is stored and nothing is charged automatically.
 - **Who is it for?** Owners of independent gyms and fitness studios in India who
   currently track members in notebooks, spreadsheets or WhatsApp groups.
+- **How fast does support reply?** Every plan includes priority support. Message
+  us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.
 - **How do I contact GymFlow?** Email support@gymflow.sbs, or phone / WhatsApp
   +91 93848 86895.
 
@@ -82,31 +84,28 @@ screen, so there is no app store download.
 
 ## Getting started
 
-1. **Sign up and onboard.** A six-step wizard collects the gym name, membership
-   plans, pricing and WhatsApp details. It autosaves, so it can be left and
-   resumed.
-2. **Import existing members.** Upload a CSV or Excel sheet. GymFlow matches the
-   column headings to its own fields and shows a preview first, so anything odd
-   can be corrected before records are saved.
-3. **Run the day to day.** Mark attendance, record payments, send WhatsApp
-   reminders for dues.
-4. **Analyse and grow.** Revenue charts, plan distribution, joining and expiry
-   trends, downloadable PDF reports.
+1. **Create your gym account.** Sign up on the web; no card needed for the 14-day free trial.
+2. **Import your member records.** Upload your Excel, CSV or XLS member list; GymFlow normalises phone numbers and matches your plans.
+3. **Configure memberships and payments.** Set up plans, prices and payment details in the app.
+4. **Start managing your gym.** Track members, attendance, payments, reports and WhatsApp reminders from one place.
 
 No installation, no IT team and no consultant are required.
 
 ## Data handling
 
-- Each gym's records are isolated and reachable only from that gym's own account.
+- Each gym's data is kept separate, and you sign in with your own account.
 - Data is encrypted in transit.
-- Backups run regularly.
-- Records are never shared with other gyms and are not sold on.
+- Owners can export members, attendance and payments to Excel, and delete their
+  gym's data from account settings.
+- Details: https://www.gymflow.sbs/privacy and https://www.gymflow.sbs/terms
 
 ## Support
 
-Available over WhatsApp, phone and email. Priority support is included in the
-plan rather than sold as an add-on.
+Priority support on every plan. We reply within 24 hours. Available over
+WhatsApp, phone and email; it is included in the plan rather than sold as an
+add-on.
 
+- Status: https://status.gymflow.sbs
 - Email: support@gymflow.sbs
 - Phone: +91 93848 86895
 - Registered address: No. 126, Anbu Nagar, Achariyapuram, Villianur,

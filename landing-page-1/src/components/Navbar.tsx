@@ -7,7 +7,7 @@ import {
   HelpCircle,
   LayoutDashboard,
   LifeBuoy,
-  Map,
+  ShieldCheck,
   Menu,
   MessageSquare,
   Route,
@@ -36,7 +36,7 @@ const PRODUCT_ITEMS = [
 
 const RESOURCE_ITEMS = [
   { icon: Route, label: 'How it works', desc: 'From signup to daily use', href: '#how' },
-  { icon: Map, label: 'Coverage', desc: 'Independent gyms across India', href: '#testimonials' },
+  { icon: ShieldCheck, label: 'Security and data', desc: 'Separation, export, deletion', href: '#security' },
   { icon: HelpCircle, label: 'FAQ', desc: 'Trial, pricing, data safety', href: '#faq' },
   { icon: LifeBuoy, label: 'Support', desc: 'Priority support, included', href: '#support' },
 ] as const;
@@ -124,7 +124,7 @@ export function Navbar() {
   // Which section is across the middle of the screen. One observer on the sections the
   // nav points at; a thin band at the vertical centre means exactly one is "current".
   useEffect(() => {
-    const ids = ['features', 'whatsapp', 'how', 'testimonials', 'pricing', 'faq'];
+    const ids = ['features', 'whatsapp', 'how', 'pricing', 'faq'];
     const els = ids.map(id => document.getElementById(id)).filter((e): e is HTMLElement => !!e);
     const io = new IntersectionObserver(
       entries => {
@@ -270,7 +270,7 @@ export function Navbar() {
             columns={1}
             openMenu={openMenu}
             setOpenMenu={setOpenMenu}
-            current={section === 'how' || section === 'testimonials' || section === 'faq'}
+            current={section === 'how' || section === 'faq'}
           />
           <a
             href="#pricing"

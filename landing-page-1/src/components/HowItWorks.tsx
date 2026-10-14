@@ -1,35 +1,36 @@
 import { useEffect, useRef } from 'react';
-import { ArrowRight, FileSpreadsheet, LayoutDashboard, UserPlus } from 'lucide-react';
+import { ArrowRight, CreditCard, FileSpreadsheet, LayoutDashboard, UserPlus } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { prefersReducedMotion, useReveal } from '../lib/useReveal';
+import { MAIL_URL, SUPPORT_EMAIL, SUPPORT_PROMISE, WHATSAPP_URL } from '../data/support';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const APP_URL = 'https://app.gymflow.sbs';
 
-/* Three steps, each a title of two or three words and one plain sentence.
-
-   This used to be four steps with a 30-40 word paragraph apiece plus a sticky
-   picture that swapped as you scrolled — a lot to read and track for what is
-   really "sign up, add members, run the gym". The reporting step is covered by
-   the features section, so it is not repeated here.
-
-   Still an <ol>, so the order is carried by the markup. */
+/* Four steps, each a title and one plain sentence. Still an <ol>, so the order is
+   carried by the markup. Only what the app does today: the import wizard takes
+   Excel, CSV and XLS files, and plans and payments are set up inside the app. */
 const STEPS = [
   {
     icon: UserPlus,
-    title: 'Sign up',
-    desc: 'Set up your gym in about 5 minutes.',
+    title: 'Create your gym account',
+    desc: 'Sign up and set up your gym in the app.',
   },
   {
     icon: FileSpreadsheet,
-    title: 'Add members',
-    desc: 'Upload your Excel sheet, or add them one by one.',
+    title: 'Import your member records',
+    desc: 'Bring your list in from an Excel, CSV or XLS file, or add members one by one.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Configure memberships and payments',
+    desc: 'Set up your plans and payment options inside the app.',
   },
   {
     icon: LayoutDashboard,
-    title: 'Run your gym',
+    title: 'Start managing your gym',
     desc: 'Attendance, payments and WhatsApp reminders, all from your phone.',
   },
 ] as const;
@@ -146,18 +147,36 @@ export function HowItWorks() {
           <div className="lg:sticky lg:top-36 lg:self-start">
             <span className="reveal eyebrow">How it works</span>
             <h2 id="how-title" className="reveal display-2 mt-4 text-balance">
-              Up and running
-              <br />
-              in <em className="display-accent">minutes.</em>
+              We&rsquo;ll Help You Get Started.
             </h2>
             <p className="reveal lead mt-6 max-w-[520px]">
-              No IT team, no installation, no consultant. Sign up and start entering your
-              first members the same day.
+              Move from spreadsheets and manual records to GymFlow with guided setup and
+              practical support.
             </p>
-            <a href={APP_URL} className="reveal btn btn-primary btn-lg mt-10">
-              Start free trial
-              <ArrowRight className="h-4 w-4" />
-            </a>
+            <p className="reveal mt-5 text-[14px] font-medium text-foreground">{SUPPORT_PROMISE}</p>
+            <div className="reveal mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <a href={APP_URL} className="btn btn-primary btn-lg">
+                Get Started
+                <ArrowRight className="h-4 w-4" />
+              </a>
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-outline btn-lg"
+              >
+                Talk to Our Team
+              </a>
+            </div>
+            <p className="reveal mt-4 text-[13px] text-muted-foreground">
+              or email{' '}
+              <a
+                href={MAIL_URL}
+                className="rounded font-medium text-foreground underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {SUPPORT_EMAIL}
+              </a>
+            </p>
           </div>
 
           <div ref={track} className="relative">
@@ -180,7 +199,7 @@ export function HowItWorks() {
                   /* The gap is the bottom padding, not a flex gap, so it belongs to
                      the row above it: the rail segment between two badges is exactly
                      the padding, and last:pb-0 stops the list at the final step. */
-                  className="reveal flex gap-5 pb-32 last:pb-0 md:pb-48"
+                  className="reveal flex gap-5 pb-20 last:pb-0 md:pb-32"
                 >
                   <span
                     data-step-badge

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "check:copy": "node scripts/check-copy-sync.mjs",
+    "build": "npm run check:copy && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },

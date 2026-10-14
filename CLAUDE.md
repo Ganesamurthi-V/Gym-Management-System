@@ -243,6 +243,10 @@ the merge.
   responses. Disabled in dev.
 - Security headers and the CSP live in `next.config.mjs`. When adding a third-party script, image host or API, add
   that exact host to the matching directive; do not widen to `https:` or re-add `'unsafe-eval'` in production.
+- Monitoring: `GET /api/health/deep` (Supabase, auth, Redis, WhatsApp queue/Meta, daily automation) requires the
+  `x-health-secret` header = `HEALTH_CHECK_SECRET`; unset means 503, never public. Logic is in `lib/monitoring/`
+  (pure `health.ts`, env-bound `checks.ts`). Both crons ping Better Stack heartbeats only after a successful run
+  (`BETTERSTACK_HEARTBEAT_*`). Runbook: `docs/MONITORING.md`.
 
 ## Styling and theming
 

@@ -27,6 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { runDailyWhatsAppAutomation } from '@/lib/whatsapp/automation'
+import { pingHeartbeat } from '@/lib/monitoring/heartbeat'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // Allow up to 60 seconds for large gyms
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
     const durationMs = Date.now() - startMs
 
     console.log(`[Cron/WA] Done in ${durationMs}ms:`, stats)
+
+    // Only after a successful run, so a missed ping means the cron failed or never ran.
+    await pingHeartbeat(process.env.BETTERSTACK_HEARTBEAT_WHATSAPP)
 
     return NextResponse.json({
       success: true,

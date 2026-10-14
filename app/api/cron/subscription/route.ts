@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { pingHeartbeat } from '@/lib/monitoring/heartbeat'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -62,6 +63,9 @@ export async function POST(req: NextRequest) {
   const trials = expiredTrials?.length ?? 0
   const subs   = expiredSubs?.length ?? 0
   console.log(`[Cron/Sub] Expired ${trials} trial(s), ${subs} subscription(s).`)
+
+  // Only after both updates succeeded, so a missed ping means the cron failed or never ran.
+  await pingHeartbeat(process.env.BETTERSTACK_HEARTBEAT_SUBSCRIPTION)
 
   return NextResponse.json({ expired: trials + subs, trials, subscriptions: subs })
 }

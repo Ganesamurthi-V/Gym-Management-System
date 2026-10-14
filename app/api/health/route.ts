@@ -29,8 +29,11 @@ export async function GET() {
     const { error } = await supabase.from('gyms').select('id').limit(1)
 
     // PGRST116 (0 rows) or PGRST301 (RLS) means the DB is perfectly healthy and rejected us normally.
+    // 42501 (insufficient_privilege) is the same story since the anon role lost table-level access to
+    // `gyms`: Postgres answered and refused, which is exactly what a healthy database does for an
+    // anonymous caller. Without it this endpoint reported "unhealthy" with the database up.
     // If it's a 5XX error, the connection failed.
-    const isHealthy = !error || ['PGRST116', 'PGRST301'].includes(error.code)
+    const isHealthy = !error || ['PGRST116', 'PGRST301', '42501'].includes(error.code)
 
     const durationMs = Math.round(performance.now() - startTime)
 

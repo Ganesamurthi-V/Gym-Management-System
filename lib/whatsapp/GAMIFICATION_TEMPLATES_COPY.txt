@@ -1,0 +1,78 @@
+TEMPLATE: gym_streak_at_risk
+CATEGORY: MARKETING
+LANGUAGE: en
+HEADER: Image (public/logo_landspace.png)
+FOOTER: none
+BUTTONS: none
+
+BODY:
+Hi *{{1}}*! 💪 Amazing consistency! You've checked in for *{{2}}* consecutive days at *{{3}}*. 
+
+🔥 Keep your streak alive! Head to the gym today and check in to maintain your streak. Don't let your hard-earned progress break — stay consistent and keep pushing towards your fitness goals! 🚀
+
+VARIABLES:
+{{1}} = Member's first name  (example: Arjun)
+{{2}} = Current streak, in days  (example: 5)
+{{3}} = Gym name  (example: Iron Temple)
+
+==========================================
+
+TEMPLATE: gym_weekly_goal_reached
+CATEGORY: MARKETING
+LANGUAGE: en
+HEADER: Image (public/logo_landspace.png)
+FOOTER: none
+BUTTONS: none
+
+BODY:
+
+🎉 Well done, {{1}}! You've attended the gym {{2}} days 🔥 in the last 7 days and achieved your weekly goal at {{3}}!
+
+🔥 Keep up the great work! Stay consistent, keep pushing your limits, and make every workout count. See you at the gym! 🏋️
+
+VARIABLES:
+{{1}} = Member's first name  (example: Arjun)
+{{2}} = Days attended in the last 7 days  (example: 4)
+{{3}} = Gym name  (example: Iron Temple)
+
+==========================================
+
+TEMPLATE: gym_leaderboard_rank_up
+CATEGORY: MARKETING
+LANGUAGE: en
+HEADER: Image (public/logo_landspace.png)
+FOOTER: none
+BUTTONS: none
+
+BODY:
+🏆 Congratulations, *{{1}}*! You're ranked #*{{2}}* on the *{{3}}* leaderboard at *{{4}}!* 
+
+🔥 Keep showing up, stay consistent, and keep checking in to defend your spot. Can you climb even higher? 🚀
+
+VARIABLES:
+{{1}} = Member's first name  (example: Arjun)
+{{2}} = Position on the board  (example: 1)
+{{3}} = Board name  (example: last 7 days)
+{{4}} = Gym name  (example: Iron Temple)
+
+==========================================
+
+TEMPLATE: gym_prize_awarded
+CATEGORY: MARKETING
+LANGUAGE: en
+HEADER: Image (public/logo_landspace.png)
+FOOTER: none
+BUTTONS: none
+
+BODY:
+🎉 Congratulations, *{{1}}*! You've won a prize — *{{2}}*!
+
+🏆 This reward is for your achievements during *{{3}}* at *{{4}}*. 
+
+💪 Keep up the great work! Visit your gym and contact the staff to collect your well-deserved prize. 🎁
+
+VARIABLES:
+{{1}} = Member's first name  (example: Arjun)
+{{2}} = Prize, as the owner wrote it  (example: Free protein shaker)
+{{3}} = What the prize is for (the period label)  (example: Last 7 days)
+{{4}} = Gym name  (example: Iron Temple)

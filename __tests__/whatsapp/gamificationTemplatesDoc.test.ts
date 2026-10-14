@@ -132,7 +132,8 @@ describe('GAMIFICATION_TEMPLATES.md matches templateSpec.ts', () => {
         expect(body).not.toMatch(/^\{\{/)          // must not start with a placeholder
         expect(body).not.toMatch(/\}\}$/)          // must not end with one
         expect(body).not.toMatch(/\}\}\s*\{\{/)    // two placeholders must not touch
-        expect(body).not.toMatch(/[\n\t]/)
+        // Paragraph breaks are allowed in a body; tabs and long space runs are not.
+        expect(body).not.toMatch(/\t| {5,}/)
         expect(body.length).toBeLessThanOrEqual(1024)
       })
 

@@ -152,32 +152,33 @@ export interface GamificationTemplateCopy {
  * say exactly what is here; __tests__/whatsapp/gamificationTemplatesDoc.test.ts fails if the
  * two drift. Change the wording here, then the sheet, then (if already approved) in Meta.
  *
- * Wording rules: the body must not start or end with a placeholder, two placeholders must not
- * touch, and no line breaks inside a value (Meta rejects those).
+ * Wording rules: the body must not start or end with a placeholder and two placeholders must not
+ * touch. Paragraph breaks are fine in the body, but never inside a placeholder's value (Meta
+ * rejects those).
  */
 export const GAMIFICATION_TEMPLATE_COPY: Record<GamificationTemplateId, GamificationTemplateCopy> = {
   gym_streak_at_risk: {
-    category: 'UTILITY',
+    category: 'MARKETING',
     bodyText:
-      'Hi {{1}}, you have checked in {{2}} days in a row at {{3}}. Check in today to keep your streak going.',
+      'Hi *{{1}}*! 💪 Amazing consistency! You\'ve checked in for *{{2}}* consecutive days at *{{3}}*.\n\n🔥 Keep your streak alive! Head to the gym today and check in to maintain your streak. Don\'t let your hard-earned progress break — stay consistent and keep pushing towards your fitness goals! 🚀',
     examples: ['Arjun', '5', 'Iron Temple'],
   },
   gym_weekly_goal_reached: {
     category: 'MARKETING',
     bodyText:
-      'Well done {{1}}! You attended {{2}} days in the last 7 days and reached your weekly goal at {{3}}. Keep it up.',
+      '🎉 Well done, {{1}}! You\'ve attended the gym {{2}} days 🔥 in the last 7 days and achieved your weekly goal at {{3}}!\n\n🔥 Keep up the great work! Stay consistent, keep pushing your limits, and make every workout count. See you at the gym! 🏋️',
     examples: ['Arjun', '4', 'Iron Temple'],
   },
   gym_leaderboard_rank_up: {
     category: 'MARKETING',
     bodyText:
-      'Congratulations {{1}}! You are now number {{2}} on the {{3}} leaderboard at {{4}}. Keep checking in to hold your place.',
+      '🏆 Congratulations, *{{1}}*! You\'re ranked #*{{2}}* on the *{{3}}* leaderboard at *{{4}}!*\n\n🔥 Keep showing up, stay consistent, and keep checking in to defend your spot. Can you climb even higher? 🚀',
     examples: ['Arjun', '1', 'last 7 days', 'Iron Temple'],
   },
   gym_prize_awarded: {
-    category: 'UTILITY',
+    category: 'MARKETING',
     bodyText:
-      'Hi {{1}}, you have won a prize: {{2}}. It was awarded for {{3}} at {{4}}. Please contact the gym to collect it.',
+      '🎉 Congratulations, *{{1}}*! You\'ve won a prize — *{{2}}*!\n\n🏆 This reward is for your achievements during *{{3}}* at *{{4}}*.\n\n💪 Keep up the great work! Visit your gym and contact the staff to collect your well-deserved prize. 🎁',
     examples: ['Arjun', 'Free protein shaker', 'Last 7 days', 'Iron Temple'],
   },
 }

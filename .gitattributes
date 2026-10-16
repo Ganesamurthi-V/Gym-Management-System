@@ -6,3 +6,6 @@
 # Scoped to this one file on purpose rather than a blanket "*.sh": a wider rule
 # would renormalise the husky hooks in .husky/ as a side effect.
 scripts/vercel-ignore-root.sh text eol=lf
+# Shell hooks must keep LF endings on Windows, or the hook line ends in 
+ and fails.
+.husky/pre-commit text eol=lf

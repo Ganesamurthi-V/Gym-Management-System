@@ -127,7 +127,7 @@ npm run verify:tour    # checks driver.js tour anchors still exist in the UI
 npm run verify:whatsapp
 ```
 
-There is no CI and no pre-commit hook; `npm run build` and `npm test` are the gate. `npm run build` and `npm run dev`
+There is no CI; `npm run build` and `npm test` are the gate. A husky pre-commit hook (`.husky/pre-commit` -> `scripts/check-secrets.js`) refuses commits that stage credential files (`google-services.json`, `GoogleService-Info.plist`, service-account keys) or contain a Google API key or private key; never bypass it with `--no-verify`. `npm run build` and `npm run dev`
 share `.next`, so do not build while the user's dev server is running. Changes pushed to `main` deploy to Vercel
 (root builds are skipped when only sibling projects or `docs/` changed — see `scripts/vercel-ignore-root.sh`).
 

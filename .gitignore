@@ -35,3 +35,10 @@ public/swe-worker-*.js
 skills-lock.json
 # Internal notes, audits and AI hand-off prompts. Not part of the public repository.
 /docs/
+
+# Firebase / Google client config and service-account keys: never committed, from any folder.
+# A Google API key in google-services.json was once published this way (GitHub secret-scanning alert #1).
+**/google-services.json
+**/GoogleService-Info.plist
+**/*service-account*.json
+**/*firebase-adminsdk*.json

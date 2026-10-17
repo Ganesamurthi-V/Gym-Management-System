@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
-import { sanitizeTicketResolution } from '@/lib/sanitize'
+import { sanitizeTicketResolution, sanitizeUUID } from '@/lib/sanitize'
 import { apiLogger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
@@ -20,8 +20,13 @@ export async function GET(req: NextRequest) {
   //   ?gymId=<uuid>   scope to a single gym (gym-wise feedback on the detail pages)
   //   ?type=feedback  restrict to a single ticket type
   // Both clients (admin web + mobile) share this endpoint; unfiltered calls behave as before.
-  const gymId = req.nextUrl.searchParams.get('gymId')
+  const gymIdRaw = req.nextUrl.searchParams.get('gymId')
+  const gymId = gymIdRaw ? sanitizeUUID(gymIdRaw) : null
   const type = req.nextUrl.searchParams.get('type')
+  if ((gymIdRaw && !gymId) || (type && !/^[a-z_]{1,32}$/.test(type))) {
+    log.summary(400)
+    return NextResponse.json({ error: 'Invalid filter' }, { status: 400 })
+  }
 
   try {
     log.start('DB_QUERY')
@@ -61,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   if (rateLimitResponse) { log.summary(429); return rateLimitResponse }
 
   try {
-    const rawBody = await req.json()
+    const rawBody = (await req.json().catch(() => null)) ?? {}
 
     const sanitized = sanitizeTicketResolution(rawBody)
     if ('error' in sanitized) {

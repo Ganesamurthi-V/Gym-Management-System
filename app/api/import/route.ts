@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { checkRateLimit } from '@/lib/rateLimit'
+import { apiLogger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       }
     }, { status: 501 })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
+    apiLogger('import_stub').error('import stub failed', err)
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } }, { status: 500 })
   }
 }

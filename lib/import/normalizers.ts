@@ -8,19 +8,36 @@ import { format } from "date-fns";
 import { recognizePlanDuration } from "./plan-matching";
 
 export function excelSerialToDate(serial: number): string {
-  return format(new Date(Math.round((serial - 25569) * 86400 * 1000)), "yyyy-MM-dd");
+  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  // A huge or non-finite number in a date column makes an Invalid Date, and
+  // date-fns format() throws on it, which aborted the whole file read.
+  return isNaN(d.getTime()) ? "" : format(d, "yyyy-MM-dd");
 }
 
+/** Longest text kept from one spreadsheet cell; a cell can hold 32,767 characters. */
+const MAX_CELL_CHARS = 500;
+
 export function cellStr(value: unknown): string {
+  return cellText(value).slice(0, MAX_CELL_CHARS);
+}
+
+// Only plain values are read. A formula contributes its cached result (never the
+// formula text), a hyperlink its visible text (never the URL), rich text its text.
+function cellText(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value.trim();
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return String(value);
-  if (typeof value === "object" && "richText" in (value as object))
-    return ((value as { richText: { text: string }[] }).richText).map(r => r.text).join("").trim();
-  if (value instanceof Date) return format(value, "yyyy-MM-dd");
-  if (typeof value === "object" && "result" in (value as object))
-    return cellStr((value as { result: unknown }).result);
+  if (value instanceof Date) return isNaN(value.getTime()) ? "" : format(value, "yyyy-MM-dd");
+  if (typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if (Array.isArray(o.richText))
+      return (o.richText as { text?: unknown }[]).map(r => (typeof r?.text === "string" ? r.text : "")).join("").trim();
+    if ("result" in o) return cellText(o.result);
+    if ("hyperlink" in o) return cellText(o.text);
+    if ("error" in o) return "";
+    return "";
+  }
   return String(value).trim();
 }
 

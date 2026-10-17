@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, isValidUUID } from '@/lib/api/withAuth'
+import { boundedText } from '@/app/api/_guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic'
  *
  * Body: { inventory_id, barcode }
  */
-export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { supabase, gym }) => {
+export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { supabase, gym, log }) => {
   let body: { inventory_id?: string; barcode?: string }
   try { body = await req.json() } catch {
     return NextResponse.json(
@@ -29,9 +30,9 @@ export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { s
     )
   }
 
-  if (!barcode || typeof barcode !== 'string' || barcode.trim().length === 0) {
+  if (!boundedText(barcode, 200)) {
     return NextResponse.json(
-      { success: false, error: { code: 'BAD_REQUEST', message: 'barcode is required' } },
+      { success: false, error: { code: 'BAD_REQUEST', message: 'barcode is required (max 200 characters)' } },
       { status: 400 }
     )
   }
@@ -41,9 +42,10 @@ export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { s
     .from('inventory')
     .select('gym_id, initial_stock')
     .eq('id', inventory_id)
-    .single()
+    .eq('gym_id', gym.id)
+    .maybeSingle()
 
-  if (!product || product.gym_id !== gym.id) {
+  if (!product) {
     return NextResponse.json(
       { success: false, error: { code: 'FORBIDDEN', message: 'Product does not belong to your gym' } },
       { status: 403 }
@@ -56,7 +58,7 @@ export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { s
     .insert({
       gym_id: gym.id,
       inventory_id,
-      barcode: barcode.trim(),
+      barcode: barcode!.trim(),
       status: 'available',
     })
     .select()
@@ -69,8 +71,9 @@ export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { s
         { status: 409 }
       )
     }
+    log.error('Inventory unit insert failed', insertError)
     return NextResponse.json(
-      { success: false, error: { code: 'DATABASE_ERROR', message: insertError.message } },
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not add the unit. Please try again.' } },
       { status: 500 }
     )
   }
@@ -102,7 +105,7 @@ export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { s
  *
  * Body: { unit_id, status, inventory_id }
  */
-export const PATCH = withAuth('INVENTORY_UNITS_UPDATE', async (req: NextRequest, { supabase, gym }) => {
+export const PATCH = withAuth('INVENTORY_UNITS_UPDATE', async (req: NextRequest, { supabase, gym, log }) => {
   let body: { unit_id?: string; status?: string; inventory_id?: string }
   try { body = await req.json() } catch {
     return NextResponse.json(
@@ -139,39 +142,79 @@ export const PATCH = withAuth('INVENTORY_UNITS_UPDATE', async (req: NextRequest,
     .from('inventory')
     .select('gym_id, initial_stock')
     .eq('id', inventory_id)
-    .single()
+    .eq('gym_id', gym.id)
+    .maybeSingle()
 
-  if (!product || product.gym_id !== gym.id) {
+  if (!product) {
     return NextResponse.json(
       { success: false, error: { code: 'FORBIDDEN', message: 'Product does not belong to your gym' } },
       { status: 403 }
     )
   }
 
-  // Update unit status
-  const { error: updateError } = await supabase
+  // The unit must belong to this gym AND this product, otherwise a unit id
+  // from another gym (or another product) could be flipped through here.
+  const { data: unit } = await supabase
     .from('inventory_units')
-    .update({ status })
+    .select('id, status')
     .eq('id', unit_id)
+    .eq('inventory_id', inventory_id)
+    .eq('gym_id', gym.id)
+    .maybeSingle()
 
-  if (updateError) {
+  if (!unit) {
     return NextResponse.json(
-      { success: false, error: { code: 'DATABASE_ERROR', message: updateError.message } },
-      { status: 500 }
+      { success: false, error: { code: 'NOT_FOUND', message: 'Unit not found for this product' } },
+      { status: 404 }
     )
   }
 
-  // Adjust stock count when selling
-  if (status === 'sold') {
+  // Re-sending the same status must not move stock again (a double tap on
+  // "sold" used to subtract twice).
+  if (unit.status === status) {
+    return NextResponse.json(
+      { success: true, data: { unit_id, status } },
+      { headers: { 'Cache-Control': 'private, no-store' } }
+    )
+  }
+
+  // Conditional on the status we read, so concurrent requests change it once.
+  const { data: changed, error: updateError } = await supabase
+    .from('inventory_units')
+    .update({ status })
+    .eq('id', unit_id)
+    .eq('gym_id', gym.id)
+    .eq('status', unit.status)
+    .select('id')
+
+  if (updateError) {
+    log.error('Inventory unit update failed', updateError)
+    return NextResponse.json(
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not update the unit. Please try again.' } },
+      { status: 500 }
+    )
+  }
+  if (!changed || changed.length === 0) {
+    return NextResponse.json(
+      { success: false, error: { code: 'CONFLICT', message: 'The unit changed. Reload and try again.' } },
+      { status: 409 }
+    )
+  }
+
+  // Same rule as before (only a sale lowers stock), now applied once per
+  // transition; un-selling a unit back to available puts it back in stock.
+  const delta = status === 'sold' ? -1 : unit.status === 'sold' && status === 'available' ? 1 : 0
+  if (delta !== 0) {
     const { error: rpcError } = await supabase.rpc('increment_inventory_stock', {
       p_inventory_id: inventory_id,
-      amount: -1,
+      amount: delta,
     })
     if (rpcError) {
       await supabase
         .from('inventory')
-        .update({ initial_stock: Math.max(0, (product.initial_stock ?? 0) - 1) })
+        .update({ initial_stock: Math.max(0, (product.initial_stock ?? 0) + delta) })
         .eq('id', inventory_id)
+        .eq('gym_id', gym.id)
     }
   }
 

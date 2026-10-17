@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { sanitizeRow } from '@/lib/export/sanitizeCell'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
@@ -112,7 +113,7 @@ export async function exportMembersToExcelAction(
     ws.getRow(1).font = { bold: true }
     
     mapped.forEach(m => {
-      ws.addRow({
+      ws.addRow(sanitizeRow({
         num:    m.member_number ? formatMemberId(m.member_number) : '-',
         name:   m.name,
         phone:  m.phone,
@@ -127,7 +128,7 @@ export async function exportMembersToExcelAction(
         start:  m.latest_membership?.start_date || '-',
         end:    m.latest_membership?.end_date || '-',
         legacy: m.legacy_member_id || '-',
-      })
+      }))
     })
 
     const buffer = await wb.xlsx.writeBuffer()
@@ -137,8 +138,7 @@ export async function exportMembersToExcelAction(
     return { success: true, fileBase64: base64, count: mapped.length }
 
   } catch (error: any) {
-    console.error("Export error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: clientError(error, 'Could not export members') }
   }
 }
 

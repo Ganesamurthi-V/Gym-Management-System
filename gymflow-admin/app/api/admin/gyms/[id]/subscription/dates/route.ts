@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { ADMIN_ACTOR, dateOrClearSchema, noteSchema, sanitizeUUID } from '@/lib/sanitize'
+import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,8 +22,18 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const { id } = await props.params
-    const { subscription_started_at, subscription_ends_at, trial_started_at, trial_ends_at, performed_by = 'admin', notes } = await req.json()
+    const id = sanitizeUUID((await props.params).id)
+    if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
+    const parsed = z.object({
+      subscription_started_at: dateOrClearSchema,
+      subscription_ends_at: dateOrClearSchema,
+      trial_started_at: dateOrClearSchema,
+      trial_ends_at: dateOrClearSchema,
+      notes: noteSchema,
+    }).safeParse(await req.json().catch(() => null))
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
+    const { subscription_started_at, subscription_ends_at, trial_started_at, trial_ends_at, notes } = parsed.data
+    const performed_by = ADMIN_ACTOR
 
     const supabase = createAdminClient()
 
@@ -59,6 +71,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error('[SubDates]', err)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

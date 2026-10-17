@@ -1,6 +1,7 @@
 'use client' // Force next.js to recognize file
 
 import { useState, useMemo, useEffect } from 'react'
+import { sanitizeRow } from '@/lib/export/sanitizeCell'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Search, Filter, Sun, Moon, Calendar, Clock, Download, RefreshCw } from 'lucide-react'
@@ -187,7 +188,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
 
       // Add rows
       filteredLogs.forEach(log => {
-        sheet.addRow({
+        sheet.addRow(sanitizeRow({
           date: formatDate(log.date),
           name: log.members?.name || 'Deleted Member',
           member_id: log.members?.member_number ? formatMemberId(log.members.member_number) : '',
@@ -195,7 +196,7 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
           check_in: formatTimeOnly(log.created_at),
           check_out: formatTimeOnly(log.check_out_time),
           duration: calculateDuration(log.created_at, log.check_out_time)
-        })
+        }))
       })
 
       // Style header

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
-import { format } from 'date-fns'
+import { istToday } from '@/lib/gamification/periods'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +9,12 @@ export const dynamic = 'force-dynamic'
  *
  * Returns today's memberships (payments) and new members for the daily PDF report.
  */
-export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (req: NextRequest, { supabase, gym }) => {
-  const today = format(new Date(), 'yyyy-MM-dd')
+export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (req: NextRequest, { supabase, gym, log }) => {
+  // IST day, not the server's UTC day (Vercel runs in UTC, which would show the
+  // wrong date for the first 5.5 hours of every Indian day).
+  const today = istToday()
+  const dayStartUtc = new Date(`${today}T00:00:00+05:30`).toISOString()
+  const dayEndUtc = new Date(new Date(`${today}T00:00:00+05:30`).getTime() + 86_400_000).toISOString()
 
   const [membershipsRes, newMembersRes] = await Promise.all([
     supabase
@@ -22,9 +26,17 @@ export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (req: NextRequest, {
       .from('members')
       .select('name, member_number, phone, area, gender')
       .eq('gym_id', gym.id)
-      .gte('created_at', `${today}T00:00:00.000Z`)
-      .lt('created_at', `${today}T23:59:59.999Z`),
+      .gte('created_at', dayStartUtc)
+      .lt('created_at', dayEndUtc),
   ])
+
+  if (membershipsRes.error || newMembersRes.error) {
+    log.error('Daily report query failed', membershipsRes.error ?? newMembersRes.error)
+    return NextResponse.json(
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not load the daily report. Please try again.' } },
+      { status: 500 }
+    )
+  }
 
   const payments = (membershipsRes.data ?? []).map((p: any) => ({
     memberName: p.member?.name ?? 'Unknown',

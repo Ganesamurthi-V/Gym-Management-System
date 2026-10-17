@@ -3,6 +3,8 @@ import { withAuth } from '@/lib/api/withAuth'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { format } from 'date-fns'
+import { isValidUUID } from '@/lib/api/withAuth'
+import { boundedInt } from '@/app/api/_guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,13 +40,13 @@ export const POST = withAuth('MEMBERS_FIX_DUPLICATES', async (req: NextRequest, 
 
   // Validate all entries
   for (const u of updates) {
-    if (!u.id || typeof u.id !== 'string') {
+    if (!u || typeof u.id !== 'string' || !isValidUUID(u.id)) {
       return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Each update must have a string id' } },
+        { success: false, error: { code: 'BAD_REQUEST', message: 'Each update must have a valid member id' } },
         { status: 400 }
       )
     }
-    if (typeof u.newNum !== 'number' || u.newNum < 1) {
+    if (boundedInt(u.newNum, 1, 1_000_000_000) === null) {
       return NextResponse.json(
         { success: false, error: { code: 'BAD_REQUEST', message: 'Each update must have a positive newNum' } },
         { status: 400 }

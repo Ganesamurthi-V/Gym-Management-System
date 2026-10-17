@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const { gymId, isActive } = await req.json()
 
-    if (!gymId || typeof isActive !== 'boolean') {
+    if (typeof gymId !== 'string' || typeof isActive !== 'boolean') {
       log.summary(400)
       return NextResponse.json({ error: 'Missing or invalid parameters' }, { status: 400 })
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { ADMIN_ACTOR, noteSchema, sanitizeUUID } from '@/lib/sanitize'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +14,12 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const { id } = await props.params
-    const { performed_by = 'admin', notes } = await req.json()
+    const id = sanitizeUUID((await props.params).id)
+    if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
+    const parsedNotes = noteSchema.safeParse(((await req.json().catch(() => null)) as { notes?: unknown } | null)?.notes)
+    if (!parsedNotes.success) return NextResponse.json({ error: 'Invalid notes' }, { status: 400 })
+    const notes = parsedNotes.data
+    const performed_by = ADMIN_ACTOR
     const supabase = createAdminClient()
 
     const { data: gym, error: fetchError } = await supabase
@@ -50,6 +55,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error('[SubExpire]', err)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

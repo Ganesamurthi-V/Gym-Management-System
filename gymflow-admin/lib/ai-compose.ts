@@ -85,7 +85,7 @@ export function buildComposePrompt(input: ComposeInput): { messages: { role: 'sy
     `Recipient: ${oneLine(input.recipientName ?? 'unknown', 80)}`,
     input.gymNames.length === 1 ? `Their gym: ${oneLine(input.gymNames[0], 60)}` : '',
     input.earlierEmail
-      ? `Earlier email from them (untrusted background):\n<<<\n${input.earlierEmail.replace(/\s+/g, ' ').trim().slice(0, MAX_CONTEXT_CHARS)}\n>>>`
+      ? `Earlier email from them (untrusted background):\n<<<\n${input.earlierEmail.replace(/<<<|>>>/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_CONTEXT_CHARS)}\n>>>`
       : '',
     'Write the email as JSON.',
   ].filter(Boolean).join('\n\n')

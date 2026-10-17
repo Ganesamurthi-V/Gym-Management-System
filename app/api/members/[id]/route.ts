@@ -5,7 +5,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 export const dynamic = 'force-dynamic'
 
 import { getGymForUser } from '@/lib/supabase/queries'
-import { mapSupabaseError } from '@/lib/utils/errorMapper'
+import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, UUID_RE } from '@/app/api/_guard'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { format } from 'date-fns'
@@ -18,6 +18,7 @@ export async function GET(
   const startTime = Date.now()
   try {
     const { id } = await params
+    if (!UUID_RE.test(id)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid member id' } }, { status: 400 })
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
@@ -42,8 +43,8 @@ export async function GET(
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
+    console.error('[members/[id]] unhandled', err)
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } }, { status: 500 })
   }
 }
 
@@ -53,7 +54,9 @@ export async function PATCH(
 ) {
   const startTime = Date.now()
   try {
+    if (!passesCsrf(req)) return csrfRejected()
     const { id } = await params
+    if (!UUID_RE.test(id)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid member id' } }, { status: 400 })
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
@@ -64,18 +67,31 @@ export async function PATCH(
     const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
-    const { data: memberCheck } = await supabase.from('members').select('gym_id').eq('id', id).single()
-    if (!memberCheck || memberCheck.gym_id !== gym.id) return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
+    const { data: memberCheck } = await supabase.from('members').select('gym_id').eq('id', id).eq('gym_id', gym.id).maybeSingle()
+    if (!memberCheck) return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
 
     let body
     try { body = await req.json() } catch { return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 }) }
 
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid body' } }, { status: 400 })
+    }
+
+    // Explicit allowlist: only these columns can change through this route.
     const updates: Record<string, string | number | null> = {}
-    if (body.name !== undefined) updates.name = body.name
-    if (body.phone !== undefined) updates.phone = body.phone
+    if (body.name !== undefined) {
+      const name = boundedText(body.name, 100)
+      if (!name) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Name must be 1-100 characters' } }, { status: 400 })
+      updates.name = name
+    }
+    if (body.phone !== undefined) {
+      const phone = boundedText(body.phone, 20)
+      if (!phone) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Phone must be 1-20 characters' } }, { status: 400 })
+      updates.phone = phone
+    }
     if (body.age !== undefined) {
-      const age = parseInt(body.age)
-      if (isNaN(age)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Age must be an integer' } }, { status: 400 })
+      const age = boundedInt(body.age, 0, 120)
+      if (age === null) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Age must be an integer between 0 and 120' } }, { status: 400 })
       updates.age = age
     }
     if (body.gender !== undefined) {
@@ -88,7 +104,7 @@ export async function PATCH(
       }
     }
     if (body.area !== undefined) {
-      updates.area = typeof body.area === 'string' ? (body.area.trim() || null) : null
+      updates.area = typeof body.area === 'string' ? (body.area.trim().slice(0, 100) || null) : null
     }
     if (body.date_of_birth !== undefined) {
       if (body.date_of_birth === null || body.date_of_birth === '') {
@@ -102,15 +118,20 @@ export async function PATCH(
       }
     }
     if (body.member_number !== undefined) {
-      const num = parseInt(body.member_number)
-      if (isNaN(num)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'member_number must be an integer' } }, { status: 400 })
+      const num = boundedInt(body.member_number, 1, 1_000_000_000)
+      if (num === null) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'member_number must be a positive integer' } }, { status: 400 })
       updates.member_number = num
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'No fields to update' } }, { status: 400 })
     }
 
     const { data, error } = await supabase
       .from('members')
       .update(updates)
       .eq('id', id)
+      .eq('gym_id', gym.id)
       .select('id, name, phone, member_number')
       .single()
 
@@ -124,8 +145,8 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
+    console.error('[members/[id]] unhandled', err)
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } }, { status: 500 })
   }
 }
 
@@ -135,7 +156,9 @@ export async function DELETE(
 ) {
   const startTime = Date.now()
   try {
+    if (!passesCsrf(req)) return csrfRejected()
     const { id } = await params
+    if (!UUID_RE.test(id)) return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid member id' } }, { status: 400 })
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
@@ -147,15 +170,15 @@ export async function DELETE(
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
     // Verify the member belongs to this gym
-    const { data: memberCheck } = await supabase.from('members').select('gym_id').eq('id', id).single()
-    if (!memberCheck || memberCheck.gym_id !== gym.id) {
+    const { data: memberCheck } = await supabase.from('members').select('gym_id').eq('id', id).eq('gym_id', gym.id).maybeSingle()
+    if (!memberCheck) {
       return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
     }
 
     // Delete attendance and memberships in parallel, then the member row
     const [a1, a2] = await Promise.all([
-      supabase.from('attendance').delete().eq('member_id', id),
-      supabase.from('memberships').delete().eq('member_id', id),
+      supabase.from('attendance').delete().eq('member_id', id).eq('gym_id', gym.id),
+      supabase.from('memberships').delete().eq('member_id', id).eq('gym_id', gym.id),
     ])
     if (a1.error) {
       const mapped = mapSupabaseError(a1.error)
@@ -166,7 +189,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
 
-    const { error } = await supabase.from('members').delete().eq('id', id)
+    const { error } = await supabase.from('members').delete().eq('id', id).eq('gym_id', gym.id)
     if (error) {
       const mapped = mapSupabaseError(error)
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
@@ -179,7 +202,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, data: { id }, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
-    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, { status: 500 })
+    console.error('[members/[id]] unhandled', err)
+    return NextResponse.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } }, { status: 500 })
   }
 }

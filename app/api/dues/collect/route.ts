@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
  *
  * Body: { member_id, amount, payment_mode }
  */
-export const POST = withAuth('DUES_COLLECT', async (req: NextRequest, { supabase, gym }) => {
+export const POST = withAuth('DUES_COLLECT', async (req: NextRequest, { supabase, gym, log }) => {
   let body: { member_id?: string; amount?: number; payment_mode?: string }
   try { body = await req.json() } catch {
     return NextResponse.json(
@@ -32,7 +32,7 @@ export const POST = withAuth('DUES_COLLECT', async (req: NextRequest, { supabase
     )
   }
 
-  if (typeof amount !== 'number' || amount <= 0) {
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) {
     return NextResponse.json(
       { success: false, error: { code: 'BAD_REQUEST', message: 'amount must be a positive number' } },
       { status: 400 }
@@ -51,7 +51,8 @@ export const POST = withAuth('DUES_COLLECT', async (req: NextRequest, { supabase
     .from('members')
     .select('id, pending_amount, gym_id')
     .eq('id', member_id)
-    .single()
+    .eq('gym_id', gym.id)
+    .maybeSingle()
 
   if (!member || member.gym_id !== gym.id) {
     return NextResponse.json(
@@ -60,29 +61,57 @@ export const POST = withAuth('DUES_COLLECT', async (req: NextRequest, { supabase
     )
   }
 
-  const collect = Math.min(amount, member.pending_amount ?? 0)
-  const newPending = (member.pending_amount ?? 0) - collect
+  const currentPending = member.pending_amount ?? 0
+  const collect = Math.min(amount, currentPending)
+  if (collect <= 0) {
+    return NextResponse.json(
+      { success: false, error: { code: 'NOTHING_DUE', message: 'This member has no pending amount' } },
+      { status: 409 }
+    )
+  }
+  const newPending = currentPending - collect
 
-  // Update member pending amount
-  const { error: updateError } = await supabase
+  // Optimistic lock on the balance we just read: two simultaneous collections
+  // would otherwise both subtract from the same starting value and one payment
+  // would be recorded without reducing the dues.
+  const { data: updated, error: updateError } = await supabase
     .from('members')
     .update({ pending_amount: newPending })
     .eq('id', member_id)
+    .eq('gym_id', gym.id)
+    .eq('pending_amount', currentPending)
+    .select('id')
 
   if (updateError) {
+    log.error('Could not update pending amount', updateError)
     return NextResponse.json(
-      { success: false, error: { code: 'DATABASE_ERROR', message: updateError.message } },
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not record the payment. Please try again.' } },
       { status: 500 }
     )
   }
+  if (!updated || updated.length === 0) {
+    return NextResponse.json(
+      { success: false, error: { code: 'CONFLICT', message: 'The balance changed. Reload and try again.' } },
+      { status: 409 }
+    )
+  }
 
-  // Record the due payment
-  await supabase.from('due_payments').insert({
+  // Record the due payment; if that fails put the balance back so dues and
+  // the payment ledger never disagree.
+  const { error: ledgerError } = await supabase.from('due_payments').insert({
     gym_id: gym.id,
     member_id,
     amount: collect,
     payment_mode,
   })
+  if (ledgerError) {
+    log.error('Could not record due payment; restoring balance', ledgerError)
+    await supabase.from('members').update({ pending_amount: currentPending }).eq('id', member_id).eq('gym_id', gym.id)
+    return NextResponse.json(
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not record the payment. Please try again.' } },
+      { status: 500 }
+    )
+  }
 
   // Bust caches
   await Promise.all([

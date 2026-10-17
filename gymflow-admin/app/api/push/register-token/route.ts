@@ -74,7 +74,7 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json().catch(() => null) as { token?: string } | null
     const token = typeof body?.token === 'string' ? body.token.trim() : ''
 
-    if (!token) {
+    if (!token || token.length > 4096) {
       log.summary(400)
       return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
     }

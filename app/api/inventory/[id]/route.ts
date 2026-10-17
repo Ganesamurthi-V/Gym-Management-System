@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { isValidUUID } from '@/lib/api/withAuth'
+import { apiLogger } from '@/lib/logger'
+import { passesCsrf, csrfRejected, boundedInt, boundedNumber, boundedText, MAX_MONEY, MAX_STOCK } from '@/app/api/_guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +17,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = apiLogger('INVENTORY_PATCH')
   try {
+    if (!passesCsrf(req)) return csrfRejected()
     const { id } = await params
     if (!isValidUUID(id)) {
       return NextResponse.json(
@@ -54,9 +58,10 @@ export async function PATCH(
       .from('inventory')
       .select('gym_id')
       .eq('id', id)
-      .single()
+      .eq('gym_id', gym.id)
+      .maybeSingle()
 
-    if (!product || product.gym_id !== gym.id) {
+    if (!product) {
       return NextResponse.json(
         { success: false, error: { code: 'FORBIDDEN', message: 'Product does not belong to your gym' } },
         { status: 403 }
@@ -71,30 +76,78 @@ export async function PATCH(
       )
     }
 
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: 'Invalid body' } },
+        { status: 400 }
+      )
+    }
+
+    // Explicit allowlist with type and range checks (no negative prices/stock).
+    const bad = (message: string) => NextResponse.json(
+      { success: false, error: { code: 'BAD_REQUEST', message } },
+      { status: 400 }
+    )
     const updates: Record<string, unknown> = {}
-    if (body.product_name !== undefined) updates.product_name = body.product_name
-    if (body.brand !== undefined) updates.brand = body.brand || null
-    if (body.category !== undefined) updates.category = body.category || null
-    if (body.sku !== undefined) updates.sku = body.sku || null
-    if (body.description !== undefined) updates.description = body.description || null
-    if (body.variant_name !== undefined) updates.variant_name = body.variant_name
-    if (body.cost_price !== undefined) updates.cost_price = parseFloat(String(body.cost_price))
-    if (body.selling_price !== undefined) updates.selling_price = parseFloat(String(body.selling_price))
-    if (body.member_price !== undefined) updates.member_price = body.member_price ? parseFloat(String(body.member_price)) : null
-    if (body.initial_stock !== undefined) updates.initial_stock = parseInt(String(body.initial_stock), 10)
-    if (body.low_stock_threshold !== undefined) updates.low_stock_threshold = body.low_stock_threshold ? parseInt(String(body.low_stock_threshold), 10) : null
+    const text = (key: string, max: number, required: boolean) => {
+      if (body[key] === undefined) return true
+      if (!required && (body[key] === null || body[key] === '')) { updates[key] = null; return true }
+      const v = boundedText(body[key], max)
+      if (v === null) return false
+      updates[key] = v
+      return true
+    }
+    if (!text('product_name', 120, true)) return bad('product_name must be 1-120 characters')
+    if (!text('variant_name', 120, true)) return bad('variant_name must be 1-120 characters')
+    if (!text('brand', 120, false)) return bad('brand is too long')
+    if (!text('category', 120, false)) return bad('category is too long')
+    if (!text('sku', 120, false)) return bad('sku is too long')
+    if (!text('description', 2000, false)) return bad('description is too long')
+    if (body.cost_price !== undefined) {
+      const v = boundedNumber(body.cost_price, 0, MAX_MONEY)
+      if (v === null) return bad('cost_price must be 0 or more')
+      updates.cost_price = v
+    }
+    if (body.selling_price !== undefined) {
+      const v = boundedNumber(body.selling_price, 0, MAX_MONEY)
+      if (v === null) return bad('selling_price must be 0 or more')
+      updates.selling_price = v
+    }
+    if (body.member_price !== undefined) {
+      if (!body.member_price) updates.member_price = null
+      else {
+        const v = boundedNumber(body.member_price, 0, MAX_MONEY)
+        if (v === null) return bad('member_price must be 0 or more')
+        updates.member_price = v
+      }
+    }
+    if (body.initial_stock !== undefined) {
+      const v = boundedInt(body.initial_stock, 0, MAX_STOCK)
+      if (v === null) return bad('initial_stock must be a whole number 0 or more')
+      updates.initial_stock = v
+    }
+    if (body.low_stock_threshold !== undefined) {
+      if (!body.low_stock_threshold) updates.low_stock_threshold = null
+      else {
+        const v = boundedInt(body.low_stock_threshold, 0, MAX_STOCK)
+        if (v === null) return bad('low_stock_threshold must be a whole number 0 or more')
+        updates.low_stock_threshold = v
+      }
+    }
     updates.updated_at = new Date().toISOString()
 
     const { data, error } = await supabase
       .from('inventory')
       .update(updates)
       .eq('id', id)
+      .eq('gym_id', gym.id)
       .select('id, product_name, variant_name, selling_price, initial_stock')
       .single()
 
     if (error) {
+      log.error('Inventory update failed', error)
       return NextResponse.json(
-        { success: false, error: { code: 'DATABASE_ERROR', message: error.message } },
+        { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not update the product. Please try again.' } },
         { status: 500 }
       )
     }
@@ -104,9 +157,9 @@ export async function PATCH(
       { headers: { 'Cache-Control': 'private, no-store' } }
     )
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+    log.error('Unhandled exception in PATCH /api/inventory/[id]', err)
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
       { status: 500 }
     )
   }

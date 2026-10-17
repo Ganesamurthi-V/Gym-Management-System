@@ -9,7 +9,7 @@ import { apiLogger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 import { getGymForUser } from '@/lib/supabase/queries'
-import { mapSupabaseError } from '@/lib/utils/errorMapper'
+import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText } from '@/app/api/_guard'
 export async function GET(req: NextRequest) {
   const log = apiLogger('MEMBERS_API_GET')
   try {
@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
     log.info('Gym Info', { gymId: gym.id })
 
     const { searchParams } = req.nextUrl
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
-    const offset = parseInt(searchParams.get('offset') ?? '0')
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50') || 50, 1), 100)
+    const offset = Math.min(Math.max(parseInt(searchParams.get('offset') ?? '0') || 0, 0), 1_000_000)
 
     log.start('DB_QUERY')
     const { data, error, count } = await supabase
@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const log = apiLogger('MEMBERS_API_POST')
   try {
+    if (!passesCsrf(req)) return csrfRejected()
     log.start('AUTH')
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -110,8 +111,12 @@ export async function POST(req: NextRequest) {
     // Security: validate/normalize required fields before insert. Previously
     // `name`/`phone` were written straight through (empty or wrong-typed values
     // could be persisted) and `gender` was never checked against the DB constraint.
-    const name = typeof body.name === 'string' ? body.name.trim() : ''
-    const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      log.summary(400)
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid body' } }, { status: 400 })
+    }
+    const name = boundedText(body.name, 100) ?? ''
+    const phone = boundedText(body.phone, 20) ?? ''
     if (!name || !phone) {
       log.summary(400)
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Name and phone are required' } }, { status: 400 })
@@ -126,9 +131,9 @@ export async function POST(req: NextRequest) {
       gender = body.gender
     }
 
-    const age = parseInt(body.age)
-    const member_number = parseInt(body.member_number)
-    if (isNaN(age) || isNaN(member_number)) {
+    const age = boundedInt(body.age, 0, 120)
+    const member_number = boundedInt(body.member_number, 1, 1_000_000_000)
+    if (age === null || member_number === null) {
       log.summary(400)
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Age and member_number must be integers' } }, { status: 400 })
     }

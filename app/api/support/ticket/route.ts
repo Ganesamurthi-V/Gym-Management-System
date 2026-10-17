@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { apiLogger } from '@/lib/logger'
+import { passesCsrf } from '@/app/api/_guard'
 
 export async function POST(req: NextRequest) {
+  const log = apiLogger('SUPPORT_TICKET')
   try {
+    if (!passesCsrf(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -16,7 +21,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
-    const body = await req.json()
+    let body: any
+    try { body = await req.json() } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
     const type = body?.type
     const message: string = (body?.message ?? '').toString().trim()
 
@@ -53,6 +61,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Unbounded text would let one request store megabytes per ticket.
+    if (subject.length > 200 || message.length > 5000) {
+      return NextResponse.json({ error: 'Subject or message is too long' }, { status: 400 })
+    }
+
     // Get the gym_id for this user
     const { data: gym } = await supabase
       .from('gyms')
@@ -80,7 +93,8 @@ export async function POST(req: NextRequest) {
     if (insertError) throw insertError
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to submit ticket' }, { status: 500 })
+  } catch (error: unknown) {
+    log.error('Unhandled exception in POST /api/support/ticket', error)
+    return NextResponse.json({ error: 'Failed to submit ticket' }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { sanitizeUUID } from '@/lib/sanitize'
 
 export async function POST(req: NextRequest) {
   if (!(await verifyRequestAuth(req))) {
@@ -8,7 +9,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { ticketId, clearAll } = await req.json()
+    const body = await req.json().catch(() => null) as { ticketId?: unknown; clearAll?: unknown } | null
+    const clearAll = body?.clearAll === true
+    const ticketId = typeof body?.ticketId === 'string' ? sanitizeUUID(body.ticketId) : null
+    if (!clearAll && !ticketId) {
+      return NextResponse.json({ error: 'Provide a valid ticketId or clearAll=true' }, { status: 400 })
+    }
     const supabase = createAdminClient()
 
     if (clearAll) {
@@ -30,6 +36,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[TicketsClear]', error)
+    return NextResponse.json({ error: 'Failed to clear tickets' }, { status: 500 })
   }
 }

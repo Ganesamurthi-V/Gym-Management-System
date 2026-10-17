@@ -1,5 +1,6 @@
 import type { NextRequest, NextResponse } from 'next/server'
-import { withAuth, apiError, apiSuccess, handleSupabaseError, isValidUUID, type AuthContext } from '@/lib/api/withAuth'
+import { withAuth, apiError, apiSuccess, isValidUUID, type AuthContext } from '@/lib/api/withAuth'
+import { handleSupabaseError } from '@/app/api/_guard'
 import { EVENT_LIMITS } from '@/lib/gamification/constants'
 import {
   createEventSchema,

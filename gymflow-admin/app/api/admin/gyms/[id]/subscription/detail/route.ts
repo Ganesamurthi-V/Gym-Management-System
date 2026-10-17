@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { sanitizeUUID } from '@/lib/sanitize'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const { id } = await props.params
+    const id = sanitizeUUID((await props.params).id)
+    if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
     const supabase = createAdminClient()
 
     // Fetch gym + all subscription columns.
@@ -137,6 +139,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       usageStats: usageStats || null,
     })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error('[SubDetail]', err)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

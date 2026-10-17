@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
     supabase.from('gyms').select('*', { count: 'exact', head: true }),
     supabase.from('members').select('*', { count: 'exact', head: true }),
     supabase.from('attendance').select('*', { count: 'exact', head: true })
-      .eq('date', new Date().toISOString().slice(0, 10)),
+      // The attendance date is the IST day; the UTC day is wrong from 18:30 to 24:00 IST.
+      .eq('date', new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)),
     // Latency-capped and briefly cached. These two were the dominant cost in this
     // handler: un-timeouted Sentry round-trips that Promise.allSettled had to wait
     // out before any of the other five results could be returned.

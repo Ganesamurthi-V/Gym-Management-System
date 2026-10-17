@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { roleFromClaims } from '@/lib/auth/roles'
+import { passesCsrf } from '@/app/api/_guard'
 
 interface MembershipPlan {
   planName: string
@@ -111,9 +113,42 @@ function validateRequest(raw: unknown): ValidationResult {
     return { ok: false, message: 'Your membership plans could not be read. Go back to Membership Plans and try again.' }
   }
 
-  const plans = (raw.plans ?? []) as MembershipPlan[]
-  if (plans.length > 50) {
+  const rawPlans = (raw.plans ?? []) as unknown[]
+  if (rawPlans.length > 50) {
     return { ok: false, message: 'You can add up to 50 membership plans during setup.' }
+  }
+
+  // Plans are stored in onboarding_data and their prices are copied into
+  // gym_plan_prices, so every field is checked and only known keys are kept.
+  const planError = { ok: false as const, message: 'One of your membership plans has an invalid name, price or duration.' }
+  const money = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 10_000_000
+  const plans: MembershipPlan[] = []
+  for (const p of rawPlans) {
+    if (!isRecord(p)) return planError
+    const planName = typeof p.planName === 'string' ? p.planName.trim() : ''
+    if (planName.length > 100) return planError
+    if (!['strength', 'cardio', 'both'].includes(p.category as string)) return planError
+    if (!['monthly', 'quarterly', 'annual', 'custom'].includes(p.duration as string)) return planError
+    if (!money(p.price) || !money(p.joiningFee ?? 0)) return planError
+    const discountPercent = p.discountPercent === undefined ? 0 : p.discountPercent
+    if (typeof discountPercent !== 'number' || !(discountPercent >= 0 && discountPercent <= 100)) return planError
+    let customDurationMonths: number | undefined
+    if (p.customDurationMonths !== undefined && p.customDurationMonths !== null) {
+      const m = p.customDurationMonths
+      if (typeof m !== 'number' || !Number.isInteger(m) || m < 0 || m > 120) return planError
+      customDurationMonths = m
+    }
+    plans.push({
+      planName,
+      category: p.category as MembershipPlan['category'],
+      duration: p.duration as MembershipPlan['duration'],
+      price: p.price as number,
+      joiningFee: (p.joiningFee ?? 0) as number,
+      hasDiscount: p.hasDiscount === true,
+      discountPercent,
+      hasFreezeOption: p.hasFreezeOption === true,
+      ...(customDurationMonths !== undefined ? { customDurationMonths } : {}),
+    })
   }
 
   return {
@@ -169,6 +204,8 @@ function getPlanPrices(plans: MembershipPlan[]) {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!passesCsrf(req)) return errorResponse('CSRF_REJECTED', 'Forbidden', 403)
+
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -178,6 +215,11 @@ export async function POST(req: NextRequest) {
         'Your session has expired. Sign in again to finish setting up your gym.',
         401,
       )
+    }
+
+    // A member login must never create a gym (and a trial subscription) of its own.
+    if (roleFromClaims(user) === 'member') {
+      return errorResponse('FORBIDDEN', 'Member accounts cannot set up a gym.', 403)
     }
 
     const { allowed } = await checkRateLimit(user.id, '/api/onboarding/complete', ROUTE_LIMITS.DEFAULT)

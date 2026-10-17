@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { openHttpsUrl } from '@/lib/safe-link';
 import { CacheKeys, invalidate, peek, write } from '@/lib/cache';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { refreshEmailInbox, useEmailRefresher } from '@/lib/email-sync';
@@ -319,7 +319,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     }
     try {
       const link = await fetchEmailAttachmentLink(message.id, attachment.id);
-      await Linking.openURL(link.url);
+      await openHttpsUrl(link.url);
     } catch (e: any) {
       Alert.alert('Could not open attachment', e?.message ?? 'Please try again.');
     }

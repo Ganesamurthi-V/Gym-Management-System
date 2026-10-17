@@ -2742,7 +2742,7 @@ BEGIN
       updated_at = NOW()
   WHERE id = p_inventory_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- Atomic inventory sale RPC
 --
@@ -2765,7 +2765,7 @@ CREATE OR REPLACE FUNCTION sell_inventory_item(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_product  inventory%ROWTYPE;
@@ -2851,7 +2851,7 @@ BEGIN
     p_field, p_field
   ) USING p_amount, p_gym_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- ── 9. Trigger to auto-increment whatsapp count ─────────────
 -- This should be called from whatsapp_send_queue after a successful send.
@@ -2868,7 +2868,7 @@ BEGIN
     last_active_at = now(),
     updated_at     = now();
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- ── 10. Admin subscription action helper function ────────────
 -- Creates an audit log entry. Called from admin API (service role).
@@ -2902,7 +2902,7 @@ BEGIN
 
   RETURN v_log_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- ────────────────────────────────────────────────────────────
 -- Support inbox (service-role only)
@@ -3094,6 +3094,17 @@ DECLARE
   v_allowed TEXT[] := ARRAY['is_cleared_by_owner'];
 BEGIN
   IF public.is_trusted_db_caller() THEN RETURN NEW; END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    -- A new ticket always starts open and uncleared; resolving and clearing
+    -- belong to the admin.
+    NEW.status               := 'open';
+    NEW.resolved_at          := NULL;
+    NEW.is_cleared_by_admin  := false;
+    NEW.is_cleared_by_owner  := false;
+    RETURN NEW;
+  END IF;
+
   IF (to_jsonb(NEW) - v_allowed) IS DISTINCT FROM (to_jsonb(OLD) - v_allowed) THEN
     RAISE EXCEPTION 'support_tickets: owners can only clear their own ticket view'
       USING ERRCODE = '42501';
@@ -3169,7 +3180,7 @@ BEGIN
     updated_at     = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- ── 7. Trigger to auto-update member count ──────────────────
 
@@ -3185,7 +3196,7 @@ BEGIN
     updated_at     = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- ── 8. Trigger to auto-update attendance count ──────────────
 
@@ -3201,7 +3212,7 @@ BEGIN
     updated_at       = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- Sending a reply answers whatever the draft was for, so the draft goes with it. Done in
 -- the database, beside the other thread bookkeeping, so it holds however the reply was
@@ -3758,7 +3769,7 @@ CREATE TRIGGER trg_notify_support_ticket
 
 DROP TRIGGER IF EXISTS trg_guard_support_tickets_owner_update ON public.support_tickets;
 CREATE TRIGGER trg_guard_support_tickets_owner_update
-  BEFORE UPDATE ON public.support_tickets
+  BEFORE INSERT OR UPDATE ON public.support_tickets
   FOR EACH ROW EXECUTE FUNCTION public.guard_support_tickets_owner_update();
 
 -- ────────────────────────────────────────────────────────────
@@ -3889,7 +3900,7 @@ DROP POLICY IF EXISTS "Gym owners can read platform settings" ON platform_settin
 CREATE POLICY "Gym owners can read platform settings"
   ON platform_settings FOR SELECT
   TO authenticated
-  USING (true);
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on admin_messages
@@ -3906,6 +3917,9 @@ DROP POLICY IF EXISTS "Gym owners can mark messages as read" ON admin_messages;
 CREATE POLICY "Gym owners can mark messages as read"
   ON admin_messages FOR UPDATE
   USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+  )
+  WITH CHECK (
     EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
   );
 
@@ -3932,6 +3946,9 @@ DROP POLICY IF EXISTS "Gym owners can update attendance" ON attendance;
 CREATE POLICY "Gym owners can update attendance"
   ON attendance FOR UPDATE
   USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
+  )
+  WITH CHECK (
     EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
   );
 
@@ -3963,7 +3980,8 @@ CREATE POLICY "Gym owners can insert due payments"
 DROP POLICY IF EXISTS "Gym owners can update due payments" ON due_payments;
 CREATE POLICY "Gym owners can update due payments"
   ON due_payments FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
 
 DROP POLICY IF EXISTS "Gym owners can delete due payments" ON due_payments;
 CREATE POLICY "Gym owners can delete due payments"
@@ -4072,7 +4090,8 @@ CREATE POLICY "Owner can upsert own plan prices"
 DROP POLICY IF EXISTS "Owner can update own plan prices" ON gym_plan_prices;
 CREATE POLICY "Owner can update own plan prices"
   ON gym_plan_prices FOR UPDATE
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()))
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_upi_config
@@ -4096,6 +4115,9 @@ DROP POLICY IF EXISTS "Gym owners can update their UPI config" ON gym_upi_config
 CREATE POLICY "Gym owners can update their UPI config"
   ON gym_upi_config FOR UPDATE
   USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid())
+  )
+  WITH CHECK (
     EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid())
   );
 
@@ -4132,7 +4154,8 @@ CREATE POLICY "Users can insert their own gym"
 DROP POLICY IF EXISTS "Users can update their own gym" ON gyms;
 CREATE POLICY "Users can update their own gym"
   ON gyms FOR UPDATE
-  USING (owner_id = auth.uid());
+  USING (owner_id = auth.uid())
+  WITH CHECK (owner_id = auth.uid());
 
 -- ────────────────────────────────────────────────────────────
 -- policies on inventory
@@ -4151,7 +4174,8 @@ CREATE POLICY "Gym owners can insert inventory"
 DROP POLICY IF EXISTS "Gym owners can update inventory" ON inventory;
 CREATE POLICY "Gym owners can update inventory"
   ON inventory FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
 
 DROP POLICY IF EXISTS "Gym owners can delete inventory" ON inventory;
 CREATE POLICY "Gym owners can delete inventory"
@@ -4180,7 +4204,8 @@ CREATE POLICY "Gym owners can delete inventory sales"
 DROP POLICY IF EXISTS "Gym owners can update inventory sales" ON inventory_sales;
 CREATE POLICY "Gym owners can update inventory sales"
   ON inventory_sales FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on inventory_units
@@ -4204,6 +4229,9 @@ DROP POLICY IF EXISTS "Gym owners can update inventory units" ON inventory_units
 CREATE POLICY "Gym owners can update inventory units"
   ON inventory_units FOR UPDATE
   USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+  )
+  WITH CHECK (
     EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
   );
 
@@ -4267,6 +4295,7 @@ CREATE POLICY "Members can insert their own login activity"
   TO authenticated
   WITH CHECK (
     activity = 'logged_in'
+    AND performed_by = 'member'
     AND member_id IN (
       SELECT id FROM public.members
       WHERE auth_user_id = (SELECT auth.uid())
@@ -4291,7 +4320,8 @@ CREATE POLICY "Gym owners can insert members"
 DROP POLICY IF EXISTS "Gym owners can update members" ON members;
 CREATE POLICY "Gym owners can update members"
   ON members FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
 
 DROP POLICY IF EXISTS "Gym owners can delete members" ON members;
 CREATE POLICY "Gym owners can delete members"
@@ -4321,7 +4351,8 @@ CREATE POLICY "Gym owners can insert memberships"
 DROP POLICY IF EXISTS "Gym owners can update memberships" ON memberships;
 CREATE POLICY "Gym owners can update memberships"
   ON memberships FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
 
 DROP POLICY IF EXISTS "Gym owners can delete memberships" ON memberships;
 CREATE POLICY "Gym owners can delete memberships"
@@ -4405,6 +4436,8 @@ CREATE POLICY "gym owner insert own requests"
     AND reviewed_at IS NULL
     AND reviewed_by IS NULL
     AND rejection_reason IS NULL
+    AND uploaded_file_url LIKE (SELECT auth.uid())::text || '/%'
+    AND uploaded_file_url NOT LIKE '%..%'
   );
 
 -- ────────────────────────────────────────────────────────────
@@ -4414,7 +4447,8 @@ CREATE POLICY "gym owner insert own requests"
 DROP POLICY IF EXISTS "Gym owners can update their support tickets" ON support_tickets;
 CREATE POLICY "Gym owners can update their support tickets"
   ON support_tickets FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
 
 DROP POLICY IF EXISTS "Gym owners can view their support tickets" ON support_tickets;
 CREATE POLICY "Gym owners can view their support tickets"
@@ -4470,6 +4504,11 @@ CREATE POLICY whatsapp_messages_update_policy ON whatsapp_messages
     gym_id IN (
       SELECT id FROM gyms WHERE owner_id = auth.uid()
     )
+  )
+  WITH CHECK (
+    gym_id IN (
+      SELECT id FROM gyms WHERE owner_id = auth.uid()
+    )
   );
 
 -- ────────────────────────────────────────────────────────────
@@ -4503,6 +4542,9 @@ DROP POLICY IF EXISTS "Gym owners can update programs" ON workout_programs;
 CREATE POLICY "Gym owners can update programs"
   ON workout_programs FOR UPDATE
   USING (
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+  )
+  WITH CHECK (
     EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
   );
 
@@ -4653,8 +4695,11 @@ REVOKE ALL ON FUNCTION public.gamification_mask_name(TEXT)          FROM PUBLIC,
 -- Owner console RPCs. These run SECURITY INVOKER, so RLS still decides the rows.
 REVOKE ALL ON FUNCTION public.get_gym_reports(UUID, DATE)    FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_gym_reports(UUID, DATE) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_gym_dashboard(UUID, DATE) FROM anon;
-REVOKE EXECUTE ON FUNCTION public.increment_inventory_stock(UUID, INTEGER) FROM anon;
+-- (REVOKE ... FROM anon alone does nothing while PUBLIC holds the default grant.)
+REVOKE ALL ON FUNCTION public.get_gym_dashboard(UUID, DATE)    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_gym_dashboard(UUID, DATE) TO authenticated;
+REVOKE ALL ON FUNCTION public.increment_inventory_stock(UUID, INTEGER)    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.increment_inventory_stock(UUID, INTEGER) TO authenticated;
 REVOKE ALL ON FUNCTION public.sell_inventory_item(UUID, INTEGER, NUMERIC, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.sell_inventory_item(UUID, INTEGER, NUMERIC, TEXT) TO authenticated;
 
@@ -4682,6 +4727,36 @@ REVOKE ALL ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) FROM
 GRANT EXECUTE ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) TO service_role;
 REVOKE ALL ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) TO service_role;
+
+-- Trigger-only / maintenance functions: nobody calls these over the API.
+REVOKE ALL ON FUNCTION public.sync_usage_on_membership_insert()  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.sync_usage_on_member_insert()      FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.sync_usage_on_attendance_insert()  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.update_whatsapp_messages_updated_at() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.generate_member_code()             FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_member_auth_user_link()      FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_gym_events()                 FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.delete_old_whatsapp_webhook_logs() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_old_whatsapp_webhook_logs() TO service_role;
+
+-- ── Table privileges: closed to anon, no TRUNCATE for API roles ──
+-- anon never uses a table directly (RLS already returns nothing; this makes it
+-- fail closed). TRUNCATE / REFERENCES / TRIGGER bypass RLS and no API role
+-- needs them. Runs last in this section so it also covers the tables above;
+-- the verb-by-verb grants earlier in the section are unaffected.
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT c.relname
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+  LOOP
+    EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC, anon', r.relname);
+    EXECUTE format('REVOKE TRUNCATE, REFERENCES, TRIGGER ON public.%I FROM authenticated', r.relname);
+  END LOOP;
+END $$;
 
 
 -- ############################################################
@@ -4757,26 +4832,35 @@ CREATE POLICY "gym owners receive tenant realtime invalidations"
 -- 11 — STORAGE
 -- ############################################################
 
--- Private bucket for UPI payment screenshots. Each owner may only write and
--- read inside a folder named after their own auth uid.
-INSERT INTO storage.buckets (id, name, public)
-  VALUES ('payment-proofs', 'payment-proofs', false)
-  ON CONFLICT (id) DO NOTHING;
+-- Private bucket for UPI payment screenshots, capped at 10 MB of JPG/PNG/PDF.
+-- Only gym owners (not members, not anon) may write, and each owner may only
+-- write and read inside a folder named after their own auth uid. There is no
+-- UPDATE or DELETE policy: uploads are immutable to clients.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES ('payment-proofs', 'payment-proofs', false, 10485760,
+          ARRAY['image/jpeg', 'image/png', 'application/pdf'])
+  ON CONFLICT (id) DO UPDATE
+    SET public             = false,
+        file_size_limit    = 10485760,
+        allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'application/pdf'];
 
 DROP POLICY IF EXISTS "gym owner upload payment proof" ON storage.objects;
 CREATE POLICY "gym owner upload payment proof"
   ON storage.objects FOR INSERT
+  TO authenticated
   WITH CHECK (
     bucket_id = 'payment-proofs'
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+    AND EXISTS (SELECT 1 FROM public.gyms WHERE owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "gym owner read own payment proofs" ON storage.objects;
 CREATE POLICY "gym owner read own payment proofs"
   ON storage.objects FOR SELECT
+  TO authenticated
   USING (
     bucket_id = 'payment-proofs'
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
   );
 
 

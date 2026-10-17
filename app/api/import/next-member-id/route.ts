@@ -22,6 +22,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGymForUser } from '@/lib/supabase/queries'
+import { apiLogger } from '@/lib/logger'
+import { MAX_IMPORT_ROWS } from '@/lib/import/schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,8 +44,9 @@ export async function GET(req: NextRequest) {
     const rawRequested = req.nextUrl.searchParams.get('requested') ?? ''
     const requestedNums = rawRequested
       .split(',')
+      .slice(0, MAX_IMPORT_ROWS * 2) // bound the work a crafted query string can cause
       .map(s => parseInt(s.trim()))
-      .filter(n => !isNaN(n) && n > 0)
+      .filter(n => !isNaN(n) && n > 0 && n <= 9_999_999)
 
     // Run both queries in parallel
     const [maxRes, conflictRes] = await Promise.all([
@@ -75,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ next_id: nextId, conflicts })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unexpected error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    apiLogger('import_next_member_id').error('next member id failed', err)
+    return NextResponse.json({ error: 'Unexpected error' }, { status: 500 })
   }
 }

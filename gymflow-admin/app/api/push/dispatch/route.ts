@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getFcm, isPushConfigured } from '@/lib/firebase-admin'
+import { secureCompare } from '@/lib/secure-compare'
 
 // firebase-admin is a Node-only SDK — it cannot run on the Edge runtime.
 export const runtime = 'nodejs'
@@ -26,7 +27,12 @@ export async function POST(req: NextRequest) {
   const cronHeader = req.headers.get('x-cron-secret') ?? ''
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
-  if (!cronSecret || (bearer !== cronSecret && cronHeader !== cronSecret)) {
+  // Constant-time, and fail closed when the secret is unset (an empty header would otherwise equal it).
+  const authorized =
+    !!cronSecret &&
+    ((!!bearer && (await secureCompare(bearer, cronSecret))) ||
+      (!!cronHeader && (await secureCompare(cronHeader, cronSecret))))
+  if (!authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -55,7 +61,8 @@ export async function POST(req: NextRequest) {
     .limit(50)
 
   if (candidatesErr) {
-    return NextResponse.json({ error: candidatesErr.message }, { status: 500 })
+    console.error('[PUSH_DISPATCH] candidate query failed:', candidatesErr.message)
+    return NextResponse.json({ error: 'Dispatch failed' }, { status: 500 })
   }
   if (!candidates || candidates.length === 0) {
     return NextResponse.json({ sent: 0, notifications: 0 })
@@ -71,7 +78,8 @@ export async function POST(req: NextRequest) {
     .select('id, type, title, body, gym_id, entity_id, created_at')
 
   if (claimErr) {
-    return NextResponse.json({ error: claimErr.message }, { status: 500 })
+    console.error('[PUSH_DISPATCH] claim failed:', claimErr.message)
+    return NextResponse.json({ error: 'Dispatch failed' }, { status: 500 })
   }
   if (!claimed || claimed.length === 0) {
     // A concurrent dispatch already claimed this batch. Nothing to do.
@@ -179,6 +187,6 @@ export async function POST(req: NextRequest) {
     await release().catch(() => {})
     const message = error instanceof Error ? error.message : 'Dispatch failed'
     console.error('[PUSH_DISPATCH] failed, batch released:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: 'Dispatch failed' }, { status: 500 })
   }
 }

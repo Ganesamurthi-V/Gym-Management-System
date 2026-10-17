@@ -69,19 +69,20 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => null) as { id?: string; all?: boolean } | null
-    if (!body || (!body.id && !body.all)) {
+    const readId = body?.id ? sanitizeUUID(body.id) : null
+    if (!body || (!readId && body.all !== true)) {
       log.summary(400)
-      return NextResponse.json({ error: 'Provide an id or all=true' }, { status: 400 })
+      return NextResponse.json({ error: 'Provide a valid id or all=true' }, { status: 400 })
     }
 
     const supabase = createAdminClient()
     let query = supabase.from('notifications').update({ is_read: true })
 
-    if (body.all) {
+    if (!readId) {
       // A no-op filter that matches every row; Supabase requires a filter on update.
       query = query.eq('is_read', false)
     } else {
-      query = query.eq('id', body.id as string)
+      query = query.eq('id', readId)
     }
 
     const { error } = await query

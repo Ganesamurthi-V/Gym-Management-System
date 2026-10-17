@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
   try {
     const { userId, password } = await req.json()
 
-    if (!userId || !password || password.length < 8) {
+    // Supabase/bcrypt ignores everything past 72 bytes; cap well above any real password so a huge body is refused.
+    if (typeof userId !== 'string' || typeof password !== 'string' || password.length < 8 || password.length > 128) {
       log.summary(400)
-      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+      return NextResponse.json({ error: 'Password must be 8 to 128 characters' }, { status: 400 })
     }
 
     const cleanUserId = sanitizeUUID(userId)

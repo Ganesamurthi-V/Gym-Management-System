@@ -6,11 +6,18 @@ import { mapSupabaseError } from '@/lib/utils/errorMapper'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { normalizePhoneForImport } from '@/lib/import/normalizers'
+import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/lib/import/schema'
+import { apiLogger } from '@/lib/logger'
 import { calcEndDate } from '@/lib/utils'
-import type { Plan } from '@/types'
 import { format } from 'date-fns'
 
-const MAX_IMPORT_ROWS = 500
+const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
+
+// mapSupabaseError falls back to the raw database message; never send that to the browser.
+function safeMapped(err: { code: string; message: string }) {
+  const mapped = mapSupabaseError(err)
+  return mapped.code === 'DATABASE_ERROR' ? { ...mapped, message: GENERIC_DB_MESSAGE } : mapped
+}
 
 // Two bulk inserts plus cache invalidation for up to 500 members. Without this the
 // host's default limit (10 s on some plans) cut larger imports off mid-request and
@@ -19,6 +26,7 @@ export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
+  const log = apiLogger('import_confirm')
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -31,73 +39,84 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
     }
 
-    let body: { rows: Record<string, unknown>[]; gym_id?: string }
-    try { body = await req.json() } catch {
+    // Read as text first so an oversized body is refused before JSON.parse allocates it.
+    let raw: string
+    try { raw = await req.text() } catch {
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid request' } }, { status: 400 })
+    }
+    if (raw.length > MAX_CONFIRM_BODY_BYTES) {
+      return NextResponse.json({ success: false, error: { code: 'PAYLOAD_TOO_LARGE', message: `Maximum ${MAX_IMPORT_ROWS} rows per import` } }, { status: 413 })
+    }
+    let json: unknown
+    try { json = JSON.parse(raw) } catch {
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 })
     }
 
-    const { rows } = body
-
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Rows are required' } }, { status: 400 })
+    // Unknown keys, including any `gym_id`, are dropped by the schema; the gym below
+    // always comes from the session.
+    const parsedBody = importConfirmSchema.safeParse(json)
+    if (!parsedBody.success) {
+      const issue = parsedBody.error.issues[0]
+      const where = issue?.path.length ? ` (${issue.path.join('.')})` : ''
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: `${issue?.message ?? 'Invalid import data'}${where}` } },
+        { status: 400 },
+      )
     }
-    if (rows.length > MAX_IMPORT_ROWS) {
-      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: `Maximum ${MAX_IMPORT_ROWS} rows per import` } }, { status: 400 })
-    }
+    const rows = parsedBody.data.rows
 
     const gym = await getGymForUser(supabase, user.id)
     if (!gym) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
 
-    // ── Step 1: get MAX member_number from DB ─────────────────────────────────
-    const { data: maxRow, error: maxErr } = await supabase
-      .from('members')
-      .select('member_number')
-      .eq('gym_id', gym.id)
-      .order('member_number', { ascending: false })
-      .limit(1)
+    // ── Step 1: current MAX member_number and which requested numbers are taken ──
+    const requested = [...new Set(rows.map(r => r.member_number).filter((n): n is number => n !== undefined))]
+    const [maxRes, takenRes] = await Promise.all([
+      supabase.from('members').select('member_number').eq('gym_id', gym.id)
+        .order('member_number', { ascending: false }).limit(1),
+      requested.length > 0
+        ? supabase.from('members').select('member_number').eq('gym_id', gym.id).in('member_number', requested)
+        : Promise.resolve({ data: [] as { member_number: number }[], error: null }),
+    ])
+    if (maxRes.error || takenRes.error) {
+      log.error('import number lookup failed', maxRes.error ?? takenRes.error)
+      return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: GENERIC_DB_MESSAGE } }, { status: 500 })
+    }
+    const maxExisting = parseInt(String(maxRes.data?.[0]?.member_number ?? '0')) || 0
+    const takenInDb = new Set((takenRes.data ?? []).map(r => Number(r.member_number)))
 
-    const maxExisting = maxRow?.[0]?.member_number
-      ? parseInt(String(maxRow[0].member_number))
-      : 0
-
-    // ── Step 2: assign IDs — use client-supplied member_number when valid,
-    //    otherwise auto-assign above the current max ───────────────────────────
-    let nextId = maxExisting + 1
+    // ── Step 2: assign numbers. A number the file asks for is only a request: it is
+    //    honoured when free in the DB and unused earlier in this batch, otherwise the
+    //    row gets the next number above everything in use. Nothing the browser
+    //    computed is trusted as final. ────────────────────────────────────────────
     const usedInBatch = new Set<number>()
-
-    function claimNext(): number {
-      while (usedInBatch.has(nextId)) nextId++
-      const id = nextId++
-      usedInBatch.add(id)
-      return id
+    const assigned: (number | null)[] = rows.map(r => {
+      const n = r.member_number
+      if (n !== undefined && !takenInDb.has(n) && !usedInBatch.has(n)) { usedInBatch.add(n); return n }
+      return null
+    })
+    let nextId = maxExisting + 1
+    for (let i = 0; i < assigned.length; i++) {
+      if (assigned[i] !== null) continue
+      while (usedInBatch.has(nextId) || takenInDb.has(nextId)) nextId++
+      assigned[i] = nextId
+      usedInBatch.add(nextId++)
     }
 
-    // ── Step 3: build insert payload ─────────────────────────────────────────
-    const insertRows = rows.map((r) => {
-      // Use the member_number the client pipeline already resolved (conflict-free)
-      // Only fall back to claimNext() if the row has no valid number.
-      const clientNum = parseInt(String(r.member_number ?? ''))
-      const memberNumber = (!isNaN(clientNum) && clientNum > 0)
-        ? clientNum
-        : claimNext()
-      // Track to prevent intra-batch collisions
-      usedInBatch.add(memberNumber)
-
-      return {
-        gym_id:           gym.id,
-        name:             String(r.name  ?? '').trim().slice(0, 255),
-        phone:            normalizePhoneForImport(r.phone).phone,
-        age:              parseInt(r.age as string) || null,
-        gender:           ['male', 'female', 'other'].includes(r.gender as string) ? r.gender : null,
-        date_of_birth:    /^\d{4}-\d{2}-\d{2}$/.test(String(r.date_of_birth ?? '')) ? r.date_of_birth : null,
-        area:             r.area ? String(r.area).slice(0, 100) : null,
-        member_number:    memberNumber,
-        legacy_member_id: r.legacy_member_id ? String(r.legacy_member_id).slice(0, 50) : null,
-        is_imported:      true,
-      }
-    })
+    // ── Step 3: build insert payload (values already validated and capped) ───────
+    const insertRows = rows.map((r, i) => ({
+      gym_id:           gym.id,
+      name:             r.name,
+      phone:            normalizePhoneForImport(r.phone).phone,
+      age:              r.age ?? null,
+      gender:           r.gender ?? null,
+      date_of_birth:    r.date_of_birth ?? null,
+      area:             r.area || null,
+      member_number:    assigned[i] as number,
+      legacy_member_id: r.legacy_member_id || null,
+      is_imported:      true,
+    }))
 
     // ── Step 4: insert ────────────────────────────────────────────────────────
     const { data, error: insertErr } = await supabase
@@ -106,7 +125,8 @@ export async function POST(req: NextRequest) {
       .select('id')
 
     if (insertErr) {
-      const mapped = mapSupabaseError(insertErr)
+      log.error('member insert failed', insertErr)
+      const mapped = safeMapped(insertErr)
       return NextResponse.json(
         { success: false, error: { code: mapped.code, message: mapped.message } },
         { status: mapped.status },
@@ -121,23 +141,19 @@ export async function POST(req: NextRequest) {
     // removes the last direct database write from the import UI. Rows and
     // memberIds are index-aligned because the insert above preserves input order.
     const membershipRows = memberIds.map((memberId, i) => {
-      const r = rows[i] ?? {}
-      const startDate = String(r.start_date ?? '').slice(0, 10)
-      const plan = String(r.plan ?? 'monthly')
-      const validStart = /^\d{4}-\d{2}-\d{2}$/.test(startDate) && !isNaN(Date.parse(startDate))
-      const start = validStart ? startDate : format(new Date(), 'yyyy-MM-dd')
+      const r = rows[i]
+      const plan = r.plan
+      const start = r.start_date ?? format(new Date(), 'yyyy-MM-dd')
 
       return {
         member_id: memberId,
         gym_id: gym.id,
         plan,
-        category: r.category ? String(r.category) : 'both',
+        category: r.category,
         start_date: start,
-        end_date: calcEndDate(start, plan as Plan),
-        amount: parseInt(String(r.amount ?? '')) || 0,
-        payment_mode: ['cash', 'upi', 'card'].includes(String(r.payment_mode))
-          ? String(r.payment_mode)
-          : 'cash',
+        end_date: calcEndDate(start, plan),
+        amount: r.amount,
+        payment_mode: r.payment_mode,
         created_at: `${start}T00:00:00Z`,
       }
     })
@@ -147,7 +163,8 @@ export async function POST(req: NextRequest) {
       if (membershipErr) {
         // The members are already committed. Report the partial state clearly
         // rather than implying the whole import failed.
-        const mapped = mapSupabaseError(membershipErr)
+        log.error('membership insert failed', membershipErr)
+        const mapped = safeMapped(membershipErr)
         return NextResponse.json(
           {
             success: false,
@@ -179,9 +196,9 @@ export async function POST(req: NextRequest) {
       meta: { duration_ms: Date.now() - startTime },
     })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+    log.error('import confirm failed', err)
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
       { status: 500 },
     )
   }

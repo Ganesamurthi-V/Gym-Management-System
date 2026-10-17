@@ -41,6 +41,7 @@ import {
   type GymActivityEvent,
   type SupportTicket,
 } from '@/lib/api';
+import { openHttpsUrl } from '@/lib/safe-link';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import type { RootStackParamList } from '../navigation/types';
 import { KeyboardSafeView } from '@/components/KeyboardSafeView';
@@ -833,7 +834,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       icon: 'phone', label: 'Call Customer', color: D.sky,
       onPress: () => {
         const phone = gym.phone || owner?.phone;
-        if (phone) { Linking.openURL(`tel:${phone}`); }
+        if (phone) { Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, '')}`); }
         else { Alert.alert('No Phone', 'No phone number available for this gym.'); }
       },
     },
@@ -1095,7 +1096,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 <View style={styles.pendingNotes}><Text style={styles.pendingNoteText}>{pendingRequest.notes}</Text></View>
               )}
               {pendingRequest.uploaded_file_url && (
-                <TouchableOpacity style={styles.viewScreenshotBtn} onPress={() => Linking.openURL(pendingRequest.uploaded_file_url)}>
+                <TouchableOpacity style={styles.viewScreenshotBtn} onPress={() => openHttpsUrl(pendingRequest.uploaded_file_url)}>
                   <Feather name="image" size={14} color={D.indigo} />
                   <Text style={styles.viewScreenshotText}>View Payment Screenshot</Text>
                 </TouchableOpacity>

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { apiLogger } from '@/lib/logger'
+import { passesCsrf, UUID_RE } from '@/app/api/_guard'
 
 export async function POST(req: NextRequest) {
+  const log = apiLogger('SUPPORT_CLEAR')
   try {
+    if (!passesCsrf(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -21,13 +26,19 @@ export async function POST(req: NextRequest) {
       .single()
     if (!gym) return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
 
-    const { type, id, clearAll } = await req.json()
-    if (!type || !['admin_messages', 'support_tickets'].includes(type)) {
+    let body: { type?: unknown; id?: unknown; clearAll?: unknown }
+    try { body = await req.json() } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
+    const { type, id, clearAll } = body ?? {}
+    if (type !== 'admin_messages' && type !== 'support_tickets') {
       return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+    }
+    if (!clearAll && (typeof id !== 'string' || !UUID_RE.test(id))) {
+      return NextResponse.json({ error: 'A valid id is required' }, { status: 400 })
     }
 
     if (clearAll) {
-      if (process.env.NODE_ENV !== 'production') console.log('CLEAR ALL REQUEST RECEIVED', { type, gymId: gym.id })
       if (type === 'admin_messages') {
         const { error, data } = await supabase
           .from('admin_messages')
@@ -35,7 +46,6 @@ export async function POST(req: NextRequest) {
           .eq('gym_id', gym.id)
           .not('read_at', 'is', null)
           .select()
-        if (process.env.NODE_ENV !== 'production') console.log('Admin messages clear result:', { error, updatedCount: data?.length })
         if (error) throw error
       } else if (type === 'support_tickets') {
         const { error, data } = await supabase
@@ -44,7 +54,6 @@ export async function POST(req: NextRequest) {
           .eq('gym_id', gym.id)
           .eq('status', 'resolved')
           .select()
-        if (process.env.NODE_ENV !== 'production') console.log('Support tickets clear result:', { error, updatedCount: data?.length })
         if (error) throw error
       }
     } else if (id) {
@@ -58,7 +67,8 @@ export async function POST(req: NextRequest) {
 
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    log.error('Unhandled exception in POST /api/support/clear', error)
+    return NextResponse.json({ error: 'Could not clear. Please try again.' }, { status: 500 })
   }
 }

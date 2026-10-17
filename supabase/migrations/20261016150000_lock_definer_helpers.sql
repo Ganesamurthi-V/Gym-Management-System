@@ -10,15 +10,31 @@
 -- increment_inventory_stock also gains a pinned search_path, like every other
 -- SECURITY DEFINER function here (its owner check via auth.uid() is unchanged).
 --
--- Idempotent: safe to run more than once.
+-- Idempotent: safe to run more than once. Defensive: a function that does not exist
+-- in this database is skipped with a NOTICE instead of aborting the script (live
+-- databases were upgraded by hand and may lack some objects).
 
-REVOKE ALL ON FUNCTION public.log_subscription_action(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.log_subscription_action(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT) TO service_role;
+DO $mig$
+DECLARE
+  f TEXT;
+BEGIN
+  FOREACH f IN ARRAY ARRAY[
+    'public.log_subscription_action(uuid, text, text, text, text, text, timestamptz, timestamptz, text, text)',
+    'public.increment_gym_usage_stat(uuid, text, integer)',
+    'public.record_whatsapp_sent(uuid, integer)'
+  ] LOOP
+    IF to_regprocedure(f) IS NULL THEN
+      RAISE NOTICE 'skipped (function missing): %', f;
+      CONTINUE;
+    END IF;
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated', f);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', f);
+  END LOOP;
 
-REVOKE ALL ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) TO service_role;
-
-REVOKE ALL ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) TO service_role;
-
-ALTER FUNCTION public.increment_inventory_stock(UUID, INTEGER) SET search_path = public;
+  IF to_regprocedure('public.increment_inventory_stock(uuid, integer)') IS NOT NULL THEN
+    ALTER FUNCTION public.increment_inventory_stock(UUID, INTEGER) SET search_path = public;
+  ELSE
+    RAISE NOTICE 'skipped (function missing): public.increment_inventory_stock(uuid, integer)';
+  END IF;
+END
+$mig$;

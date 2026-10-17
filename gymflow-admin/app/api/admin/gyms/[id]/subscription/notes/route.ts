@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { ADMIN_ACTOR, sanitizeUUID } from '@/lib/sanitize'
+import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +24,19 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const { id } = await props.params
-    const body = await req.json()
+    const id = sanitizeUUID((await props.params).id)
+    if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
+    const flags = z.object({
+      admin_notes: z.string().max(5_000).optional(),
+      is_vip: z.boolean().optional(),
+      is_payment_verified: z.boolean().optional(),
+      whatsapp_enabled: z.boolean().optional(),
+      priority_support: z.boolean().optional(),
+      auto_renewal_eligible: z.boolean().optional(),
+      lifetime_offer: z.boolean().optional(),
+    }).safeParse(await req.json().catch(() => null))
+    if (!flags.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+    const body = flags.data
     const {
       admin_notes,
       is_vip,
@@ -32,8 +45,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       priority_support,
       auto_renewal_eligible,
       lifetime_offer,
-      performed_by = 'admin',
     } = body
+    const performed_by = ADMIN_ACTOR
 
     const supabase = createAdminClient()
     const updates: Record<string, any> = {}
@@ -78,6 +91,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error('[SubNotes]', err)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

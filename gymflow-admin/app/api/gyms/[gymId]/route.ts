@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { sanitizeUUID } from '@/lib/sanitize'
 
 // GET /api/gyms/[gymId] — gym detail with owner info
 export async function GET(
@@ -11,7 +12,8 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { gymId } = await params
+  const gymId = sanitizeUUID((await params).gymId)
+  if (!gymId) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
   const supabase = createAdminClient()
 
   const gymRes = await supabase

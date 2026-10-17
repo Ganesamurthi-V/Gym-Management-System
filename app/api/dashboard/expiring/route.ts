@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
-import { format } from 'date-fns'
+import { istToday } from '@/lib/gamification/periods'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,11 +9,15 @@ export const dynamic = 'force-dynamic'
  *
  * Returns members with memberships expiring in the specified period.
  */
-export const GET = withAuth('DASHBOARD_EXPIRING', async (req: NextRequest, { supabase, gym }) => {
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
+export const GET = withAuth('DASHBOARD_EXPIRING', async (req: NextRequest, { supabase, gym, log }) => {
+  // IST day, not the server's UTC day.
+  const todayStr = istToday()
   const currentMonth = todayStr.slice(0, 7)
   const monthStart = `${currentMonth}-01`
-  const monthEnd = `${currentMonth}-31`
+  // `-31` is not a date in 30-day months or February, and Postgres rejects it
+  // (the whole request failed in those months); use the real last day.
+  const [year, month] = currentMonth.split('-').map(Number)
+  const monthEnd = `${currentMonth}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, '0')}`
 
   const { data: membershipsData, error } = await supabase
     .from('memberships')
@@ -24,8 +28,9 @@ export const GET = withAuth('DASHBOARD_EXPIRING', async (req: NextRequest, { sup
     .order('end_date', { ascending: true })
 
   if (error) {
+    log.error('Expiring query failed', error)
     return NextResponse.json(
-      { success: false, error: { code: 'DATABASE_ERROR', message: error.message } },
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not load expiring memberships. Please try again.' } },
       { status: 500 }
     )
   }

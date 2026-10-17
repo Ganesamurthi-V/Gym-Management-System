@@ -3,6 +3,7 @@ import { withAuth, isValidUUID } from '@/lib/api/withAuth'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { format } from 'date-fns'
+import { isIsoDate, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic'
  * Create a new membership (renewal or initial).
  * Server verifies the member belongs to the authenticated user's gym.
  */
-export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supabase, gym }) => {
+export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supabase, gym, log }) => {
   let body: Record<string, unknown>
   try { body = await req.json() } catch {
     return NextResponse.json(
@@ -34,7 +35,8 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
     .from('members')
     .select('gym_id')
     .eq('id', member_id)
-    .single()
+    .eq('gym_id', gym.id)
+    .maybeSingle()
 
   if (!memberCheck || memberCheck.gym_id !== gym.id) {
     return NextResponse.json(
@@ -44,10 +46,10 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
   }
 
   // Validate required fields
-  const plan = body.plan as string
-  const start_date = body.start_date as string
-  const end_date = body.end_date as string
-  const amount = parseInt(String(body.amount))
+  const plan = boundedText(body.plan, 100)
+  const start_date = body.start_date
+  const end_date = body.end_date
+  const amount = boundedInt(body.amount, 0, MAX_MONEY)
 
   if (!plan || !start_date || !end_date) {
     return NextResponse.json(
@@ -56,7 +58,7 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
     )
   }
 
-  if (isNaN(amount) || amount < 0) {
+  if (amount === null) {
     return NextResponse.json(
       { success: false, error: { code: 'BAD_REQUEST', message: 'amount must be a non-negative integer' } },
       { status: 400 }
@@ -64,9 +66,9 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
   }
 
   // Validate date formats
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(start_date) || !/^\d{4}-\d{2}-\d{2}$/.test(end_date)) {
+  if (!isIsoDate(start_date) || !isIsoDate(end_date) || end_date < start_date) {
     return NextResponse.json(
-      { success: false, error: { code: 'BAD_REQUEST', message: 'Dates must be YYYY-MM-DD format' } },
+      { success: false, error: { code: 'BAD_REQUEST', message: 'Dates must be valid YYYY-MM-DD and end_date must not be before start_date' } },
       { status: 400 }
     )
   }
@@ -81,10 +83,46 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
   }
 
   // Optional fields
-  if (body.payment_mode) insertData.payment_mode = body.payment_mode
-  if (body.category) insertData.category = body.category
-  if (body.admission_fee !== undefined) insertData.admission_fee = parseInt(String(body.admission_fee)) || 0
-  if (body.due_amount !== undefined) insertData.due_amount = parseInt(String(body.due_amount)) || 0
+  if (body.payment_mode) {
+    if (typeof body.payment_mode !== 'string' || !['cash', 'upi', 'card'].includes(body.payment_mode)) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: 'payment_mode must be cash, upi, or card' } },
+        { status: 400 }
+      )
+    }
+    insertData.payment_mode = body.payment_mode
+  }
+  if (body.category) {
+    const category = boundedText(body.category, 50)
+    if (!category) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: 'Invalid category' } },
+        { status: 400 }
+      )
+    }
+    insertData.category = category
+  }
+  // Negative fees/dues would corrupt revenue and pending totals.
+  if (body.admission_fee !== undefined) {
+    const fee = boundedInt(body.admission_fee, 0, MAX_MONEY)
+    if (fee === null) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: 'admission_fee must be a non-negative integer' } },
+        { status: 400 }
+      )
+    }
+    insertData.admission_fee = fee
+  }
+  if (body.due_amount !== undefined) {
+    const due = boundedInt(body.due_amount, 0, MAX_MONEY)
+    if (due === null) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: 'due_amount must be a non-negative integer' } },
+        { status: 400 }
+      )
+    }
+    insertData.due_amount = due
+  }
 
   const { data, error } = await supabase
     .from('memberships')
@@ -93,8 +131,9 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
     .single()
 
   if (error) {
+    log.error('Membership insert failed', error)
     return NextResponse.json(
-      { success: false, error: { code: 'DATABASE_ERROR', message: error.message } },
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not save the membership. Please try again.' } },
       { status: 500 }
     )
   }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { ADMIN_ACTOR, noteSchema, sanitizeUUID } from '@/lib/sanitize'
+import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,13 +19,15 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const { id } = await props.params
-    const { action, performed_by = 'admin', notes } = await req.json()
-
-    const validActions = ['delete_gym', 'disable_login', 'enable_login', 'clear_subscription', 'ban', 'unban']
-    if (!validActions.includes(action)) {
+    const id = sanitizeUUID((await props.params).id)
+    if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
+    const validActions = ['delete_gym', 'disable_login', 'enable_login', 'clear_subscription', 'ban', 'unban'] as const
+    const parsed = z.object({ action: z.enum(validActions), notes: noteSchema }).safeParse(await req.json().catch(() => null))
+    if (!parsed.success) {
       return NextResponse.json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }, { status: 400 })
     }
+    const { action, notes } = parsed.data
+    const performed_by = ADMIN_ACTOR
 
     const supabase = createAdminClient()
 
@@ -103,6 +107,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     return NextResponse.json({ success: true, action })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error('[SubDanger]', err)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

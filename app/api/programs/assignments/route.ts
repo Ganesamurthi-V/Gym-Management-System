@@ -11,6 +11,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser, getGym } from '@/lib/dal'
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { apiLogger } from '@/lib/logger'
+import { passesCsrf } from '@/app/api/_guard'
+
+const log = apiLogger('PROGRAM_ASSIGNMENTS')
+const MAX_MEMBER_IDS = 1000
+
+/** Valid, de-duplicated, bounded member id list; null when malformed. */
+function parseMemberIds(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_MEMBER_IDS) return null
+  if (!raw.every((v) => typeof v === 'string' && UUID_RE.test(v))) return null
+  return [...new Set(raw as string[])]
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -37,7 +50,8 @@ export async function GET(req: NextRequest) {
     .eq('gym_id', gym.id)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    log.error('Assignment list failed', error)
+    return NextResponse.json({ error: 'Could not load assignments' }, { status: 500 })
   }
 
   return NextResponse.json({
@@ -49,22 +63,28 @@ export async function GET(req: NextRequest) {
 // ─── POST: assign members ────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  let body: { programId?: string; memberIds?: string[]; mode?: 'specific' | 'all' }
+  if (!passesCsrf(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  let body: { programId?: string; memberIds?: unknown; mode?: 'specific' | 'all' }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { programId, memberIds, mode } = body
+  const { programId, mode } = body
 
-  if (!programId || !UUID_RE.test(programId)) {
+  if (!programId || typeof programId !== 'string' || !UUID_RE.test(programId)) {
     return NextResponse.json({ error: 'Missing or invalid programId' }, { status: 400 })
   }
-  if (mode !== 'all' && (!Array.isArray(memberIds) || memberIds.length === 0)) {
-    return NextResponse.json({ error: 'memberIds required when mode is not "all"' }, { status: 400 })
+  const memberIds = mode === 'all' ? [] : parseMemberIds(body.memberIds)
+  if (mode !== 'all' && !memberIds) {
+    return NextResponse.json({ error: `memberIds must be 1-${MAX_MEMBER_IDS} valid member ids when mode is not "all"` }, { status: 400 })
   }
 
   const { user } = await getAuthUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await checkRateLimit(user.id, 'program_assignments', ROUTE_LIMITS.DEFAULT)
+  if (!allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const { gym } = await getGym(user.id)
   if (!gym) return NextResponse.json({ error: 'No gym found' }, { status: 404 })
@@ -129,8 +149,8 @@ export async function POST(req: NextRequest) {
     .upsert(rows, { onConflict: 'program_id,member_id', ignoreDuplicates: true })
 
   if (insertErr) {
-    console.error('[programs/assignments] insert error:', insertErr.message)
-    return NextResponse.json({ error: insertErr.message }, { status: 500 })
+    log.error('Assignment insert failed', insertErr)
+    return NextResponse.json({ error: 'Could not assign the program' }, { status: 500 })
   }
 
   return NextResponse.json({
@@ -145,22 +165,28 @@ export async function POST(req: NextRequest) {
 // ─── DELETE: unassign members ────────────────────────────────────────────────
 
 export async function DELETE(req: NextRequest) {
-  let body: { programId?: string; memberIds?: string[] }
+  if (!passesCsrf(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  let body: { programId?: string; memberIds?: unknown }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { programId, memberIds } = body
+  const { programId } = body
 
-  if (!programId || !UUID_RE.test(programId)) {
+  if (!programId || typeof programId !== 'string' || !UUID_RE.test(programId)) {
     return NextResponse.json({ error: 'Missing or invalid programId' }, { status: 400 })
   }
-  if (!Array.isArray(memberIds) || memberIds.length === 0) {
-    return NextResponse.json({ error: 'memberIds required' }, { status: 400 })
+  const memberIds = parseMemberIds(body.memberIds)
+  if (!memberIds) {
+    return NextResponse.json({ error: `memberIds must be 1-${MAX_MEMBER_IDS} valid member ids` }, { status: 400 })
   }
 
   const { user } = await getAuthUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await checkRateLimit(user.id, 'program_assignments', ROUTE_LIMITS.DEFAULT)
+  if (!allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const { gym } = await getGym(user.id)
   if (!gym) return NextResponse.json({ error: 'No gym found' }, { status: 404 })
@@ -175,7 +201,8 @@ export async function DELETE(req: NextRequest) {
     .in('member_id', memberIds)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    log.error('Assignment delete failed', error)
+    return NextResponse.json({ error: 'Could not unassign members' }, { status: 500 })
   }
 
   return NextResponse.json({

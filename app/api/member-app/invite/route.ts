@@ -23,6 +23,7 @@ import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { generateInvitationToken, reusableInvitationToken } from '@/lib/member-invitation'
 import { hasOwnerRegistrationMarker } from '@/lib/auth/owner-registration'
+import { passesCsrf, csrfRejected, UUID_RE } from '@/app/api/_guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,8 @@ function getServiceSupabase() {
 export async function POST(req: NextRequest) {
   const log = apiLogger('MEMBER_APP_INVITE')
   try {
+    if (!passesCsrf(req)) return csrfRejected()
+
     log.start('AUTH')
     const supabase = await createClient()
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
@@ -49,7 +52,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 })
     }
 
-    const { allowed } = await checkRateLimit(user.id, '/api/member-app/invite', ROUTE_LIMITS.DEFAULT)
+    // Every call can send a real WhatsApp message and create an auth user, so
+    // this is capped well below the 30/min default.
+    const { allowed } = await checkRateLimit(user.id, '/api/member-app/invite', 10)
     if (!allowed) {
       log.summary(429)
       return NextResponse.json({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' } }, { status: 429 })
@@ -69,10 +74,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, { status: 400 })
     }
 
-    const { memberId } = body
-    if (!memberId) {
+    const memberId = body?.memberId
+    if (typeof memberId !== 'string' || !UUID_RE.test(memberId)) {
       log.summary(400)
-      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'memberId is required' } }, { status: 400 })
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'A valid memberId is required' } }, { status: 400 })
     }
 
     // Fetch member and verify ownership

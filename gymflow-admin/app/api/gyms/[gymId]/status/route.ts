@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { sanitizeUUID } from '@/lib/sanitize'
 
 // PATCH /api/gyms/[gymId]/status — toggle gym active status
 export async function PATCH(
@@ -11,7 +12,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { gymId } = await params
+  const gymId = sanitizeUUID((await params).gymId)
+  if (!gymId) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
   const body = await req.json().catch(() => ({}))
   const { is_active } = body
 
@@ -26,7 +28,8 @@ export async function PATCH(
     .eq('id', gymId)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[GymStatus]', error)
+    return NextResponse.json({ error: 'Failed to update gym status' }, { status: 500 })
   }
 
   return NextResponse.json({ success: true, is_active })

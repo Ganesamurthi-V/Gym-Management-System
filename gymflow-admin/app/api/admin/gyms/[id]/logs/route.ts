@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { sanitizeUUID } from '@/lib/sanitize'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,11 +26,15 @@ export async function GET(
   }
 
   try {
-    const { id: gymId } = await props.params
+    const gymId = sanitizeUUID((await props.params).id)
+    if (!gymId) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
     const supabase = createAdminClient()
     const url = new URL(req.url)
-    const limit = Math.min(Number(url.searchParams.get('limit') ?? 30), 100)
-    const cursor = url.searchParams.get('cursor') // ISO timestamp
+    const limitRaw = Number(url.searchParams.get('limit') ?? 30)
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.trunc(limitRaw), 1), 100) : 30
+    const rawCursor = url.searchParams.get('cursor') // ISO timestamp
+    // A malformed cursor reached PostgREST as a filter value and came back as a 500 with its error text.
+    const cursor = rawCursor && !Number.isNaN(Date.parse(rawCursor)) ? rawCursor : null
 
     // ── 1. Member additions ──────────────────────────────────────────────────
     let membersQuery = supabase
@@ -135,6 +140,7 @@ export async function GET(
     return NextResponse.json({ events: all, total: all.length })
   } catch (err: any) {
     console.error('[GymLogs]', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error('[GymLogs]', err)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

@@ -2,9 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/owner/inventory/actions'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { apiLogger } from '@/lib/logger'
+import { passesCsrf, UUID_RE, boundedInt, boundedNumber, MAX_MONEY } from '@/app/api/_guard'
 
 export async function POST(req: NextRequest) {
+  const log = apiLogger('INVENTORY_SELL')
   try {
+    if (!passesCsrf(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -22,20 +27,29 @@ export async function POST(req: NextRequest) {
 
     if (!gym) return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
 
-    const body = await req.json()
-    const { inventoryId, quantity, paymentMode, unitPrice: customUnitPrice } = body
+    let body: Record<string, unknown>
+    try { body = await req.json() } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    }
+    const { inventoryId, paymentMode, unitPrice: customUnitPrice } = body
 
-    if (!inventoryId || !quantity || quantity < 1) {
-      return NextResponse.json({ error: 'Invalid request: inventoryId and quantity (>0) required' }, { status: 400 })
+    // Quantity must be a whole number: a fractional or huge value would
+    // otherwise reach the stock arithmetic in the fallback path.
+    const quantity = boundedInt(body.quantity, 1, 10_000)
+    if (typeof inventoryId !== 'string' || !UUID_RE.test(inventoryId) || quantity === null) {
+      return NextResponse.json({ error: 'Invalid request: inventoryId and a whole quantity (>0) required' }, { status: 400 })
     }
 
-    const mode = ['cash', 'upi', 'card'].includes(paymentMode) ? paymentMode : 'cash'
+    const mode = typeof paymentMode === 'string' && ['cash', 'upi', 'card'].includes(paymentMode) ? paymentMode : 'cash'
 
     let finalUnitPrice: number | null = null
     if (customUnitPrice !== undefined && customUnitPrice !== null) {
-      const price = Number(customUnitPrice)
-      if (isNaN(price) || price < 0) {
-        return NextResponse.json({ error: 'unitPrice must be >= 0' }, { status: 400 })
+      const price = boundedNumber(customUnitPrice, 0, MAX_MONEY)
+      if (price === null) {
+        return NextResponse.json({ error: 'unitPrice must be a number from 0 to 10000000' }, { status: 400 })
       }
       finalUnitPrice = price
     }
@@ -80,7 +94,8 @@ export async function POST(req: NextRequest) {
       // (migration not yet applied). Any other DB error is surfaced.
       const isMissingRpc = rpcError.code === 'PGRST202' || msg.toLowerCase().includes('could not find the function')
       if (!isMissingRpc) {
-        return NextResponse.json({ error: msg || 'Sale failed' }, { status: 500 })
+        log.error('sell_inventory_item failed', rpcError)
+        return NextResponse.json({ error: 'Sale failed' }, { status: 500 })
       }
     }
 
@@ -117,19 +132,25 @@ export async function POST(req: NextRequest) {
       })
 
     if (salesError) {
-      return NextResponse.json({ error: salesError.message }, { status: 500 })
+      log.error('Sale insert failed', salesError)
+      return NextResponse.json({ error: 'Sale failed' }, { status: 500 })
     }
 
-    const { error: stockError } = await supabase
+    // Guarded on the stock we read so a concurrent sale cannot oversell.
+    const { data: stockRows, error: stockError } = await supabase
       .from('inventory')
       .update({
-        initial_stock: Math.max(0, product.initial_stock - quantity),
+        initial_stock: product.initial_stock - quantity,
         updated_at: new Date().toISOString(),
       })
       .eq('id', inventoryId)
+      .eq('gym_id', gym.id)
+      .eq('initial_stock', product.initial_stock)
+      .select('id')
 
-    if (stockError) {
-      return NextResponse.json({ error: stockError.message }, { status: 500 })
+    if (stockError || !stockRows || stockRows.length === 0) {
+      log.error('Stock update failed after sale insert', stockError ?? { message: 'stock changed concurrently' })
+      return NextResponse.json({ error: 'Stock changed while selling. Check the sales list and try again.' }, { status: 409 })
     }
 
     await invalidateInventoryItemCache(gym.id, inventoryId)
@@ -140,6 +161,7 @@ export async function POST(req: NextRequest) {
       remaining_stock: product.initial_stock - quantity,
     })
   } catch (err: unknown) {
-    return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) || 'Internal error' }, { status: 500 })
+    log.error('Unhandled exception in POST /api/inventory/sell', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

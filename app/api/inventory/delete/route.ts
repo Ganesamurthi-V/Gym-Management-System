@@ -1,9 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { apiLogger } from '@/lib/logger'
+import { passesCsrf, UUID_RE } from '@/app/api/_guard'
 
 export async function POST(req: NextRequest) {
+  const log = apiLogger('INVENTORY_DELETE')
   try {
+    if (!passesCsrf(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -21,11 +26,14 @@ export async function POST(req: NextRequest) {
 
     if (!gym) return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
 
-    const body = await req.json()
-    const { inventoryId } = body
+    let body: { inventoryId?: unknown }
+    try { body = await req.json() } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
+    const inventoryId = body?.inventoryId
 
-    if (!inventoryId) {
-      return NextResponse.json({ error: 'inventoryId is required' }, { status: 400 })
+    if (typeof inventoryId !== 'string' || !UUID_RE.test(inventoryId)) {
+      return NextResponse.json({ error: 'A valid inventoryId is required' }, { status: 400 })
     }
 
     // Verify product belongs to this gym
@@ -41,23 +49,32 @@ export async function POST(req: NextRequest) {
     }
 
     // Delete inventory_units first (cascade should handle it, but be explicit)
-    await supabase
+    const { error: unitsError } = await supabase
       .from('inventory_units')
       .delete()
       .eq('inventory_id', inventoryId)
+      .eq('gym_id', gym.id)
+
+    if (unitsError) {
+      log.error('Unit delete failed', unitsError)
+      return NextResponse.json({ error: 'Could not delete the product' }, { status: 500 })
+    }
 
     // Delete the product itself
     const { error: deleteError } = await supabase
       .from('inventory')
       .delete()
       .eq('id', inventoryId)
+      .eq('gym_id', gym.id)
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 })
+      log.error('Product delete failed', deleteError)
+      return NextResponse.json({ error: 'Could not delete the product' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
-    return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) || 'Internal error' }, { status: 500 })
+    log.error('Unhandled exception in POST /api/inventory/delete', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

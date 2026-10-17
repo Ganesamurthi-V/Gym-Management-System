@@ -48,12 +48,17 @@ export function setNotificationDeepLinkHandler(fn: (p: DeepLinkPayload) => void)
   }
 }
 
+// Ids from a push payload end up in navigation params and API paths, so accept
+// only id-shaped strings; anything else (path segments, URLs) is dropped.
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const safeId = (v: unknown) => (typeof v === 'string' && SAFE_ID.test(v) ? v : undefined);
+
 function dispatchDeepLink(data: Record<string, string | object> | undefined) {
   if (!data) return;
   const payload: DeepLinkPayload = {
     type: typeof data.type === 'string' ? data.type : undefined,
-    gymId: typeof data.gymId === 'string' ? data.gymId : undefined,
-    entityId: typeof data.entityId === 'string' ? data.entityId : undefined,
+    gymId: safeId(data.gymId),
+    entityId: safeId(data.entityId),
   };
   if (deepLinkHandler) deepLinkHandler(payload);
   else pendingDeepLink = payload;

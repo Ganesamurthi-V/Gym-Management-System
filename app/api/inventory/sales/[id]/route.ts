@@ -1,14 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
+import { apiLogger } from '@/lib/logger'
+import { passesCsrf, UUID_RE } from '@/app/api/_guard'
 
-export async function DELETE(req: Request, props: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const log = apiLogger('INVENTORY_SALE_DELETE')
   try {
+    if (!passesCsrf(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
     const params = await props.params;
     const saleId = params.id;
+    if (!UUID_RE.test(saleId)) return NextResponse.json({ error: 'Invalid sale id' }, { status: 400 })
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { allowed } = await checkRateLimit(user.id, 'inventory_sale_delete', ROUTE_LIMITS.DEFAULT)
+    if (!allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
     // Verify gym ownership
     const { data: gym } = await supabase
@@ -19,40 +29,45 @@ export async function DELETE(req: Request, props: { params: Promise<{ id: string
 
     if (!gym) return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
 
-    // Fetch the sale to get quantity and inventory_id
-    const { data: sale, error: fetchError } = await supabase
-      .from('inventory_sales')
-      .select('id, quantity, inventory_id')
-      .eq('id', saleId)
-      .eq('gym_id', gym.id)
-      .single()
-
-    if (fetchError || !sale) {
-      return NextResponse.json({ error: 'Sale not found' }, { status: 404 })
-    }
-
-    // Delete the sale
-    const { error: deleteError } = await supabase
+    // Delete the sale and read back what was removed in one statement, so two
+    // simultaneous deletes cannot both see the row and restore the stock twice.
+    const { data: deleted, error: deleteError } = await supabase
       .from('inventory_sales')
       .delete()
       .eq('id', saleId)
       .eq('gym_id', gym.id)
+      .select('id, quantity, inventory_id')
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 })
+      log.error('Sale delete failed', deleteError)
+      return NextResponse.json({ error: 'Could not delete the sale' }, { status: 500 })
+    }
+
+    const sale = deleted?.[0]
+    if (!sale) {
+      return NextResponse.json({ error: 'Sale not found' }, { status: 404 })
     }
 
     // Restore stock atomically to prevent race conditions
     if (sale.inventory_id) {
-      await supabase.rpc('increment_inventory_stock', {
+      const { error: restoreError } = await supabase.rpc('increment_inventory_stock', {
         p_inventory_id: sale.inventory_id,
         amount: sale.quantity
       })
+      if (restoreError) {
+        // The sale is already gone; surface it so the owner can fix the count.
+        log.error('Stock restore failed after sale delete', restoreError)
+        return NextResponse.json(
+          { error: 'Sale deleted but stock could not be restored. Please adjust the stock manually.' },
+          { status: 500 }
+        )
+      }
     }
 
     return NextResponse.json({ success: true, restoredQuantity: sale.quantity })
 
   } catch (err: unknown) {
-    return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) }, { status: 500 })
+    log.error('Unhandled exception in DELETE /api/inventory/sales/[id]', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

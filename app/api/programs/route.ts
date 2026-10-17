@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { getGymForUser } from '@/lib/supabase/queries'
-import { mapSupabaseError } from '@/lib/utils/errorMapper'
+import { mapSupabaseError, passesCsrf } from '@/app/api/_guard'
 import { apiLogger, RequestLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -36,7 +36,12 @@ function fail(log: RequestLogger, status: number, code: string, message: string)
 type Authorized = { supabase: Awaited<ReturnType<typeof createClient>>; gymId: string }
 
 /** Shared auth + rate limit + gym resolution. Returns a NextResponse on failure. */
-async function authorize(log: RequestLogger): Promise<Authorized | NextResponse> {
+async function authorize(log: RequestLogger, req: NextRequest): Promise<Authorized | NextResponse> {
+  // Writes need the same CSRF rule as withAuth; reads are exempt.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !passesCsrf(req)) {
+    return fail(log, 403, 'CSRF_REJECTED', 'Forbidden')
+  }
+
   log.start('AUTH')
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -95,7 +100,7 @@ function normalizeSchedule(raw: unknown): Record<string, unknown[]> | null {
 export async function GET(req: NextRequest) {
   const log = apiLogger('PROGRAMS_API_GET')
   try {
-    const auth = await authorize(log)
+    const auth = await authorize(log, req)
     if (auth instanceof NextResponse) return auth
     const { supabase, gymId } = auth
 
@@ -124,7 +129,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data, meta: { request_id: log.requestId } })
     }
 
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '100'), 200)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '100') || 100, 1), 200)
     const { data, error, count } = await supabase
       .from('workout_programs')
       .select('id, name, summary, duration, frequency, difficulty, goal, category, is_draft, created_at', { count: 'exact' })
@@ -155,7 +160,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const log = apiLogger('PROGRAMS_API_POST')
   try {
-    const auth = await authorize(log)
+    const auth = await authorize(log, req)
     if (auth instanceof NextResponse) return auth
     const { supabase, gymId } = auth
 
@@ -260,7 +265,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const log = apiLogger('PROGRAMS_API_DELETE')
   try {
-    const auth = await authorize(log)
+    const auth = await authorize(log, req)
     if (auth instanceof NextResponse) return auth
     const { supabase, gymId } = auth
 

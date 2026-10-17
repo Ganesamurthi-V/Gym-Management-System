@@ -19,7 +19,11 @@ export async function POST(req: NextRequest) {
   const rateLimitResponse = await rateLimit(req, 'support_message', RATE_LIMITS.SUPPORT_MESSAGE.limit, RATE_LIMITS.SUPPORT_MESSAGE.window)
   if (rateLimitResponse) { log.summary(429); return rateLimitResponse }
 
-  const rawBody = await req.json()
+  const rawBody = await req.json().catch(() => null)
+  if (!rawBody || typeof rawBody !== 'object') {
+    log.summary(400)
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
 
   const sanitized = sanitizeSupportMessage(rawBody)
   if ('error' in sanitized) {

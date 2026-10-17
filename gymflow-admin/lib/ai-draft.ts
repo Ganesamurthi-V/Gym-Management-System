@@ -110,7 +110,8 @@ export function buildPrompt(input: PromptInput): {
   const room = REQUEST_BUDGET - MAX_COMPLETION - fixed
   const maxChars = Math.min(MAX_EMAIL_CHARS, Math.max(MIN_EMAIL_CHARS, Math.floor(room * 3.5)))
 
-  const cleaned = input.latest.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  // The sender controls this text; stop it from forging the delimiters that fence it off as data.
+  const cleaned = input.latest.replace(/<<<EMAIL|EMAIL>>>/gi, '[delimiter removed]').replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
   const trimmed = cleaned.length > maxChars
   const body = trimmed ? `${cleaned.slice(0, maxChars)}\n[message cut for length]` : cleaned
 

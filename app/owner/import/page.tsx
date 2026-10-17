@@ -18,6 +18,7 @@ import {
   isRecognizedPlan,
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
+import { checkImportFile, declaredUncompressedSize, MAX_SHEET_ROWS, MAX_SHEET_COLUMNS, MAX_XLSX_UNCOMPRESSED_BYTES } from "@/lib/import/schema";
 import { groupPlanNames, type PlanNameGroup } from "@/lib/import/plan-matching";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
@@ -608,7 +609,8 @@ export default function ImportPage() {
 
   async function processFile(file: File, userMapping?: Record<string, string>) {
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { alert("File too large. Maximum size is 10MB."); return; }
+    const fileCheck = checkImportFile(file);
+    if (!fileCheck.ok) { alert(fileCheck.message); return; }
 
     setFileName(file.name);
     setNeedsFile(false);
@@ -632,25 +634,41 @@ export default function ImportPage() {
     const ExcelJS = ExcelJSModule.default || ExcelJSModule;
     setParseStage(2);
 
-    const isCSV = file.name.endsWith(".csv");
+    const isCSV = /\.csv$/i.test(file.name);
     const wb = new ExcelJS.Workbook();
-    if (isCSV) {
-      const text = await file.text();
-      const lines = text.split(/\r?\n/).filter(Boolean);
-      const ws = wb.addWorksheet("Sheet1");
-      lines.forEach(line => ws.addRow(
-        line.split(",").map(v => {
-          const val = v.trim().replace(/^"|"$/g, "");
-          return /^[=+\-@]/.test(val) ? "'" + val : val;
-        })
-      ));
-    } else {
-      await wb.xlsx.load(await file.arrayBuffer());
+    try {
+      if (isCSV) {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if (lines.length - 1 > MAX_SHEET_ROWS) { alert(`File has too many rows (max ${MAX_SHEET_ROWS.toLocaleString("en-IN")}).`); setParsing(false); return; }
+        const ws = wb.addWorksheet("Sheet1");
+        lines.forEach(line => ws.addRow(
+          line.split(",").slice(0, MAX_SHEET_COLUMNS + 1).map(v => {
+            const val = v.trim().replace(/^"|"$/g, "");
+            return /^[=+\-@]/.test(val) ? "'" + val : val;
+          })
+        ));
+      } else {
+        const buf = await file.arrayBuffer();
+        // An .xlsx is a zip: refuse one that would inflate far beyond its size on disk
+        // before ExcelJS expands it into memory. Legacy .xls is not a zip and is
+        // rejected here too (ExcelJS cannot read it).
+        const inflated = declaredUncompressedSize(buf);
+        if (inflated === null) { alert("This file could not be read. Please save it as .xlsx or .csv and try again."); setParsing(false); return; }
+        if (inflated > MAX_XLSX_UNCOMPRESSED_BYTES) { alert("This spreadsheet is too large to import. Remove unused sheets or rows and try again."); setParsing(false); return; }
+        await wb.xlsx.load(buf);
+      }
+    } catch {
+      alert("This file could not be read. Please save it as .xlsx or .csv and try again.");
+      setParsing(false);
+      return;
     }
 
+    if (wb.worksheets.length > 50) { alert("This workbook has too many sheets (max 50)."); setParsing(false); return; }
     const ws = wb.worksheets[0];
     if (!ws) { setParsing(false); return; }
-    if (ws.rowCount - 1 > 50000) { alert("File has too many rows (max 50,000)."); setParsing(false); return; }
+    if (ws.rowCount - 1 > MAX_SHEET_ROWS) { alert(`File has too many rows (max ${MAX_SHEET_ROWS.toLocaleString("en-IN")}).`); setParsing(false); return; }
+    if (ws.columnCount > MAX_SHEET_COLUMNS) { alert(`File has too many columns (max ${MAX_SHEET_COLUMNS}).`); setParsing(false); return; }
 
     let headerRowIndex = 1;
     let maxDetectedFields = 0;

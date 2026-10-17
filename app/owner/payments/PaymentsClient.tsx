@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { sanitizeRow } from '@/lib/export/sanitizeCell'
 import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
@@ -321,7 +322,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       ]
       wsMembers.getRow(1).font = { bold: true }
       currentM.forEach(p => {
-        wsMembers.addRow({
+        wsMembers.addRow(sanitizeRow({
           num:   p.member_number ?? '-',
           name:  p.title,
           phone: p.subtitle,
@@ -330,7 +331,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
           fee:   p.base_amount,
           adm:   p.admission_fee,
           total: p.amount,
-        })
+        }))
       })
     }
 
@@ -346,13 +347,13 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       ]
       wsInv.getRow(1).font = { bold: true }
       currentI.forEach(p => {
-        wsInv.addRow({
+        wsInv.addRow(sanitizeRow({
           date:  formatDate(p.timestamp),
           prod:  p.col3,
           var:   p.col4,
           mode:  p.mode.toUpperCase(),
           total: p.amount,
-        })
+        }))
       })
     }
 
@@ -369,14 +370,14 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       ]
       wsDues.getRow(1).font = { bold: true }
       currentD.forEach(p => {
-        wsDues.addRow({
+        wsDues.addRow(sanitizeRow({
           num:   p.member_number ?? '-',
           name:  p.title,
           phone: p.subtitle,
           mode:  p.mode.toUpperCase(),
           total: p.amount,
           date:  formatDate(p.timestamp)
-        })
+        }))
       })
     }
 

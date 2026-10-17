@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
-import { withAuth, apiError, apiSuccess, handleSupabaseError, isValidUUID } from '@/lib/api/withAuth'
+import { withAuth, apiError, apiSuccess, isValidUUID } from '@/lib/api/withAuth'
+import { handleSupabaseError } from '@/app/api/_guard'
 import { giveRewardSchema } from '@/lib/gamification/events'
 
 export const dynamic = 'force-dynamic'

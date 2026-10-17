@@ -1,4 +1,5 @@
-import { withAuth, apiError, apiSuccess, handleSupabaseError } from '@/lib/api/withAuth'
+import { withAuth, apiError, apiSuccess } from '@/lib/api/withAuth'
+import { handleSupabaseError } from '@/app/api/_guard'
 import { EVENT_LIMITS } from '@/lib/gamification/constants'
 import { createEventSchema } from '@/lib/gamification/events'
 import { GYM_EVENT_COLUMNS, mapGymEventRow, type GymEventRow } from '@/lib/gamification/mapEvents'

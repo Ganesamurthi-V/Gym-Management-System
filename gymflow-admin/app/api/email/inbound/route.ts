@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 // The AI draft runs after the response is sent, but inside this function's lifetime: it
 // may spend up to ~28 s across its model fallbacks.
 export const maxDuration = 60
+const MAX_WEBHOOK_BYTES = 64 * 1024
 
 /**
  * POST /api/email/inbound  - Resend's `email.received` webhook.
@@ -27,7 +28,16 @@ export async function POST(req: NextRequest) {
 
   // The signature is computed over the exact bytes sent, so the body must be read as text
   // and handed over untouched. Parsing and re-serialising it would break verification.
+  // Resend's event is a few hundred bytes of metadata. Refuse anything large before reading it.
+  if (Number(req.headers.get('content-length') ?? 0) > MAX_WEBHOOK_BYTES) {
+    log.summary(413)
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
   const payload = await req.text()
+  if (payload.length > MAX_WEBHOOK_BYTES) {
+    log.summary(413)
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
   const id = req.headers.get('svix-id')
   const timestamp = req.headers.get('svix-timestamp')
   const signature = req.headers.get('svix-signature')

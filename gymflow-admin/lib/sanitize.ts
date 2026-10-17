@@ -8,6 +8,19 @@
  * entities like &quot; on screen. We only strip <tags> for safety.
  */
 
+import { z } from 'zod'
+
+/** Audit label for every admin action. Never taken from the client: it could forge who acted. */
+export const ADMIN_ACTOR = 'admin'
+
+export const planSchema = z.enum(['monthly', 'half_yearly', 'yearly', 'lifetime'])
+/** An optional free-text note, bounded so a request cannot bloat the audit log. */
+export const noteSchema = z.string().max(1_000).nullish()
+/** A date/time the admin typed or picked; empty/null clears the column. */
+export const dateOrClearSchema = z
+  .union([z.string().max(40).refine(s => s === '' || !Number.isNaN(Date.parse(s)), 'Invalid date'), z.null()])
+  .optional()
+
 /**
  * Strip all HTML tags from a string.
  * Safe to use for React text nodes — React handles escaping automatically.
@@ -121,11 +134,13 @@ export function sanitizeSupportMessage(raw: any): SanitizedSupportMessage | { er
   if (!subject) {
     return { error: 'Subject is required' }
   }
+  if (subject.length > 200) return { error: 'Subject is too long' }
   
   const body = sanitizeMultiline(raw.body)
   if (!body) {
     return { error: 'Message body is required' }
   }
+  if (body.length > 5_000) return { error: 'Message is too long' }
   
   const type = sanitizeEnum(raw.type, ['info', 'warning', 'error', 'success'])
   if (!type) {
@@ -165,6 +180,7 @@ export function sanitizeTicketResolution(raw: any): SanitizedTicketResolution | 
   if (!replyMessage) {
     return { error: 'Reply message is required' }
   }
+  if (replySubject.length > 200 || replyMessage.length > 5_000) return { error: 'Reply is too long' }
   
   return { ticketId, status, replySubject, replyMessage }
 }

@@ -110,6 +110,13 @@ export const PATCH = withAuth('ACCOUNT_GYM_PATCH', async (req: NextRequest, { su
 
     const existing = (current.onboarding_data ?? {}) as Record<string, unknown>
     const patch = body.onboarding_data
+    // The blob is merged and stored as-is; cap it so one request cannot bloat the gym row.
+    if (JSON.stringify(patch).length > 50_000) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: 'Your gym details are too large to save.' } },
+        { status: 400 },
+      )
+    }
     updates.onboarding_data = { ...existing, ...patch }
 
     /*

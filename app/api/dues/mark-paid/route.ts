@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
  *
  * Body: { member_id }
  */
-export const POST = withAuth('DUES_MARK_PAID', async (req: NextRequest, { supabase, gym }) => {
+export const POST = withAuth('DUES_MARK_PAID', async (req: NextRequest, { supabase, gym, log }) => {
   let body: { member_id?: string }
   try { body = await req.json() } catch {
     return NextResponse.json(
@@ -36,7 +36,8 @@ export const POST = withAuth('DUES_MARK_PAID', async (req: NextRequest, { supaba
     .from('members')
     .select('gym_id')
     .eq('id', member_id)
-    .single()
+    .eq('gym_id', gym.id)
+    .maybeSingle()
 
   if (!member || member.gym_id !== gym.id) {
     return NextResponse.json(
@@ -49,10 +50,12 @@ export const POST = withAuth('DUES_MARK_PAID', async (req: NextRequest, { supaba
     .from('members')
     .update({ pending_amount: 0 })
     .eq('id', member_id)
+    .eq('gym_id', gym.id)
 
   if (error) {
+    log.error('Could not mark dues paid', error)
     return NextResponse.json(
-      { success: false, error: { code: 'DATABASE_ERROR', message: error.message } },
+      { success: false, error: { code: 'DATABASE_ERROR', message: 'Could not update the balance. Please try again.' } },
       { status: 500 }
     )
   }

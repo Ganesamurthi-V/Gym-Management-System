@@ -78,11 +78,9 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
       if (newPending === 0 && member.phone?.replace(/\D/g, '').length >= 10) {
         fetch('/api/whatsapp/automation/due-cleared', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           body: JSON.stringify({
-            gymId,
             memberId: member.id,
-            phone:    member.phone,
             dueDate:  new Date().toISOString().slice(0, 10),
           }),
         }).catch(() => {})

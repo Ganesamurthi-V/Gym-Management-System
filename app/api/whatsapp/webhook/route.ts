@@ -85,19 +85,10 @@ export async function POST(req: NextRequest) {
       log.warn('Invalid webhook signature', {
         signatureHeader: req.headers.get('x-hub-signature-256') ? 'present' : 'missing',
       })
-      
-      const processingTime = Math.round(performance.now() - startTime)
-      await saveWebhookLog(
-        log.requestId,
-        phoneNumberId,
-        'error',
-        { error: 'Invalid signature' },
-        false,
-        false,
-        'Invalid signature',
-        processingTime
-      )
 
+      // Nothing is stored for unauthenticated requests: anyone can POST here, so
+      // writing a row per request would let attackers fill the database.
+      log.summary(401)
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 401 }
@@ -225,7 +216,9 @@ export async function POST(req: NextRequest) {
     // Save error log (best-effort — never let a logging failure mask the real error)
     const processingTime = Math.round(performance.now() - startTime)
     try {
-      await saveWebhookLog(
+      // Only authenticated requests are stored (a throw before/during signature
+      // verification leaves signatureValid false).
+      if (signatureValid) await saveWebhookLog(
         log.requestId,
         phoneNumberId,
         'error',

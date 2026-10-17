@@ -137,10 +137,11 @@ export default function VerifyingPage() {
       }
 
       // The session now lives in HttpOnly cookies. Finish the member-row writes.
+      // Identity comes from the session cookie the redeem call just set.
       const finalizeRes = await fetch('/api/activate/finalize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: json.userId }),
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
       })
       const finalizeJson = await finalizeRes.json().catch(() => null)
 
@@ -271,10 +272,11 @@ export default function VerifyingPage() {
           return
         }
 
+        // Identity comes from the session cookie set-session just wrote.
         const res = await fetch('/api/activate/finalize', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: sessionJson.userId }),
+          credentials: 'include',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
         })
         const json = await res.json()
 

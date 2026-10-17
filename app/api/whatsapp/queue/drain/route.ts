@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Receiver } from '@upstash/qstash'
+import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { drainSendQueue } from '@/lib/whatsapp/queue'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +28,7 @@ function adminClient() {
 async function isAuthorized(req: NextRequest, rawBody: string): Promise<boolean> {
   const cronSecret = process.env.CRON_SECRET
   const headerSecret = req.headers.get('x-cron-secret') ?? ''
-  if (cronSecret && headerSecret === cronSecret) return true
+  if (cronSecret && timingSafeSecretEqual(headerSecret, cronSecret)) return true
 
   const signature = req.headers.get('upstash-signature')
   const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY
@@ -58,6 +59,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[WA Queue] drain failed:', message)
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Internal error' }, { status: 500 })
   }
 }

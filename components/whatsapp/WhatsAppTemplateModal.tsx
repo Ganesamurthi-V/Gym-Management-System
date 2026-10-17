@@ -89,6 +89,8 @@ export interface Props {
   open: boolean
   onClose: () => void
   context: TemplateContext
+  /** members.id (uuid). The server loads the recipient phone and name from it. */
+  memberId: string
   defaultTemplate?: TemplateId
   /**
    * When true, the member was created via Excel/CSV import. The welcome
@@ -100,7 +102,7 @@ export interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate = '_gymflow_welcome_member', isImported = false }: Props) {
+export function WhatsAppTemplateModal({ open, onClose, context, memberId, defaultTemplate = '_gymflow_welcome_member', isImported = false }: Props) {
   // Imported members never see the welcome template.
   const templates = isImported
     ? TEMPLATES.filter(t => t.id !== '_gymflow_welcome_member')
@@ -135,8 +137,18 @@ export function WhatsAppTemplateModal({ open, onClose, context, defaultTemplate 
     try {
       const res = await fetch('/api/whatsapp/send', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ templateId: selectedId, context }),
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body:    JSON.stringify({
+          templateId: selectedId,
+          memberId,
+          context: {
+            plan:          context.plan,
+            startDate:     context.startDate,
+            validUntil:    context.validUntil,
+            expiryDate:    context.expiryDate,
+            daysRemaining: context.daysRemaining,
+          },
+        }),
       })
 
       const data = await res.json() as { success: boolean; error?: string }

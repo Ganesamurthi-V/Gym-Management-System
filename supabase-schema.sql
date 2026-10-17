@@ -2742,7 +2742,7 @@ BEGIN
       updated_at = NOW()
   WHERE id = p_inventory_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Atomic inventory sale RPC
 --
@@ -4671,6 +4671,17 @@ REVOKE ALL ON FUNCTION public.gym_id_for_owner_email(TEXT)           FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.gym_id_for_owner_email(TEXT)        TO service_role;
 REVOKE ALL ON FUNCTION public.search_gym_owner_contacts(TEXT, INT)   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.search_gym_owner_contacts(TEXT, INT) TO service_role;
+
+-- Service-role only. These write to the gym the caller names without checking who
+-- the caller is, so the default PUBLIC grant let anyone forge subscription audit
+-- entries and usage counters for any gym. The admin app calls the first with the
+-- service role; the other two have no client caller.
+REVOKE ALL ON FUNCTION public.log_subscription_action(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.log_subscription_action(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT) TO service_role;
+REVOKE ALL ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) TO service_role;
+REVOKE ALL ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) TO service_role;
 
 
 -- ############################################################

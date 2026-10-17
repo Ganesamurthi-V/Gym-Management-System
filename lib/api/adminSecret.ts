@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
+import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 
 /**
  * Pure, dependency-free decision logic for platform-admin bearer auth.
@@ -29,9 +29,7 @@ export type AdminAuthVerdict =
  * branching around it would leak the secret's length).
  */
 export function constantTimeEqual(a: string, b: string): boolean {
-  const digestA = createHash('sha256').update(a, 'utf8').digest()
-  const digestB = createHash('sha256').update(b, 'utf8').digest()
-  return timingSafeEqual(digestA, digestB)
+  return timingSafeSecretEqual(a, b)
 }
 
 /**

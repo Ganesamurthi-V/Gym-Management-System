@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHash, timingSafeEqual } from 'node:crypto'
+import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -47,9 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Constant-time comparison — fixed-width digests so no length is leaked.
-    const a = createHash('sha256').update(password, 'utf8').digest()
-    const b = createHash('sha256').update(validPassword, 'utf8').digest()
-    if (!timingSafeEqual(a, b)) {
+    if (!timingSafeSecretEqual(password, validPassword)) {
       return NextResponse.json({ error: 'Invalid admin password' }, { status: 401 })
     }
 

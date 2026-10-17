@@ -218,12 +218,9 @@ export default function NewMemberPage() {
       if (form.phone && form.phone.replace(/\D/g, '').length >= 10) {
         fetch('/api/whatsapp/automation/welcome', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           body: JSON.stringify({
-            gymId,
             memberId: member.id,
-            memberName: form.name.trim(),
-            phone: form.phone.trim(),
             plan: form.plan,
             startDate: form.start_date,
           }),

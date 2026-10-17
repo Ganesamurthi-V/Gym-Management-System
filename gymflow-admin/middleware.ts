@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { verifyAdminSession, COOKIE_NAME } from './lib/auth'
+import { verifyAdminSession, bearerToken, COOKIE_NAME } from './lib/auth'
 import { generateRequestId, REQUEST_ID_HEADER } from './lib/logger'
 
 /*
@@ -17,6 +17,10 @@ import { generateRequestId, REQUEST_ID_HEADER } from './lib/logger'
 */
 const PUBLIC_PATHS = ['/auth', '/api/auth', '/api/push/dispatch', '/api/email/inbound']
 
+// Exact or whole-segment match: startsWith('/auth') also let '/authorize-anything' through.
+const isPublicPath = (pathname: string) =>
+  PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -26,7 +30,7 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set(REQUEST_ID_HEADER, requestId)
 
   // Allow public paths through
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+  if (isPublicPath(pathname)) {
     const res = NextResponse.next({ request: { headers: requestHeaders } })
     res.headers.set(REQUEST_ID_HEADER, requestId)
     return res
@@ -40,11 +44,12 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value
   let isAuthed = token ? await verifyAdminSession(token) : false
 
-  // API-to-API / mobile clients authenticate with a Bearer token instead of
-  // the session cookie (mirrors lib/auth.ts verifyRequestAuth)
+  // The mobile app authenticates with a signed admin-mobile JWT instead of the
+  // session cookie (mirrors lib/auth.ts verifyRequestAuth). The raw password is
+  // never accepted here.
   if (!isAuthed) {
-    const bearer = request.headers.get('Authorization')?.replace('Bearer ', '')
-    if (bearer && bearer === process.env.ADMIN_PANEL_SECRET) isAuthed = true
+    const bearer = bearerToken(request.headers)
+    if (bearer) isAuthed = await verifyAdminSession(bearer, 'admin-mobile')
   }
 
   if (!isAuthed) {

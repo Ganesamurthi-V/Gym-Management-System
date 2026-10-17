@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getToken } from '../auth';
+import { getToken, expireSession } from '../auth';
 
 import { ADMIN_API_BASE as ENV_ADMIN_API_BASE } from '@env';
 
@@ -57,6 +57,12 @@ apiClient.interceptors.response.use(
       } else {
         console.error('[API UNKNOWN ERROR]', error);
       }
+    }
+
+    // A 401 on any call except the login itself means the stored token is
+    // expired or revoked: drop it and send the user back to login.
+    if (axios.isAxiosError(error) && error.response?.status === 401 && error.config?.url !== '/api/auth') {
+      void expireSession();
     }
 
     return Promise.reject(error);

@@ -8,6 +8,16 @@ import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { format } from 'date-fns'
 
+// Our own thrown messages are safe to show; anything else (e.g. a raw Postgres or
+// PostgREST error) stays in the server log so internals never reach the browser.
+const SAFE_ERRORS = new Set(['Unauthorized', 'Unauthorized Gym Access', 'Invalid pagination'])
+function clientError(err: unknown, fallback: string): string {
+  const msg = err instanceof Error ? err.message : ''
+  if (SAFE_ERRORS.has(msg)) return msg
+  console.error(fallback, err)
+  return fallback
+}
+
 
 export async function exportMembersToExcelAction(
   gymId: string, 
@@ -139,6 +149,13 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized")
 
+    if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1 || limit > 200) {
+      throw new Error("Invalid pagination")
+    }
+
+    const { data: gym } = await supabase.from('gyms').select('id').eq('id', gymId).eq('owner_id', user.id).maybeSingle()
+    if (!gym) throw new Error("Unauthorized Gym Access")
+
     // Fetch members offset
     const { data: members, error } = await supabase
       .from('members')
@@ -195,8 +212,8 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
     })
 
     return { success: true, data: result }
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: clientError(err, 'Could not load more members') }
   }
 }
 
@@ -204,13 +221,11 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
 export async function invalidateMembersCache(gymId: string) {
   try {
     const supabase = await createClient()
-    // getSession() reads the JWT locally (no auth-server round trip). Deleting a
-    // cache key only ever forces an RLS-protected DB re-fetch, so a lightweight
-    // "is the caller logged in?" check is sufficient — the previous getUser()
-    // network call + gyms ownership SELECT added two round trips for no security
-    // benefit (busting a cache key exposes no data).
+    // Ownership is verified so a signed-in non-owner cannot flush another gym's caches.
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error("Unauthorized")
+    const { data: gym } = await supabase.from('gyms').select('id').eq('id', gymId).eq('owner_id', session.user.id).maybeSingle()
+    if (!gym) throw new Error("Unauthorized Gym Access")
 
     // Bust all affected caches in parallel instead of four sequential awaits.
     await Promise.all([
@@ -220,7 +235,7 @@ export async function invalidateMembersCache(gymId: string) {
       deleteCache(cacheKeys.paymentsAll(gymId)),
     ])
     return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: clientError(err, 'Could not refresh members') }
   }
 }

@@ -30,8 +30,9 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     if (!password.trim()) return;
     setLoading(true);
     try {
-      await loginWithPassword(password);
-      await saveToken(password);
+      const token = await loginWithPassword(password);
+      await saveToken(token);
+      setPassword('');
       onLoginSuccess();
     } catch (e: any) {
       Alert.alert('Login Failed', e.message ?? 'Invalid admin password');

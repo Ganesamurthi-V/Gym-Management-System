@@ -20,7 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServiceSupabase, resolveInvitationToken } from '@/lib/member/activation-token'
+import { activateRateLimitOk, getServiceSupabase, resolveInvitationToken } from '@/lib/member/activation-token'
 import { sendVerificationEmail } from '@/lib/member/activation-email'
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
@@ -30,6 +30,10 @@ const fail = (error: string, status: number, extra: Record<string, unknown> = {}
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await activateRateLimitOk(req, 'resend', 5, '5 m'))) {
+      return fail('Too many attempts. Please wait a few minutes and try again.', 429, { code: 'rate_limited' })
+    }
+
     let body: { token?: string }
     try { body = await req.json() } catch {
       return fail('Invalid request', 400)

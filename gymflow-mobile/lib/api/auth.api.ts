@@ -1,14 +1,13 @@
 import { apiClient } from './client';
 import { parseApiError } from './error-handler';
 
+// Exchanges the admin password once for a signed, expiring token. Only the
+// token is ever stored on the device; the password is never persisted.
 export async function loginWithPassword(password: string): Promise<string> {
   try {
-    // The previous implementation sent the password in the body.
-    // The backend uses this to authenticate and return... what?
-    // According to existing code, it returns a 200 on success, and we store the password itself as the bearer token.
-    await apiClient.post('/api/auth', { password });
-
-    return password;
+    const { data } = await apiClient.post<{ token?: string }>('/api/auth', { password, client: 'mobile' });
+    if (!data?.token) throw new Error('Login failed. Please try again.');
+    return data.token;
   } catch (error) {
     throw new Error(parseApiError(error));
   }

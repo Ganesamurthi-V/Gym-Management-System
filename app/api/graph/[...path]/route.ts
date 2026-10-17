@@ -9,7 +9,7 @@
  * Security:
  *   - Server-to-server only: browser-originated requests are rejected, and no
  *     CORS access is granted (no wildcard ACAO, no preflight approval)
- *   - Optional shared secret (GRAPH_PROXY_SECRET) when configured
+ *   - Shared secret (GRAPH_PROXY_SECRET): required in production (503 if unset)
  *   - Endpoint whitelist: only allowed Meta Graph endpoints pass through
  *   - Method whitelist: only GET, POST, PUT, PATCH, DELETE, OPTIONS
  *   - Per-IP rate limit (120/min) applied in middleware.ts
@@ -33,7 +33,8 @@ import { NextRequest } from 'next/server'
 import { timingSafeEqual, createHash } from 'node:crypto'
 import { logger } from '@/lib/logger'
 import {
-  isAllowedEndpoint,
+  isAllowedProxyRequest,
+  isGraphProxySecretRequired,
   forbiddenResponse,
   errorResponse,
   GRAPH_PROXY_SECRET_HEADER,
@@ -143,10 +144,18 @@ async function proxy(req: NextRequest, path: string[]): Promise<Response> {
     return forbiddenResponse('This endpoint is not callable from a browser.')
   }
 
-  // ── Optional shared-secret gate ───────────────────────────────────────────
-  // Opt-in: enforced only when GRAPH_PROXY_SECRET is configured, so turning it
-  // on cannot break live sending. See lib/graph-domain.ts for the rationale.
+  // ── Shared-secret gate ────────────────────────────────────────────────────
+  // In production the secret is mandatory: an unset env var must close the proxy,
+  // never open it. Elsewhere it is enforced only when configured.
   const proxySecret = getGraphProxySecret()
+  if (!proxySecret && isGraphProxySecretRequired()) {
+    logger.error('graph_proxy_blocked', {
+      method: req.method,
+      path: `/${pathStr}`,
+      reason: 'proxy_secret_not_configured',
+    })
+    return errorResponse('Proxy is not configured.', 503)
+  }
   if (proxySecret) {
     const provided = req.headers.get(GRAPH_PROXY_SECRET_HEADER)
     if (!provided || !secretMatches(provided, proxySecret)) {
@@ -168,11 +177,9 @@ async function proxy(req: NextRequest, path: string[]): Promise<Response> {
   }
 
   // ── Endpoint whitelist ────────────────────────────────────────────────────
-  // Only allow requests to Meta Graph endpoints we actually use.
-  // Version-only paths (e.g. "v25.0/123456789") without an endpoint are allowed
-  // for phone_number metadata lookups (GET /{version}/{phone_number_id}).
-  const needsEndpointCheck = path.length > 2 // version + phone_id + endpoint
-  if (needsEndpointCheck && !isAllowedEndpoint(pathStr)) {
+  // Applied to every path length. Bare `{version}/{id}` lookups used by
+  // services/whatsapp/graph.ts are allowed by shape + method inside the helper.
+  if (!isAllowedProxyRequest(req.method, pathStr)) {
     logger.warn('graph_proxy_blocked', { method: req.method, path: `/${pathStr}`, reason: 'endpoint_not_allowed' })
     return forbiddenResponse()
   }

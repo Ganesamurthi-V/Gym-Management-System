@@ -72,13 +72,9 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       if (isValidPhone(member.phone)) {
         fetch('/api/whatsapp/automation/renewal', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           body: JSON.stringify({
-            gymId,
-            gymName:         gymName ?? '',
             memberId:        member.id,
-            memberName:      member.name,
-            phone:           member.phone,
             plan:            renewForm.plan,
             validUntil:      end_date,
             previousEndDate: latestMembership?.end_date ?? undefined,
@@ -215,6 +211,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
         onClose={() => setShowWhatsApp(false)}
         defaultTemplate={whatsAppTemplate}
         isImported={!!member.is_imported}
+        memberId={member.id}
         context={{
           phone:         member.phone,
           memberName:    member.name,

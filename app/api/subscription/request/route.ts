@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rateLimit'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +20,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await checkRateLimit(user.id, 'POST /api/subscription/request', 5)
+  if (!allowed) return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
 
   // Fetch the gym owned by this user
   const { data: gym } = await supabase
@@ -51,8 +56,14 @@ export async function POST(req: NextRequest) {
   }
 
   const file = formData.get('file') as File | null
-  const transactionId = (formData.get('transaction_id') as string | null) || null
-  const notes         = (formData.get('notes') as string | null) || null
+  const rawTxn   = formData.get('transaction_id')
+  const rawNotes = formData.get('notes')
+  const transactionId = typeof rawTxn === 'string' && rawTxn ? rawTxn : null
+  const notes         = typeof rawNotes === 'string' && rawNotes ? rawNotes : null
+
+  if ((transactionId?.length ?? 0) > 100 || (notes?.length ?? 0) > 1000) {
+    return NextResponse.json({ error: 'Transaction ID or notes too long.' }, { status: 400 })
+  }
 
   // Validate file
   const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
@@ -65,14 +76,30 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // file.type is browser-reported and spoofable; the real type is whatever the bytes say.
+  const head = new Uint8Array(await file.slice(0, 5).arrayBuffer())
+  const startsWith = (sig: number[]) => sig.every((b, i) => head[i] === b)
+  const detectedType =
+    startsWith([0xff, 0xd8, 0xff]) ? 'image/jpeg'
+    : startsWith([0x89, 0x50, 0x4e, 0x47]) ? 'image/png'
+    : startsWith([0x25, 0x50, 0x44, 0x46, 0x2d]) ? 'application/pdf'
+    : null
+  if (!detectedType) {
+    return NextResponse.json(
+      { error: 'Invalid file. Please upload a JPG, PNG or PDF under 10 MB.' },
+      { status: 400 }
+    )
+  }
+
   // Upload to Supabase Storage (private bucket `payment-proofs`)
   const fileName = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
   const { data: upload, error: uploadError } = await supabase.storage
     .from('payment-proofs')
-    .upload(fileName, file, { contentType: file.type, upsert: false })
+    .upload(fileName, file, { contentType: detectedType, upsert: false })
 
   if (uploadError || !upload) {
-    return NextResponse.json({ error: uploadError?.message ?? 'Upload failed.' }, { status: 500 })
+    logger.error('subscription_proof_upload_failed', { error: uploadError?.message })
+    return NextResponse.json({ error: 'Upload failed. Please try again.' }, { status: 500 })
   }
 
   // Insert subscription_request row (store path, not public URL — bucket is private)
@@ -86,7 +113,8 @@ export async function POST(req: NextRequest) {
     })
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
+    logger.error('subscription_request_insert_failed', { error: insertError.message })
+    return NextResponse.json({ error: 'Could not save your request. Please try again.' }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })

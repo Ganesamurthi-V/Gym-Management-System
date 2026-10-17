@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { pingHeartbeat } from '@/lib/monitoring/heartbeat'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   const cronHeader = req.headers.get('x-cron-secret') ?? ''
   const bearer     = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
-  if (!cronSecret || (bearer !== cronSecret && cronHeader !== cronSecret)) {
+  if (!cronSecret || (!timingSafeSecretEqual(bearer, cronSecret) && !timingSafeSecretEqual(cronHeader, cronSecret))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   if (trialsError) {
     console.error('[Cron/Sub] Failed to expire trials:', trialsError)
-    return NextResponse.json({ error: trialsError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
   // ── 2. Expire lapsed paid subscriptions ───────────────────────────────────
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   if (subsError) {
     console.error('[Cron/Sub] Failed to expire subscriptions:', subsError)
-    return NextResponse.json({ error: subsError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
   const trials = expiredTrials?.length ?? 0

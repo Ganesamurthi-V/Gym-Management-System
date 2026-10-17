@@ -8,7 +8,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { TouchableOpacity } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { isAuthenticated, clearToken } from '@/lib/auth';
+import { isAuthenticated, clearToken, setSessionExpiredHandler } from '@/lib/auth';
 import { invalidate } from '@/lib/cache';
 import {
   initPushNotifications, attachPushListeners, setNotificationDeepLinkHandler,
@@ -147,6 +147,14 @@ export default function App() {
   // Read inside the deep-link retry loop, which outlives any single render.
   const authedRef = useRef(false);
   authedRef.current = authed;
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      invalidate();
+      setAuthed(false);
+    });
+    return () => setSessionExpiredHandler(null);
+  }, []);
 
   useEffect(() => {
     isAuthenticated().then(result => {

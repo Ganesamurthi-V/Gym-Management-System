@@ -21,11 +21,12 @@ export async function POST(req: NextRequest) {
 
     const { userId, password } = body
 
-    if (!userId || typeof userId !== 'string') {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!userId || typeof userId !== 'string' || !UUID_RE.test(userId)) {
       return NextResponse.json({ error: 'Missing or invalid userId' }, { status: 400 })
     }
 
-    if (!password || typeof password !== 'string') {
+    if (!password || typeof password !== 'string' || password.length > 128) {
       return NextResponse.json({ error: 'Missing or invalid password' }, { status: 400 })
     }
 
@@ -36,6 +37,19 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient()
+
+    // Only gym OWNER accounts may be reset here; any other auth user id (members,
+    // the platform admin, other staff) is refused.
+    const { data: ownedGym, error: gymError } = await supabase
+      .from('gyms')
+      .select('id')
+      .eq('owner_id', userId)
+      .limit(1)
+      .maybeSingle()
+    if (gymError) throw gymError
+    if (!ownedGym) {
+      return NextResponse.json({ error: 'User is not a gym owner' }, { status: 403 })
+    }
 
     const { error } = await supabase.auth.admin.updateUserById(
       userId,

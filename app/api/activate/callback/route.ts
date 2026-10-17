@@ -105,17 +105,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(failUrl('no_session'))
     }
 
-    const memberId = user.user_metadata?.member_id
-    const gymId = user.user_metadata?.gym_id
+    // The member row comes from the server-owned members.auth_user_id link, not
+    // user_metadata (users can edit their own metadata and point it at another gym).
+    const service = getServiceSupabase()
+    const { data: linked, error: linkErr } = await service
+      .from('members')
+      .select('id, gym_id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+    if (linkErr) {
+      console.error('[activate/callback] member lookup failed:', linkErr.message)
+      return NextResponse.redirect(failUrl('unexpected_error'))
+    }
 
     // Previously this fell through to the success page when the linkage was
     // missing, so the member saw "Account Activated!" while nothing was written.
-    if (!memberId || !gymId) {
+    if (!linked) {
       console.error('[activate/callback] auth user has no member linkage', { userId: user.id })
       return NextResponse.redirect(failUrl('no_member_linkage'))
     }
-
-    const service = getServiceSupabase()
+    const memberId = linked.id
+    const gymId = linked.gym_id
 
     await service.auth.admin.updateUserById(user.id, {
       email_confirm: true,

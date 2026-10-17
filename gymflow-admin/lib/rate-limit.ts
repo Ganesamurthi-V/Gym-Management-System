@@ -5,13 +5,25 @@ import { NextRequest, NextResponse } from 'next/server'
  * Rate limiting middleware for admin panel API routes
  * Prevents abuse by limiting requests per IP address
  */
+/**
+ * Client IP that a caller cannot forge. The first x-forwarded-for entry is
+ * whatever the client sent; the platform (Vercel) appends the real peer as the
+ * LAST hop, and also sets x-real-ip itself. So prefer x-real-ip, then the last hop.
+ */
+export function getClientIp(req: NextRequest): string {
+  const real = req.headers.get('x-real-ip')?.trim()
+  if (real) return real
+  const hops = req.headers.get('x-forwarded-for')?.split(',').map(h => h.trim()).filter(Boolean)
+  return hops?.length ? hops[hops.length - 1] : 'unknown'
+}
+
 export async function rateLimit(
   req: NextRequest,
   key: string,
   limit: number,
   windowSeconds: number
 ): Promise<NextResponse | null> {
-  const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
+  const ip = getClientIp(req)
   const rateLimitKey = `rate_limit:${key}:${ip}`
 
   try {

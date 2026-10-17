@@ -7,22 +7,30 @@
  * Body:
  *   {
  *     templateId: TemplateId,
- *     context:    TemplateContext   // phone, gymName, memberName, plan, dates, amounts...
+ *     memberId:   uuid,          // member of the caller's own gym
+ *     context:    { plan, startDate, validUntil, expiryDate, daysRemaining }
  *   }
+ *
+ * The recipient phone, member name, gym name and due amount are loaded from the
+ * database, never from the request, so an owner cannot use this route to message
+ * an arbitrary number with arbitrary text.
  *
  * Response:
  *   { success: true,  messageId: string }
  *   { success: false, error: string }
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/api/withAuth'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp/sender'
-import type { TemplateId, TemplateContext } from '@/lib/whatsapp/sender'
+import type { TemplateId } from '@/lib/whatsapp/sender'
+import { formatMemberId } from '@/types'
 import { z } from 'zod'
 
 // ─── Request schema ───────────────────────────────────────────────────────────
 
+// member_app_invitation is deliberately absent: it needs a server-minted token and
+// is sent by /api/member-app/invite, never from free-text client input.
 const TEMPLATE_IDS: TemplateId[] = [
   '_gymflow_welcome_member',
   'membership_renewed',
@@ -30,76 +38,67 @@ const TEMPLATE_IDS: TemplateId[] = [
   'membership_expired',
   'payment_due_reminder',
   '_birthday_wishes',
-  'member_app_invitation',
 ]
 
 const sendSchema = z.object({
   templateId: z.enum(TEMPLATE_IDS as [TemplateId, ...TemplateId[]]),
+  memberId: z.string().uuid(),
   context: z.object({
-    phone:          z.string().min(10),
-    gymName:        z.string().min(1),
-    memberName:     z.string().min(1),
-    plan:           z.string().optional(),
-    startDate:      z.string().optional(),
-    validUntil:     z.string().optional(),
-    expiryDate:     z.string().optional(),
-    daysRemaining:  z.number().optional(),
-    dueAmount:      z.number().optional(),
-    memberId:       z.string().optional(),
-    invitationToken: z.string().optional(),
-  }),
+    plan:          z.string().max(100).optional(),
+    startDate:     z.string().max(30).optional(),
+    validUntil:    z.string().max(30).optional(),
+    expiryDate:    z.string().max(30).optional(),
+    daysRemaining: z.number().optional(),
+  }).default({}),
 })
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest) {
-  try {
-    // Auth check — must be a logged-in gym owner
-    const supabase = await createClient()
-    const { data: { user }, error: authErr } = await supabase.auth.getUser()
-    if (authErr || !user) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Parse body
-    let body: unknown
-    try { body = await req.json() } catch {
-      return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
-    }
-
-    // Validate
-    const parsed = sendSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({
-        success: false,
-        error: parsed.error.issues.map(i => i.message).join(', '),
-      }, { status: 400 })
-    }
-
-    const { templateId, context } = parsed.data
-
-    // The gym comes from the logged-in owner, never from the request body, so the gym's
-    // WhatsApp switch cannot be sidestepped by sending someone else's (or no) gym id.
-    const { data: ownGym } = await supabase
-      .from('gyms')
-      .select('id')
-      .eq('owner_id', user.id)
-      .limit(1)
-      .maybeSingle()
-    if (!ownGym) {
-      return NextResponse.json({ success: false, error: 'No gym found for this account' }, { status: 403 })
-    }
-
-    // Send
-    const result = await sendWhatsAppTemplate(templateId, { ...(context as TemplateContext), gymId: ownGym.id })
-
-    if (!result.success) {
-      return NextResponse.json({ success: false, error: result.error }, { status: result.skipped ? 403 : 502 })
-    }
-
-    return NextResponse.json({ success: true, messageId: result.messageId })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unexpected error'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+// withAuth gives CSRF, auth and the server-resolved gym; the per-owner limit caps
+// how fast one account can push messages through our WhatsApp number.
+export const POST = withAuth('WHATSAPP_SEND', async (req, { gym, supabase }) => {
+  let body: unknown
+  try { body = await req.json() } catch {
+    return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
   }
-}
+
+  const parsed = sendSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({
+      success: false,
+      error: parsed.error.issues.map(i => i.message).join(', '),
+    }, { status: 400 })
+  }
+
+  const { templateId, memberId, context } = parsed.data
+
+  // Recipient comes from the owner's own gym only (RLS + explicit gym_id filter).
+  const { data: member, error: memberErr } = await supabase
+    .from('members')
+    .select('id, name, phone, member_number, pending_amount')
+    .eq('id', memberId)
+    .eq('gym_id', gym.id)
+    .maybeSingle()
+  if (memberErr) {
+    return NextResponse.json({ success: false, error: 'Could not load member' }, { status: 500 })
+  }
+  if (!member || !member.phone || member.phone.replace(/\D/g, '').length < 10) {
+    return NextResponse.json({ success: false, error: 'Member not found or has no valid phone' }, { status: 404 })
+  }
+
+  const result = await sendWhatsAppTemplate(templateId, {
+    ...context,
+    phone:      member.phone,
+    memberName: member.name,
+    gymName:    gym.name,
+    dueAmount:  member.pending_amount > 0 ? member.pending_amount : undefined,
+    memberId:   formatMemberId(member.member_number),
+    gymId:      gym.id,
+  })
+
+  if (!result.success) {
+    return NextResponse.json({ success: false, error: result.error }, { status: result.skipped ? 403 : 502 })
+  }
+
+  return NextResponse.json({ success: true, messageId: result.messageId })
+}, { rateLimit: 20 })

@@ -99,6 +99,16 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Real release key: pass GYMFLOW_RELEASE_STORE_FILE / _STORE_PASSWORD / _KEY_ALIAS / _KEY_PASSWORD
+        // via ~/.gradle/gradle.properties (never commit them).
+        if (project.hasProperty('GYMFLOW_RELEASE_STORE_FILE')) {
+            release {
+                storeFile file(GYMFLOW_RELEASE_STORE_FILE)
+                storePassword GYMFLOW_RELEASE_STORE_PASSWORD
+                keyAlias GYMFLOW_RELEASE_KEY_ALIAS
+                keyPassword GYMFLOW_RELEASE_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
@@ -107,7 +117,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig project.hasProperty('GYMFLOW_RELEASE_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

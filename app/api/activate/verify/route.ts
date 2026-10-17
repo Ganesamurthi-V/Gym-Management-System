@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import {
+  activateRateLimitOk,
   getServiceSupabase,
   resolveInvitationToken,
   isPlaceholderEmail,
@@ -26,6 +27,10 @@ const fail = (error: string, status: number, code?: string) =>
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await activateRateLimitOk(req, 'verify', 30, '5 m'))) {
+      return fail('Too many attempts. Please wait a few minutes and try again.', 429, 'rate_limited')
+    }
+
     let body: { token: string }
     try { body = await req.json() } catch {
       return fail('Invalid request', 400)

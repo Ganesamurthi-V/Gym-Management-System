@@ -27,6 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { runDailyWhatsAppAutomation } from '@/lib/whatsapp/automation'
+import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { pingHeartbeat } from '@/lib/monitoring/heartbeat'
 
 export const dynamic = 'force-dynamic'
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
   const authHeader    = req.headers.get('authorization') ?? ''
   const cronHeader    = req.headers.get('x-cron-secret') ?? ''
   const bearerToken   = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-  const isAuthorized  = bearerToken === cronSecret || cronHeader === cronSecret
+  const isAuthorized  = timingSafeSecretEqual(bearerToken, cronSecret) || timingSafeSecretEqual(cronHeader, cronSecret)
 
   if (!isAuthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[Cron/WA] Fatal error:', message)
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Internal error' }, { status: 500 })
   }
 }
 

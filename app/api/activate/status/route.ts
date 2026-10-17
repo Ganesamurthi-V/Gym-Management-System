@@ -29,9 +29,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import {
+  activateRateLimitOk,
   getServiceSupabase,
   resolveInvitationToken,
   isMemberActivated,
+  tokenMemberId,
 } from '@/lib/member/activation-token'
 
 type State = 'waiting' | 'activated' | 'invalid' | 'expired' | 'unknown'
@@ -44,6 +46,10 @@ const json = (state: State, extra: Record<string, unknown> = {}) =>
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await activateRateLimitOk(req, 'status', 60, '5 m'))) {
+      return json('unknown', { retryAfterSeconds: 60 })
+    }
+
     let body: { token?: string; memberId?: string }
     try { body = await req.json() } catch {
       return json('invalid')
@@ -77,7 +83,9 @@ export async function POST(req: NextRequest) {
       return json('unknown')
     }
 
-    if (body.memberId) {
+    // Only honour a memberId that the supplied token itself embeds; otherwise
+    // any caller could probe the activation status of arbitrary members.
+    if (body.memberId && body.memberId === tokenMemberId(token)) {
       if (await isMemberActivated(supabase, body.memberId)) {
         return json('activated')
       }

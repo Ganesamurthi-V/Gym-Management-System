@@ -6,6 +6,7 @@ import { Redis } from '@upstash/redis'
 import { logger } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { decideAdminAuth } from '@/lib/api/adminSecret'
+import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 
 /**
  * Authorization guard for the platform-admin API routes that operate with the
@@ -189,7 +190,7 @@ export async function requireAdmin(
     return { ok: false, response: deny(503, 'Service unavailable') }
   }
 
-  if (!email || email !== adminEmail) {
+  if (!email || !timingSafeSecretEqual(email, adminEmail)) {
     // Do not reveal whether a session existed or which email it held.
     logger.warn('admin_auth_not_super_admin', { route: routeLabel })
     return { ok: false, response: deny(403, 'Forbidden') }

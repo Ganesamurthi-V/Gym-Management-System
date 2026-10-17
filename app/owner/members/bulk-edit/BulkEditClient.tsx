@@ -202,11 +202,11 @@ export function EditMembersClient({ members, gymId }: Props) {
       // Fire-and-forget — never blocks the redirect or fails the save.
       if (duesCleared.length > 0) {
         const dueDate = new Date().toISOString().slice(0, 10)
-        for (const { memberId, phone } of duesCleared) {
+        for (const { memberId } of duesCleared) {
           fetch('/api/whatsapp/automation/due-cleared', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ gymId, memberId, phone, dueDate }),
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ memberId, dueDate }),
           }).catch(() => {})
         }
       }

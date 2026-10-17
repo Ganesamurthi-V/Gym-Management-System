@@ -75,11 +75,13 @@ export const SECURITY_HEADERS: Record<string, string> = {
  * it still let anyone route Meta traffic through our domain and consume our
  * rate-limit budget.
  *
- * Enforcement is opt-in so that enabling it cannot break live WhatsApp sending:
- *   - `GRAPH_PROXY_SECRET` unset  → proxy relies on the endpoint allowlist,
- *                                   per-IP rate limit and browser rejection.
- *   - `GRAPH_PROXY_SECRET` set    → proxy REQUIRES the header, and the outbound
- *                                   WhatsApp service attaches it automatically.
+ * Enforcement:
+ *   - production, secret unset   → proxy fails closed (503) so a missing env var
+ *                                  can never leave it open to the internet.
+ *   - non-production, unset      → proxy relies on the endpoint allowlist,
+ *                                  per-IP rate limit and browser rejection.
+ *   - `GRAPH_PROXY_SECRET` set   → proxy REQUIRES the header, and the outbound
+ *                                  WhatsApp service attaches it automatically.
  *
  * The caller (`services/whatsapp/graph.ts`) and the proxy route run in the SAME
  * deployment and read the SAME env var, so setting it turns enforcement on for
@@ -87,6 +89,11 @@ export const SECURITY_HEADERS: Record<string, string> = {
  * does not.
  */
 export const GRAPH_PROXY_SECRET_HEADER = 'x-graph-proxy-secret'
+
+/** True when the proxy must refuse to run without a configured secret. */
+export function isGraphProxySecretRequired(): boolean {
+  return process.env.NODE_ENV === 'production'
+}
 
 /** The configured proxy secret, or null when the extra layer is disabled. */
 export function getGraphProxySecret(): string | null {
@@ -160,4 +167,23 @@ export function isAllowedGraphRoute(pathname: string): boolean {
 export function isAllowedEndpoint(proxyPath: string): boolean {
   const segments = proxyPath.toLowerCase().split('/')
   return ALLOWED_ENDPOINTS.some(endpoint => segments.includes(endpoint))
+}
+
+/**
+ * Request-level allowlist applied to EVERY path length.
+ *
+ * Besides the endpoint segments above, the WhatsApp service makes exactly two
+ * bare `{version}/{numeric id}` calls (phone number metadata, media lookup via GET
+ * and media delete via DELETE). Those are allowed by shape and method only; any
+ * other short path (`v21.0/me`, `v21.0`, a lone segment) is rejected.
+ */
+export function isAllowedProxyRequest(method: string, proxyPath: string): boolean {
+  if (isAllowedEndpoint(proxyPath)) return true
+  const segments = proxyPath.split('/')
+  return (
+    segments.length === 2 &&
+    /^v\d+\.\d+$/.test(segments[0]) &&
+    /^\d+$/.test(segments[1]) &&
+    (method === 'GET' || method === 'DELETE')
+  )
 }

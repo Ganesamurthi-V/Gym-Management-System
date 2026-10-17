@@ -9,6 +9,8 @@
  */
 
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
 
 export const INVITATION_EXPIRY_HOURS = 24
 
@@ -17,6 +19,43 @@ export function getServiceSupabase(): SupabaseClient {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) throw new Error('Missing service role configuration')
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+}
+
+const limiters = new Map<string, Ratelimit>()
+
+/**
+ * Per-client-IP limit for the public token endpoints. Same style as
+ * /api/activate/redeem: a throw from Upstash propagates so the route's catch
+ * answers 5xx (fail closed). Returns false when the caller is over the limit.
+ */
+export async function activateRateLimitOk(
+  req: Request,
+  name: string,
+  max: number,
+  window: `${number} m`,
+): Promise<boolean> {
+  let limiter = limiters.get(name)
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis: new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL!,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+      }),
+      limiter: Ratelimit.slidingWindow(max, window),
+      prefix: `ratelimit:activate-${name}`,
+    })
+    limiters.set(name, limiter)
+  }
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('x-real-ip')
+    ?? 'unknown'
+  const { success } = await limiter.limit(ip)
+  return success
+}
+
+/** Member id embedded in a token (not a secret), or null for legacy tokens. */
+export function tokenMemberId(token: string): string | null {
+  return parseToken(token)?.memberId ?? null
 }
 
 /** Mirrors parseInvitationToken() in the owner app. */
@@ -125,11 +164,17 @@ export async function resolveInvitationToken(
     }
   }
 
-  const memberId = authUser.user_metadata?.member_id
-  const gymId = authUser.user_metadata?.gym_id
-  if (!memberId || !gymId) return { ok: false, reason: 'incomplete' }
+  // member_id / gym_id in user_metadata are user-editable, so they are never
+  // trusted: the member row comes from the server-owned members.auth_user_id link.
+  const { data: linked, error: linkErr } = await supabase
+    .from('members')
+    .select('id, gym_id')
+    .eq('auth_user_id', authUser.id)
+    .maybeSingle()
+  if (linkErr) return { ok: false, reason: 'lookup_failed' }
+  if (!linked) return { ok: false, reason: 'incomplete' }
 
-  return { ok: true, authUser, memberId, gymId }
+  return { ok: true, authUser, memberId: linked.id, gymId: linked.gym_id }
 }
 
 /**

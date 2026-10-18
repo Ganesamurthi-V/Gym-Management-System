@@ -1,5 +1,3 @@
-const path = require('path')
-
 /** @type {import('next').NextConfig} */
 
 // Issue 12 fix: Added full Content Security Policy and HSTS headers.
@@ -31,7 +29,12 @@ const adminSecurityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
-  outputFileTracingRoot: path.join(__dirname, '../'),
+  // Next 16 builds with Turbopack, which inferred the workspace root from the parent
+  // package-lock.json and then compiled the owner app's instrumentation.ts and
+  // sentry.*.config.ts. Those need @sentry/nextjs, which the admin Vercel project never
+  // installs, so the deploy failed. The admin app imports nothing outside this folder.
+  turbopack: { root: __dirname },
+  outputFileTracingRoot: __dirname,
   async headers() {
     return [{ source: '/(.*)', headers: adminSecurityHeaders }]
   },

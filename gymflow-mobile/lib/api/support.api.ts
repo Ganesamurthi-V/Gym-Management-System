@@ -68,6 +68,18 @@ export async function resolveTicket(data: {
   }
 }
 
+/** Suggested reply for the resolve form. Nothing is sent or stored; the admin edits it first. */
+export async function draftTicketReply(ticketId: string): Promise<{ subject: string; body: string; needsHuman: boolean }> {
+  try {
+    const { data } = await apiClient.post<{ subject: string; body: string; needsHuman: boolean }>(
+      `/api/support/tickets/${ticketId}/draft`,
+    );
+    return data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+}
+
 export async function clearTickets(ticketId?: string): Promise<void> {
   try {
     await apiClient.post('/api/support/tickets/clear', {

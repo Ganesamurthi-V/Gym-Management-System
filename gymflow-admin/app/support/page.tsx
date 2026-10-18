@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2, Wifi, WifiOff, Star } from 'lucide-react'
+import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2, Wifi, WifiOff, Star, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation'
 
@@ -57,6 +57,8 @@ export default function SupportPage() {
   const [replySubject, setReplySubject] = useState('')
   const [replyMessage, setReplyMessage] = useState('')
   const [resolving, setResolving] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+  const [needsHuman, setNeedsHuman] = useState(false)
 
   useEffect(() => {
     fetch('/api/gyms')
@@ -134,7 +136,26 @@ export default function SupportPage() {
   function openResolveModal(ticket: Ticket) {
     setReplySubject(`Re: ${ticket.subject}`)
     setReplyMessage(`Your issue regarding "${ticket.subject}" has been resolved. Let us know if you need any further assistance.`)
+    setNeedsHuman(false)
     setResolvingTicket(ticket)
+  }
+
+  // Fills the form only; the admin edits and sends through the normal resolve flow.
+  async function handleAiDraft() {
+    if (!resolvingTicket) return
+    setDrafting(true)
+    try {
+      const res = await fetch(`/api/support/tickets/${resolvingTicket.id}/draft`, { method: 'POST' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Failed to write a draft')
+      setReplySubject(data.subject)
+      setReplyMessage(data.body)
+      setNeedsHuman(data.needsHuman === true)
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to write a draft')
+    } finally {
+      setDrafting(false)
+    }
   }
 
   async function submitResolve(e: React.FormEvent) {
@@ -425,6 +446,20 @@ export default function SupportPage() {
               <p className="text-sm text-slate-400 mt-1">Send a confirmation message to {resolvingTicket.gyms?.name}</p>
             </div>
             <form onSubmit={submitResolve} className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleAiDraft}
+                  disabled={drafting || resolving}
+                  className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  {drafting ? 'Writing...' : 'AI draft'}
+                </button>
+                {needsHuman && (
+                  <span className="text-xs text-amber-400">Needs a personal reply: review before sending</span>
+                )}
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                   Reply Subject

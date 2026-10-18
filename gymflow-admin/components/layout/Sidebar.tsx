@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Building2, ScrollText, Bug,
-  HeadphonesIcon, LogOut, Shield, ChevronRight, CreditCard
+  HeadphonesIcon, LogOut, ChevronRight, CreditCard
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -58,9 +58,8 @@ export default function Sidebar() {
     <aside className="fixed inset-y-0 left-0 w-60 bg-[#0d1424] border-r border-[#1f2937] flex flex-col z-30">
       {/* Logo */}
       <div className="h-16 flex items-center gap-3 px-5 border-b border-[#1f2937]">
-        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <Shield className="w-4 h-4 text-white" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/favicon-192.png" alt="GymFlow" width={32} height={32} className="w-8 h-8 rounded-full" />
         <div>
           <p className="text-sm font-bold text-white leading-none">GymFlow</p>
           <p className="text-[10px] text-indigo-400 font-medium uppercase tracking-widest mt-0.5">Super Admin</p>

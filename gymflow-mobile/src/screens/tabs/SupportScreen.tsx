@@ -15,7 +15,7 @@ import {
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import {
-  fetchGyms, fetchTickets, sendSupportMessage, resolveTicket, clearTickets,
+  fetchGyms, fetchTickets, sendSupportMessage, resolveTicket, clearTickets, draftTicketReply,
   type Gym, type SupportTicket,
 } from '@/lib/api';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
@@ -175,6 +175,8 @@ function TicketsTab() {
   const [replySubject, setReplySubject] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [resolving, setResolving] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [needsHuman, setNeedsHuman] = useState(false);
 
   /*
     This tab was the worst offender of the set. Its loader ran `else setLoading(true)`
@@ -202,7 +204,23 @@ function TicketsTab() {
   function openResolve(ticket: SupportTicket) {
     setReplySubject(`Re: ${ticket.subject}`);
     setReplyMessage(`Your issue regarding "${ticket.subject}" has been resolved. Let us know if you need any further assistance.`);
+    setNeedsHuman(false);
     setResolvingTicket(ticket);
+  }
+
+  async function handleAiDraft() {
+    if (!resolvingTicket) return;
+    setDrafting(true);
+    try {
+      const draft = await draftTicketReply(resolvingTicket.id);
+      setReplySubject(draft.subject);
+      setReplyMessage(draft.body);
+      setNeedsHuman(draft.needsHuman);
+    } catch (e) {
+      Alert.alert('AI draft failed', e instanceof Error ? e.message : 'Could not write a draft');
+    } finally {
+      setDrafting(false);
+    }
   }
 
   async function submitResolve() {
@@ -281,6 +299,20 @@ function TicketsTab() {
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Resolve Ticket</Text>
             <Text style={styles.modalSub}>Send a confirmation message to {resolvingTicket?.gyms?.name}</Text>
+
+            <TouchableOpacity
+              style={styles.aiDraftBtn}
+              onPress={handleAiDraft}
+              disabled={drafting || resolving}
+            >
+              {drafting
+                ? <ActivityIndicator size="small" color={Colors.indigo} />
+                : <Feather name="zap" size={13} color={Colors.indigo} />}
+              <Text style={styles.aiDraftBtnText}>{drafting ? 'Writing...' : 'AI draft'}</Text>
+            </TouchableOpacity>
+            {needsHuman && (
+              <Text style={styles.needsHumanText}>Needs a personal reply: review before sending</Text>
+            )}
 
             <AdminInput label="Reply Subject" value={replySubject} onChangeText={setReplySubject} containerStyle={styles.field} />
 
@@ -386,6 +418,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end', margin: Spacing.md,
     paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.sm,
   },
+  aiDraftBtn: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: Spacing.xs,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full,
+    borderWidth: 1, borderColor: Colors.indigoBorder, backgroundColor: Colors.indigoBg,
+  },
+  aiDraftBtnText: { fontSize: 12, fontWeight: '700', color: Colors.indigo },
+  needsHumanText: { fontSize: 12, color: Colors.amber },
   clearBtnText: { fontSize: 12, color: Colors.textMuted },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl },
   emptyState: { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl * 2, gap: Spacing.md },

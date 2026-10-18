@@ -51,9 +51,8 @@ export default function AuthPage() {
       <div className="relative w-full max-w-sm animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-500/30">
-            <Shield className="w-7 h-7 text-white" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/favicon-192.png" alt="GymFlow" width={56} height={56} className="w-14 h-14 rounded-full mx-auto mb-4 shadow-xl shadow-indigo-500/30" />
           <h1 className="text-2xl font-bold text-white">GymFlow Admin</h1>
           <p className="text-slate-500 text-sm mt-1">Super Admin Panel — Restricted Access</p>
         </div>

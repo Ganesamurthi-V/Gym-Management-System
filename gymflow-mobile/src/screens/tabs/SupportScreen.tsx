@@ -83,7 +83,7 @@ function SendMessageTab() {
   }
 
   return (
-    <KeyboardSafeView style={{ flex: 1 }}>
+    <KeyboardSafeView style={styles.flex1}>
       <ScrollView
         style={styles.tabContent}
         contentContainerStyle={styles.tabContentInner}
@@ -329,6 +329,7 @@ export default function SupportScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex1: { flex: 1 },
   root: { flex: 1, backgroundColor: Colors.bg },
   tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard },
   tabBtn: {

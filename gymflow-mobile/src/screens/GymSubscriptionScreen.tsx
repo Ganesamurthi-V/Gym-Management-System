@@ -251,6 +251,21 @@ function ConfirmDialog({
   );
 }
 
+// One-off style values shared by components in this file.
+const lintStyles = StyleSheet.create({
+  dim60: { opacity: 0.6 },
+  dim45: { opacity: 0.45 },
+  mb16: { marginBottom: 16 },
+  mb4: { marginBottom: 4 },
+  py16: { paddingVertical: 16 },
+  pb160: { paddingBottom: 160 },
+  flex1: { flex: 1 },
+  mlAuto: { marginLeft: 'auto' },
+  divider: { height: 1, backgroundColor: D.cardBorder, marginVertical: 6 },
+  mono: { fontFamily: 'Courier', fontSize: 11 },
+  editIcon: { alignSelf: 'flex-start', marginTop: 2 },
+});
+
 const dialogStyles = StyleSheet.create({
   overlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.8)',
@@ -354,7 +369,7 @@ function StickyBottomBar({ visible, saving, onSave, onCancel }: {
       <TouchableOpacity style={stickyStyles.cancelBtn} onPress={onCancel} disabled={saving}>
         <Text style={stickyStyles.cancelText}>Discard</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[stickyStyles.saveBtn, saving && { opacity: 0.6 }]} onPress={onSave} disabled={saving}>
+      <TouchableOpacity style={[stickyStyles.saveBtn, saving && lintStyles.dim60]} onPress={onSave} disabled={saving}>
         {saving
           ? <ActivityIndicator size="small" color="#fff" />
           : <><Feather name="save" size={14} color="#fff" /><Text style={stickyStyles.saveText}>Save Changes</Text></>
@@ -414,7 +429,7 @@ function TimelineItem({ log, isLast }: { log: AuditLog; isLast: boolean }) {
         <View style={timelineStyles.dot} />
         {!isLast && <View style={timelineStyles.line} />}
       </View>
-      <View style={[timelineStyles.content, !isLast && { marginBottom: 16 }]}>
+      <View style={[timelineStyles.content, !isLast && lintStyles.mb16]}>
         <Text style={timelineStyles.action}>{log.action}</Text>
         <Text style={timelineStyles.meta}>{fmtDateTime(log.created_at)} · {log.performed_by}</Text>
         {log.notes ? <Text style={timelineStyles.notes}>{log.notes}</Text> : null}
@@ -452,7 +467,7 @@ const timelineStyles = StyleSheet.create({
 // ─── Divider ───────────────────────────────────────────────────────────────────
 
 function Divider() {
-  return <View style={{ height: 1, backgroundColor: D.cardBorder, marginVertical: 6 }} />;
+  return <View style={lintStyles.divider} />;
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
@@ -461,7 +476,7 @@ function InfoRow({ label, value, mono = false }: { label: string; value: string;
   return (
     <View style={infoRowStyles.row}>
       <Text style={infoRowStyles.label}>{label}</Text>
-      <Text style={[infoRowStyles.value, mono && { fontFamily: 'Courier', fontSize: 11 }]} numberOfLines={2}>{value}</Text>
+      <Text style={[infoRowStyles.value, mono && lintStyles.mono]} numberOfLines={2}>{value}</Text>
     </View>
   );
 }
@@ -488,14 +503,14 @@ type QuickActionConfig = {
 function QuickActionBtn({ icon, label, bg, border, textColor, onPress, disabled }: QuickActionConfig) {
   return (
     <TouchableOpacity
-      style={[qaStyles.btn, { backgroundColor: bg, borderColor: border }, disabled && { opacity: 0.45 }]}
+      style={[qaStyles.btn, { backgroundColor: bg, borderColor: border }, disabled && lintStyles.dim45]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.75}
     >
       <Feather name={icon as any} size={18} color={textColor} />
       <Text style={[qaStyles.text, { color: textColor }]}>{label}</Text>
-      <Feather name="chevron-right" size={14} color={textColor + 'aa'} style={{ marginLeft: 'auto' }} />
+      <Feather name="chevron-right" size={14} color={textColor + 'aa'} style={lintStyles.mlAuto} />
     </TouchableOpacity>
   );
 }
@@ -896,7 +911,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       {activeTab === 'overview' && (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, { paddingBottom: 160 }]}
+          contentContainerStyle={[styles.content, lintStyles.pb160]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={D.indigo} />}
         >
           {/* ── GYM INFORMATION CARD ── */}
@@ -915,7 +930,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
               </View>
 
               {/* Name + status */}
-              <View style={{ flex: 1 }}>
+              <View style={lintStyles.flex1}>
                 <Text style={styles.gymName}>{gym.name}</Text>
                 {gym.city && <Text style={styles.gymCity}>📍 {gym.city}</Text>}
                 {/* Active / Banned badge */}
@@ -934,7 +949,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
               <View style={styles.contactIconBox}>
                 <Feather name="user" size={14} color={D.textSub} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={lintStyles.flex1}>
                 <Text style={styles.contactLabel}>Owner</Text>
                 <Text style={styles.contactValue} numberOfLines={1}>{owner?.email || gym.owner_id}</Text>
               </View>
@@ -945,7 +960,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
               <View style={styles.contactIconBox}>
                 <Feather name="phone" size={14} color={D.textSub} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={lintStyles.flex1}>
                 <Text style={styles.contactLabel}>Phone</Text>
                 <Text style={styles.contactValue}>{gym.phone || owner?.phone || '—'}</Text>
               </View>
@@ -974,12 +989,12 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             {/* Date grid with calendar icons */}
             <View style={styles.dateGrid}>
               <View style={styles.dateCell}>
-                <Feather name="calendar" size={14} color={D.textMuted} style={{ marginBottom: 4 }} />
+                <Feather name="calendar" size={14} color={D.textMuted} style={lintStyles.mb4} />
                 <Text style={styles.dateCellLabel}>Started On</Text>
                 <Text style={styles.dateCellValue}>{fmtDate(gym.subscription_started_at || gym.trial_started_at)}</Text>
               </View>
               <View style={styles.dateCell}>
-                <Feather name="calendar" size={14} color={D.textMuted} style={{ marginBottom: 4 }} />
+                <Feather name="calendar" size={14} color={D.textMuted} style={lintStyles.mb4} />
                 <Text style={styles.dateCellLabel}>Expires On</Text>
                 <Text style={styles.dateCellValue}>
                   {gym.plan_type === 'lifetime' ? 'Never' : fmtDate(gym.subscription_ends_at || gym.trial_ends_at)}
@@ -1160,7 +1175,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             </View>
 
             {feedbackLoading ? (
-              <ActivityIndicator color={D.indigo} size="small" style={{ paddingVertical: 16 }} />
+              <ActivityIndicator color={D.indigo} size="small" style={lintStyles.py16} />
             ) : feedback.length === 0 ? (
               <Text style={styles.emptyText}>No feedback submitted by this gym yet.</Text>
             ) : (
@@ -1190,7 +1205,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
       {/* ─── BILLING TAB ────────────────────────────────────────────── */}
       {activeTab === 'billing' && (
-        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={D.indigo} />}>
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, lintStyles.pb160]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={D.indigo} />}>
           <View style={styles.card}>
             <View style={styles.sectionHeaderRow}>
               <Feather name="dollar-sign" size={13} color={D.emerald} />
@@ -1244,7 +1259,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
       {/* ─── HISTORY TAB ────────────────────────────────────────────── */}
       {activeTab === 'history' && (
-        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={D.indigo} />}>
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, lintStyles.pb160]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={D.indigo} />}>
           <View style={styles.card}>
             <View style={styles.sectionHeaderRow}>
               <Feather name="repeat" size={13} color={D.sky} />
@@ -1259,7 +1274,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                     <View style={[styles.renewalPlanBadge]}>
                       <Text style={styles.renewalPlanText}>{log.new_plan?.toUpperCase()}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={lintStyles.flex1}>
                       <Text style={styles.renewalDates}>
                         {fmtDate(log.created_at)}{log.new_expiry ? ` → ${fmtDate(log.new_expiry)}` : ''}
                       </Text>
@@ -1291,7 +1306,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
       {/* ─── LOGS TAB ────────────────────────────────────────────── */}
       {activeTab === 'logs' && (
-        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]}
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, lintStyles.pb160]}
           refreshControl={<RefreshControl refreshing={logsRefreshing} onRefresh={() => loadActivityLogs(true)} tintColor={D.indigo} />}>
           <View style={styles.card}>
             <View style={styles.sectionHeaderRow}>
@@ -1339,7 +1354,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                       </View>
                       {!isLast && <View style={logsStyles.connector} />}
                     </View>
-                    <View style={[logsStyles.content, !isLast && { marginBottom: 16 }]}>
+                    <View style={[logsStyles.content, !isLast && lintStyles.mb16]}>
                       <View style={logsStyles.titleRow}>
                         <Text style={logsStyles.title} numberOfLines={1}>{event.title}</Text>
                         <Text style={logsStyles.time}>{fmtDateTime(event.timestamp)}</Text>
@@ -1385,7 +1400,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
       {/* ─── SETTINGS TAB ────────────────────────────────────────────── */}
       {activeTab === 'settings' && (
-        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: 160 }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={D.indigo} />}>
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, lintStyles.pb160]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={D.indigo} />}>
           <View style={styles.card}>
             <View style={styles.sectionHeaderRow}>
               <Feather name="edit-3" size={13} color={D.purple} />
@@ -1402,7 +1417,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             ) : (
               <TouchableOpacity style={styles.notesDisplay} onPress={() => setEditingNotes(true)}>
                 <Text style={adminNotes ? styles.notesText : styles.notesEmpty}>{adminNotes || 'Tap to add notes about this customer...'}</Text>
-                <Feather name="edit-2" size={14} color={D.textMuted} style={{ alignSelf: 'flex-start', marginTop: 2 }} />
+                <Feather name="edit-2" size={14} color={D.textMuted} style={lintStyles.editIcon} />
               </TouchableOpacity>
             )}
           </View>

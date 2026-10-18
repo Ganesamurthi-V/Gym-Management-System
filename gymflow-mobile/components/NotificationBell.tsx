@@ -35,7 +35,7 @@ function useUnreadCount() {
 
   useEffect(() => {
     // Adopt any value from a previous run, then correct it from the network.
-    void hydrate(key).finally(() => { void refresh(); });
+    hydrate(key).finally(() => { refresh(); });
   }, [key, refresh]);
 
   return { data, refresh };

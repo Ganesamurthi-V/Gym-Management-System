@@ -59,14 +59,14 @@ export function useRealtimeInvalidation({
         if (cancelled || retryCountRef.current >= 4) return;
         const retryDelay = Math.min(30_000, 1_000 * (2 ** retryCountRef.current));
         retryCountRef.current += 1;
-        timerRef.current = setTimeout(() => { void invoke(); }, retryDelay);
+        timerRef.current = setTimeout(() => { invoke(); }, retryDelay);
       }
     };
 
     const schedule = () => {
       if (cancelled || timerRef.current) return;
       retryCountRef.current = 0;
-      timerRef.current = setTimeout(() => { void invoke(); }, debounceMs);
+      timerRef.current = setTimeout(() => { invoke(); }, debounceMs);
     };
 
     const channel = supabase
@@ -93,7 +93,7 @@ export function useRealtimeInvalidation({
       appStateSubscription.remove();
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = null;
-      void supabase.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, [channelName, debounceMs, enabled, refetchOnSubscribe]);
 

@@ -62,7 +62,7 @@ apiClient.interceptors.response.use(
     // A 401 on any call except the login itself means the stored token is
     // expired or revoked: drop it and send the user back to login.
     if (axios.isAxiosError(error) && error.response?.status === 401 && error.config?.url !== '/api/auth') {
-      void expireSession();
+      expireSession();
     }
 
     return Promise.reject(error);

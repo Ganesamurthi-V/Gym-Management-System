@@ -56,7 +56,7 @@ export function useCachedQuery<T>({ key, fetcher, ttlMs = 30_000, enabled = true
   useEffect(() => {
     if (!enabled) return;
     if (peek<T>(key)) return;
-    void hydrate(key);
+    hydrate(key);
   }, [key, enabled]);
 
   const run = useCallback(async (force: boolean) => {
@@ -76,7 +76,7 @@ export function useCachedQuery<T>({ key, fetcher, ttlMs = 30_000, enabled = true
   }, [key, ttlMs, enabled]);
 
   // Revalidate on focus, subject to the TTL. Cheap when warm, correct when stale.
-  useFocusEffect(useCallback(() => { void run(false); }, [run]));
+  useFocusEffect(useCallback(() => { run(false); }, [run]));
 
   const refresh = useCallback(() => run(true), [run]);
 

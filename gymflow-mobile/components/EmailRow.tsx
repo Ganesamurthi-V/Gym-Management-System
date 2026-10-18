@@ -23,6 +23,7 @@ const AVATAR_COLORS = ['#ef4444', '#f97316', '#d97706', '#16a34a', '#0d9488', '#
 
 export function avatarColor(seed: string): string {
   let h = 0;
+  // eslint-disable-next-line no-bitwise -- int32 wrap keeps the hash (and so each sender colour) stable
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }

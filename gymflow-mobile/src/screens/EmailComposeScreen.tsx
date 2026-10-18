@@ -141,7 +141,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
       // A cache copy has a plain file:// path, which is what the upload reads.
       const copies = picked.length
         ? await keepLocalCopy({
-            files: picked.map(p => ({ uri: p.uri, fileName: p.name ?? 'attachment' })) as [{ uri: string; fileName: string }, ...{ uri: string; fileName: string }[]],
+            files: picked.map(f => ({ uri: f.uri, fileName: f.name ?? 'attachment' })) as [{ uri: string; fileName: string }, ...{ uri: string; fileName: string }[]],
             destination: 'cachesDirectory',
           })
         : [];
@@ -177,7 +177,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
         await replyToEmailThread(threadId!, body.trim(), retryMessageId, files);
       }
       sentRef.current = true;
-      void refreshEmailInbox();
+      refreshEmailInbox();
       navigation.goBack();
     } catch (e: any) {
       // The text and files stay on screen, so nothing is lost and Send can simply be pressed again.
@@ -190,12 +190,13 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
   useEffect(() => {
     navigation.setOptions({
       headerTitle: isNew ? 'New message' : 'Reply',
+      // eslint-disable-next-line react/no-unstable-nested-components -- navigation header options must be rebuilt with live state (sending/canSend)
       headerRight: () => (
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => { void attach(); }} hitSlop={10} accessibilityLabel="Attach files" disabled={sending}>
+          <TouchableOpacity onPress={() => { attach(); }} hitSlop={10} accessibilityLabel="Attach files" disabled={sending}>
             <Feather name="paperclip" size={21} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { void send(); }} hitSlop={10} accessibilityLabel="Send" disabled={!canSend}>
+          <TouchableOpacity onPress={() => { send(); }} hitSlop={10} accessibilityLabel="Send" disabled={!canSend}>
             {sending
               ? <ActivityIndicator size="small" color={Colors.indigo} />
               : <Feather name="send" size={21} color={canSend ? Colors.indigo : Colors.textMuted} />}
@@ -351,7 +352,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
           accessibilityState={{ selected: preview }}
         >
           <Feather name={preview ? 'edit-3' : 'eye'} size={14} color={preview ? '#fff' : Colors.textSecondary} />
-          <Text style={[styles.previewText, preview && { color: '#fff' }]}>{preview ? 'Edit' : 'Preview'}</Text>
+          <Text style={[styles.previewText, preview && styles.previewTextActive]}>{preview ? 'Edit' : 'Preview'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -431,8 +432,8 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
                 <Text style={styles.dialogCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => { void runAi(); }}
-                style={[styles.aiWrite, (aiText.trim().length < 3 || aiBusy) && { opacity: 0.45 }]}
+                onPress={() => { runAi(); }}
+                style={[styles.aiWrite, (aiText.trim().length < 3 || aiBusy) && styles.dim45]}
                 disabled={aiText.trim().length < 3 || aiBusy}
                 accessibilityRole="button"
               >
@@ -483,7 +484,7 @@ function ContactPicker({
     return () => clearTimeout(t);
   }, [query, open]);
 
-  const pick = (c: EmailContact) => {
+  const choose = (c: EmailContact) => {
     onChange(c);
     setOpen(false);
     setQuery('');
@@ -494,7 +495,7 @@ function ContactPicker({
   const typed = query.trim().toLowerCase();
   const typedIsEmail = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(typed);
   const typedKnown = results.some(r => r.email === typed);
-  const chooseTyped = () => pick({ email: typed, name: null, gymName: null, lastAt: '' });
+  const chooseTyped = () => choose({ email: typed, name: null, gymName: null, lastAt: '' });
 
   if (value) {
     const name = value.name || value.email;
@@ -561,7 +562,7 @@ function ContactPicker({
             )
           ) : (
             results.map(c => (
-              <TouchableOpacity key={c.email} style={styles.option} onPress={() => pick(c)} activeOpacity={0.7}>
+              <TouchableOpacity key={c.email} style={styles.option} onPress={() => choose(c)} activeOpacity={0.7}>
                 <Avatar name={c.name || c.email} seed={c.email} size={34} />
                 <View style={styles.optionText}>
                   <Text style={styles.optionName} numberOfLines={1}>{c.name || c.email}</Text>
@@ -585,7 +586,7 @@ function ContactPicker({
 function ToolButton({ icon, label, onPress, disabled }: { icon: string; label: string; onPress: () => void; disabled?: boolean }) {
   return (
     <TouchableOpacity
-      style={[styles.tool, disabled && { opacity: 0.35 }]}
+      style={[styles.tool, disabled && styles.dim35]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.6}
@@ -671,6 +672,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.bgCardBorder,
   },
   previewBtnOn: { backgroundColor: Colors.indigo, borderColor: Colors.indigo },
+  previewTextActive: { color: '#fff' },
+  dim45: { opacity: 0.45 },
+  dim35: { opacity: 0.35 },
   previewText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Spacing.xl },

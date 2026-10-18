@@ -89,7 +89,7 @@ export default function NotificationsScreen({ navigation }: Props) {
     }
     deleteNotification(n.id).catch(e => {
       Alert.alert('Could not delete', e?.message ?? 'Please try again.');
-      void refresh();
+      refresh();
     });
   }, [refresh]);
 
@@ -106,7 +106,7 @@ export default function NotificationsScreen({ navigation }: Props) {
             write<NotificationsResponse>(CacheKeys.notifications, { notifications: [], unread: 0 });
             deleteAllNotifications().catch(e => {
               Alert.alert('Could not delete', e?.message ?? 'Please try again.');
-              void refresh();
+              refresh();
             });
           },
         },

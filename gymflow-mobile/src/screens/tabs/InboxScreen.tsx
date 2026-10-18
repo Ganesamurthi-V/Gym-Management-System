@@ -86,7 +86,7 @@ export default function InboxScreen({ navigation }: Props) {
     invalidate(CacheKeys.emailThread(t.id));
     deleteEmailThread(t.id).catch(e => {
       Alert.alert('Could not delete', e?.message ?? 'Please try again.');
-      void current.refresh();
+      current.refresh();
     });
   }, [status, current]);
 
@@ -106,10 +106,10 @@ export default function InboxScreen({ navigation }: Props) {
     }
     setExtra(prev => prev.filter(x => x.id !== t.id));
     setEmailThreadStatus(t.id, target)
-      .then(() => { invalidate(CacheKeys.emailThreads(target)); void refreshEmailInbox(); })
+      .then(() => { invalidate(CacheKeys.emailThreads(target)); refreshEmailInbox(); })
       .catch(e => {
         Alert.alert('Could not move', e?.message ?? 'Please try again.');
-        void current.refresh();
+        current.refresh();
       });
   }, [status, current]);
 
@@ -133,7 +133,7 @@ export default function InboxScreen({ navigation }: Props) {
             setCursor(null);
             deleteAllEmailThreads(status).catch(e => {
               Alert.alert('Could not delete', e?.message ?? 'Please try again.');
-              void current.refresh();
+              current.refresh();
             });
           },
         },

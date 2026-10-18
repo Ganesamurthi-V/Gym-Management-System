@@ -20,7 +20,7 @@ export function FormattedText({ markup, style }: { markup: string; style?: TextS
             {b.runs.map((r, j) => (
               <Text
                 key={j}
-                onPress={r.href ? () => { void Linking.openURL(r.href as string); } : undefined}
+                onPress={r.href ? () => { Linking.openURL(r.href as string); } : undefined}
                 style={[
                   r.bold && styles.bold,
                   r.italic && styles.italic,

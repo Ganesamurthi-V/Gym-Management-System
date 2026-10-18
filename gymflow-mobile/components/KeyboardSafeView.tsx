@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, View, type KeyboardEvent, type ViewProps } from 'react-native';
+import { Keyboard, Platform, StyleSheet, View, type KeyboardEvent, type ViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = ViewProps & {
@@ -52,8 +52,12 @@ export function KeyboardSafeView({ children, style, safeBottom = false, ...rest 
   // One view, with the caller's layout (a centred dialog, a bottom sheet) kept as given: the
   // padding goes on the same view, and padding never changes the frame that is measured.
   return (
-    <View ref={ref} collapsable={false} style={[{ flex: 1 }, style, { paddingBottom }]} {...rest}>
+    <View ref={ref} collapsable={false} style={[styles.flex, style, { paddingBottom }]} {...rest}>
       {children}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+});

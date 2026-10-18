@@ -204,7 +204,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
   // waiting for a manual refresh.
   useEffect(() => {
     if (thread?.ai_draft_status !== 'queued') return;
-    const t = setTimeout(() => { void refresh(); }, 9_000);
+    const t = setTimeout(() => { refresh(); }, 9_000);
     return () => clearTimeout(t);
   }, [thread?.ai_draft_status, refresh]);
 
@@ -236,6 +236,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     const archived = thread.status === 'archived';
     navigation.setOptions({
       headerTitle: '',
+      // eslint-disable-next-line react/no-unstable-nested-components -- navigation header options must be rebuilt with live thread state
       headerRight: () => (
         <View style={styles.headerActions}>
           {thread.gym_id ? (
@@ -251,7 +252,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
             onPress={async () => {
               try {
                 await setEmailThreadStatus(thread.id, archived ? 'open' : 'archived');
-                void refreshEmailInbox();
+                refreshEmailInbox();
                 if (!archived) navigation.goBack();
                 else await refresh();
               } catch (e: any) {
@@ -275,7 +276,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     try {
       await setEmailThreadStatus(thread.id, archived ? 'open' : 'archived');
       invalidate(CacheKeys.emailThreads(archived ? 'archived' : 'open'));
-      void refreshEmailInbox();
+      refreshEmailInbox();
       if (!archived) navigation.goBack();
       else await refresh();
     } catch (e: any) {
@@ -293,10 +294,10 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
     if (cur && remaining.length === 0) navigation.goBack();
 
     deleteEmailMessage(messageId)
-      .then(() => { invalidate(CacheKeys.emailThreads('archived')); void refreshEmailInbox(); })
+      .then(() => { invalidate(CacheKeys.emailThreads('archived')); refreshEmailInbox(); })
       .catch(e => {
         Alert.alert('Could not delete', e?.message ?? 'Please try again.');
-        void refresh();
+        refresh();
       });
   }, [threadId, navigation, refresh]);
 
@@ -338,7 +339,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
       <View style={[styles.root, styles.center]}>
         <Feather name="mail" size={32} color={Colors.bgCardBorder} />
         <Text style={styles.emptyText}>{error ?? 'This conversation could not be loaded.'}</Text>
-        <TouchableOpacity onPress={() => { void refresh(); }} style={styles.retryBtn} activeOpacity={0.8}>
+        <TouchableOpacity onPress={() => { refresh(); }} style={styles.retryBtn} activeOpacity={0.8}>
           <Text style={styles.retryBtnText}>Try again</Text>
         </TouchableOpacity>
       </View>
@@ -376,7 +377,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
             leftMode="action"
             radius={0}
             onDelete={() => swipeDelete(item.id)}
-            onSwipeLeft={() => { void swipeArchive(); }}
+            onSwipeLeft={() => { swipeArchive(); }}
             leftLabel={thread?.status === 'archived' ? 'Move to inbox' : 'Archive'}
             leftIcon={thread?.status === 'archived' ? 'inbox' : 'archive'}
           >
@@ -411,10 +412,10 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
             >
               <Text style={styles.aiUseText}>Use draft</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { void regenerate(); }} disabled={drafting} hitSlop={8} accessibilityRole="button">
+            <TouchableOpacity onPress={() => { regenerate(); }} disabled={drafting} hitSlop={8} accessibilityRole="button">
               {drafting ? <ActivityIndicator size="small" color={Colors.textSecondary} /> : <Text style={styles.aiLink}>Regenerate</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { void dismissDraft(); }} hitSlop={8} accessibilityRole="button">
+            <TouchableOpacity onPress={() => { dismissDraft(); }} hitSlop={8} accessibilityRole="button">
               <Text style={styles.aiLink}>Dismiss</Text>
             </TouchableOpacity>
           </View>
@@ -427,7 +428,7 @@ export default function EmailThreadScreen({ route, navigation }: Props) {
         </View>
       )}
       {thread && !thread.ai_draft && (thread.ai_draft_status === 'failed' || thread.ai_draft_status === 'skipped') && (
-        <TouchableOpacity style={styles.aiNote} onPress={() => { void regenerate(); }} disabled={drafting} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.aiNote} onPress={() => { regenerate(); }} disabled={drafting} activeOpacity={0.8}>
           <Feather name="cpu" size={13} color={Colors.textMuted} />
           <Text style={styles.aiNoteText}>
             {thread.ai_draft_status === 'skipped' ? "Today's AI draft limit was reached. Tap to try again." : 'No draft could be written. Tap to try again.'}

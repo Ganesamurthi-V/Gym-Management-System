@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { isAuthenticated, clearToken, setSessionExpiredHandler } from '@/lib/auth';
@@ -47,7 +47,7 @@ function LogoutButton({ onLogout }: { onLogout: () => void }) {
   return (
     <TouchableOpacity
       onPress={confirmLogout}
-      style={{ marginRight: 16, padding: 4 }}
+      style={styles.logoutBtn}
       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       accessibilityRole="button"
       accessibilityLabel="Sign out"
@@ -56,6 +56,28 @@ function LogoutButton({ onLogout }: { onLogout: () => void }) {
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  logoutBtn: { marginRight: 16, padding: 4 },
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  splash: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
+});
+
+// Built outside TabNavigator so the icon/header components are not defined during render.
+const tabIcon = (name: string) =>
+  function TabIcon({ color, size }: { color: string; size: number }) {
+    return <Feather name={name} size={size} color={color} />;
+  };
+
+const makeHeaderRight = (onLogout: () => void) =>
+  function HeaderRight() {
+    return (
+      <View style={styles.headerRight}>
+        <NotificationBell onPress={() => navigationRef.navigate('Notifications')} />
+        <LogoutButton onLogout={onLogout} />
+      </View>
+    );
+  };
 
 function TabNavigator({ onLogout }: { onLogout: () => void }) {
   const insets = useSafeAreaInsets();
@@ -88,33 +110,28 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         headerShadowVisible: false,
         headerTintColor: Colors.textPrimary,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
-        headerRight: () => (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <NotificationBell onPress={() => navigationRef.navigate('Notifications')} />
-            <LogoutButton onLogout={onLogout} />
-          </View>
-        ),
+        headerRight: makeHeaderRight(onLogout),
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="grid" size={size} color={color} />,
+          tabBarIcon: tabIcon('grid'),
         }}
       />
       <Tab.Screen
         name="Gyms"
         component={GymsScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="activity" size={size} color={color} />,
+          tabBarIcon: tabIcon('activity'),
         }}
       />
       <Tab.Screen
         name="Support"
         component={SupportScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="headphones" size={size} color={color} />,
+          tabBarIcon: tabIcon('headphones'),
         }}
       />
       <Tab.Screen
@@ -123,7 +140,7 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         options={{
           tabBarBadge: unreadMail > 0 ? (unreadMail > 99 ? '99+' : unreadMail) : undefined,
           tabBarBadgeStyle: { backgroundColor: Colors.indigo, color: '#fff', fontSize: 10 },
-          tabBarIcon: ({ color, size }) => <Feather name="mail" size={size} color={color} />,
+          tabBarIcon: tabIcon('mail'),
         }}
       />
       <Tab.Screen
@@ -132,7 +149,7 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         options={{
           title: 'Event Logs',
           tabBarLabel: 'Logs',
-          tabBarIcon: ({ color, size }) => <Feather name="file-text" size={size} color={color} />,
+          tabBarIcon: tabIcon('file-text'),
         }}
       />
     </Tab.Navigator>
@@ -236,7 +253,7 @@ export default function App() {
 
   // Register this device's FCM token whenever the admin is signed in.
   useEffect(() => {
-    if (authed) void initPushNotifications();
+    if (authed) initPushNotifications();
   }, [authed]);
 
   async function handleLogout() {
@@ -261,7 +278,7 @@ export default function App() {
 
   if (checking) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={styles.splash}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator color={Colors.indigo} />
       </View>

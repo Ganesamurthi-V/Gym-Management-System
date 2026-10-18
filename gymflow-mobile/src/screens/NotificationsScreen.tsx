@@ -166,7 +166,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           );
         }}
         ListEmptyComponent={
-          loading ? null : (
+          loading ? undefined : (
             <View style={styles.empty}>
               <Feather name="bell-off" size={36} color={Colors.bgCardBorder} />
               <Text style={styles.emptyText}>No notifications yet.</Text>

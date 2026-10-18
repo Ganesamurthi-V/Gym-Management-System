@@ -210,12 +210,13 @@ export async function updateSubscriptionDates(
 export async function executeDangerAction(
   gymId: string,
   action: 'delete_gym' | 'disable_login' | 'enable_login' | 'clear_subscription' | 'ban' | 'unban',
-  notes?: string
+  notes?: string,
+  confirmGymName?: string
 ): Promise<{ success: boolean; action: string }> {
   try {
     const { data } = await apiClient.post<{ success: boolean; action: string }>(
       `/api/admin/gyms/${gymId}/subscription/danger`,
-      { action, notes }
+      { action, notes, confirm_gym_name: confirmGymName }
     );
     return data;
   } catch (error) {

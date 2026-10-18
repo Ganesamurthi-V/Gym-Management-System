@@ -3,6 +3,7 @@ import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { ADMIN_ACTOR, noteSchema, sanitizeUUID } from '@/lib/sanitize'
 import { z } from 'zod'
+import { setGymActive } from '@/lib/gym-active'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ export const dynamic = 'force-dynamic'
  *   action: 'delete_gym' | 'disable_login' | 'enable_login' | 'clear_subscription' | 'ban' | 'unban',
  *   performed_by?: string,
  *   notes?: string,
+ *   confirm_gym_name?: string,  // required for delete_gym (the only irreversible action here)
  * }
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -22,18 +24,18 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const id = sanitizeUUID((await props.params).id)
     if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
     const validActions = ['delete_gym', 'disable_login', 'enable_login', 'clear_subscription', 'ban', 'unban'] as const
-    const parsed = z.object({ action: z.enum(validActions), notes: noteSchema }).safeParse(await req.json().catch(() => null))
+    const parsed = z.object({ action: z.enum(validActions), notes: noteSchema, confirm_gym_name: z.string().max(200).optional() }).safeParse(await req.json().catch(() => null))
     if (!parsed.success) {
       return NextResponse.json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }, { status: 400 })
     }
-    const { action, notes } = parsed.data
+    const { action, notes, confirm_gym_name } = parsed.data
     const performed_by = ADMIN_ACTOR
 
     const supabase = createAdminClient()
 
     const { data: gym, error: fetchError } = await supabase
       .from('gyms')
-      .select('subscription_status, plan_type, subscription_ends_at, trial_ends_at, is_active, owner_id')
+      .select('name, subscription_status, plan_type, subscription_ends_at, trial_ends_at, is_active, owner_id')
       .eq('id', id)
       .single()
     if (fetchError) throw fetchError
@@ -43,6 +45,13 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     switch (action) {
       case 'delete_gym': {
+        // Server-side confirmation: the browser/mobile dialog alone is bypassable by a direct API call.
+        if (typeof confirm_gym_name !== 'string' || confirm_gym_name.trim() !== gym.name) {
+          return NextResponse.json(
+            { error: { code: 'CONFIRMATION_REQUIRED', message: 'confirm_gym_name must match the gym name' } },
+            { status: 400 },
+          )
+        }
         const { error } = await supabase.from('gyms').delete().eq('id', id)
         if (error) throw error
         return NextResponse.json({ success: true, action: 'deleted' })
@@ -92,8 +101,15 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     }
 
     if (gymUpdate) {
-      const { error } = await supabase.from('gyms').update(gymUpdate).eq('id', id)
-      if (error) throw error
+      if (['disable_login', 'enable_login', 'ban', 'unban'].includes(action)) {
+        // These toggle access, so the owner's auth user must be banned/unbanned too (same as toggle-active);
+        // otherwise a "banned" owner could still sign in.
+        const { is_active, ...extra } = gymUpdate
+        await setGymActive(supabase, id, is_active, extra)
+      } else {
+        const { error } = await supabase.from('gyms').update(gymUpdate).eq('id', id)
+        if (error) throw error
+      }
 
       await supabase.rpc('log_subscription_action', {
         p_gym_id: id,

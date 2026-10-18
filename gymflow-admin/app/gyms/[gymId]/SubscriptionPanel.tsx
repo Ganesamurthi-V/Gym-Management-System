@@ -286,8 +286,10 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
               <button
                 onClick={() => {
                   if (!confirm(`PERMANENTLY DELETE "${gymName}" and ALL its data? This cannot be undone.`)) return
-                  if (!confirm(`FINAL WARNING: Type the gym name to confirm deletion.`)) return
-                  callAction('danger', { action: 'delete_gym' }, 'Gym deleted')
+                  const typed = window.prompt(`FINAL WARNING: Type the gym name "${gymName}" to confirm deletion.`)
+                  if (typed === null) return
+                  if (typed.trim() !== gymName) { alert('Name does not match. Deletion cancelled.'); return }
+                  callAction('danger', { action: 'delete_gym', confirm_gym_name: typed.trim() }, 'Gym deleted')
                 }}
                 disabled={!!actionLoading}
                 className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1"

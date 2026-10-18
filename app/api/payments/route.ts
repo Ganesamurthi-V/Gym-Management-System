@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
@@ -134,6 +135,10 @@ export async function POST(req: NextRequest) {
       log.summary(403)
       return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Member does not belong to your gym' } }, { status: 403 })
     }
+
+    // Double-tap guard: claimed only after validation so a 400 does not burn the key.
+    const duplicate = await claimIdempotencyKey(req, gym.id, 'payments')
+    if (duplicate) return duplicate
 
     log.start('DB_INSERT')
     const { data, error } = await supabase

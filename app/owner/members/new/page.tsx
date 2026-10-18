@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import UPIPaymentModal from '@/components/upi/UPIPaymentModal'
+import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'
 
 type Step = 'personal' | 'membership' | 'preview'
 
@@ -27,6 +28,8 @@ export default function NewMemberPage() {
 
   const [step, setStep] = useState<Step>('personal')
   const [loading, setLoading] = useState(false)
+  const memberSlot = useRef<{ fingerprint: string; key: string } | null>(null)
+  const idemSlot = useRef<{ fingerprint: string; key: string } | null>(null)
   const [error, setError] = useState('')
   const [nextMemberNumber, setNextMemberNumber] = useState<number | null>(null)
   const [numError, setNumError] = useState('')
@@ -171,20 +174,29 @@ export default function NewMemberPage() {
       if (!memberNumber) throw new Error('Member ID is required')
 
       // Create member via API
+      const memberPayload = {
+        member_number: memberNumber,
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        pending_amount: parseInt(form.pending_amount) || 0,
+        ...(form.gender && { gender: form.gender }),
+        ...(form.age && { age: parseInt(form.age) }),
+        ...(form.date_of_birth && { date_of_birth: form.date_of_birth }),
+        ...(form.area.trim() && { area: form.area.trim() }),
+      }
       const memberRes = await fetch('/api/members', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          member_number: memberNumber,
-          name: form.name.trim(),
-          phone: form.phone.trim(),
-          pending_amount: parseInt(form.pending_amount) || 0,
-          ...(form.gender && { gender: form.gender }),
-          ...(form.age && { age: parseInt(form.age) }),
-          ...(form.date_of_birth && { date_of_birth: form.date_of_birth }),
-          ...(form.area.trim() && { area: form.area.trim() }),
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Idempotency-Key': idempotencyKeyFor(memberSlot, memberPayload) },
+        body: JSON.stringify(memberPayload),
       })
+      memberSlot.current = null
+      // 409 DUPLICATE_REQUEST: this member was already created by an earlier tap,
+      // so do not add the membership again; just go to the list.
+      if (await isDuplicateResponse(memberRes)) {
+        router.push('/owner/members')
+        router.refresh()
+        return
+      }
       const memberJson = await memberRes.json()
       if (!memberRes.ok) {
         if (memberJson.error?.code === 'CONFLICT') {
@@ -196,23 +208,26 @@ export default function NewMemberPage() {
 
       // Create membership via API
       const end_date = calcEndDate(form.start_date, form.plan, form.plan === 'custom' ? parseInt(form.custom_months) || 1 : undefined)
+      const payload = {
+        member_id: member.id,
+        plan: form.plan,
+        category: form.category,
+        start_date: form.start_date,
+        end_date,
+        amount: parseInt(form.amount, 10) || 0,
+        admission_fee: parseInt(form.admission_fee, 10) || 0,
+        due_amount: parseInt(form.pending_amount, 10) || 0,
+        payment_mode: form.payment_mode,
+      }
       const membershipRes = await fetch('/api/memberships', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          member_id: member.id,
-          plan: form.plan,
-          category: form.category,
-          start_date: form.start_date,
-          end_date,
-          amount: parseInt(form.amount, 10) || 0,
-          admission_fee: parseInt(form.admission_fee, 10) || 0,
-          due_amount: parseInt(form.pending_amount, 10) || 0,
-          payment_mode: form.payment_mode,
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Idempotency-Key': idempotencyKeyFor(idemSlot, payload) },
+        body: JSON.stringify(payload),
       })
+      idemSlot.current = null
       const membershipJson = await membershipRes.json()
-      if (!membershipRes.ok) throw new Error(membershipJson.error?.message || 'Failed to create membership')
+      // 409 DUPLICATE_REQUEST: already saved, carry on as success.
+      if (!membershipRes.ok && !(await isDuplicateResponse(membershipRes))) throw new Error(membershipJson.error?.message || 'Failed to create membership')
 
       // Auto-send welcome WhatsApp message (fire-and-forget, non-blocking).
       if (form.phone && form.phone.replace(/\D/g, '').length >= 10) {

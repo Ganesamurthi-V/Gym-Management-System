@@ -271,12 +271,12 @@ export function AccountClient({
   }
 
   // ── Delete all gym data (keep login) ────────────────────────────────────────
-  async function handleDeleteData() {
-    if (deleteConfirmText !== gymName) {
-      setMessage({ type: 'error', text: `Type the gym name exactly to confirm.` })
-      return
-    }
+  // Step 2 of delete-data: the typed gym name was checked before the code was
+  // sent; this submits the emailed code (auto-called when the last digit is typed).
+  async function handleDeleteData(code: string = deleteOtp) {
+    if (deleteConfirmText !== gymName || !OTP_REGEX.test(code)) return
     setIsSaving(true)
+    setDeleteOtpStatus('verifying')
     setMessage(null)
     const res = await fetch('/api/account/delete-data', {
       method: 'POST',
@@ -284,14 +284,20 @@ export function AccountClient({
       // Satisfies the CSRF guard in withAuth without depending on the browser
       // sending an Origin header on a same-origin POST.
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-      body: JSON.stringify({ gym_id: gymId }),
+      body: JSON.stringify({ gym_id: gymId, token: code }),
     })
     const json = await res.json()
     if (!json.success) {
+      setDeleteOtpStatus('error')
       setMessage({ type: 'error', text: json.error?.message ?? 'Something went wrong.' })
       setIsSaving(false)
+      setTimeout(() => {
+        setDeleteOtp('')
+        setDeleteOtpStatus('idle')
+      }, 800)
       return
     }
+    setDeleteOtpStatus('success')
     setMessage({ type: 'success', text: 'All member data deleted. Your login is intact.' })
     // Bust all gym-scoped Redis caches so dashboard and members page reflect
     // empty state immediately instead of serving stale cached data.
@@ -301,10 +307,11 @@ export function AccountClient({
   }
 
   // ── Delete account: step 1 — email a confirmation code ──────────────────────
-  async function handleRequestDeleteOtp() {
+  // `purpose` picks the endpoint; codes are purpose-bound server-side.
+  async function handleRequestDeleteOtp(purpose: 'delete-gym' | 'delete-data' = 'delete-gym') {
     setIsSaving(true)
     setMessage(null)
-    const res = await fetch('/api/account/delete-gym/request-otp', {
+    const res = await fetch(`/api/account/${purpose}/request-otp`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -952,18 +959,66 @@ export function AccountClient({
               />
             </div>
 
-            <MessageBanner message={message} />
+            {deleteStep === 'warn' ? (
+              <>
+                <p className="text-sm text-slate-500">
+                  To confirm it&apos;s really you, we&apos;ll email a 6-digit code to{' '}
+                  <span className="font-semibold text-slate-700">{email}</span>. You&apos;ll enter it
+                  on the next step.
+                </p>
 
-            <div className="flex gap-2">
-              <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button
-                onClick={handleDeleteData}
-                disabled={isSaving || !deleteDataReady}
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-              >
-                {isSaving ? 'Deleting…' : 'Delete All Data'}
-              </button>
-            </div>
+                <MessageBanner message={message} />
+
+                <div className="flex gap-2">
+                  <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
+                  <button
+                    onClick={() => { void handleRequestDeleteOtp('delete-data') }}
+                    disabled={isSaving || !deleteDataReady}
+                    className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                  >
+                    <Mail className="w-4 h-4" />
+                    {isSaving ? 'Sending code…' : 'Send confirmation code'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
+                    Enter the {OTP_LENGTH}-digit code sent to {maskedEmail || 'your email'}
+                  </label>
+                  <CodeSlots
+                    value={deleteOtp}
+                    onChange={setDeleteOtp}
+                    onComplete={code => { void handleDeleteData(code) }}
+                    length={OTP_LENGTH}
+                    disabled={isSaving}
+                    status={deleteOtpStatus}
+                  />
+                </div>
+
+                {/* Auto-verifies once all digits are entered (no submit button). */}
+                {isSaving ? (
+                  <p className="flex items-center justify-center gap-2 text-sm font-semibold text-orange-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Verifying & deleting…
+                  </p>
+                ) : (
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => { void handleRequestDeleteOtp('delete-data') }}
+                      disabled={resendCooldown > 0}
+                      className="text-xs font-semibold text-brand-600 hover:text-brand-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    >
+                      {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                    </button>
+                  </div>
+                )}
+
+                <MessageBanner message={message} />
+              </>
+            )}
           </div>
         </Modal>
       )}
@@ -998,7 +1053,7 @@ export function AccountClient({
                 <MessageBanner message={message} />
 
                 <button
-                  onClick={handleRequestDeleteOtp}
+                  onClick={() => { void handleRequestDeleteOtp() }}
                   disabled={isSaving}
                   className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                 >
@@ -1032,7 +1087,7 @@ export function AccountClient({
                   <div className="text-center">
                     <button
                       type="button"
-                      onClick={handleRequestDeleteOtp}
+                      onClick={() => { void handleRequestDeleteOtp() }}
                       disabled={resendCooldown > 0}
                       className="text-xs font-semibold text-brand-600 hover:text-brand-700 disabled:text-slate-400 disabled:cursor-not-allowed"
                     >

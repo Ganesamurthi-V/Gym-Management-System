@@ -154,7 +154,7 @@ export function invalidate(key?: string) {
   hydrated.clear();
   for (const k of keys) emit(k);
   AsyncStorage.getAllKeys()
-    .then(all => AsyncStorage.multiRemove(all.filter(k => k.startsWith(DISK_PREFIX))))
+    .then(all => AsyncStorage.removeMany(all.filter(k => k.startsWith(DISK_PREFIX))))
     .catch(() => {});
 }
 

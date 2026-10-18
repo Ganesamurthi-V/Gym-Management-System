@@ -262,7 +262,7 @@ export default function App() {
   if (checking) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+        <StatusBar barStyle="light-content" />
         <ActivityIndicator color={Colors.indigo} />
       </View>
     );
@@ -270,7 +270,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+      <StatusBar barStyle="light-content" />
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!authed ? (

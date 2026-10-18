@@ -61,8 +61,8 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 -- The subscription and admin columns are platform state, not owner state: the
 -- owner may only edit name/city/phone/gst_number/onboarding_*. That boundary is
 -- enforced by trg_guard_gyms_privileged_columns, since RLS cannot restrict
--- columns. `admin_notes` is additionally hidden from owners by a column-level
--- SELECT grant (section 9).
+-- columns. The admin's private notes live in their own service-role-only table,
+-- gym_admin_notes, so they never appear in a gyms row or its Realtime payload.
 CREATE TABLE IF NOT EXISTS gyms (
   id                      UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
   name                    TEXT        NOT NULL,
@@ -92,7 +92,6 @@ CREATE TABLE IF NOT EXISTS gyms (
   subscription_ends_at    TIMESTAMPTZ,
 
   -- Admin fields, written only by the admin app through the service role.
-  admin_notes             TEXT,
   is_vip                  BOOLEAN     NOT NULL DEFAULT false,
   is_payment_verified     BOOLEAN     NOT NULL DEFAULT false,
   whatsapp_enabled        BOOLEAN     NOT NULL DEFAULT true,
@@ -806,6 +805,18 @@ CREATE TABLE IF NOT EXISTS whatsapp_send_queue (
 COMMENT ON TABLE whatsapp_send_queue IS
   'Throttled outbound queue for automated WhatsApp sends (5 per 5 minutes, drained via QStash).';
 
+-- ── gym_admin_notes ──────────────────────────────────────────
+-- The super admin's private notes about a gym. Deliberately NOT a gyms column:
+-- owners receive Realtime UPDATE payloads for their own gyms row, and a hidden
+-- column can still travel in them. RLS is on with no policies and every client
+-- role is revoked, so only the service role (admin app) can touch it. Never add
+-- it to a realtime publication.
+CREATE TABLE IF NOT EXISTS gym_admin_notes (
+  gym_id     UUID        PRIMARY KEY REFERENCES gyms(id) ON DELETE CASCADE,
+  notes      TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 
 -- ############################################################
 -- 3 — CONSTRAINTS THAT SPAN TABLES
@@ -1407,7 +1418,7 @@ $$;
 -- ────────────────────────────────────────────────────────────
 
 -- Security hardening, part 2
---   A. Members no longer read the whole gyms row (admin_notes, billing, ...)
+--   A. Members no longer read the whole gyms row (billing, ...)
 --   B. gym_whatsapp_config becomes server-only (owners cannot repoint it)
 --   C. Child rows must belong to the same gym as their parent
 -- Idempotent. Run in the Supabase SQL editor AFTER deploying the app change
@@ -1415,7 +1426,7 @@ $$;
 
 -- ── A. Member gym branding via a narrow RPC ──────────────────
 -- The "Members can view their gym" policy is row-level, so any member could
--- `select *` from gyms through PostgREST and read admin_notes, last_payment_*,
+-- `select *` from gyms through PostgREST and read last_payment_*,
 -- is_vip, subscription columns, etc. Column lists in the app do not help: the
 -- anon key is public. RLS cannot restrict columns, so members get a definer
 -- function that returns only branding fields for their OWN gym and take no
@@ -3065,7 +3076,6 @@ BEGIN
     NEW.auto_renewal_eligible := false;
     NEW.lifetime_offer        := false;
     NEW.login_disabled        := false;
-    NEW.admin_notes           := NULL;
     NEW.last_payment_amount   := NULL;
     NEW.last_payment_method   := NULL;
     NEW.last_transaction_id   := NULL;
@@ -3893,6 +3903,7 @@ ALTER TABLE whatsapp_webhook_logs    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_whatsapp_config      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_automation_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_send_queue      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_admin_notes          ENABLE ROW LEVEL SECURITY;
 
 -- ── platform_settings ────────────────────────────────────────
 -- Read-only for owners; writes are service-role only (see section 9).
@@ -4613,10 +4624,13 @@ REVOKE ALL ON public.gym_event_completions FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.gym_event_completions TO authenticated;
 GRANT UPDATE (reward_given_at) ON public.gym_event_completions TO authenticated;
 
--- ── gyms.admin_notes is hidden from owners ───────────────────
--- Postgres cannot revoke one column from a table-level grant, so the
--- table-level SELECT is replaced by a column-level grant of every column except
--- admin_notes (the super admin's private notes about the account).
+-- ── gym_admin_notes: service role only ──────────────────────
+REVOKE ALL ON public.gym_admin_notes FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.gym_admin_notes TO service_role;
+
+-- ── gyms: column-level SELECT for owners ─────────────────────
+-- The table-level SELECT is replaced by a column-level grant of every column,
+-- so a column added later fails closed until it is granted.
 --
 -- MAINTENANCE: a column added to gyms later is NOT readable by owners until it
 -- is granted:
@@ -4633,8 +4647,7 @@ BEGIN
     INTO v_cols
     FROM information_schema.columns
    WHERE table_schema = 'public'
-     AND table_name   = 'gyms'
-     AND column_name <> 'admin_notes';
+     AND table_name   = 'gyms';
 
   REVOKE SELECT ON public.gyms FROM anon, authenticated;
   EXECUTE format('GRANT SELECT (%s) ON public.gyms TO authenticated', v_cols);

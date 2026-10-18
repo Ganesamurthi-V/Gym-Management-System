@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/owner/inventory/actions'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
@@ -53,6 +54,10 @@ export async function POST(req: NextRequest) {
       }
       finalUnitPrice = price
     }
+
+    // Double-tap guard: claimed only after validation so a 400 does not burn the key.
+    const duplicate = await claimIdempotencyKey(req, gym.id, 'inventory-sell')
+    if (duplicate) return duplicate
 
     // ── Fast path: atomic RPC (single round trip, oversell-safe) ────────────
     const { data: rpcData, error: rpcError } = await supabase.rpc('sell_inventory_item', {

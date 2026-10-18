@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { sanitizeUUID } from '@/lib/sanitize'
 import { apiLogger } from '@/lib/logger'
+import { setGymActive } from '@/lib/gym-active'
 
 export async function POST(req: NextRequest) {
   const log = apiLogger('ADMIN_TOGGLE_ACTIVE', req)
@@ -32,28 +33,15 @@ export async function POST(req: NextRequest) {
 
     log.adminAction = isActive ? 'activate_gym' : 'ban_gym'
 
-    log.start('DB_GET_GYM')
-    const supabase = createAdminClient()
-    const { data: gym, error: gymErr } = await supabase.from('gyms').select('owner_id').eq('id', cleanGymId).single()
-    log.end('DB_GET_GYM')
+    log.start('SET_GYM_ACTIVE')
+    const found = await setGymActive(createAdminClient(), cleanGymId, isActive)
+    log.end('SET_GYM_ACTIVE')
 
-    if (gymErr || !gym) {
+    if (!found) {
       log.warn('Gym not found for toggle-active', { gymId: cleanGymId })
       log.summary(404)
       return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
     }
-
-    log.start('DB_UPDATE_GYM')
-    const { error: updateErr } = await supabase.from('gyms').update({ is_active: isActive }).eq('id', cleanGymId)
-    log.end('DB_UPDATE_GYM')
-    if (updateErr) throw updateErr
-
-    log.start('AUTH_BAN_USER')
-    const { error: banErr } = await supabase.auth.admin.updateUserById(gym.owner_id, {
-      ban_duration: isActive ? 'none' : '876000h'
-    })
-    log.end('AUTH_BAN_USER')
-    if (banErr) throw banErr
 
     log.info(`Gym ${isActive ? 'activated' : 'banned'}`, { gymId: cleanGymId })
     log.summary(200)

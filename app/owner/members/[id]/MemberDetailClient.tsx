@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
@@ -11,6 +11,7 @@ import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
 import { WhatsAppTemplateModal } from '@/components/whatsapp/WhatsAppTemplateModal'
 import type { TemplateId } from '@/lib/whatsapp/sender'
+import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'
 
 interface Props {
   member: Member
@@ -33,6 +34,7 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
     payment_mode: 'cash' as PaymentMode,
   })
   const [loading, setLoading] = useState(false)
+  const idemSlot = useRef<{ fingerprint: string; key: string } | null>(null)
   const [error, setError] = useState('')
   const router = useRouter()
 
@@ -52,20 +54,23 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
       const gymId = member.gym_id
       const end_date = calcEndDate(renewForm.start_date, renewForm.plan, renewForm.plan === 'custom' ? parseInt(renewForm.custom_months) || 1 : undefined)
       
+      const payload = {
+        member_id: member.id,
+        plan: renewForm.plan,
+        start_date: renewForm.start_date,
+        end_date,
+        amount: parseInt(renewForm.amount),
+        payment_mode: renewForm.payment_mode,
+      }
       const res = await fetch('/api/memberships', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          member_id: member.id,
-          plan: renewForm.plan,
-          start_date: renewForm.start_date,
-          end_date,
-          amount: parseInt(renewForm.amount),
-          payment_mode: renewForm.payment_mode,
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Idempotency-Key': idempotencyKeyFor(idemSlot, payload) },
+        body: JSON.stringify(payload),
       })
+      idemSlot.current = null
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error?.message || 'Failed to renew')
+      // 409 DUPLICATE_REQUEST: already saved, carry on as success.
+      if (!res.ok && !(await isDuplicateResponse(res))) throw new Error(result.error?.message || 'Failed to renew')
 
       // Auto-send renewal confirmation + cancel old expiry reminder cycles
       // (fire-and-forget — never blocks the save).

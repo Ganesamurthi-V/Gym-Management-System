@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal,
-  ActivityIndicator, Alert, type NativeSyntheticEvent, type TextInputSelectionChangeEventData,
+  ActivityIndicator, Alert, type TextInputSelectionChangeEvent,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import DocumentPicker, { types as pickerTypes } from 'react-native-document-picker';
+import { pick, keepLocalCopy, types as pickerTypes, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -83,7 +83,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
   const [aiText, setAiText] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const sentRef = useRef(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const canSend =
     body.trim().length > 0 && !sending && (!isNew || (!!contact && subject.trim().length > 0));
@@ -113,7 +113,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
     inputRef.current?.focus();
   }, []);
 
-  const onSelectionChange = (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) =>
+  const onSelectionChange = (e: TextInputSelectionChangeEvent) =>
     setSel(e.nativeEvent.selection);
 
   const openLink = () => {
@@ -134,15 +134,21 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
   // ── attachments ─────────────────────────────────────────────────────────────────────────
   const attach = useCallback(async () => {
     try {
-      const picked = await DocumentPicker.pick({
+      const picked = await pick({
         type: [pickerTypes.allFiles],
         allowMultiSelection: true,
-        // A cache copy has a plain file:// path, which is what the upload reads.
-        copyTo: 'cachesDirectory',
       });
+      // A cache copy has a plain file:// path, which is what the upload reads.
+      const copies = picked.length
+        ? await keepLocalCopy({
+            files: picked.map(p => ({ uri: p.uri, fileName: p.name ?? 'attachment' })) as [{ uri: string; fileName: string }, ...{ uri: string; fileName: string }[]],
+            destination: 'cachesDirectory',
+          })
+        : [];
       const next = [...files];
-      for (const f of picked) {
-        const uri = f.fileCopyUri ?? f.uri;
+      for (const [i, f] of picked.entries()) {
+        const copy = copies[i];
+        const uri = copy && copy.status === 'success' ? copy.localUri : f.uri;
         const size = f.size ?? 0;
         const name = f.name ?? 'attachment';
         if (next.length >= MAX_FILES) { Alert.alert('Too many files', `You can attach up to ${MAX_FILES} files.`); break; }
@@ -156,7 +162,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
       }
       setFiles(next);
     } catch (e) {
-      if (!DocumentPicker.isCancel(e)) Alert.alert('Could not attach', 'Please try again.');
+      if (!(isErrorWithCode(e) && e.code === errorCodes.OPERATION_CANCELED)) Alert.alert('Could not attach', 'Please try again.');
     }
   }, [files]);
 
@@ -387,7 +393,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
       </Modal>
 
       {/* Write with AI */}
-      <Modal visible={aiOpen} transparent animationType="slide" onRequestClose={() => !aiBusy && setAiOpen(false)}>
+      <Modal visible={aiOpen} transparent animationType="slide" onRequestClose={() => { if (!aiBusy) setAiOpen(false); }}>
         <KeyboardSafeView style={styles.sheetOverlay} safeBottom>
           <View style={styles.sheet}>
             <View style={styles.sheetHandle} />

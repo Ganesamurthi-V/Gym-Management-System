@@ -44,8 +44,14 @@ export const DELETE_OTP_EXPIRY_LABEL = '5 minutes'
 /** How many wrong guesses before the code is burned and a new one is required. */
 const MAX_ATTEMPTS = 5
 
-const codeKey = (userId: string) => `delete-otp:code:${userId}`
-const attemptsKey = (userId: string) => `delete-otp:attempts:${userId}`
+/**
+ * A code is bound to the action it was issued for: the purpose is part of the
+ * Redis key, so a delete-gym code can never confirm delete-data (or vice versa).
+ */
+export type DeleteOtpPurpose = 'delete-gym' | 'delete-data'
+
+const codeKey = (purpose: DeleteOtpPurpose, userId: string) => `delete-otp:${purpose}:code:${userId}`
+const attemptsKey = (purpose: DeleteOtpPurpose, userId: string) => `delete-otp:${purpose}:attempts:${userId}`
 
 function hashCode(code: string): string {
   return createHash('sha256').update(code).digest('hex')
@@ -65,12 +71,12 @@ function hashesEqual(a: string, b: string): boolean {
  * (so "Resend" always issues a NEW code, never re-sends the old one) and resets
  * the attempt counter.
  */
-export async function issueDeleteOtp(userId: string): Promise<string> {
+export async function issueDeleteOtp(userId: string, purpose: DeleteOtpPurpose = 'delete-gym'): Promise<string> {
   // randomInt is uniform and crypto-strong; pad so codes like "004821" keep 6 digits.
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0')
 
-  await redis.set(codeKey(userId), hashCode(code), { ex: DELETE_OTP_TTL_SECONDS })
-  await redis.del(attemptsKey(userId))
+  await redis.set(codeKey(purpose, userId), hashCode(code), { ex: DELETE_OTP_TTL_SECONDS })
+  await redis.del(attemptsKey(purpose, userId))
 
   return code
 }
@@ -89,24 +95,28 @@ export type VerifyResult =
  * mismatch the attempt counter is bumped and the code is burned once it exceeds
  * MAX_ATTEMPTS, so a stolen email cannot be brute-forced within the TTL.
  */
-export async function verifyDeleteOtp(userId: string, code: string): Promise<VerifyResult> {
-  const stored = await redis.get<string>(codeKey(userId))
+export async function verifyDeleteOtp(
+  userId: string,
+  code: string,
+  purpose: DeleteOtpPurpose = 'delete-gym',
+): Promise<VerifyResult> {
+  const stored = await redis.get<string>(codeKey(purpose, userId))
   if (!stored) return { ok: false, reason: 'expired' }
 
   if (hashesEqual(stored, hashCode(code))) {
     // Consume on success so the same code cannot be replayed.
-    await redis.del(codeKey(userId))
-    await redis.del(attemptsKey(userId))
+    await redis.del(codeKey(purpose, userId))
+    await redis.del(attemptsKey(purpose, userId))
     return { ok: true }
   }
 
   // Wrong code: count the attempt against the code's remaining lifetime.
-  const attempts = await redis.incr(attemptsKey(userId))
+  const attempts = await redis.incr(attemptsKey(purpose, userId))
   if (attempts === 1) {
-    await redis.expire(attemptsKey(userId), DELETE_OTP_TTL_SECONDS)
+    await redis.expire(attemptsKey(purpose, userId), DELETE_OTP_TTL_SECONDS)
   }
   if (attempts >= MAX_ATTEMPTS) {
-    await redis.del(codeKey(userId))
+    await redis.del(codeKey(purpose, userId))
     return { ok: false, reason: 'too_many_attempts' }
   }
   return { ok: false, reason: 'mismatch' }

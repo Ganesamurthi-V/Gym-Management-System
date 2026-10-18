@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { withAuth, apiError, apiSuccess, isValidUUID } from '@/lib/api/withAuth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyDeleteOtp } from '@/lib/account/delete-otp'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,17 +29,45 @@ export const POST = withAuth('ACCOUNT_DELETE_DATA', async (req: NextRequest, ctx
   const { supabase, user, gym, log } = ctx
 
   let requestedGymId: string | undefined
+  let otpToken: string | undefined
   try {
-    const body = (await req.json()) as { gym_id?: unknown }
+    const body = (await req.json()) as { gym_id?: unknown; token?: unknown }
     if (typeof body?.gym_id === 'string') requestedGymId = body.gym_id
+    if (typeof body?.token === 'string') otpToken = body.token.trim()
   } catch {
-    // No body is fine — the session already tells us which gym to clear.
+    // A missing body fails the OTP check below.
   }
 
   if (requestedGymId !== undefined) {
     if (!isValidUUID(requestedGymId) || requestedGymId !== gym.id) {
       return apiError(403, 'FORBIDDEN', 'This gym could not be verified. Please reload and try again.')
     }
+  }
+
+  // Emailed one-time code, same as delete-gym but bound to the 'delete-data'
+  // purpose so a code issued for deleting the gym cannot wipe the members.
+  // Fails closed: if Redis is unreachable the code cannot be verified, so
+  // nothing is deleted.
+  if (!user.email) {
+    return apiError(400, 'NO_EMAIL', 'Your account has no verified email to confirm this action.')
+  }
+  if (!otpToken || !/^\d{6}$/.test(otpToken)) {
+    return apiError(400, 'INVALID_OTP', 'Enter the confirmation code sent to your email.')
+  }
+  let otpResult: Awaited<ReturnType<typeof verifyDeleteOtp>>
+  try {
+    otpResult = await verifyDeleteOtp(user.id, otpToken, 'delete-data')
+  } catch (err) {
+    log.error('Delete-data OTP store unavailable', err)
+    return apiError(503, 'OTP_UNAVAILABLE', 'We could not verify the code right now. Please try again in a moment.')
+  }
+  if (!otpResult.ok) {
+    log.error('Delete-data OTP verification failed', { reason: otpResult.reason })
+    const message =
+      otpResult.reason === 'too_many_attempts'
+        ? 'Too many incorrect attempts. Request a new code and try again.'
+        : 'That code is incorrect or has expired. Request a new code and try again.'
+    return apiError(400, 'INVALID_OTP', message)
   }
 
   const admin = createAdminClient()

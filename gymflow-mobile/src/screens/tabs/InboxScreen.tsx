@@ -188,9 +188,9 @@ export default function InboxScreen({ navigation }: Props) {
             <EmailRow thread={item} onPress={() => navigation.navigate('EmailThread', { threadId: item.id })} />
           </SwipeToDelete>
         )}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.indigo} style={{ marginVertical: Spacing.lg }} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.indigo} style={{ marginVertical: Spacing.lg }} /> : undefined}
         ListEmptyComponent={
-          current.loading ? null : (
+          current.loading ? undefined : (
             <View style={styles.empty}>
               <Feather name={status === 'open' ? 'inbox' : 'archive'} size={36} color={Colors.bgCardBorder} />
               <Text style={styles.emptyTitle}>{status === 'open' ? 'No emails yet' : 'Nothing archived'}</Text>

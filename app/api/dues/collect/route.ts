@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, isValidUUID } from '@/lib/api/withAuth'
+import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { format } from 'date-fns'
@@ -70,6 +71,10 @@ export const POST = withAuth('DUES_COLLECT', async (req: NextRequest, { supabase
     )
   }
   const newPending = currentPending - collect
+
+  // Double-tap guard: claimed only after validation so a 400 does not burn the key.
+  const duplicate = await claimIdempotencyKey(req, gym.id, 'dues-collect')
+  if (duplicate) return duplicate
 
   // Optimistic lock on the balance we just read: two simultaneous collections
   // would otherwise both subtract from the same starting value and one payment

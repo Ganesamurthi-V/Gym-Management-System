@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { sanitizeRow } from '@/lib/export/sanitizeCell'
 import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -8,6 +8,7 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, end
 import { getAllTimePayments } from './actions'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 import { tourAttr } from '@/lib/tours/anchors'
+import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'
 
 interface Payment {
   id: string
@@ -141,6 +142,7 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
   const [customTo, setCustomTo]     = useState('')
   const [showPending, setShowPending] = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
+  const idemSlot = useRef<{ fingerprint: string; key: string } | null>(null)
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
   const [activeTab, setActiveTab]     = useState<'membership' | 'inventory' | 'due'>('membership')
   const [fullPayments, setFullPayments] = useState<Payment[] | null>(null)
@@ -241,11 +243,13 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
 
   async function markPaid(member: PendingMember) {
     setMarkingId(member.id)
+    const payload = { member_id: member.id }
     await fetch('/api/dues/mark-paid', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: member.id }),
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Idempotency-Key': idempotencyKeyFor(idemSlot, payload) },
+      body: JSON.stringify(payload),
     })
+    idemSlot.current = null
     setLocalPending(prev => prev.filter(m => m.id !== member.id))
     setMarkingId(null)
   }

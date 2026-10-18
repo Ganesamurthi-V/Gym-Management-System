@@ -322,7 +322,7 @@ function FABSpeedDial({ actions }: { actions: FABAction[] }) {
 }
 
 const fabStyles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent', zIndex: 10 },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent', zIndex: 10 },
   container: { position: 'absolute', bottom: 90, right: Spacing.lg, alignItems: 'flex-end', zIndex: 20 },
   fab: {
     width: 56, height: 56, borderRadius: 28,
@@ -738,7 +738,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <StatusBar barStyle="light-content" backgroundColor={D.bg} />
+        <StatusBar barStyle="light-content" />
         <ActivityIndicator color={D.indigo} size="large" />
         <Text style={styles.loadingText}>Loading subscription data...</Text>
       </View>
@@ -865,9 +865,9 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
 
   return (
     <KeyboardSafeView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={D.bg} />
+      <StatusBar barStyle="light-content" />
 
-      <StatusBar barStyle="light-content" backgroundColor={D.bg} />
+      <StatusBar barStyle="light-content" />
 
       {/* ─── TAB BAR ─────────────────────────────────────────────────── */}
       <View style={styles.tabBar}>
@@ -1467,7 +1467,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                     Alert.alert('Name Mismatch', 'The name you typed does not match the gym name. Deletion cancelled.');
                     return;
                   }
-                  doAction(async () => { await executeDangerAction(gymId, 'delete_gym'); navigation.goBack(); });
+                  doAction(async () => { await executeDangerAction(gymId, 'delete_gym', undefined, dialogInputRef.current.trim()); navigation.goBack(); });
                 },
               })}
             >

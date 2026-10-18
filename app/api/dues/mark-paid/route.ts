@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, isValidUUID } from '@/lib/api/withAuth'
+import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { format } from 'date-fns'
@@ -45,6 +46,10 @@ export const POST = withAuth('DUES_MARK_PAID', async (req: NextRequest, { supaba
       { status: 403 }
     )
   }
+
+  // Double-tap guard: claimed only after validation so a 400 does not burn the key.
+  const duplicate = await claimIdempotencyKey(req, gym.id, 'dues-mark-paid')
+  if (duplicate) return duplicate
 
   const { error } = await supabase
     .from('members')

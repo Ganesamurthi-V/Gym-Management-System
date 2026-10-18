@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { MessageCircle, Check, IndianRupee, AlertCircle } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 import { tourAttr } from '@/lib/tours/anchors'
+import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'
 
 interface DueMember {
   id: string
@@ -32,6 +33,7 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
   const [payMode, setPayMode] = useState<string>('cash')
   const [searchQuery, setSearchQuery] = useState('')
   const [collecting, setCollecting] = useState(false)
+  const idemSlot = useRef<{ fingerprint: string; key: string } | null>(null)
   const router = useRouter()
 
   const filteredMembers = useMemo(() => {
@@ -62,17 +64,16 @@ export function DuesClient({ members: initialMembers, gymId, totalDues }: Props)
     setCollecting(true)
 
     try {
+      const payload = { member_id: member.id, amount: collect, payment_mode: payMode }
       const res = await fetch('/api/dues/collect', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          member_id: member.id,
-          amount: collect,
-          payment_mode: payMode,
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Idempotency-Key': idempotencyKeyFor(idemSlot, payload) },
+        body: JSON.stringify(payload),
       })
+      idemSlot.current = null
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error?.message || 'Failed to record payment')
+      // 409 DUPLICATE_REQUEST means this exact payment is already saved: treat as done.
+      if (!res.ok && !(await isDuplicateResponse(res))) throw new Error(result.error?.message || 'Failed to record payment')
 
       // If dues are fully cleared, stop any active due-reminder cycle.
       if (newPending === 0 && member.phone?.replace(/\D/g, '').length >= 10) {

@@ -8,6 +8,7 @@ import { apiLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
+import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText } from '@/app/api/_guard'
 export async function GET(req: NextRequest) {
@@ -158,6 +159,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
     log.info('Gym Info', { gymId: gym.id })
+
+    // Double-tap guard, claimed after validation so a 400 does not burn the key.
+    const duplicate = await claimIdempotencyKey(req, gym.id, 'members')
+    if (duplicate) return duplicate
 
     log.start('DB_INSERT')
     const { data, error } = await supabase

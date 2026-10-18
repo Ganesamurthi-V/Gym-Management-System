@@ -30,7 +30,6 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
         subscription_status, plan_type,
         trial_started_at, trial_ends_at,
         subscription_started_at, subscription_ends_at,
-        admin_notes,
         is_vip, is_payment_verified, whatsapp_enabled,
         priority_support, auto_renewal_eligible, lifetime_offer, login_disabled,
         last_payment_amount, last_payment_method, last_transaction_id,
@@ -73,7 +72,14 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     const onboarding = (gym.onboarding_data ?? {}) as Record<string, unknown>
     const onboardingPhone = typeof onboarding.phone === 'string' ? onboarding.phone.trim() : ''
     const resolvedGymPhone = (gym.phone?.trim?.() || onboardingPhone || ownerMobile) ?? null
-    const gymWithPhone = { ...gym, phone: resolvedGymPhone }
+    const { data: notesRow, error: notesErr } = await supabase
+      .from('gym_admin_notes')
+      .select('notes')
+      .eq('gym_id', id)
+      .maybeSingle()
+    if (notesErr) throw notesErr
+    // Response keeps the `admin_notes` field so web + mobile clients are unchanged.
+    const gymWithPhone = { ...gym, phone: resolvedGymPhone, admin_notes: notesRow?.notes ?? null }
 
     // Fetch pending subscription request
     const { data: pendingRequest } = await supabase

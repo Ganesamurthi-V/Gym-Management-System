@@ -51,7 +51,6 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const supabase = createAdminClient()
     const updates: Record<string, any> = {}
 
-    if (admin_notes !== undefined) updates.admin_notes = admin_notes
     if (is_vip !== undefined) updates.is_vip = is_vip
     if (is_payment_verified !== undefined) updates.is_payment_verified = is_payment_verified
     if (whatsapp_enabled !== undefined) updates.whatsapp_enabled = whatsapp_enabled
@@ -59,15 +58,22 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     if (auto_renewal_eligible !== undefined) updates.auto_renewal_eligible = auto_renewal_eligible
     if (lifetime_offer !== undefined) updates.lifetime_offer = lifetime_offer
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 0 && admin_notes === undefined) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from('gyms')
-      .update(updates)
-      .eq('id', id)
-    if (error) throw error
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase.from('gyms').update(updates).eq('id', id)
+      if (error) throw error
+    }
+
+    // Notes live in a service-role-only table: gyms rows stream live to the owner.
+    if (admin_notes !== undefined) {
+      const { error: notesErr } = await supabase
+        .from('gym_admin_notes')
+        .upsert({ gym_id: id, notes: admin_notes, updated_at: new Date().toISOString() }, { onConflict: 'gym_id' })
+      if (notesErr) throw notesErr
+    }
 
     // Log note changes only when notes are included
     if (admin_notes !== undefined) {
@@ -79,7 +85,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       })
     }
 
-    const flagsChanged = Object.keys(updates).filter(k => k !== 'admin_notes')
+    const flagsChanged = Object.keys(updates)
     if (flagsChanged.length > 0) {
       await supabase.rpc('log_subscription_action', {
         p_gym_id: id,

@@ -43,7 +43,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
 
   return (
     <KeyboardSafeView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+      <StatusBar barStyle="light-content" />
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"

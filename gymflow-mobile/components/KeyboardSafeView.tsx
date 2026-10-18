@@ -24,7 +24,7 @@ type Props = ViewProps & {
  * Android version and on iOS, and it never pads twice.
  */
 export function KeyboardSafeView({ children, style, safeBottom = false, ...rest }: Props) {
-  const ref = useRef<View>(null);
+  const ref = useRef<React.ComponentRef<typeof View>>(null);
   const insets = useSafeAreaInsets();
   const [overlap, setOverlap] = useState(0);
 

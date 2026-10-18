@@ -21,7 +21,7 @@ const PUBLIC_PATHS = ['/auth', '/api/auth', '/api/push/dispatch', '/api/email/in
 const isPublicPath = (pathname: string) =>
   PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Stamp every admin request with a unique request ID

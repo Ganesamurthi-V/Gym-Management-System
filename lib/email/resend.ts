@@ -148,10 +148,16 @@ export function sendDeleteAccountOtp(
   to: string,
   code: string,
   expiryLabel: string,
+  // Names what the code confirms ("delete your gym account" / "delete all members").
+  // The Resend template prints it as {{{action_label}}} (fallback "delete your gym
+  // account"), so the email says which action the code confirms. The code is also
+  // purpose-bound server-side, so it only works for that action either way.
+  actionLabel = 'delete your gym account',
 ): Promise<SendEmailResult> {
   return sendTemplate(EMAIL_TEMPLATES.deleteAccountOtp, to, {
     otp_code: code,
     expiry_label: expiryLabel,
+    action_label: actionLabel,
     year: currentYear(),
   })
 }

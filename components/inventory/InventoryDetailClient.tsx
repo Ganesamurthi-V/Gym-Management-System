@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/owner/inventory/actions'
 import { format } from 'date-fns'
@@ -9,6 +9,7 @@ import {
   CheckCircle2, ShieldAlert, BadgeIndianRupee, Box, Tag, ArrowLeft, Clock
 } from 'lucide-react'
 import Link from 'next/link'
+import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'
 
 interface InventoryProduct {
   id: string
@@ -98,6 +99,7 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
   const [sellQty, setSellQty] = useState('1')
   const [sellUnitPrice, setSellUnitPrice] = useState(String(product.selling_price))
   const [sellPaymentMode, setSellPaymentMode] = useState('cash')
+  const idemSlot = useRef<{ fingerprint: string; key: string } | null>(null)
 
   // --- Handlers ---
 
@@ -160,17 +162,27 @@ export default function InventoryDetailClient({ product: initialProduct, gymId, 
     setLoading(true)
     setError('')
     try {
+      const payload = {
+        inventoryId: product.id,
+        quantity: qty,
+        unitPrice: unitPrice,
+        paymentMode: sellPaymentMode,
+      }
       const res = await fetch('/api/inventory/sell', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          inventoryId: product.id,
-          quantity: qty,
-          unitPrice: unitPrice,
-          paymentMode: sellPaymentMode,
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Idempotency-Key': idempotencyKeyFor(idemSlot, payload) },
+        body: JSON.stringify(payload),
       })
+      idemSlot.current = null
 
+      // 409 DUPLICATE_REQUEST: this sale is already saved. Close and refresh, no error.
+      if (await isDuplicateResponse(res)) {
+        setShowSellModal(false)
+        setSellQty('1')
+        await invalidateInventoryItemCache(gymId, product.id)
+        router.refresh()
+        return
+      }
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 

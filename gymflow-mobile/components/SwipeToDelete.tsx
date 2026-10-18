@@ -153,7 +153,7 @@ export function SwipeToDelete({
 const styles = StyleSheet.create({
   wrap: { overflow: 'hidden', borderRadius: Radius.lg },
   behind: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

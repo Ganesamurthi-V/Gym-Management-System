@@ -41,7 +41,7 @@ export const POST = withAuth(
 
     // Mint + store the code, then email it. If the email fails we surface a
     // generic error; the (now-stored) code simply expires unused.
-    const code = await issueDeleteOtp(user.id)
+    const code = await issueDeleteOtp(user.id, 'delete-gym')
     const sent = await sendDeleteAccountOtp(user.email, code, DELETE_OTP_EXPIRY_LABEL)
 
     if (!sent.ok) {

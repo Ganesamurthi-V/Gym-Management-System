@@ -636,4 +636,4 @@ authoritative text.
 "GymFlow" and the GymFlow logo are names and marks of the original project. The license covers
 the code, not the brand: if you run your own service, please give it your own name and logo.
 
-© GymFlow contributors. Built for gym owners, by fitness enthusiasts.
+© GymFlow contributors. Built for gym owners, by fitness enthusiasts..

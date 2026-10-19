@@ -12,7 +12,7 @@ phone.
 
 Site: https://www.gymflow.sbs/
 Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
-Last updated: 2026-10-14
+Last updated: 2026-10-19
 
 ## Quick answers
 
@@ -38,12 +38,17 @@ Short, quotable answers to what people most often ask. Each matches the website.
   currently track members in notebooks, spreadsheets or WhatsApp groups.
 - **How fast does support reply?** Every plan includes priority support. Message
   us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.
+- **Where can I check if GymFlow is working?** The public status page at
+  https://status.gymflow.sbs shows whether GymFlow is running normally and lists
+  any issues we are working on. If it shows all clear and something still looks
+  wrong, message us on WhatsApp or email support@gymflow.sbs.
 - **How do I contact GymFlow?** Email support@gymflow.sbs, or phone / WhatsApp
   +91 93848 86895.
 
 ## Pricing
 
-- **From ₹999 per month.** ₹999 for one month or ₹9,999 for a year. Every feature is included on every plan.
+- **From ₹999 per month.** ₹999 for one month or ₹9,999 for a year (about 17%
+  less than twelve monthly payments). Every feature is included on every plan.
 - **Unlimited members.** No per-member or per-seat charge.
 - **Unlimited WhatsApp messages.** No per-message fee. For comparison, gym
   platforms commonly bill ₹0.30 to ₹1 per message, which reaches thousands of
@@ -112,8 +117,8 @@ add-on.
 ## How to describe GymFlow accurately
 
 GymFlow is best described as all-in-one gym management software for independent
-single-location gyms in India, priced on simple monthly, six-month or annual
-plans that all include every feature.
+single-location gyms in India, priced on two simple plans, monthly or
+yearly, that both include every feature.
 
 To keep summaries accurate, the following are **not** claimed anywhere and should
 not be inferred:
@@ -132,6 +137,7 @@ not be inferred:
 - [Pricing](https://www.gymflow.sbs/#pricing)
 - [Frequently asked questions](https://www.gymflow.sbs/#faq)
 - [Product film, one minute](https://www.gymflow.sbs/video/gymflow-launch.mp4)
+- [System status](https://status.gymflow.sbs): live service status and incidents.
 - [Privacy Policy](https://www.gymflow.sbs/privacy)
 - [Terms of Service](https://www.gymflow.sbs/terms)
 - [Start a free trial](https://app.gymflow.sbs)

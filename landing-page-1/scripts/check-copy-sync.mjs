@@ -46,6 +46,22 @@ offerPrices.forEach((p) => {
   if (Number(p) !== monthly) errors.push(`index.html: JSON-LD Offer price ${p} is not the monthly price ${monthly}`)
 })
 
+// The FAQ is written three times (the accordion, the FAQPage JSON-LD and the no-JavaScript
+// copy). Question text drifting between them is what this guards.
+const faqSrc = read('src/components/FAQ.tsx')
+const faqQuestions = [...faqSrc.matchAll(/^\s*q:\s*(['"])(.+)\1,\s*$/gm)].map((m) => m[2].replace(/\'/g, "'"))
+const decode = (str) => str.replace(/&#x27;/g, "'").replace(/&amp;/g, '&')
+const ldFaq = []
+const collect = (o) => {
+  if (!o || typeof o !== 'object') return
+  if (o['@type'] === 'Question') ldFaq.push(o.name)
+  Object.values(o).forEach(collect)
+}
+ld.forEach((m) => collect(JSON.parse(m[1])))
+const fallbackFaq = [...html.matchAll(/<h3>(.+?)<\/h3>/g)].map((m) => decode(m[1])).slice(-faqQuestions.length)
+if (JSON.stringify(faqQuestions) !== JSON.stringify(ldFaq)) errors.push('FAQ.tsx questions differ from the FAQPage JSON-LD (text or order)')
+if (JSON.stringify(faqQuestions) !== JSON.stringify(fallbackFaq)) errors.push('FAQ.tsx questions differ from the no-JavaScript FAQ in index.html (text or order)')
+
 if (errors.length) {
   console.error('check-copy-sync failed:\n - ' + errors.join('\n - '))
   process.exit(1)

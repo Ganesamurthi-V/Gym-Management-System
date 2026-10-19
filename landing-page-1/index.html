@@ -181,7 +181,7 @@
         #webpage       this page, and what it is about
         #software      the product itself
         #howto         the four onboarding steps
-        #faq           the seven accordion questions
+        #faq           the eight accordion questions
         #video         the one-minute product film in the hero (VideoObject)
 
       THE GOVERNING RULE, stated precisely, because the distinction matters:
@@ -213,7 +213,7 @@
       precise ISO duration would be inventing precision the page never claims.
 
       ─── FAQPage MIRRORS src/components/FAQ.tsx ─────────────────────────────
-      The seven visible accordion items, verbatim.
+      The eight visible accordion items, verbatim and in the same order.
     -->
     <script type="application/ld+json">
     {
@@ -315,7 +315,7 @@
             "height": 630
           },
           "inLanguage": "en-IN",
-          "dateModified": "2026-10-06",
+          "dateModified": "2026-10-19",
           "video": {
             "@id": "https://www.gymflow.sbs/#video"
           }
@@ -407,7 +407,7 @@
               "name": "Is there a free trial?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Yes — a 14-day free trial with every feature unlocked and no credit card required. Import your members and send WhatsApp reminders before you decide."
+                "text": "Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the 14-day free trial before you decide."
               }
             },
             {
@@ -444,6 +444,14 @@
             },
             {
               "@type": "Question",
+              "name": "How fast does support reply?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Every plan includes priority support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours."
+              }
+            },
+            {
+              "@type": "Question",
               "name": "How do I reach support?",
               "acceptedAnswer": {
                 "@type": "Answer",
@@ -452,10 +460,10 @@
             },
             {
               "@type": "Question",
-              "name": "How fast does support reply?",
+              "name": "Where can I check if GymFlow is working?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Every plan includes priority support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours."
+                "text": "Our public status page at status.gymflow.sbs shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@gymflow.sbs."
               }
             }
           ]
@@ -588,7 +596,7 @@
 
         <h2 id="faq">Frequently asked questions</h2>
         <h3>Is there a free trial?</h3>
-        <p>Yes — a 14-day free trial with every feature unlocked and no credit card required. Import your members and send WhatsApp reminders before you decide.</p>
+        <p>Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the 14-day free trial before you decide.</p>
         <h3>How much does GymFlow cost?</h3>
         <p>From ₹999 per month — or ₹9,999 for a year (save 17%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.</p>
         <h3>Are WhatsApp messages really unlimited?</h3>
@@ -597,10 +605,12 @@
         <p>Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm, and most gyms finish a few hundred members in under 15 minutes.</p>
         <h3>Is my gym&#x27;s data safe?</h3>
         <p>Each gym&#x27;s data is kept separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym&#x27;s data from account settings.</p>
-        <h3>How do I reach support?</h3>
-        <p>Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.</p>
         <h3>How fast does support reply?</h3>
         <p>Every plan includes priority support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.</p>
+        <h3>How do I reach support?</h3>
+        <p>Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.</p>
+        <h3>Where can I check if GymFlow is working?</h3>
+        <p>Our public status page at status.gymflow.sbs shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@gymflow.sbs.</p>
 
         <h2 id="security">Security and privacy</h2>
         <p>
@@ -616,7 +626,7 @@
           <a href="tel:+919384886895">+91 93848 86895</a>. No. 126, Anbu Nagar, Achariyapuram,
           Villianur, Puducherry 605110, India.
         </p>
-        <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/llms.txt">Summary for AI assistants</a></p>
+        <p><a href="https://status.gymflow.sbs">System status</a> · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/llms.txt">Summary for AI assistants</a></p>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

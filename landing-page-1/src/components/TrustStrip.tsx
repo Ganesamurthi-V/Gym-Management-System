@@ -1,5 +1,6 @@
 import { Database, Headset, ScrollText, ShieldCheck } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
+import { ShinyText } from './ShinyText';
 import { SUPPORT_PROMISE } from '../data/support';
 
 const LINK_CLASS =
@@ -50,7 +51,11 @@ export function TrustStrip() {
       <div className="mx-auto max-w-[1240px]">
         <div className="mx-auto max-w-[720px] text-center">
           <h2 id="trust-title" className="reveal display-2 text-balance">
-            Your Gym. Your Data. Your Control.
+            Your Gym. Your Data. Your{' '}
+            <em className="display-accent">
+              <ShinyText text="Control" speed={2.8} spread={120} />
+            </em>
+            .
           </h2>
           <p className="reveal lead mx-auto mt-5 max-w-[560px]">
             Manage your gym with confidence, backed by transparent security practices and

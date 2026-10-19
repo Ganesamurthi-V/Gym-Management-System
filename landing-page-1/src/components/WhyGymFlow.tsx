@@ -19,24 +19,22 @@ export function WhyGymFlow() {
   const scope = useReveal<HTMLElement>({ perElement: true, y: 28, duration: 0.7, start: 'top 90%' });
 
   return (
-    <section
-      id="why"
-      ref={scope}
-      aria-labelledby="why-title"
-      className="scroll-mt-24 px-5 py-20 md:px-8 md:py-24"
-    >
+    <section id="why" ref={scope} aria-labelledby="why-title" className="scroll-mt-24 px-5 py-20 md:px-8 md:py-24">
       <div className="mx-auto max-w-[1200px]">
-        <span className="reveal eyebrow">Why GymFlow</span>
-        <h2 id="why-title" className="reveal display-2 mt-4 max-w-[900px] text-balance">
-          Why{' '}
-          <em className="display-accent">
-            <ShinyText text="GymFlow" speed={2.8} spread={120} />
-          </em>{' '}
-          and not another platform?
-        </h2>
-        <p className="reveal lead mt-5 max-w-[560px]">
-          Made for small gym owners here, so the things you do every day take fewer taps.
-        </p>
+        {/* Centred over the table, the same construction as the Pricing and FAQ headers. */}
+        <div className="mx-auto flex max-w-[1100px] flex-col items-center text-center">
+          <span className="reveal eyebrow">Why GymFlow</span>
+          <h2 id="why-title" className="reveal display-2 mt-4 text-balance lg:[white-space:nowrap]">
+            Why{' '}
+            <em className="display-accent">
+              <ShinyText text="GymFlow" speed={2.8} spread={120} />
+            </em>{' '}
+            and not another platform?
+          </h2>
+          <p className="reveal lead mt-5 max-w-[560px]">
+            Made for small gym owners here, so the things you do every day take fewer taps.
+          </p>
+        </div>
 
         <div className="reveal card mt-10 overflow-hidden">
           <table className="w-full border-collapse text-left">
@@ -56,10 +54,7 @@ export function WhyGymFlow() {
             <tbody>
               {ROWS.map(({ feature, other }) => (
                 <tr key={feature} className="reveal border-b border-border-subtle last:border-b-0">
-                  <th
-                    scope="row"
-                    className="px-5 py-5 text-[15px] font-medium text-foreground md:px-8 md:text-[16px]"
-                  >
+                  <th scope="row" className="px-5 py-5 text-[15px] font-medium text-foreground md:px-8 md:text-[16px]">
                     {feature}
                   </th>
                   <td className="px-3 py-5 md:px-6">

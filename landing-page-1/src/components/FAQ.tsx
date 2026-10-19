@@ -42,6 +42,10 @@ const FAQS = [
     q: 'How do I reach support?',
     a: 'Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.',
   },
+  {
+    q: 'Where can I check if GymFlow is working?',
+    a: 'Our public status page at status.gymflow.sbs shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@gymflow.sbs.',
+  },
 ] as const;
 
 /* Hover only means something with a mouse. Touch screens fire a synthetic mouseenter on

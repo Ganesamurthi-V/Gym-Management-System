@@ -38,13 +38,17 @@ export function BentoFeatures() {
       className="has-dots contain-visible px-5 py-10 md:px-8 md:py-14"
     >
       <div className="mx-auto w-full max-w-[1200px]">
-        <div className="max-w-[560px]">
+        <div className="mx-auto flex max-w-[900px] flex-col items-center text-center">
           <span className="reveal eyebrow">Core modules</span>
-          <h2 id="features-title" className="reveal display-3 mt-3 text-balance">
+          <h2 id="features-title" className="reveal display-2 mt-4 text-balance">
             Everything your gym needs,
             <br />
             <span className="text-muted-foreground">nothing it doesn&apos;t.</span>
           </h2>
+          <p className="reveal lead mt-5 max-w-[560px]">
+            Members, payments, attendance and WhatsApp reminders in one place, with a member app
+            included.
+          </p>
         </div>
 
         {/* Three columns at lg: the phone card takes the first and both rows, the

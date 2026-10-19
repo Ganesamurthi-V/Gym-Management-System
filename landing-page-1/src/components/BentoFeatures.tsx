@@ -35,9 +35,9 @@ export function BentoFeatures() {
       aria-labelledby="features-title"
       /* contain-visible: the BorderGlow halo paints up to 40px outside each card,
          and the default `contain: paint` on section would clip it flat. */
-      className="has-dots contain-visible px-5 py-14 md:px-8 md:py-20"
+      className="has-dots contain-visible px-5 py-10 md:px-8 md:py-14"
     >
-      <div className="mx-auto w-full max-w-[1240px]">
+      <div className="mx-auto w-full max-w-[1200px]">
         <div className="max-w-[560px]">
           <span className="reveal eyebrow">Core modules</span>
           <h2 id="features-title" className="reveal display-3 mt-3 text-balance">
@@ -51,15 +51,19 @@ export function BentoFeatures() {
             dashboard takes the other two on top, and attendance and payments share
             the bottom row. At md the phone still spans both rows beside a single
             column, and payments goes full width so the last row has no hole. */}
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:mt-10 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 lg:mt-8 lg:grid-cols-[1.3fr_1fr_1fr]">
           <MemberAppCard />
 
-          <Card className="lg:col-span-2" title="Live dashboard" desc="Members, collections and dues on one screen.">
-            <div className="mt-6 grid grid-cols-2 gap-3 lg:mt-auto">
+          <Card
+            className="lg:col-span-2 lg:min-h-[300px]"
+            title="Live dashboard"
+            desc="Members, collections and dues on one screen."
+          >
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:mt-auto">
               {STATS.map(stat => (
-                <div key={stat.label} className="rounded-2xl border border-border-subtle bg-subtle p-5">
+                <div key={stat.label} className="rounded-2xl border border-border-subtle bg-subtle p-4">
                   <p className="text-[13px] text-muted-foreground">{stat.label}</p>
-                  <p className="mt-2 text-[28px] font-medium leading-none tracking-tight text-foreground tabular-nums md:text-[34px]">
+                  <p className="mt-1.5 text-[24px] font-medium leading-none tracking-tight text-foreground tabular-nums md:text-[28px]">
                     {stat.value}
                   </p>
                 </div>
@@ -67,12 +71,12 @@ export function BentoFeatures() {
             </div>
           </Card>
 
-          <Card title="One-tap attendance" desc="Mark today in a tap.">
-            <div className="mt-6 flex flex-col gap-2.5 lg:mt-auto">
+          <Card className="lg:min-h-[320px]" title="One-tap attendance" desc="Mark today in a tap.">
+            <div className="mt-4 flex flex-col gap-2 lg:mt-auto">
               {ATTENDANCE_ROWS.map(row => (
                 <div
                   key={row.name}
-                  className="flex items-center justify-between rounded-2xl border border-border-subtle bg-subtle px-4 py-3.5"
+                  className="flex items-center justify-between rounded-2xl border border-border-subtle bg-subtle px-4 py-2.5"
                 >
                   <span className="flex items-center gap-3">
                     <span className="grid h-6 w-6 place-items-center rounded-full bg-accent">
@@ -89,20 +93,15 @@ export function BentoFeatures() {
           {/* Accent card, same treatment as the phone card: the heading and line in
               accent-ink, and the visual as translucent pills rather than a second
               set of bordered rows. */}
-          <div className="reveal grid md:col-span-2 lg:col-span-1">
-            <BorderGlow
-              as="article"
-              className="glow-card-accent"
-              contentClassName="p-6 md:p-7"
-              {...ACCENT_GLOW}
-            >
-              <h3 className="text-[26px] font-medium leading-[1.1] tracking-tight text-accent-ink md:text-[30px]">
+          <div className="reveal grid md:col-span-2 lg:col-span-1 lg:min-h-[320px]">
+            <BorderGlow as="article" className="glow-card-accent" contentClassName="p-5 md:p-6" {...ACCENT_GLOW}>
+              <h3 className="text-[22px] font-medium leading-[1.1] tracking-tight text-accent-ink md:text-[24px]">
                 Payments &amp; dues
               </h3>
-              <p className="mt-2.5 max-w-[320px] text-[15px] leading-relaxed text-accent-ink/80">
+              <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-accent-ink/80">
                 Cash, UPI or card. Reminders sent for you.
               </p>
-              <div className="mt-6 flex flex-col gap-2.5 lg:mt-auto">
+              <div className="mt-4 flex flex-col gap-2 lg:mt-auto">
                 <Pill icon={<Wallet className="h-4 w-4" />} text="₹18,600 pending" />
                 <Pill icon={<BellRing className="h-4 w-4" />} text="14 reminders sent" />
               </div>
@@ -118,7 +117,7 @@ export function BentoFeatures() {
 
 function Pill({ icon, text }: { icon: ReactNode; text: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-accent-ink/15 px-4 py-3.5 text-accent-ink">
+    <div className="flex items-center gap-3 rounded-2xl bg-accent-ink/15 px-4 py-2.5 text-accent-ink">
       {icon}
       <span className="text-[16px] font-medium">{text}</span>
     </div>
@@ -144,13 +143,9 @@ function Card({
        span; `grid` makes its single child stretch to the full row height. */
     <div className={`reveal grid ${className}`}>
       {/* fillOpacity 0: only the rim lights on hover. */}
-      <BorderGlow as="article" contentClassName="p-6 md:p-7" fillOpacity={0}>
-        <h3 className="text-[26px] font-medium leading-[1.1] tracking-tight text-foreground md:text-[30px]">
-          {title}
-        </h3>
-        <p className="mt-2.5 max-w-[320px] text-[15px] leading-relaxed text-muted-foreground">
-          {desc}
-        </p>
+      <BorderGlow as="article" contentClassName="p-5 md:p-6" fillOpacity={0}>
+        <h3 className="text-[22px] font-medium leading-[1.1] tracking-tight text-foreground md:text-[24px]">{title}</h3>
+        <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-muted-foreground">{desc}</p>
         {children}
       </BorderGlow>
     </div>

@@ -91,7 +91,7 @@ Please complete your payment before the due date to keep your membership active.
   },
 ] as const;
 
-const CYCLE_MS = 5000;
+const CYCLE_MS = 3000;
 
 /* Phrased as bare nouns, not "No per-message fees". The cell they sit in is
    already labelled "What you never pay for", and keeping the "No" prefix made
@@ -198,7 +198,7 @@ export function WhatsAppSection() {
                 role="tabpanel"
                 aria-labelledby={`wa-tab-${active.id}`}
                 aria-live={auto ? 'off' : 'polite'}
-                className="mt-5 min-h-[132px]"
+                className="mt-5 min-h-[132px] md:min-h-[64px]"
               >
                 <div key={active.id} className="wa-swap">
                   <span className="inline-block rounded-pill bg-whatsapp-soft px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-whatsapp-ink">
@@ -241,16 +241,14 @@ export function WhatsAppSection() {
               />
               {/* phone-scene / phone-bob / phone-tilt each own one transform. The
                   orbit is a sibling of phone-bob so it runs on its own clock and
-                  reads as surrounding the phone, not painted onto it. The keyed
-                  wrapper inside re-mounts on tab change so only the screen
-                  content fades, not the float or tilt. */}
+                  reads as surrounding the phone, not painted onto it. The phone
+                  itself never re-mounts on a tab change: WhatsAppThread keys
+                  and animates only the message bubble. */}
               <div className="phone-scene relative">
                 <AutomationOrbit chips={ORBIT_CHIPS} />
                 <div className="phone-bob">
                   <div className="phone-tilt">
-                    <div key={active.id} className="wa-swap">
-                      <WhatsAppThread messages={[active.message]} label={active.label} />
-                    </div>
+                    <WhatsAppThread messages={[active.message]} label={active.label} />
                   </div>
                 </div>
               </div>

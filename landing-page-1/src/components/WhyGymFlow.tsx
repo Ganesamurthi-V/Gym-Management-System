@@ -25,7 +25,7 @@ export function WhyGymFlow() {
       aria-labelledby="why-title"
       className="scroll-mt-24 px-5 py-20 md:px-8 md:py-24"
     >
-      <div className="mx-auto max-w-[1240px]">
+      <div className="mx-auto max-w-[1200px]">
         <span className="reveal eyebrow">Why GymFlow</span>
         <h2 id="why-title" className="reveal display-2 mt-4 max-w-[900px] text-balance">
           Why{' '}

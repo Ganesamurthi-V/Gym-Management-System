@@ -69,12 +69,15 @@ export function WhatsAppThread({
          screen from a light page. */
       className="rounded-[42px] bg-[#0b0b0b] p-[10px] shadow-[0_30px_60px_-25px_rgba(0,0,0,0.55)]"
     >
-      {/* 9/15 is chosen against the content, not from a spec sheet. One template
+      {/* A fixed height, not an aspect ratio: with a ratio the screen could grow when a
+          taller template was shown, resizing the whole phone on every tab switch. 474px is
+          9/15 of the 280px screen width, and fits the tallest template. 9/15 is chosen
+          against the content, not from a spec sheet. One template
           plus the thread head runs ~355px; at a true 9/19.5 the screen would be
           600px tall and the message would sit under a slab of empty chat, which
           reads as a dead conversation. Shortening the screen is the lie worth
           telling. */}
-      <div className="relative flex aspect-[9/15] flex-col overflow-hidden rounded-[33px] bg-[var(--wa-chat)]">
+      <div className="relative flex h-[474px] flex-col overflow-hidden rounded-[33px] bg-[var(--wa-chat)]">
         {/* Status bar and chat header share one surface, the way WhatsApp tints
             the top of the screen as a single block. */}
         <div className="shrink-0 bg-[var(--wa-bar)]">
@@ -143,7 +146,7 @@ export function WhatsAppThread({
                other edge; in dark it is too faint to register. */
             <div
               key={message.body}
-              className="mr-auto w-[88%] shrink-0 rounded-lg rounded-tl-[3px] bg-[var(--wa-bubble-in)] p-[3px] text-left shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]"
+              className="wa-swap mr-auto w-[88%] shrink-0 rounded-lg rounded-tl-[3px] bg-[var(--wa-bubble-in)] p-[3px] text-left shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]"
             >
               {message.banner && (
                 /* Hairline ring, because in light mode the banner's white left

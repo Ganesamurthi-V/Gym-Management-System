@@ -17,6 +17,8 @@ dist/
 *.generated.py
 graphify-out/
 graphify-out
+youpi-pg/
+youpi-pg
 
 # Removing the block that ignores everything except src/ since this project uses app/ structure
 # Sentry Config File

@@ -14,17 +14,17 @@ if (!fs.existsSync(path.join(root, 'src/data/plans.ts'))) {
   process.exit(1)
 }
 const prices = [...read('src/data/plans.ts').matchAll(/\bprice:\s*(\d+)/g)].map((m) => Number(m[1]))
-if (prices.length < 3) {
-  console.error(`check-copy-sync: expected 3 "price: <digits>" in src/data/plans.ts, found ${prices.length}`)
+if (prices.length < 2) {
+  console.error(`check-copy-sync: expected 2 "price: <digits>" in src/data/plans.ts, found ${prices.length}`)
   process.exit(1)
 }
-const [monthly, half, yearly] = prices
+const [monthly, yearly] = prices
 const indian = (n) => String(n).replace(/(\d+?)(?=(\d\d)+(\d)(?!\d))/g, '$1,')
 const variants = (n) => [String(n), indian(n), n.toLocaleString('en-IN')]
 
 for (const file of ['index.html', 'public/llms.txt']) {
   const text = read(file)
-  for (const [label, n] of [['monthly', monthly], ['half-yearly', half], ['yearly', yearly]]) {
+  for (const [label, n] of [['monthly', monthly], ['yearly', yearly]]) {
     if (!variants(n).some((v) => text.includes(v))) errors.push(`${file}: ${label} price ${n} not found`)
   }
   for (const banned of ['20+ gyms', 'backed up regularly']) {
@@ -50,4 +50,4 @@ if (errors.length) {
   console.error('check-copy-sync failed:\n - ' + errors.join('\n - '))
   process.exit(1)
 }
-console.log(`check-copy-sync ok (prices ${monthly} / ${half} / ${yearly})`)
+console.log(`check-copy-sync ok (prices ${monthly} / ${yearly})`)

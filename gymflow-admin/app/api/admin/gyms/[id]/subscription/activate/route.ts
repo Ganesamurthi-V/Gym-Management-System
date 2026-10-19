@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/admin/gyms/[id]/subscription/activate
- * Body: { plan: 'monthly' | 'half_yearly' | 'yearly' | 'lifetime', performed_by?: string, notes?: string }
+ * Body: { plan: 'monthly' | 'yearly' | 'lifetime', performed_by?: string, notes?: string }
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   if (!(await verifyRequestAuth(req))) {
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
     const parsed = z.object({ plan: planSchema, notes: noteSchema }).safeParse(await req.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid plan. Must be monthly, half_yearly, yearly, or lifetime.' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid plan. Must be monthly, yearly, or lifetime.' }, { status: 400 })
     }
     const { plan, notes } = parsed.data
     // Never trust a client-supplied actor name in the audit log.
@@ -41,10 +41,6 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     if (plan === 'monthly') {
       const d = new Date(now)
       d.setMonth(d.getMonth() + 1)
-      endsAt = d.toISOString()
-    } else if (plan === 'half_yearly') {
-      const d = new Date(now)
-      d.setMonth(d.getMonth() + 6)
       endsAt = d.toISOString()
     } else if (plan === 'yearly') {
       const d = new Date(now)

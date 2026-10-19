@@ -13,7 +13,7 @@ import { z } from 'zod'
 /** Audit label for every admin action. Never taken from the client: it could forge who acted. */
 export const ADMIN_ACTOR = 'admin'
 
-export const planSchema = z.enum(['monthly', 'half_yearly', 'yearly', 'lifetime'])
+export const planSchema = z.enum(['monthly', 'yearly', 'lifetime'])
 /** An optional free-text note, bounded so a request cannot bloat the audit log. */
 export const noteSchema = z.string().max(1_000).nullish()
 /** A date/time the admin typed or picked; empty/null clears the column. */

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useReveal } from '../lib/useReveal';
+import { ShinyText } from './ShinyText';
 import RubberSegment from './ui/RubberSegment';
 import Counter from './ui/Counter';
 import { PLANS, savingPercent, type PlanId } from '../data/plans';
@@ -18,7 +19,6 @@ const APP_URL = 'https://app.gymflow.sbs';
 /* Display-only copy for each tier. Prices, labels and months come from src/data/plans.ts. */
 const TIER_COPY = {
   monthly: { unit: '/ month', tagline: 'Billed monthly.' },
-  half_yearly: { unit: '/ 6 months', tagline: 'Billed once every 6 months.' },
   yearly: { unit: '/ year', tagline: 'Billed once a year.' },
 } as const;
 
@@ -93,24 +93,58 @@ export function Pricing() {
       className="has-dots px-5 py-24 md:px-8 md:py-28"
     >
       <div className="mx-auto max-w-[1240px]">
-        <div className="grid gap-x-16 gap-y-10 lg:grid-cols-2 lg:gap-x-20">
-          {/* ── Header ────────────────────────────────────────────────────── */}
-          {/* Left-aligned, and in the same grid as the cards. The section used to be a
-              centred heading over a 920px pair, which was the odd one out between
-              left-aligned sections on either side of it. The copy and the activation
-              steps now sit on the left and the plan on the right, the same split as
-              the WhatsApp section, and on a phone the order is heading, plan, steps. */}
-        <div className="lg:col-start-1 lg:row-start-1">
+        {/* ── Header ────────────────────────────────────────────────────── */}
+        {/* Centred over the cards, the same construction as the FAQ: label, one-line
+            heading, short intro. (It was left-aligned in the same grid as the cards.) */}
+        <div className="mx-auto flex max-w-[900px] flex-col items-center text-center">
           <span className="reveal eyebrow">Pricing</span>
-          <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance">
+          <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance md:whitespace-nowrap">
             One plan. <span className="text-muted-foreground">Everything included.</span>
           </h2>
           <p className="reveal lead mt-5 max-w-[520px]">
-            No per-member charges, no setup fee, and no modules to unlock later. Start with
-            a 14-day free trial — no credit card needed.
+            No per-member charges, no setup fee, and no modules to unlock later.{' '}
+            <ShinyText text="Start with a 14-day free trial" speed={2.8} spread={120} /> — no credit card
+            needed.
           </p>
         </div>
 
+        {/* Billing-term selector — React Bits' RubberSegment, a draggable segmented
+            control whose thumb stretches and springs between terms. It sits under the
+            heading rather than inside the plan card: the choice changes the whole card,
+            so it reads as a page-level control. Not wrapped in `reveal`: the thumb's
+            geometry is measured on mount, and a card caught mid-transform measures wrong
+            (see the note on the plan card below). */}
+        <div className="mt-8 flex justify-center">
+          <RubberSegment
+            aria-label="Billing term"
+            value={selected}
+            onChange={next => setSelected(next as TierId)}
+            size="lg"
+            radius={16}
+            trackColor="var(--frame)"
+            thumbColor="var(--foreground)"
+            textColor="var(--muted-foreground)"
+            activeTextColor="var(--background)"
+            items={TIERS.map(tier => ({
+              value: tier.id,
+              label:
+                tier.id === 'yearly' ? (
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    {tier.label}
+                    <span className="rounded-pill bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-ink">
+                      Save {savingPercent(tier)}%
+                    </span>
+                  </span>
+                ) : (
+                  <span className="font-semibold">{tier.label}</span>
+                ),
+            }))}
+          />
+        </div>
+
+        {/* On a phone the order is plan, then the activation steps. From lg the steps
+            sit on the left and the plan on the right. */}
+        <div className="mx-auto mt-12 grid max-w-[1100px] gap-x-8 gap-y-6 lg:grid-cols-2">
           {/* Plan card — filled accent, because this is the one thing on the page
               a visitor is meant to act on.
 
@@ -120,7 +154,7 @@ export function Pricing() {
               mis-clipped until an interaction. Rendering the card in its final layout
               from first paint removes that whole timing race; the section heading above
               still reveals, so the entrance still reads as animated. */}
-          <div className="card-accent relative flex flex-col overflow-hidden p-4 md:p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start lg:sticky lg:top-28">
+          <div className="card-accent relative flex flex-col overflow-hidden p-4 md:p-5 lg:col-start-2 lg:row-start-1">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">
                 GymFlow Pro
@@ -144,7 +178,7 @@ export function Pricing() {
               </span>
               {/* React Bits rolling-digit Counter: the price digits spring to their new
                   place when the billing term changes. `places` covers up to 5 digits
-                  (max ₹12,999); leading-zero places collapse via placesFor.
+                  (max ₹9,999); leading-zero places collapse via placesFor.
                   Gradients are transparent — the default black fade would band the
                   blue accent card. */}
               <Counter
@@ -185,34 +219,6 @@ export function Pricing() {
               {activeTier.tagline} Unlimited members, unlimited WhatsApp messages, every
               module.
             </p>
-
-            {/* Billing-term selector — React Bits' RubberSegment: a draggable segmented
-                control whose thumb stretches and springs between terms. Selecting a term
-                (click, drag-and-release, or arrow keys) updates the headline price, unit
-                and saving pill above via onChange -> setSelected.
-
-                Themed to the blue plan card: the thumb is the white accent-ink surface the
-                CTA uses, its text is the card's blue accent, and the resting track/text are
-                translucent accent-ink so unselected terms read as quiet-on-blue. Each label
-                carries its own "Save X%" badge so the discounts stay visible. */}
-            <div className="mt-5">
-              <RubberSegment
-                aria-label="Billing term"
-                value={selected}
-                onChange={next => setSelected(next as TierId)}
-                size="lg"
-                radius={16}
-                trackColor="color-mix(in srgb, var(--accent-ink) 12%, transparent)"
-                thumbColor="var(--accent-ink)"
-                textColor="var(--accent-ink)"
-                activeTextColor="var(--accent)"
-                items={TIERS.map(tier => ({
-                  value: tier.id,
-                  // Just the term name — the saving % lives only on the price line above.
-                  label: <span className="font-semibold">{tier.label}</span>,
-                }))}
-              />
-            </div>
 
             <div className="my-5 h-px bg-accent-ink/15" />
 
@@ -263,7 +269,7 @@ export function Pricing() {
               the row takes the taller one's height and the shorter card stretches to
               match: shrinking only one would just move the empty space, not remove
               it. */}
-          <div className="reveal card flex flex-col p-6 md:p-8 lg:col-start-1 lg:row-start-2">
+          <div className="reveal card flex flex-col p-6 md:p-8 lg:col-start-1 lg:row-start-1">
             <h3 className="display-3">Simple 3-step activation</h3>
             <p className="mt-3 text-[13.5px] leading-relaxed text-muted-foreground">
               Payments are verified manually, so there is no card on file and nothing

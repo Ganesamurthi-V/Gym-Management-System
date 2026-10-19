@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { PLANS, formatINR, savingPercent } from '../data/plans';
 
-const [MONTHLY, HALF, YEARLY] = PLANS;
+const [MONTHLY, YEARLY] = PLANS;
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -20,7 +20,7 @@ const FAQS = [
   },
   {
     q: 'How much does GymFlow cost?',
-    a: `From ${formatINR(MONTHLY.price)} per month — or ${formatINR(HALF.price)} for 6 months (save ${savingPercent(HALF)}%) and ${formatINR(YEARLY.price)} for a year (save ${savingPercent(YEARLY)}%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.`,
+    a: `From ${formatINR(MONTHLY.price)} per month — or ${formatINR(YEARLY.price)} for a year (save ${savingPercent(YEARLY)}%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.`,
   },
   {
     q: 'Are WhatsApp messages really unlimited?',
@@ -43,6 +43,10 @@ const FAQS = [
     a: 'Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.',
   },
 ] as const;
+
+/* Hover only means something with a mouse. Touch screens fire a synthetic mouseenter on
+   tap, and there a tap has to toggle, so the two behaviours are told apart here. */
+const canHover = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 export function FAQ() {
   /*
@@ -102,6 +106,9 @@ export function FAQ() {
             return (
               <li
                 key={item.q}
+                onMouseEnter={() => {
+                  if (canHover()) setOpen(index);
+                }}
                 className="reveal card transition-colors hover:border-border-strong"
               >
                 <h3>
@@ -119,7 +126,9 @@ export function FAQ() {
                     id={buttonId}
                     aria-expanded={expanded}
                     aria-controls={panelId}
-                    onClick={() => setOpen(expanded ? null : index)}
+                    // With a mouse, hover has already opened the card, so a click must not
+                    // close it again; it still toggles on touch and for keyboard users.
+                    onClick={() => setOpen(expanded && !canHover() ? null : index)}
                     className="flex w-full items-center justify-between gap-4 p-5 text-left sm:p-6"
                   >
                     <span className="text-[15.5px] font-medium tracking-tight text-foreground sm:text-[16.5px]">

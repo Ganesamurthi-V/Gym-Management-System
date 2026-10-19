@@ -4,10 +4,10 @@ import { parseApiError } from './error-handler';
 // ── Types ─────────────────────────────────────────────────────────
 
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled' | 'suspended';
-export type PlanType = 'trial' | 'monthly' | 'half_yearly' | 'yearly' | 'lifetime';
+export type PlanType = 'trial' | 'monthly' | 'yearly' | 'lifetime';
 
 /** Paid tiers an admin can activate or approve a payment against, and their price. */
-export type PaidPlan = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime';
+export type PaidPlan = 'monthly' | 'yearly' | 'lifetime';
 
 export type GymFlags = {
   is_vip: boolean;

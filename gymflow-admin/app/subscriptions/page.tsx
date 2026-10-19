@@ -23,13 +23,13 @@ interface SubscriptionRequest {
 }
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected'
-type PlanType = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime'
+type PlanType = 'monthly' | 'yearly' | 'lifetime'
 
 /*
   The SaaS plans an admin can approve a payment against, with their prices and
   durations. Kept as one list so the dropdown, the toast and any future summary
   read from the same source. Prices mirror platform_settings in the product DB
-  (₹1,699 / ₹6,999 / ₹12,999); lifetime has no set price here since it is granted,
+  (₹999 / ₹9,999); lifetime has no set price here since it is granted,
   not sold on this screen.
 
   If these ever need to be authoritative rather than indicative, they should come
@@ -37,9 +37,8 @@ type PlanType = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime'
   the choice, and the expiry math still lives server-side in the approve route.
 */
 const PLAN_OPTIONS: { value: PlanType; label: string }[] = [
-  { value: 'monthly', label: 'Monthly — ₹1,699 (30d)' },
-  { value: 'half_yearly', label: '6 Months — ₹6,999 (180d)' },
-  { value: 'yearly', label: 'Yearly — ₹12,999 (365d)' },
+  { value: 'monthly', label: 'Monthly — ₹999 (30d)' },
+  { value: 'yearly', label: 'Yearly — ₹9,999 (365d)' },
   { value: 'lifetime', label: 'Lifetime' },
 ]
 

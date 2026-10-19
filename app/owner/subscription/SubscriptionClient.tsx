@@ -5,7 +5,7 @@ import QRCode from 'qrcode'
 import {
   Clock, CheckCircle, XCircle, Upload, Copy, CreditCard,
   RefreshCw, MessageCircle, AlertCircle, ArrowRight, Shield,
-  Calendar, CalendarClock, Zap, Check, Circle, CheckCircle2
+  Calendar, Zap, Check, Circle, CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -40,12 +40,11 @@ interface Settings {
   upi_id: string
   upi_name: string
   price_monthly: number
-  price_half_yearly: number
   price_yearly: number
 }
 
-/** The three SaaS billing tiers a gym owner can buy. */
-type PlanId = 'monthly' | 'half_yearly' | 'yearly'
+/** The two SaaS billing tiers a gym owner can buy. */
+type PlanId = 'monthly' | 'yearly'
 
 interface Props {
   gym: GymInfo
@@ -60,7 +59,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly')
 
   /*
-    The three tiers, in one place. Price is read from here by both the plan grid and
+    The two tiers, in one place. Price is read from here by both the plan grid and
     the payment step, and the QR below is generated from this same `price`, so the
     amount shown and the amount encoded in the QR can never drift apart.
 
@@ -79,7 +78,6 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     Icon: typeof Calendar
   }[] = [
     { id: 'monthly',     name: 'Monthly Plan',  price: settings.price_monthly,     period: '/ month',    Icon: Calendar },
-    { id: 'half_yearly', name: '6-Month Plan',  price: settings.price_half_yearly, period: '/ 6 months', Icon: CalendarClock, badge: 'POPULAR' },
     { id: 'yearly',      name: 'Yearly Plan',   price: settings.price_yearly,      period: '/ year',     Icon: Zap,      badge: 'BEST VALUE' },
   ]
 
@@ -442,7 +440,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
              {/* Three tiers across on desktop, stacked on mobile. Was a 12-col grid
                  holding two plan cards plus the "All plans include" card; with a third
                  tier the plans get their own 3-up row and the include card drops below. */}
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch" role="radiogroup" aria-label="Subscription plan">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch max-w-3xl mx-auto" role="radiogroup" aria-label="Subscription plan">
                 {PLANS.map(plan => {
                   const isSelected = selectedPlan === plan.id
                   const PlanIcon = plan.Icon

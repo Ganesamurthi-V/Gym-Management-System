@@ -41,7 +41,7 @@ export default async function SubscriptionPage() {
       .maybeSingle(),
     supabase
       .from('platform_settings')
-      .select('upi_id, upi_name, price_monthly, price_half_yearly, price_yearly')
+      .select('upi_id, upi_name, price_monthly, price_yearly')
       .single(),
   ])
 
@@ -61,9 +61,8 @@ export default async function SubscriptionPage() {
       settings={settingsResult.data ?? {
         upi_id: '',
         upi_name: 'GymFlow',
-        price_monthly: 1699,
-        price_half_yearly: 6999,
-        price_yearly: 12999,
+        price_monthly: 999,
+        price_yearly: 9999,
       }}
     />
   )

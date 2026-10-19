@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS gyms (
   subscription_status     TEXT        NOT NULL DEFAULT 'trial'
                                       CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled', 'suspended')),
   plan_type               TEXT        NOT NULL DEFAULT 'trial'
-                                      CHECK (plan_type IN ('trial', 'monthly', 'quarterly', 'half_yearly', 'yearly', 'lifetime')),
+                                      CHECK (plan_type IN ('trial', 'monthly', 'quarterly', 'yearly', 'lifetime')),
   subscription_started_at TIMESTAMPTZ,
   -- NULL for a lifetime plan, which is why "no end date" must never be read as
   -- "expired" anywhere in the app.
@@ -539,9 +539,8 @@ CREATE TABLE IF NOT EXISTS platform_settings (
   id                 INT     PRIMARY KEY DEFAULT 1,
   upi_id             TEXT    NOT NULL DEFAULT '',
   upi_name           TEXT    NOT NULL DEFAULT 'GymFlow',
-  price_monthly      INT     NOT NULL DEFAULT 1699,
-  price_half_yearly  INT     NOT NULL DEFAULT 6999,
-  price_yearly       INT     NOT NULL DEFAULT 12999,
+  price_monthly      INT     NOT NULL DEFAULT 999,
+  price_yearly       INT     NOT NULL DEFAULT 9999,
   CHECK (id = 1)
 );
 

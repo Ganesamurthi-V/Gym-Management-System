@@ -1,12 +1,11 @@
-/* The three billing tiers a gym owner can buy, matching the in-app subscription
+/* The two billing tiers a gym owner can buy, matching the in-app subscription
    (platform_settings in the product DB). `price` stays a literal number because
    scripts/check-copy-sync reads it with a regex. `months` drives the maths below so
    the savings can never drift from the prices. There is no 3-month plan in the
    product, so none is offered here. */
 export const PLANS = [
-  { id: 'monthly', label: 'Monthly', price: 1699, months: 1 },
-  { id: 'half_yearly', label: '6 months', price: 6999, months: 6 },
-  { id: 'yearly', label: 'Yearly', price: 12999, months: 12 },
+  { id: 'monthly', label: 'Monthly', price: 999, months: 1 },
+  { id: 'yearly', label: 'Yearly', price: 9999, months: 12 },
 ] as const;
 
 export type Plan = (typeof PLANS)[number];

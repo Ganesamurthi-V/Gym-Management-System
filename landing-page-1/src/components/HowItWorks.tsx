@@ -222,7 +222,7 @@ export function HowItWorks() {
                      the padding, and last:pb-0 stops the list at the final step. */
                   data-step
                   data-active="false"
-                  className="reveal group flex gap-5 pb-12 last:pb-0 md:pb-16"
+                  className="reveal group flex gap-5 pb-16 last:pb-0 md:pb-24"
                 >
                   <span
                     data-step-badge

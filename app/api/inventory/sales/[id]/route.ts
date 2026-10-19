@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { passesCsrf, UUID_RE } from '@/app/api/_guard'
+import { deleteCache } from '@/lib/cache'
 
 export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const log = apiLogger('INVENTORY_SALE_DELETE')
@@ -47,6 +48,18 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
     if (!sale) {
       return NextResponse.json({ error: 'Sale not found' }, { status: 404 })
     }
+
+    // Sales list, product stock and the payments page (which lists inventory
+    // sales) are cached in Redis; drop them even if the restore below fails,
+    // because the sale row is already gone.
+    await Promise.all([
+      deleteCache(`gym:${gym.id}:payments_page:allTime`),
+      ...(sale.inventory_id ? [
+        deleteCache(`inventory-sales:${sale.inventory_id}`),
+        deleteCache(`inventory-item:${sale.inventory_id}`),
+        deleteCache(`inventory:${gym.id}`),
+      ] : []),
+    ])
 
     // Restore stock atomically to prevent race conditions
     if (sale.inventory_id) {

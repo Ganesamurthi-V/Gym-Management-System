@@ -78,7 +78,7 @@ select id, public from storage.buckets;                           -- expect: pay
 
 select key from app_config order by key;                          -- expect: push_cron_secret, push_dispatch_url
 
-select price_monthly, price_half_yearly, price_yearly from platform_settings;   -- 1999, 6999, 12999
+select price_monthly, price_half_yearly, price_yearly from platform_settings;   -- 1699, 6999, 12999
 ```
 
 ### Step 4. Set your own values (this is the part you change)
@@ -93,7 +93,7 @@ when you can skip it.
 update platform_settings
 set upi_id            = '<your-upi-id@bank>',     -- the UPI ID that receives the payments
     upi_name          = '<Your Business Name>',   -- the name shown in the UPI app
-    price_monthly     = 1999,                     -- rupees; change to your own prices
+    price_monthly     = 1699,                     -- rupees; change to your own prices
     price_half_yearly = 6999,
     price_yearly      = 12999
 where id = 1;
@@ -115,7 +115,7 @@ What each value does:
 | Value | Where it comes from | What happens if you leave it |
 |---|---|---|
 | `platform_settings.upi_id`, `upi_name` | your own UPI ID and business name | Owners cannot pay: the subscription page shows no QR |
-| `platform_settings.price_*` | your own prices | Defaults of ₹1,999 / ₹6,999 / ₹12,999 apply |
+| `platform_settings.price_*` | your own prices | Defaults of ₹1,699 / ₹6,999 / ₹12,999 apply |
 | `app_config.push_cron_secret` | a random secret you generate | Push dispatch stays off (it ignores the placeholder) |
 | `app_config.push_dispatch_url` | your admin app's URL | Pushes are sent to `admin.gymflow.sbs`, which is not yours |
 

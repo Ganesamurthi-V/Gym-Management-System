@@ -8,7 +8,7 @@ import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, UUID_RE } from '@/app/api/_guard'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 
 
 export async function GET(
@@ -140,8 +140,7 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
 
-    await deleteCache(cacheKeys.membersList(gym.id))
-    await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
+    await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {
@@ -195,10 +194,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
 
-    await Promise.all([
-      deleteCache(cacheKeys.membersList(gym.id)),
-      deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
-    ])
+    await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
     return NextResponse.json({ success: true, data: { id }, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {

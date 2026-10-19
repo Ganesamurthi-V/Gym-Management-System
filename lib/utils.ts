@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { addDays, addMonths, addYears, differenceInDays, format, isAfter, isBefore, parseISO } from 'date-fns'
 import type { MemberStatus, Plan } from '@/types'
+import { istToday } from '@/lib/gamification/periods'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -23,8 +24,16 @@ export function calcEndDate(startDate: string, plan: Plan, customMonths?: number
   return format(end, 'yyyy-MM-dd')
 }
 
+/**
+ * Today's calendar date in Asia/Kolkata as yyyy-MM-dd. Vercel servers run in UTC, so
+ * format(new Date(), ...) is still "yesterday" between 00:00 and 05:30 IST.
+ */
+export function todayIST(): string {
+  return istToday()
+}
+
 export function getMemberStatus(endDate: string): MemberStatus {
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayIST()
   if (endDate < today) return 'expired'
   const daysLeft = differenceInDays(parseISO(endDate), parseISO(today))
   if (daysLeft <= 7) return 'expiring'
@@ -32,7 +41,7 @@ export function getMemberStatus(endDate: string): MemberStatus {
 }
 
 export function getDaysRemaining(endDate: string): number {
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayIST()
   return differenceInDays(parseISO(endDate), parseISO(today))
 }
 

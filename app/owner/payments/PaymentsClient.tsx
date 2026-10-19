@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { sanitizeRow } from '@/lib/export/sanitizeCell'
 import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -143,7 +144,14 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
   const [showPending, setShowPending] = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
   const idemSlot = useRef<{ fingerprint: string; key: string } | null>(null)
+  const router = useRouter()
   const [localPending, setLocalPending] = useState<PendingMember[]>(pendingMembers)
+  // Resync when router.refresh() / realtime resync delivers new server props; otherwise the list stays frozen.
+  const [prevPendingMembers, setPrevPendingMembers] = useState(pendingMembers)
+  if (pendingMembers !== prevPendingMembers) {
+    setPrevPendingMembers(pendingMembers)
+    setLocalPending(pendingMembers)
+  }
   const [activeTab, setActiveTab]     = useState<'membership' | 'inventory' | 'due'>('membership')
   const [fullPayments, setFullPayments] = useState<Payment[] | null>(null)
   const [fullSales, setFullSales] = useState<ProductSale[] | null>(null)
@@ -252,6 +260,8 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
     idemSlot.current = null
     setLocalPending(prev => prev.filter(m => m.id !== member.id))
     setMarkingId(null)
+    // Dues, dashboard totals and the payments list all changed; drop the router cache.
+    router.refresh()
   }
 
   async function handlePeriodChange(p: Period) {

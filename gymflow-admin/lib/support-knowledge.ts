@@ -17,9 +17,9 @@ export const SUPPORT_KNOWLEDGE = `
 GymFlow is all-in-one gym management software for independent single-location gyms in India. Web: www.gymflow.sbs. App: app.gymflow.sbs. Member app: members open it in a browser on their phone (no app store needed).
 
 PRICING (Indian rupees only; every plan includes every feature, unlimited members and unlimited WhatsApp messages; no per-member charge, no setup fee, no add-on modules):
-- Monthly: Rs 1,999 per month
-- Half-yearly: Rs 6,999 for 6 months (saves 42%)
-- Yearly: Rs 12,999 for 12 months (saves 46%)
+- Monthly: Rs 1,699 per month
+- Half-yearly: Rs 6,999 for 6 months (saves 31%)
+- Yearly: Rs 12,999 for 12 months (saves 36%)
 There is no free plan. There is a 14-day free trial with every feature unlocked and no credit card needed.
 
 HOW TO START AND PAY: sign up at app.gymflow.sbs and go through the setup wizard (gym name, membership plans, pricing, WhatsApp details); it autosaves. To activate a paid plan: 1) pay with any UPI app, net banking or card, 2) open the Payments page in GymFlow and attach the payment screenshot, 3) GymFlow verifies it and switches the account on shortly after. Payments are verified manually, so no card is kept on file and nothing is charged automatically.

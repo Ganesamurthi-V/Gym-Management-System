@@ -62,15 +62,14 @@ export function AttendanceClient({ gymId, gymName, today, totalPresent: initialP
     }
   }, [])
 
-  // Auto clear message after 4 seconds
+  // Auto clear the result banner after 3.5 seconds so the next member can check in
   useEffect(() => {
     if (message.type) {
       const t = setTimeout(() => {
         setMessage({ type: null, text: '' })
         setMemberId('')
         inputRef.current?.focus()
-        // Long enough to read the name and reach "Entered wrong number?"
-      }, message.memberInfo && message.type !== 'error' ? 7000 : 4000)
+      }, 3500)
       return () => clearTimeout(t)
     }
   }, [message])

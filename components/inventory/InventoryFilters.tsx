@@ -23,6 +23,11 @@ export default function InventoryFilters() {
     if (q) params.set('query', q)
     if (c) params.set('category', c)
     const qs = params.toString()
+    // The debounced effect below also fires on mount with the URL's own values.
+    // Pushing the unchanged URL there added a duplicate history entry on every
+    // visit, and a navigation makes Next discard any router.refresh() still in
+    // flight (such as the one that follows "Add product").
+    if (qs === new URLSearchParams(window.location.search).toString()) return
     router.push(qs ? `/owner/inventory?${qs}` : '/owner/inventory')
   }, [router])
 

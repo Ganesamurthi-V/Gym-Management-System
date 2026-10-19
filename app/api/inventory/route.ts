@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
 import { boundedInt, boundedNumber, boundedText, MAX_MONEY, MAX_STOCK } from '@/app/api/_guard'
+import { deleteCache } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,6 +98,11 @@ export const POST = withAuth('INVENTORY_POST', async (req: NextRequest, { supaba
       { status: 500 }
     )
   }
+
+  // The list page reads `inventory:<gymId>` from Redis for 10 minutes
+  // (lib/api/inventory.ts). Without this the new product stayed invisible in
+  // production until the key expired, however often the page was refreshed.
+  await deleteCache(`inventory:${gym.id}`)
 
   return NextResponse.json(
     { success: true, data },

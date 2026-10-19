@@ -3,7 +3,7 @@ import { withAuth, isValidUUID } from '@/lib/api/withAuth'
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,10 +65,7 @@ export const POST = withAuth('DUES_MARK_PAID', async (req: NextRequest, { supaba
     )
   }
 
-  await Promise.all([
-    deleteCache(cacheKeys.membersList(gym.id)),
-    deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
-  ])
+  await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
   return NextResponse.json(
     { success: true, data: { member_id } },

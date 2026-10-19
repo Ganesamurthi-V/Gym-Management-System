@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { TrustStrip } from './components/TrustStrip';
-import { ProductDemo } from './components/ProductDemo';
-import { SecurityPrivacy } from './components/SecurityPrivacy';
+import { WhyGymFlow } from './components/WhyGymFlow';
 import { BentoFeatures } from './components/BentoFeatures';
 import { WhatsAppSection } from './components/WhatsAppSection';
 import { HowItWorks } from './components/HowItWorks';
@@ -23,9 +22,8 @@ export function BelowFoldSections() {
   return (
     <>
       <TrustStrip />
-      <ProductDemo />
+      <WhyGymFlow />
       <BentoFeatures />
-      <SecurityPrivacy />
       <WhatsAppSection />
       <HowItWorks />
       <Pricing />

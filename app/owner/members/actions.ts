@@ -2,12 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeRow } from '@/lib/export/sanitizeCell'
-import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
+import { getMemberStatus, getDaysRemaining, todayIST } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
 
 // Our own thrown messages are safe to show; anything else (e.g. a raw Postgres or
 // PostgREST error) stays in the server log so internals never reach the browser.
@@ -229,9 +228,7 @@ export async function invalidateMembersCache(gymId: string) {
 
     // Bust all affected caches in parallel instead of four sequential awaits.
     await Promise.all([
-      deleteCache(cacheKeys.membersList(gymId)),
-      deleteCache(cacheKeys.dashboard(gymId, format(new Date(), 'yyyy-MM-dd'))),
-      deleteCache(cacheKeys.payments12mo(gymId)),
+      deleteCache(cacheKeys.dashboard(gymId, todayIST())),
       deleteCache(cacheKeys.paymentsAll(gymId)),
     ])
     return { success: true }

@@ -433,16 +433,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    try {
-      const { invalidateGymIdentityCache } = await import('@/lib/cache')
-      await invalidateGymIdentityCache(user.id)
-    } catch (cacheError) {
-      // The database write is complete. A failed cache invalidation must not make the owner
-      // repeat setup; the cache will expire and the explicit dashboard navigation refreshes.
-      log.warn('Onboarding saved but gym cache invalidation failed', {
-        error: cacheError instanceof Error ? cacheError.message : String(cacheError),
-      })
-    }
 
     return NextResponse.json(
       { success: true, data: { gymId: targetGymId } },

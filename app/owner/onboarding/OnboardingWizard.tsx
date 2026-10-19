@@ -371,7 +371,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
 
       // `?tour=welcome` starts the guided tour on arrival. Passing it explicitly makes the
       // first run deterministic rather than depending on onboarding_data being reread first.
-      setTimeout(() => router.push('/owner/dashboard?tour=welcome'), 2800)
+      setTimeout(() => { router.push('/owner/dashboard?tour=welcome'); router.refresh() }, 2800)
     } catch (requestError: unknown) {
       if (requestError instanceof DOMException && requestError.name === 'AbortError') {
         setError('Saving is taking longer than expected. Your details are safe on this device—please try again.')

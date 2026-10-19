@@ -157,7 +157,7 @@ function formatCurrency(amount?: number | null): string {
 */
 type ApprovablePlan = 'monthly' | 'half_yearly' | 'yearly' | 'lifetime';
 const PLAN_DETAILS: Record<ApprovablePlan, { label: string; price?: number; days?: number }> = {
-  monthly: { label: 'Monthly', price: 1999, days: 30 },
+  monthly: { label: 'Monthly', price: 1699, days: 30 },
   half_yearly: { label: '6-Month', price: 6999, days: 180 },
   yearly: { label: 'Yearly', price: 12999, days: 365 },
   lifetime: { label: 'Lifetime' },
@@ -818,7 +818,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       icon: 'check-circle', label: 'Activate Monthly', color: D.emerald,
       onPress: () => confirmAction({
         title: 'Activate Monthly Subscription?',
-        message: 'This will activate the Monthly plan (₹1,999) starting today for 30 days.',
+        message: 'This will activate the Monthly plan (₹1,699) starting today for 30 days.',
         confirmLabel: 'Activate', confirmColor: D.emerald,
         onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')),
       }),
@@ -1053,7 +1053,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 icon="award" label="Activate Monthly"
                 bg={D.qaGreen} border={D.qaGreenBorder} textColor={D.qaGreenText}
                 disabled={actionLoading}
-                onPress={() => confirmAction({ title: 'Activate Monthly Subscription?', message: 'This will activate the Monthly plan (₹1,999) starting today for 30 days.', confirmLabel: 'Activate', confirmColor: D.emerald, onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')) })}
+                onPress={() => confirmAction({ title: 'Activate Monthly Subscription?', message: 'This will activate the Monthly plan (₹1,699) starting today for 30 days.', confirmLabel: 'Activate', confirmColor: D.emerald, onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')) })}
               />
               <QuickActionBtn
                 icon="calendar" label="Activate 6 Months"

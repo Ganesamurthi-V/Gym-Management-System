@@ -44,7 +44,7 @@ import {
   decideScheduledSend,
   type CycleState,
 } from './scheduling'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 import { formatMemberId } from '@/types'
 import { isGamificationTemplateEnabled } from '@/config/whatsapp'
 import { computeStreak } from '@/lib/gamification/streak'
@@ -487,7 +487,7 @@ export async function sendRenewalMessage({
   if (!phone || phone.replace(/\D/g, '').length < 10) return
 
   const supabase = getAdminClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayIST()
   const cycleKey = `membership_renewed:${memberId}:${today}`
 
   // Skip if already sent today (e.g. double-click)
@@ -533,7 +533,7 @@ export async function sendRenewalMessage({
  */
 export async function runDailyWhatsAppAutomation(): Promise<Stats> {
   const supabase = getAdminClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayIST()
 
   const stats = newStats()
 
@@ -616,7 +616,7 @@ export async function runImportBatchAutomation({
   if (!memberIds.length) return stats
 
   const supabase = getAdminClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayIST()
 
   const { data: gymRow, error: gymErr } = await supabase
     .from('gyms')

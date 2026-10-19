@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser, getGym } from '@/lib/dal'
 import { AttendanceClient } from './AttendanceClient'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 
 export const revalidate = 0
 
@@ -12,7 +12,7 @@ export default async function AttendancePage() {
   const { gym } = await getGym(user.id)
   if (!gym) return null
 
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayIST()
   const supabase = await createClient()
 
   // Fetch today's attendance count only

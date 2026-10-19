@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, isValidUUID } from '@/lib/api/withAuth'
 import { boundedText } from '@/app/api/_guard'
+import { deleteCache } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,6 +91,12 @@ export const POST = withAuth('INVENTORY_UNITS_ADD', async (req: NextRequest, { s
       .update({ initial_stock: (product.initial_stock ?? 0) + 1 })
       .eq('id', inventory_id)
   }
+
+  // Stock changed: drop the Redis copies of the product and the list (10 min TTL).
+  await Promise.all([
+    deleteCache(`inventory-item:${inventory_id}`),
+    deleteCache(`inventory:${gym.id}`),
+  ])
 
   return NextResponse.json(
     { success: true, data: newUnit },
@@ -216,6 +223,13 @@ export const PATCH = withAuth('INVENTORY_UNITS_UPDATE', async (req: NextRequest,
         .eq('id', inventory_id)
         .eq('gym_id', gym.id)
     }
+  }
+
+  if (delta !== 0) {
+    await Promise.all([
+      deleteCache(`inventory-item:${inventory_id}`),
+      deleteCache(`inventory:${gym.id}`),
+    ])
   }
 
   return NextResponse.json(

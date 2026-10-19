@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 import { isValidUUID } from '@/lib/api/withAuth'
 import { boundedInt, boundedText } from '@/app/api/_guard'
 
@@ -100,10 +100,7 @@ export const PATCH = withAuth('MEMBERS_BULK_PATCH', async (req: NextRequest, { s
     }
   }
 
-  await Promise.all([
-    deleteCache(cacheKeys.membersList(gym.id)),
-    deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
-  ])
+  await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
   if (errors.length > 0) {
     return NextResponse.json(
@@ -179,10 +176,7 @@ export const DELETE = withAuth('MEMBERS_BULK_DELETE', async (req: NextRequest, {
     )
   }
 
-  await Promise.all([
-    deleteCache(cacheKeys.membersList(gym.id)),
-    deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
-  ])
+  await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
   return NextResponse.json({ success: true, data: { deleted: ids.length } })
 })

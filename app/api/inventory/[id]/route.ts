@@ -4,6 +4,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { isValidUUID } from '@/lib/api/withAuth'
 import { apiLogger } from '@/lib/logger'
+import { deleteCache } from '@/lib/cache'
 import { passesCsrf, csrfRejected, boundedInt, boundedNumber, boundedText, MAX_MONEY, MAX_STOCK } from '@/app/api/_guard'
 
 export const dynamic = 'force-dynamic'
@@ -151,6 +152,13 @@ export async function PATCH(
         { status: 500 }
       )
     }
+
+    // The list/detail pages read these keys from Redis for 10 minutes, so the
+    // route itself must drop them rather than rely on the client.
+    await Promise.all([
+      deleteCache(`inventory-item:${id}`),
+      deleteCache(`inventory:${gym.id}`),
+    ])
 
     return NextResponse.json(
       { success: true, data },

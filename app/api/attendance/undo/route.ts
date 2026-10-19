@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withAuth } from '@/lib/api/withAuth'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { todayIST } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,6 +75,9 @@ export const POST = withAuth('ATTENDANCE_UNDO', async (req: NextRequest, { supab
       { status: 500 },
     )
   }
+
+  // A undone check-in lowers today's attendance count cached on the dashboard.
+  await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
   return NextResponse.json({ success: true, data: { undone: true } })
 })

@@ -9,8 +9,6 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { deleteCache } from '@/lib/cache'
-import { cacheKeys } from '@/lib/cache-keys'
 import { hasOwnerRegistrationMarker } from '@/lib/auth/owner-registration'
 import { z } from 'zod'
 import { getAuthUser, getGym } from '@/lib/dal'
@@ -64,10 +62,6 @@ async function logActivity(gymId: string, memberId: string, activity: MemberActi
     activity,
     performed_by: 'owner',
   })
-}
-
-async function invalidateMemberAppCache(gymId: string) {
-  await deleteCache(cacheKeys.memberApp(gymId))
 }
 
 /**
@@ -299,7 +293,6 @@ export async function memberRowAction(
         .eq('id', memberId)
       if (error) return { success: false, message: 'Could not enable portal access. Please try again.' }
       await logActivity(gymId, memberId, 'portal_enabled')
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: 'Portal access enabled' }
     }
 
@@ -344,7 +337,6 @@ export async function memberRowAction(
         .eq('id', memberId)
 
       if (error) return { success: false, message: 'Could not disable portal. Please try again.' }
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: 'Portal disabled and all member app data removed' }
     }
 
@@ -353,7 +345,6 @@ export async function memberRowAction(
       const result = await issueInvitation(gymId, memberId)
       // The member row/token may have changed even when Meta did not confirm
       // delivery, so refresh cached UI state for both outcomes.
-      await invalidateMemberAppCache(gymId)
       if (!result.success) return result
 
       // NOTE: 'invitation_sent' would be the accurate value for a first send,
@@ -370,7 +361,6 @@ export async function memberRowAction(
         .eq('id', memberId)
       if (error) return { success: false, message: 'Could not suspend access. Please try again.' }
       await logActivity(gymId, memberId, 'portal_disabled')
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: 'Member access suspended' }
     }
 
@@ -380,18 +370,15 @@ export async function memberRowAction(
         .eq('id', memberId)
       if (error) return { success: false, message: 'Could not reactivate access. Please try again.' }
       await logActivity(gymId, memberId, 'portal_enabled')
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: 'Member access reactivated' }
     }
 
     case 'reset_password': {
       await logActivity(gymId, memberId, 'password_reset')
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: 'Password reset link sent' }
     }
 
     case 'force_logout': {
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: 'Member signed out of all devices' }
     }
 
@@ -433,7 +420,6 @@ export async function memberBulkAction(
         gym_id: gymId, member_id: id, activity: 'portal_enabled' as const, performed_by: 'owner',
       }))
       await supabase.from('member_portal_activity').insert(activities)
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: `Portal enabled for ${count} member${count === 1 ? '' : 's'}` }
     }
 
@@ -462,7 +448,6 @@ export async function memberBulkAction(
           })),
         )
       }
-      await invalidateMemberAppCache(gymId)
 
       if (notDelivered.length === 0) {
         return {
@@ -499,7 +484,6 @@ export async function memberBulkAction(
         gym_id: gymId, member_id: id, activity: 'portal_disabled' as const, performed_by: 'owner',
       }))
       await supabase.from('member_portal_activity').insert(activities)
-      await invalidateMemberAppCache(gymId)
       return { success: true, message: `${count} member${count === 1 ? '' : 's'} suspended` }
     }
 
@@ -576,7 +560,6 @@ export async function updateGamificationSettings(patch: unknown): Promise<Gamifi
     return { success: false, message: SETTINGS_SAVE_FAILED }
   }
 
-  await invalidateMemberAppCache(owner.gymId)
   return { success: true, message: 'Gamification settings saved', settings: normalizeSettings(data) }
 }
 
@@ -667,7 +650,6 @@ export async function markGamificationPrizeAwarded(input: unknown): Promise<Gami
     return { success: false, message: AWARD_FAILED }
   }
 
-  await invalidateMemberAppCache(owner.gymId)
 
   // Tell the winner on WhatsApp. Awaited (a serverless function can be frozen
   // the moment the action returns) but never allowed to fail the action: the
@@ -717,7 +699,6 @@ export async function undoGamificationAward(awardId: unknown): Promise<ActionRes
     return { success: false, message: UNDO_FAILED }
   }
 
-  await invalidateMemberAppCache(owner.gymId)
   // Already gone (undone on another device) is the outcome that was asked for.
   return {
     success: true,

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
-import { deleteCache } from '@/lib/cache'
-import { cacheKeys } from '@/lib/cache-keys'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -185,16 +183,6 @@ export const PATCH = withAuth('ACCOUNT_GYM_PATCH', async (req: NextRequest, { su
       { success: false, error: { code: 'DATABASE_ERROR', message: 'We could not save your gym details right now. Please try again.' } },
       { status: 500 }
     )
-  }
-
-  // Bust gym cache. The write has already succeeded, so cache cleanup is best-effort and
-  // must not turn a successful edit into an error response.
-  try {
-    await deleteCache(cacheKeys.gym(user.id))
-  } catch (cacheError) {
-    log.warn('Gym account changes saved but cache cleanup failed', {
-      error: cacheError instanceof Error ? cacheError.message : String(cacheError),
-    })
   }
 
   return NextResponse.json(

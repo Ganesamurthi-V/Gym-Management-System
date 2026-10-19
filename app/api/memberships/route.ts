@@ -3,7 +3,7 @@ import { withAuth, isValidUUID } from '@/lib/api/withAuth'
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 import { isIsoDate, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
 
 export const dynamic = 'force-dynamic'
@@ -144,10 +144,8 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
   }
 
   await Promise.all([
-    deleteCache(cacheKeys.membersList(gym.id)),
-    deleteCache(cacheKeys.payments12mo(gym.id)),
     deleteCache(cacheKeys.paymentsAll(gym.id)),
-    deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
+    deleteCache(cacheKeys.dashboard(gym.id, todayIST())),
   ])
 
   return NextResponse.json(

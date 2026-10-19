@@ -202,13 +202,3 @@ function logCacheMetric(type: 'HIT' | 'MISS', key: string, durationMs: number) {
   }
 }
 
-/**
- * Invalidates the gym identity cache for a specific owner.
- * Call this after any write to gym name or onboarding fields.
- *
- * Subscription fields (subscription_status, trial_ends_at, etc.) are no longer
- * cached, so writes to those columns need no cache invalidation.
- */
-export async function invalidateGymIdentityCache(userId: string): Promise<void> {
-  await deleteCache(cacheKeys.gym(userId))
-}

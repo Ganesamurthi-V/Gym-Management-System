@@ -1,14 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser, getGym } from '@/lib/dal'
-import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
+import { getMemberStatus, getDaysRemaining, todayIST } from '@/lib/utils'
 import { DashboardClient } from './DashboardClient'
-import { format } from 'date-fns'
+import { addDays } from '@/lib/gamification/periods'
 
 import { cacheWrapper } from '@/lib/cache'
 import { apiLogger, type RequestLogger } from '@/lib/logger'
 
 async function getDashboardData(gymId: string, logger: RequestLogger) {
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayIST()
   const cacheKey = `gym:${gymId}:dashboard:${today}`
 
   return cacheWrapper(cacheKey, 300, async () => {
@@ -27,7 +27,7 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
     console.warn('Fallback to JS aggregation for Dashboard. Please run the dashboard RPC migration.')
     
     // Only fetch memberships expiring within last/next year to prevent full table scan
-    const oneYearAgo = format(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    const oneYearAgo = addDays(today, -365)
     
     logger.start('DB_QUERIES')
     const [membershipsRes, attendanceRes, todayPaymentsRes, duesRes] = await Promise.all([

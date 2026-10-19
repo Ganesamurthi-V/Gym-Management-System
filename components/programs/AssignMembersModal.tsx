@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, Loader2, Search, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
 
 interface MemberRow {
   id: string
@@ -20,6 +21,7 @@ interface Props {
 type Mode = 'idle' | 'assign_specific' | 'assign_all' | 'deassign'
 
 export default function AssignMembersModal({ programId, programName, onClose }: Props) {
+  const router = useRouter()
   const [mode, setMode] = useState<Mode>('idle')
   const [members, setMembers] = useState<MemberRow[]>([])
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set())
@@ -102,6 +104,7 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
       }
 
       toast.success(json.message)
+      router.refresh()
       onClose()
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to assign members')
@@ -128,6 +131,7 @@ export default function AssignMembersModal({ programId, programName, onClose }: 
       }
 
       toast.success(json.message)
+      router.refresh()
       onClose()
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to remove members')

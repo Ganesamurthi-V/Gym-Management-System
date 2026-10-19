@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { todayIST } from '@/lib/utils'
 
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
@@ -83,6 +86,9 @@ export async function POST(req: NextRequest) {
       log.summary(mapped.status)
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
+
+    // Dashboard caches today's attendance count for 5 minutes; same key it writes.
+    await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
     log.summary(200)
     return NextResponse.json({ success: true, data, meta: { request_id: log.requestId } })

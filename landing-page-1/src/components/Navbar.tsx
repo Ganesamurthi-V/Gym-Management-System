@@ -36,7 +36,7 @@ const PRODUCT_ITEMS = [
 
 const RESOURCE_ITEMS = [
   { icon: Route, label: 'How it works', desc: 'From signup to daily use', href: '#how' },
-  { icon: ShieldCheck, label: 'Security and data', desc: 'Separation, export, deletion', href: '#security' },
+  { icon: ShieldCheck, label: 'Why GymFlow', desc: 'What sets it apart', href: '#why' },
   { icon: HelpCircle, label: 'FAQ', desc: 'Trial, pricing, data safety', href: '#faq' },
   { icon: LifeBuoy, label: 'Support', desc: 'Priority support, included', href: '#support' },
 ] as const;

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 import { apiLogger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -187,10 +187,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: mapped.code, message: mapped.message } }, { status: mapped.status })
     }
 
-    await Promise.all([
-      deleteCache(cacheKeys.membersList(gym.id)),
-      deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
-    ])
+    await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
     log.summary(201)
     return NextResponse.json({ success: true, data, meta: { request_id: log.requestId } })

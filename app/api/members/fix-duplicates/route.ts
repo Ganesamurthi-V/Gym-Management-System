@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 import { isValidUUID } from '@/lib/api/withAuth'
 import { boundedInt } from '@/app/api/_guard'
 
@@ -73,8 +73,7 @@ export const POST = withAuth('MEMBERS_FIX_DUPLICATES', async (req: NextRequest, 
     )
   }
 
-  await deleteCache(cacheKeys.membersList(gym.id))
-  await deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd')))
+  await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
   return NextResponse.json({ success: true, data: { updated: updates.length } })
 })

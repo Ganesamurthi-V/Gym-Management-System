@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
+import { deleteCache } from '@/lib/cache'
 import { passesCsrf, UUID_RE } from '@/app/api/_guard'
 
 export async function POST(req: NextRequest) {
@@ -71,6 +72,13 @@ export async function POST(req: NextRequest) {
       log.error('Product delete failed', deleteError)
       return NextResponse.json({ error: 'Could not delete the product' }, { status: 500 })
     }
+
+    // Drop the Redis copies (10 min TTL) so the deleted product disappears at once.
+    await Promise.all([
+      deleteCache(`inventory-item:${inventoryId}`),
+      deleteCache(`inventory-sales:${inventoryId}`),
+      deleteCache(`inventory:${gym.id}`),
+    ])
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {

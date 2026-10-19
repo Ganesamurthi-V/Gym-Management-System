@@ -8,7 +8,7 @@ import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, UUID_RE, isIsoDate, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
-import { format } from 'date-fns'
+import { todayIST } from '@/lib/utils'
 
 
 export async function GET(req: NextRequest) {
@@ -164,9 +164,8 @@ export async function POST(req: NextRequest) {
     }
 
     await Promise.all([
-      deleteCache(cacheKeys.payments12mo(gym.id)),
       deleteCache(cacheKeys.paymentsAll(gym.id)),
-      deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
+      deleteCache(cacheKeys.dashboard(gym.id, todayIST())),
     ])
 
     log.summary(201)

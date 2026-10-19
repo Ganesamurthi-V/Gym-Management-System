@@ -8,6 +8,7 @@ import {
   Calendar, CalendarClock, Zap, Check, Circle, CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
@@ -54,6 +55,7 @@ interface Props {
 }
 
 export default function SubscriptionClient({ gym, subState, latestRequest, settings }: Props) {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly')
 
@@ -257,6 +259,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
 
     setSuccess(true)
     setSubmitting(false)
+    // latestRequest comes from the server; refresh so the page shows the pending request.
+    router.refresh()
   }
 
   const planFeatures = [

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { todayIST } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -100,6 +103,9 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
         { status: 500 }
       )
     }
+
+    // Dashboard caches today's attendance count for 5 minutes; same key it writes.
+    await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
     return NextResponse.json({
       success: true,

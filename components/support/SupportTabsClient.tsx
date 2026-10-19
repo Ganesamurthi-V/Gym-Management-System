@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Bell, Info, AlertTriangle, ShieldCheck, Bug, Ticket as TicketIcon, X, Trash2, Wifi, WifiOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
 
@@ -36,6 +37,7 @@ export default function SupportTabsClient({
   initialTickets: SupportTicket[]
   gymId: string
 }) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<'notifications' | 'open' | 'closed'>('notifications')
 
   const [messages, setMessages] = useState<AdminMessage[]>(initialMessages)
@@ -132,6 +134,7 @@ export default function SupportTabsClient({
         body: JSON.stringify({ type, id, clearAll: !id }),
       })
       if (!res.ok) throw new Error('Failed to clear')
+      router.refresh()
     } catch (e: any) {
       toast.error('Failed to clear items')
       console.error(e)

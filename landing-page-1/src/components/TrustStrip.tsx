@@ -1,4 +1,4 @@
-import { ArrowRight, Database, Headset, ScrollText, ShieldCheck } from 'lucide-react';
+import { Database, Headset, ScrollText, ShieldCheck } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { SUPPORT_PROMISE } from '../data/support';
 
@@ -6,19 +6,19 @@ const LINK_CLASS =
   'rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 /* Every line is limited to what the product does today; the longer version of each
-   lives in the Security and privacy section and the Pricing details. */
+   lives in the Privacy Policy and the Pricing details. */
 const ITEMS = [
   {
     icon: ShieldCheck,
     title: 'Security-conscious design',
     desc: "Each gym's data is kept separate, and sign-in is protected with limits on repeated attempts.",
-    links: [{ label: 'How we protect data', href: '#security' }],
+    links: [{ label: 'Privacy Policy', href: '/privacy' }],
   },
   {
     icon: Database,
     title: 'Your data, your control',
     desc: 'Export to Excel and PDF. Owners can delete their gym’s data.',
-    links: [{ label: 'Privacy and data', href: '#privacy-data' }],
+    links: [{ label: 'Terms', href: '/terms' }],
   },
   {
     icon: Headset,
@@ -83,13 +83,6 @@ export function TrustStrip() {
             );
           })}
         </ul>
-
-        <div className="reveal mt-10 flex justify-center">
-          <a href="#demo" className="btn btn-primary btn-lg">
-            Explore the Demo
-            <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
       </div>
     </section>
   );

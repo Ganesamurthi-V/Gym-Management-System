@@ -539,7 +539,7 @@ CREATE TABLE IF NOT EXISTS platform_settings (
   id                 INT     PRIMARY KEY DEFAULT 1,
   upi_id             TEXT    NOT NULL DEFAULT '',
   upi_name           TEXT    NOT NULL DEFAULT 'GymFlow',
-  price_monthly      INT     NOT NULL DEFAULT 1999,
+  price_monthly      INT     NOT NULL DEFAULT 1699,
   price_half_yearly  INT     NOT NULL DEFAULT 6999,
   price_yearly       INT     NOT NULL DEFAULT 12999,
   CHECK (id = 1)

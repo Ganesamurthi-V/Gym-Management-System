@@ -61,7 +61,7 @@ export default async function SubscriptionPage() {
       settings={settingsResult.data ?? {
         upi_id: '',
         upi_name: 'GymFlow',
-        price_monthly: 1999,
+        price_monthly: 1699,
         price_half_yearly: 6999,
         price_yearly: 12999,
       }}

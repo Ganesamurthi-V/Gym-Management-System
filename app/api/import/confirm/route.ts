@@ -8,8 +8,7 @@ import { cacheKeys } from '@/lib/cache-keys'
 import { normalizePhoneForImport } from '@/lib/import/normalizers'
 import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/lib/import/schema'
 import { apiLogger } from '@/lib/logger'
-import { calcEndDate } from '@/lib/utils'
-import { format } from 'date-fns'
+import { calcEndDate, todayIST } from '@/lib/utils'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
 
@@ -143,7 +142,7 @@ export async function POST(req: NextRequest) {
     const membershipRows = memberIds.map((memberId, i) => {
       const r = rows[i]
       const plan = r.plan
-      const start = r.start_date ?? format(new Date(), 'yyyy-MM-dd')
+      const start = r.start_date ?? todayIST()
 
       return {
         member_id: memberId,
@@ -180,10 +179,8 @@ export async function POST(req: NextRequest) {
     }
 
     await Promise.all([
-      deleteCache(cacheKeys.membersList(gym.id)),
-      deleteCache(cacheKeys.payments12mo(gym.id)),
       deleteCache(cacheKeys.paymentsAll(gym.id)),
-      deleteCache(cacheKeys.dashboard(gym.id, format(new Date(), 'yyyy-MM-dd'))),
+      deleteCache(cacheKeys.dashboard(gym.id, todayIST())),
     ])
 
     return NextResponse.json({

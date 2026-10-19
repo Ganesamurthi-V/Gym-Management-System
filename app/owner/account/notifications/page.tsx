@@ -67,12 +67,6 @@ export default async function NotificationsPage() {
           .update({ read_at: new Date().toISOString() })
           .eq('gym_id', gym.id)
           .is('read_at', null)
-
-        const [{ deleteCache }, { cacheKeys }] = await Promise.all([
-          import('@/lib/cache'),
-          import('@/lib/cache-keys'),
-        ])
-        await deleteCache(cacheKeys.unreadCount(user.id))
       } catch {
         // Non-fatal — the badge will self-correct on the next 30s TTL expiry.
       }

@@ -19,8 +19,6 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { apiLogger } from '@/lib/logger'
 import { randomBytes } from 'crypto'
-import { deleteCache } from '@/lib/cache'
-import { cacheKeys } from '@/lib/cache-keys'
 import { generateInvitationToken, reusableInvitationToken } from '@/lib/member-invitation'
 import { hasOwnerRegistrationMarker } from '@/lib/auth/owner-registration'
 import { passesCsrf, csrfRejected, UUID_RE } from '@/app/api/_guard'
@@ -291,7 +289,6 @@ export async function POST(req: NextRequest) {
     log.end('SEND_WHATSAPP')
 
     // Invalidate member app cache
-    await deleteCache(cacheKeys.memberApp(gym.id))
 
     if (sendResult.skipped) {
       // The platform admin has switched WhatsApp off for this gym: nothing was sent.

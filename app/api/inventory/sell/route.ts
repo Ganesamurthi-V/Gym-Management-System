@@ -4,6 +4,7 @@ import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/owner/inventory/actions'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
+import { deleteCache } from '@/lib/cache'
 import { passesCsrf, UUID_RE, boundedInt, boundedNumber, MAX_MONEY } from '@/app/api/_guard'
 
 export async function POST(req: NextRequest) {
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
         product_name: string; quantity: number; total_price: number; remaining_stock: number
       }
       await invalidateInventoryItemCache(gym.id, inventoryId)
+      await deleteCache(`gym:${gym.id}:payments_page:allTime`)
       return NextResponse.json({
         success: true,
         sale: { product_name: result.product_name, quantity: result.quantity, total_price: result.total_price },
@@ -159,6 +161,8 @@ export async function POST(req: NextRequest) {
     }
 
     await invalidateInventoryItemCache(gym.id, inventoryId)
+    // The payments page lists inventory sales and caches them for 5 minutes.
+    await deleteCache(`gym:${gym.id}:payments_page:allTime`)
 
     return NextResponse.json({
       success: true,

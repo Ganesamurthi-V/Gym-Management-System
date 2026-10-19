@@ -5,6 +5,8 @@ import { PLANS, formatINR, savingPercent } from '../data/plans';
 
 const [MONTHLY, HALF, YEARLY] = PLANS;
 
+const APP_URL = 'https://app.gymflow.sbs';
+
 
 /**
  * Kept verbatim in sync with the FAQPage JSON-LD in index.html. Structured data
@@ -63,22 +65,27 @@ export function FAQ() {
 
   return (
     <section id="faq" aria-labelledby="faq-title" className="has-dots px-5 py-24 md:px-8 md:py-28">
-      {/* The same two halves as WhatsApp and How it works: the question on the left and
-          the answers on the right, sticky so the heading stays beside a long list. It
-          was a centred column under a centred header, with Start free trial and Contact
-          support in the header; those two buttons are gone, since the closing section
-          two screens down says the same thing. */}
+      {/* Centred header over a single narrow column of cards, with the two actions under
+          the heading, as in the reference. (An earlier pass split this into a sticky
+          left half and the list on the right, with the buttons dropped.) */}
       <div className="mx-auto max-w-[1240px]">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
         {/* ── Header ────────────────────────────────────────────────────── */}
-        <div ref={headerScope} className="lg:sticky lg:top-32 lg:self-start">
+        <div ref={headerScope} className="mx-auto flex max-w-[900px] flex-col items-center text-center">
           <span className="reveal eyebrow">Frequently asked questions</span>
-          <h2 id="faq-title" className="reveal display-2 mt-4 text-balance">
+          <h2 id="faq-title" className="reveal display-2 mt-4 text-balance md:whitespace-nowrap">
             Everything you <em className="display-accent">need</em> to know.
           </h2>
           <p className="reveal lead mt-5 max-w-[440px]">
             Straight answers on pricing, WhatsApp messages and moving your members over.
           </p>
+          <div className="reveal mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a href={APP_URL} className="btn btn-primary">
+              Get Started
+            </a>
+            <a href="#support" className="btn btn-outline">
+              Contact Support
+            </a>
+          </div>
         </div>
 
         {/* ── Accordion ─────────────────────────────────────────────────── */}
@@ -86,7 +93,7 @@ export function FAQ() {
             the reference; the card itself is the project's own .card, so the radius,
             surface and border come from the design system rather than being
             restated here. */}
-        <ul ref={listScope} className="flex flex-col gap-3">
+        <ul ref={listScope} className="mx-auto mt-12 flex max-w-[820px] flex-col gap-3">
           {FAQS.map((item, index) => {
             const expanded = open === index;
             const panelId = `faq-panel-${index}`;
@@ -170,7 +177,6 @@ export function FAQ() {
             );
           })}
         </ul>
-        </div>
       </div>
     </section>
   );

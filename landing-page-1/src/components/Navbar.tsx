@@ -1,56 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  ArrowRight,
-  CheckCircle2,
-  CreditCard,
-  FileUp,
-  HelpCircle,
-  LayoutDashboard,
-  LifeBuoy,
-  ShieldCheck,
-  Menu,
-  MessageSquare,
-  Route,
-  Users,
-  X,
-  ChevronDown,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight, Menu, X } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useMediaQuery } from '../lib/useMediaQuery';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
-const PRODUCT_ITEMS = [
-  {
-    icon: LayoutDashboard,
-    label: 'Dashboard & live stats',
-    desc: 'Active members, collection, dues',
-    href: '#features',
-  },
-  { icon: Users, label: 'Member management', desc: 'Records, search, plans', href: '#features' },
-  { icon: CreditCard, label: 'Payments & dues', desc: 'Cash, UPI, card, reminders', href: '#features' },
-  { icon: CheckCircle2, label: 'One-tap attendance', desc: 'Daily marking and history', href: '#features' },
-  { icon: MessageSquare, label: 'WhatsApp automation', desc: 'Unlimited, built in', href: '#whatsapp' },
-  { icon: FileUp, label: 'CSV & Excel import', desc: 'Bring your existing members', href: '#features' },
-] as const;
-
-const RESOURCE_ITEMS = [
-  { icon: Route, label: 'How it works', desc: 'From signup to daily use', href: '#how' },
-  { icon: ShieldCheck, label: 'Why GymFlow', desc: 'What sets it apart', href: '#why' },
-  { icon: HelpCircle, label: 'FAQ', desc: 'Trial, pricing, data safety', href: '#faq' },
-  { icon: LifeBuoy, label: 'Support', desc: 'Priority support, included', href: '#support' },
-] as const;
-
-const MOBILE_LINKS = [
+/* A short flat list, used by the desktop bar
+   and the mobile sheet alike. The old Product and Resources dropdowns repeated the same
+   few anchors (five entries all pointed at #features), so a visitor got more menu and no
+   more places to go. */
+const NAV_LINKS = [
   { href: '#features', label: 'Features' },
   { href: '#whatsapp', label: 'WhatsApp' },
-  { href: '#how', label: 'How it works' },
   { href: '#pricing', label: 'Pricing' },
   { href: '#faq', label: 'FAQ' },
-  { href: '#support', label: 'Support' },
 ] as const;
-
-type MenuId = 'product' | 'resources';
 
 /**
  * Floating-island metrics, in px.
@@ -86,24 +50,10 @@ const COLLAPSE_AT = 48;
  */
 const DESKTOP_AT = 1024;
 
-/**
- * Hoverable bridge between a trigger and its panel, in px.
- *
- * The panel used to be offset with top: calc(100% + 10px), which left 10px belonging to
- * neither the trigger nor the panel. Crossing it took the pointer outside the group, so
- * onMouseLeave fired and the panel closed before it could be reached — the dropdowns
- * were unusable with a mouse, while working fine by keyboard, which is why it survived.
- * The same 10px is now padding on a wrapper that starts flush at top: 100%, so the space
- * belongs to the hover target and the gap still reads visually.
- */
-const PANEL_BRIDGE = 10;
-
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [section, setSection] = useState<string | null>(null);
-  const navRef = useRef<HTMLElement>(null);
 
   const isDesktop = useMediaQuery(`(min-width: ${DESKTOP_AT}px)`);
 
@@ -124,7 +74,7 @@ export function Navbar() {
   // Which section is across the middle of the screen. One observer on the sections the
   // nav points at; a thin band at the vertical centre means exactly one is "current".
   useEffect(() => {
-    const ids = ['features', 'whatsapp', 'how', 'pricing', 'faq'];
+    const ids = NAV_LINKS.map(link => link.href.slice(1));
     const els = ids.map(id => document.getElementById(id)).filter((e): e is HTMLElement => !!e);
     const io = new IntersectionObserver(
       entries => {
@@ -152,29 +102,7 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Dismiss the dropdown on Escape or on any pointer press outside the header.
-  // Without the outside-press handler the panel would sit open while the visitor
-  // interacts with the page behind it.
-  useEffect(() => {
-    if (!openMenu) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenMenu(null);
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      if (!navRef.current?.contains(event.target as Node)) setOpenMenu(null);
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('pointerdown', onPointerDown);
-    };
-  }, [openMenu]);
-
-  // Escape closes the sheet as well. It already closed the desktop dropdown, and a
-  // full-screen overlay that ignores the key is the more surprising of the two.
+  // Escape closes the sheet: a full-screen overlay that ignores the key is surprising.
   useEffect(() => {
     if (!sheetOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -199,7 +127,7 @@ export function Navbar() {
     // full-width padded frame that never moves, and the <nav> inside it is the
     // island that collapses. Animating a fixed, full-bleed bar directly would
     // mean animating the thing the dropdowns are positioned against.
-    <header ref={navRef} className="fixed inset-x-0 top-0 z-50 px-3 md:px-5" style={{ paddingTop: NAV_TOP }}>
+    <header className="fixed inset-x-0 top-0 z-50 px-3 md:px-5" style={{ paddingTop: NAV_TOP }}>
       <nav
         aria-label="Main"
         className="nav-island relative mx-auto flex items-center justify-between gap-6 px-4 md:px-6"
@@ -253,35 +181,22 @@ export function Navbar() {
             against a 235px right cluster, which put the menu 62px left of centre. Out of
             flow it holds the true centre at every width, and the logo and CTAs still sit
             at the extremes, which is what justify-between is actually good at. */}
-        <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
-          <DropdownTrigger
-            id="product"
-            label="Product"
-            items={PRODUCT_ITEMS}
-            columns={2}
-            openMenu={openMenu}
-            setOpenMenu={setOpenMenu}
-            current={section === 'features' || section === 'whatsapp'}
-          />
-          <DropdownTrigger
-            id="resources"
-            label="Resources"
-            items={RESOURCE_ITEMS}
-            columns={1}
-            openMenu={openMenu}
-            setOpenMenu={setOpenMenu}
-            current={section === 'how' || section === 'faq'}
-          />
-          <a
-            href="#pricing"
-            aria-current={section === 'pricing' ? 'location' : undefined}
-            className={`inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[13.5px] font-medium transition-colors ${
-              section === 'pricing' ? 'text-foreground' : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
-            }`}
-          >
-            Pricing
-            {section === 'pricing' && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />}
-          </a>
+        <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-0.5 lg:flex">
+          {NAV_LINKS.map(link => {
+            const current = section === link.href.slice(1);
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                aria-current={current ? 'location' : undefined}
+                className={`rounded-pill px-3 py-2 text-[13.5px] font-medium transition-colors ${
+                  current ? 'bg-subtle text-foreground' : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
+                }`}
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </div>
 
         {/* Right cluster */}
@@ -289,7 +204,7 @@ export function Navbar() {
           <ThemeToggle />
           <a
             href={APP_URL}
-            className="hidden rounded-pill px-3.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground sm:inline-flex"
+            className="hidden rounded-pill px-3.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground xl:inline-flex"
           >
             Sign in
           </a>
@@ -330,7 +245,7 @@ export function Navbar() {
           }}
         >
           <ul className="flex flex-col">
-            {MOBILE_LINKS.map(link => (
+            {NAV_LINKS.map(link => (
               <li key={link.href}>
                 <a
                   href={link.href}
@@ -355,113 +270,5 @@ export function Navbar() {
         </div>
       )}
     </header>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-interface DropdownItem {
-  readonly icon: typeof Users;
-  readonly label: string;
-  readonly desc: string;
-  readonly href: string;
-}
-
-interface DropdownTriggerProps {
-  id: MenuId;
-  label: string;
-  items: readonly DropdownItem[];
-  columns: 1 | 2;
-  openMenu: MenuId | null;
-  setOpenMenu: (id: MenuId | null) => void;
-  /** The section the visitor is reading belongs to this menu. */
-  current?: boolean;
-}
-
-function DropdownTrigger({
-  id,
-  label,
-  items,
-  columns,
-  openMenu,
-  setOpenMenu,
-  current = false,
-}: DropdownTriggerProps) {
-  const isOpen = openMenu === id;
-  const panelId = `nav-panel-${id}`;
-
-  return (
-    <div
-      className="relative"
-      // Hover opens it for pointer users; the button still works on click and on
-      // keyboard, so touch and keyboard visitors are not shut out.
-      onMouseEnter={() => setOpenMenu(id)}
-      onMouseLeave={() => setOpenMenu(null)}
-    >
-      <button
-        type="button"
-        aria-haspopup="true"
-        aria-expanded={isOpen}
-        /* Named only while the panel exists. The panel unmounts when closed, so setting
-           this unconditionally left aria-controls pointing at no element. */
-        aria-controls={isOpen ? panelId : undefined}
-        onClick={() => setOpenMenu(isOpen ? null : id)}
-        className={`inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[13.5px] font-medium transition-colors ${
-          isOpen
-            ? 'bg-subtle text-foreground'
-            : current
-              ? 'text-foreground'
-              : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
-        }`}
-      >
-        {label}
-        {/* A small accent dot marks the menu whose section is on screen, so the nav
-            answers "where am I" on a one-page site. */}
-        {current && !isOpen && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />}
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {isOpen && (
-        /* The offset is padding on this wrapper rather than a position offset on the
-           panel, so the space between trigger and panel is part of the hover target.
-           See PANEL_BRIDGE. */
-        <div className="absolute left-0 top-full" style={{ paddingTop: PANEL_BRIDGE }}>
-        <div
-          id={panelId}
-          className="animate-fade-in-up card overflow-hidden p-2 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.28)]"
-          style={{ width: columns === 2 ? 520 : 300 }}
-        >
-          <ul className={columns === 2 ? 'grid grid-cols-2 gap-1' : 'flex flex-col gap-1'}>
-            {items.map(item => {
-              const Icon = item.icon;
-              return (
-                <li key={item.label}>
-                  <a
-                    href={item.href}
-                    onClick={() => setOpenMenu(null)}
-                    className="flex items-start gap-3 rounded-2xl p-3 transition-colors hover:bg-subtle"
-                  >
-                    <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent-soft">
-                      <Icon className="h-4 w-4 text-accent-text" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[13.5px] font-medium leading-tight text-foreground">
-                        {item.label}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-                        {item.desc}
-                      </span>
-                    </span>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-        </div>
-      )}
-    </div>
   );
 }

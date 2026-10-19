@@ -3,7 +3,7 @@ import { Ban, BellRing, UserPlus, Wallet } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { AutomationOrbit, type OrbitChip } from './AutomationOrbit';
 import { ShinyText } from './ShinyText';
-import { WhatsAppThread, type ThreadMessage } from './WhatsAppThread';
+import { WhatsAppBubble, WhatsAppThread, type ThreadMessage } from './WhatsAppThread';
 
 /* Chips orbiting the phone. Positions are by bearing from the phone's centre
    (330px wide, so anything with x inside ±165 is hidden behind it), each with at
@@ -19,8 +19,8 @@ const ORBIT_CHIPS: readonly OrbitChip[] = [
 ];
 
 /* One entry per tab. `message` is the rendered artefact shown in the phone;
-   `desc` and `sample` serve the mobile layout, where the phone is hidden and the
-   active tab shows a plain bubble instead. Bodies use the live templates'
+   `desc` serves the text beside the phone; below md the phone is hidden and the
+   active tab shows just the message bubble on a chat surface instead. Bodies use the live templates'
    asterisk-bold syntax so what the phone shows is what a member receives. */
 const MESSAGE_TYPES = [
   {
@@ -44,7 +44,6 @@ Start Date: *07 Sep 2026*
 
 Thank you for choosing *Fit zone gym*. We're excited to be part of your fitness journey.❤️`,
     } satisfies ThreadMessage,
-    sample: 'Hi Naveen! Welcome to Fit Zone Gym. We’re excited to have you on board.',
   },
   {
     id: 'expired',
@@ -66,7 +65,6 @@ Expired On: *26/07/2026*
 
 To continue uninterrupted access to the gym, please *renew* your membership at your earliest convenience.❤️`,
     } satisfies ThreadMessage,
-    sample: 'Hi Ganesh! Your membership with Vivi gym has expired.',
   },
   {
     id: 'payment',
@@ -87,7 +85,6 @@ Amount : *₹2000*
 
 Please complete your payment before the due date to keep your membership active. ❤️`,
     } satisfies ThreadMessage,
-    sample: 'Hi Ganesh! This is a reminder that your membership payment is due. Amount : ₹2000',
   },
 ] as const;
 
@@ -198,7 +195,7 @@ export function WhatsAppSection() {
                 role="tabpanel"
                 aria-labelledby={`wa-tab-${active.id}`}
                 aria-live={auto ? 'off' : 'polite'}
-                className="mt-5 min-h-[132px] md:min-h-[64px]"
+                className="mt-5 md:min-h-[64px]"
               >
                 <div key={active.id} className="wa-swap">
                   <span className="inline-block rounded-pill bg-whatsapp-soft px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-whatsapp-ink">
@@ -207,11 +204,17 @@ export function WhatsAppSection() {
                   <p className="mt-3 max-w-[460px] text-[15px] leading-relaxed text-muted-foreground">
                     {active.desc}
                   </p>
-                  {/* The phone is hidden below md, so on mobile the message shows
-                      here as a plain bubble. */}
-                  <p className="mt-4 max-w-[420px] rounded-xl rounded-tl-sm bg-whatsapp-soft px-3.5 py-2.5 text-[13px] leading-snug text-foreground md:hidden">
-                    {active.sample}
-                  </p>
+                  {/* The phone is hidden below md, so on mobile only the message shows: no
+                      chat surface and no header image, just the bubble. The minimum
+                      height stops the page jumping between templates. */}
+                  <div className="mt-5 min-h-[200px] md:hidden">
+                    <WhatsAppBubble
+                      message={{ ...active.message, banner: false }}
+                      large
+                      tail
+                      className="ml-2 w-[calc(100%-0.5rem)] border border-border-subtle"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

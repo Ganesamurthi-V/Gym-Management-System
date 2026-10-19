@@ -19,7 +19,7 @@ const QUICK_ACTIONS = [
 ] as const;
 
 /** How far the phone runs past the card's bottom edge, in px. */
-const BLEED = 36;
+const BLEED = 0;
 
 /**
  * Scroll parallax for the phone, in px, from its resting position.
@@ -130,7 +130,7 @@ export function MemberAppCard() {
             and removing it would widen the phone by 6px. */}
         <div
           ref={wellRef}
-          className="mt-5 h-[300px] w-[256px] px-[3px] md:h-auto md:min-h-0 md:flex-1"
+          className="mt-5 h-[470px] w-[256px] px-[3px] pb-6 md:h-auto md:min-h-0 md:flex-1"
         >
           <PhoneMock />
         </div>
@@ -193,7 +193,7 @@ function PhoneMock() {
           <span
             aria-hidden
             className="absolute inset-x-0 bottom-0 z-10 flex items-start justify-center border-t border-[#e2e8f0] bg-white pt-1"
-            style={{ height: `${BLEED + 4}px` }}
+            style={{ height: '28px' }}
           >
             <span className="h-1 w-20 rounded-full bg-[#0f172a]/80" />
           </span>
@@ -274,10 +274,7 @@ function PhoneMock() {
 
             <div className="mt-2.5 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8] p-3 text-white">
               <p className="text-[8px] font-bold uppercase tracking-widest text-[#dbeafe]">Iron Temple Fitness</p>
-              <p className="mt-1 text-[12px] font-bold">Your fitness journey</p>
-              <p className="mt-0.5 text-[9px] leading-snug text-[#dbeafe]">
-                Track your attendance, view your membership, and access your digital card.
-              </p>
+              <p className="mt-0.5 text-[12px] font-bold">Your fitness journey</p>
             </div>
           </div>
         </div>

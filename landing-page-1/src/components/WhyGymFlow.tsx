@@ -16,7 +16,7 @@ const ROWS = [
 ] as const;
 
 export function WhyGymFlow() {
-  const scope = useReveal<HTMLElement>({ stagger: 0.09 });
+  const scope = useReveal<HTMLElement>({ perElement: true, y: 28, duration: 0.7, start: 'top 90%' });
 
   return (
     <section
@@ -55,7 +55,7 @@ export function WhyGymFlow() {
             </thead>
             <tbody>
               {ROWS.map(({ feature, other }) => (
-                <tr key={feature} className="border-b border-border-subtle last:border-b-0">
+                <tr key={feature} className="reveal border-b border-border-subtle last:border-b-0">
                   <th
                     scope="row"
                     className="px-5 py-5 text-[15px] font-medium text-foreground md:px-8 md:text-[16px]"

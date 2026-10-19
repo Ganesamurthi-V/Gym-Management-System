@@ -79,6 +79,21 @@ export function HowItWorks() {
       return y;
     };
 
+    /* A step counts as reached once the filling rail has got to its badge. The
+       badge centres are kept as distances from the rail's top so the check is one
+       comparison per scroll update, with no layout reads while scrolling. */
+    const items = [...trackEl.querySelectorAll<HTMLElement>('[data-step]')];
+    let badgeOffsets: number[] = [];
+    let railHeight = 0;
+    const setReached = (progress: number) => {
+      const reached = progress * railHeight;
+      items.forEach((item, i) => {
+        const on = (badgeOffsets[i] ?? 0) <= reached + 0.5;
+        const next = on ? 'true' : 'false';
+        if (item.dataset.active !== next) item.dataset.active = next;
+      });
+    };
+
     const layoutRail = () => {
       const badges = [...trackEl.querySelectorAll<HTMLElement>('[data-step-badge]')];
       if (badges.length < 2) return false;
@@ -88,6 +103,8 @@ export function HowItWorks() {
       const bottom = offsetWithin(last, trackEl) + last.offsetHeight / 2;
       railEl.style.top = `${top}px`;
       railEl.style.height = `${Math.max(0, bottom - top)}px`;
+      railHeight = Math.max(0, bottom - top);
+      badgeOffsets = badges.map(b => offsetWithin(b, trackEl) + b.offsetHeight / 2 - top);
       return bottom > top;
     };
 
@@ -97,6 +114,7 @@ export function HowItWorks() {
     // shorten, only a final state to show.
     if (prefersReducedMotion()) {
       gsap.set(fillEl, { scaleY: 1, transformOrigin: 'top' });
+      setReached(1);
       return;
     }
 
@@ -114,14 +132,17 @@ export function HowItWorks() {
           start: 'top 30%',
           end: 'bottom 70%',
           scrub: true,
+          onUpdate: self => setReached(self.progress),
         },
       },
     );
+    setReached(0);
 
     // Text rewraps at every width, which moves the badges and changes both the
     // rail's extent and the scroll distance the tween is mapped over.
     const observer = new ResizeObserver(() => {
       layoutRail();
+      setReached(tween.scrollTrigger?.progress ?? 0);
       ScrollTrigger.refresh();
     });
     observer.observe(trackEl);
@@ -199,19 +220,21 @@ export function HowItWorks() {
                   /* The gap is the bottom padding, not a flex gap, so it belongs to
                      the row above it: the rail segment between two badges is exactly
                      the padding, and last:pb-0 stops the list at the final step. */
-                  className="reveal flex gap-5 pb-20 last:pb-0 md:pb-32"
+                  data-step
+                  data-active="false"
+                  className="reveal group flex gap-5 pb-12 last:pb-0 md:pb-16"
                 >
                   <span
                     data-step-badge
                     aria-hidden
-                    className="relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent"
+                    className="relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border-subtle bg-subtle text-muted-foreground transition-colors duration-300 group-data-[active=true]:border-transparent group-data-[active=true]:bg-accent group-data-[active=true]:text-accent-ink"
                   >
-                    <step.icon className="h-5 w-5 text-accent-ink" />
+                    <step.icon className="h-5 w-5" />
                   </span>
 
-                  <div className="min-w-0 pt-1.5">
-                    <h3 className="display-3 text-balance">{step.title}</h3>
-                    <p className="mt-3 max-w-[460px] text-[16px] leading-relaxed text-muted-foreground">
+                  <div className="min-w-0 pt-1.5 opacity-40 transition-opacity duration-300 group-data-[active=true]:opacity-100">
+                    <h3 className="text-balance text-[24px] font-medium leading-[1.15] tracking-[-0.025em] md:text-[32px]">{step.title}</h3>
+                    <p className="mt-2.5 max-w-[460px] text-[15px] md:text-[16px] leading-relaxed text-muted-foreground">
                       {step.desc}
                     </p>
                   </div>

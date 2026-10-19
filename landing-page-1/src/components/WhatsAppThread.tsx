@@ -138,58 +138,7 @@ export function WhatsAppThread({
           </span>
 
           {messages.map(message => (
-            /* Incoming, so left-aligned with no read receipt. A tick here would
-               claim the member sent their own welcome message.
- 
-               The hairline shadow is WhatsApp's own bubble lift. It matters in
-               light mode, where a white bubble on the beige chat surface has no
-               other edge; in dark it is too faint to register. */
-            <div
-              key={message.body}
-              className="wa-swap mr-auto w-[88%] shrink-0 rounded-lg rounded-tl-[3px] bg-[var(--wa-bubble-in)] p-[3px] text-left shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]"
-            >
-              {message.banner && (
-                /* Hairline ring, because in light mode the banner's white left
-                   edge would otherwise dissolve into a white bubble. */
-                <img
-                  src="/logo_landspace.webp"
-                  alt=""
-                  aria-hidden
-                  width={560}
-                  height={249}
-                  loading="lazy"
-                  decoding="async"
-                  className="mb-1 block w-full rounded-[7px] ring-1 ring-inset ring-black/[0.07]"
-                />
-              )}
-
-              <div className="px-1.5 pb-0.5">
-                {message.body.split('\n\n').map((para, i) => (
-                  <p
-                    key={para}
-                    className={`text-[11.5px] leading-[1.42] text-[var(--wa-ink)] ${i > 0 ? 'mt-[9px]' : ''}`}
-                  >
-                    {para.split('\n').map((line, j) => (
-                      <span key={line}>
-                        {j > 0 && <br />}
-                        {renderBold(line)}
-                      </span>
-                    ))}
-                  </p>
-                ))}
-
-                <p className="mt-1.5 flex items-baseline justify-between gap-3">
-                  {message.footer && (
-                    <span className="text-[8.5px] text-[var(--wa-ink-faint)]">
-                      {message.footer}
-                    </span>
-                  )}
-                  <span className="ml-auto text-[9px] text-[var(--wa-ink-dim)]">
-                    {message.time}
-                  </span>
-                </p>
-              </div>
-            </div>
+            <WhatsAppBubble key={message.body} message={message} className="w-[88%]" />
           ))}
         </div>
 
@@ -216,6 +165,93 @@ export function WhatsAppThread({
             className="mx-auto my-1.5 block h-[3px] w-[84px] rounded-full bg-[var(--wa-home)] opacity-30"
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One incoming message bubble, exported so the phone and the mobile layout (which has
+ * no room for a phone and shows just the message on a chat surface) draw the same
+ * thing from the same markup.
+ */
+export function WhatsAppBubble({
+  message,
+  className = '',
+  large = false,
+  tail = false,
+}: {
+  message: ThreadMessage;
+  className?: string;
+  /** Bigger type for the phone-less mobile layout, where the bubble is the whole picture. */
+  large?: boolean;
+  /** WhatsApp's speech-bubble tip at the top-left corner, for when the bubble stands alone. */
+  tail?: boolean;
+}) {
+  return (
+    /* Incoming, so left-aligned with no read receipt. A tick here would
+       claim the member sent their own welcome message.
+
+       The hairline shadow is WhatsApp's own bubble lift. It matters in
+       light mode, where a white bubble on the beige chat surface has no
+       other edge; in dark it is too faint to register. */
+    <div
+      className={`wa-swap relative mr-auto shrink-0 rounded-lg ${tail ? 'rounded-tl-none' : 'rounded-tl-[3px]'} bg-[var(--wa-bubble-in)] p-[3px] text-left shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${className}`}
+    >
+      {tail && (
+        /* The fill overlaps the bubble's own border by a pixel so no seam shows where
+           tip and bubble join; only the two outer edges are stroked. */
+        <svg
+          aria-hidden
+          viewBox="0 0 9 12"
+          className="absolute -left-[8px] -top-px h-3 w-[9px]"
+          style={{ overflow: 'visible' }}
+        >
+          <path d="M9 0 H1 Q-0.3 0 0.7 1.1 L9 11 Z" fill="var(--wa-bubble-in)" />
+          <path
+            d="M9 0 H1 Q-0.3 0 0.7 1.1 L9 11"
+            fill="none"
+            stroke="var(--border-subtle, var(--border))"
+            strokeWidth="1"
+          />
+        </svg>
+      )}
+      {message.banner && (
+        /* Hairline ring, because in light mode the banner's white left
+           edge would otherwise dissolve into a white bubble. */
+        <img
+          src="/logo_landspace.webp"
+          alt=""
+          aria-hidden
+          width={560}
+          height={249}
+          loading="lazy"
+          decoding="async"
+          className="mb-1 block w-full rounded-[7px] ring-1 ring-inset ring-black/[0.07]"
+        />
+      )}
+
+      <div className="px-1.5 pb-0.5">
+        {message.body.split('\n\n').map((para, i) => (
+          <p
+            key={para}
+            className={`${large ? 'text-[14px]' : 'text-[11.5px]'} leading-[1.42] text-[var(--wa-ink)] ${i > 0 ? 'mt-[9px]' : ''}`}
+          >
+            {para.split('\n').map((line, j) => (
+              <span key={line}>
+                {j > 0 && <br />}
+                {renderBold(line)}
+              </span>
+            ))}
+          </p>
+        ))}
+
+        <p className="mt-1.5 flex items-baseline justify-between gap-3">
+          {message.footer && (
+            <span className="text-[8.5px] text-[var(--wa-ink-faint)]">{message.footer}</span>
+          )}
+          <span className="ml-auto text-[9px] text-[var(--wa-ink-dim)]">{message.time}</span>
+        </p>
       </div>
     </div>
   );

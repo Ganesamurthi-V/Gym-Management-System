@@ -26,7 +26,7 @@ const ATTENDANCE_ROWS = [
 ] as const;
 
 export function BentoFeatures() {
-  const scope = useReveal<HTMLElement>({ stagger: 0.07 });
+  const scope = useReveal<HTMLElement>({ perElement: true, y: 36, duration: 0.8, start: 'top 88%' });
 
   return (
     <section

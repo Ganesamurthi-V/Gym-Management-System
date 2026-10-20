@@ -687,3 +687,23 @@ export function parseInline(text: string): InlineNode[] {
   if (last < text.length) nodes.push({ kind: 'text', text: text.slice(last) })
   return nodes
 }
+
+/**
+ * Stable anchor ids for a page's sections, one per section in order: the heading as a slug,
+ * made unique within the page. The React renderer, the table of contents, the search index and
+ * the no-JavaScript copy (vite.config.ts) all call this, so a link to /slug#id lands everywhere.
+ */
+export function sectionIds(page: FeaturePage): string[] {
+  const seen = new Map<string, number>()
+  return page.sections.map(section => {
+    const base = section.heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'section'
+    const count = (seen.get(base) ?? 0) + 1
+    seen.set(base, count)
+    return count === 1 ? base : `${base}-${count}`
+  })
+}
+
+/** Sidebar and Previous/Next label: the card title, or "All features" for the hub. */
+export function docLabel(page: FeaturePage): string {
+  return page.slug === 'features' ? 'All features' : (page.cardTitle ?? page.breadcrumb)
+}

@@ -14,6 +14,7 @@ import {
   SITE_ORIGIN,
   getFeaturePage,
   parseInline,
+  sectionIds,
   type FeatureBlock,
   type FeaturePage,
 } from './src/data/featurePages.ts'
@@ -201,7 +202,7 @@ function fallbackHtml(page: FeaturePage): string {
 <p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="/#pricing">See pricing</a></p>
 <p>${esc(FEATURE_FINEPRINT)}</p>
 ${page.sections
-  .map(section => `<h2>${esc(section.heading)}</h2>\n${section.blocks.map(blockHtml).join('\n')}`)
+  .map((section, i) => `<h2 id="${sectionIds(page)[i]}">${esc(section.heading)}</h2>\n${section.blocks.map(blockHtml).join('\n')}`)
   .join('\n')}
 ${media}${related ? `<h2>${esc(RELATED_HEADING)}</h2>\n<ul>\n${related}\n</ul>` : ''}
 <p>${inlineHtml(FEATURE_OUTRO)}</p>

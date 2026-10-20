@@ -56,13 +56,14 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [section, setSection] = useState<string | null>(null);
 
-  // On a feature page there are no sections to scroll to, so every link leaves for the
-  // homepage ("/#pricing"), except Features, which has a page of its own. That one stays
-  // lit on every feature page, the way a section link lights up on the homepage.
+  // Features has a page of its own, so it opens /features from the homepage and from every
+  // feature page alike (it stays lit on feature pages, the way a section link lights up on the
+  // homepage). On a feature page there are no sections to scroll to, so the other links leave
+  // for the homepage ("/#pricing").
   const onFeaturePage = isFeaturePage();
   const links = NAV_LINKS.map(link => ({
     ...link,
-    href: onFeaturePage && link.href === '#features' ? '/features' : homeAnchor(link.href),
+    href: link.href === '#features' ? '/features' : homeAnchor(link.href),
     current: onFeaturePage ? link.href === '#features' : section === link.href.slice(1),
   }));
 

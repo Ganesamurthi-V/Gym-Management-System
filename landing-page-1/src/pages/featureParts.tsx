@@ -4,18 +4,11 @@ import BorderGlow from '../components/BorderGlow';
 import { ShinyText } from '../components/ShinyText';
 import {
   ArrowRight,
-  CalendarCheck,
-  ChartColumn,
   ChevronRight,
   ImageIcon,
-  IndianRupee,
   Info,
   LayoutGrid,
-  MessageCircle,
   PlayCircle,
-  Smartphone,
-  Upload,
-  Users,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -25,9 +18,9 @@ import {
   getFeaturePage,
   parseInline,
   type FeatureBlock,
-  type FeatureIcon,
   type FeaturePage,
 } from '../data/featurePages';
+import { ICONS } from './featureIcons';
 import { CookieBanner } from '../components/CookieBanner';
 import { Footer } from '../components/Footer';
 import { Layout } from '../components/Layout';
@@ -40,16 +33,6 @@ const TRUST_POINTS = ['14-day free trial', 'No credit card', 'Cancel anytime'] a
 
 const LINK_CLASS =
   'font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
-
-const ICONS: Record<FeatureIcon, LucideIcon> = {
-  users: Users,
-  rupee: IndianRupee,
-  'calendar-check': CalendarCheck,
-  smartphone: Smartphone,
-  message: MessageCircle,
-  chart: ChartColumn,
-  upload: Upload,
-};
 
 /** Renders the **bold** and [link](href) markup the feature data uses. */
 export function Inline({ text }: { text: string }) {
@@ -109,25 +92,31 @@ function AccentHeading({ text }: { text: string }) {
   );
 }
 
-function Breadcrumb({ page }: { page: FeaturePage }) {
+/** The one breadcrumb on a page: it sits at the top of the docs shell, not in the hero. Labels come from the data. */
+export function Breadcrumb({ page }: { page: FeaturePage }) {
   const hub = page.slug === 'features';
   const crumbs = [
     { name: 'Home', href: '/' },
     { name: 'Features', href: hub ? undefined : '/features' },
     ...(hub ? [] : [{ name: page.breadcrumb, href: undefined }]),
   ];
+  // min-h-11 (44px) on every item is the tap target; the row wraps instead of overflowing.
+  const item = 'inline-flex min-h-11 items-center';
   return (
-    <nav aria-label="Breadcrumb" className="hero-badge">
-      <ol className="flex flex-wrap items-center justify-center gap-1.5 text-[13px] text-muted-foreground">
+    <nav aria-label="Breadcrumb">
+      <ol className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
         {crumbs.map((crumb, i) => (
-          <li key={crumb.name} className="flex items-center gap-1.5">
-            {i > 0 && <ChevronRight aria-hidden className="h-3.5 w-3.5" />}
+          <li key={crumb.name} className="flex min-w-0 items-center gap-1.5">
+            {i > 0 && <ChevronRight aria-hidden className="h-3.5 w-3.5 shrink-0" />}
             {crumb.href ? (
-              <a href={crumb.href} className="hover:text-foreground">
+              <a
+                href={crumb.href}
+                className={`${item} rounded px-1 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
+              >
                 {crumb.name}
               </a>
             ) : (
-              <span aria-current="page" className="text-foreground">
+              <span aria-current="page" className={`${item} px-1 text-foreground`}>
                 {crumb.name}
               </span>
             )}
@@ -155,9 +144,7 @@ export function FeatureHero({ page }: { page: FeaturePage }) {
       <HeroPixels />
 
       <div className="mx-auto max-w-[900px] text-center">
-        <Breadcrumb page={page} />
-
-        <span className="hero-badge pill pill-accent mt-6">
+        <span className="hero-badge pill pill-accent">
           <Icon className="h-3.5 w-3.5" />
           {page.eyebrow}
         </span>
@@ -226,13 +213,12 @@ export function FeatureGrid() {
   );
 }
 
-/* One column that runs straight down the page, like a document, across the full width of the
-   content column (1240px): the owner wants the text to fill the page rather than sit in a narrow
-   strip with empty sides. Two columns made the eye jump from the foot of the left column back to
-   the top of the right, so it stays one. The type steps up with the screen and the leading is
-   generous to keep the long lines trackable. Body copy is --foreground at 85% rather than
-   --muted-foreground, which is fine for captions but too faint for whole paragraphs. */
-const BODY = 'text-[16px] leading-[1.8] text-foreground/85 md:text-[17px] lg:text-[18px]';
+/* One column that runs straight down the page, like a document, inside the docs shell's content
+   column (see DocsShell). Two columns made the eye jump from the foot of the left column back to
+   the top of the right, so it stays one. 16-17px with 1.75 leading keeps lines trackable at the
+   column's ~700-860px. Body copy is --foreground at 85% rather than --muted-foreground, which is
+   fine for captions but too faint for whole paragraphs. */
+const BODY = 'text-[16px] leading-[1.75] text-foreground/85 md:text-[17px]';
 
 function Paragraph({ text }: { text: string }) {
   return (
@@ -248,7 +234,7 @@ function Block({ block }: { block: FeatureBlock }) {
       return <Paragraph text={block.text} />;
     case 'h3':
       return (
-        <h3 className="mt-10 text-center text-[15px] font-semibold uppercase tracking-[0.14em] text-accent-text md:text-[16px]">
+        <h3 className="mt-8 text-[15px] font-semibold uppercase tracking-[0.14em] text-accent-text md:text-[16px]">
           {block.text}
         </h3>
       );
@@ -297,12 +283,16 @@ function Block({ block }: { block: FeatureBlock }) {
   }
 }
 
-/** One content section: a numbered eyebrow, the centred heading with its accent last word, a blue bar and the blocks. */
-export function SectionView({ heading, blocks, index }: { heading: string; blocks: FeatureBlock[]; index: number }) {
+/**
+ * One content section: a numbered eyebrow, the flush-left heading with its accent last word, a
+ * blue bar and the blocks. The id is the anchor the sidebar search and the table of contents link
+ * to; html scroll-padding-top (96px) already clears the floating navbar, so scroll-mt only adds a little air.
+ */
+export function SectionView({ id, heading, blocks, index }: { id: string; heading: string; blocks: FeatureBlock[]; index: number }) {
   const cut = heading.lastIndexOf(' ') + 1;
   return (
-    <article className="reveal border-t border-border-subtle py-10 first:border-t-0 first:pt-0 md:py-12">
-      <div className="flex flex-col items-center text-center">
+    <article id={id} className="reveal scroll-mt-4 border-t border-border-subtle py-8 first:border-t-0 first:pt-0 md:py-10">
+      <div className="flex flex-col items-start">
         <span className="eyebrow">{String(index + 1).padStart(2, '0')}</span>
         <h2 className="display-3 mt-3 text-balance">
           {heading.slice(0, cut)}
@@ -321,7 +311,7 @@ export function SectionView({ heading, blocks, index }: { heading: string; block
    heading either), because an empty "coming soon" frame would look unfinished to visitors. */
 function SlotPlaceholder({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
   return (
-    <div className="mx-auto mt-8 flex max-w-[780px] flex-col items-center rounded-card border-2 border-dashed border-border-strong bg-muted p-8 text-center">
+    <div className="mt-8 flex max-w-[780px] flex-col items-center rounded-card border-2 border-dashed border-border-strong bg-muted p-8 text-center">
       <Icon aria-hidden className="h-8 w-8 text-accent-text" />
       <p className="mt-3 text-[18px] font-medium text-foreground">{title}</p>
       <p className="mt-2 text-[15px] leading-relaxed text-foreground/75">{children}</p>
@@ -340,7 +330,7 @@ export function TutorialSection({ page }: { page: FeaturePage }) {
     if (!import.meta.env.DEV) return null;
     return (
       <section aria-label="Tutorial video" className="reveal">
-        <h2 className="display-3 text-center text-balance">Watch how it works</h2>
+        <h2 className="display-3 text-balance">Watch how it works</h2>
         <SlotPlaceholder icon={PlayCircle} title="Tutorial video goes here">
           Add <code className={CODE}>public/features/{page.slug}/tutorial.mp4</code> and a poster, then set{' '}
           <code className={CODE}>tutorial.src</code>, <code className={CODE}>width</code> and{' '}
@@ -353,7 +343,7 @@ export function TutorialSection({ page }: { page: FeaturePage }) {
   const portrait = tutorial.height > tutorial.width;
   return (
     <section aria-label="Tutorial video" className="reveal">
-      <h2 className="display-3 text-center text-balance">Watch how it works</h2>
+      <h2 className="display-3 text-balance">Watch how it works</h2>
       <figure className={`mt-8 w-full ${portrait ? 'max-w-[360px]' : 'max-w-[900px]'}`}>
         <video
           controls
@@ -380,7 +370,7 @@ export function ScreenshotsSection({ page }: { page: FeaturePage }) {
     if (!import.meta.env.DEV) return null;
     return (
       <section aria-label="Screenshots" className="reveal">
-        <h2 className="display-3 text-center text-balance">See it in the app</h2>
+        <h2 className="display-3 text-balance">See it in the app</h2>
         <SlotPlaceholder icon={ImageIcon} title="Screenshots go here">
           Add 2 to 4 screenshots to <code className={CODE}>public/features/{page.slug}/</code>, then list them in{' '}
           <code className={CODE}>screenshots</code> for this page in <code className={CODE}>src/data/featurePages.ts</code>.
@@ -390,8 +380,8 @@ export function ScreenshotsSection({ page }: { page: FeaturePage }) {
   }
   return (
     <section aria-label="Screenshots" className="reveal">
-      <h2 className="display-3 text-center text-balance">See it in the app</h2>
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <h2 className="display-3 text-balance">See it in the app</h2>
+      <div className="mt-8 grid gap-6 sm:grid-cols-2">
         {shots.map(shot => (
           <figure key={shot.src} className="card overflow-hidden">
             <img

@@ -148,14 +148,17 @@
 
       Inline and synchronous on purpose: a deferred or external script would run
       after paint and defeat the point. Kept in sync with useTheme() in
-      src/lib/useTheme.ts (light always; nothing is stored).
+      src/lib/useTheme.ts (light on a new visit; a toggle choice lasts for the visit).
     -->
     <script>
       (function () {
-        // Every visit opens in the light theme, for every visitor: no saved choice and no OS
-        // setting is consulted. The toggle still switches the theme for the rest of that
-        // visit, but nothing is persisted, so the next visit starts light again.
-        document.documentElement.classList.remove('dark');
+        // Every visit opens in the light theme, for every visitor: no OS setting is consulted
+        // and nothing outlives the tab. The one exception is a choice made with the toggle
+        // earlier in this visit (sessionStorage, cleared when the tab closes), so moving
+        // between the homepage, the feature pages and the legal pages keeps the theme.
+        var dark = false;
+        try { dark = sessionStorage.getItem('gf-theme') === 'dark'; } catch (e) {}
+        document.documentElement.classList.toggle('dark', dark);
         // Marks that scripts run here. The static copy inside #root (see <body>) is for
         // readers that do not run JavaScript; with this class it is hidden, so a visitor
         // never sees it flash before React mounts.
@@ -260,6 +263,20 @@
           "areaServed": {
             "@type": "Country",
             "name": "India"
+          },
+          "sameAs": [
+            "https://www.instagram.com/meetgymflow"
+          ],
+          "founder": {
+            "@type": "Person",
+            "@id": "https://www.gymflow.sbs/#founder",
+            "name": "Ganesamurthi V",
+            "jobTitle": "Founder and developer",
+            "sameAs": [
+              "https://www.instagram.com/gxnessss.exe/",
+              "https://www.linkedin.com/in/ganesamurthi-v-b07315354",
+              "https://github.com/Ganesamurthi-V"
+            ]
           }
         },
         {
@@ -295,7 +312,7 @@
             "height": 630
           },
           "inLanguage": "en-IN",
-          "dateModified": "2026-10-19",
+          "dateModified": "2026-10-20",
           "video": {
             "@id": "https://www.gymflow.sbs/#video"
           }
@@ -453,8 +470,8 @@
           "@id": "https://www.gymflow.sbs/#video",
           "name": "GymFlow in one minute",
           "description": "How independent gyms are run today on notebooks, spreadsheets and chats, and how GymFlow's owner console and member app replace them: members, check-ins, payments, reports, WhatsApp reminders and Excel import.",
-          "thumbnailUrl": "https://www.gymflow.sbs/video/gymflow-launch-poster.webp",
-          "contentUrl": "https://www.gymflow.sbs/video/gymflow-launch.mp4",
+          "thumbnailUrl": "https://www.gymflow.sbs/video/gymflow-launch-portrait-poster.webp",
+          "contentUrl": "https://www.gymflow.sbs/video/gymflow-launch-portrait.mp4",
           "uploadDate": "2026-10-06T00:00:00+05:30",
           "duration": "PT1M1S",
           "inLanguage": "en-IN",
@@ -529,24 +546,25 @@
         </p>
         <p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="#pricing">See pricing</a></p>
 
-        <h2 id="features">Everything your gym needs</h2>
+        <h2 id="features">Everything your gym needs: members, fees, attendance, WhatsApp</h2>
         <ul>
-          <li>Member management</li>
-          <li>Payments &amp; dues</li>
-          <li>Attendance tracking</li>
-          <li>Member app &amp; workouts</li>
-          <li>Reports &amp; analytics</li>
-          <li>Unlimited WhatsApp reminders</li>
-          <li>CSV / Excel import &amp; export</li>
+          <li><a href="/members">Member management</a></li>
+          <li><a href="/fees-and-dues">Payments &amp; dues</a></li>
+          <li><a href="/attendance">Attendance tracking</a></li>
+          <li><a href="/member-app">Member app &amp; workouts</a></li>
+          <li><a href="/reports">Reports &amp; analytics</a></li>
+          <li><a href="/whatsapp">Unlimited WhatsApp reminders</a></li>
+          <li><a href="/import-export">CSV / Excel import &amp; export</a></li>
           <li>Priority support</li>
         </ul>
+        <p><a href="/features">See all GymFlow features</a></p>
         <p>
           The owner dashboard shows active members, today's collection, memberships expiring
           soon and total outstanding dues on one screen. Members get their own app with a digital
           gym card on their own phone, with no app store download.
         </p>
 
-        <h2 id="whatsapp">Unlimited WhatsApp, built in and not billed extra</h2>
+        <h2 id="whatsapp">Unlimited WhatsApp reminders, built in and not billed extra</h2>
         <p>Every GymFlow account includes fully automated WhatsApp messaging, with zero extra cost.</p>
         <ul>
           <li>Welcome message: sent the moment a member joins, with their plan and expiry.</li>
@@ -563,7 +581,7 @@
           <li><strong>Start managing your gym.</strong> Track members, attendance, payments, reports and WhatsApp reminders from one place.</li>
         </ol>
 
-        <h2 id="pricing">Pricing: one plan, everything included</h2>
+        <h2 id="pricing">Gym management software pricing: one plan, everything included</h2>
         <ul>
           <li>Monthly: ₹999 per month</li>
           <li>Yearly: ₹9,999 for a year (save 17%)</li>
@@ -574,7 +592,7 @@
           the account is switched on after verification.
         </p>
 
-        <h2 id="faq">Frequently asked questions</h2>
+        <h2 id="faq">Gym software FAQ: everything you need to know</h2>
         <h3>Is there a free trial?</h3>
         <p>Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the 14-day free trial before you decide.</p>
         <h3>How much does GymFlow cost?</h3>
@@ -600,13 +618,21 @@
           the <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.
         </p>
 
+        <h2 id="founder">Who builds GymFlow</h2>
+        <p>
+          <strong>Ganesamurthi V</strong>, founder and developer. I&#x27;m a Computer Science engineering
+          student building GymFlow to help Indian gyms replace manual record-keeping with digital
+          management. My engineering background drives my focus on building practical, affordable
+          software for gym owners.
+        </p>
+
         <h2>Contact</h2>
         <p>
           Email <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>, phone and WhatsApp
           <a href="tel:+919384886895">+91 93848 86895</a>. No. 126, Anbu Nagar, Achariyapuram,
           Villianur, Puducherry 605110, India.
         </p>
-        <p><a href="https://status.gymflow.sbs">System status</a> · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/llms.txt">Summary for AI assistants</a></p>
+        <p><a href="https://status.gymflow.sbs">System status</a> · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/llms.txt">Summary for AI assistants</a> · <a href="https://www.instagram.com/meetgymflow">Instagram</a></p>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

@@ -16,10 +16,17 @@ function currentTheme(): Theme {
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(currentTheme);
 
-  // Mirror state onto <html>. Nothing is persisted: every visit opens light (see the
-  // bootstrap script in index.html), so a stored choice would never be read.
+  // Mirror state onto <html>, and remember it for the rest of this visit so the next page
+  // (another entry in the multi-page build, or a legal page) opens in the same theme. It goes
+  // in sessionStorage, not localStorage: the bootstrap script in index.html still starts every
+  // new visit light, and the choice dies with the tab.
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
+    try {
+      sessionStorage.setItem('gf-theme', theme);
+    } catch {
+      // Storage blocked (private mode, site data off): the theme just does not carry over.
+    }
   }, [theme]);
 
   // Light is the default for every visitor whatever their OS does; the site does

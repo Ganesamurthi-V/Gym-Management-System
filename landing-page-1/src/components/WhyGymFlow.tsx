@@ -24,12 +24,12 @@ export function WhyGymFlow() {
         {/* Centred over the table, the same construction as the Pricing and FAQ headers. */}
         <div className="mx-auto flex max-w-[1100px] flex-col items-center text-center">
           <span className="reveal eyebrow">Why GymFlow</span>
-          <h2 id="why-title" className="reveal display-2 mt-4 text-balance lg:[white-space:nowrap]">
-            Why{' '}
+          <h2 id="why-title" className="reveal display-2 mt-4 text-balance">
+            {'Why pick '}
             <em className="display-accent">
               <ShinyText text="GymFlow" speed={2.8} spread={120} />
-            </em>{' '}
-            and not another platform?
+            </em>
+            {' over other gym software?'}
           </h2>
           <p className="reveal lead mt-5 max-w-[560px]">
             Made for small gym owners here, so the things you do every day take fewer taps.

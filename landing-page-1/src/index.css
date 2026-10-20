@@ -475,6 +475,14 @@ p, blockquote, figcaption, li {
   letter-spacing: -0.025em;
 }
 
+/* Feature-page headline. The keyword-bearing H1s are longer than the homepage's, and at the full
+   96px "Gym member management" is about 1160px wide, wider than the 900px hero column. 5vw caps at
+   72px, where that line is about 870px, so it fits the column on one line. Same weight, leading and
+   tracking as .display-1; the doubled selector outranks it. */
+.display-1.feature-h1 {
+  font-size: clamp(40px, 5vw, 72px);
+}
+
 .display-2 {
   font-size: clamp(34px, 4.8vw, 60px);
   font-weight: 500;
@@ -644,6 +652,38 @@ p, blockquote, figcaption, li {
 }
 .dark .hero-pixels {
   opacity: 0.35;
+}
+
+/* Feature-page heroes. The stops above are fixed pixels fitted to the homepage hero, whose
+   film carries it well past 800px. A feature hero is shorter and its height moves with the
+   viewport, so on the fixed stops the grid stopped short of the section and the wash had not
+   reached --background at its edge, leaving a seam against the next section. Here both are
+   tied to the section's own height instead: the grid fills it and feathers out over the last
+   160px, and the wash lands on --background exactly at the bottom edge. */
+.hero-fill.hero-surface {
+  background: linear-gradient(to bottom, #fff 0, #fff calc(100% - 240px), var(--background) 100%);
+}
+.dark .hero-fill.hero-surface {
+  background: linear-gradient(to bottom, #000 0, #000 calc(100% - 240px), var(--background) 100%);
+}
+.hero-fill .hero-pixels {
+  height: 100%;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 76px,
+    #000 210px,
+    #000 calc(100% - 160px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 76px,
+    #000 210px,
+    #000 calc(100% - 160px),
+    transparent 100%
+  );
 }
 
 /* ── Character grid ───────────────────────────────────────────────────────────

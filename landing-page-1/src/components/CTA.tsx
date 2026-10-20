@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { SUPPORT_PROMISE } from '../data/support';
+import { homeAnchor } from '../lib/pageAnchors';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -49,7 +50,9 @@ export function CTA() {
             className="reveal mx-auto max-w-[680px] text-balance font-medium leading-[1.08] tracking-[-0.03em] text-foreground"
             style={{ fontSize: 'clamp(30px, 4.2vw, 52px)' }}
           >
-            Stop managing members. Start <em className="display-accent">growing</em> your gym.
+            {'Stop managing members. Start '}
+            <em className="display-accent">growing</em>
+            {' your gym.'}
           </h2>
 
           <p className="reveal mx-auto mt-5 max-w-[500px] text-[15.5px] leading-relaxed text-muted-foreground">
@@ -61,7 +64,7 @@ export function CTA() {
               Start free trial
               <ArrowRight className="h-4 w-4" />
             </a>
-            <a href="#pricing" className="btn btn-outline btn-lg">
+            <a href={homeAnchor('#pricing')} className="btn btn-outline btn-lg">
               See pricing
             </a>
           </div>

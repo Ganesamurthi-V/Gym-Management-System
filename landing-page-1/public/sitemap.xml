@@ -2,14 +2,46 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   <url>
     <loc>https://www.gymflow.sbs/</loc>
-    <lastmod>2026-10-19</lastmod>
+    <lastmod>2026-10-20</lastmod>
     <video:video>
-      <video:thumbnail_loc>https://www.gymflow.sbs/video/gymflow-launch-poster.webp</video:thumbnail_loc>
+      <video:thumbnail_loc>https://www.gymflow.sbs/video/gymflow-launch-portrait-poster.webp</video:thumbnail_loc>
       <video:title>GymFlow in one minute</video:title>
       <video:description>How independent gyms are run today, and how GymFlow's owner console and member app replace notebooks, spreadsheets and chats.</video:description>
-      <video:content_loc>https://www.gymflow.sbs/video/gymflow-launch.mp4</video:content_loc>
+      <video:content_loc>https://www.gymflow.sbs/video/gymflow-launch-portrait.mp4</video:content_loc>
       <video:duration>61</video:duration>
     </video:video>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/features</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/members</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/fees-and-dues</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/attendance</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/member-app</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/whatsapp</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/reports</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://www.gymflow.sbs/import-export</loc>
+    <lastmod>2026-10-20</lastmod>
   </url>
   <url>
     <loc>https://www.gymflow.sbs/privacy</loc>

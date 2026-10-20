@@ -12,7 +12,7 @@ phone.
 
 Site: https://www.gymflow.sbs/
 Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
-Last updated: 2026-10-19
+Last updated: 2026-10-20
 
 ## Quick answers
 
@@ -71,6 +71,19 @@ Short, quotable answers to what people most often ask. Each matches the website.
 The owner dashboard surfaces active members, the day's collection, memberships
 expiring soon, and total outstanding dues on one screen.
 
+## Feature pages
+
+One page per feature, each explaining what it does and how it works:
+
+- [All features](https://www.gymflow.sbs/features): overview of every GymFlow feature.
+- [Member management](https://www.gymflow.sbs/members): member records, plans, expiry dates, renewals, search and filters.
+- [Fees, payments and dues](https://www.gymflow.sbs/fees-and-dues): cash, UPI and card payments, part payments, pending dues and UPI QR codes.
+- [Attendance tracking](https://www.gymflow.sbs/attendance): front-desk check-in kiosk, check-out times, attendance log and Excel export.
+- [Member app and workouts](https://www.gymflow.sbs/member-app): digital membership card, workout programs, streaks, leaderboards and rewards.
+- [WhatsApp reminders](https://www.gymflow.sbs/whatsapp): automatic welcome, renewal, expiry, payment due and birthday messages.
+- [Reports and analytics](https://www.gymflow.sbs/reports): members, money, dues, expiries and attendance reports, with a PDF download.
+- [Import and export](https://www.gymflow.sbs/import-export): import members from Excel or CSV, export data to Excel.
+
 ## Member app
 
 Members get their own app, separate from the owner console:
@@ -78,7 +91,7 @@ Members get their own app, separate from the owner console:
 - Membership status, plan and expiry date.
 - Attendance and progress history.
 - Workout plans.
-- A digital membership card with QR check-in.
+- A digital membership card with a QR code.
 
 It is a progressive web app. It opens from a link and installs to the home
 screen, so there is no app store download.
@@ -99,6 +112,16 @@ No installation, no IT team and no consultant are required.
 - Owners can export members, attendance and payments to Excel, and delete their
   gym's data from account settings.
 - Details: https://www.gymflow.sbs/privacy and https://www.gymflow.sbs/terms
+
+## Who builds GymFlow
+
+GymFlow is built by Ganesamurthi V, founder and developer, a Computer Science
+engineering student building it to help Indian gyms replace manual
+record-keeping with digital management.
+
+- Instagram: https://www.instagram.com/gxnessss.exe/
+- LinkedIn: https://www.linkedin.com/in/ganesamurthi-v-b07315354
+- GitHub: https://github.com/Ganesamurthi-V
 
 ## Support
 

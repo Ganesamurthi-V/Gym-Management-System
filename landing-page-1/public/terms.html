@@ -11,13 +11,17 @@
     <meta name="theme-color" content="#f5f5f5" />
 
     <!--
-      Theme bootstrap: every visit opens in the light theme, like the marketing site.
-      Nothing is read from storage and the OS colour scheme is ignored.
+      Theme bootstrap: every new visit opens in the light theme, like the marketing site, and the
+      OS colour scheme is ignored. A choice made with the site's toggle earlier in the same visit
+      is kept (sessionStorage).
     -->
     <script>
       (function () {
-        // Light for every visitor on every visit, matching the marketing site.
-        document.documentElement.classList.remove('dark');
+        // Light on every new visit, matching the marketing site, unless the theme toggle was
+        // used earlier in this visit (sessionStorage, cleared when the tab closes).
+        var dark = false;
+        try { dark = sessionStorage.getItem('gf-theme') === 'dark'; } catch (e) {}
+        document.documentElement.classList.toggle('dark', dark);
       })();
     </script>
 

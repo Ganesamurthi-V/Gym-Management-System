@@ -25,6 +25,13 @@ const ATTENDANCE_ROWS = [
   { name: 'Divya M.', time: '6:40 AM' },
 ] as const;
 
+// On the accent cards the text colour is accent-ink, as for the heading and line above it.
+const ACCENT_LINK_CLASS =
+  'rounded font-medium text-accent-ink underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink';
+
+const LINK_CLASS =
+  'rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+
 export function BentoFeatures() {
   const scope = useReveal<HTMLElement>({ perElement: true, y: 36, duration: 0.8, start: 'top 88%' });
 
@@ -41,13 +48,16 @@ export function BentoFeatures() {
         <div className="mx-auto flex max-w-[900px] flex-col items-center text-center">
           <span className="reveal eyebrow">Core modules</span>
           <h2 id="features-title" className="reveal display-2 mt-4 text-balance">
-            Everything your gym needs,
+            {'Everything your gym needs: '}
             <br />
-            <span className="text-muted-foreground">nothing it doesn&apos;t.</span>
+            <span className="text-muted-foreground">Nothing it doesn't.</span>
           </h2>
           <p className="reveal lead mt-5 max-w-[560px]">
             Members, payments, attendance and WhatsApp reminders in one place, with a member app
-            included.
+            included.{' '}
+            <a href="/features" className={LINK_CLASS}>
+              See all GymFlow features
+            </a>
           </p>
         </div>
 
@@ -62,36 +72,21 @@ export function BentoFeatures() {
             className="lg:col-span-2 lg:min-h-[300px]"
             title="Live dashboard"
             desc="Members, collections and dues on one screen."
+            links={[
+              { label: 'More on member management', href: '/members' },
+              { label: 'More on reports and analytics', href: '/reports' },
+            ]}
           >
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:mt-auto">
-              {STATS.map(stat => (
-                <div key={stat.label} className="rounded-2xl border border-border-subtle bg-subtle p-4">
-                  <p className="text-[13px] text-muted-foreground">{stat.label}</p>
-                  <p className="mt-1.5 text-[24px] font-medium leading-none tracking-tight text-foreground tabular-nums md:text-[28px]">
-                    {stat.value}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <DashboardStats className="mt-4 lg:mt-auto" />
           </Card>
 
-          <Card className="lg:min-h-[320px]" title="One-tap attendance" desc="Mark today in a tap.">
-            <div className="mt-4 flex flex-col gap-2 lg:mt-auto">
-              {ATTENDANCE_ROWS.map(row => (
-                <div
-                  key={row.name}
-                  className="flex items-center justify-between rounded-2xl border border-border-subtle bg-subtle px-4 py-2.5"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-accent">
-                      <Check className="h-3.5 w-3.5 text-accent-ink" strokeWidth={3} />
-                    </span>
-                    <span className="text-[15px] font-medium text-foreground">{row.name}</span>
-                  </span>
-                  <span className="font-mono text-[12px] text-muted-foreground">{row.time}</span>
-                </div>
-              ))}
-            </div>
+          <Card
+            className="lg:min-h-[320px]"
+            title="One-tap attendance"
+            desc="Mark today in a tap."
+            links={[{ label: 'More on attendance tracking', href: '/attendance' }]}
+          >
+            <AttendanceRows className="mt-4 lg:mt-auto" />
           </Card>
 
           {/* Accent card, same treatment as the phone card: the heading and line in
@@ -105,10 +100,12 @@ export function BentoFeatures() {
               <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-accent-ink/80">
                 Cash, UPI or card. Reminders sent for you.
               </p>
-              <div className="mt-4 flex flex-col gap-2 lg:mt-auto">
-                <Pill icon={<Wallet className="h-4 w-4" />} text="₹18,600 pending" />
-                <Pill icon={<BellRing className="h-4 w-4" />} text="14 reminders sent" />
-              </div>
+              <p className="mt-3 text-[13px]">
+                <a href="/fees-and-dues" className={ACCENT_LINK_CLASS}>
+                  More on payments and dues
+                </a>
+              </p>
+              <PaymentPills className="mt-4 lg:mt-auto" />
             </BorderGlow>
           </div>
         </div>
@@ -118,6 +115,53 @@ export function BentoFeatures() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+
+/* The three card visuals are exported so the feature pages (src/pages) can show the same
+   mock beside their copy. Each takes only a className for its own spacing. */
+export function DashboardStats({ className = '' }: { className?: string }) {
+  return (
+    <div className={`grid grid-cols-2 gap-3 ${className}`}>
+      {STATS.map(stat => (
+        <div key={stat.label} className="rounded-2xl border border-border-subtle bg-subtle p-4">
+          <p className="text-[13px] text-muted-foreground">{stat.label}</p>
+          <p className="mt-1.5 text-[24px] font-medium leading-none tracking-tight text-foreground tabular-nums md:text-[28px]">
+            {stat.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AttendanceRows({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      {ATTENDANCE_ROWS.map(row => (
+        <div
+          key={row.name}
+          className="flex items-center justify-between rounded-2xl border border-border-subtle bg-subtle px-4 py-2.5"
+        >
+          <span className="flex items-center gap-3">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-accent">
+              <Check className="h-3.5 w-3.5 text-accent-ink" strokeWidth={3} />
+            </span>
+            <span className="text-[15px] font-medium text-foreground">{row.name}</span>
+          </span>
+          <span className="font-mono text-[12px] text-muted-foreground">{row.time}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function PaymentPills({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <Pill icon={<Wallet className="h-4 w-4" />} text="₹18,600 pending" />
+      <Pill icon={<BellRing className="h-4 w-4" />} text="14 reminders sent" />
+    </div>
+  );
+}
 
 function Pill({ icon, text }: { icon: ReactNode; text: string }) {
   return (
@@ -131,11 +175,13 @@ function Pill({ icon, text }: { icon: ReactNode; text: string }) {
 function Card({
   title,
   desc,
+  links,
   children,
   className = '',
 }: {
   title: string;
   desc: string;
+  links?: readonly { label: string; href: string }[];
   children: ReactNode;
   className?: string;
 }) {
@@ -150,6 +196,15 @@ function Card({
       <BorderGlow as="article" contentClassName="p-5 md:p-6" fillOpacity={0}>
         <h3 className="text-[22px] font-medium leading-[1.1] tracking-tight text-foreground md:text-[24px]">{title}</h3>
         <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-muted-foreground">{desc}</p>
+        {links && (
+          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+            {links.map(link => (
+              <a key={link.href} href={link.href} className={LINK_CLASS}>
+                {link.label}
+              </a>
+            ))}
+          </p>
+        )}
         {children}
       </BorderGlow>
     </div>

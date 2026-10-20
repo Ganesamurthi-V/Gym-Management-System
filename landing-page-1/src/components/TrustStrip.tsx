@@ -51,9 +51,9 @@ export function TrustStrip() {
       <div className="mx-auto max-w-[1240px]">
         <div className="mx-auto max-w-[720px] text-center">
           <h2 id="trust-title" className="reveal display-2 text-balance">
-            Your Gym. Your Data. Your{' '}
+            {"Your gym's data, in your "}
             <em className="display-accent">
-              <ShinyText text="Control" speed={2.8} spread={120} />
+              <ShinyText text="control" speed={2.8} spread={120} />
             </em>
             .
           </h2>

@@ -22,6 +22,7 @@ const STEPS = [
     icon: FileSpreadsheet,
     title: 'Import your member records',
     desc: 'Bring your list in from an Excel, CSV or XLS file, or add members one by one.',
+    more: { label: 'More on importing and exporting members', href: '/import-export' },
   },
   {
     icon: CreditCard,
@@ -168,7 +169,7 @@ export function HowItWorks() {
           <div className="lg:sticky lg:top-36 lg:self-start">
             <span className="reveal eyebrow">How it works</span>
             <h2 id="how-title" className="reveal display-2 mt-4 text-balance">
-              We&rsquo;ll Help You Get Started.
+              We&rsquo;ll help you set up your gym on GymFlow.
             </h2>
             <p className="reveal lead mt-6 max-w-[520px]">
               Move from spreadsheets and manual records to GymFlow with guided setup and
@@ -237,6 +238,16 @@ export function HowItWorks() {
                     <p className="mt-2.5 max-w-[460px] text-[15px] md:text-[16px] leading-relaxed text-muted-foreground">
                       {step.desc}
                     </p>
+                    {'more' in step && (
+                      <p className="mt-2 text-[14px]">
+                        <a
+                          href={step.more.href}
+                          className="rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        >
+                          {step.more.label}
+                        </a>
+                      </p>
+                    )}
                   </div>
                 </li>
               ))}

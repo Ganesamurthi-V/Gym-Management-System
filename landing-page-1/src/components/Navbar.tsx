@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { homeAnchor, isFeaturePage } from '../lib/pageAnchors';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -55,6 +56,16 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [section, setSection] = useState<string | null>(null);
 
+  // On a feature page there are no sections to scroll to, so every link leaves for the
+  // homepage ("/#pricing"), except Features, which has a page of its own. That one stays
+  // lit on every feature page, the way a section link lights up on the homepage.
+  const onFeaturePage = isFeaturePage();
+  const links = NAV_LINKS.map(link => ({
+    ...link,
+    href: onFeaturePage && link.href === '#features' ? '/features' : homeAnchor(link.href),
+    current: onFeaturePage ? link.href === '#features' : section === link.href.slice(1),
+  }));
+
   const isDesktop = useMediaQuery(`(min-width: ${DESKTOP_AT}px)`);
 
   /*
@@ -74,6 +85,8 @@ export function Navbar() {
   // Which section is across the middle of the screen. One observer on the sections the
   // nav points at; a thin band at the vertical centre means exactly one is "current".
   useEffect(() => {
+    // Feature pages have none of these sections, so there is nothing to watch.
+    if (onFeaturePage) return;
     const ids = NAV_LINKS.map(link => link.href.slice(1));
     const els = ids.map(id => document.getElementById(id)).filter((e): e is HTMLElement => !!e);
     const io = new IntersectionObserver(
@@ -84,7 +97,7 @@ export function Navbar() {
     );
     els.forEach(el => io.observe(el));
     return () => io.disconnect();
-  }, []);
+  }, [onFeaturePage]);
 
   useEffect(() => {
     let ticking = false;
@@ -157,7 +170,7 @@ export function Navbar() {
         }}
       >
         {/* Logo */}
-        <a href="#" aria-label="GymFlow home" className="flex shrink-0 items-center">
+        <a href={homeAnchor('#')} aria-label="GymFlow home" className="flex shrink-0 items-center">
           <img
             src="/logo_landspace_without_bg.webp"
             alt="GymFlow"
@@ -182,21 +195,18 @@ export function Navbar() {
             flow it holds the true centre at every width, and the logo and CTAs still sit
             at the extremes, which is what justify-between is actually good at. */}
         <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-0.5 lg:flex">
-          {NAV_LINKS.map(link => {
-            const current = section === link.href.slice(1);
-            return (
-              <a
-                key={link.href}
-                href={link.href}
-                aria-current={current ? 'location' : undefined}
-                className={`rounded-pill px-3 py-2 text-[13.5px] font-medium transition-colors ${
-                  current ? 'bg-subtle text-foreground' : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
-                }`}
-              >
-                {link.label}
-              </a>
-            );
-          })}
+          {links.map(link => (
+            <a
+              key={link.label}
+              href={link.href}
+              aria-current={link.current ? (onFeaturePage ? 'page' : 'location') : undefined}
+              className={`rounded-pill px-3 py-2 text-[13.5px] font-medium transition-colors ${
+                link.current ? 'bg-subtle text-foreground' : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
+              }`}
+            >
+              {link.label}
+            </a>
+          ))}
         </div>
 
         {/* Right cluster */}
@@ -246,8 +256,8 @@ export function Navbar() {
           }}
         >
           <ul className="flex flex-col">
-            {NAV_LINKS.map(link => (
-              <li key={link.href}>
+            {links.map(link => (
+              <li key={link.label}>
                 <a
                   href={link.href}
                   className="block border-b border-border-subtle py-4 text-[17px] font-medium text-foreground"

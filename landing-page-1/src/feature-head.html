@@ -1,0 +1,128 @@
+<!--
+  Head boilerplate shared by every feature page (features.html, members.html, ...). The plugin in
+  vite.config.ts splices this file into each of them, between the favicons and the per-page tags.
+  Everything below is copied from index.html: the icons, fonts, theme bootstrap and the analytics
+  snippet must stay byte-identical to it (the CSP in public/_headers is written around them), and
+  scripts/check-copy-sync.mjs fails the build if either script drifts. Change both files together.
+-->
+<meta charset="UTF-8" />
+    <!--
+      Favicon set. Google Search shows the site icon in a small circle next to the result and
+      asks for a square file whose size is a multiple of 48 px, so the 48 px ICO entry and
+      the 192 px PNG are what it actually reads. The mark is a blue gradient on white with soft
+      blue corner glows, kept inside the middle of the tile (about 60% of its width) so the
+      circular crop never clips it. favicon.svg is the same design as real vector paths. The previous file was a
+      non-square 1432x955 picture, which is why it looked squashed and blurry. Google can
+      take several weeks to refresh a cached icon after this changes.
+    -->
+    <link rel="icon" href="/favicon.ico?v=4" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=4" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=4" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=4" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      The site always opens in the light theme, whatever the visitor's OS setting, so
+      the browser chrome is light for every scheme. Matches --background in src/index.css.
+    -->
+    <meta name="theme-color" content="#f5f5f5" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Instrument Serif is requested italic-only (ital@1) and at a single weight,
+      because the sole thing it sets is the emphasised words in the hero heading.
+      Asking for the roman too would double the payload for glyphs never drawn.
+    -->
+    <!--
+      Non-blocking. A plain rel="stylesheet" here stops the first paint until Google Fonts
+      answers (about a second on a throttled mobile connection, the largest single item in
+      the Lighthouse render-blocking report). rel="preload" fetches it at once without
+      blocking, and onload turns it into a stylesheet. display=swap shows the fallback font
+      meanwhile. The <noscript> copy keeps fonts working with scripts off.
+    -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+      />
+    </noscript>
+    <style>
+      /* Light is the only theme a visit starts in; the toggle can still switch for the current visit. */
+      html { background: #f5f5f5; color-scheme: light; }
+      html.dark { background: #141414; color-scheme: dark; }
+    </style>
+<!--feature-meta-->
+<!--
+      ─── THEME BOOTSTRAP ────────────────────────────────────────────────────
+      Runs before first paint and before the CSS applies, so the theme is already
+      on <html> when the page renders. Dark is the default, so without this the
+      page would paint light and then swap to dark a frame later — a visible white
+      flash for the majority of visits.
+
+      Inline and synchronous on purpose: a deferred or external script would run
+      after paint and defeat the point. Kept in sync with useTheme() in
+      src/lib/useTheme.ts (light on a new visit; a toggle choice lasts for the visit).
+    -->
+    <script>
+      (function () {
+        // Every visit opens in the light theme, for every visitor: no OS setting is consulted
+        // and nothing outlives the tab. The one exception is a choice made with the toggle
+        // earlier in this visit (sessionStorage, cleared when the tab closes), so moving
+        // between the homepage, the feature pages and the legal pages keeps the theme.
+        var dark = false;
+        try { dark = sessionStorage.getItem('gf-theme') === 'dark'; } catch (e) {}
+        document.documentElement.classList.toggle('dark', dark);
+        // Marks that scripts run here. The static copy inside #root (see <body>) is for
+        // readers that do not run JavaScript; with this class it is hidden, so a visitor
+        // never sees it flash before React mounts.
+        document.documentElement.classList.add('js');
+      })();
+    </script>
+    <style>
+      .js #seo-fallback { display: none; }
+      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 48px 20px; font: 16px/1.6 system-ui, sans-serif; }
+      #seo-fallback h1 { font-size: 34px; line-height: 1.15; }
+      #seo-fallback h2 { font-size: 22px; margin-top: 36px; }
+      #seo-fallback h3 { font-size: 17px; margin-top: 20px; }
+    </style>
+<!--
+      Google Analytics 4, in Consent Mode. analytics_storage starts "denied": the tag loads
+      (so Google's tag checker detects it) but sets no cookies and keeps no identifier until
+      the visitor allows visit counting in the cookie card, which calls
+      gtag('consent', 'update', ...) (src/lib/analytics.ts). A returning visitor who already
+      allowed it is granted straight away from the saved choice. Only on the real domain, so
+      local and preview builds never count.
+    -->
+    <script>
+      (function () {
+        if (!/(^|\.)gymflow\.sbs$/.test(location.hostname)) return;
+        var ID = 'G-X851XRNHBD';
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        window.gtag = gtag;
+        var allowed = false;
+        try {
+          allowed = JSON.parse(localStorage.getItem('gf-cookie-consent-v2') || 'null').ga === true;
+        } catch (e) {}
+        gtag('consent', 'default', {
+          analytics_storage: allowed ? 'granted' : 'denied',
+          ad_storage: 'denied',
+          ad_user_data: 'denied',
+          ad_personalization: 'denied',
+        });
+        gtag('js', new Date());
+        gtag('config', ID);
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID;
+        document.head.appendChild(s);
+      })();
+    </script>

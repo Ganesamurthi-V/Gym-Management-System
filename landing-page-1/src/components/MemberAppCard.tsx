@@ -103,7 +103,7 @@ export function MemberAppCard() {
         {...ACCENT_GLOW}
       >
         <h3 className="text-[22px] font-medium leading-[1.1] tracking-tight text-accent-ink">
-          Your members get
+          {'Your members get '}
           <br />
           their own app.
         </h3>
@@ -113,6 +113,14 @@ export function MemberAppCard() {
             already showing. */}
         <p className="mt-3 max-w-[280px] text-[13px] leading-relaxed text-accent-ink/80">
           A digital gym card on their own phone. No app store.
+        </p>
+        <p className="mt-2 text-[13px]">
+          <a
+            href="/member-app"
+            className="rounded font-medium text-accent-ink underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink"
+          >
+            More on the member app
+          </a>
         </p>
 
         {/* Phone well. The frame inside is sized BLEED taller than this box, so the

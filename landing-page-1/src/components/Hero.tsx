@@ -87,9 +87,13 @@ export function Hero() {
               can reach those. The glint is white by request; the contrast trade that
               involves is recorded on --hero-shine-display in index.css. */}
           <h1 id="hero-title" className="display-1 mt-8">
-            <span className="hero-line block">Gym management,</span>
+            {/* The trailing space inside each text node is for text extractors: the two
+                lines are blocks and the word is an <em>, so a reader that joins the
+                nodes would otherwise run "management,made" and "madeeffortless"
+                together. It collapses at the end of a line, so nothing shifts. */}
+            <span className="hero-line block">{'Gym management, '}</span>
             <span className="hero-line block">
-              made{' '}
+              {'made '}
               <em className="display-accent">
                 <ShinyText
                   text="effortless."

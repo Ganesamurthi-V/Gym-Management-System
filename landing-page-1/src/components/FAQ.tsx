@@ -80,8 +80,10 @@ export function FAQ() {
         {/* ── Header ────────────────────────────────────────────────────── */}
         <div ref={headerScope} className="mx-auto flex max-w-[900px] flex-col items-center text-center">
           <span className="reveal eyebrow">Frequently asked questions</span>
-          <h2 id="faq-title" className="reveal display-2 mt-4 text-balance md:whitespace-nowrap">
-            Everything you <em className="display-accent">need</em> to know.
+          <h2 id="faq-title" className="reveal display-2 mt-4 text-balance">
+            {'Gym software FAQ: everything you '}
+            <em className="display-accent">need</em>
+            {' to know.'}
           </h2>
           <p className="reveal lead mt-5 max-w-[440px]">
             Straight answers on pricing, WhatsApp messages and moving your members over.

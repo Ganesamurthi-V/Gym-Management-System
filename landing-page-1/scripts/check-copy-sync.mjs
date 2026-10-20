@@ -66,6 +66,13 @@ const fallbackFaq = [...html.matchAll(/<h3>(.+?)<\/h3>/g)].map((m) => decode(m[1
 if (JSON.stringify(faqQuestions) !== JSON.stringify(ldFaq)) errors.push('FAQ.tsx questions differ from the FAQPage JSON-LD (text or order)')
 if (JSON.stringify(faqQuestions) !== JSON.stringify(fallbackFaq)) errors.push('FAQ.tsx questions differ from the no-JavaScript FAQ in index.html (text or order)')
 
+// The feature pages' shared head (src/feature-head.html) restates index.html's inline scripts, and the
+// CSP in public/_headers is written around them. They must stay byte-identical.
+const featureHead = read('src/feature-head.html')
+for (const m of html.matchAll(/<script>[\s\S]*?<\/script>/g)) {
+  if (!featureHead.includes(m[0])) errors.push('src/feature-head.html is missing an inline script from index.html (copy it over unchanged)')
+}
+
 if (errors.length) {
   console.error('check-copy-sync failed:\n - ' + errors.join('\n - '))
   process.exit(1)

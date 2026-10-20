@@ -6,6 +6,7 @@ import {
   SUPPORT_PHONE_DISPLAY,
   WHATSAPP_URL,
 } from '../data/support';
+import { homeAnchor } from '../lib/pageAnchors';
 
 const APP_URL = 'https://app.gymflow.sbs';
 // The same message as a Gmail compose window. Most laptops have no mail app registered
@@ -26,8 +27,14 @@ const COLUMNS = [
   {
     heading: 'Product',
     links: [
-      { label: 'Features', href: '#features' },
-      { label: 'WhatsApp automation', href: '#whatsapp' },
+      { label: 'Features', href: '/features' },
+      { label: 'Member management', href: '/members' },
+      { label: 'Fees and dues', href: '/fees-and-dues' },
+      { label: 'Attendance tracking', href: '/attendance' },
+      { label: 'Member app', href: '/member-app' },
+      { label: 'WhatsApp reminders', href: '/whatsapp' },
+      { label: 'Reports and analytics', href: '/reports' },
+      { label: 'Import and export', href: '/import-export' },
       { label: 'How it works', href: '#how' },
       { label: 'Why GymFlow', href: '#why' },
       { label: 'Pricing', href: '#pricing' },
@@ -46,6 +53,20 @@ const COLUMNS = [
   },
 ] as const;
 
+// Curtain-reveal footer, used by the feature pages only (reveal prop). From lg up the footer
+// sticks to the bottom of the viewport behind the page (z-0) while <main> (relative z-10, opaque,
+// see FeatureShell) scrolls away over it, so the footer is uncovered rather than scrolled in.
+// Pure CSS: no scroll listener, nothing to keep in step with Lenis, and nothing to run on a
+// phone, where it stays an ordinary static footer. The feature pages have no CTA card to
+// overlap, so the negative margin and the 190px clearance under it are dropped at every width.
+// min-h-svh makes the footer a full screen at least (svh, so a phone's collapsing address bar
+// cannot leave a strip of page above it): at max scroll the footer is the only thing on screen
+// even when its content is shorter than the viewport; the panel stretches and centres its
+// content. motion-reduce falls back to the plain static footer, i.e. the final state with no curtain.
+const REVEAL_FOOTER =
+  'flex min-h-svh flex-col !mt-0 lg:sticky lg:bottom-0 lg:z-0 motion-reduce:lg:static';
+const REVEAL_PANEL = 'flex flex-1 flex-col justify-center !pt-20 md:!pt-24 [&>*]:w-full';
+
 /**
  * Neutral panel that the CTA card overlaps. It was the filled accent blue, which put the
  * loudest block on the page at the very end of it; every other saturated block now
@@ -62,19 +83,19 @@ const COLUMNS = [
  * kept by the inner wrapper below, which re-applies the max-w-[1240px] centring
  * to the *content* rather than the coloured panel.
  */
-export function Footer() {
+export function Footer({ reveal = false }: { reveal?: boolean }) {
   return (
-    <footer className="-mt-[70px] md:-mt-[150px]">
+    <footer className={`-mt-[70px] md:-mt-[150px]${reveal ? ` ${REVEAL_FOOTER}` : ''}`}>
       {/* id lives here rather than on <footer> so the #support anchor lands on
           the visible panel instead of a point hidden behind the CTA card. */}
       <div
         id="support"
-        className="border-t border-border-subtle bg-muted px-6 pt-[110px] pb-8 md:px-12 md:pt-[190px]"
+        className={`border-t border-border-subtle bg-muted px-6 pt-[110px] pb-8 md:px-12 md:pt-[190px]${reveal ? ` ${REVEAL_PANEL}` : ''}`}
       >
         <div className="mx-auto grid max-w-[1240px] gap-12 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           {/* ── Brand ─────────────────────────────────────────────────────── */}
           <div>
-            <a href="#" aria-label="GymFlow home" className="inline-flex">
+            <a href={homeAnchor('#')} aria-label="GymFlow home" className="inline-flex">
               {/* The wordmark is dark-inked for light backgrounds. On the dark theme
                   brightness-0 crushes it to black and invert lifts it to solid white,
                   which is how the navbar reuses the same asset.
@@ -114,7 +135,7 @@ export function Footer() {
                 {column.links.map(link => (
                   <li key={link.label}>
                     <a
-                      href={link.href}
+                      href={link.href.startsWith('#') ? homeAnchor(link.href) : link.href}
                       {...('external' in link && link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                       className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
                     >
@@ -162,6 +183,30 @@ export function Footer() {
               >
                 <MessageCircle className="h-3.5 w-3.5 shrink-0" />
                 {SUPPORT_PHONE_DISPLAY}
+              </a>
+              <a
+                href="https://www.instagram.com/meetgymflow"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="GymFlow on Instagram"
+                className="flex items-center gap-2.5 transition-colors hover:text-foreground"
+              >
+                {/* lucide-react v1 dropped brand icons, so the Instagram glyph is inline. */}
+                <svg
+                  aria-hidden
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3.5 w-3.5 shrink-0"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
+                </svg>
+                Instagram
               </a>
             </address>
             <p className="mt-4 text-[12px] text-muted-foreground">

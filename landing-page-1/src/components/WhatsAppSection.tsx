@@ -3,7 +3,8 @@ import { Ban, BellRing, UserPlus, Wallet } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { AutomationOrbit, type OrbitChip } from './AutomationOrbit';
 import { ShinyText } from './ShinyText';
-import { WhatsAppBubble, WhatsAppThread, type ThreadMessage } from './WhatsAppThread';
+import { WhatsAppBubble, WhatsAppThread } from './WhatsAppThread';
+import { MESSAGE_TYPES } from './whatsappMessages';
 
 /* Chips orbiting the phone. Positions are by bearing from the phone's centre
    (330px wide, so anything with x inside ±165 is hidden behind it), each with at
@@ -17,76 +18,6 @@ const ORBIT_CHIPS: readonly OrbitChip[] = [
   { icon: Wallet, label: 'Payment', position: '-left-[104px] top-[54%]', dot: { x: 86, y: 386 } },
   { icon: BellRing, label: 'Expired', position: '-right-[95px] top-[29%]', dot: { x: 546, y: 256 } },
 ];
-
-/* One entry per tab. `message` is the rendered artefact shown in the phone;
-   `desc` serves the text beside the phone; below md the phone is hidden and the
-   active tab shows just the message bubble on a chat surface instead. Bodies use the live templates'
-   asterisk-bold syntax so what the phone shows is what a member receives. */
-const MESSAGE_TYPES = [
-  {
-    id: 'welcome',
-    icon: UserPlus,
-    title: 'Welcome',
-    desc: 'Sent the moment a member joins, with their plan and expiry.',
-    when: 'On joining',
-    label: 'A new member’s phone showing the automated welcome message: a branded confirmation that their annual membership is active, with member ID, plan and start date.',
-    message: {
-      banner: true,
-      time: '11:50',
-      footer: 'Powered by Gym Flow',
-      body: `Hi Ganesh! 👋
-
-Your membership has been successfully *activated*.
-
-Member ID: *GF0086*
-Membership Plan: *Annual (12 Months)*
-Start Date: *07 Sep 2026*
-
-Thank you for choosing *Fit zone gym*. We're excited to be part of your fitness journey.❤️`,
-    } satisfies ThreadMessage,
-  },
-  {
-    id: 'expired',
-    icon: BellRing,
-    title: 'Expired',
-    desc: 'Tells a member their plan has lapsed and asks them to renew.',
-    when: 'On expiry',
-    label: 'A member’s phone showing an automated WhatsApp message from their gym saying their membership has expired, with member ID and expiry date, asking them to renew.',
-    message: {
-      banner: true,
-      time: '09:39',
-      footer: 'Powered by Gym Flow',
-      body: `Hi Ganesh! 👋
-
-Your membership with *Vivi gym* has expired.
-
- Member ID: *GF001*
-Expired On: *26/07/2026*
-
-To continue uninterrupted access to the gym, please *renew* your membership at your earliest convenience.❤️`,
-    } satisfies ThreadMessage,
-  },
-  {
-    id: 'payment',
-    icon: Wallet,
-    title: 'Payment due',
-    desc: 'Nudges the members who still owe, without you asking twice.',
-    when: 'Every 3 days',
-    label: 'A member’s phone showing an automated WhatsApp payment due alert from their gym.',
-    message: {
-      banner: true,
-      time: '09:40',
-      footer: 'Powered by Gym Flow',
-      body: `Hi Ganesh! 👋
-
-This is a reminder that your membership payment is *due*.
-
-Amount : *₹2000*
-
-Please complete your payment before the due date to keep your membership active. ❤️`,
-    } satisfies ThreadMessage,
-  },
-] as const;
 
 const CYCLE_MS = 3000;
 
@@ -133,14 +64,20 @@ export function WhatsAppSection() {
             <h2 id="whatsapp-title" className="reveal display-2 mt-4 text-balance">
               <em className="display-accent">
                 <ShinyText text="Unlimited" speed={2.8} spread={120} />
-              </em>{' '}
-              WhatsApp.
+              </em>
+              {' WhatsApp reminders, '}
               <br />
-              <span className="text-foreground">Built in, not billed extra.</span>
+              <span className="text-foreground">built in and not billed extra.</span>
             </h2>
 
             <p className="reveal lead mt-6 max-w-[520px]">
-              Every GymFlow account includes fully automated WhatsApp messaging, with <ShinyText text="zero extra cost." speed={2.8} spread={120} />
+              Every GymFlow account includes fully automated WhatsApp messaging, with <ShinyText text="zero extra cost." speed={2.8} spread={120} />{' '}
+              <br></br><a
+                href="/whatsapp"
+                className="rounded text-sm font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                More on WhatsApp reminders
+              </a>
             </p>
 
             {/* Tabs replace the three stacked cards: one compact control, and the

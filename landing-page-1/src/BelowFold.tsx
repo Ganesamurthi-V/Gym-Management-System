@@ -6,6 +6,7 @@ import { WhatsAppSection } from './components/WhatsAppSection';
 import { HowItWorks } from './components/HowItWorks';
 import { Pricing } from './components/Pricing';
 import { FAQ } from './components/FAQ';
+import { Founder } from './components/Founder';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 
@@ -25,6 +26,7 @@ const SECTIONS = [
   { key: 'how', Section: HowItWorks },
   { key: 'pricing', Section: Pricing },
   { key: 'faq', Section: FAQ },
+  { key: 'founder', Section: Founder },
   { key: 'cta', Section: CTA },
 ] as const;
 

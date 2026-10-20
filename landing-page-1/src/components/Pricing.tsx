@@ -98,8 +98,9 @@ export function Pricing() {
             heading, short intro. (It was left-aligned in the same grid as the cards.) */}
         <div className="mx-auto flex max-w-[900px] flex-col items-center text-center">
           <span className="reveal eyebrow">Pricing</span>
-          <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance md:whitespace-nowrap">
-            One plan. <span className="text-muted-foreground">Everything included.</span>
+          <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance">
+            {'One plan. '}
+            <span className="text-muted-foreground">everything included.</span>
           </h2>
           <p className="reveal lead mt-5 max-w-[520px]">
             No per-member charges, no setup fee, and no modules to unlock later.{' '}

@@ -73,7 +73,7 @@
       share link, which would otherwise look like separate pages with identical
       content and split ranking signals.
 
-      NOTE THE www. The apex returns 308 -> https://www.gymflow.sbs/, so www is
+      NOTE THE www. The apex returns 301 -> https://www.gymflow.sbs/, so www is
       the live host. Pointing canonical at the apex means pointing it at a
       redirect, which is what makes Search Console report "Sitemap could not be
       read" — GSC does not follow redirects for sitemap URLs.
@@ -172,23 +172,20 @@
 
     <!--
       ─── STRUCTURED DATA (JSON-LD) ──────────────────────────────────────────
-      Seven nodes, cross-referenced by @id rather than repeated:
+      Six nodes, cross-referenced by @id rather than repeated:
 
         #organization  the brand / knowledge-panel entity
-        #offer         the plan, from ₹999 a month, defined once and
-                       referenced by both the Organization and the software
         #website       the site
         #webpage       this page, and what it is about
-        #software      the product itself
-        #howto         the four onboarding steps
+        #software      the product itself, carrying its two Offers (monthly, yearly)
         #faq           the eight accordion questions
         #video         the one-minute product film in the hero (VideoObject)
 
       THE GOVERNING RULE, stated precisely, because the distinction matters:
 
         CONTENT properties must appear verbatim in the rendered page. That is
-        every FAQ question and answer, every HowTo step, featureList, and the
-        price. Google treats markup describing content a visitor cannot see as
+        every FAQ question and answer, featureList, and the
+        prices. Google treats markup describing content a visitor cannot see as
         spam, and an answer engine quoting a claim the page does not make is
         worse than not being quoted at all. If you edit that copy in a
         component, edit it here in the same commit.
@@ -207,10 +204,17 @@
       ratings the site cannot evidence is what earns a manual action. Add it only
       when real, verifiable reviews exist to point at.
 
-      ─── HowTo MIRRORS src/components/HowItWorks.tsx ────────────────────────
-      Four steps, kept word for word in step with the onboarding steps shown on the page.
-      No totalTime: the section says "in minutes", and converting that into a
-      precise ISO duration would be inventing precision the page never claims.
+      ─── OFFERS LIVE ON THE SoftwareApplication, NOT THE Organization ───────
+      The two plans (monthly ₹999, yearly ₹9,999, from src/data/plans.ts) are Offers
+      on the product being sold. They used to hang off the Organization as a single
+      makesOffer; Google reads offers on a SoftwareApplication, and one Offer could
+      not show that there are two plans. scripts/check-copy-sync.mjs fails the build
+      if an Offer price is neither plan price. The 14-day trial is described in each
+      Offer's description rather than as a third 0-price Offer, because it is not a
+      plan a visitor can stay on: the page says there is no permanent free plan.
+
+      There is no HowTo node. Google dropped HowTo rich results, so it only
+      duplicated the four steps that stay visible in the page and in the no-JS copy.
 
       ─── FAQPage MIRRORS src/components/FAQ.tsx ─────────────────────────────
       The eight visible accordion items, verbatim and in the same order.
@@ -256,30 +260,6 @@
           "areaServed": {
             "@type": "Country",
             "name": "India"
-          },
-          "makesOffer": {
-            "@type": "Offer",
-            "@id": "https://www.gymflow.sbs/#offer",
-            "price": "999",
-            "priceCurrency": "INR",
-            "availability": "https://schema.org/InStock",
-            "url": "https://www.gymflow.sbs/#pricing",
-            "priceSpecification": {
-              "@type": "UnitPriceSpecification",
-              "price": "999",
-              "priceCurrency": "INR",
-              "referenceQuantity": {
-                "@type": "QuantitativeValue",
-                "value": 1,
-                "unitCode": "MON"
-              }
-            },
-            "itemOffered": {
-              "@type": "Service",
-              "name": "GymFlow Pro",
-              "serviceType": "Gym management software",
-              "description": "All-in-one gym management for independent gym owners: member records, payments and dues, attendance, and unlimited automated WhatsApp reminders."
-            }
           }
         },
         {
@@ -342,9 +322,48 @@
           "publisher": {
             "@id": "https://www.gymflow.sbs/#organization"
           },
-          "offers": {
-            "@id": "https://www.gymflow.sbs/#offer"
-          },
+          "offers": [
+            {
+              "@type": "Offer",
+              "@id": "https://www.gymflow.sbs/#offer-monthly",
+              "name": "GymFlow monthly plan",
+              "description": "GymFlow for one month, with every feature, unlimited members and unlimited WhatsApp messages. Starts with a 14-day free trial, no credit card required.",
+              "price": "999",
+              "priceCurrency": "INR",
+              "availability": "https://schema.org/InStock",
+              "url": "https://www.gymflow.sbs/#pricing",
+              "priceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "999",
+                "priceCurrency": "INR",
+                "referenceQuantity": {
+                  "@type": "QuantitativeValue",
+                  "value": 1,
+                  "unitCode": "MON"
+                }
+              }
+            },
+            {
+              "@type": "Offer",
+              "@id": "https://www.gymflow.sbs/#offer-yearly",
+              "name": "GymFlow yearly plan",
+              "description": "GymFlow for a year, with every feature, unlimited members and unlimited WhatsApp messages. About 17% less than twelve monthly payments. Starts with a 14-day free trial, no credit card required.",
+              "price": "9999",
+              "priceCurrency": "INR",
+              "availability": "https://schema.org/InStock",
+              "url": "https://www.gymflow.sbs/#pricing",
+              "priceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "9999",
+                "priceCurrency": "INR",
+                "referenceQuantity": {
+                  "@type": "QuantitativeValue",
+                  "value": 1,
+                  "unitCode": "ANN"
+                }
+              }
+            }
+          ],
           "featureList": [
             "Member management",
             "Payments & dues",
@@ -354,45 +373,6 @@
             "Unlimited WhatsApp reminders",
             "CSV / Excel import & export",
             "Priority support"
-          ]
-        },
-        {
-          "@type": "HowTo",
-          "@id": "https://www.gymflow.sbs/#howto",
-          "name": "How to set up GymFlow for your gym",
-          "description": "No IT team, no installation, no consultant. Sign up and start entering your first members the same day.",
-          "isPartOf": {
-            "@id": "https://www.gymflow.sbs/#webpage"
-          },
-          "step": [
-            {
-              "@type": "HowToStep",
-              "position": 1,
-              "url": "https://www.gymflow.sbs/#how",
-              "name": "Create your gym account",
-              "text": "Sign up on the web; no card needed for the 14-day free trial."
-            },
-            {
-              "@type": "HowToStep",
-              "position": 2,
-              "url": "https://www.gymflow.sbs/#how",
-              "name": "Import your member records",
-              "text": "Upload your Excel, CSV or XLS member list; GymFlow normalises phone numbers and matches your plans."
-            },
-            {
-              "@type": "HowToStep",
-              "position": 3,
-              "url": "https://www.gymflow.sbs/#how",
-              "name": "Configure memberships and payments",
-              "text": "Set up plans, prices and payment details in the app."
-            },
-            {
-              "@type": "HowToStep",
-              "position": 4,
-              "url": "https://www.gymflow.sbs/#how",
-              "name": "Start managing your gym",
-              "text": "Track members, attendance, payments, reports and WhatsApp reminders from one place."
-            }
           ]
         },
         {
@@ -423,7 +403,7 @@
               "name": "Are WhatsApp messages really unlimited?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Yes. Welcome messages, renewal reminders, and payment due alerts are all included. Most gym platforms bill ₹0.30 to ₹1 per message, which becomes thousands a month once you pass 200 members."
+                "text": "Yes. Welcome messages, renewal reminders, and payment due alerts are all included. They are part of your plan, so there is no per-message charge."
               }
             },
             {
@@ -431,7 +411,7 @@
               "name": "Can I move my existing members from Excel?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm, and most gyms finish a few hundred members in under 15 minutes."
+                "text": "Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm."
               }
             },
             {
@@ -537,11 +517,11 @@
         It is not hidden content in the spam sense: every line is copy the rendered
         page shows (hero, features, steps, pricing, FAQ, contact).
 
-        KEEP IT IN STEP with the components and with the JSON-LD above. The FAQ and
-        the four steps here are the same text as the FAQPage and HowTo nodes.
+        KEEP IT IN STEP with the components and with the JSON-LD above. The FAQ here
+        is the same text as the FAQPage node, and the h1 is the one Hero.tsx renders.
       -->
       <main id="seo-fallback">
-        <h1>GymFlow: gym management, made effortless.</h1>
+        <h1>Gym management, made effortless.</h1>
         <p>
           Gym management software for independent gyms across India. Members, payments,
           attendance, dues and WhatsApp automation in one place, without the notebooks.
@@ -600,9 +580,9 @@
         <h3>How much does GymFlow cost?</h3>
         <p>From ₹999 per month — or ₹9,999 for a year (save 17%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.</p>
         <h3>Are WhatsApp messages really unlimited?</h3>
-        <p>Yes. Welcome messages, renewal reminders, and payment due alerts are all included. Most gym platforms bill ₹0.30 to ₹1 per message, which becomes thousands a month once you pass 200 members.</p>
+        <p>Yes. Welcome messages, renewal reminders, and payment due alerts are all included. They are part of your plan, so there is no per-message charge.</p>
         <h3>Can I move my existing members from Excel?</h3>
-        <p>Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm, and most gyms finish a few hundred members in under 15 minutes.</p>
+        <p>Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm.</p>
         <h3>Is my gym&#x27;s data safe?</h3>
         <p>Each gym&#x27;s data is kept separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym&#x27;s data from account settings.</p>
         <h3>How fast does support reply?</h3>

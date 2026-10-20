@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { prefersReducedMotion } from './prefersReducedMotion';
 
 gsap.registerPlugin(ScrollTrigger);
 
-export function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
+// Lives in its own file so the hero can use it without pulling gsap into the entry chunk.
+export { prefersReducedMotion };
 
 interface RevealOptions {
   /** Descendant selector to stagger in. Defaults to `.reveal`. */

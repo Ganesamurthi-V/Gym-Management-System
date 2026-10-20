@@ -77,7 +77,7 @@ These rules apply to every change, whoever makes it (main session or sub-agent).
 
 ## What this is
 
-GymFlow is a multi-tenant gym management SaaS for small gyms in Tamil Nadu / Puducherry, India. Users are gym owners
+GymFlow is a multi-tenant gym management SaaS for small independent gyms across India. Users are gym owners
 with limited tech experience on phones over 4G, so the UI is mobile-first and navigation latency is treated as a
 feature. Currency is INR, payments are UPI, member messaging is WhatsApp, and every date rule is IST
 (`Asia/Kolkata`), never the server's UTC day.

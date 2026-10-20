@@ -24,11 +24,11 @@ const FAQS = [
   },
   {
     q: 'Are WhatsApp messages really unlimited?',
-    a: 'Yes. Welcome messages, renewal reminders, and payment due alerts are all included. Most gym platforms bill ₹0.30 to ₹1 per message, which becomes thousands a month once you pass 200 members.',
+    a: 'Yes. Welcome messages, renewal reminders, and payment due alerts are all included. They are part of your plan, so there is no per-message charge.',
   },
   {
     q: 'Can I move my existing members from Excel?',
-    a: 'Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm, and most gyms finish a few hundred members in under 15 minutes.',
+    a: 'Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm.',
   },
   {
     q: "Is my gym's data safe?",

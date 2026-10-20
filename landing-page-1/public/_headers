@@ -2,3 +2,49 @@
 # this, Search Console lists /sitemap.xml under "Crawled - currently not indexed".
 /sitemap.xml
   X-Robots-Tag: noindex
+
+# Security headers for every response. Cloudflare merges the rules that match a path,
+# so the sitemap rule above still applies on top of these.
+#
+# Strict-Transport-Security has no includeSubDomains and no preload on purpose:
+# app.gymflow.sbs is a separate deployment, and a preload entry cannot be undone
+# quickly if that host ever needs plain HTTP.
+#
+# Content-Security-Policy-Report-Only, not Content-Security-Policy, on purpose. There
+# is no way to exercise an enforced policy before deploy, and a wrong one would
+# silently break Google Fonts or analytics on the live site. In report-only mode the
+# browser only logs violations to the console, so tighten the list from what shows
+# up there, then rename the header to enforce it.
+#
+# What the policy allows, from what index.html and src/ actually load:
+#   script-src   'unsafe-inline' is needed because index.html has an inline Google
+#                Analytics snippet, and the font preload uses an onload= attribute,
+#                which a nonce or hash cannot cover. Remove it only after moving
+#                both into files. gtag.js comes from googletagmanager.com and the
+#                Clarity tag from www.clarity.ms (src/lib/analytics.ts).
+#   style-src    'unsafe-inline' for the inline <style> in index.html and React's
+#                style= attributes; fonts.googleapis.com serves the font CSS.
+#   font-src     fonts.gstatic.com serves the font files.
+#   img-src      data: and blob: for inlined and generated images; the analytics
+#                hosts for their tracking pixels.
+#   connect-src  where gtag and Clarity send their events (*.clarity.ms, c.bing.com).
+#   media-src    the hero film is self-hosted under /video.
+# frame-ancestors 'none' repeats X-Frame-Options: DENY for browsers that read CSP only.
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://*.clarity.ms https://c.bing.com; connect-src 'self' https://www.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com; media-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# Vite names everything in /assets with a content hash (index-CQad-ghW.js), so a
+# changed file always gets a new URL and the old one can be cached for a year.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The hero film and posters keep fixed names, so no immutable; 30 days, mirroring
+# vercel.json. HTML and other files stay on the platform default so a deploy shows
+# up at once.
+/video/*
+  Cache-Control: public, max-age=2592000

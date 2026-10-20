@@ -26,9 +26,8 @@ Short, quotable answers to what people most often ask. Each matches the website.
   There is no permanent free plan.
 - **Does GymFlow charge per member or per WhatsApp message?** No. Members and
   WhatsApp messages are unlimited on every plan.
-- **Can I import my members from Excel?** Yes. Upload a CSV or Excel file,
-  check the preview, then confirm. A few hundred members usually take under 15
-  minutes.
+- **Can I import my members from Excel?** Yes. Upload a CSV or Excel file
+  and check the preview. Nothing is written until you confirm.
 - **Does it need any hardware or installation?** No. It runs in a web browser on
   a phone or a computer.
 - **How do I pay and activate?** Pay by UPI, net banking or card, upload the
@@ -50,9 +49,8 @@ Short, quotable answers to what people most often ask. Each matches the website.
 - **From ₹999 per month.** ₹999 for one month or ₹9,999 for a year (about 17%
   less than twelve monthly payments). Every feature is included on every plan.
 - **Unlimited members.** No per-member or per-seat charge.
-- **Unlimited WhatsApp messages.** No per-message fee. For comparison, gym
-  platforms commonly bill ₹0.30 to ₹1 per message, which reaches thousands of
-  rupees a month past roughly 200 members.
+- **Unlimited WhatsApp messages.** Messages are part of your plan, so
+  there is no per-message charge.
 - **No setup fee**, and no modules held back to unlock later.
 - **14-day free trial** with every feature unlocked and no credit card required.
 - Cancel at any time.

@@ -217,13 +217,14 @@ export function Navbar() {
             Start free trial
           </a>
 
+          {/* h-11 (44px, was 36px) so the menu button meets the touch-target minimum. */}
           <button
             type="button"
             onClick={() => setMobileOpen(!sheetOpen)}
             aria-label={sheetOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={sheetOpen}
             aria-controls={sheetOpen ? 'nav-mobile-sheet' : undefined}
-            className="grid h-9 w-9 place-items-center rounded-pill border border-border-subtle bg-frame text-foreground lg:hidden"
+            className="grid h-11 w-11 place-items-center rounded-pill border border-border-subtle bg-frame text-foreground lg:hidden"
           >
             {sheetOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>

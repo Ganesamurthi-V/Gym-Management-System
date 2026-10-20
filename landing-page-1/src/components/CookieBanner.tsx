@@ -62,36 +62,47 @@ export function CookieBanner() {
     'rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90';
 
   if (view === 'banner') {
+    // Same size and weight for "Essential only" and "Accept all": declining must be as easy
+    // and as visible as accepting. "Choose" is a text link in the same row. On a 360x800
+    // phone the old stacked card was 266px (33% of the screen) and hid the hero's trust
+    // bullets; one row of 44px buttons under two lines of copy is about 110px.
+    const pill =
+      'min-h-11 flex-1 rounded-pill bg-foreground px-3 sm:min-h-0 sm:py-2 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4 sm:text-sm';
     return (
       <div
         role="dialog"
         aria-label="Cookie preferences"
         className="fixed inset-x-3 bottom-3 z-[90] ml-auto max-w-sm overflow-hidden rounded-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5"
       >
-        <AsciiStrip />
-        <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          We use small files called cookies. Some keep the site working. Others help us see how
-          people use it. You decide which ones to allow.
-        </p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={() => save(NONE)} className={outline}>
-            Essential only
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(getConsent() ?? NONE);
-              setView('details');
-            }}
-            className={outline}
-          >
-            Choose
-          </button>
-          <button type="button" onClick={() => save(ALL)} className={solid}>
-            Accept all
-          </button>
+        <div className="hidden sm:block">
+          <AsciiStrip />
         </div>
+        <div className="p-3 sm:px-5 sm:pb-5 sm:pt-4">
+          <p className="text-[13px] leading-snug text-muted-foreground sm:text-sm sm:leading-relaxed">
+            <span className="sm:hidden">We use cookies to keep the site working and see how it is used.</span>
+            <span className="hidden sm:inline">
+              We use small files called cookies. Some keep the site working. Others help us see how
+              people use it. You decide which ones to allow.
+            </span>
+          </p>
+          <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(getConsent() ?? NONE);
+                setView('details');
+              }}
+              className="min-h-11 shrink-0 px-2 sm:min-h-0 sm:py-2 text-[13px] font-medium text-foreground underline underline-offset-2 order-last sm:order-none sm:text-sm"
+            >
+              Choose
+            </button>
+            <button type="button" onClick={() => save(NONE)} className={pill}>
+              Essential only
+            </button>
+            <button type="button" onClick={() => save(ALL)} className={pill}>
+              Accept all
+            </button>
+          </div>
         </div>
       </div>
     );

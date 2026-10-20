@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { TrustStrip } from './components/TrustStrip';
 import { WhyGymFlow } from './components/WhyGymFlow';
 import { BentoFeatures } from './components/BentoFeatures';
@@ -17,18 +17,55 @@ import { Footer } from './components/Footer';
  * rails, the orbit), which is about half of the original startup script and none of it
  * visible before the visitor scrolls.
  */
-export function BelowFoldSections() {
-  usePauseOffscreenAnimations();
+const SECTIONS = [
+  { key: 'trust', Section: TrustStrip },
+  { key: 'why', Section: WhyGymFlow },
+  { key: 'features', Section: BentoFeatures },
+  { key: 'whatsapp', Section: WhatsAppSection },
+  { key: 'how', Section: HowItWorks },
+  { key: 'pricing', Section: Pricing },
+  { key: 'faq', Section: FAQ },
+  { key: 'cta', Section: CTA },
+] as const;
+
+/**
+ * Mounts the sections one per idle slot instead of all in one task.
+ *
+ * Mounting all eight together was a single main-thread task of 382ms under a 4x CPU throttle
+ * (React render, layout of the whole page, and every section's ScrollTrigger and measuring
+ * effects), which is most of the page's blocking time and what an INP-style interaction right
+ * after load would queue behind. One section at a time keeps each task near the budget. Sections
+ * are appended in page order, so nothing already on screen moves. A link that carries a #section
+ * mounts everything at once so the target exists when App scrolls to it.
+ */
+function useStagedCount(total: number, onDone: () => void): number {
+  const [shown, setShown] = useState(() => (window.location.hash ? total : 1));
+
+  useEffect(() => {
+    if (shown >= total) {
+      onDone();
+      return;
+    }
+    const next = () => setShown(n => n + 1);
+    if (typeof window.requestIdleCallback === 'function') {
+      const handle = window.requestIdleCallback(next, { timeout: 150 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = window.setTimeout(next, 50);
+    return () => window.clearTimeout(handle);
+  }, [shown, total, onDone]);
+
+  return shown;
+}
+
+export function BelowFoldSections({ onDone }: { onDone: () => void }) {
+  const shown = useStagedCount(SECTIONS.length, onDone);
+  usePauseOffscreenAnimations(shown);
   return (
     <>
-      <TrustStrip />
-      <WhyGymFlow />
-      <BentoFeatures />
-      <WhatsAppSection />
-      <HowItWorks />
-      <Pricing />
-      <FAQ />
-      <CTA />
+      {SECTIONS.slice(0, shown).map(({ key, Section }) => (
+        <Section key={key} />
+      ))}
     </>
   );
 }
@@ -44,7 +81,7 @@ export function BelowFoldFooter() {
  * while offscreen; .gf-anim-paused does the work. Runs again here because these sections
  * mount after App's own pass.
  */
-function usePauseOffscreenAnimations() {
+function usePauseOffscreenAnimations(sectionCount = 0) {
   useEffect(() => {
     const sections = document.querySelectorAll('section, footer');
     const observer = new IntersectionObserver(
@@ -57,5 +94,6 @@ function usePauseOffscreenAnimations() {
     );
     sections.forEach(section => observer.observe(section));
     return () => observer.disconnect();
-  }, []);
+    // Re-run as sections are appended: the query below only sees what is mounted at the time.
+  }, [sectionCount]);
 }

@@ -131,7 +131,7 @@ export function Pricing() {
                 tier.id === 'yearly' ? (
                   <span className="inline-flex items-center gap-2 font-semibold">
                     {tier.label}
-                    <span className="rounded-pill bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-ink">
+                    <span className="rounded-pill bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink">
                       Save {savingPercent(tier)}%
                     </span>
                   </span>
@@ -156,10 +156,10 @@ export function Pricing() {
               still reveals, so the entrance still reads as animated. */}
           <div className="card-accent relative flex flex-col overflow-hidden p-4 md:p-5 lg:col-start-2 lg:row-start-1">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">
+              <span className="inline-flex items-center gap-2 rounded-pill bg-accent-ink/10 px-3.5 py-1.5 font-mono text-xs font-medium uppercase tracking-wider text-accent-ink">
                 GymFlow Pro
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent-ink px-3 py-1.5 text-[11px] font-medium text-accent">
+              <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent-ink px-3 py-1.5 text-xs font-medium text-accent">
                 <Check className="h-3 w-3" strokeWidth={3} />
                 All features
               </span>
@@ -258,7 +258,7 @@ export function Pricing() {
               </a>
             </div>
 
-            <p className="mt-4 flex items-center justify-center gap-2 text-[11.5px] text-accent-ink/80">
+            <p className="mt-4 flex items-center justify-center gap-2 text-xs text-accent-ink/80">
               <ShieldCheck className="h-3.5 w-3.5" />
               14-day free trial first · Cancel anytime
             </p>
@@ -294,7 +294,7 @@ export function Pricing() {
                     {/* Number on its own line so the title and the description
                         share one left edge instead of stepping in and out. */}
                     <span className="min-w-0">
-                      <span className="block font-mono text-[10.5px] tracking-wider text-muted-foreground">
+                      <span className="block font-mono text-xs tracking-wider text-muted-foreground">
                         {String(index + 1).padStart(2, '0')}
                       </span>
                       <span className="mt-1 block text-[14.5px] font-medium text-foreground">

@@ -1,11 +1,8 @@
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
 import { ArrowRight, MapPin } from 'lucide-react';
 import { Marquee } from './Marquee';
 import { HeroVideo } from './HeroVideo';
 import { HeroPixels } from './HeroPixels';
 import { ShinyText } from './ShinyText';
-import { prefersReducedMotion } from '../lib/useReveal';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -30,35 +27,19 @@ const CITIES = [
 
 const TRUST_POINTS = ['14-day free trial', 'No credit card', 'Cancel anytime'] as const;
 
+// The entrance animation is CSS (.hero-badge, .hero-line, .hero-sub, .hero-cta, .hero-trust,
+// .hero-frame and .hero-marquee in index.css), not a gsap timeline. gsap was only used here and
+// in HeroVideo's scroll effect, so doing the entrance in CSS lets both leave the entry chunk
+// (about 28 KiB gzipped of the 116 KiB the hero waits for), and the start pose is in place at the
+// first paint instead of being applied by an effect that ran after it. The headline and subtitle
+// never start at opacity 0: the subtitle is the LCP element, and a fade-in from 0 kept it from
+// being a paint candidate until the tween began, about 0.7s in.
 export function Hero() {
-  const scope = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-
-    const ctx = gsap.context(() => {
-      // Entrance runs on mount rather than on scroll — the hero is already in
-      // view on load, so a ScrollTrigger here would never fire.
-      gsap
-        .timeline({ defaults: { ease: 'power3.out' } })
-        .from('.hero-badge', { y: 16, opacity: 0, duration: 0.5 })
-        .from('.hero-line', { y: 30, opacity: 0, duration: 0.75, stagger: 0.1 }, '-=0.25')
-        .from('.hero-sub', { y: 18, opacity: 0, duration: 0.6 }, '-=0.4')
-        .from('.hero-cta', { y: 16, opacity: 0, duration: 0.55, stagger: 0.08 }, '-=0.35')
-        .from('.hero-trust', { opacity: 0, duration: 0.5 }, '-=0.3')
-        .from('.hero-frame', { y: 40, opacity: 0, duration: 0.9 }, '-=0.45')
-        .from('.hero-marquee', { opacity: 0, duration: 0.6 }, '-=0.4');
-    }, scope);
-
-    return () => ctx.revert();
-  }, []);
-
   // aria-labelledby turns this into a named region. A <section> without an
   // accessible name is not exposed as a landmark at all, so the page had ten
   // anonymous sections and no navigable outline.
   return (
     <section
-      ref={scope}
       aria-labelledby="hero-title"
       className="hero-surface relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8"
     >

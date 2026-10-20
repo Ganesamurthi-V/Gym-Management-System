@@ -198,7 +198,7 @@ export function WhatsAppSection() {
                 className="mt-5 md:min-h-[64px]"
               >
                 <div key={active.id} className="wa-swap">
-                  <span className="inline-block rounded-pill bg-whatsapp-soft px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-whatsapp-ink">
+                  <span className="inline-block rounded-pill bg-whatsapp-soft px-2.5 py-0.5 font-mono text-xs font-medium uppercase tracking-wider text-whatsapp-ink">
                     {active.when}
                   </span>
                   <p className="mt-3 max-w-[460px] text-[15px] leading-relaxed text-muted-foreground">

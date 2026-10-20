@@ -107,7 +107,7 @@ export function Footer() {
           {/* ── Link columns ──────────────────────────────────────────────── */}
           {COLUMNS.map(column => (
             <nav key={column.heading} aria-label={column.heading}>
-              <h3 className="font-mono text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
+              <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {column.heading}
               </h3>
               <ul className="mt-5 flex flex-col gap-3">
@@ -133,7 +133,7 @@ export function Footer() {
             can actually see rather than claiming details that appear nowhere.
           */}
           <div>
-            <h3 className="font-mono text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
+            <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Contact
             </h3>
             <address className="mt-5 flex flex-col gap-3 text-[13px] not-italic text-muted-foreground">

@@ -1,12 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react';
-import { prefersReducedMotion } from '../lib/useReveal';
+import { prefersReducedMotion } from '../lib/prefersReducedMotion';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { connectionAllowsDecoration } from '../lib/decorationGates';
+import { afterFirstPaint } from '../lib/afterFirstPaint';
 
-gsap.registerPlugin(ScrollTrigger);
+type ScrollTriggerStatic = typeof import('gsap/ScrollTrigger').ScrollTrigger;
+
+// Set once gsap's ScrollTrigger has been fetched, which is after the first paint (see the
+// scroll effect below). gsap is not in the entry chunk: it was about 28 KiB gzipped that the hero
+// waited for, to drive one scale-on-scroll effect that cannot be seen before the visitor scrolls.
+let scrollTrigger: ScrollTriggerStatic | undefined;
 
 // Two cuts of the same film: the 16:9 one for a laptop and the 9:16 one for a phone. A
 // portrait phone shows a 16:9 film as a thin strip with its text too small to read;
@@ -71,16 +75,19 @@ export function HeroVideo() {
   useLayoutEffect(() => {
     const wrap = frame.current?.parentElement;
     if (!wrap) return;
-    const place = () => {
+    const place = (refresh = true) => {
       wrap.style.marginTop = '';
       let top = 0;
       for (let e: HTMLElement | null = wrap; e; e = e.offsetParent as HTMLElement | null) top += e.offsetTop;
       const base = parseFloat(getComputedStyle(wrap).marginTop) || 0;
       const extra = Math.min(640, Math.max(0, window.innerHeight + 16 - top));
       if (extra > 0) wrap.style.marginTop = `${base + extra}px`;
-      ScrollTrigger.refresh();
+      // Skipped on the first call: no trigger exists yet (the one below is created in an effect
+      // that runs after this), and the refresh was a full pass of layout reads in front of the
+      // first paint. Later calls come from a resize, where triggers do need their positions redone.
+      if (refresh) scrollTrigger?.refresh();
     };
-    place();
+    place(false);
     let timer: number | undefined;
     const onResize = () => {
       window.clearTimeout(timer);
@@ -102,28 +109,41 @@ export function HeroVideo() {
     // is a thumbnail, so the film starts nearer its full size there.
     const from = wide ? 0.5 : 0.84;
     const radius = RADII[wide ? 1 : 0];
-    const ease = gsap.parseEase('power1.out');
-    const ctx = gsap.context(() => {
-      const apply = (p: number) => {
-        const s = from + (1 - from) * p;
-        el.style.transform = `scale(${s})`;
-        // The radius is scaled with the element, so divide it back out.
-        el.style.borderRadius = `${radius / s}px`;
-      };
-      apply(0);
-      ScrollTrigger.create({
-        trigger: el,
-        // From the moment its top edge enters the viewport until that edge is a
-        // third of the way down — measured on the reference this was modelled on.
-        start: 'top bottom',
-        end: 'top 34%',
-        scrub: true,
-        onUpdate: self => apply(ease(self.progress)),
+    // gsap's power1.out.
+    const ease = (t: number) => 1 - (1 - t) * (1 - t);
+    const apply = (p: number) => {
+      const s = from + (1 - from) * p;
+      el.style.transform = `scale(${s})`;
+      // The radius is scaled with the element, so divide it back out.
+      el.style.borderRadius = `${radius / s}px`;
+    };
+    // The starting pose is set now, in plain DOM, so there is no jump when the trigger arrives.
+    apply(0);
+
+    let cancelled = false;
+    let kill: (() => void) | undefined;
+    const cancelPaintWait = afterFirstPaint(() => {
+      void Promise.all([import('gsap'), import('gsap/ScrollTrigger')]).then(([{ gsap }, { ScrollTrigger }]) => {
+        if (cancelled) return;
+        gsap.registerPlugin(ScrollTrigger);
+        scrollTrigger = ScrollTrigger;
+        const trigger = ScrollTrigger.create({
+          trigger: el,
+          // From the moment its top edge enters the viewport until that edge is a
+          // third of the way down — measured on the reference this was modelled on.
+          start: 'top bottom',
+          end: 'top 34%',
+          scrub: true,
+          onUpdate: self => apply(ease(self.progress)),
+        });
+        kill = () => trigger.kill();
       });
     });
 
     return () => {
-      ctx.revert();
+      cancelled = true;
+      cancelPaintWait();
+      kill?.();
       el.style.transform = '';
       el.style.borderRadius = '';
     };

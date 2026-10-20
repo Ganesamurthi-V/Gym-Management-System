@@ -42,9 +42,13 @@ const walk = (o) => {
 }
 ld.forEach((m) => walk(JSON.parse(m[1])))
 if (!offerPrices.length) errors.push('index.html: no JSON-LD Offer price found')
+// The SoftwareApplication carries one Offer per plan, so an Offer may be the monthly or the yearly
+// price, but never anything else. Requiring a monthly one keeps the "from" price (the figure search
+// results quote) from silently disappearing if the Offers are ever edited.
 offerPrices.forEach((p) => {
-  if (Number(p) !== monthly) errors.push(`index.html: JSON-LD Offer price ${p} is not the monthly price ${monthly}`)
+  if (Number(p) !== monthly && Number(p) !== yearly) errors.push(`index.html: JSON-LD Offer price ${p} is neither the monthly price ${monthly} nor the yearly price ${yearly}`)
 })
+if (offerPrices.length && !offerPrices.some((p) => Number(p) === monthly)) errors.push(`index.html: no JSON-LD Offer carries the monthly price ${monthly}`)
 
 // The FAQ is written three times (the accordion, the FAQPage JSON-LD and the no-JavaScript
 // copy). Question text drifting between them is what this guards.

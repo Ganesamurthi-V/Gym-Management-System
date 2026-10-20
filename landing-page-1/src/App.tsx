@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Layout } from './components/Layout';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { CookieBanner } from './components/CookieBanner';
+import { afterFirstPaint } from './lib/afterFirstPaint';
 
 // Everything under the hero is a separate chunk, so the first download is only what the
 // opening screen needs. See BelowFold.tsx.
@@ -27,12 +28,17 @@ function useBelowFoldReady(): boolean {
     }
     const events = ['scroll', 'pointerdown', 'keydown', 'touchstart'] as const;
     events.forEach(e => window.addEventListener(e, go, { once: true, passive: true }));
+    // Behind the first paint, not just idle: idle alone fires before it on a fast device, and the
+    // chunk fetch plus the mount of every section then land in front of the hero.
+    let handle: number | undefined;
     const useIdle = 'requestIdleCallback' in window;
-    const handle: number = useIdle
-      ? window.requestIdleCallback(go, { timeout: 1500 })
-      : window.setTimeout(go, 600);
+    const cancelPaintWait = afterFirstPaint(() => {
+      handle = useIdle ? window.requestIdleCallback(go, { timeout: 1500 }) : window.setTimeout(go, 600);
+    });
     return () => {
       events.forEach(e => window.removeEventListener(e, go));
+      cancelPaintWait();
+      if (handle === undefined) return;
       if (useIdle) window.cancelIdleCallback(handle);
       else window.clearTimeout(handle);
     };
@@ -43,6 +49,9 @@ function useBelowFoldReady(): boolean {
 
 function App() {
   const ready = useBelowFoldReady();
+  // The footer waits for the sections above it, so that nothing is inserted above it later.
+  const [sectionsDone, setSectionsDone] = useState(false);
+  const onSectionsDone = useCallback(() => setSectionsDone(true), []);
 
   // A link such as /#pricing was resolved by the browser before this section existed, so it
   // had nowhere to land. Once the sections are in, take the visitor there.
@@ -61,11 +70,11 @@ function App() {
         <Hero />
         {ready && (
           <Suspense fallback={null}>
-            <BelowFoldSections />
+            <BelowFoldSections onDone={onSectionsDone} />
           </Suspense>
         )}
       </main>
-      {ready && (
+      {ready && sectionsDone && (
         <Suspense fallback={null}>
           <BelowFoldFooter />
         </Suspense>

@@ -235,7 +235,7 @@ export function WhatsAppBubble({
         {message.body.split('\n\n').map((para, i) => (
           <p
             key={para}
-            className={`${large ? 'text-[14px]' : 'text-[11.5px]'} leading-[1.42] text-[var(--wa-ink)] ${i > 0 ? 'mt-[9px]' : ''}`}
+            className={`${large ? 'text-[14px]' : 'text-xs'} leading-[1.42] text-[var(--wa-ink)] ${i > 0 ? 'mt-[9px]' : ''}`}
           >
             {para.split('\n').map((line, j) => (
               <span key={line}>

@@ -583,7 +583,7 @@ p, blockquote, figcaption, li {
 /* Small mono label above section headings */
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -838,6 +838,80 @@ p, blockquote, figcaption, li {
 .hero-sub,
 .hero-trust li {
   color: var(--hero-copy);
+}
+
+/* Hero entrance, in CSS rather than gsap so the copy is painted from the very first frame and
+   gsap can stay out of the entry chunk (see the note above Hero in Hero.tsx). Cubic-out is the
+   power3.out the old timeline used, and the delays below are that timeline's start times: badge
+   at 0, headline lines at 0 and 0.1, subtitle at 0.1, CTAs at 0.95 (0.08 apart, fade only, see
+   .hero-cta below), trust row at 1.28, product film at 1.33, coverage strip at 1.83. "backwards" holds the start pose through
+   the delay. The headline and subtitle move but never fade: the subtitle is the LCP element. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-badge,
+  .hero-line,
+  .hero-sub,
+  .hero-cta,
+  .hero-trust,
+  .hero-frame,
+  .hero-marquee {
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+    animation-fill-mode: backwards;
+  }
+  .hero-badge {
+    --rise: 16px;
+    animation: hero-rise-fade 0.5s;
+  }
+  .hero-line {
+    --rise: 30px;
+    animation: hero-rise 0.75s;
+  }
+  .hero-line + .hero-line {
+    animation-delay: 0.1s;
+  }
+  .hero-sub {
+    --rise: 18px;
+    animation: hero-rise 0.6s 0.1s;
+  }
+  .hero-cta {
+    animation: hero-fade 0.55s 0.95s;
+  }
+  .hero-cta + .hero-cta {
+    animation-delay: 1.03s;
+  }
+  .hero-trust {
+    animation: hero-fade 0.5s 1.28s;
+  }
+  .hero-frame {
+    --rise: 40px;
+    animation: hero-rise-fade 0.9s 1.33s;
+  }
+  .hero-marquee {
+    animation: hero-fade 0.6s 1.83s;
+  }
+}
+/* The CTAs rest 16px below their place in the layout, and always did: the old gsap tween read its
+   end pose from computed style while the .btn transform transition was still at the start pose,
+   so it "rose" from 16px to 16px and only faded. This keeps them where they were, so the move off
+   gsap changes nothing on screen. `translate` composes with the hover transform instead of being
+   overridden by it. Delete this rule to put them where the layout (mt-9) actually places them. */
+.hero-cta {
+  translate: 0 16px;
+}
+@keyframes hero-rise {
+  from {
+    transform: translateY(var(--rise));
+  }
+}
+@keyframes hero-rise-fade {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise));
+  }
+}
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 /* ── Beams backdrop ───────────────────────────────────────────────────────────
@@ -1181,6 +1255,8 @@ p, blockquote, figcaption, li {
 .hero-cta {
   padding: 9px 16px;
   font-size: 13px;
+  /* Was 36px tall on a phone; 44px is the minimum touch target. */
+  min-height: 44px;
 }
 @media (min-width: 640px) {
   .hero-cta {
@@ -1197,6 +1273,13 @@ p, blockquote, figcaption, li {
 .btn-nav {
   padding: 8px 12px;
   font-size: 13px;
+}
+/* Was 34px tall; 44px on touch-sized widths (the 76px / 64px island has room), back to the
+   compact pill once the inline desktop menu takes over at lg. */
+@media (max-width: 1023px) {
+  .btn-nav {
+    min-height: 44px;
+  }
 }
 
 /* Cards */

@@ -28,9 +28,10 @@
 #   curl -s https://www.gymflow.sbs/robots.txt
 #
 # ─── HOST: www, NOT THE APEX ────────────────────────────────────────────────
-# https://gymflow.sbs/* returns 308 -> https://www.gymflow.sbs/*, so www is the
-# canonical host. The Sitemap URL below must use www: Google Search Console does
-# not follow redirects for sitemap URLs and reports a redirecting one as
+# https://gymflow.sbs/* returns 301 -> https://www.gymflow.sbs/* (observed with
+# `curl -sI https://gymflow.sbs/`), so www is the canonical host.
+# The Sitemap URL below must use www: Google Search Console does not follow
+# redirects for sitemap URLs and reports a redirecting one as
 # "Sitemap could not be read".
 #
 # ─── THIS DOMAIN IS THE ONE THAT SHOULD RANK ────────────────────────────────
@@ -61,6 +62,10 @@
 # managed robots.txt (or anything else) ever reintroduces a Disallow for one of
 # these, the conflict is obvious in a diff instead of silent.
 #
+# Content-Signal is repeated inside every named group below: a crawler that matches a
+# named group reads only that group and ignores the `*` one, so without the repeat it
+# would never see the signal.
+#
 # Content-Signal is Cloudflare's directive, mirrored here with permissive values
 # so this file states the opposite of Cloudflare's default
 # (search=yes,ai-train=no,use=reference). It is advisory; most crawlers ignore it.
@@ -71,45 +76,59 @@ Allow: /
 
 # Explicitly allowed AI / LLM crawlers — the exact set Cloudflare was blocking.
 User-agent: GPTBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: OAI-SearchBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: ChatGPT-User
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: ClaudeBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Claude-Web
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: anthropic-ai
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: PerplexityBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Google-Extended
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Applebot-Extended
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: CCBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Amazonbot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Bytespider
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: meta-externalagent
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: cohere-ai
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 # The newer wave of AI agents, added for the same tripwire reason as the block
@@ -123,67 +142,88 @@ Allow: /
 # meta-externalagent vs Meta-ExternalFetcher). Allowing only the first still
 # leaves the product invisible when someone actually asks about it.
 User-agent: Perplexity-User
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 # Anthropic's search and live-answer fetchers, separate from ClaudeBot above.
 User-agent: Claude-SearchBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Claude-User
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Meta-ExternalFetcher
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: MistralAI-User
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: DuckAssistBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Applebot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: GoogleOther
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Google-CloudVertexBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: YouBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Ai2Bot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Ai2Bot-Dolma
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Diffbot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: ImagesiftBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Omgilibot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: omgili
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Timpibot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: Webzio-Extended
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: PanguBot
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: FirecrawlAgent
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 User-agent: SemrushBot-OCOB
+Content-Signal: search=yes,ai-input=yes,ai-train=yes,use=full
 Allow: /
 
 # ─── /llms.txt ──────────────────────────────────────────────────────────────

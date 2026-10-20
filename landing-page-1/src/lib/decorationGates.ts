@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { afterFirstPaint } from './afterFirstPaint';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Shared gates for the decorative WebGL backdrops.
@@ -55,12 +56,22 @@ export function useDeferredUntilIdle(enabled: boolean, timeoutMs: number): boole
       cancelIdleCallback?: (handle: number) => void;
     };
 
-    if (typeof idle.requestIdleCallback === 'function') {
-      const handle = idle.requestIdleCallback(() => setReady(true), { timeout: timeoutMs });
-      return () => idle.cancelIdleCallback?.(handle);
-    }
-    const t = window.setTimeout(() => setReady(true), Math.min(timeoutMs, 1200));
-    return () => window.clearTimeout(t);
+    // Behind the first paint first: idle alone fires before it on a fast device, and fetching
+    // the 120 KiB three.js chunk then competes with the hero (see afterFirstPaint).
+    let cancelInner: (() => void) | undefined;
+    const cancelPaintWait = afterFirstPaint(() => {
+      if (typeof idle.requestIdleCallback === 'function') {
+        const handle = idle.requestIdleCallback(() => setReady(true), { timeout: timeoutMs });
+        cancelInner = () => idle.cancelIdleCallback?.(handle);
+        return;
+      }
+      const t = window.setTimeout(() => setReady(true), Math.min(timeoutMs, 1200));
+      cancelInner = () => window.clearTimeout(t);
+    });
+    return () => {
+      cancelPaintWait();
+      cancelInner?.();
+    };
   }, [enabled, timeoutMs]);
 
   return ready;

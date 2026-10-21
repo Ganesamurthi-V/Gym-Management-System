@@ -206,6 +206,7 @@ export interface Status {
   conversation?: Conversation
   pricing?: Pricing
   errors?: ErrorPayload[]
+  biz_opaque_callback_data?: string
 }
 
 export interface Conversation {
@@ -269,6 +270,8 @@ export interface ProcessedStatus {
   conversationId?: string
   errorCode?: number
   errorMessage?: string
+  /** Echo of the biz_opaque_callback_data we sent (the send-queue row id). */
+  bizOpaqueData?: string
 }
 
 // ─── Database Models ─────────────────────────────────────────────────────────

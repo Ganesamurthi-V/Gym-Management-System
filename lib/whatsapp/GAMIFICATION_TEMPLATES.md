@@ -130,7 +130,7 @@ Body:
 - A member receives at most **one** of the three daily messages per day. If more than one applies, the order is: streak, then weekly goal, then leaderboard.
 - Nothing is sent for a gym whose WhatsApp is switched off in the admin app (Manage Subscription → WhatsApp Enabled), or whose Leaderboards switch is off (owner console → Member App → Gamification). The prize message follows the WhatsApp switch only.
 - Members without a valid phone number are skipped.
-- The daily messages go through the normal send queue (5 messages every 5 minutes, shared with the reminders), so on a busy morning they can arrive some time after 9:00 AM.
+- The daily messages go through the normal send queue (15 messages every 5 minutes, shared with the reminders), so on a busy morning they can arrive some time after 9:00 AM.
 
 ## How to enable after approval
 

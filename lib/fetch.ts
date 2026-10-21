@@ -30,6 +30,12 @@ export interface FetchOptions extends Omit<RequestInit, 'signal'> {
   maxRetries?: number
   /** Label used in log lines, e.g. "sendMessage". Never log the URL. */
   label?: string
+  /**
+   * Retry when the request may already have been accepted (network error, timeout, 5xx).
+   * Default true. Non-idempotent sends (Meta has no idempotency key) pass false so a lost
+   * reply never produces a duplicate; 429 still retries because that request was rejected.
+   */
+  retryAmbiguous?: boolean
 }
 
 export interface FetchResult<T> {
@@ -64,6 +70,7 @@ export async function fetchJson<T = unknown>(
     timeoutMs  = DEFAULT_TIMEOUT_MS,
     maxRetries = DEFAULT_MAX_RETRIES,
     label      = 'fetch',
+    retryAmbiguous = true,
     ...fetchInit
   } = options
 
@@ -90,7 +97,7 @@ export async function fetchJson<T = unknown>(
         logger.error(`${label} network error`, { message, attempt, durationMs })
       }
 
-      if (attempt < maxRetries) {
+      if (retryAmbiguous && attempt < maxRetries) {
         await sleep(backoffMs(attempt))
         attempt++
         continue
@@ -127,7 +134,7 @@ export async function fetchJson<T = unknown>(
     if (RETRY_STATUSES.has(res.status) && res.status !== 429) {
       logger.warn(`${label} transient error`, { status: res.status, attempt, durationMs })
 
-      if (attempt < maxRetries) {
+      if (retryAmbiguous && attempt < maxRetries) {
         await sleep(backoffMs(attempt))
         attempt++
         continue

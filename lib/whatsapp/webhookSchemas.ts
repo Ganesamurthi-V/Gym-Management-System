@@ -188,6 +188,7 @@ const statusSchema = z.object({
   conversation: conversationSchema.optional(),
   pricing: pricingSchema.optional(),
   errors: z.array(errorPayloadSchema).optional(),
+  biz_opaque_callback_data: z.string().optional(),
 }).passthrough()
 
 // ─── Webhook Value Schema ────────────────────────────────────────────────────

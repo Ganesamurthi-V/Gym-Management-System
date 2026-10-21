@@ -327,7 +327,7 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
             {eligibleCount} {eligibleCount === 1 ? 'member' : 'members'} will be invited.
           </p>
           <p className="text-sm text-slate-500 mt-2">
-            Invitations go out through WhatsApp, a few at a time (5 every 5 minutes). This keeps WhatsApp from
+            Invitations go out through WhatsApp, a few at a time (15 every 5 minutes). This keeps WhatsApp from
             treating your number as spam, so a long list can take a while to finish. You can leave this page; they
             will keep sending.
           </p>

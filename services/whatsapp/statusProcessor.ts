@@ -9,6 +9,8 @@ import type { ProcessedStatus } from '@/lib/whatsapp/webhookTypes'
 import { checkAndMarkEvent } from '@/lib/whatsapp/idempotency'
 import { updateMessageStatus } from '@/repositories/whatsapp/whatsappRepository'
 import { RequestLogger } from '@/lib/logger'
+import { confirmQueuedSend } from '@/lib/whatsapp/queue'
+import { createAdminClient } from '@/lib/supabase/admin'
 import * as Sentry from '@sentry/nextjs'
 
 /**
@@ -67,6 +69,10 @@ async function processSingleStatus(
   status: ProcessedStatus,
   log: RequestLogger
 ): Promise<void> {
+  // Confirm before the duplicate check: it is idempotent, and a redelivered event must still
+  // be able to confirm if the first attempt's database write failed.
+  await confirmQueuedFromStatus(status, log)
+
   // 1. Idempotency check (Redis)
   // Use a composite key for statuses since same message can have multiple statuses
   const idempotencyKey = `${status.messageId}:${status.status}`
@@ -92,6 +98,26 @@ async function processSingleStatus(
 
   // 3. Trigger status-specific actions
   await handleStatusUpdate(status, log)
+}
+
+/**
+ * Meta echoes biz_opaque_callback_data (the send-queue row id) on status webhooks. A sent /
+ * delivered / read status proves Meta accepted that send, so the queue row is marked sent and
+ * the lease reaper never resends it. 'failed' must not confirm. Never throws.
+ */
+export async function confirmQueuedFromStatus(
+  status: ProcessedStatus,
+  log: RequestLogger
+): Promise<void> {
+  if (!status.bizOpaqueData) return
+  if (status.status !== 'sent' && status.status !== 'delivered' && status.status !== 'read') return
+
+  try {
+    const res = await confirmQueuedSend(createAdminClient(), status.bizOpaqueData, status.messageId)
+    log.info('Queued send confirmation', { messageId: status.messageId, updated: res.updated })
+  } catch (error) {
+    log.error(`Failed to confirm queued send for ${status.messageId}`, error)
+  }
 }
 
 /**

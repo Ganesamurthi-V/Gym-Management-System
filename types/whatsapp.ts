@@ -164,6 +164,8 @@ export interface ProcessedStatus {
   conversationId?: string
   errorCode?: number
   errorMessage?: string
+  /** Echo of the biz_opaque_callback_data we sent (the send-queue row id). */
+  bizOpaqueData?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,6 +226,11 @@ export interface TemplateContext {
    * it from a server-resolved gym, never from a request body.
    */
   gymId?: string
+  /**
+   * Stable id for this logical send (the queue row id). Sent to Meta as biz_opaque_callback_data
+   * and echoed back in status webhooks, so an unknown send outcome can be confirmed later.
+   */
+  dedupeKey?: string
 }
 
 export interface SendResult {
@@ -238,6 +245,12 @@ export interface SendResult {
    * to retry: callers record it as cancelled rather than failed.
    */
   skipped?: boolean
+  /**
+   * True when the request MAY have reached Meta and been accepted (timeout, network error,
+   * 5xx, non-JSON reply). Meta has no idempotency key, so callers must not blindly resend.
+   * Falsy for definite outcomes: success, 4xx, 429, config/validation errors, gym switch.
+   */
+  ambiguous?: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
  *
  * Queues a member-app invitation WhatsApp for every member of the owner's gym who has a
  * phone and has not activated yet. Nothing is sent inline: each row goes onto the throttled
- * whatsapp_send_queue (5 msgs / 5 min), so Meta never sees a burst.
+ * whatsapp_send_queue (15 msgs / 5 min), so Meta never sees a burst.
  *
  * The invitation token is NOT minted here. Tokens expire after 24h and a large gym can wait
  * in the queue for hours, so the drain worker mints each one just before its send.

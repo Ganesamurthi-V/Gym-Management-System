@@ -203,6 +203,7 @@ function parseStatus(status: Status): ProcessedStatus {
     recipientId: status.recipient_id,
     timestamp: new Date(parseInt(status.timestamp) * 1000),
     conversationId: status.conversation?.id,
+    bizOpaqueData: status.biz_opaque_callback_data,
   }
 
   // Add error info if present

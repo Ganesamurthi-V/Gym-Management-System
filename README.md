@@ -216,7 +216,7 @@ and parameters must match the code exactly. See [lib/whatsapp/README.md](lib/wha
 
 - **Event-driven** sends (welcome, renewal) fire inline with atomic claim-then-send
 - **Scheduled** sends (expiry, expired, due, birthday) are processed by a daily cron job
-- **Throttled queue**: all scheduled sends go through `whatsapp_send_queue` → drained at 5 msgs / 5 min via QStash
+- **Throttled queue**: all scheduled sends go through `whatsapp_send_queue` → drained at 15 msgs / 5 min via QStash
 - **Idempotency**: partial unique index on `(member_id, template_name, date)` prevents duplicate sends
 - **Cycle management**: 3-day intervals, 7-send cap, cancellation on renewal/payment
 
@@ -559,7 +559,7 @@ while the service role (used by the admin API) bypasses RLS.
 - **Members list**: Bounded membership fetches (only displayed page's members)
 - **Payments**: Explicit column selects + row limits
 - **Inventory**: Redis-cached with 10-minute TTL
-- **WhatsApp queue**: 5 messages per 5-minute drain batch (prevents API spam flagging)
+- **WhatsApp queue**: 15 messages per 5-minute drain batch (prevents API spam flagging)
 
 ---
 

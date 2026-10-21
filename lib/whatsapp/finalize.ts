@@ -30,6 +30,9 @@ export function isTransientFailure(result: SendResult): boolean {
  * Reconcile a claimed slot with the actual send result.
  *   success            → keep 'sent', attach the Meta message_id
  *   permanent 4xx      → downgrade to 'failed' (keeps the slot consumed)
+ *   ambiguous (timeout / network / 5xx: Meta may have accepted it)
+ *                      → keep 'sent' so the slot stays consumed and the next run cannot
+ *                        resend; only annotate error_message ('unconfirmed: ...')
  *   transient/systemic → downgrade to 'error' (releases the slot; getCycleState
  *                        and resolveDueCycleKey ignore it, so the next run retries)
  *   skipped (gym switch off) → also 'error', for the same reason
@@ -49,6 +52,10 @@ export async function finalizeSendRow(
     // switched back on the next run sends the reminder. 'cancelled' would close the cycle
     // for good (it means "the due was paid") and the member would never be reminded.
     ? { status: 'error', error_message: result.error ?? null }
+    : result.ambiguous
+    // Outcome unknown: releasing the slot would let the next cron run resend a message Meta
+    // may already have delivered. The queue's webhook / lease path resolves the real outcome.
+    ? { error_message: `unconfirmed: ${result.error ?? 'unknown'}` }
     : {
         status: isTransientFailure(result) ? 'error' : 'failed',
         error_message: result.error ?? null,

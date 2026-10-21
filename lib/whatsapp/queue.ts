@@ -28,9 +28,19 @@ import type { TemplateContext, TemplateId, SendResult } from '@/types/whatsapp'
 // ─── Cadence constants ──────────────────────────────────────────────────────
 
 /** Messages sent per drain batch. */
-export const BATCH_SIZE = 5
+export const BATCH_SIZE = 15
 /** Minutes between drain batches. */
 export const DRAIN_INTERVAL_MINUTES = 5
+/**
+ * How long a row may sit in 'sending' before it is treated as never sent. A status webhook
+ * confirming an accepted send normally arrives within ~1 minute; 10 minutes is a generous
+ * grace before we assume the worker died before Meta accepted the message and retry it.
+ */
+export const LEASE_MINUTES = 10
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** Delay between attempts to persist 'sent' after a successful send. */
+const PERSIST_RETRY_DELAY_MS = 100
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +71,10 @@ export interface DrainStats {
   sent: number
   failed: number
   retried: number
+  /** Sends whose outcome is unknown (timeout / 5xx); left 'sending' for webhook or lease. */
+  unconfirmed: number
+  /** Stale 'sending' rows returned to pending (or failed) by the lease reaper. */
+  reaped: number
   remaining: number
   rescheduled: boolean
 }
@@ -97,6 +111,96 @@ export async function enqueueSend(
   return { enqueued: true }
 }
 
+// ─── Confirmation and lease recovery ─────────────────────────────────────────
+
+/**
+ * Mark a queue row sent because Meta confirmed it (status webhook echoing the row id as
+ * biz_opaque_callback_data). 'pending' is included on purpose: a retry that was already
+ * re-queued is cancelled by this instead of being resent. Idempotent: a row that is already
+ * sent (or failed/cancelled) no longer matches, so a repeat returns { updated: false }.
+ */
+export async function confirmQueuedSend(
+  supabase: SupabaseClient,
+  queueRowId: string,
+  messageId: string,
+): Promise<{ updated: boolean }> {
+  if (!UUID_RE.test(queueRowId)) return { updated: false }
+
+  const { data, error } = await supabase
+    .from('whatsapp_send_queue')
+    .update({ status: 'sent', message_id: messageId, sent_at: new Date().toISOString(), last_error: null })
+    .eq('id', queueRowId)
+    .in('status', ['sending', 'pending'])
+    .select('id')
+  if (error) {
+    console.error('[WA Queue] confirm failed:', error.message)
+    return { updated: false }
+  }
+  return { updated: Array.isArray(data) ? data.length > 0 : !!data }
+}
+
+/**
+ * Resolve rows stuck in 'sending' past the lease (worker died, or the outcome was unknown
+ * and no webhook confirmed it). Under the attempt cap they go back to pending for one more
+ * try, otherwise they fail. Every update is guarded by status='sending' so a worker that is
+ * finishing at the same moment is not clobbered.
+ */
+async function reapStaleSends(supabase: SupabaseClient): Promise<number> {
+  const cutoff = new Date(Date.now() - LEASE_MINUTES * 60_000).toISOString()
+  const { data, error } = await supabase
+    .from('whatsapp_send_queue')
+    .select('id, attempts, max_attempts')
+    .eq('status', 'sending')
+    .lte('locked_at', cutoff)
+  if (error) {
+    console.error('[WA Queue] reap select failed:', error.message)
+    return 0
+  }
+  if (!Array.isArray(data)) return 0
+
+  let reaped = 0
+  for (const r of data as Array<{ id: string; attempts: number; max_attempts: number }>) {
+    const patch = r.attempts >= r.max_attempts
+      ? { status: 'failed', last_error: 'unconfirmed send; attempts exhausted' }
+      : {
+          status: 'pending',
+          locked_at: null,
+          scheduled_at: new Date().toISOString(),
+          last_error: 'unconfirmed send; no webhook confirmation within lease, retrying',
+        }
+    const { data: done, error: updErr } = await supabase
+      .from('whatsapp_send_queue')
+      .update(patch)
+      .eq('id', r.id)
+      .eq('status', 'sending')
+      .select('id')
+    if (updErr) {
+      console.error('[WA Queue] reap update failed:', updErr.message)
+      continue
+    }
+    if (Array.isArray(done) ? done.length > 0 : !!done) reaped++
+  }
+  return reaped
+}
+
+/** Persist the 'sent' state, retrying briefly: the message is already out, so losing this write must be rare. */
+async function persistSent(supabase: SupabaseClient, rowId: string, messageId: string | null): Promise<boolean> {
+  for (let i = 0; i < 3; i++) {
+    try {
+      const { error } = await supabase
+        .from('whatsapp_send_queue')
+        .update({ status: 'sent', message_id: messageId, sent_at: new Date().toISOString(), last_error: null })
+        .eq('id', rowId)
+      if (!error) return true
+      console.error('[WA Queue] persist sent failed:', error.message)
+    } catch (err) {
+      console.error('[WA Queue] persist sent threw:', err instanceof Error ? err.message : String(err))
+    }
+    if (i < 2) await new Promise(r => setTimeout(r, PERSIST_RETRY_DELAY_MS))
+  }
+  return false
+}
+
 // ─── QStash drain trigger ─────────────────────────────────────────────────────
 
 /** Is QStash configured? When not (local/dev), callers drain inline instead. */
@@ -120,8 +224,13 @@ export async function kickDrain(delayMinutes = 0): Promise<boolean> {
   const token = process.env.QSTASH_TOKEN
   if (!url || !token) return false
 
+  // QStash is regional: a token only works against its own region's endpoint (a US-region token
+  // against the default EU address gets 404 "user not found in this region"), so every publish
+  // failed and nothing ever drained. QSTASH_URL is Upstash's standard variable for the endpoint.
+  const qstashBase = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '')
+
   try {
-    const res = await fetch('https://qstash.upstash.io/v2/publish/' + encodeURIComponent(url), {
+    const res = await fetch(`${qstashBase}/v2/publish/` + encodeURIComponent(url), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -205,6 +314,8 @@ function defaultTakeToken(): Promise<{ success: boolean; remaining: number }> {
  * Row lifecycle per drain:
  *   pending → (claim: status='sending', locked_at, attempts++) → send
  *     success              → status='sent', message_id, sent_at; log reconciled
+ *     ambiguous (timeout/5xx) → stays 'sending'; a status webhook confirms it (confirmQueuedSend)
+ *                            or, after LEASE_MINUTES, the reaper requeues / fails it
  *     transient, retries<max→ status='pending', scheduled_at += interval
  *     permanent OR retries exhausted → status='failed'; log reconciled
  */
@@ -214,10 +325,13 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
   const takeToken = deps.takeToken ?? defaultTakeToken
   const reschedule = deps.reschedule ?? kickDrain
 
-  const stats: DrainStats = { drained: 0, sent: 0, failed: 0, retried: 0, remaining: 0, rescheduled: false }
+  const stats: DrainStats = { drained: 0, sent: 0, failed: 0, retried: 0, unconfirmed: 0, reaped: 0, remaining: 0, rescheduled: false }
   let tokenExhausted = false
 
   const nowIso = () => new Date().toISOString()
+
+  // Recover abandoned 'sending' rows before claiming, so a reaped row can go out in this drain.
+  stats.reaped = await reapStaleSends(supabase)
 
   for (let i = 0; i < BATCH_SIZE; i++) {
     const token = await takeToken()
@@ -253,10 +367,11 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     // Set when prepare fails for good; the row is failed below without calling the sender.
     let prepareFailure: { error: string; permanent: boolean } | null = null
     try {
-      let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId }
+      // dedupeKey is the row id, identical on every attempt: Meta echoes it in status webhooks.
+      let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId, dedupeKey: row.id }
       if (row.template_name === 'member_app_invitation') {
         const prep = await (deps.prepare ?? ((r) => defaultPrepare(supabase, r)))(row)
-        if (prep.ok) ctx = { ...prep.context, gymId: ctx.gymId }
+        if (prep.ok) ctx = { ...prep.context, gymId: ctx.gymId, dedupeKey: row.id }
         else prepareFailure = { error: prep.error, permanent: prep.permanent }
       }
       // gymId rides along so sendTemplate can check the gym's WhatsApp switch at the moment of
@@ -274,10 +389,9 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     await finalizeSendRow(supabase, row.log_row_id, result)
 
     if (result.success) {
-      await supabase
-        .from('whatsapp_send_queue')
-        .update({ status: 'sent', message_id: result.messageId ?? null, sent_at: nowIso(), last_error: null })
-        .eq('id', row.id)
+      // If this write keeps failing the row stays 'sending': the webhook or the lease resolves it.
+      const persisted = await persistSent(supabase, row.id, result.messageId ?? null)
+      if (!persisted) console.error('[WA Queue] row left sending after successful send:', row.id)
       stats.sent++
       if (row.template_name === 'member_app_invitation') {
         const gymId = row.gym_id ?? row.context.gymId
@@ -302,6 +416,14 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
         .from('whatsapp_send_queue')
         .update({ status: 'cancelled', last_error: result.error ?? null })
         .eq('id', row.id)
+    } else if (result.ambiguous) {
+      // Meta may have accepted it. Do not requeue or fail: stay 'sending' (locked_at kept) and
+      // let the confirming webhook or the lease reaper decide.
+      await supabase
+        .from('whatsapp_send_queue')
+        .update({ last_error: `unconfirmed: ${result.error ?? 'unknown'}` })
+        .eq('id', row.id)
+      stats.unconfirmed++
     } else if (row.attempts + 1 < row.max_attempts) {
       // Transient — back to pending, delayed one interval for the next batch.
       const next = new Date(Date.now() + DRAIN_INTERVAL_MINUTES * 60_000).toISOString()

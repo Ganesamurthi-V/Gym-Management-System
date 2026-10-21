@@ -36,7 +36,7 @@ import type {
   MediaInfo,
   PhoneNumberInfo,
 } from '@/types/whatsapp'
-import { WhatsAppConfigError, WhatsAppUpstreamError } from '@/types/whatsapp'
+import { WhatsAppConfigError, WhatsAppRateLimitError } from '@/types/whatsapp'
 
 // ─── Config helpers ───────────────────────────────────────────────────────────
 
@@ -122,19 +122,24 @@ export async function sendMessage(body: Record<string, unknown>): Promise<SendRe
       headers: getAuthHeader(),
       body:    JSON.stringify(body),
       label:   'sendMessage',
+      // Meta has no idempotency key: a retry after a lost reply would send a duplicate.
+      retryAmbiguous: false,
     })
 
     if (status >= 400 || data.error) {
       const msg = data.error?.message ?? `HTTP ${status}`
       logger.warn('sendMessage failed', { status, code: data.error?.code })
-      return { success: false, error: msg, httpStatus: status }
+      return { success: false, error: msg, httpStatus: status, ambiguous: status >= 500 }
     }
 
     return { success: true, messageId: data.messages?.[0]?.id }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     logger.error('sendMessage error', err)
-    return { success: false, error: msg }
+    // Rate limit and config errors mean the request was rejected or never made. Anything
+    // else (timeout, network error, 5xx, non-JSON reply) may have been accepted by Meta.
+    const definite = err instanceof WhatsAppRateLimitError || err instanceof WhatsAppConfigError
+    return { success: false, error: msg, ambiguous: !definite }
   }
 }
 
@@ -199,7 +204,10 @@ export async function sendTemplate(
     return { success: false, error }
   }
 
-  return sendMessage(body)
+  // Added after validation: the validator enforces the exact approved template contract and
+  // this field is not part of it. Meta echoes it in status webhooks (max 512 chars); it is
+  // an opaque row id, not PII, and the payload log above ran before it was added.
+  return sendMessage(ctx.dedupeKey ? { ...body, biz_opaque_callback_data: ctx.dedupeKey } : body)
 }
 
 /** Mask all but the last 4 digits of the recipient for safe logging. */

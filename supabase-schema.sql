@@ -844,9 +844,13 @@ END $$;
 -- gym_id) makes the database reject it, for every caller including the service
 -- role.
 --
--- The single-column foreign keys declared in section 2 still provide the
--- ON DELETE CASCADE / SET NULL behaviour; these add the tenant check only, so
--- they use the default NO ACTION.
+-- Each one repeats the ON DELETE action of its single-column twin in section 2.
+-- Left at the default NO ACTION they block the delete: Postgres may run the
+-- composite key's check before the single-column CASCADE has removed the child
+-- rows, so deleting a member that has memberships failed with
+-- "violates foreign key constraint fk_memberships_member_same_gym" (23503).
+-- inventory_sales is SET NULL on inventory_id only, because gym_id is NOT NULL
+-- (column list needs PostgreSQL 15+).
 
 -- Composite targets the foreign keys below point at.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_members_id_gym          ON members (id, gym_id);
@@ -859,19 +863,19 @@ DECLARE
   r RECORD;
 BEGIN
   FOR r IN SELECT * FROM (VALUES
-    ('memberships',            'fk_memberships_member_same_gym',     'member_id',    'members'),
-    ('attendance',             'fk_attendance_member_same_gym',      'member_id',    'members'),
-    ('due_payments',           'fk_due_payments_member_same_gym',    'member_id',    'members'),
-    ('member_portal_activity', 'fk_portal_activity_member_same_gym', 'member_id',    'members'),
-    ('member_achievements',    'fk_member_achievements_member_same_gym', 'member_id', 'members'),
-    ('gamification_awards',    'fk_gamification_awards_member_same_gym', 'member_id', 'members'),
-    ('gym_event_completions',  'fk_gym_event_completions_member_same_gym', 'member_id', 'members'),
-    ('gym_event_completions',  'fk_gym_event_completions_event_same_gym',  'event_id',  'gym_events'),
-    ('program_assignments',    'fk_assignments_member_same_gym',     'member_id',    'members'),
-    ('program_assignments',    'fk_assignments_program_same_gym',    'program_id',   'workout_programs'),
-    ('inventory_units',        'fk_inventory_units_item_same_gym',   'inventory_id', 'inventory'),
-    ('inventory_sales',        'fk_inventory_sales_item_same_gym',   'inventory_id', 'inventory')
-  ) AS t(child, conname, child_col, parent)
+    ('memberships',            'fk_memberships_member_same_gym',     'member_id',    'members', 'CASCADE'),
+    ('attendance',             'fk_attendance_member_same_gym',      'member_id',    'members', 'CASCADE'),
+    ('due_payments',           'fk_due_payments_member_same_gym',    'member_id',    'members', 'CASCADE'),
+    ('member_portal_activity', 'fk_portal_activity_member_same_gym', 'member_id',    'members', 'CASCADE'),
+    ('member_achievements',    'fk_member_achievements_member_same_gym', 'member_id', 'members', 'CASCADE'),
+    ('gamification_awards',    'fk_gamification_awards_member_same_gym', 'member_id', 'members', 'CASCADE'),
+    ('gym_event_completions',  'fk_gym_event_completions_member_same_gym', 'member_id', 'members', 'CASCADE'),
+    ('gym_event_completions',  'fk_gym_event_completions_event_same_gym',  'event_id',  'gym_events', 'CASCADE'),
+    ('program_assignments',    'fk_assignments_member_same_gym',     'member_id',    'members', 'CASCADE'),
+    ('program_assignments',    'fk_assignments_program_same_gym',    'program_id',   'workout_programs', 'CASCADE'),
+    ('inventory_units',        'fk_inventory_units_item_same_gym',   'inventory_id', 'inventory', 'CASCADE'),
+    ('inventory_sales',        'fk_inventory_sales_item_same_gym',   'inventory_id', 'inventory', 'SET NULL (inventory_id)')
+  ) AS t(child, conname, child_col, parent, on_delete)
   LOOP
     IF NOT EXISTS (
       SELECT 1 FROM pg_constraint
@@ -879,8 +883,8 @@ BEGIN
          AND conrelid = format('public.%I', r.child)::regclass
     ) THEN
       EXECUTE format(
-        'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (%I, gym_id) REFERENCES public.%I (id, gym_id)',
-        r.child, r.conname, r.child_col, r.parent
+        'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (%I, gym_id) REFERENCES public.%I (id, gym_id) ON DELETE %s',
+        r.child, r.conname, r.child_col, r.parent, r.on_delete
       );
     END IF;
   END LOOP;
@@ -2540,6 +2544,12 @@ collected AS (
          ms.payment_mode AS mode, 'memberships' AS source, 0 AS units
   FROM public.memberships ms, since
   WHERE ms.gym_id = p_gym_id AND ms.created_at >= since.ts
+    -- Imported memberships carry plan details only; no payment was taken. The import stamps
+    -- created_at as midnight UTC of start_date. Keep in sync with lib/payments/import-membership.ts.
+    AND NOT (
+      ms.created_at = (ms.start_date::timestamp AT TIME ZONE 'UTC')
+      AND EXISTS (SELECT 1 FROM public.members mb WHERE mb.id = ms.member_id AND mb.is_imported)
+    )
   UNION ALL
   SELECT (dp.created_at AT TIME ZONE 'Asia/Kolkata')::date, dp.amount::numeric, dp.payment_mode, 'dues', 0
   FROM public.due_payments dp, since

@@ -151,8 +151,11 @@ export async function POST(req: NextRequest) {
         category: r.category,
         start_date: start,
         end_date: calcEndDate(start, plan),
-        amount: r.amount,
-        payment_mode: r.payment_mode,
+        // The import brings in member and plan details only. A payment taken before joining
+        // GymFlow is not a collection, so no amount is recorded (it would feed Payments, the
+        // dashboard and reports). The file's amount/payment mode are intentionally not stored.
+        amount: 0,
+        payment_mode: 'cash',
         created_at: `${start}T00:00:00Z`,
       }
     })

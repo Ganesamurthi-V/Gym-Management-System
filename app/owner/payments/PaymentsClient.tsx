@@ -77,7 +77,8 @@ function getPeriodRange(period: Period): { start: Date; end: Date } | null {
 }
 
 function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePayment[]) {
-  const m = mList.map(p => ({
+  // Imported memberships carry plan details only; no payment was taken, so they are not transactions.
+  const m = mList.filter(p => !isImportedMembership(p)).map(p => ({
     id: p.id,
     type: 'membership' as const,
     timestamp: p.created_at, // Revenue is recognized when collected (created_at), not start_date
@@ -91,8 +92,7 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
     col3: p.plan,
     col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
     feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm${p.due_amount ? ` - ${formatCurrency(p.due_amount)} due` : ''}` : undefined,
-    member_number: p.member?.member_number,
-    imported: isImportedMembership(p),
+    member_number: p.member?.member_number
   }))
 
   const s =sList.map(ps => ({
@@ -108,8 +108,7 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
     col3: ps.product_name,
     col4: `${ps.variant_name} (x${ps.quantity})`,
     feeBreakdown: undefined,
-    member_number: undefined,
-    imported: false,
+    member_number: undefined
   }))
 
   const d = dList.map(dp => ({
@@ -126,8 +125,7 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
     col3: 'Due Collection',
     col4: '-',
     feeBreakdown: undefined,
-    member_number: dp.member?.member_number,
-    imported: false,
+    member_number: dp.member?.member_number
   }))
 
   return [...m, ...s, ...d].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -187,8 +185,6 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       : getPeriodRange(period)
     return allTransactions.filter(p => {
       if (range && !isWithinInterval(parseISO(p.timestamp), range)) return false
-      // Imported memberships are plans paid before joining GymFlow; they are not today's money.
-      if (period === 'today' && p.imported) return false
       if (modeFilter !== 'all' && p.mode !== modeFilter) return false
       
       if (idSearch) {

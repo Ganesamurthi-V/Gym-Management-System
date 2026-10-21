@@ -9,6 +9,7 @@ import { mapSupabaseError, passesCsrf, csrfRejected, UUID_RE, isIsoDate, bounded
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
+import { isImportedMembership } from '@/lib/payments/import-membership'
 
 
 export async function GET(req: NextRequest) {
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
     log.start('DB_QUERY')
     const { data, error } = await supabase
       .from('memberships')
-      .select('id, member_id, plan, amount, start_date, end_date, created_at, members!fk_memberships_member_same_gym(name)')
+      .select('id, member_id, plan, amount, start_date, end_date, created_at, members!fk_memberships_member_same_gym(name, is_imported)')
       .order('created_at', { ascending: false })
       .limit(limit)
       .eq('gym_id', gym.id)
@@ -56,9 +57,13 @@ export async function GET(req: NextRequest) {
 
     // Not logged: rows carry member names (PII).
     log.summary(200)
+    // Imported memberships carry plan details only; no payment was taken, so they are not listed.
+    const payments = (data ?? []).filter(row =>
+      !isImportedMembership({ created_at: row.created_at, start_date: row.start_date, member: (row.members as unknown as { is_imported?: boolean | null } | null) }),
+    )
     return NextResponse.json({
       success: true,
-      data,
+      data: payments,
       meta: { request_id: log.requestId, has_more: (data?.length ?? 0) >= limit }
     })
   } catch (err: unknown) {

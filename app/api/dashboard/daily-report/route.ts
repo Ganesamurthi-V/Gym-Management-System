@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
 import { istToday } from '@/lib/gamification/periods'
+import { isImportedMembership } from '@/lib/payments/import-membership'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (req: NextRequest, {
   const [membershipsRes, newMembersRes] = await Promise.all([
     supabase
       .from('memberships')
-      .select('amount, admission_fee, payment_mode, plan, category, member:members!fk_memberships_member_same_gym(name, member_number)')
+      .select('amount, admission_fee, payment_mode, plan, category, start_date, created_at, member:members!fk_memberships_member_same_gym(name, member_number, is_imported)')
       .eq('gym_id', gym.id)
       .eq('start_date', today),
     supabase
@@ -38,7 +39,8 @@ export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (req: NextRequest, {
     )
   }
 
-  const payments = (membershipsRes.data ?? []).map((p: any) => ({
+  // Imported memberships carry plan details only; no payment was taken today.
+  const payments = (membershipsRes.data ?? []).filter((p: any) => !isImportedMembership(p)).map((p: any) => ({
     memberName: p.member?.name ?? 'Unknown',
     memberNumber: p.member?.member_number ?? 0,
     plan: p.plan,

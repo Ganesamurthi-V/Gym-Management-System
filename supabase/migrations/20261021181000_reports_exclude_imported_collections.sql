@@ -1,0 +1,235 @@
+-- Reports: imported memberships are not collections.
+--
+-- The Excel/CSV import brings in member and plan details only; no payment was taken. Imported
+-- memberships were still summed into "collected" (monthly totals, payment-mode split, averages).
+-- The import stamps created_at as exactly midnight UTC of start_date, which together with
+-- members.is_imported identifies those rows without a schema change (a later renewal by an
+-- imported member is stamped with the real time and still counts).
+--
+-- Replaces get_gym_reports in full; the only change is the extra condition in `collected`.
+-- Idempotent (CREATE OR REPLACE). Grants are repeated so they cannot be lost.
+
+CREATE OR REPLACE FUNCTION public.get_gym_reports(p_gym_id UUID, p_today DATE)
+RETURNS JSON
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = ''
+AS $$
+WITH
+-- six calendar months ending with the current one, oldest first
+months AS (
+  SELECT i AS idx,
+         (date_trunc('month', p_today::timestamp) - make_interval(months => 5 - i))::date AS start_dt,
+         (date_trunc('month', p_today::timestamp) - make_interval(months => 4 - i))::date AS next_dt
+  FROM generate_series(0, 5) AS i
+),
+since AS (
+  SELECT (date_trunc('month', p_today::timestamp) - interval '5 months') AT TIME ZONE 'Asia/Kolkata' AS ts
+),
+collected AS (
+  SELECT (ms.created_at AT TIME ZONE 'Asia/Kolkata')::date AS day,
+         (ms.amount + ms.admission_fee - ms.due_amount)::numeric AS amount,
+         ms.payment_mode AS mode, 'memberships' AS source, 0 AS units
+  FROM public.memberships ms, since
+  WHERE ms.gym_id = p_gym_id AND ms.created_at >= since.ts
+    -- Imported memberships carry plan details only; no payment was taken. The import stamps
+    -- created_at as midnight UTC of start_date. Keep in sync with lib/payments/import-membership.ts.
+    AND NOT (
+      ms.created_at = (ms.start_date::timestamp AT TIME ZONE 'UTC')
+      AND EXISTS (SELECT 1 FROM public.members mb WHERE mb.id = ms.member_id AND mb.is_imported)
+    )
+  UNION ALL
+  SELECT (dp.created_at AT TIME ZONE 'Asia/Kolkata')::date, dp.amount::numeric, dp.payment_mode, 'dues', 0
+  FROM public.due_payments dp, since
+  WHERE dp.gym_id = p_gym_id AND dp.created_at >= since.ts
+  UNION ALL
+  SELECT (s.sold_at AT TIME ZONE 'Asia/Kolkata')::date, s.total_price, s.payment_mode, 'inventory', s.quantity
+  FROM public.inventory_sales s, since
+  WHERE s.gym_id = p_gym_id AND s.sold_at >= since.ts
+),
+month_rows AS (
+  SELECT m.idx,
+         to_char(m.start_dt, 'Mon YYYY') AS label,
+         COALESCE(SUM(c.amount), 0) AS total,
+         COALESCE(SUM(c.amount) FILTER (WHERE c.source = 'memberships'), 0) AS memberships,
+         COALESCE(SUM(c.amount) FILTER (WHERE c.source = 'dues'), 0) AS dues,
+         COALESCE(SUM(c.amount) FILTER (WHERE c.source = 'inventory'), 0) AS inventory,
+         COALESCE(SUM(c.amount) FILTER (WHERE c.mode = 'cash'), 0) AS cash,
+         COALESCE(SUM(c.amount) FILTER (WHERE c.mode = 'upi'), 0) AS upi,
+         COALESCE(SUM(c.amount) FILTER (WHERE c.mode = 'card'), 0) AS card,
+         COUNT(c.day) AS transactions
+  FROM months m
+  LEFT JOIN collected c ON c.day >= m.start_dt AND c.day < m.next_dt
+  GROUP BY m.idx, m.start_dt
+),
+-- People who joined in each month. Imported members are left out: their rows were
+-- all created on the day of the import, which would read as one enormous month.
+joined AS (
+  SELECT m.idx, COUNT(mb.id) AS n
+  FROM months m
+  LEFT JOIN public.members mb
+    ON mb.gym_id = p_gym_id AND NOT COALESCE(mb.is_imported, false)
+   AND (mb.created_at AT TIME ZONE 'Asia/Kolkata')::date >= m.start_dt
+   AND (mb.created_at AT TIME ZONE 'Asia/Kolkata')::date < m.next_dt
+  GROUP BY m.idx
+),
+-- A renewal is a plan bought by someone who already had one.
+renewed AS (
+  SELECT m.idx, COUNT(ms.id) AS n
+  FROM months m
+  LEFT JOIN public.memberships ms
+    ON ms.gym_id = p_gym_id
+   AND (ms.created_at AT TIME ZONE 'Asia/Kolkata')::date >= m.start_dt
+   AND (ms.created_at AT TIME ZONE 'Asia/Kolkata')::date < m.next_dt
+   AND EXISTS (SELECT 1 FROM public.memberships prev WHERE prev.member_id = ms.member_id AND prev.created_at < ms.created_at)
+  GROUP BY m.idx
+),
+-- Each member's most recent membership, picked the way the dashboard and the
+-- Members page pick it (latest created), so the counts agree across pages.
+latest AS (
+  SELECT DISTINCT ON (mb.id)
+         mb.id, mb.name, mb.phone, mb.created_at, ms.end_date, ms.plan, ms.amount
+  FROM public.members mb
+  LEFT JOIN public.memberships ms ON ms.member_id = mb.id AND ms.gym_id = p_gym_id
+  WHERE mb.gym_id = p_gym_id
+  ORDER BY mb.id, ms.created_at DESC
+),
+member_counts AS (
+  SELECT COUNT(*) AS total,
+         COUNT(*) FILTER (WHERE end_date >= p_today) AS active,
+         -- a member with no plan at all counts as expired, as on the dashboard
+         COUNT(*) FILTER (WHERE end_date IS NULL OR end_date < p_today) AS expired,
+         COUNT(*) FILTER (WHERE end_date BETWEEN p_today AND p_today + 7) AS expiring7,
+         COUNT(*) FILTER (WHERE end_date BETWEEN p_today AND p_today + 30) AS expiring30,
+         -- what those members paid for the plan that is ending: the renewal at stake
+         COALESCE(SUM(amount) FILTER (WHERE end_date BETWEEN p_today AND p_today + 7), 0) AS renewal7,
+         COALESCE(SUM(amount) FILTER (WHERE end_date BETWEEN p_today AND p_today + 30), 0) AS renewal30
+  FROM latest
+),
+plan_rows AS (
+  SELECT plan, COUNT(*) AS n FROM latest WHERE end_date >= p_today GROUP BY plan
+),
+expiring_rows AS (
+  SELECT name, phone, end_date, plan, amount
+  FROM latest
+  WHERE end_date BETWEEN p_today AND p_today + 30
+  ORDER BY end_date, name
+  LIMIT 20
+),
+-- Plans that ran out in the last 30 days and have not been renewed: the people
+-- who are leaving right now, as opposed to everyone who ever left.
+lapsed AS (
+  SELECT name, phone, end_date, plan FROM latest WHERE end_date < p_today AND end_date >= p_today - 30
+),
+lapsed_top AS (
+  SELECT * FROM lapsed ORDER BY end_date DESC, name LIMIT 20
+),
+dues_all AS (
+  SELECT name, phone, pending_amount
+  FROM public.members
+  WHERE gym_id = p_gym_id AND pending_amount > 0
+),
+dues_top AS (
+  SELECT * FROM dues_all ORDER BY pending_amount DESC, name LIMIT 20
+),
+att AS (
+  SELECT a.member_id, a.date, a.session
+  FROM public.attendance a
+  WHERE a.gym_id = p_gym_id AND a.date > p_today - 90 AND a.date <= p_today
+),
+att_by_day AS (
+  SELECT d.idx, d.name, COUNT(a.date) AS n
+  FROM (VALUES (0, 'Sun'), (1, 'Mon'), (2, 'Tue'), (3, 'Wed'), (4, 'Thu'), (5, 'Fri'), (6, 'Sat')) AS d(idx, name)
+  LEFT JOIN att a ON EXTRACT(DOW FROM a.date) = d.idx
+  GROUP BY d.idx, d.name
+),
+last_visit AS (
+  SELECT member_id, MAX(date) AS last_date FROM att GROUP BY member_id
+),
+-- Paying members who have stopped coming. Members who joined this week are left
+-- out: they have had no chance to be absent yet.
+inactive AS (
+  SELECT l.name, l.phone, v.last_date
+  FROM latest l
+  LEFT JOIN last_visit v ON v.member_id = l.id
+  WHERE l.end_date >= p_today
+    AND (l.created_at AT TIME ZONE 'Asia/Kolkata')::date <= p_today - 7
+    AND (v.last_date IS NULL OR v.last_date <= p_today - 7)
+),
+inactive_top AS (
+  SELECT * FROM inactive ORDER BY last_date ASC NULLS FIRST, name LIMIT 20
+),
+-- One row per locality however it was typed ("velachery", "Velachery "), shown in
+-- its most common spelling.
+area_rows AS (
+  SELECT mode() WITHIN GROUP (ORDER BY btrim(area)) AS area, COUNT(*) AS n
+  FROM public.members
+  WHERE gym_id = p_gym_id AND btrim(COALESCE(area, '')) <> ''
+  GROUP BY lower(btrim(area))
+  ORDER BY n DESC, area
+  LIMIT 10
+)
+SELECT json_build_object(
+  'months', (
+    SELECT COALESCE(json_agg(json_build_object(
+      'label', label, 'total', total, 'memberships', memberships, 'dues', dues, 'inventory', inventory,
+      'cash', cash, 'upi', upi, 'card', card, 'transactions', transactions,
+      'newMembers', (SELECT n FROM joined j WHERE j.idx = month_rows.idx),
+      'renewals', (SELECT n FROM renewed r WHERE r.idx = month_rows.idx)
+    ) ORDER BY idx), '[]'::json) FROM month_rows
+  ),
+  'members', (
+    SELECT json_build_object(
+      'total', total, 'active', active, 'expired', expired,
+      'expiring7', expiring7, 'expiring30', expiring30, 'renewal7', renewal7, 'renewal30', renewal30
+    ) FROM member_counts
+  ),
+  'plans', (
+    SELECT COALESCE(json_agg(json_build_object('plan', plan, 'count', n) ORDER BY n DESC, plan), '[]'::json) FROM plan_rows
+  ),
+  'expiring', (
+    SELECT COALESCE(json_agg(json_build_object(
+      'name', name, 'phone', phone, 'endDate', end_date, 'plan', plan, 'amount', amount
+    ) ORDER BY end_date, name), '[]'::json) FROM expiring_rows
+  ),
+  'dues', json_build_object(
+    'total', (SELECT COALESCE(SUM(pending_amount), 0) FROM dues_all),
+    'count', (SELECT COUNT(*) FROM dues_all),
+    'top', (
+      SELECT COALESCE(json_agg(json_build_object('name', name, 'phone', phone, 'amount', pending_amount)
+        ORDER BY pending_amount DESC, name), '[]'::json) FROM dues_top
+    )
+  ),
+  'attendance', json_build_object(
+    -- Without recent check-ins "nobody came" only means attendance is not being
+    -- marked, so the page hides its absence figures instead of raising an alarm.
+    'tracked', EXISTS (SELECT 1 FROM att WHERE date > p_today - 30),
+    'today', (SELECT COUNT(*) FROM att WHERE date = p_today),
+    'total', (SELECT COUNT(*) FROM att),
+    'morning', (SELECT COUNT(*) FROM att WHERE session = 'morning'),
+    'evening', (SELECT COUNT(*) FROM att WHERE session = 'evening'),
+    'byDay', (SELECT json_agg(json_build_object('name', name, 'count', n) ORDER BY idx) FROM att_by_day)
+  ),
+  'inactive', json_build_object(
+    'count', (SELECT COUNT(*) FROM inactive),
+    'top', (
+      SELECT COALESCE(json_agg(json_build_object('name', name, 'phone', phone, 'lastVisit', last_date)
+        ORDER BY last_date ASC NULLS FIRST, name), '[]'::json) FROM inactive_top
+    )
+  ),
+  'areas', (
+    SELECT COALESCE(json_agg(json_build_object('area', area, 'count', n) ORDER BY n DESC, area), '[]'::json) FROM area_rows
+  ),
+  'lapsed', json_build_object(
+    'count', (SELECT COUNT(*) FROM lapsed),
+    'top', (
+      SELECT COALESCE(json_agg(json_build_object('name', name, 'phone', phone, 'endDate', end_date, 'plan', plan)
+        ORDER BY end_date DESC, name), '[]'::json) FROM lapsed_top
+    )
+  )
+);
+$$;
+
+REVOKE ALL ON FUNCTION public.get_gym_reports(UUID, DATE) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_gym_reports(UUID, DATE) TO authenticated;

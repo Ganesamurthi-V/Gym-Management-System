@@ -654,13 +654,14 @@ function MembersContent({ members, gymId, totalCount }: Props) {
 
       {/* Load More Button */}
       {hasMore && (
-        <div className="flex justify-center mt-6">
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <span className="text-xs text-slate-400">{membersList.length} of {totalCount}</span>
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-emphasis-fg bg-emphasis rounded-xl hover:bg-emphasis-hover disabled:opacity-50 transition-all shadow-sm"
+            className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-surface-card border border-surface-border rounded-lg hover:bg-surface-secondary disabled:opacity-50 transition-colors"
           >
-            {loadingMore ? 'Loading...' : `Load Next 200 (Showing ${membersList.length} of ${totalCount})`}
+            {loadingMore ? 'Loading...' : 'Load more'}
           </button>
         </div>
       )}

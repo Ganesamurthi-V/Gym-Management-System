@@ -63,10 +63,15 @@ export const POST = withAuth('ACCOUNT_DELETE_DATA', async (req: NextRequest, ctx
   }
   if (!otpResult.ok) {
     log.error('Delete-data OTP verification failed', { reason: otpResult.reason })
+    // 'expired' means no code is on file for this user (timed out, already used, or replaced by a
+    // newer one: every "Send"/"Resend" issues a fresh code and invalidates the previous email).
+    // Saying so tells the owner to use the newest email instead of retyping a dead code.
     const message =
       otpResult.reason === 'too_many_attempts'
         ? 'Too many incorrect attempts. Request a new code and try again.'
-        : 'That code is incorrect or has expired. Request a new code and try again.'
+        : otpResult.reason === 'expired'
+          ? 'No active code found. It may have expired, or a newer code was sent. Use the code from your latest email, or request a new one.'
+          : 'That code does not match. Check the latest email and try again.'
     return apiError(400, 'INVALID_OTP', message)
   }
 

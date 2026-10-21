@@ -28,7 +28,7 @@ export default async function PaymentsPage() {
     const [paymentsRes, productSalesRes, pendingMembersRes, duePaymentsRes] = await timed('payments (4 parallel)', () => Promise.all([
       supabase
         .from('memberships')
-        .select('id, member_id, plan, start_date, end_date, amount, admission_fee, due_amount, payment_mode, created_at, member:members!fk_memberships_member_same_gym(id, name, phone, member_number)')
+        .select('id, member_id, plan, start_date, end_date, amount, admission_fee, due_amount, payment_mode, created_at, member:members!fk_memberships_member_same_gym(id, name, phone, member_number, is_imported)')
         .eq('gym_id', gym.id)
         .gte('created_at', twelveMonthsAgo)
         .order('created_at', { ascending: false })

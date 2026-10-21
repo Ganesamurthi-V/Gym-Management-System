@@ -3,6 +3,7 @@ import { getAuthUser, getGym } from '@/lib/dal'
 import { getMemberStatus, getDaysRemaining, todayIST } from '@/lib/utils'
 import { DashboardClient } from './DashboardClient'
 import { addDays } from '@/lib/gamification/periods'
+import { isImportedMembership } from '@/lib/payments/import-membership'
 
 import { cacheWrapper } from '@/lib/cache'
 import { apiLogger, type RequestLogger } from '@/lib/logger'
@@ -38,7 +39,7 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
         .gte('end_date', oneYearAgo)
         .order('created_at', { ascending: false }),
       supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('date', today),
-      supabase.from('memberships').select('amount, admission_fee').eq('gym_id', gymId).eq('start_date', today),
+      supabase.from('memberships').select('amount, admission_fee, start_date, created_at, member:members!fk_memberships_member_same_gym(is_imported)').eq('gym_id', gymId).eq('start_date', today),
       supabase.from('members').select('pending_amount').eq('gym_id', gymId).gt('pending_amount', 0),
     ])
     logger.end('DB_QUERIES')
@@ -54,7 +55,8 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
     const allMembers = Array.from(memberMap.values()) as any[]
     const expiringThisWeek = allMembers.filter(m => m.status === 'expiring')
 
-    const todayCollection = (todayPaymentsRes.data ?? []).reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
+    // Imported memberships are plans paid before joining GymFlow, not today's money.
+    const todayCollection = (todayPaymentsRes.data ?? []).filter(p => !isImportedMembership(p as any)).reduce((s, p) => s + p.amount + (p.admission_fee ?? 0), 0)
     const totalDues = (duesRes.data ?? []).reduce((s, m) => s + (m.pending_amount ?? 0), 0)
 
     return {

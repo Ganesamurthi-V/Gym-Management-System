@@ -929,7 +929,6 @@ export function AccountClient({
                   <li>All {memberCount} member profiles</li>
                   <li>All {membershipCount} payment records</li>
                   <li>All {attendanceCount} attendance check-ins</li>
-                  <li>All area and geo data</li>
                 </ul>
                 <p className="font-semibold mt-2">Your gym login will remain active.</p>
               </div>

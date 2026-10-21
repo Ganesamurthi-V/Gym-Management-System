@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { sanitizeRow } from '@/lib/export/sanitizeCell'
 import { CreditCard, Banknote, Smartphone, Search, Download, AlertCircle, Check } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { isImportedMembership } from '@/lib/payments/import-membership'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns'
 import { getAllTimePayments } from './actions'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
@@ -23,7 +24,7 @@ interface Payment {
   due_amount: number | null
   payment_mode: string
   created_at: string
-  member?: { id: string; name: string; phone: string; member_number: number }
+  member?: { id: string; name: string; phone: string; member_number: number; is_imported?: boolean | null }
 }
 
 interface DuePayment {
@@ -90,10 +91,11 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
     col3: p.plan,
     col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
     feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm${p.due_amount ? ` - ${formatCurrency(p.due_amount)} due` : ''}` : undefined,
-    member_number: p.member?.member_number
+    member_number: p.member?.member_number,
+    imported: isImportedMembership(p),
   }))
 
-  const s = sList.map(ps => ({
+  const s =sList.map(ps => ({
     id: ps.id,
     type: 'inventory' as const,
     timestamp: ps.sold_at,
@@ -106,7 +108,8 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
     col3: ps.product_name,
     col4: `${ps.variant_name} (x${ps.quantity})`,
     feeBreakdown: undefined,
-    member_number: undefined
+    member_number: undefined,
+    imported: false,
   }))
 
   const d = dList.map(dp => ({
@@ -123,7 +126,8 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
     col3: 'Due Collection',
     col4: '-',
     feeBreakdown: undefined,
-    member_number: dp.member?.member_number
+    member_number: dp.member?.member_number,
+    imported: false,
   }))
 
   return [...m, ...s, ...d].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -183,6 +187,8 @@ export function PaymentsClient({ payments, productSales = [], duePayments = [], 
       : getPeriodRange(period)
     return allTransactions.filter(p => {
       if (range && !isWithinInterval(parseISO(p.timestamp), range)) return false
+      // Imported memberships are plans paid before joining GymFlow; they are not today's money.
+      if (period === 'today' && p.imported) return false
       if (modeFilter !== 'all' && p.mode !== modeFilter) return false
       
       if (idSearch) {

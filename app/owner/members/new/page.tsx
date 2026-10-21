@@ -99,7 +99,7 @@ export default function NewMemberPage() {
         setForm(prev => ({
           ...prev,
           amount: String(defaultPlan.price),
-          admission_fee: String(defaultPlan.joiningFee),
+          admission_fee: defaultPlan.joiningFee ? String(defaultPlan.joiningFee) : '',
           category: defaultPlan.category || 'both',
         }))
       }
@@ -128,7 +128,7 @@ export default function NewMemberPage() {
         const matched = gymPlans.find(p => p.duration === next.plan && (p.category || 'both') === next.category)
         if (matched) {
           next.amount = String(matched.price)
-          next.admission_fee = String(matched.joiningFee)
+          next.admission_fee = matched.joiningFee ? String(matched.joiningFee) : ''
         }
       }
       return next
@@ -266,7 +266,7 @@ export default function NewMemberPage() {
       plan: newPlan.duration as Plan,
       category: newPlan.category,
       amount: String(newPlan.price),
-      admission_fee: String(newPlan.joiningFee)
+      admission_fee: newPlan.joiningFee ? String(newPlan.joiningFee) : ''
     }))
 
     setShowPlanModal(false)

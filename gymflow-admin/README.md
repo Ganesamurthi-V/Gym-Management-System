@@ -131,4 +131,4 @@ describe the code at that time and are kept as history.
 
 ## License
 
-[GNU AGPL v3.0](../LICENSE), the same as the rest of the repository..
+[GNU AGPL v3.0](../LICENSE), the same as the rest of the repository.

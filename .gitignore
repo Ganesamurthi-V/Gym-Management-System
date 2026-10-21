@@ -3,6 +3,13 @@ node_modules
 .env
 .env.local
 .env.*.local
+roles.sql
+schema.sql
+data.sql
+roles_old.sql
+schema_old.sql
+data_old.sql
+data_clean.sql
 # package-lock.json
 !landing-page-1/package-lock.json
 geo_normalization.sql

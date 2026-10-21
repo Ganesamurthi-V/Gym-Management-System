@@ -11,9 +11,11 @@ import type {
 } from '@/types/member-app'
 import { memberRowAction, memberBulkAction } from '@/app/owner/member-app/actions'
 import { useAsyncAction } from '../hooks/useMemberAppActions'
+import { inviteAllMembers } from '../services/inviteAllService'
 import { useFilteredRows, useRowSelection, useTableFilters } from '../hooks/useMemberAppFilters'
 import { Badge, Card, EmptyState, SearchInput, SectionHeader, TableWrap, Td, Th, Tr, ChipFilter } from './ui'
 import type { BadgeTone } from './ui'
+import Modal, { PrimaryButton, SecondaryButton } from './Modal'
 
 const PAGE_SIZE = 8
 
@@ -64,6 +66,13 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
   const [page, setPage] = useState(1)
   const filters = useTableFilters<PortalStatus>()
   const { run, isPending, isBusy } = useAsyncAction()
+  const [inviteAllOpen, setInviteAllOpen] = useState(false)
+
+  // Eligible = has a phone and has not already activated the portal.
+  const eligibleCount = useMemo(
+    () => rows.filter(r => r.phone?.trim() && r.invitationStatus !== 'activated').length,
+    [rows],
+  )
 
   useEffect(() => setRows(initialRows), [initialRows])
 
@@ -140,17 +149,36 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
     onMutationComplete?.()
   }
 
+  async function handleInviteAll() {
+    const result = await run('invite_all', inviteAllMembers)
+    if (!result) return
+    setInviteAllOpen(false)
+    if (result.success) onMutationComplete?.()
+  }
+
   return (
     <Card>
       <SectionHeader
         title="Member Portal Management"
         description="Control portal access and invitations for each member."
         action={
-          <SearchInput
-            value={filters.search}
-            onChange={value => { filters.setSearch(value); setPage(1) }}
-            placeholder="Search name, ID or phone"
-          />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <SearchInput
+              value={filters.search}
+              onChange={value => { filters.setSearch(value); setPage(1) }}
+              placeholder="Search name, ID or phone"
+            />
+            <button
+              type="button"
+              onClick={() => setInviteAllOpen(true)}
+              disabled={eligibleCount === 0 || isBusy}
+              title={eligibleCount === 0 ? 'No members to invite: everyone has already joined or has no phone number' : undefined}
+              className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 rounded-xl bg-brand-500 text-white text-sm font-semibold hover:bg-brand-600 disabled:opacity-60 transition-colors whitespace-nowrap"
+            >
+              <Send className="w-4 h-4" />
+              Invite all
+            </button>
+          </div>
         }
       />
 
@@ -276,6 +304,34 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
             </div>
           </div>
         </>
+      )}
+
+      {inviteAllOpen && (
+        <Modal
+          title="Invite all members"
+          onClose={() => setInviteAllOpen(false)}
+          busy={isPending('invite_all')}
+          footer={
+            <>
+              <SecondaryButton onClick={() => setInviteAllOpen(false)} disabled={isPending('invite_all')}>
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton onClick={handleInviteAll} disabled={isBusy}>
+                {isPending('invite_all') && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+                Send invitations
+              </PrimaryButton>
+            </>
+          }
+        >
+          <p className="text-sm font-semibold text-slate-900">
+            {eligibleCount} {eligibleCount === 1 ? 'member' : 'members'} will be invited.
+          </p>
+          <p className="text-sm text-slate-500 mt-2">
+            Invitations go out through WhatsApp, a few at a time (5 every 5 minutes). This keeps WhatsApp from
+            treating your number as spam, so a long list can take a while to finish. You can leave this page; they
+            will keep sending.
+          </p>
+        </Modal>
       )}
     </Card>
   )

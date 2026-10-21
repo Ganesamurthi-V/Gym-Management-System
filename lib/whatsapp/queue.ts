@@ -48,6 +48,7 @@ export interface EnqueueParams {
 interface QueueRow {
   id: string
   gym_id: string | null
+  member_id: string
   template_name: TemplateId
   context: TemplateContext
   log_row_id: string | null
@@ -155,6 +156,29 @@ export interface DrainDeps {
   takeToken?: () => Promise<{ success: boolean; remaining: number }>
   /** Schedule the next drain batch; defaults to QStash kickDrain. */
   reschedule?: (delayMinutes: number) => Promise<boolean>
+  /**
+   * Runs only for 'member_app_invitation', right before the send, and returns the context to
+   * send (with invitationToken filled). Tokens expire after 24h and a big gym can wait in the
+   * queue for hours, so the token is minted here and never at enqueue time. permanent=true
+   * fails the row for good; otherwise it follows the normal retry path.
+   */
+  prepare?: (row: PrepareRow) => Promise<
+    { ok: true; context: TemplateContext } | { ok: false; error: string; permanent: boolean }
+  >
+}
+
+export type PrepareRow = Pick<QueueRow, 'id' | 'gym_id' | 'context'> & { member_id: string }
+
+/** Default prepare for invitations: mint the token with the service client. */
+async function defaultPrepare(supabase: SupabaseClient, row: PrepareRow) {
+  // Dynamic import: the module is server-only, and a static import would break every test and
+  // Edge-free consumer that merely imports this file.
+  const { prepareMemberInvitation } = await import('@/lib/member-invitation-server')
+  const gymId = row.gym_id ?? row.context.gymId
+  if (!gymId) return { ok: false as const, error: 'Queue row has no gym', permanent: true }
+  const res = await prepareMemberInvitation(supabase, { gymId, memberId: row.member_id, skipIfActivated: true })
+  if (!res.ok) return { ok: false as const, error: `${res.code}: ${res.message}`, permanent: res.permanent }
+  return { ok: true as const, context: { ...row.context, invitationToken: res.token } }
 }
 
 let _sharedLimiter: Ratelimit | null = null
@@ -203,7 +227,7 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     // status='pending' so two concurrent drains can't grab the same row.
     const { data: candidate } = await supabase
       .from('whatsapp_send_queue')
-      .select('id, gym_id, template_name, context, log_row_id, attempts, max_attempts')
+      .select('id, gym_id, member_id, template_name, context, log_row_id, attempts, max_attempts')
       .eq('status', 'pending')
       .lte('scheduled_at', nowIso())
       .order('scheduled_at', { ascending: true })
@@ -226,13 +250,25 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     stats.drained++
 
     let result: SendResult
+    // Set when prepare fails for good; the row is failed below without calling the sender.
+    let prepareFailure: { error: string; permanent: boolean } | null = null
     try {
+      let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId }
+      if (row.template_name === 'member_app_invitation') {
+        const prep = await (deps.prepare ?? ((r) => defaultPrepare(supabase, r)))(row)
+        if (prep.ok) ctx = { ...prep.context, gymId: ctx.gymId }
+        else prepareFailure = { error: prep.error, permanent: prep.permanent }
+      }
       // gymId rides along so sendTemplate can check the gym's WhatsApp switch at the moment of
       // sending: a message queued before the admin turned WhatsApp off is stopped here.
-      result = await sender(row.template_name, { ...row.context, gymId: row.gym_id ?? row.context.gymId })
+      result = prepareFailure
+        ? { success: false, error: prepareFailure.error }
+        : await sender(row.template_name, ctx)
     } catch (err) {
       result = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
+
+    // finalizeSendRow ignores a null log_row_id, which is what invitation rows carry.
 
     // Reconcile the pre-claimed automation-log row (message id / failure status).
     await finalizeSendRow(supabase, row.log_row_id, result)
@@ -243,6 +279,23 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
         .update({ status: 'sent', message_id: result.messageId ?? null, sent_at: nowIso(), last_error: null })
         .eq('id', row.id)
       stats.sent++
+      if (row.template_name === 'member_app_invitation') {
+        const gymId = row.gym_id ?? row.context.gymId
+        const { error: activityErr } = await supabase.from('member_portal_activity').insert({
+          gym_id: gymId,
+          member_id: row.member_id,
+          activity: 'invitation_resent',
+          performed_by: 'owner',
+        })
+        if (activityErr) console.warn('[WA Queue] invitation sent but activity log failed:', activityErr.message)
+      }
+    } else if (prepareFailure?.permanent) {
+      // Retrying cannot fix this (activated, no phone, email conflict): fail once, no sender call.
+      await supabase
+        .from('whatsapp_send_queue')
+        .update({ status: 'failed', last_error: prepareFailure.error })
+        .eq('id', row.id)
+      stats.failed++
     } else if (result.skipped) {
       // Deliberately not sent (the gym's WhatsApp switch is off): finished, no retry.
       await supabase

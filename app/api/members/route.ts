@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { getGymForUser } from '@/lib/supabase/queries'
-import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText } from '@/app/api/_guard'
+import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
 export async function GET(req: NextRequest) {
   const log = apiLogger('MEMBERS_API_GET')
   try {
@@ -139,6 +139,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'Age and member_number must be integers' } }, { status: 400 })
     }
 
+    // Opening due entered on the add-member form. The Dues page, dashboard and reports all read
+    // members.pending_amount, and nothing derives it from memberships.due_amount, so dropping it
+    // here made a new member with a due show as zero dues everywhere.
+    const pending_amount = body.pending_amount === undefined || body.pending_amount === null || body.pending_amount === ''
+      ? 0
+      : boundedInt(body.pending_amount, 0, MAX_MONEY)
+    if (pending_amount === null) {
+      log.summary(400)
+      return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'pending_amount must be a non-negative integer' } }, { status: 400 })
+    }
+
     // Optional date_of_birth — powers the birthday_wishes WhatsApp automation.
     let date_of_birth: string | null = null
     if (body.date_of_birth !== undefined && body.date_of_birth !== null && body.date_of_birth !== '') {
@@ -174,6 +185,7 @@ export async function POST(req: NextRequest) {
         gender,
         date_of_birth,
         member_number,
+        pending_amount,
         gym_id: gym.id
       })
       .select('id, name, phone, member_number')

@@ -136,6 +136,17 @@ Four extra templates support the leaderboards: `gym_streak_at_risk`, `gym_weekly
 - **Prize message.** `sendPrizeAwardedMessage({ gymId, memberId, prize, periodLabel, board })` in `automation.ts` is an inline claim-then-send, to be called from the owner's "Mark prize awarded" server action with a server-resolved gym.
 - **Copy for Meta** (names, categories, body text, variables, how to enable): [`GAMIFICATION_TEMPLATES.md`](./GAMIFICATION_TEMPLATES.md). It is checked against `services/whatsapp/templateSpec.ts` by `__tests__/whatsapp/gamificationTemplatesDoc.test.ts`.
 
+## Bulk member-app invites
+
+`POST /api/member-app/invite-all` queues a `member_app_invitation` row per eligible member (has a phone, not
+`activated`) on the same throttled `whatsapp_send_queue`, so even 10 invites drain at 5 per 5 minutes.
+Enqueue stores only the member id and `{ phone, gymName, memberName, gymId }`. The invitation token is minted
+just-in-time inside `drainSendQueue` (the `prepare` step, default `prepareMemberInvitation` in
+`lib/member-invitation-server.ts`), because tokens expire after 24 hours and a large gym can sit in the queue
+longer than that. A permanent prepare failure (already activated, no phone, email conflict) marks the row
+`failed` without sending; a transient one retries like any other failure. After a successful send the worker
+logs `invitation_resent` in `member_portal_activity`.
+
 ## 🛠️ Development
 
 ### Local Testing with ngrok

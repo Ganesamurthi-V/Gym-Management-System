@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isWhatsAppEnabledForGym } from '@/lib/whatsapp/gymGate'
 import { selectInviteTargets, type InviteCandidate } from '@/lib/whatsapp/inviteAll'
 import { enqueueSend, kickDrain, BATCH_SIZE, DRAIN_INTERVAL_MINUTES } from '@/lib/whatsapp/queue'
+import { estimateDrainMinutes, getRecipientWindowUsage, normalisePhone, QUEUE_RECIPIENT_CAP } from '@/lib/whatsapp/recipientLimit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -71,11 +72,27 @@ export const POST = withAuth('MEMBER_APP_INVITE_ALL', async (_req, { gym, supaba
 
   if (queued > 0) await kickDrain().catch(() => {})
 
+  // The queue is also bound by Meta's unique-customers-per-24h cap, which the rate-based
+  // estimate ignores. Approximate: assumes the whole queued batch is new recipients and that
+  // slots free in whole-day steps. Unreadable usage counts as no free slots (longer estimate).
+  const unique = new Set(targets.map(m => normalisePhone(m.phone as string))).size
+  const usage = await getRecipientWindowUsage(admin)
+  const free = usage ? QUEUE_RECIPIENT_CAP - usage.inWindow : 0
+  const estimatedMinutes = estimateDrainMinutes({
+    queued,
+    unique: queued > 0 ? unique : 0,
+    free,
+    cap: QUEUE_RECIPIENT_CAP,
+    batchSize: BATCH_SIZE,
+    intervalMinutes: DRAIN_INTERVAL_MINUTES,
+  })
+
   return apiSuccess({
     queued,
     skippedNoPhone,
     alreadyActivated,
     alreadyQueued,
-    estimatedMinutes: Math.ceil(queued / BATCH_SIZE) * DRAIN_INTERVAL_MINUTES,
+    estimatedMinutes,
+    dailyRecipientLimit: QUEUE_RECIPIENT_CAP,
   })
 }, { rateLimit: 3 })

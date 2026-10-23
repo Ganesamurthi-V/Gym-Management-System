@@ -215,6 +215,33 @@ npm test __tests__/whatsapp/webhook.test.ts
 - Check Redis connectivity
 - Review idempotency logs
 
+## Meta 250 customers / 24 h limit
+
+Meta lets our single shared number message **250 unique customers per rolling 24 hours**
+(business-initiated). A customer messaged several times in the window counts once and leaves the
+count 24 h after their FIRST message in it. Exceeding it blocks messaging and hurts the number's
+quality, so it is enforced strictly.
+
+- **Global, not per gym.** Every gym shares the number, so the window is one table,
+  `whatsapp_recipient_window(phone_e164, first_sent_at)`, service role only.
+- **Where it is enforced.** `sendTemplate` calls `reserve_whatsapp_recipient(phone, limit)` after the
+  gym switch and validation and before the Graph call. Every send goes through it: queue, welcome,
+  renewal, prize, owner manual send and the signup OTP. The function takes an advisory lock, so two
+  senders cannot take the last slot.
+- **Reserve.** The queue may only use `LIMIT - RESERVE` unique recipients, so signup OTPs and inline
+  welcome / renewal messages always have headroom.
+- **Defer, not fail.** A denied send returns `deferred` with `retryAt`. The queue puts the row back to
+  `pending` at `retryAt` and does not count an attempt; automation log rows are released like
+  `skipped`. The owner manual send gets a 429, the OTP route a 503 `OTP_TEMPORARILY_UNAVAILABLE`.
+- **Slot hand-back.** A definite Meta rejection releases a slot that this attempt created. A success
+  or an ambiguous outcome keeps it.
+- **Fail closed.** If the RPC errors or is missing (migration not applied), nothing is sent; callers
+  are told to retry in about 2 minutes.
+- **Env.** `WHATSAPP_DAILY_RECIPIENT_LIMIT` (default 250) and `WHATSAPP_QUEUE_RECIPIENT_RESERVE`
+  (default 30). When Meta raises the number's tier, set `WHATSAPP_DAILY_RECIPIENT_LIMIT` to the new
+  value; no code change is needed.
+- **Monitoring.** `select public.whatsapp_recipient_window_usage()` returns `{in_window, oldest}`.
+
 ## 📈 Monitoring
 
 ### Key Metrics
@@ -235,6 +262,10 @@ AND direction = 'inbound';
 SELECT AVG(processing_time_ms) FROM whatsapp_webhook_logs
 WHERE created_at > NOW() - INTERVAL '1 hour';
 ```
+
+## Owner signup phone list
+
+Every number typed on the signup phone step is kept in `owner_phone_leads` (service role only, no foreign key, so it survives account deletion). Marketing may only target rows with `marketing_consent = true` and `unsubscribed_at is null`; the rest are just remembered. WhatsApp marketing templates additionally need Meta MARKETING-category approval.
 
 ## 🚢 Deployment
 

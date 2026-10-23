@@ -330,6 +330,8 @@ export default function MemberPortalTable({ rows: initialRows, onMutationComplet
             Invitations go out through WhatsApp, a few at a time (15 every 5 minutes). This keeps WhatsApp from
             treating your number as spam, so a long list can take a while to finish. You can leave this page; they
             will keep sending.
+            WhatsApp also allows only 250 new customers per day on our number, so a very long list is finished over
+            several days.
           </p>
         </Modal>
       )}

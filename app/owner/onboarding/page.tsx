@@ -13,6 +13,9 @@ export default async function OnboardingPage() {
     .eq('owner_id', user.id)
     .maybeSingle()
 
+  // No gym yet: the gym is created after the WhatsApp phone check, not here.
+  if (!gym) redirect('/auth/verify-phone')
+
   // Already onboarded — send to dashboard
   if (gym?.onboarding_completed) redirect('/owner/dashboard')
 

@@ -17,7 +17,8 @@ export default async function SubscriptionPage() {
   // after reactivation" bug. It now also carries the gym NAME, removing the
   // extra sequential getGym() round trip this page used to make at the end.
   const { gym } = await getGymCore(user.id)
-  if (!gym) redirect('/owner/onboarding')
+  // No gym yet: finish registration (phone check) first. Onboarding would bounce back here.
+  if (!gym) redirect('/auth/verify-phone')
 
   const subState = getSubscriptionState(gym)
 

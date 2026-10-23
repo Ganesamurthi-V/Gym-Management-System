@@ -7,6 +7,7 @@ import { WelcomeTransition } from '@/components/ui/WelcomeTransition'
 import { AuthShell } from '@/components/auth/AuthShell'
 import { AuthAside } from '@/components/auth/AuthAside'
 import { AUTH_ASIDE } from '@/components/auth/authAsideContent'
+import { GoogleButton } from '@/components/auth/GoogleButton'
 import {
   authDividerLabel,
   authHeading,
@@ -122,6 +123,15 @@ function RoleSelector({
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
+// `?error=` codes returned by /api/auth/google/* when the Google round trip fails.
+const GOOGLE_ERRORS: Record<string, string> = {
+  google_state: 'That sign-in link expired. Please try again.',
+  google_cancelled: 'Google sign-in was cancelled.',
+  google_failed: 'We could not sign you in with Google. Please try again.',
+  google_member: 'This email is registered as a gym member. Please use a different Google account.',
+  google_unavailable: 'Google sign-in is not available right now. Please use email.',
+}
+
 function formatRemaining(milliseconds: number) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000))
   const minutesPart = Math.floor(seconds / 60)
@@ -175,6 +185,8 @@ export default function LoginPage() {
     const errorParam = params.get('error')
     if (errorParam === 'blocked') {
       setError('Your access is blocked by admin')
+    } else if (errorParam && errorParam in GOOGLE_ERRORS) {
+      setError(GOOGLE_ERRORS[errorParam])
     } else if (errorParam === 'not_member') {
       setRole('member')
       setError('This account is not linked to a GymFlow member profile. Contact your gym.')
@@ -465,6 +477,8 @@ export default function LoginPage() {
             {attemptsRemaining} sign-in attempts remaining on this device.
           </p>
         )}
+
+        {role === 'owner' && <GoogleButton />}
 
         <form
           id="login-form"

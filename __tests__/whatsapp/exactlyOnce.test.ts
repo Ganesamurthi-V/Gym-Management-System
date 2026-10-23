@@ -5,6 +5,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+// The recipient-window RPC needs a database; these tests are about the send path, so slots are always granted.
+vi.mock('@/lib/whatsapp/recipientLimit', async (orig) => ({
+  ...(await orig<typeof import('@/lib/whatsapp/recipientLimit')>()),
+  reserveRecipient: async () => ({ allowed: true, isNew: true }),
+  releaseRecipient: async () => {},
+}))
 import { fetchJson } from '@/lib/fetch'
 import { sendMessage, sendTemplate } from '@/services/whatsapp/graph'
 import { drainSendQueue, confirmQueuedSend, LEASE_MINUTES } from '@/lib/whatsapp/queue'

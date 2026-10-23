@@ -96,6 +96,10 @@ export const POST = withAuth('WHATSAPP_SEND', async (req, { gym, supabase }) => 
     gymId:      gym.id,
   })
 
+  if (result.deferred) {
+    return NextResponse.json({ success: false, error: 'WhatsApp daily limit reached, try again tomorrow' }, { status: 429 })
+  }
+
   if (!result.success) {
     return NextResponse.json({ success: false, error: result.error }, { status: result.skipped ? 403 : 502 })
   }

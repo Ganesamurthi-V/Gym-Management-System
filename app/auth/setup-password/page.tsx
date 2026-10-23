@@ -554,8 +554,18 @@ export default function SetupPasswordPage() {
     }
 
     // ── Step 2: Finalize registration (create gym row) ─────────────────────
+    // The gym is only created once the owner's mobile number is verified on WhatsApp.
     let finalizeRes: Response
     try {
+      const phoneRes = await fetch('/api/auth/phone/status', {
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      })
+      const phoneJson = await phoneRes.json().catch(() => null)
+      if (phoneRes.ok && phoneJson?.data?.verified !== true) {
+        router.replace('/auth/verify-phone')
+        return
+      }
       finalizeRes = await fetch('/api/auth/finalize-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -564,6 +574,14 @@ export default function SetupPasswordPage() {
       setError('Network error. Please check your connection and try again.')
       setLoading(false)
       return
+    }
+
+    if (finalizeRes.status === 403) {
+      const forbidden = await finalizeRes.json().catch(() => null)
+      if (forbidden?.error?.code === 'PHONE_NOT_VERIFIED') {
+        router.replace('/auth/verify-phone')
+        return
+      }
     }
 
     if (!finalizeRes.ok && finalizeRes.status !== 409) {

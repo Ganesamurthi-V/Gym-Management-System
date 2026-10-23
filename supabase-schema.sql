@@ -816,6 +816,43 @@ CREATE TABLE IF NOT EXISTS gym_admin_notes (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ── owner_verified_phones ────────────────────────────────────
+-- Mobile numbers owners proved by WhatsApp code at signup; one number, one owner.
+-- Service role only (RLS on, no policies, client roles revoked).
+CREATE TABLE IF NOT EXISTS owner_verified_phones (
+  user_id     UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  phone_e164  TEXT        NOT NULL UNIQUE,
+  verified_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Every mobile number an owner types on the signup phone step, verified or not, kept for marketing.
+-- user_id is a plain uuid with NO foreign key on purpose: the lead must outlive the owner's account,
+-- so deleting the auth user or gym must never cascade here. Only marketing_consent = true rows with
+-- unsubscribed_at null may be marketed to. Service role only (RLS on, no policies, client roles revoked).
+CREATE TABLE IF NOT EXISTS owner_phone_leads (
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone_e164           TEXT        NOT NULL UNIQUE,
+  email                TEXT,
+  full_name            TEXT,
+  user_id              UUID,
+  source               TEXT        NOT NULL DEFAULT 'signup',
+  first_entered_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_entered_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  entry_count          INT         NOT NULL DEFAULT 1,
+  verified_at          TIMESTAMPTZ,
+  marketing_consent    BOOLEAN     NOT NULL DEFAULT false,
+  marketing_consent_at TIMESTAMPTZ,
+  unsubscribed_at      TIMESTAMPTZ
+);
+
+-- Unique recipients messaged in the last 24 h on the one shared WhatsApp number.
+-- Meta allows 250 unique customers per rolling 24 h; a customer counts once and leaves
+-- the count 24 h after their FIRST message in the window. Service role only.
+CREATE TABLE IF NOT EXISTS whatsapp_recipient_window (
+  phone_e164    TEXT        PRIMARY KEY,
+  first_sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 
 -- ############################################################
 -- 3 — CONSTRAINTS THAT SPAN TABLES
@@ -1302,6 +1339,9 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_signature_valid ON whatsapp
 CREATE INDEX IF NOT EXISTS idx_workout_programs_gym_id ON workout_programs(gym_id);
 
 CREATE INDEX IF NOT EXISTS idx_workout_programs_created ON workout_programs(gym_id, created_at DESC);
+
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_recipient_window_first_sent ON whatsapp_recipient_window (first_sent_at);
 
 
 -- ############################################################
@@ -2890,6 +2930,115 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
+-- Reserve a slot for one recipient. One global advisory lock serialises every caller, so
+-- two sends cannot both take the last slot. Re-messaging a phone already in the window is
+-- free (Meta counts unique customers).
+CREATE OR REPLACE FUNCTION public.reserve_whatsapp_recipient(p_phone text, p_limit int)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_count  int;
+  v_oldest timestamptz;
+BEGIN
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('wa_recipient_window'));
+
+  DELETE FROM public.whatsapp_recipient_window
+   WHERE first_sent_at < pg_catalog.now() - interval '24 hours';
+
+  IF EXISTS (SELECT 1 FROM public.whatsapp_recipient_window WHERE phone_e164 = p_phone) THEN
+    RETURN pg_catalog.jsonb_build_object('allowed', true, 'is_new', false);
+  END IF;
+
+  SELECT pg_catalog.count(*), pg_catalog.min(first_sent_at)
+    INTO v_count, v_oldest
+    FROM public.whatsapp_recipient_window;
+
+  IF v_count >= p_limit THEN
+    RETURN pg_catalog.jsonb_build_object(
+      'allowed', false,
+      'retry_at', pg_catalog.to_char((v_oldest + interval '24 hours') AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+      'in_window', v_count
+    );
+  END IF;
+
+  INSERT INTO public.whatsapp_recipient_window (phone_e164) VALUES (p_phone);
+  RETURN pg_catalog.jsonb_build_object('allowed', true, 'is_new', true);
+END;
+$$;
+
+-- Give back a slot this attempt just created, when Meta definitely rejected the send.
+CREATE OR REPLACE FUNCTION public.release_whatsapp_recipient(p_phone text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  DELETE FROM public.whatsapp_recipient_window WHERE phone_e164 = p_phone;
+END;
+$$;
+
+-- For monitoring and the invite-all estimate. Read only; expired rows are ignored, not deleted.
+CREATE OR REPLACE FUNCTION public.whatsapp_recipient_window_usage()
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT pg_catalog.jsonb_build_object('in_window', pg_catalog.count(*), 'oldest', pg_catalog.min(first_sent_at))
+    FROM public.whatsapp_recipient_window
+   WHERE first_sent_at >= pg_catalog.now() - interval '24 hours';
+$$;
+
+-- Remembers a number typed at signup. p_consent NULL leaves consent untouched; true/false is recorded
+-- with a timestamp only when it changes. Ticking again after an unsubscribe is a fresh opt-in.
+CREATE OR REPLACE FUNCTION public.record_owner_phone_lead(
+  p_phone text, p_email text, p_full_name text, p_user_id uuid, p_consent boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.owner_phone_leads AS l
+    (phone_e164, email, full_name, user_id, marketing_consent, marketing_consent_at)
+  VALUES
+    (p_phone, p_email, p_full_name, p_user_id,
+     COALESCE(p_consent, false),
+     CASE WHEN p_consent IS TRUE THEN pg_catalog.now() END)
+  ON CONFLICT (phone_e164) DO UPDATE SET
+    last_entered_at = pg_catalog.now(),
+    entry_count     = l.entry_count + 1,
+    user_id         = EXCLUDED.user_id,
+    email           = COALESCE(EXCLUDED.email, l.email),
+    full_name       = COALESCE(EXCLUDED.full_name, l.full_name),
+    marketing_consent = CASE WHEN p_consent IS NULL THEN l.marketing_consent ELSE p_consent END,
+    marketing_consent_at = CASE
+      WHEN p_consent IS NULL THEN l.marketing_consent_at
+      WHEN p_consent IS TRUE AND (NOT l.marketing_consent OR l.unsubscribed_at IS NOT NULL) THEN pg_catalog.now()
+      WHEN p_consent IS FALSE AND l.marketing_consent THEN pg_catalog.now()
+      ELSE l.marketing_consent_at
+    END,
+    unsubscribed_at = CASE WHEN p_consent IS TRUE THEN NULL ELSE l.unsubscribed_at END;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mark_owner_phone_lead_verified(p_phone text, p_user_id uuid)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  UPDATE public.owner_phone_leads
+     SET verified_at = COALESCE(verified_at, pg_catalog.now()),
+         user_id     = p_user_id
+   WHERE phone_e164 = p_phone;
+$$;
+
 -- ── 10. Admin subscription action helper function ────────────
 -- Creates an audit log entry. Called from admin API (service role).
 
@@ -3913,6 +4062,9 @@ ALTER TABLE gym_whatsapp_config      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_automation_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_send_queue      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_admin_notes          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owner_verified_phones    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_recipient_window ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owner_phone_leads         ENABLE ROW LEVEL SECURITY;
 
 -- ── platform_settings ────────────────────────────────────────
 -- Read-only for owners; writes are service-role only (see section 9).
@@ -4636,6 +4788,29 @@ GRANT UPDATE (reward_given_at) ON public.gym_event_completions TO authenticated;
 -- ── gym_admin_notes: service role only ──────────────────────
 REVOKE ALL ON public.gym_admin_notes FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.gym_admin_notes TO service_role;
+
+-- ── owner_verified_phones: service role only ────────────────
+REVOKE ALL ON public.owner_verified_phones FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.owner_verified_phones TO service_role;
+
+-- ── whatsapp_recipient_window: service role only ────────────
+REVOKE ALL ON public.whatsapp_recipient_window FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.whatsapp_recipient_window TO service_role;
+
+REVOKE ALL ON FUNCTION public.reserve_whatsapp_recipient(text, int) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_whatsapp_recipient(text, int) TO service_role;
+REVOKE ALL ON FUNCTION public.release_whatsapp_recipient(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.release_whatsapp_recipient(text) TO service_role;
+REVOKE ALL ON FUNCTION public.whatsapp_recipient_window_usage() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.whatsapp_recipient_window_usage() TO service_role;
+
+-- ── owner_phone_leads: service role only ────────────────────
+REVOKE ALL ON public.owner_phone_leads FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.owner_phone_leads TO service_role;
+REVOKE ALL ON FUNCTION public.record_owner_phone_lead(text, text, text, uuid, boolean) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_owner_phone_lead(text, text, text, uuid, boolean) TO service_role;
+REVOKE ALL ON FUNCTION public.mark_owner_phone_lead_verified(text, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_owner_phone_lead_verified(text, uuid) TO service_role;
 
 -- ── gyms: column-level SELECT for owners ─────────────────────
 -- The table-level SELECT is replaced by a column-level grant of every column,

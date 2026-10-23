@@ -34,6 +34,7 @@ const full: TemplateContext = {
   boardName: 'last 7 days',
   prize: 'Free protein shaker',
   periodLabel: 'Last 7 days',
+  otpCode: '123456',
 }
 
 const ALL_TEMPLATES: TemplateId[] = [
@@ -43,6 +44,7 @@ const ALL_TEMPLATES: TemplateId[] = [
   'membership_expired',
   'payment_due_reminder',
   '_birthday_wishes',
+  'owner_verification',
   'gym_streak_at_risk',
   'gym_weekly_goal_reached',
   'gym_leaderboard_rank_up',
@@ -146,5 +148,47 @@ describe('validateTemplatePayload — rejects contract violations', () => {
     const result = validateTemplatePayload('_birthday_wishes', payload)
     expect(result.valid).toBe(false)
     expect(result.errors.join(' ')).toMatch(/header image link/i)
+  })
+})
+
+describe('owner_verification (authentication template)', () => {
+  const otp = { phone: '9876543210', gymName: '', memberName: '', otpCode: '123456' }
+
+  it('builds body + button with the code and NO header', () => {
+    const payload = buildTemplatePayload('owner_verification', otp) as any
+    const types = payload.template.components.map((c: any) => c.type)
+    expect(types).toEqual(['body', 'button'])
+    expect(payload.template.components[0].parameters).toEqual([{ type: 'text', text: '123456' }])
+    expect(payload.template.components[1]).toEqual({
+      type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: '123456' }],
+    })
+  })
+
+  it('accepts a valid payload with empty gymName/memberName', () => {
+    const result = validateTemplatePayload('owner_verification', buildTemplatePayload('owner_verification', otp))
+    expect(result.errors).toEqual([])
+  })
+
+  it.each([undefined, '', '   '])('rejects a missing/blank code (%j)', code => {
+    const payload = buildTemplatePayload('owner_verification', { ...otp, otpCode: code })
+    const result = validateTemplatePayload('owner_verification', payload)
+    expect(result.valid).toBe(false)
+  })
+
+  it('rejects a payload that carries a header', () => {
+    const payload = buildTemplatePayload('owner_verification', otp) as any
+    payload.template.components.unshift({ type: 'header', parameters: [{ type: 'image', image: { link: 'x' } }] })
+    expect(validateTemplatePayload('owner_verification', payload).valid).toBe(false)
+  })
+
+  it('rejects a payload without the copy-code button', () => {
+    const payload = buildTemplatePayload('owner_verification', otp) as any
+    payload.template.components = payload.template.components.filter((c: any) => c.type !== 'button')
+    expect(validateTemplatePayload('owner_verification', payload).valid).toBe(false)
+  })
+
+  it('leaves existing templates with their image header', () => {
+    const payload = buildTemplatePayload('membership_renewed', full) as any
+    expect(payload.template.components[0].type).toBe('header')
   })
 })

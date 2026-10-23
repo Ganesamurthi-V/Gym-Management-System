@@ -206,6 +206,7 @@ the merge.
   that one gym. It is checked fresh, never cached, in `sendTemplate` (every send passes through it, so callers must
   set `TemplateContext.gymId` from a server-resolved gym) and the daily cron skips such gyms. A skipped send is
   recorded as `error`, not `cancelled`, so reminders resume when it is switched back on. See `lib/whatsapp/gymGate.ts`.
+- **Meta 250 customers / 24 h limit:** the one shared number may message 250 UNIQUE customers per rolling 24 h (global, not per gym). `sendTemplate` reserves a slot via `reserve_whatsapp_recipient()` (`lib/whatsapp/recipientLimit.ts`) after validation and before the Graph call, and returns `deferred` (never a failure) when full or when the check errors (fail closed). The queue may only fill `LIMIT - RESERVE` so OTPs and inline sends keep headroom. See `lib/whatsapp/README.md`.
 - Template names and parameters must match Meta-approved templates exactly. New templates are added to
   `templateSpec.ts` + the union in `types/whatsapp.ts`, documented for Meta submission (see
   `lib/whatsapp/GAMIFICATION_TEMPLATES.md`, kept in sync by a test), and stay disabled until approved

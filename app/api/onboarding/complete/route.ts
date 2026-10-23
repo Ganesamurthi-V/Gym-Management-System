@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { roleFromClaims } from '@/lib/auth/roles'
@@ -357,6 +358,22 @@ export async function POST(req: NextRequest) {
         )
       }
     } else {
+      // No gym yet, so this call would create it. It must honour the same phone-verification
+      // gate as /api/auth/finalize-registration, otherwise an owner could skip the WhatsApp
+      // check by posting here directly.
+      const { data: verifiedPhone, error: phoneError } = await createAdminClient()
+        .from('owner_verified_phones')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (phoneError) {
+        log.error('Could not check phone verification during onboarding', databaseErrorDetails(phoneError))
+        return errorResponse('DATABASE_ERROR', 'We could not verify your registration right now. Please try again.', 500, true)
+      }
+      if (!verifiedPhone) {
+        return errorResponse('PHONE_NOT_VERIFIED', 'Verify your mobile number to continue.', 403)
+      }
+
       const parsedTrialDays = Number.parseInt(process.env.TRIAL_DURATION_DAYS ?? '14', 10)
       const trialDays = Number.isFinite(parsedTrialDays) && parsedTrialDays > 0 ? parsedTrialDays : 14
       const now = new Date()

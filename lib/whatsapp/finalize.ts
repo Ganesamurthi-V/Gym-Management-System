@@ -36,6 +36,7 @@ export function isTransientFailure(result: SendResult): boolean {
  *   transient/systemic → downgrade to 'error' (releases the slot; getCycleState
  *                        and resolveDueCycleKey ignore it, so the next run retries)
  *   skipped (gym switch off) → also 'error', for the same reason
+ *   deferred (24 h recipient limit) → also 'error', so a later run retries
  */
 export async function finalizeSendRow(
   supabase: SupabaseClient,
@@ -52,6 +53,10 @@ export async function finalizeSendRow(
     // switched back on the next run sends the reminder. 'cancelled' would close the cycle
     // for good (it means "the due was paid") and the member would never be reminded.
     ? { status: 'error', error_message: result.error ?? null }
+    : result.deferred
+    // Meta's 24 h unique-recipient limit: nothing was sent. Same reasoning as skipped: release
+    // the slot ('error') so a later run retries instead of closing the cycle.
+    ? { status: 'error', error_message: 'daily recipient limit' }
     : result.ambiguous
     // Outcome unknown: releasing the slot would let the next cron run resend a message Meta
     // may already have delivered. The queue's webhook / lease path resolves the real outcome.

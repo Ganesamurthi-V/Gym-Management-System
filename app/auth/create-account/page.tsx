@@ -8,6 +8,7 @@ import {
 import { AuthShell } from '@/components/auth/AuthShell'
 import { AuthAside } from '@/components/auth/AuthAside'
 import { AUTH_ASIDE } from '@/components/auth/authAsideContent'
+import { GoogleButton } from '@/components/auth/GoogleButton'
 import {
   authDividerLabel,
   authHeading,
@@ -300,6 +301,8 @@ export default function CreateAccountPage() {
                 {error}
               </div>
             )}
+
+            <GoogleButton />
 
             <form onSubmit={handleSubmit} className="space-y-[var(--auth-gap-sm)]">
               <div>

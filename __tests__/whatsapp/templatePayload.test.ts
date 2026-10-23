@@ -220,3 +220,15 @@ describe('buildTemplatePayload — gym_prize_awarded', () => {
     expect(bodyTexts(p)[2]).toBe('Last 7 days')
   })
 })
+
+describe('buildTemplatePayload — owner_verification', () => {
+  it('has no header and carries the code in body and button', () => {
+    const payload = buildTemplatePayload('owner_verification', { ...base, otpCode: '042817' }) as any
+    expect(payload.template.name).toBe('owner_verification')
+    expect(payload.template.language.code).toBe('en')
+    expect(payload.template.components.some((c: any) => c.type === 'header')).toBe(false)
+    expect(bodyTexts(payload)).toEqual(['042817'])
+    const button = payload.template.components.find((c: any) => c.type === 'button')
+    expect(button).toEqual({ type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: '042817' }] })
+  })
+})

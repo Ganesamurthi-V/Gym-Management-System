@@ -23,6 +23,7 @@ import { Redis } from '@upstash/redis'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
 import { finalizeSendRow } from './finalize'
+import { QUEUE_RECIPIENT_CAP } from './recipientLimit'
 import type { TemplateContext, TemplateId, SendResult } from '@/types/whatsapp'
 
 // ─── Cadence constants ──────────────────────────────────────────────────────
@@ -71,6 +72,8 @@ export interface DrainStats {
   sent: number
   failed: number
   retried: number
+  /** Rows put back because Meta's 24 h unique-recipient limit is reached (not attempts). */
+  deferred: number
   /** Sends whose outcome is unknown (timeout / 5xx); left 'sending' for webhook or lease. */
   unconfirmed: number
   /** Stale 'sending' rows returned to pending (or failed) by the lease reaper. */
@@ -325,8 +328,10 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
   const takeToken = deps.takeToken ?? defaultTakeToken
   const reschedule = deps.reschedule ?? kickDrain
 
-  const stats: DrainStats = { drained: 0, sent: 0, failed: 0, retried: 0, unconfirmed: 0, reaped: 0, remaining: 0, rescheduled: false }
+  const stats: DrainStats = { drained: 0, sent: 0, failed: 0, retried: 0, deferred: 0, unconfirmed: 0, reaped: 0, remaining: 0, rescheduled: false }
   let tokenExhausted = false
+  // Earliest time a denied recipient may be retried; sets the next drain delay.
+  let earliestRetryAt: number | null = null
 
   const nowIso = () => new Date().toISOString()
 
@@ -368,10 +373,10 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     let prepareFailure: { error: string; permanent: boolean } | null = null
     try {
       // dedupeKey is the row id, identical on every attempt: Meta echoes it in status webhooks.
-      let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId, dedupeKey: row.id }
+      let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId, dedupeKey: row.id, recipientCap: QUEUE_RECIPIENT_CAP }
       if (row.template_name === 'member_app_invitation') {
         const prep = await (deps.prepare ?? ((r) => defaultPrepare(supabase, r)))(row)
-        if (prep.ok) ctx = { ...prep.context, gymId: ctx.gymId, dedupeKey: row.id }
+        if (prep.ok) ctx = { ...prep.context, gymId: ctx.gymId, dedupeKey: row.id, recipientCap: QUEUE_RECIPIENT_CAP }
         else prepareFailure = { error: prep.error, permanent: prep.permanent }
       }
       // gymId rides along so sendTemplate can check the gym's WhatsApp switch at the moment of
@@ -387,6 +392,28 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
 
     // Reconcile the pre-claimed automation-log row (message id / failure status).
     await finalizeSendRow(supabase, row.log_row_id, result)
+
+    if (result.deferred) {
+      // The 24 h unique-recipient limit: nothing was sent, so this is not an attempt and not a
+      // failure. Back to pending at the time a slot frees up, with the claim's attempts
+      // increment reverted so a long wait cannot exhaust max_attempts.
+      const retryMs = result.retryAt ? new Date(result.retryAt).getTime() : NaN
+      const retryAtMs = Number.isNaN(retryMs) ? Date.now() + DRAIN_INTERVAL_MINUTES * 60_000 : retryMs
+      await supabase
+        .from('whatsapp_send_queue')
+        .update({
+          status: 'pending',
+          scheduled_at: new Date(retryAtMs).toISOString(),
+          locked_at: null,
+          attempts: row.attempts,
+          last_error: 'deferred: daily recipient limit',
+        })
+        .eq('id', row.id)
+      stats.deferred++
+      earliestRetryAt = earliestRetryAt === null ? retryAtMs : Math.min(earliestRetryAt, retryAtMs)
+      // Every other NEW recipient would be denied too; stop and let the next drain re-check.
+      break
+    }
 
     if (result.success) {
       // If this write keeps failing the row stays 'sending': the webhook or the lease resolves it.
@@ -449,7 +476,11 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
   stats.remaining = count ?? 0
 
   if (stats.remaining > 0 || tokenExhausted) {
-    stats.rescheduled = await reschedule(DRAIN_INTERVAL_MINUTES)
+    // After a deferral nothing new can go out until a slot frees up, so wait for that, but
+    // re-check at least hourly in case the limit was raised or slots freed early.
+    const untilRetry = earliestRetryAt === null ? DRAIN_INTERVAL_MINUTES : Math.ceil((earliestRetryAt - Date.now()) / 60_000)
+    const delay = earliestRetryAt === null ? DRAIN_INTERVAL_MINUTES : Math.min(60, Math.max(1, untilRetry))
+    stats.rescheduled = await reschedule(delay)
   }
 
   return stats

@@ -22,6 +22,7 @@
 import { fetchJson }              from '@/lib/fetch'
 import { getGymWhatsAppState, WHATSAPP_DISABLED_MESSAGE } from '@/lib/whatsapp/gymGate'
 import { logger }                 from '@/lib/logger'
+import { normalisePhone, reserveRecipient, releaseRecipient, DAILY_RECIPIENT_LIMIT } from '@/lib/whatsapp/recipientLimit'
 import { formatDate } from '@/lib/utils'
 import { GRAPH_PROXY_SECRET_HEADER, getGraphProxySecret } from '@/lib/graph-domain'
 import { validateTemplatePayload, formatValidationError } from './validateTemplate'
@@ -76,17 +77,6 @@ function getAuthHeader(): Record<string, string> {
 function proxySecretHeader(): Record<string, string> {
   const secret = getGraphProxySecret()
   return secret ? { [GRAPH_PROXY_SECRET_HEADER]: secret } : {}
-}
-
-function normalisePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
-  // The Indian subscriber number is the last 10 digits; always render as
-  // country-code + those 10 digits. Guarding on startsWith('91') was a bug:
-  // a valid 10-digit mobile that itself starts with "91" (e.g. 9198765432)
-  // would be left WITHOUT a country code and fail to route on WhatsApp.
-  // This form is also idempotent for numbers already stored as 91XXXXXXXXXX.
-  if (digits.length >= 10) return `91${digits.slice(-10)}`
-  return digits
 }
 
 function planLabel(plan?: string): string {
@@ -204,16 +194,39 @@ export async function sendTemplate(
     return { success: false, error }
   }
 
+  // Meta caps unique customers per rolling 24 h on our one shared number. Reserved only now,
+  // after the gym switch and validation, so a message that is never sent never burns a slot.
+  // Denied (or unable to check) means defer, not fail: the caller retries after retryAt.
+  const slot = await reserveRecipient(ctx.phone, { cap: ctx.recipientCap ?? DAILY_RECIPIENT_LIMIT })
+  if (!slot.allowed) {
+    logger.warn('sendTemplate deferred: daily recipient limit', { templateId, retryAt: slot.retryAt.toISOString() })
+    return { success: false, deferred: true, retryAt: slot.retryAt.toISOString(), error: 'WhatsApp daily recipient limit reached' }
+  }
+
   // Added after validation: the validator enforces the exact approved template contract and
   // this field is not part of it. Meta echoes it in status webhooks (max 512 chars); it is
   // an opaque row id, not PII, and the payload log above ran before it was added.
-  return sendMessage(ctx.dedupeKey ? { ...body, biz_opaque_callback_data: ctx.dedupeKey } : body)
+  const result = await sendMessage(ctx.dedupeKey ? { ...body, biz_opaque_callback_data: ctx.dedupeKey } : body)
+
+  // A definite rejection means Meta did not take the message, so a slot this attempt created
+  // is handed back. A success or an ambiguous outcome (it may have been delivered) keeps it.
+  if (!result.success && !result.ambiguous && slot.isNew) await releaseRecipient(ctx.phone)
+  return result
 }
 
 /** Mask all but the last 4 digits of the recipient for safe logging. */
 function maskRecipient(to?: string): string {
   if (!to) return ''
   return to.length <= 4 ? '****' : `${'*'.repeat(to.length - 4)}${to.slice(-4)}`
+}
+
+/**
+ * Send the signup phone-verification code. Sent inline (never queued) and WITHOUT gymId on
+ * purpose: no gym exists yet, so the per-gym WhatsApp switch cannot apply. gymName and
+ * memberName are unused by this template.
+ */
+export async function sendAuthOtp(phone: string, code: string): Promise<SendResult> {
+  return sendTemplate('owner_verification', { phone, gymName: '', memberName: '', otpCode: code })
 }
 
 // ─── uploadMedia ──────────────────────────────────────────────────────────────
@@ -519,6 +532,19 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
               txt(ctx.invitationToken ?? ''),
             ],
           },
+        ],
+      },
+    },
+    owner_verification: {
+      ...base,
+      template: {
+        name: 'owner_verification',
+        language: { code: 'en' },
+        // Authentication template: no header. The code goes in the body and again in the
+        // copy-code button (Meta requires both, sent as a url-type button at index 0).
+        components: [
+          { type: 'body', parameters: [txt(ctx.otpCode ?? '')] },
+          { type: 'button', sub_type: 'url', index: '0', parameters: [txt(ctx.otpCode ?? '')] },
         ],
       },
     },

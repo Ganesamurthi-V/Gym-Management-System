@@ -22,7 +22,7 @@ import {
  *   200 — gym record created successfully
  *   400 — malformed request
  *   401 — no valid session
- *   403 — email not yet confirmed
+ *   403 — email not yet confirmed, or PHONE_NOT_VERIFIED (no verified mobile number yet)
  *   409 — gym record already exists (idempotent — treat as success)
  *   500 — database or unexpected error
  */
@@ -116,6 +116,29 @@ export async function POST(_req: NextRequest) {
           { status: 500 },
         )
       }
+    }
+
+    // A gym is created only for an owner who proved their mobile number by WhatsApp code
+    // (/api/auth/phone/*). Checked after the existing-gym branch so current owners are untouched.
+    const { data: verifiedPhone, error: phoneError } = await adminClient
+      .from('owner_verified_phones')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (phoneError) {
+      console.error('[auth/finalize-registration] phone verification lookup failed:', phoneError.message)
+      return NextResponse.json(
+        { success: false, error: { code: 'DATABASE_ERROR', message: 'Failed to verify registration status. Please try again.' } },
+        { status: 500 },
+      )
+    }
+
+    if (!verifiedPhone) {
+      return NextResponse.json(
+        { success: false, error: { code: 'PHONE_NOT_VERIFIED', message: 'Verify your mobile number to continue.' } },
+        { status: 403 },
+      )
     }
 
     // ── 5. Resolve the user's full name from sign-up metadata ─────────────────

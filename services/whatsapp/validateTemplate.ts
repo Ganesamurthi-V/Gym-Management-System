@@ -125,6 +125,25 @@ export function validateTemplatePayload(
     }
   }
 
+  if (spec.header === 'none' && header) {
+    errors.push('this template has no header but a header component was sent.')
+  }
+
+  // ── Button (copy code): same wire shape as a URL button, parameter is the code ──
+  if (spec.button === 'copy_code') {
+    const button = findComponent(p, 'button')
+    if (!button) {
+      errors.push('copy-code button component is required but was not sent.')
+    } else {
+      const first = (button.parameters ?? [])[0] as any
+      if (first?.type !== 'text') {
+        errors.push(`copy-code button parameter must be text (got type "${first?.type}").`)
+      } else if (!isMeaningful(first?.text)) {
+        errors.push('copy-code button parameter (code) is null, undefined, or empty.')
+      }
+    }
+  }
+
   // ── Button (dynamic URL) ────────────────────────────────────────────────────
   if (spec.button === 'url') {
     const button = findComponent(p, 'button')

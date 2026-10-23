@@ -97,13 +97,13 @@ export default async function AppShell({ children }: { children: React.ReactNode
         redirect('/owner/subscription')
       }
     } else {
-      // No gym row for this owner. The middleware version of this guard called
-      // computeSubscriptionState(null), which returns isExpired: true, so it
-      // redirected in this case too. Preserved exactly rather than silently
-      // letting a gym-less session through.
+      // No gym row for this owner: a gym-less session never reaches the owner pages. The owner
+      // is signed in but has not finished registration, so the next step is the WhatsApp phone
+      // check, which creates the gym. Sending them to /owner/subscription instead looped
+      // forever, because that page sends gym-less owners to onboarding, which came back here.
       const pathname = (await headers()).get(PATHNAME_HEADER) ?? ''
       if (needsSubscriptionGuard(pathname)) {
-        redirect('/owner/subscription')
+        redirect('/auth/verify-phone')
       }
     }
   }

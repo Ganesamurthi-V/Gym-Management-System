@@ -15,6 +15,7 @@ interface InviteAllData {
   alreadyActivated: number
   alreadyQueued: number
   estimatedMinutes: number
+  dailyRecipientLimit?: number
 }
 
 function plural(n: number, word: string): string {
@@ -32,7 +33,11 @@ export async function inviteAllMembers(): Promise<ActionResult> {
     const d = res.data
     const parts: string[] = []
     if (d.queued > 0) {
-      parts.push(`${plural(d.queued, 'invitation')} queued. About ${d.estimatedMinutes} minutes to finish.`)
+      const days = Math.ceil(d.estimatedMinutes / 1440)
+      const eta = d.estimatedMinutes >= 1440
+        ? `About ${plural(days, 'day')} to finish: WhatsApp allows ${d.dailyRecipientLimit ?? 250} new customers per day.`
+        : `About ${d.estimatedMinutes} minutes to finish.`
+      parts.push(`${plural(d.queued, 'invitation')} queued. ${eta}`)
     } else {
       parts.push('No new invitations were queued.')
     }

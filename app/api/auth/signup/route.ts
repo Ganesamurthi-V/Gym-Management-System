@@ -7,6 +7,8 @@ import {
 } from '@/lib/auth/owner-registration'
 import { setupPasswordLinkFromHashedToken } from '@/lib/auth/email-links'
 import { sendSetPasswordEmail } from '@/lib/email/resend'
+import { normalizeIndianMobile } from '@/lib/auth/phone'
+import { recordPhoneLead } from '@/lib/auth/phone-leads'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -31,7 +33,8 @@ export const dynamic = 'force-dynamic'
  * Server-side account creation so the browser never calls supabase.co directly.
  * Wraps supabase.auth.signUp with rate limiting and input validation.
  *
- * Body: { email, fullName, mobileNumber }
+ * Body: { email, fullName, mobileNumber, marketingConsent? }. The mobile number is required and
+ * saved unverified.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -47,18 +50,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    let body: { email?: string; fullName?: string; mobileNumber?: string }
+    let body: { email?: string; fullName?: string; mobileNumber?: string; marketingConsent?: unknown }
     try { body = await req.json() } catch {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
-    const { email, fullName, mobileNumber } = body
+    const { email, fullName, mobileNumber, marketingConsent } = body
 
     if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
     }
     if (!fullName || typeof fullName !== 'string' || fullName.trim().length < 2) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
+    }
+
+    const mobileE164 = typeof mobileNumber === 'string' ? normalizeIndianMobile(mobileNumber) : null
+    if (!mobileE164) {
+      return NextResponse.json({ error: 'Enter a valid 10-digit mobile number.' }, { status: 400 })
     }
 
     const normalizedEmail = email.trim().toLowerCase()
@@ -81,7 +89,7 @@ export async function POST(req: NextRequest) {
         data: {
           full_name: fullName.trim(),
           name: fullName.trim(),
-          mobile_number: mobileNumber?.trim() || undefined,
+          mobile_number: mobileE164,
         },
         redirectTo: redirectUrl,
       },
@@ -153,6 +161,16 @@ export async function POST(req: NextRequest) {
         { status: 502 },
       )
     }
+
+    // Marketing-list record after the account is final (not rolled back). Best effort, never throws, so it cannot change this
+    // route's result.
+    await recordPhoneLead({
+      phoneE164: mobileE164,
+      email: normalizedEmail,
+      fullName: fullName.trim(),
+      userId: data.user.id,
+      consent: typeof marketingConsent === 'boolean' ? marketingConsent : null,
+    })
 
     // Best-effort indexed lookup for cross-device resends. The key is a SHA-256
     // digest of the address, not the email itself. A legacy admin lookup remains

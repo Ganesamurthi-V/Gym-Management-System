@@ -226,13 +226,13 @@ quality, so it is enforced strictly.
   `whatsapp_recipient_window(phone_e164, first_sent_at)`, service role only.
 - **Where it is enforced.** `sendTemplate` calls `reserve_whatsapp_recipient(phone, limit)` after the
   gym switch and validation and before the Graph call. Every send goes through it: queue, welcome,
-  renewal, prize, owner manual send and the signup OTP. The function takes an advisory lock, so two
+  renewal, prize and owner manual send. The function takes an advisory lock, so two
   senders cannot take the last slot.
-- **Reserve.** The queue may only use `LIMIT - RESERVE` unique recipients, so signup OTPs and inline
+- **Reserve.** The queue may only use `LIMIT - RESERVE` unique recipients, so inline
   welcome / renewal messages always have headroom.
 - **Defer, not fail.** A denied send returns `deferred` with `retryAt`. The queue puts the row back to
   `pending` at `retryAt` and does not count an attempt; automation log rows are released like
-  `skipped`. The owner manual send gets a 429, the OTP route a 503 `OTP_TEMPORARILY_UNAVAILABLE`.
+  `skipped`. The owner manual send gets a 429.
 - **Slot hand-back.** A definite Meta rejection releases a slot that this attempt created. A success
   or an ambiguous outcome keeps it.
 - **Fail closed.** If the RPC errors or is missing (migration not applied), nothing is sent; callers
@@ -302,3 +302,7 @@ Part of GymFlow SaaS platform.
 
 **Version:** 1.0.0  
 **Last Updated:** July 4, 2026
+
+## Signup phone code (archived)
+
+The WhatsApp OTP for signup phone verification was dropped (Meta rejected the code templates); its code and template contract are in `_archived/phone-otp-verification/`.

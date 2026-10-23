@@ -15,7 +15,6 @@
  *   'image' — approved header is an IMAGE; the payload MUST send a header
  *             component whose first parameter is the GymFlow image. All six
  *             approved templates use an image header.
- *   'none'  — approved template has no header (authentication templates).
  *
  * The four gym_* gamification templates at the end are specified here before they
  * exist in Meta. Their text is in GAMIFICATION_TEMPLATE_COPY, and nothing sends them
@@ -24,9 +23,9 @@
 
 import type { GamificationTemplateId, TemplateId } from '@/types/whatsapp'
 
-export type HeaderKind = 'image' | 'none'
+export type HeaderKind = 'image'
 
-export type ButtonKind = 'url' | 'copy_code'
+export type ButtonKind = 'url'
 
 export interface TemplateSpec {
   /** Exact approved template name (must equal the TemplateId). */
@@ -95,15 +94,6 @@ export const TEMPLATE_SPECS: Record<TemplateId, TemplateSpec> = {
     header: 'image',
     body: ['gymName', 'memberName'],
     button: 'url',
-  },
-  // Authentication template: header-less, body is the code, button is Meta's copy-code
-  // button (sent over the wire as a url-type button carrying the same code).
-  owner_verification: {
-    name: 'owner_verification',
-    language: 'en',
-    header: 'none',
-    body: ['otpCode'],
-    button: 'copy_code',
   },
 
   // ── Gamification (NOT in Meta yet; see GAMIFICATION_TEMPLATE_COPY below) ──────

@@ -175,6 +175,7 @@ export default function CreateAccountPage() {
   const [fullName, setFullName]       = useState('')
   const [email, setEmail]             = useState('')
   const [mobileNumber, setMobileNumber] = useState('')
+  const [marketingConsent, setMarketingConsent] = useState(false)
   const [agreedTerms, setAgreedTerms] = useState(false)
   const [agreedAuthority, setAgreedAuthority] = useState(false)
   const [loading, setLoading]         = useState(false)
@@ -227,6 +228,7 @@ export default function CreateAccountPage() {
           email,
           fullName: fullName.trim(),
           mobileNumber,
+          marketingConsent,
         }),
       })
       const json = await res.json()
@@ -373,6 +375,21 @@ export default function CreateAccountPage() {
                     <Check className="h-3 w-3" /> Looks good
                   </p>
                 )}
+                <label htmlFor="marketing-ca" className="mt-3 flex min-h-[44px] cursor-pointer items-start gap-3 text-sm text-neutral-700">
+                  <input
+                    id="marketing-ca"
+                    type="checkbox"
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 flex-shrink-0 rounded border-neutral-300 accent-brand-500"
+                  />
+                  <span>
+                    I agree to receive GymFlow updates and offers on WhatsApp.{' '}
+                    <a href="https://www.gymflow.sbs/privacy" target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline">
+                      Privacy policy
+                    </a>
+                  </span>
+                </label>
               </div>
 
               {/* Agreements. The panel is an opaque neutral fill, so the grid never sits

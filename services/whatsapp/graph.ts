@@ -220,15 +220,6 @@ function maskRecipient(to?: string): string {
   return to.length <= 4 ? '****' : `${'*'.repeat(to.length - 4)}${to.slice(-4)}`
 }
 
-/**
- * Send the signup phone-verification code. Sent inline (never queued) and WITHOUT gymId on
- * purpose: no gym exists yet, so the per-gym WhatsApp switch cannot apply. gymName and
- * memberName are unused by this template.
- */
-export async function sendAuthOtp(phone: string, code: string): Promise<SendResult> {
-  return sendTemplate('owner_verification', { phone, gymName: '', memberName: '', otpCode: code })
-}
-
 // ─── uploadMedia ──────────────────────────────────────────────────────────────
 
 /**
@@ -532,19 +523,6 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
               txt(ctx.invitationToken ?? ''),
             ],
           },
-        ],
-      },
-    },
-    owner_verification: {
-      ...base,
-      template: {
-        name: 'owner_verification',
-        language: { code: 'en' },
-        // Authentication template: no header. The code goes in the body and again in the
-        // copy-code button (Meta requires both, sent as a url-type button at index 0).
-        components: [
-          { type: 'body', parameters: [txt(ctx.otpCode ?? '')] },
-          { type: 'button', sub_type: 'url', index: '0', parameters: [txt(ctx.otpCode ?? '')] },
         ],
       },
     },

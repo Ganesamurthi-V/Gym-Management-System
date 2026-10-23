@@ -27,10 +27,10 @@ export const AUTH_PREFIX = '/auth'
  * Auth pages that must never redirect away even when a session exists, because
  * they are part of the email-verification + password-setup flow.
  *
- * `/auth/verify-phone` is the step before the gym exists: a signed-in owner with no gym
+ * `/auth/add-phone` is the step before the gym exists: a signed-in owner with no gym
  * yet must be able to stay on it (sending them to OWNER_HOME would hit AppShell and loop).
  */
-export const AUTH_SETUP_PATHS = ['/auth/setup-password', '/auth/verify-phone'] as const
+export const AUTH_SETUP_PATHS = ['/auth/setup-password', '/auth/add-phone'] as const
 
 /** Header the middleware uses to forward the current path to Server Components. */
 export const PATHNAME_HEADER = 'x-pathname'

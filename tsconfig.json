@@ -42,6 +42,7 @@
     "landing-page",
     "landing-page-1",
     "demo",
+    "_archived",
     "public/sw.js",
     "app/sw.ts"
   ]

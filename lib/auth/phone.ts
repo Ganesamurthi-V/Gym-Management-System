@@ -1,5 +1,5 @@
 /**
- * Indian mobile normaliser, shared by the phone-verification routes and tests.
+ * Indian mobile normaliser, shared by the phone routes, signup and tests.
  * No `server-only` on purpose so unit tests can import it directly.
  */
 
@@ -21,4 +21,9 @@ export function normalizeIndianMobile(input: string): string | null {
 export function maskIndianMobile(e164: string): string {
   const n = e164.slice(-10)
   return `+91 ${n.slice(0, 2)}${'X'.repeat(6)}${n.slice(-2)}`
+}
+
+/** The owner's saved mobile (E.164) from signup / phone-save metadata, or null when absent or invalid. */
+export function ownerMobileFromUser(user: { user_metadata?: Record<string, unknown> | null }): string | null {
+  return normalizeIndianMobile(String(user.user_metadata?.mobile_number ?? ''))
 }

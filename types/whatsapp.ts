@@ -191,8 +191,6 @@ export type TemplateId =
   | 'payment_due_reminder'
   | '_birthday_wishes'
   | 'member_app_invitation'
-  /** Meta AUTHENTICATION template: signup phone-ownership code. Not owner-facing. */
-  | 'owner_verification'
   | GamificationTemplateId
 
 export interface TemplateContext {
@@ -210,8 +208,6 @@ export interface TemplateContext {
   memberId?: string
   /** Secure token for the member_app_invitation dynamic URL button. */
   invitationToken?: string
-  /** owner_verification: the 6-digit code, sent as body {{1}} and the copy-code button. */
-  otpCode?: string
   /** gym_streak_at_risk: length of the member's current streak, in days. */
   streakDays?: number
   /** gym_weekly_goal_reached: days attended in the last 7 days. */

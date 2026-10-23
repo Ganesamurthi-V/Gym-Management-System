@@ -181,7 +181,7 @@ export async function GET(req: NextRequest) {
     if (otpError) throw new Error(`verifyOtp failed: ${otpError.message}`)
 
     const target = !gym
-      ? '/auth/verify-phone'
+      ? '/auth/add-phone'
       : gym.onboarding_completed
         ? '/owner/dashboard'
         : '/owner/onboarding'

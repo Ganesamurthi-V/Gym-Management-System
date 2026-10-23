@@ -176,8 +176,8 @@ export async function POST(req: NextRequest) {
       success: true,
       role,
       onboardingCompleted,
-      // No gym row yet means registration is unfinished: the phone check comes before onboarding.
-      redirectTo: onboardingCompleted ? homeForRole(role) : gymRow ? '/owner/onboarding' : '/auth/verify-phone',
+      // No gym row yet means registration is unfinished: the mobile number is collected on /auth/add-phone before onboarding.
+      redirectTo: onboardingCompleted ? homeForRole(role) : gymRow ? '/owner/onboarding' : '/auth/add-phone',
       userName: (data.user.user_metadata?.name as string | undefined) ?? null,
     })
   } catch {

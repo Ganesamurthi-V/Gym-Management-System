@@ -98,12 +98,12 @@ export default async function AppShell({ children }: { children: React.ReactNode
       }
     } else {
       // No gym row for this owner: a gym-less session never reaches the owner pages. The owner
-      // is signed in but has not finished registration, so the next step is the WhatsApp phone
-      // check, which creates the gym. Sending them to /owner/subscription instead looped
+      // is signed in but has not finished registration, so the next step is the mobile number step (/auth/add-phone, no code verification)
+      // which creates the gym. Sending them to /owner/subscription instead looped
       // forever, because that page sends gym-less owners to onboarding, which came back here.
       const pathname = (await headers()).get(PATHNAME_HEADER) ?? ''
       if (needsSubscriptionGuard(pathname)) {
-        redirect('/auth/verify-phone')
+        redirect('/auth/add-phone')
       }
     }
   }

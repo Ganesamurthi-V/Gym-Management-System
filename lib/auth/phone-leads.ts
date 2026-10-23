@@ -27,15 +27,3 @@ export async function recordPhoneLead(args: {
     logger.error('phone lead record threw', { phone: maskIndianMobile(args.phoneE164), reason: err instanceof Error ? err.message : 'unknown' })
   }
 }
-
-export async function markPhoneLeadVerified(phoneE164: string, userId: string): Promise<void> {
-  try {
-    const { error } = await createAdminClient().rpc('mark_owner_phone_lead_verified', {
-      p_phone: phoneE164,
-      p_user_id: userId,
-    })
-    if (error) logger.error('phone lead verify mark failed', { phone: maskIndianMobile(phoneE164), reason: error.message })
-  } catch (err) {
-    logger.error('phone lead verify mark threw', { phone: maskIndianMobile(phoneE164), reason: err instanceof Error ? err.message : 'unknown' })
-  }
-}

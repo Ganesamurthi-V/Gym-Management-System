@@ -606,6 +606,16 @@ const PREFIX: [string, AlertGuide][] = [
     },
   ],
   [
+    'sentry:',
+    {
+      happening: 'Sentry raised an alert (new issue, error alert rule or metric alert) and forwarded it here.',
+      failing: 'Depends on the issue: see the title and the Sentry link in the details.',
+      check: ['Open the Sentry link in the details and read the stack trace and affected release.', 'Check whether it started with the latest deploy.'],
+      fix: ['Fix the error in code and deploy, or resolve/ignore the issue in Sentry if it is harmless.'],
+      links: [VERCEL],
+    },
+  ],
+  [
     'drill:',
     {
       happening: 'This is a TEST alert from a drill. Nothing is actually wrong.',
@@ -617,7 +627,9 @@ const PREFIX: [string, AlertGuide][] = [
 ]
 
 /** Resolve by exact key, then prefix, then `cron:<name>:stale`-style pattern, else the generic guide. */
-export function getAlertGuide(key: string): AlertGuide {
+export function getAlertGuide(fullKey: string): AlertGuide {
+  // A dedupe fingerprint ("key#fingerprint") never changes which guide applies.
+  const key = fullKey.split('#')[0]
   const exact = EXACT[key]
   if (exact) return exact
   for (const [prefix, guide] of PREFIX) if (key.startsWith(prefix)) return guide

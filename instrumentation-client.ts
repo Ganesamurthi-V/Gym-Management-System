@@ -11,6 +11,10 @@ Sentry.init({
   // Add NEXT_PUBLIC_SENTRY_DSN to Vercel env vars and rotate the key in Sentry → Project Settings → Client Keys.
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  // Tags events so alerts show where and which deploy. Undefined unless Vercel system env vars are exposed.
+  environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
+  release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+
   // Add optional integrations for additional features
   integrations: [Sentry.replayIntegration()],
 

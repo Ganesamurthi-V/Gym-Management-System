@@ -11,6 +11,10 @@ Sentry.init({
   // Issue A fix: DSN moved to environment variable (was hardcoded — same bug as instrumentation-client.ts).
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  // Tags events so alerts show where and which deploy. Undefined unless Vercel system env vars are exposed.
+  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+  release: process.env.VERCEL_GIT_COMMIT_SHA,
+
   // Issue A fix: 10% sampling in production.
   // Edge middleware runs on every protected route request — 100% tracing is extremely costly.
   tracesSampleRate: isProd ? 0.1 : 1.0,

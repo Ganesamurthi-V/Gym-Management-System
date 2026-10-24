@@ -144,7 +144,7 @@ export async function enqueueSend(
     console.error('[WA Queue] enqueue failed:', error.message)
     // A reminder that is not queued is silently never sent; the owner must hear about it.
     reportAlertInBackground({
-      key: 'wa:enqueue_failed', severity: 'critical', title: 'WhatsApp message not queued',
+      key: 'wa:enqueue_failed', fingerprint: params.templateName, severity: 'critical', title: 'WhatsApp message not queued',
       body: `Template ${params.templateName}, gym ${params.gymId}: ${error.message}`,
       gymId: params.gymId,
     })
@@ -288,9 +288,19 @@ async function alertPublishFailure(status: number | null): Promise<void> {
     reportAlertInBackground({ key: 'wa:qstash_auth', severity: 'critical', title: 'QStash token or URL wrong',
       body: `QStash publish returned HTTP ${status}; check QSTASH_TOKEN and QSTASH_URL (region).` })
   } else {
-    reportAlertInBackground({ key: 'wa:qstash_publish', severity: 'critical', title: 'QStash publish failed',
+    reportAlertInBackground({ key: 'wa:qstash_publish', fingerprint: status === null ? 'network' : String(status), severity: 'critical', title: 'QStash publish failed',
       body: status === null ? 'QStash publish threw a network error.' : `QStash publish returned HTTP ${status}.` })
   }
+}
+
+/** Bounded class of a send error, so different failure kinds alert separately without unbounded keys. */
+function sendErrorClass(message: string): string {
+  const m = message.toLowerCase()
+  if (/token|oauth|190|unauthor/.test(m)) return 'token'
+  if (/template/.test(m)) return 'template'
+  if (/rate|limit|131056|130429/.test(m)) return 'rate_limit'
+  if (/timeout|timed out|network|fetch/.test(m)) return 'network'
+  return 'other'
 }
 
 export async function kickDrain(delayMinutes = 0, opts: { continuation?: boolean } = {}): Promise<boolean> {
@@ -298,7 +308,7 @@ export async function kickDrain(delayMinutes = 0, opts: { continuation?: boolean
   const token = process.env.QSTASH_TOKEN
   if (!url || !token) {
     reportAlertInBackground({
-      key: 'wa:qstash_publish', severity: 'critical', title: 'QStash not configured',
+      key: 'wa:qstash_publish', fingerprint: 'not_configured', severity: 'critical', title: 'QStash not configured',
       body: 'QSTASH_TOKEN or NEXT_PUBLIC_APP_URL is missing, so the WhatsApp queue cannot be scheduled.',
     })
     return false
@@ -601,7 +611,7 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
   }
   if (stats.failed > 0) {
     const top = [...failedErrors.entries()].sort((a, b) => b[1] - a[1])[0]
-    reportAlertInBackground({ key: 'wa:send_failed', severity: 'warning', title: 'WhatsApp sends failed permanently',
+    reportAlertInBackground({ key: 'wa:send_failed', fingerprint: sendErrorClass(top ? top[0] : ''), severity: 'warning', title: 'WhatsApp sends failed permanently',
       body: `${stats.failed} message(s) failed this run. Most common error: ${top ? top[0] : 'unknown'}.` })
   }
 

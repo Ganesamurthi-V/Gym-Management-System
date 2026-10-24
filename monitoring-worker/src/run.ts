@@ -1,7 +1,7 @@
-import { PROBES, CANARY_ENABLED, CANARY_MIN_INTERVAL_MS, MAX_SUBREQUESTS, RETRY_CUTOFF, MAX_INDIVIDUAL_ALERTS, LAST_RUN_REFRESH_MS } from './config'
+import { PROBES, CANARY_ENABLED, CANARY_MIN_INTERVAL_MS, MAX_SUBREQUESTS, RETRY_CUTOFF, MAX_INDIVIDUAL_ALERTS, LAST_RUN_REFRESH_MS, LONG_OPEN_MS, DIGEST_EVERY_MS } from './config'
 import { runProbe, realSleep, type FetchFn, type SleepFn, type ProbeResult } from './probe'
 import { decide, emptyState, revertUnsent, probesDiffer, type State } from './state'
-import { sendTelegram, formatMessage, formatSummary } from './telegram'
+import { sendTelegram, formatMessage, formatSummary, formatDigest } from './telegram'
 import { runCanary } from './canary'
 
 export interface Env {
@@ -74,6 +74,8 @@ export async function runOnce(
   // Skipped probes are absent from `results`, so decide() leaves their previous state untouched.
   // sent[i] tells whether message i reached Telegram; a message that did not is retried next run.
   const msgs = d.messages
+  // "Still open" comes from stored state only: every probe that is currently alerted.
+  const open = Object.entries(d.next.probes).filter(([, st]) => st.alerted).map(([name, st]) => ({ name, since: st.since }))
   let sent: boolean[] = msgs.map(() => false)
   if (!kvReadable) {
     // State unknown: every failure would look new and re-alert every run. One labelled summary at most, no reminders.
@@ -83,13 +85,21 @@ export async function runOnce(
     }
   } else if (msgs.length > MAX_INDIVIDUAL_ALERTS || (skipped > 0 && msgs.length > 0)) {
     if (used < maxSubrequests) {
-      const ok = await sendTelegram(env, formatSummary(msgs, skipped, now), counted)
+      const ok = await sendTelegram(env, formatSummary(msgs, skipped, now, undefined, open), counted)
       sent = msgs.map(() => ok)
     }
   } else {
     sent = await Promise.all(
-      msgs.map((m) => (used < maxSubrequests ? sendTelegram(env, formatMessage(m, now), counted) : Promise.resolve(false))),
+      msgs.map((m) => (used < maxSubrequests ? sendTelegram(env, formatMessage(m, now, open), counted) : Promise.resolve(false))),
     )
+  }
+
+  // 6-hourly digest, only while something has been down for 6 hours or more (one extra write per digest).
+  if (kvReadable && now - (prev.digestAt ?? 0) >= DIGEST_EVERY_MS && used < maxSubrequests) {
+    const long = Object.entries(d.next.probes)
+      .filter(([, st]) => st.alerted && now - st.since >= LONG_OPEN_MS)
+      .map(([name, st]) => ({ name, since: st.since, reason: st.reason }))
+    if (long.length > 0 && (await sendTelegram(env, formatDigest(long, now), counted))) d.next.digestAt = now
   }
 
   if (kvReadable) {

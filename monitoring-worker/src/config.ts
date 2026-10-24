@@ -59,3 +59,7 @@ export const MAX_SUBREQUESTS = 45
 export const RETRY_CUTOFF = 30
 /** More alerts than this in one run are sent as a single summary message. */
 export const MAX_INDIVIDUAL_ALERTS = 2
+
+/** An issue open this long goes into the 6-hourly digest, sent at most once per DIGEST_EVERY_MS. */
+export const LONG_OPEN_MS = 6 * 60 * 60 * 1000
+export const DIGEST_EVERY_MS = 6 * 60 * 60 * 1000

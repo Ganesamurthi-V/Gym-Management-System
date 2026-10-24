@@ -264,7 +264,7 @@ async function handleFailedStatus(
     reportAlertInBackground({ key: 'wa:meta_rate_limited', severity: 'critical', title: 'WhatsApp rate limited by Meta',
       body: `Meta reported ${reason}` })
   } else if (kind === 'other') {
-    reportAlertInBackground({ key: 'wa:delivery_failed', severity: 'warning', title: 'WhatsApp delivery failed',
+    reportAlertInBackground({ key: 'wa:delivery_failed', fingerprint: String(status.errorCode ?? 'unknown'), severity: 'warning', title: 'WhatsApp delivery failed',
       body: `Meta error code ${status.errorCode ?? 'unknown'}: ${status.errorMessage ?? 'no detail'}` })
   }
   // 'recipient' (131030 / 131026: not on WhatsApp / undeliverable) is a normal user-level failure:

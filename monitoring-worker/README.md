@@ -128,3 +128,15 @@ When more than 2 alerts fire in one run (or work was skipped) you get ONE summar
 ### Editing the help text
 
 All wording lives in `src/guides.ts`. Each probe has a short entry (`label`, `happening`, `failing`, `check`, `fix`) and optional `variants` that replace parts of it for a specific problem: `notfound` (404), `server` (5xx), `auth` (401/403), `timeout`, `network`, `keyword`, `config` (Worker secret missing), `open` (a guard answered 200), `rate` (canary login limit). Keep each step to one short line and only name places that exist. When you add a probe to `src/config.ts` also add a guide: a test fails if you forget. Run `npm test` after editing.
+
+### Open issues never delay new ones
+
+Every probe is judged on its own: an alert that is already open does not block a different probe from alerting in the same run, and an open alert is not re-sent before its own 60-minute reminder. Every alert and summary that is not a recovery ends with a short line built from stored state, for example:
+
+```
+Still open: api-health (1h 30m), graph-proxy (45m)
+24 Oct 2026, 10:12 PM IST (16:42 UTC)
+Next reminder in 60 min while this stays down.
+```
+
+(Shortened with "+N more" after about 300 characters.) If something has been down for 6 hours or more you also get a `[STILL DOWN]` digest listing each long-open probe, how long, and its first fix step, at most once every 6 hours (one extra KV write per digest).

@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
       void bumpCounter(`wa:webhook:schema:${hourBucket()}`, 7200).then(n => {
         if (n !== null && n >= 5) {
           reportAlertInBackground({
-            key: 'wa:webhook_schema_invalid', severity: 'warning', title: 'WhatsApp webhook payloads failing validation',
+            key: 'wa:webhook_schema_invalid', fingerprint: String(issues[0]?.path?.join('.') ?? 'unknown').replace(/\d+/g, 'n'), severity: 'warning', title: 'WhatsApp webhook payloads failing validation',
             body: `${n} payloads failed schema validation this hour. First issue: ${issues[0] ? summariseIssues([issues[0]]) : 'unknown'}`,
           })
         }
@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
     })
 
     reportAlertInBackground({
-      key: 'wa:webhook_error', severity: 'warning', title: 'WhatsApp webhook processing error',
+      key: 'wa:webhook_error', fingerprint: eventType, severity: 'warning', title: 'WhatsApp webhook processing error',
       body: `Event type ${eventType}: ${error instanceof Error ? error.message : String(error)}`,
     })
 

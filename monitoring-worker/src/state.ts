@@ -13,6 +13,8 @@ export interface State {
   lastRun: number
   /** Time of the last canary login, so it runs at most every 15 minutes. */
   canaryLast?: number
+  /** Time of the last 6-hourly "still down" digest. */
+  digestAt?: number
   probes: Record<string, ProbeState>
 }
 
@@ -97,5 +99,5 @@ export function revertUnsent(prev: State, next: State, failed: AlertMessage[]): 
 
 /** True when probe states or the canary stamp differ (ignores lastRun, which is refreshed hourly). */
 export function probesDiffer(prev: State, next: State): boolean {
-  return JSON.stringify(prev.probes) !== JSON.stringify(next.probes) || prev.canaryLast !== next.canaryLast
+  return JSON.stringify(prev.probes) !== JSON.stringify(next.probes) || prev.canaryLast !== next.canaryLast || prev.digestAt !== next.digestAt
 }

@@ -42,7 +42,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
  *     they also have no Referer (indicates non-browser caller).
  *   - `null` Origin (privacy redirects, data: URIs) is rejected.
  */
-function passesCsrfCheck(req: NextRequest): boolean {
+export function passesCsrfCheck(req: NextRequest): boolean {
   // Custom XHR header is sufficient — a cross-origin request cannot set it
   // without a preflight, and our server sends no permissive CORS headers.
   if (req.headers.get('x-requested-with') === 'XMLHttpRequest') return true

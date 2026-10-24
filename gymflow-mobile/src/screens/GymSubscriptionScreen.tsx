@@ -1002,10 +1002,33 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 <Feather name="calendar" size={14} color={D.textMuted} style={lintStyles.mb4} />
                 <Text style={styles.dateCellLabel}>Expires On</Text>
                 <Text style={styles.dateCellValue}>
-                  {gym.plan_type === 'lifetime' ? 'Never' : fmtDate(gym.subscription_ends_at || gym.trial_ends_at)}
+                  {/* Free has no end date; falling back to trial_ends_at would show the old trial date. */}
+                  {gym.plan_type === 'lifetime' || gym.plan_type === 'free'
+                    ? 'Never'
+                    : fmtDate(gym.subscription_ends_at || gym.trial_ends_at)}
                 </Text>
               </View>
             </View>
+
+            {/* WhatsApp add-on: shown for Free gyms, and for any gym that has ever had one. */}
+            {(gym.plan_type === 'free' || gym.whatsapp_addon_until) && (() => {
+              const until = gym.whatsapp_addon_until ? new Date(gym.whatsapp_addon_until) : null;
+              const addonDays = until ? Math.ceil((until.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+              const active = until !== null && addonDays > 0;
+              const color = active ? D.emerald : until ? D.red : D.textMuted;
+              const bg = active ? D.emeraldBg : until ? D.redBg : 'transparent';
+              const text = active
+                ? `WhatsApp add-on active until ${fmtDate(gym.whatsapp_addon_until)} (${addonDays} day${addonDays !== 1 ? 's' : ''} left)`
+                : until
+                  ? `WhatsApp add-on expired on ${fmtDate(gym.whatsapp_addon_until)}`
+                  : 'WhatsApp add-on: not purchased';
+              return (
+                <View style={[styles.daysRemainingRow, { backgroundColor: bg, borderColor: color + '44' }]}>
+                  <Feather name="message-circle" size={14} color={color} />
+                  <Text style={[styles.daysRemainingText, { color }]}>{text}</Text>
+                </View>
+              );
+            })()}
 
             {/* Days remaining with progress bar */}
             {days !== null && !isExpired && gym.plan_type !== 'lifetime' && (

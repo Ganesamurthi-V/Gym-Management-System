@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { logger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
+import { passesCsrfCheck } from '@/lib/api/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,12 @@ const planSchema = z.enum(['monthly', 'yearly', 'whatsapp_addon']).optional()
  * then inserts a row into `subscription_requests`.
  */
 export async function POST(req: NextRequest) {
+  // Not wrapped in withAuth (it reads multipart form data itself), so apply the same CSRF check:
+  // without it a cross-site form could submit a payment request with the owner's cookies.
+  if (!passesCsrfCheck(req)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

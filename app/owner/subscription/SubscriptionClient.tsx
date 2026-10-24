@@ -271,7 +271,14 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     const finalNotes = `Intended Plan: ${selectedPlan.toUpperCase()}\n${notes}`
     fd.append('notes', finalNotes.trim())
 
-    const res = await fetch('/api/subscription/request', { method: 'POST', body: fd })
+    // Raw fetch (multipart upload), so send the CSRF header lib/api/client.ts would add.
+    // No Content-Type: the browser sets the multipart boundary itself.
+    const res = await fetch('/api/subscription/request', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
     const json = await res.json()
 
     if (!res.ok) {

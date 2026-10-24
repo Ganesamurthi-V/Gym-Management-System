@@ -7,9 +7,12 @@ import {
 } from '@/lib/subscription-utils'
 
 describe('importRowsToTake', () => {
-  it('caps trial at 50', () => {
+  it('caps trial imports at 50 members for the whole gym', () => {
     expect(importRowsToTake('trial', 0, 60)).toBe(50)
     expect(importRowsToTake('trial', 0, 10)).toBe(10)
+    expect(importRowsToTake('trial', 45, 20)).toBe(5)
+    expect(importRowsToTake('trial', 50, 20)).toBe(0)
+    expect(importRowsToTake('trial', 80, 20)).toBe(0)
   })
   it('caps free by remaining room', () => {
     expect(importRowsToTake('free', 45, 20)).toBe(5)

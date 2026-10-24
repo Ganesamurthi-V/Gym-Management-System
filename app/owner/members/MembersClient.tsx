@@ -17,19 +17,21 @@ interface Props {
   members: MemberWithStatus[]
   gymId: string
   totalCount: number
+  /** Trial/Free gym at the 50-member import cap; computed server-side, the API still enforces it. */
+  importBlocked?: boolean
 }
 
 type FilterType = 'all' | 'active' | 'expiring' | 'expired'
 
-export function MembersClient({ members, gymId, totalCount }: Props) {
+export function MembersClient({ members, gymId, totalCount, importBlocked }: Props) {
   return (
     <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
-      <MembersContent members={members} gymId={gymId} totalCount={totalCount} />
+      <MembersContent members={members} gymId={gymId} totalCount={totalCount} importBlocked={importBlocked} />
     </Suspense>
   )
 }
 
-function MembersContent({ members, gymId, totalCount }: Props) {
+function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -340,9 +342,11 @@ function MembersContent({ members, gymId, totalCount }: Props) {
             <Download className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
-          <Link href="/owner/import" {...tourAttr('membersImport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
+          <Link href={importBlocked ? '/owner/subscription' : '/owner/import'} {...tourAttr('membersImport')} className={importBlocked
+            ? 'flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all'
+            : 'flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all'}>
             <Upload className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
-            <span className="hidden sm:inline">Import</span>
+            <span className="hidden sm:inline">{importBlocked ? 'Upgrade to import' : 'Import'}</span>
           </Link>
           <Link href="/owner/members/bulk-edit" {...tourAttr('membersBulkEdit')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
             <Edit2 className="w-3.5 h-3.5 xs:w-4 xs:h-4" />

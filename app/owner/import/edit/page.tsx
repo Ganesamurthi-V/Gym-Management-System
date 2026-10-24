@@ -8,6 +8,7 @@ import { clearImportStorage } from "@/lib/import/storage";
 import { importErrorMessage, messageForApiError, readImportResponse } from "@/lib/import/api-errors";
 import type { ImportedRow } from "../page";
 import WizardHeader from "@/components/import/WizardHeader";
+import PlanNotice from "@/components/subscription/PlanNotice";
 
 type Step = "edit" | "preview" | "done";
 interface DoneResult { success: number; skipped: number; planSkipped: number }
@@ -33,6 +34,8 @@ export default function ImportEditPage() {
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
+  // Set when the server says the plan's member cap is reached, so the upgrade notice replaces the generic error.
+  const [planLimit, setPlanLimit] = useState(false);
   const [doneResult, setDoneResult] = useState<DoneResult>({ success: 0, skipped: 0, planSkipped: 0 });
   const [activeAreaIdx, setActiveAreaIdx] = useState<number | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
@@ -252,6 +255,7 @@ export default function ImportEditPage() {
   async function handleSave() {
     setLoading(true);
     setError("");
+    setPlanLimit(false);
 
     try {
       const toInsert = validRows;
@@ -276,6 +280,7 @@ export default function ImportEditPage() {
         data?: { member_ids?: string[]; imported?: number; skipped?: number };
       }>(res);
       if (!res.ok || !result.success) {
+        if (result.error?.code === "PLAN_MEMBER_LIMIT") setPlanLimit(true);
         throw new Error(messageForApiError(result.error));
       }
 
@@ -409,7 +414,11 @@ export default function ImportEditPage() {
         <span className="text-red-500 font-semibold">{skippedRows.length} will be skipped</span>
       </div>
 
-      {(conflictCount > 0 || missingIdCount > 0 || error) && (
+      {planLimit && error && (
+        <PlanNotice tone="warning" message={error} action={{ href: "/owner/subscription", label: "Upgrade to a paid plan" }} />
+      )}
+
+      {(conflictCount > 0 || missingIdCount > 0 || (error && !planLimit)) && (
         <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
           <p className="text-sm font-semibold text-red-700">

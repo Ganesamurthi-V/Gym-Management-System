@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { MemberShell } from '@/components/member/MemberShell'
 import { SessionLifecycle } from '@/components/member/SessionLifecycle'
 import { QueryProvider } from '@/components/providers/QueryProvider'
-import { getMemberWithGym, getMemberAppAccess } from '@/lib/member/member-data'
+import { getMemberAccessState } from '@/lib/member/member-data'
 import { getAuthUser } from '@/lib/dal'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { OWNER_HOME } from '@/lib/protected-routes'
@@ -72,9 +72,9 @@ export const viewport: Viewport = {
 export default async function MemberLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const data = await getMemberWithGym()
+  const access = await getMemberAccessState()
 
-  if (!data) {
+  if (access.state === 'not_member') {
     /**
      * Two very different situations land here, so they get different exits.
      * Both extra reads happen ONLY on this failure path, so the happy path
@@ -90,9 +90,11 @@ export default async function MemberLayout({
     redirect('/auth/login?role=member&error=not_member')
   }
 
-  // Plan gate: Free gyms have no member app and trial gyms cover their first 50 members. Checked
-  // here, the authorization boundary, so every /m/* route is covered. Fresh read, fails closed.
-  if (!(await getMemberAppAccess(data.member))) {
+  // Plan gate: Free gyms have no member app and trial gyms cover their first 50 members. Fresh
+  // read, fails closed. This only renders the notice; the data itself is withheld by the gated
+  // getMemberWithGym(), since pages render in parallel with this layout and client-side
+  // navigation skips it.
+  if (access.state === 'blocked') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-surface px-4">
         <div className="max-w-sm text-center">

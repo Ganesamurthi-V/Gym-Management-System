@@ -3372,6 +3372,16 @@ BEGIN
   THEN
     RAISE EXCEPTION 'free_plan_member_limit' USING ERRCODE = '23514';
   END IF;
+
+  -- Trial: imports (not manual adds) stop at 50 members for the whole gym. The row
+  -- lock above makes a concurrent second import fail here, which the import route
+  -- reports as the upgrade message rather than a generic error.
+  IF v_plan = 'trial'
+     AND NEW.is_imported IS TRUE
+     AND (SELECT count(*) FROM public.members WHERE gym_id = NEW.gym_id) >= 50
+  THEN
+    RAISE EXCEPTION 'trial_import_member_limit' USING ERRCODE = '23514';
+  END IF;
   RETURN NEW;
 END;
 $$;

@@ -173,7 +173,7 @@ export default async function MembersPage() {
           </div>
         )}
         <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
-          <MembersClient members={result} gymId={gym.id} totalCount={count} />
+          <MembersClient members={result} gymId={gym.id} totalCount={count} importBlocked={(free || gym.plan_type === 'trial') && count >= FREE_PLAN_MEMBER_LIMIT} />
         </Suspense>
       </div>
     )

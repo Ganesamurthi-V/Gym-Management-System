@@ -29,7 +29,8 @@ export default async function HomePage() {
   ])
   if (!data) {
     done()
-    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load your profile. Please try logging out and back in.</p></div>
+    // Null also means a plan-blocked member: render nothing; the layout shows the notice.
+    return null
   }
   const { member, gym, state } = data
   const { status, daysLeft, latest } = state

@@ -1,5 +1,6 @@
 import { after } from 'next/server'
 import { logger } from '@/lib/logger'
+import { getAlertGuide } from '@/lib/monitoring/alertGuides'
 
 /**
  * Failure alerting: Telegram (independent of Vercel/Supabase) + admin app history/push
@@ -79,18 +80,93 @@ export function scrubPii(text: string): string {
     .join('')
 }
 
-export function buildTelegramText(input: AlertInput, env: string, nowMs: number): string {
-  const body = input.body.length > BODY_MAX ? `${input.body.slice(0, BODY_MAX)}...` : input.body
-  const tag = input.severity === 'critical' ? '[CRITICAL]' : '[WARNING]'
-  const lines = [
-    `<b>${tag} GymFlow</b>`,
-    `<b>${escapeHtml(input.title)}</b>`,
+const TELEGRAM_MAX = 4096
+const NOTIFICATION_BODY_MAX = 400
+
+const defaultCooldown = (severity: AlertSeverity) => (severity === 'critical' ? 1800 : 21600)
+
+function muteHint(cooldownSeconds: number): string {
+  const mins = Math.round(cooldownSeconds / 60)
+  return mins < 60 ? `Repeats are muted for ${mins} min` : `Repeats are muted for ${Math.round(mins / 60)} h`
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** e.g. "24 Oct 2026, 10:12 PM IST (16:42 UTC)". IST is a fixed UTC+5:30, no DST. */
+export function formatIstUtc(nowMs: number): string {
+  const ist = new Date(nowMs + 330 * 60_000)
+  const h24 = ist.getUTCHours()
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  const two = (n: number) => String(n).padStart(2, '0')
+  const utc = new Date(nowMs)
+  return `${ist.getUTCDate()} ${MONTHS[ist.getUTCMonth()]} ${ist.getUTCFullYear()}, ${h12}:${two(ist.getUTCMinutes())} ${h24 < 12 ? 'AM' : 'PM'} IST (${two(utc.getUTCHours())}:${two(utc.getUTCMinutes())} UTC)`
+}
+
+// Ops message for the owner's Telegram, not product UI: these three circles are the only emojis used.
+function marker(input: AlertInput): { symbol: string; word: string } {
+  if (input.key.startsWith('drill:')) return { symbol: '\u{1F535}', word: 'DRILL' } // blue
+  return input.severity === 'critical'
+    ? { symbol: '\u{1F534}', word: 'CRITICAL' } // red
+    : { symbol: '\u{1F7E1}', word: 'WARNING' } // yellow
+}
+
+const numbered = (items: string[]) => items.map((t, i) => `${i + 1}. ${escapeHtml(t)}`).join('\n')
+
+/**
+ * Structured Telegram message (HTML parse mode). Details are truncated first when the message would
+ * pass Telegram's 4096 limit; the check and fix steps are never cut.
+ */
+export function buildTelegramText(input: AlertInput, env: string, nowMs: number, cooldownSeconds?: number): string {
+  const guide = getAlertGuide(input.key)
+  const m = marker(input)
+  const cooldown = cooldownSeconds ?? input.cooldownSeconds ?? defaultCooldown(input.severity)
+  // Gym id goes first so truncating a long body never cuts it.
+  const detailsRaw = [input.gymId ? `gym: ${input.gymId}` : '', input.body.trim()].filter(Boolean).join('\n')
+
+  const render = (detailMax: number): string => {
+    let details = detailsRaw
+    if (details.length > detailMax) details = `${details.slice(0, Math.max(0, detailMax))}...`
+    const parts = [
+      `${m.symbol} <b>${m.word}: ${escapeHtml(input.title)}</b>`,
+      `<b>What is happening</b>\n${escapeHtml(guide.happening)}`,
+      `<b>What is failing</b>\n${escapeHtml(guide.failing)}`,
+    ]
+    if (detailsRaw && detailMax > 0) parts.push(`<b>Details</b>\n<pre>${escapeHtml(details)}</pre>`)
+    parts.push(`<b>What to check</b>\n${numbered(guide.check)}`)
+    parts.push(`<b>How to fix</b>\n${numbered(guide.fix)}`)
+    if (guide.links?.length) {
+      parts.push(`<b>Links</b>\n${guide.links.map(l => `<a href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a>`).join('\n')}`)
+    }
+    parts.push(
+      `<i>${escapeHtml(env)} | ${formatIstUtc(nowMs)}</i>\n<code>${escapeHtml(input.key)}</code>\n<i>${muteHint(cooldown)}</i>`,
+    )
+    return parts.join('\n\n')
+  }
+
+  let max = BODY_MAX
+  let text = render(max)
+  while (text.length > TELEGRAM_MAX && max > 0) {
+    max = Math.max(0, max - Math.max(50, text.length - TELEGRAM_MAX))
+    text = render(max)
+  }
+  return text
+}
+
+/** Short system message (cap notice): same look, no guide. */
+export function buildSystemText(title: string, body: string, env: string, nowMs: number): string {
+  return [
+    `\u{1F7E1} <b>WARNING: ${escapeHtml(title)}</b>`,
     escapeHtml(body),
-    `env: ${escapeHtml(env)}`,
-    `time: ${new Date(nowMs).toISOString()}`,
-  ]
-  if (input.gymId) lines.push(`gym: ${escapeHtml(input.gymId)}`)
-  return lines.join('\n')
+    `<i>${escapeHtml(env)} | ${formatIstUtc(nowMs)}</i>`,
+  ].join('\n\n')
+}
+
+/** Compact body for the admin app list: scrubbed body plus the first thing to check. */
+export function buildNotificationBody(input: AlertInput): string {
+  const first = `First step: ${getAlertGuide(input.key).check[0]}`
+  const room = Math.max(0, NOTIFICATION_BODY_MAX - first.length - 1)
+  const body = input.body.length > room ? `${input.body.slice(0, Math.max(0, room - 3))}...` : input.body
+  return body ? `${body}\n${first}` : first
 }
 
 type Verdict = { verdict: 'send' | 'dup' | 'cap'; notice?: boolean; suppressed?: number }
@@ -146,8 +222,8 @@ export function createAlerter(deps: AlertDeps) {
     return { verdict: 'cap', notice, suppressed: memCap.suppressed }
   }
 
-  async function gate(input: AlertInput): Promise<Verdict & { release: () => Promise<void> }> {
-    const cooldown = input.cooldownSeconds ?? (input.severity === 'critical' ? 1800 : 21600)
+  async function gate(input: AlertInput): Promise<Verdict & { release: () => Promise<void>; cooldown: number }> {
+    const cooldown = input.cooldownSeconds ?? defaultCooldown(input.severity)
     const max = parseMax(deps.env.ALERT_MAX_PER_HOUR)
     const limit = input.severity === 'critical' ? max : Math.max(1, Math.floor(max * WARNING_SHARE))
     const hour = new Date(deps.now()).toISOString().slice(0, 13).replace(/[-T]/g, '')
@@ -163,7 +239,7 @@ export function createAlerter(deps: AlertDeps) {
       memory.delete(`alert:${input.key}`)
       if (usedRedis && r) await withTimeout(r.del(`alert:${input.key}`), 1000)
     }
-    return { ...v, release }
+    return { ...v, release, cooldown }
   }
 
   /** True when Telegram confirmed delivery, or is not configured (a retry would be pointless). */
@@ -196,7 +272,7 @@ export function createAlerter(deps: AlertDeps) {
       // notifications table is service-role only. Input is server-built, never client input.
       const sb = await deps.supabase()
       const { error } = await sb.from('notifications').insert({
-        type: 'alert', gym_id: input.gymId ?? null, title: input.title, body: input.body, entity_id: input.key,
+        type: 'alert', gym_id: input.gymId ?? null, title: input.title, body: buildNotificationBody(input), entity_id: input.key,
       })
       if (error) { logger.warn('alert: history insert failed', { reason: error.message }); return false }
       return true
@@ -216,16 +292,18 @@ export function createAlerter(deps: AlertDeps) {
     const envName = env.VERCEL_ENV ?? env.NODE_ENV ?? 'unknown'
     if (g.verdict === 'cap') {
       if (g.notice) {
-        const text = buildTelegramText({
-          key: 'cap', severity: 'warning', title: 'Alert cap reached',
-          body: `alert cap reached, ${g.suppressed ?? 0} suppressed`,
-        }, envName, deps.now())
+        const text = buildSystemText(
+          'Alert cap reached',
+          `alert cap reached, ${g.suppressed ?? 0} suppressed. See the admin app and Vercel logs for what is failing.`,
+          envName,
+          deps.now(),
+        )
         await withTimeout(telegram(text), SINK_TIMEOUT_MS)
       }
       return
     }
     logger.error('alert raised', { alertKey: input.key, severity: input.severity })
-    const tg = withTimeout(telegram(buildTelegramText(input, envName, deps.now())), SINK_TIMEOUT_MS)
+    const tg = withTimeout(telegram(buildTelegramText(input, envName, deps.now(), g.cooldown)), SINK_TIMEOUT_MS)
     const hist = withTimeout(history(input), SINK_TIMEOUT_MS)
     const sinks: Promise<unknown>[] = [tg, hist]
     if (input.severity === 'critical' && deps.sentry) {

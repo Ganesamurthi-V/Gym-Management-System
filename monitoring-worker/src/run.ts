@@ -61,7 +61,7 @@ export async function runOnce(
   let canaryRan = false
   if (canaryEnabled && now - (prev.canaryLast ?? 0) >= CANARY_MIN_INTERVAL_MS) {
     if (used + 3 + TELEGRAM_RESERVE <= maxSubrequests) {
-      results.push(...(await runCanary(env, counted)))
+      results.push(...(await runCanary(env, counted)).map((x) => (x.ok ? x : { ...x, kind: 'canary' as const, status: Number(/status (\d{3})/.exec(x.reason)?.[1]) || undefined })))
       canaryRan = true
     } else {
       skipped++

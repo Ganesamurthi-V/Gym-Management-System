@@ -6,6 +6,9 @@ export interface ProbeResult {
   ok: boolean
   /** Short human reason when !ok. Never contains secrets. */
   reason: string
+  /** Structured detail used only to pick a fix guide for the alert text. */
+  kind?: 'status' | 'timeout' | 'network' | 'keyword' | 'config' | 'canary'
+  status?: number
 }
 
 export type FetchFn = (input: string, init?: RequestInit) => Promise<Response>
@@ -31,6 +34,11 @@ export function classify(expect: Expect, status: number, body: string | null): s
   return null
 }
 
+/** Maps a classify() reason to a failure kind. */
+export function kindOf(reason: string): 'status' | 'keyword' {
+  return reason.startsWith('keyword') || reason === 'response is not JSON' ? 'keyword' : 'status'
+}
+
 function describeError(e: unknown): string {
   const name = (e as { name?: string })?.name
   return name === 'TimeoutError' || name === 'AbortError' ? 'timeout' : 'network error'
@@ -46,11 +54,13 @@ export async function runProbe(
   const base = { name: probe.name, critical: probe.critical }
   const headers: Record<string, string> = { 'user-agent': 'gymflow-monitoring/1' }
   if (probe.healthSecret) {
-    if (!env.HEALTH_CHECK_SECRET) return { ...base, ok: false, reason: 'HEALTH_CHECK_SECRET not set on the Worker' }
+    if (!env.HEALTH_CHECK_SECRET) return { ...base, ok: false, reason: 'HEALTH_CHECK_SECRET not set on the Worker', kind: 'config' }
     headers['x-health-secret'] = env.HEALTH_CHECK_SECRET
   }
 
   let reason = 'unknown'
+  let kind: ProbeResult['kind'] = 'network'
+  let status: number | undefined
   for (let attempt = 1; attempt <= 2; attempt++) {
     let retryable = false
     try {
@@ -61,13 +71,17 @@ export async function runProbe(
       const fail = classify(probe.expect, res.status, body)
       if (fail === null) return { ...base, ok: true, reason: '' }
       reason = fail
+      kind = kindOf(fail)
+      status = res.status
       retryable = res.status >= 500
     } catch (e) {
       reason = describeError(e)
+      kind = reason === 'timeout' ? 'timeout' : 'network'
+      status = undefined
       retryable = true
     }
     if (!retryable || attempt === 2 || !canRetry()) break
     await sleep(RETRY_DELAY_MS)
   }
-  return { ...base, ok: false, reason }
+  return { ...base, ok: false, reason, kind, status }
 }

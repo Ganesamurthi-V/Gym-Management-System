@@ -21,6 +21,10 @@ export interface AlertMessage {
   name: string
   reason: string
   reminder: boolean
+  kind?: ProbeResult['kind']
+  status?: number
+  /** When the probe first failed (ms). */
+  since?: number
 }
 
 export const emptyState = (): State => ({ lastRun: 0, probes: {} })
@@ -41,7 +45,7 @@ export function decide(
       if (cur) {
         delete next.probes[r.name]
         changed = true
-        if (cur.alerted) messages.push({ level: 'RECOVERED', name: r.name, reason: cur.reason, reminder: false })
+        if (cur.alerted) messages.push({ level: 'RECOVERED', name: r.name, reason: cur.reason, reminder: false, since: cur.since })
       }
       continue
     }
@@ -57,11 +61,11 @@ export function decide(
     if (!st.alerted && fails >= threshold) {
       st.alerted = true
       st.lastAlert = now
-      messages.push({ level, name: r.name, reason: r.reason, reminder: false })
+      messages.push({ level, name: r.name, reason: r.reason, reminder: false, kind: r.kind, status: r.status, since: st.since })
       changed = true
     } else if (st.alerted && now - st.lastAlert >= REMINDER_MS) {
       st.lastAlert = now
-      messages.push({ level, name: r.name, reason: r.reason, reminder: true })
+      messages.push({ level, name: r.name, reason: r.reason, reminder: true, kind: r.kind, status: r.status, since: st.since })
       changed = true
     }
     if (fails !== (cur?.fails ?? 0)) changed = true

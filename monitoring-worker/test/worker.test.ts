@@ -129,7 +129,7 @@ describe('state machine', () => {
 
   it('critical alerts on the first failing run', () => {
     const d = decide(emptyState(), [fail('a', true)], 1000 * MIN)
-    expect(d.messages).toEqual([{ level: 'CRITICAL', name: 'a', reason: 'status 500', reminder: false }])
+    expect(d.messages).toMatchObject([{ level: 'CRITICAL', name: 'a', reason: 'status 500', reminder: false }])
     expect(d.changed).toBe(true)
   })
 
@@ -154,7 +154,7 @@ describe('state machine', () => {
     const t0 = 1000 * MIN
     const d1 = decide(emptyState(), [fail('a', true)], t0)
     const d2 = decide(d1.next, [ok('a', true)], t0 + 5 * MIN)
-    expect(d2.messages).toEqual([{ level: 'RECOVERED', name: 'a', reason: 'status 500', reminder: false }])
+    expect(d2.messages).toMatchObject([{ level: 'RECOVERED', name: 'a', reason: 'status 500', reminder: false }])
     expect(d2.next.probes.a).toBeUndefined()
   })
 

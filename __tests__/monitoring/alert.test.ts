@@ -185,11 +185,10 @@ describe('message formatting', () => {
       'production',
       Date.UTC(2026, 9, 24),
     )
-    expect(text).toContain('[WARNING] GymFlow')
-    expect(text).toContain('&lt;b&gt;&amp;')
+    expect(text).toContain('WARNING: &lt;b&gt;&amp;')
     expect(text).toContain('gym: g&lt;1&gt;')
-    expect(text).toContain('2026-10-24T00:00:00.000Z')
-    expect(text.length).toBeLessThan(1700)
+    expect(text).toContain('24 Oct 2026, 5:30 AM IST (00:00 UTC)')
+    expect(text.length).toBeLessThan(4096)
     expect(text).not.toContain('x'.repeat(1600))
   })
 
@@ -200,7 +199,7 @@ describe('message formatting', () => {
     expect(url).toBe(`https://api.telegram.org/bot${TOKEN}/sendMessage`)
     const payload = JSON.parse(init.body)
     expect(payload).toMatchObject({ chat_id: '42', parse_mode: 'HTML', disable_web_page_preview: true })
-    expect(payload.text).toContain('[CRITICAL] GymFlow')
+    expect(payload.text).toContain('CRITICAL: Boom')
   })
 })
 
@@ -325,7 +324,7 @@ describe('PII scrubbing', () => {
     expect(text).toContain('[email]')
     expect(text).toContain('[number]')
     expect(text).not.toContain('9876543210')
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ title: 'u [email]', body: 'phone [number]' }))
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ title: 'u [email]', body: expect.stringContaining('phone [number]') }))
     expect(sentry).toHaveBeenCalledWith('u [email]')
   })
 })

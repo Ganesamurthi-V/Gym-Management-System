@@ -86,3 +86,45 @@ Never point the canary at a real gym.
 - **Duplicate or stuck alerts**: state lives in KV key `state`; delete it with `npx wrangler kv key delete state --binding STATE` to reset.
 - **Telegram was down during an outage**: a probe is only marked alerted after Telegram accepted the message (or the summary that included it). If the send fails the alert is retried on the next run (5 minutes later), and a failed `[RECOVERED]` message is also retried. Look for `telegram:` lines in `npx wrangler tail`.
 - **One message saying "State storage (KV) is unavailable"**: the Worker could not read its saved state, so it cannot tell new failures from old ones. It sends at most one summary per run, sends no reminders and does not write state, so a good saved state is never overwritten. Check the KV namespace id in `wrangler.jsonc` and Cloudflare status; alerts may repeat until KV works again.
+
+## What the alerts look like
+
+Each alert explains what is happening, what is failing, what to check and how to fix it, in plain English. The times are shown in IST and UTC. Sample (plain-text rendering of the Telegram message):
+
+```
+🔴 [CRITICAL] api-watchdog
+
+What is happening
+The app refused the Worker's password for the health check (401). The two copies of HEALTH_CHECK_SECRET are different.
+
+What is failing
+The deep checks are not running, so database or WhatsApp problems would go unnoticed.
+Observed: status 401, expected 200. Failing since 24 Oct 2026, 10:02 PM IST (16:32 UTC) (about 10 min).
+
+What to check
+1. Vercel dashboard > your project > Settings > Environment Variables: is HEALTH_CHECK_SECRET set for Production?
+2. Was it changed or rotated recently?
+
+How to fix
+1. Set the Worker to the same value: run `npx wrangler secret put HEALTH_CHECK_SECRET` in the monitoring-worker folder.
+2. Or change it in Vercel and redeploy so both match.
+
+24 Oct 2026, 10:12 PM IST (16:42 UTC)
+Next reminder in 60 min while this stays down.
+```
+
+Recovered:
+
+```
+🟢 [RECOVERED] api-watchdog
+
+App watchdog is working again.
+It was down for about 25 min.
+No action needed.
+```
+
+When more than 2 alerts fire in one run (or work was skipped) you get ONE summary instead: a list of what is failing, the shared cause once (for example "5 checks on app.gymflow.sbs fail the same way, so the whole app is probably affected"), then the first step for each remaining check.
+
+### Editing the help text
+
+All wording lives in `src/guides.ts`. Each probe has a short entry (`label`, `happening`, `failing`, `check`, `fix`) and optional `variants` that replace parts of it for a specific problem: `notfound` (404), `server` (5xx), `auth` (401/403), `timeout`, `network`, `keyword`, `config` (Worker secret missing), `open` (a guard answered 200), `rate` (canary login limit). Keep each step to one short line and only name places that exist. When you add a probe to `src/config.ts` also add a guide: a test fails if you forget. Run `npm test` after editing.

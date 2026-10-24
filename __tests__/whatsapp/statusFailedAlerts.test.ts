@@ -49,6 +49,7 @@ vi.mock('@/lib/whatsapp/idempotency', () => ({ checkAndMarkEvent: vi.fn(async ()
 vi.mock('@/repositories/whatsapp/whatsappRepository', () => ({ updateMessageStatus: vi.fn() }))
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), captureMessage: vi.fn() }))
 
+import * as Sentry from '@sentry/nextjs'
 import { processStatuses, classifyMetaError } from '@/services/whatsapp/statusProcessor'
 
 const log: any = { start: vi.fn(), end: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
@@ -62,6 +63,7 @@ const keys = () => h.alert.mock.calls.map((c: any[]) => c[0].key)
 
 beforeEach(() => {
   h.alert.mockClear()
+  vi.mocked(Sentry.captureMessage).mockClear()
   h.expire.mockClear()
   h.updates.length = 0
   h.rows = {}
@@ -117,6 +119,19 @@ describe('failed delivery status', () => {
     await flush()
     expect(h.alert).not.toHaveBeenCalled()
     expect(h.incr).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([131026, 131030])('%i is a recipient failure: no Sentry event, counted only', async (code) => {
+    await processStatuses([failed(code)], log)
+    await flush()
+    expect(Sentry.captureMessage).not.toHaveBeenCalled()
+    expect(h.alert).not.toHaveBeenCalled()
+    expect(h.incr).toHaveBeenCalledTimes(1)
+  })
+
+  it('an unknown failure code still reaches Sentry', async () => {
+    await processStatuses([failed(999999, 'weird')], log)
+    expect(Sentry.captureMessage).toHaveBeenCalledWith('WhatsApp message delivery failed', expect.anything())
   })
 
   it.each([131048, 130429])('%i -> critical wa:meta_rate_limited', async (code) => {

@@ -233,17 +233,23 @@ async function handleFailedStatus(
     log.error(`Failed to persist delivery failure for ${status.messageId}`, error)
   }
 
-  // Report to Sentry for monitoring
-  Sentry.captureMessage('WhatsApp message delivery failed', {
-    level: 'warning',
-    tags: {
-      message_id: status.messageId,
-      error_code: status.errorCode?.toString(),
-    },
-    extra: {
-      status,
-    },
-  })
+  const kind = classifyMetaError(status.errorCode, status.errorMessage)
+
+  // Recipient failures (131026 / 131030) are routine: a number not on WhatsApp is a per-customer
+  // outcome, not a fault in our system, so they never create a Sentry event. They are still
+  // counted toward the hourly rate below.
+  if (kind !== 'recipient') {
+    Sentry.captureMessage('WhatsApp message delivery failed', {
+      level: 'warning',
+      tags: {
+        message_id: status.messageId,
+        error_code: status.errorCode?.toString(),
+      },
+      extra: {
+        status,
+      },
+    })
+  }
 
   // Meta retries events it could not deliver for days (e.g. after an outage of this endpoint).
   // The state change above is still correct for an old failure, but alerting on it would report
@@ -256,7 +262,6 @@ async function handleFailedStatus(
   }
 
   // Alerts. Never include the recipient number.
-  const kind = classifyMetaError(status.errorCode, status.errorMessage)
   if (kind === 'token') {
     reportAlertInBackground({ key: 'wa:token_invalid', severity: 'critical', title: 'WhatsApp access token invalid or expired: renew it',
       body: `Meta reported ${reason}` })

@@ -49,8 +49,7 @@ export function BentoFeatures() {
           <span className="reveal eyebrow">Core modules</span>
           <h2 id="features-title" className="reveal display-2 mt-4 text-balance">
             {'Everything your gym needs: '}
-            <br />
-            <span className="text-muted-foreground">Nothing it doesn't.</span>
+            <span className="text-muted-foreground">members, fees, attendance, WhatsApp</span>
           </h2>
           <p className="reveal lead mt-5 max-w-[560px]">
             Members, payments, attendance and WhatsApp reminders in one place, with a member app
@@ -95,14 +94,14 @@ export function BentoFeatures() {
           <div className="reveal grid md:col-span-2 lg:col-span-1 lg:min-h-[320px]">
             <BorderGlow as="article" className="glow-card-accent" contentClassName="p-5 md:p-6" {...ACCENT_GLOW}>
               <h3 className="text-[22px] font-medium leading-[1.1] tracking-tight text-accent-ink md:text-[24px]">
-                Payments &amp; dues
+                Fees and dues
               </h3>
               <p className="mt-2 max-w-[320px] text-[14px] leading-relaxed text-accent-ink/80">
                 Cash, UPI or card. Reminders sent for you.
               </p>
               <p className="mt-3 text-[13px]">
-                <a href="/fees-and-dues" className={ACCENT_LINK_CLASS}>
-                  More on payments and dues
+                <a href="/fees-and-dues" className={`${ACCENT_LINK_CLASS} inline-flex min-h-[44px] items-center`}>
+                  More on fees and dues
                 </a>
               </p>
               <PaymentPills className="mt-4 lg:mt-auto" />
@@ -121,6 +120,7 @@ export function BentoFeatures() {
 export function DashboardStats({ className = '' }: { className?: string }) {
   return (
     <div className={`grid grid-cols-2 gap-3 ${className}`}>
+      <p className="col-span-2 -mb-1 text-[11px] text-muted-foreground">Sample data</p>
       {STATS.map(stat => (
         <div key={stat.label} className="rounded-2xl border border-border-subtle bg-subtle p-4">
           <p className="text-[13px] text-muted-foreground">{stat.label}</p>
@@ -136,6 +136,7 @@ export function DashboardStats({ className = '' }: { className?: string }) {
 export function AttendanceRows({ className = '' }: { className?: string }) {
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
+      <p className="text-[11px] text-muted-foreground">Sample data</p>
       {ATTENDANCE_ROWS.map(row => (
         <div
           key={row.name}
@@ -157,6 +158,7 @@ export function AttendanceRows({ className = '' }: { className?: string }) {
 export function PaymentPills({ className = '' }: { className?: string }) {
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
+      <p className="text-[11px] text-accent-ink/80">Sample data</p>
       <Pill icon={<Wallet className="h-4 w-4" />} text="₹18,600 pending" />
       <Pill icon={<BellRing className="h-4 w-4" />} text="14 reminders sent" />
     </div>
@@ -199,7 +201,7 @@ function Card({
         {links && (
           <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
             {links.map(link => (
-              <a key={link.href} href={link.href} className={LINK_CLASS}>
+              <a key={link.href} href={link.href} className={`${LINK_CLASS} inline-flex min-h-[44px] items-center`}>
                 {link.label}
               </a>
             ))}

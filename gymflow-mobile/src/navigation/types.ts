@@ -11,6 +11,7 @@ export type RootStackParamList = {
   GymDetail: { gymId: string };
   GymSubscription: { gymId: string };
   Notifications: undefined;
+  Announcements: undefined;
   // An email conversation in the support inbox. Push taps and the inbox list open it.
   EmailThread: { threadId: string };
   // Writing a reply: Gmail-style composer with formatting and attachments. `initialText`

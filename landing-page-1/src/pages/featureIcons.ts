@@ -1,4 +1,4 @@
-import { CalendarCheck, ChartColumn, IndianRupee, MessageCircle, Smartphone, Upload, Users, type LucideIcon } from 'lucide-react';
+import { BookOpen, CalendarCheck, ChartColumn, Dumbbell, IndianRupee, MessageCircle, Smartphone, Tag, Upload, Users, type LucideIcon } from 'lucide-react';
 import type { FeatureIcon } from '../data/featurePages';
 
 export const ICONS: Record<FeatureIcon, LucideIcon> = {
@@ -9,4 +9,7 @@ export const ICONS: Record<FeatureIcon, LucideIcon> = {
   message: MessageCircle,
   chart: ChartColumn,
   upload: Upload,
+  dumbbell: Dumbbell,
+  tag: Tag,
+  book: BookOpen,
 };

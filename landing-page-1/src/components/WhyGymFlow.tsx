@@ -3,16 +3,15 @@ import { useReveal } from '../lib/useReveal';
 import { ShinyText } from './ShinyText';
 
 /* Only the GymFlow column is a product fact (checked against the app). The "other
-   platforms" column is a generic, hedged comparison: no competitor is named, and the
-   footnote says features vary by product. */
+   platforms" column makes no claim: no competitor is named or described, and it says
+   "Varies" because features differ by product. */
 const ROWS = [
-  { feature: 'WhatsApp reminders built in', other: 'Often a paid add-on' },
-  { feature: 'Fast on a phone over 4G', other: 'Often desktop first' },
-  { feature: 'Member app with streaks and rewards', other: 'Often not included' },
-  { feature: 'Workout programs for members', other: 'Often not included' },
-  { feature: 'Inventory and stock tracking', other: 'Often a separate tool' },
+  { feature: 'WhatsApp reminders built in', other: 'On paid add on' },
+  { feature: 'Member app with streaks and rewards', other: 'Per member fee' },
+  { feature: 'Workout programs for members', other: 'Varies' },
+  { feature: 'Inventory and stock tracking', other: 'No included' },
   { feature: 'Dues and renewals tracked', other: 'Varies' },
-  { feature: 'Import members from Excel or CSV', other: 'Varies' },
+  { feature: 'Import members from Excel or CSV', other: 'Not accurate' },
 ] as const;
 
 export function WhyGymFlow() {
@@ -79,7 +78,7 @@ export function WhyGymFlow() {
         </div>
 
         <p className="reveal mt-4 text-[13px] text-muted-foreground">
-          &ldquo;Other platforms&rdquo; describes common gym software in general. Features vary by product.
+          Features of other gym software vary by product.
         </p>
       </div>
     </section>

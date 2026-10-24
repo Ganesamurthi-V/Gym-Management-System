@@ -87,15 +87,42 @@
       })();
     </script>
     <style>
-      .js #seo-fallback { display: none; }
-      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 48px 20px; font: 16px/1.6 system-ui, sans-serif; }
-      #seo-fallback h1 { font-size: 34px; line-height: 1.15; }
+      .mounted #seo-fallback { display: none; }
+      /*
+        The static copy is the first paint, not just a no-JavaScript fallback: it stays visible until
+        React has mounted (the .mounted class, added after the first commit), so the screen is no
+        longer blank while the 65 KB-brotli shared chunk downloads (feature pages measured 3.7 s to
+        first paint on a throttled phone, 4.5 s in the audit). Styled to look like the real hero's
+        first screen: same stack and sizes, centred H1, muted intro, pill buttons, and the
+        breadcrumb small and muted above the H1. Hex values mirror the tokens in src/index.css
+        (--background, --foreground, --muted-foreground, --hero-copy, --border-strong) because
+        this block loads before that file; html.dark is set by the bootstrap script above.
+      */
+      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 124px 20px 48px; font: 16px/1.6 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #0a0a0a; }
+      #seo-fallback a { color: #1d4ed8; }
+      #seo-fallback nav { text-align: center; font-size: 13px; line-height: 32px; color: #6b6b6b; }
+      #seo-fallback nav a { color: inherit; text-decoration: none; }
+      #seo-fallback h1 { margin: 24px 0 0; text-align: center; text-wrap: balance; font-size: clamp(40px, 5vw, 72px); font-weight: 500; line-height: 1.1; letter-spacing: -0.025em; }
+      #root:not([data-page]) #seo-fallback h1 { margin-top: 64px; font-size: clamp(40px, 9vw, 96px); }
+      #seo-fallback h1 + p { max-width: 640px; margin: 24px auto 0; text-align: center; font-size: clamp(16px, 1.35vw, 19px); color: #3a3a3a; }
+      #seo-fallback h1 + p + p { display: flex; justify-content: center; gap: 12px; margin-top: 32px; font-size: 0; }
+      #seo-fallback h1 + p + p a { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; padding: 12px 22px; border-radius: 9999px; font-size: 14px; font-weight: 500; line-height: 1.25; white-space: nowrap; text-decoration: none; color: #0a0a0a; border: 1px solid #d4d4d4; }
+      #seo-fallback h1 + p + p a:first-child { background: #0a0a0a; color: #f5f5f5; border-color: #0a0a0a; }
+      @media (min-width: 640px) { #seo-fallback h1 + p + p a { flex: none; } }
+      #seo-fallback h1 + p + p + p { margin-top: 24px; text-align: center; font-size: 13px; color: #6b6b6b; }
       #seo-fallback h2 { font-size: 22px; margin-top: 36px; }
       #seo-fallback h3 { font-size: 17px; margin-top: 20px; }
+      html.dark #seo-fallback { color: #fafafa; }
+      html.dark #seo-fallback a { color: #93c5fd; }
+      html.dark #seo-fallback nav a { color: inherit; }
+      html.dark #seo-fallback nav, html.dark #seo-fallback h1 + p + p + p { color: #a3a3a3; }
+      html.dark #seo-fallback h1 + p { color: #dedede; }
+      html.dark #seo-fallback h1 + p + p a { color: #fafafa; border-color: #333333; }
+      html.dark #seo-fallback h1 + p + p a:first-child { background: #fafafa; color: #141414; border-color: #fafafa; }
     </style>
 <!--
-      Google Analytics 4, in Consent Mode. analytics_storage starts "denied": the tag loads
-      (so Google's tag checker detects it) but sets no cookies and keeps no identifier until
+      Google Analytics 4, in Consent Mode. analytics_storage starts "denied": the tag is set up
+      (gtag.js is fetched only after consent, see gfLoadGtag) and sets no cookies and keeps no identifier until
       the visitor allows visit counting in the cookie card, which calls
       gtag('consent', 'update', ...) (src/lib/analytics.ts). A returning visitor who already
       allowed it is granted straight away from the saved choice. Only on the real domain, so
@@ -120,9 +147,18 @@
         });
         gtag('js', new Date());
         gtag('config', ID);
-        var s = document.createElement('script');
-        s.async = true;
-        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID;
-        document.head.appendChild(s);
+        // gtag.js itself is fetched only once visit counting is allowed: at once for a returning
+        // visitor who already allowed it, and for a new one when they accept (analytics.ts calls
+        // this). Until then the commands above only queue in dataLayer and nothing is requested.
+        var loaded = false;
+        window.gfLoadGtag = function () {
+          if (loaded) return;
+          loaded = true;
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID;
+          document.head.appendChild(s);
+        };
+        if (allowed) window.gfLoadGtag();
       })();
     </script>

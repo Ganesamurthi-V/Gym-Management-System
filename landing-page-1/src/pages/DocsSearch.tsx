@@ -6,7 +6,7 @@ import { searchDocs } from '../lib/docsSearch';
  * Documentation search box with a results list (combobox + listbox). `/` focuses the visible
  * box when the visitor is not typing elsewhere. Results are real links to /slug#section-id.
  */
-export function DocsSearch({ onNavigate }: { onNavigate?: () => void }) {
+export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: () => void; focusOnMount?: boolean }) {
   const id = useId();
   const listId = `${id}-results`;
   const input = useRef<HTMLInputElement>(null);
@@ -15,6 +15,11 @@ export function DocsSearch({ onNavigate }: { onNavigate?: () => void }) {
   const [active, setActive] = useState(0);
   const results = useMemo(() => searchDocs(query), [query]);
   const showList = open && query.trim().length > 0;
+
+  // The sidebar mounts this box after expanding from the rail; take focus then.
+  useEffect(() => {
+    if (focusOnMount) input.current?.focus();
+  }, [focusOnMount]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

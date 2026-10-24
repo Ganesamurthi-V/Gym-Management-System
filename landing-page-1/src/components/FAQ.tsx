@@ -36,11 +36,11 @@ const FAQS = [
   },
   {
     q: 'How fast does support reply?',
-    a: 'Every plan includes priority support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
+    a: 'Every plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
   },
   {
     q: 'How do I reach support?',
-    a: 'Over WhatsApp, phone, or email. Priority support is part of the plan, so you reach the people who build GymFlow rather than a ticket queue.',
+    a: 'Over WhatsApp, phone, or email. You talk to the person who builds GymFlow rather than a ticket queue, and we reply within 24 hours. Support in English and Tamil.',
   },
   {
     q: 'Where can I check if GymFlow is working?',
@@ -83,7 +83,7 @@ export function FAQ() {
           <h2 id="faq-title" className="reveal display-2 mt-4 text-balance">
             {'Gym software FAQ: everything you '}
             <em className="display-accent">need</em>
-            {' to know.'}
+            {' to know'}
           </h2>
           <p className="reveal lead mt-5 max-w-[440px]">
             Straight answers on pricing, WhatsApp messages and moving your members over.

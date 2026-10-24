@@ -31,7 +31,7 @@ const COLUMNS = [
       { label: 'Member management', href: '/members' },
       { label: 'Fees and dues', href: '/fees-and-dues' },
       { label: 'Attendance tracking', href: '/attendance' },
-      { label: 'Member app', href: '/member-app' },
+      { label: 'Member app and workouts', href: '/member-app' },
       { label: 'WhatsApp reminders', href: '/whatsapp' },
       { label: 'Reports and analytics', href: '/reports' },
       { label: 'Import and export', href: '/import-export' },
@@ -131,13 +131,14 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
               <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {column.heading}
               </h3>
-              <ul className="mt-5 flex flex-col gap-3">
+              {/* No gap: each link carries its own 44 px tap height (13.5px text, so the rows were 17 px); desktop keeps the compact rows. */}
+              <ul className="mt-5 flex flex-col md:gap-3">
                 {column.links.map(link => (
                   <li key={link.label}>
                     <a
                       href={link.href.startsWith('#') ? homeAnchor(link.href) : link.href}
                       {...('external' in link && link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                      className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
+                      className="inline-flex min-h-[44px] items-center text-[13.5px] md:min-h-0 text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </a>
@@ -157,7 +158,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
             <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Contact
             </h3>
-            <address className="mt-5 flex flex-col gap-3 text-[13px] not-italic text-muted-foreground">
+            <address className="mt-5 flex flex-col gap-1 text-[13px] not-italic text-muted-foreground">
               <span className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span className="leading-relaxed">
@@ -169,7 +170,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
               <a
                 href={MAIL_URL}
                 onClick={openMail}
-                className="flex items-center gap-2.5 transition-colors hover:text-foreground"
+                className="flex min-h-[44px] items-center gap-2.5 transition-colors hover:text-foreground"
               >
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 {SUPPORT_EMAIL}
@@ -179,7 +180,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Message GymFlow on WhatsApp at ${SUPPORT_PHONE_DISPLAY}`}
-                className="flex items-center gap-2.5 transition-colors hover:text-foreground"
+                className="flex min-h-[44px] items-center gap-2.5 transition-colors hover:text-foreground"
               >
                 <MessageCircle className="h-3.5 w-3.5 shrink-0" />
                 {SUPPORT_PHONE_DISPLAY}
@@ -189,7 +190,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="GymFlow on Instagram"
-                className="flex items-center gap-2.5 transition-colors hover:text-foreground"
+                className="flex min-h-[44px] items-center gap-2.5 transition-colors hover:text-foreground"
               >
                 {/* lucide-react v1 dropped brand icons, so the Instagram glyph is inline. */}
                 <svg
@@ -210,7 +211,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
               </a>
             </address>
             <p className="mt-4 text-[12px] text-muted-foreground">
-              Priority support on WhatsApp, phone and email.
+              Direct founder support on WhatsApp, phone and email. Support in English and Tamil.
             </p>
           </div>
         </div>
@@ -227,7 +228,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event('gf:open-cookie-settings'))}
-            className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            className="inline-flex min-h-[44px] items-center text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
             Cookie settings
           </button>
@@ -237,7 +238,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
             href="https://status.gymflow.sbs"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            className="inline-flex min-h-[44px] items-center text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
             Live system status
           </a>

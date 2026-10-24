@@ -152,7 +152,7 @@ export function Hero() {
               <ArrowRight className="h-4 w-4" />
             </a>
             <a
-              href="#pricing"
+              href="/pricing"
               className="hero-cta btn btn-outline flex-1 basis-0 sm:flex-none"
             >
               See pricing

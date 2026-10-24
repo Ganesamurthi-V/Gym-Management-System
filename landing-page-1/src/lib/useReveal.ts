@@ -1,9 +1,6 @@
 import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { afterFirstPaint } from './afterFirstPaint';
 import { prefersReducedMotion } from './prefersReducedMotion';
-
-gsap.registerPlugin(ScrollTrigger);
 
 // Lives in its own file so the hero can use it without pulling gsap into the entry chunk.
 export { prefersReducedMotion };
@@ -60,45 +57,67 @@ export function useReveal<T extends HTMLElement = HTMLDivElement>(
   useEffect(() => {
     if (prefersReducedMotion()) return;
 
-    const ctx = gsap.context(() => {
-      const targets = gsap.utils.toArray<HTMLElement>(selector);
-      if (targets.length === 0) return;
+    // gsap and ScrollTrigger (about 45 KB gzipped, a 300 ms-class long task on a throttled phone)
+    // load after the first paint instead of ahead of it. The content is visible in the meantime
+    // because nothing sets an opacity until the tween is created below.
+    let cancelled = false;
+    let ctx: { revert: () => void } | undefined;
+    const cancelWait = afterFirstPaint(() => {
+      void Promise.all([import('gsap'), import('gsap/ScrollTrigger')]).then(([{ gsap }, { ScrollTrigger }]) => {
+        if (cancelled) return;
+        gsap.registerPlugin(ScrollTrigger);
 
-      if (perElement) {
-        // One tween per target, each triggered by itself. Deliberately not a single
-        // tween with a stagger: that would share one ScrollTrigger, which is the
-        // behaviour this option exists to avoid.
-        for (const el of targets) {
+        // Anything already past its start line when the library arrives is on screen, so
+        // animating it would blank visible content and fade it back in. It stays as it is.
+        const startPct = Number(/(\d+)%/.exec(start)?.[1] ?? 80) / 100;
+        const arrived = (el: Element | null) => !!el && el.getBoundingClientRect().top < window.innerHeight * startPct;
+
+        ctx = gsap.context(() => {
+          const targets = gsap.utils.toArray<HTMLElement>(selector).filter(el => perElement ? !arrived(el) : true);
+          if (targets.length === 0) return;
+
+          if (perElement) {
+            // One tween per target, each triggered by itself. Deliberately not a single
+            // tween with a stagger: that would share one ScrollTrigger, which is the
+            // behaviour this option exists to avoid.
+            for (const el of targets) {
+              gsap.fromTo(
+                el,
+                { y, opacity: 0 },
+                {
+                  y: 0,
+                  opacity: 1,
+                  duration,
+                  ease: 'power3.out',
+                  scrollTrigger: { trigger: el, start },
+                }
+              );
+            }
+            return;
+          }
+
+          if (arrived(scope.current)) return;
           gsap.fromTo(
-            el,
+            targets,
             { y, opacity: 0 },
             {
               y: 0,
               opacity: 1,
               duration,
+              stagger,
               ease: 'power3.out',
-              scrollTrigger: { trigger: el, start },
+              scrollTrigger: { trigger: scope.current, start },
             }
           );
-        }
-        return;
-      }
+        }, scope);
+      });
+    });
 
-      gsap.fromTo(
-        targets,
-        { y, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration,
-          stagger,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: scope.current, start },
-        }
-      );
-    }, scope);
-
-    return () => ctx.revert();
+    return () => {
+      cancelled = true;
+      cancelWait();
+      ctx?.revert();
+    };
   }, [selector, y, stagger, duration, start, perElement]);
 
   return scope;

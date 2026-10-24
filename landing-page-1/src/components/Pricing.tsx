@@ -48,25 +48,25 @@ function placesFor(value: number): number[] {
    app/owner/member-app. */
 const INCLUDED = [
   'Member management',
-  'Payments & dues',
+  'Fees and dues',
   'Attendance tracking',
-  'Member app & workouts',
-  'Reports & analytics',
-  'Unlimited WhatsApp reminders',
-  'CSV / Excel import & export',
-  'Priority support',
+  'Member app and workouts',
+  'Reports and analytics',
+  'WhatsApp reminders',
+  'Import and export',
+  'Direct founder support',
 ] as const;
 
 const ACTIVATION_STEPS = [
   {
     icon: Smartphone,
     title: 'Make the payment',
-    desc: 'Pay for your chosen plan using any UPI app, net banking, or card.',
+    desc: 'Pay for your chosen plan using any UPI app.',
   },
   {
     icon: Upload,
     title: 'Upload the screenshot',
-    desc: 'Open the Payments page and attach your payment screenshot.',
+    desc: 'Open the Subscription page in the app and attach your payment screenshot.',
   },
   {
     icon: BadgeCheck,
@@ -99,8 +99,8 @@ export function Pricing() {
         <div className="mx-auto flex max-w-[900px] flex-col items-center text-center">
           <span className="reveal eyebrow">Pricing</span>
           <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance">
-            {'One plan. '}
-            <span className="text-muted-foreground">everything included.</span>
+            {'Gym management software pricing: '}
+            <span className="text-muted-foreground">every feature in every plan</span>
           </h2>
           <p className="reveal lead mt-5 max-w-[520px]">
             No per-member charges, no setup fee, and no modules to unlock later.{' '}
@@ -219,6 +219,9 @@ export function Pricing() {
             <p className="mt-3 text-[13px] text-accent-ink/80">
               {activeTier.tagline} Unlimited members, unlimited WhatsApp messages, every
               module.
+            </p>
+            <p className="mt-1 text-[12px] text-accent-ink/80">
+              No GST is added. The price you see is the price you pay.
             </p>
 
             <div className="my-5 h-px bg-accent-ink/15" />

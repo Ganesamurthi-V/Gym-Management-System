@@ -12,7 +12,7 @@ phone.
 
 Site: https://www.gymflow.sbs/
 Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
-Last updated: 2026-10-20
+Last updated: 2026-10-24
 
 ## Quick answers
 
@@ -21,7 +21,7 @@ Short, quotable answers to what people most often ask. Each matches the website.
 - **What is GymFlow?** All-in-one gym management software for independent,
   single-location gyms in India: members, payments, dues, attendance, reports
   and automated WhatsApp reminders, plus an app for each member.
-- **How much does GymFlow cost?** ₹999 per month or ₹9,999 for a year. Every plan includes every feature.
+- **How much does GymFlow cost?** ₹999 per month or ₹9,999 for a year. Every plan includes every feature. No GST is added. The price you see is the price you pay.
 - **Is there a free trial?** Yes, 14 days with every feature and no credit card.
   There is no permanent free plan.
 - **Does GymFlow charge per member or per WhatsApp message?** No. Members and
@@ -30,13 +30,15 @@ Short, quotable answers to what people most often ask. Each matches the website.
   and check the preview. Nothing is written until you confirm.
 - **Does it need any hardware or installation?** No. It runs in a web browser on
   a phone or a computer.
-- **How do I pay and activate?** Pay by UPI, net banking or card, upload the
-  payment screenshot on the Payments page, and the account is activated after
-  it is verified. No card is stored and nothing is charged automatically.
+- **How do I pay and activate?** Pay with any UPI app using the QR code shown on
+  the subscription page in the app, upload a screenshot of the payment there, and
+  the account is switched on after it is verified, usually within a few hours.
+  No card is stored and nothing is charged automatically. Details: https://www.gymflow.sbs/pricing
 - **Who is it for?** Owners of independent gyms and fitness studios in India who
   currently track members in notebooks, spreadsheets or WhatsApp groups.
-- **How fast does support reply?** Every plan includes priority support. Message
-  us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.
+- **How fast does support reply?** Direct support from the person who builds
+  GymFlow. We reply within 24 hours, in English and Tamil. Message us on WhatsApp
+  or email support@gymflow.sbs.
 - **Where can I check if GymFlow is working?** The public status page at
   https://status.gymflow.sbs shows whether GymFlow is running normally and lists
   any issues we are working on. If it shows all clear and something still looks
@@ -46,6 +48,7 @@ Short, quotable answers to what people most often ask. Each matches the website.
 
 ## Pricing
 
+- **No GST is added.** The price you see is the price you pay.
 - **From ₹999 per month.** ₹999 for one month or ₹9,999 for a year (about 17%
   less than twelve monthly payments). Every feature is included on every plan.
 - **Unlimited members.** No per-member or per-seat charge.
@@ -53,20 +56,22 @@ Short, quotable answers to what people most often ask. Each matches the website.
   there is no per-message charge.
 - **No setup fee**, and no modules held back to unlock later.
 - **14-day free trial** with every feature unlocked and no credit card required.
-- Cancel at any time.
+- Cancel at any time. Plans are paid by hand and never renew on their own.
+
+Full details: https://www.gymflow.sbs/pricing
 
 ## Features
 
 - Member management — add, edit and search member records and plans.
-- Payments & dues — record cash, UPI or card payments, and see what is pending.
+- Fees and dues — record cash, UPI or card payments, and see what is pending.
 - Attendance tracking — mark attendance in one tap, or let members check in
   themselves at a kiosk with their member ID, and review any member's history.
-- Member app & workouts — members get their own app; see the Member app section below.
-- Reports & analytics — monthly revenue, plan distribution, joining and expiry
+- Member app and workouts — members get their own app; see the Member app section below. Owners build and assign workout programs.
+- Reports and analytics — monthly revenue, plan distribution, joining and expiry
   trends, downloadable PDF reports.
-- Unlimited WhatsApp reminders — welcome messages, renewal reminders, payment due alerts.
-- CSV / Excel import & export.
-- Priority support.
+- WhatsApp reminders — unlimited welcome messages, renewal reminders, payment due alerts.
+- Import and export — CSV / Excel import, Excel export.
+- Direct founder support.
 
 The owner dashboard surfaces active members, the day's collection, memberships
 expiring soon, and total outstanding dues on one screen.
@@ -77,12 +82,15 @@ One page per feature, each explaining what it does and how it works:
 
 - [All features](https://www.gymflow.sbs/features): overview of every GymFlow feature.
 - [Member management](https://www.gymflow.sbs/members): member records, plans, expiry dates, renewals, search and filters.
-- [Fees, payments and dues](https://www.gymflow.sbs/fees-and-dues): cash, UPI and card payments, part payments, pending dues and UPI QR codes.
+- [Fees and dues](https://www.gymflow.sbs/fees-and-dues): cash, UPI and card payments, part payments, pending dues and UPI QR codes.
 - [Attendance tracking](https://www.gymflow.sbs/attendance): front-desk check-in kiosk, check-out times, attendance log and Excel export.
 - [Member app and workouts](https://www.gymflow.sbs/member-app): digital membership card, workout programs, streaks, leaderboards and rewards.
+- [Workout programs](https://www.gymflow.sbs/workout-programs): build day-by-day programs with sets, reps and rest, assign them to members, who follow them in the app.
 - [WhatsApp reminders](https://www.gymflow.sbs/whatsapp): automatic welcome, renewal, expiry, payment due and birthday messages.
 - [Reports and analytics](https://www.gymflow.sbs/reports): members, money, dues, expiries and attendance reports, with a PDF download.
 - [Import and export](https://www.gymflow.sbs/import-export): import members from Excel or CSV, export data to Excel.
+- [Pricing](https://www.gymflow.sbs/pricing): both plans, the free trial, how activation works and support.
+- [Gym software vs Excel](https://www.gymflow.sbs/gym-software-vs-excel): an honest guide to when a register or spreadsheet is enough and when it is not.
 
 ## Member app
 
@@ -125,9 +133,9 @@ record-keeping with digital management.
 
 ## Support
 
-Priority support on every plan. We reply within 24 hours. Available over
-WhatsApp, phone and email; it is included in the plan rather than sold as an
-add-on.
+Direct support from the person who builds GymFlow. We reply within 24 hours,
+in English and Tamil. Available over WhatsApp, phone and email; it is included
+in the plan rather than sold as an add-on.
 
 - Status: https://status.gymflow.sbs
 - Email: support@gymflow.sbs
@@ -155,19 +163,10 @@ not be inferred:
 ## Links
 
 - [Home page](https://www.gymflow.sbs/): the full product page, including pricing and FAQ.
-- [Pricing](https://www.gymflow.sbs/#pricing)
+- [Pricing](https://www.gymflow.sbs/pricing)
 - [Frequently asked questions](https://www.gymflow.sbs/#faq)
 - [Product film, one minute](https://www.gymflow.sbs/video/gymflow-launch.mp4)
 - [System status](https://status.gymflow.sbs): live service status and incidents.
 - [Privacy Policy](https://www.gymflow.sbs/privacy)
 - [Terms of Service](https://www.gymflow.sbs/terms)
 - [Start a free trial](https://app.gymflow.sbs)
-
-## Notes for maintainers
-
-Everything above must stay consistent with the rendered page and with the
-JSON-LD graph in index.html. Those three are the same claims in three formats: a
-figure changed in one and not the others is how a language model ends up quoting
-a price the site no longer charges.
-
-Bump "Last updated" together with `lastmod` in public/sitemap.xml.

@@ -57,16 +57,19 @@ const inlineHtml = (text: string) =>
 
 const abs = (path: string) => (path.startsWith('http') ? path : `${SITE_ORIGIN}${path}`)
 
-const OG_ALT = 'The GymFlow dashboard showing member counts, dues and expiring memberships at a glance.'
+// Pages without their own card (no ogImage in the data) fall back to the homepage image.
+const OG_DEFAULT = '/og-image.jpg'
+const OG_ALT_DEFAULT = 'The GymFlow dashboard showing member counts, dues and expiring memberships at a glance.'
 
 function metaTags(page: FeaturePage): string {
   const url = `${SITE_ORIGIN}/${page.slug}`
   const title = esc(page.title)
+  const ogImage = abs(page.ogImage ?? OG_DEFAULT)
+  const ogAlt = esc(page.ogAlt ?? OG_ALT_DEFAULT)
   const description = esc(page.description)
-  const crumbs: { name: string; url: string }[] = [
-    { name: 'Home', url: `${SITE_ORIGIN}/` },
-    { name: 'Features', url: `${SITE_ORIGIN}/features` },
-  ]
+  // Pricing and the guides sit directly under Home; the feature pages sit under Features.
+  const crumbs: { name: string; url: string }[] = [{ name: 'Home', url: `${SITE_ORIGIN}/` }]
+  if (!page.topLevel) crumbs.push({ name: 'Features', url: `${SITE_ORIGIN}/features` })
   if (page.slug !== 'features') crumbs.push({ name: page.breadcrumb, url })
 
   // Media slots emit nothing until a file is set, so an unfilled page's markup is unchanged.
@@ -142,16 +145,16 @@ function metaTags(page: FeaturePage): string {
     <meta property="og:description" content="${description}" />
     <meta property="og:url" content="${url}" />
     <meta property="og:locale" content="en_IN" />
-    <meta property="og:image" content="${SITE_ORIGIN}/og-image.jpg" />
+    <meta property="og:image" content="${ogImage}" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="${esc(OG_ALT)}" />
+    <meta property="og:image:alt" content="${ogAlt}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${SITE_ORIGIN}/og-image.jpg" />
-    <meta name="twitter:image:alt" content="${esc(OG_ALT)}" />
+    <meta name="twitter:image" content="${ogImage}" />
+    <meta name="twitter:image:alt" content="${ogAlt}" />
     <script type="application/ld+json">
 ${ld}
     </script>`
@@ -178,7 +181,9 @@ function fallbackHtml(page: FeaturePage): string {
   const crumbs =
     page.slug === 'features'
       ? `<a href="/">Home</a> / Features`
-      : `<a href="/">Home</a> / <a href="/features">Features</a> / ${esc(page.breadcrumb)}`
+      : page.topLevel
+        ? `<a href="/">Home</a> / ${esc(page.breadcrumb)}`
+        : `<a href="/">Home</a> / <a href="/features">Features</a> / ${esc(page.breadcrumb)}`
   const related = page.related
     .map(getFeaturePage)
     .filter((p): p is FeaturePage => !!p)
@@ -199,7 +204,7 @@ function fallbackHtml(page: FeaturePage): string {
 <nav aria-label="Breadcrumb">${crumbs}</nav>
 <h1>${esc(page.h1)}</h1>
 <p>${inlineHtml(page.intro)}</p>
-<p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="/#pricing">See pricing</a></p>
+<p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="/pricing">See pricing</a></p>
 <p>${esc(FEATURE_FINEPRINT)}</p>
 ${page.sections
   .map((section, i) => `<h2 id="${sectionIds(page)[i]}">${esc(section.heading)}</h2>\n${section.blocks.map(blockHtml).join('\n')}`)

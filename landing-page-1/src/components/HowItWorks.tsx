@@ -169,7 +169,7 @@ export function HowItWorks() {
           <div className="lg:sticky lg:top-36 lg:self-start">
             <span className="reveal eyebrow">How it works</span>
             <h2 id="how-title" className="reveal display-2 mt-4 text-balance">
-              We&rsquo;ll help you set up your gym on GymFlow.
+              How to set up GymFlow for your gym
             </h2>
             <p className="reveal lead mt-6 max-w-[520px]">
               Move from spreadsheets and manual records to GymFlow with guided setup and
@@ -242,7 +242,7 @@ export function HowItWorks() {
                       <p className="mt-2 text-[14px]">
                         <a
                           href={step.more.href}
-                          className="rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                          className="inline-flex min-h-[44px] items-center rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                         >
                           {step.more.label}
                         </a>

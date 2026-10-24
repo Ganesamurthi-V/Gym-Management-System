@@ -14,9 +14,10 @@ import Clarity from '@microsoft/clarity';
 const PROJECT_ID = import.meta.env.VITE_CLARITY_PROJECT_ID as string | undefined;
 
 /**
- * Google Analytics 4 is loaded by the snippet in index.html, in Google's Consent Mode with
- * analytics storage denied: the tag is present (so Google's own checker can detect it) but
- * sets no cookies and stores nothing on the device. Here we only flip it to "granted" when
+ * Google Analytics 4 is set up by the snippet in index.html, in Google's Consent Mode with
+ * analytics storage denied, and its gtag.js is fetched only after consent (gfLoadGtag below)
+ * so a new visitor makes no request to Google before choosing. It sets no cookies and stores
+ * nothing on the device until then. Here we only flip it to "granted" when
  * the visitor allows visit counting. Injecting the tag from JavaScript after consent was
  * the first version; Google's detector never saw it, because it never clicks the banner.
  */
@@ -24,12 +25,15 @@ declare global {
   interface Window {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
+    /** Set by the snippet in index.html: fetches gtag.js (once), only ever called with consent. */
+    gfLoadGtag?: () => void;
   }
 }
 
 let started = false;
 
 function grantGA() {
+  window.gfLoadGtag?.();
   window.gtag?.('consent', 'update', { analytics_storage: 'granted' });
 }
 

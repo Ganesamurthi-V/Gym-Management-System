@@ -54,14 +54,21 @@ function App() {
   const onSectionsDone = useCallback(() => setSectionsDone(true), []);
 
   // A link such as /#pricing was resolved by the browser before this section existed, so it
-  // had nowhere to land. Once the sections are in, take the visitor there.
+  // had nowhere to land. Once ALL the sections are in, take the visitor there. A fixed 400 ms
+  // after `ready` was not enough for sections near the bottom: arriving from a feature page,
+  // /#faq measured 5862px below the viewport because the FAQ had not mounted when the timer
+  // fired. Waiting for sectionsDone fixes that; the second jump corrects the small shifts that
+  // fonts and lazy-mounted sections cause after the first one.
   useEffect(() => {
-    if (!ready || !window.location.hash) return;
-    const timer = window.setTimeout(() => {
-      document.querySelector(window.location.hash)?.scrollIntoView();
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [ready]);
+    if (!sectionsDone || !window.location.hash) return;
+    const jump = () => document.querySelector(window.location.hash)?.scrollIntoView();
+    const first = window.setTimeout(jump, 100);
+    const second = window.setTimeout(jump, 800);
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(second);
+    };
+  }, [sectionsDone]);
 
   return (
     <Layout>

@@ -12,7 +12,10 @@ import {
   Modal,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
+import type { RootStackParamList } from '../../navigation/types';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import {
   fetchGyms, fetchTickets, sendSupportMessage, resolveTicket, clearTickets, draftTicketReply,
@@ -349,8 +352,16 @@ function TicketsTab() {
 
 export default function SupportScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('send');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
     <View style={styles.root}>
+      <TouchableOpacity style={styles.bannerCard} onPress={() => navigation.navigate('Announcements')}>
+        <View style={styles.bannerText}>
+          <Text style={styles.formCardTitle}>Site-wide banner</Text>
+          <Text style={styles.formCardSub}>Show a message at the top of every owner app</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+      </TouchableOpacity>
       <View style={styles.tabBar}>
         <TabButton label="Send Message" active={activeTab === 'send'} onPress={() => setActiveTab('send')} />
         <TabButton label="Incoming Tickets" active={activeTab === 'tickets'} onPress={() => setActiveTab('tickets')} />
@@ -362,6 +373,12 @@ export default function SupportScreen() {
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
+  bannerCard: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    margin: Spacing.lg, marginBottom: 0, padding: Spacing.lg, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard,
+  },
+  bannerText: { flex: 1 },
   root: { flex: 1, backgroundColor: Colors.bg },
   tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard },
   tabBtn: {

@@ -26,6 +26,7 @@ import LogsScreen from './screens/tabs/LogsScreen';
 import GymDetailScreen from './screens/GymDetailScreen';
 import GymSubscriptionScreen from './screens/GymSubscriptionScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
+import AnnouncementScreen from './screens/AnnouncementScreen';
 import EmailThreadScreen from './screens/EmailThreadScreen';
 import EmailComposeScreen from './screens/EmailComposeScreen';
 
@@ -357,6 +358,18 @@ export default function App() {
                   headerStyle: { backgroundColor: Colors.bg },
                   headerTintColor: Colors.textPrimary,
                   headerTitle: 'Notifications',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="Announcements"
+                component={AnnouncementScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: 'Site-wide banner',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
                 }}

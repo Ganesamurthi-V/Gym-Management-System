@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Building2, ScrollText, Bug,
-  HeadphonesIcon, LogOut, ChevronRight, CreditCard
+  HeadphonesIcon, LogOut, ChevronRight, CreditCard, Megaphone
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/logs', label: 'Event Logs', icon: ScrollText },
   { href: '/errors', label: 'Errors', icon: Bug },
   { href: '/support', label: 'Support', icon: HeadphonesIcon },
+  { href: '/announcements', label: 'Announcements', icon: Megaphone },
 ]
 
 // Poll interval in ms — no realtime needed, lightweight polling is sufficient

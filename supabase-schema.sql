@@ -544,6 +544,21 @@ CREATE TABLE IF NOT EXISTS platform_settings (
   CHECK (id = 1)
 );
 
+-- ── platform_announcement ────────────────────────────────────
+-- Singleton row (id = 1): site-wide banner shown at the top of every owner page.
+-- Written only by the admin app (service role); `version` is bumped on each
+-- publish so a dismissed banner reappears when the message changes.
+CREATE TABLE IF NOT EXISTS platform_announcement (
+  id          INT         PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  message     TEXT        NOT NULL DEFAULT '',
+  level       TEXT        NOT NULL DEFAULT 'info' CHECK (level IN ('info', 'warning', 'critical')),
+  link_url    TEXT,
+  link_label  TEXT,
+  is_active   BOOLEAN     NOT NULL DEFAULT false,
+  version     INT         NOT NULL DEFAULT 0,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ── gym_usage_stats ──────────────────────────────────────────
 -- Per-gym counters maintained by triggers, so the admin panel can show activity
 -- without aggregating the whole tenant on every page load.
@@ -4048,6 +4063,7 @@ ALTER TABLE member_portal_activity   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_requests    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_audit_logs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_settings        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_announcement    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_usage_stats          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_upi_config           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE owner_feedback_prompts   ENABLE ROW LEVEL SECURITY;
@@ -4073,6 +4089,14 @@ CREATE POLICY "Gym owners can read platform settings"
   ON platform_settings FOR SELECT
   TO authenticated
   USING (EXISTS (SELECT 1 FROM public.gyms WHERE owner_id = (SELECT auth.uid())));
+
+-- ── platform_announcement ────────────────────────────────────
+-- Any signed-in user may read the banner; writes are service-role only.
+DROP POLICY IF EXISTS "Authenticated can read platform announcement" ON platform_announcement;
+CREATE POLICY "Authenticated can read platform announcement"
+  ON platform_announcement FOR SELECT
+  TO authenticated
+  USING ((SELECT auth.uid()) IS NOT NULL);
 
 -- ────────────────────────────────────────────────────────────
 -- policies on admin_messages
@@ -4767,6 +4791,11 @@ REVOKE ALL ON public.platform_settings FROM PUBLIC, anon;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.platform_settings FROM authenticated;
 GRANT SELECT ON public.platform_settings TO authenticated;
 
+-- ── platform_announcement: signed-in users read, nobody but the service role writes ──
+REVOKE ALL ON public.platform_announcement FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.platform_announcement TO authenticated;
+GRANT ALL ON public.platform_announcement TO service_role;
+
 -- ── Gamification tables ──────────────────────────────────────
 -- Granted verb by verb so the tables fail closed for anything RLS has no policy
 -- for. member_achievements is read-only to clients; its only writer is the
@@ -5068,6 +5097,10 @@ CREATE POLICY "gym owner read own payment proofs"
 -- The singleton settings row. Set your real UPI details afterwards:
 --   update platform_settings set upi_id = '...', upi_name = '...' where id = 1;
 INSERT INTO platform_settings DEFAULT VALUES
+  ON CONFLICT (id) DO NOTHING;
+
+-- The singleton announcement row (inactive until the admin app publishes one).
+INSERT INTO platform_announcement (id) VALUES (1)
   ON CONFLICT (id) DO NOTHING;
 
 -- Push dispatch config, read by dispatch_push_on_notification(). ON CONFLICT DO

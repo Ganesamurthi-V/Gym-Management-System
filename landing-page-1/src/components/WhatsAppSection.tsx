@@ -67,14 +67,14 @@ export function WhatsAppSection() {
               </em>
               {' WhatsApp reminders, '}
               <br />
-              <span className="text-foreground">built in and not billed extra.</span>
+              <span className="text-foreground">built in and not billed extra</span>
             </h2>
 
             <p className="reveal lead mt-6 max-w-[520px]">
-              Every GymFlow account includes fully automated WhatsApp messaging, with <ShinyText text="zero extra cost." speed={2.8} spread={120} />{' '}
+              Every GymFlow account includes fully automated WhatsApp messaging, with <ShinyText text="no per-message charge from GymFlow." speed={2.8} spread={120} />{' '}
               <br></br><a
                 href="/whatsapp"
-                className="rounded text-sm font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="inline-flex min-h-[44px] items-center rounded text-sm font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 More on WhatsApp reminders
               </a>

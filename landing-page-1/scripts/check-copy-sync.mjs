@@ -66,6 +66,56 @@ const fallbackFaq = [...html.matchAll(/<h3>(.+?)<\/h3>/g)].map((m) => decode(m[1
 if (JSON.stringify(faqQuestions) !== JSON.stringify(ldFaq)) errors.push('FAQ.tsx questions differ from the FAQPage JSON-LD (text or order)')
 if (JSON.stringify(faqQuestions) !== JSON.stringify(fallbackFaq)) errors.push('FAQ.tsx questions differ from the no-JavaScript FAQ in index.html (text or order)')
 
+// FAQ answers must also match word for word, because the JSON-LD answer is what search results quote.
+// Only plain-string answers are paired (the pricing answer is built from plans.ts, so it is skipped).
+const ldAnswer = {}
+const collectA = (o) => {
+  if (!o || typeof o !== 'object') return
+  if (o['@type'] === 'Question') ldAnswer[o.name] = o.acceptedAnswer?.text
+  Object.values(o).forEach(collectA)
+}
+ld.forEach((m) => collectA(JSON.parse(m[1])))
+const fallbackAnswer = {}
+for (const m of html.matchAll(/<h3>(.+?)<\/h3>\s*<p>(.+?)<\/p>/g)) fallbackAnswer[decode(m[1])] = decode(m[2])
+let pairedAnswers = 0
+for (const m of faqSrc.matchAll(/q:\s*(['"])(.+?)\1,\s*a:\s*(['"])(.+?)\3,\s*\n/g)) {
+  const [q, a] = [m[2], m[4]]
+  pairedAnswers++
+  if (ldAnswer[q] !== a) errors.push(`FAQ answer differs from the FAQPage JSON-LD: "${q}"`)
+  if (fallbackAnswer[q] !== a) errors.push(`FAQ answer differs from the no-JavaScript FAQ: "${q}"`)
+}
+// If FAQ.tsx is reformatted so the pattern above stops matching, the loop compares nothing and the
+// check would still print ok. Every question except the plans.ts-built pricing one must be paired.
+if (pairedAnswers < faqQuestions.length - 1) errors.push(`FAQ answer check paired ${pairedAnswers} of ${faqQuestions.length - 1} plain-string answers: the pattern no longer matches FAQ.tsx`)
+
+// Homepage section headings: the no-JavaScript copy and the rendered component must say the same thing.
+// The rendered text is read from the <h2 id="<title>"> block in each component (ShinyText text="..." and
+// {'...'} literals kept, tags dropped). The no-JS h2 is matched by its id.
+const flat = (block) =>
+  block
+    .replace(/<ShinyText text="([^"]*)"[^>]*\/>/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\{\s*(['"])([\s\S]*?)\1\s*\}/g, '$2')
+    .replace(/&rsquo;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+const HEADINGS = [
+  ['BentoFeatures', 'features-title', 'features'],
+  ['WhyGymFlow', 'why-title', 'why'],
+  ['WhatsAppSection', 'whatsapp-title', 'whatsapp'],
+  ['HowItWorks', 'how-title', 'how'],
+  ['TrustStrip', 'trust-title', 'security'],
+  ['Pricing', 'pricing-title', 'pricing'],
+  ['FAQ', 'faq-title', 'faq'],
+  ['Founder', 'founder-title', 'founder'],
+]
+for (const [component, titleId, fallbackId] of HEADINGS) {
+  const block = read(`src/components/${component}.tsx`).match(new RegExp(`<h2 id="${titleId}"[\\s\\S]*?</h2>`))
+  const fb = html.match(new RegExp(`<h2 id="${fallbackId}">(.+?)</h2>`))
+  if (!block || !fb) { errors.push(`h2 check: cannot find ${component} (${titleId}) or index.html #${fallbackId}`); continue }
+  if (flat(block[0]) !== decode(fb[1])) errors.push(`h2 differs for ${component}: rendered "${flat(block[0])}" vs no-JS "${decode(fb[1])}"`)
+}
+
 // The feature pages' shared head (src/feature-head.html) restates index.html's inline scripts, and the
 // CSP in public/_headers is written around them. They must stay byte-identical.
 const featureHead = read('src/feature-head.html')

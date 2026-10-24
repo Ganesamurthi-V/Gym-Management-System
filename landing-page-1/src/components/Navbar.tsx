@@ -58,8 +58,8 @@ export function Navbar() {
 
   // Features has a page of its own, so it opens /features from the homepage and from every
   // feature page alike (it stays lit on feature pages, the way a section link lights up on the
-  // homepage). On a feature page there are no sections to scroll to, so the other links leave
-  // for the homepage ("/#pricing").
+  // homepage). WhatsApp, Pricing and FAQ are sections of the homepage: on a feature page there
+  // is nothing to scroll to, so they leave for the homepage section ("/#pricing").
   const onFeaturePage = isFeaturePage();
   const links = NAV_LINKS.map(link => ({
     ...link,
@@ -171,7 +171,7 @@ export function Navbar() {
         }}
       >
         {/* Logo */}
-        <a href={homeAnchor('#')} aria-label="GymFlow home" className="flex shrink-0 items-center">
+        <a href={homeAnchor('#')} aria-label="GymFlow home" className="flex min-h-[44px] shrink-0 items-center">
           <img
             src="/logo_landspace_without_bg.webp"
             alt="GymFlow"

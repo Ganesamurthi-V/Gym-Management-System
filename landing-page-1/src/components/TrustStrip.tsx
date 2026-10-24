@@ -51,15 +51,14 @@ export function TrustStrip() {
       <div className="mx-auto max-w-[1240px]">
         <div className="mx-auto max-w-[720px] text-center">
           <h2 id="trust-title" className="reveal display-2 text-balance">
-            {"Your gym's data, in your "}
+            {"Your gym's data stays in your "}
             <em className="display-accent">
               <ShinyText text="control" speed={2.8} spread={120} />
             </em>
-            .
           </h2>
           <p className="reveal lead mx-auto mt-5 max-w-[560px]">
             Manage your gym with confidence, backed by transparent security practices and
-            dedicated support.
+            direct support from the founder.
           </p>
         </div>
 
@@ -79,7 +78,7 @@ export function TrustStrip() {
                 </p>
                 <p className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-[13px]">
                   {item.links.map(link => (
-                    <a key={link.href} href={link.href} className={LINK_CLASS}>
+                    <a key={link.href} href={link.href} className={`${LINK_CLASS} inline-flex min-h-[44px] items-center`}>
                       {link.label}
                     </a>
                   ))}

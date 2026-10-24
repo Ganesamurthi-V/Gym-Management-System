@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
@@ -13,6 +13,8 @@ import Image from 'next/image'
 import toast from 'react-hot-toast'
 
 import TrialBanner from './TrialBanner'
+import AnnouncementBanner from './AnnouncementBanner'
+import type { Announcement } from '@/lib/announcement-shared'
 import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { tourAttr } from '@/lib/tours/anchors'
 import { isTourActive, subscribeTourNav } from '@/lib/tours/tour-state'
@@ -61,6 +63,8 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
   const [liveSubStatus, setLiveSubStatus] = useState(initialSubscriptionStatus)
   const [liveDaysLeft, setLiveDaysLeft] = useState(initialTrialDaysLeft)
   const [liveGymName, setLiveGymName] = useState(initialGym?.name || '')
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null)
+  const initialCheckDone = useRef(false)
 
   // Effect 1: Mount-time setup — restore sidebar state
   useEffect(() => {
@@ -153,6 +157,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
         return
       }
 
+      setAnnouncement(json.announcement ?? null)
       if (gymRow.name) setLiveGymName(gymRow.name)
       const refreshedState = computeSubscriptionState(gymRow)
       setLiveSubStatus(refreshedState.status)
@@ -187,6 +192,13 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     // state, expiry redirect, activation toast). Running it periodically makes
     // the socket redundant with zero Vercel cost and zero browser→Supabase traffic.
     window.addEventListener('focus', checkAuth)
+    // Immediate first check so the announcement appears on load rather than
+    // after the first 30 s tick (the shell deliberately does not fetch it).
+    // Once only: this effect re-runs on every navigation (pathname dep).
+    if (!initialCheckDone.current) {
+      initialCheckDone.current = true
+      checkAuth().catch(() => {})
+    }
     const pollInterval = setInterval(checkAuth, 30_000)
     
     return () => {
@@ -315,6 +327,9 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             </div>
           </div>
         </header>
+
+        {/* Platform announcement — renders nothing unless the admin has one active. */}
+        <AnnouncementBanner announcement={announcement} />
 
         {/* Subscription banner — shown between header and main content when
             the subscription is on trial, expiring soon, or already expired.

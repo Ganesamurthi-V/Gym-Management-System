@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AsciiStrip } from './AsciiStrip';
 import { getConsent, setConsent, OPEN_SETTINGS_EVENT, type Consent } from '@/lib/analytics';
 
@@ -16,6 +16,7 @@ const ALL: Consent = { ga: true, clarity: true };
 export function CookieBanner() {
   const [view, setView] = useState<View>('closed');
   const [draft, setDraft] = useState<Consent>(NONE);
+  const bar = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onOpen = () => {
@@ -30,6 +31,19 @@ export function CookieBanner() {
       window.clearTimeout(timer);
     };
   }, []);
+
+  // Tells the docs menu how much room the phone bar takes (html[data-cookie-bar] in index.css), so
+  // its open panel can scroll clear of the bar instead of hiding behind it.
+  useEffect(() => {
+    if (view !== 'banner' || !bar.current) return;
+    const html = document.documentElement;
+    html.style.setProperty('--cookie-bar-h', `${bar.current.offsetHeight}px`);
+    html.setAttribute('data-cookie-bar', '');
+    return () => {
+      html.removeAttribute('data-cookie-bar');
+      html.style.removeProperty('--cookie-bar-h');
+    };
+  }, [view]);
 
   useEffect(() => {
     if (view !== 'details') return;
@@ -65,27 +79,29 @@ export function CookieBanner() {
     // Same size and weight for "Essential only" and "Accept all": declining must be as easy
     // and as visible as accepting. "Choose" is a text link in the same row. On a 360x800
     // phone the old stacked card was 266px (33% of the screen) and hid the hero's trust
-    // bullets; one row of 44px buttons under two lines of copy is about 110px.
+    // bullets; a 114px card was the next version. Under 640px it is now a full-width bar of about
+    // 90px: tight padding, small copy, one row of 44px buttons.
     const pill =
       'min-h-11 flex-1 rounded-pill bg-foreground px-3 sm:min-h-0 sm:py-2 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4 sm:text-sm';
     return (
       <div
+        ref={bar}
         role="dialog"
         aria-label="Cookie preferences"
-        className="fixed inset-x-3 bottom-3 z-[90] ml-auto max-w-sm overflow-hidden rounded-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5"
+        className="fixed inset-x-0 bottom-0 z-[90] ml-auto max-w-none overflow-hidden rounded-t-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5 sm:max-w-sm sm:rounded-2xl"
       >
         <div className="hidden sm:block">
           <AsciiStrip />
         </div>
-        <div className="p-3 sm:px-5 sm:pb-5 sm:pt-4">
-          <p className="text-[13px] leading-snug text-muted-foreground sm:text-sm sm:leading-relaxed">
+        <div className="px-3 py-1.5 sm:px-5 sm:pb-5 sm:pt-4">
+          <p className="text-[12px] leading-tight text-muted-foreground sm:text-sm sm:leading-relaxed">
             <span className="sm:hidden">We use cookies to keep the site working and see how it is used.</span>
             <span className="hidden sm:inline">
               We use small files called cookies. Some keep the site working. Others help us see how
               people use it. You decide which ones to allow.
             </span>
           </p>
-          <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:justify-end">
+          <div className="mt-0.5 flex items-center gap-1.5 sm:mt-3 sm:gap-2 sm:justify-end">
             <button
               type="button"
               onClick={() => {

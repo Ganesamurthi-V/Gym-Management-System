@@ -62,6 +62,7 @@ export async function rateLimit(
 export const RATE_LIMITS = {
   // Strict limits for sensitive operations
   SUPPORT_MESSAGE: { limit: 10, window: 300 },      // 10 messages per 5 minutes
+  ANNOUNCEMENT_SAVE: { limit: 10, window: 300 },    // 10 announcement saves per 5 minutes
   TICKET_RESOLVE: { limit: 20, window: 300 },       // 20 resolutions per 5 minutes
   GYM_BAN: { limit: 5, window: 600 },               // 5 bans per 10 minutes
   

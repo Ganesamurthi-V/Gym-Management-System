@@ -167,7 +167,8 @@ const PATHS = ['onboarding', 'import', 'dashboard', 'reports'] as const;
 
 export function HowItWorksVisual({ active }: { active: number }) {
   return (
-    <div aria-hidden className="relative mx-auto w-full max-w-[560px]">
+    <div className="mx-auto w-full max-w-[560px]">
+    <div aria-hidden className="relative">
       {/* The accent's bloom, the counterpart of the green one behind the WhatsApp
           phone: same job, this section's own colour. */}
       <div
@@ -201,6 +202,8 @@ export function HowItWorksVisual({ active }: { active: number }) {
           ))}
         </div>
       </div>
+    </div>
+    <p className="mt-2 text-center text-[11px] text-muted-foreground">Sample data</p>
     </div>
   );
 }

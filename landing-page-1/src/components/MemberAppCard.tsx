@@ -117,11 +117,12 @@ export function MemberAppCard() {
         <p className="mt-2 text-[13px]">
           <a
             href="/member-app"
-            className="rounded font-medium text-accent-ink underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink"
+            className="inline-flex min-h-[44px] items-center rounded font-medium text-accent-ink underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink"
           >
             More on the member app
           </a>
         </p>
+        <p className="mt-2 text-[11px] text-accent-ink/80">Sample data</p>
 
         {/* Phone well. The frame inside is sized BLEED taller than this box, so the
             crop stays constant however tall the grid makes the card — no fixed

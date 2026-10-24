@@ -1,7 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { SUPPORT_PROMISE } from '../data/support';
-import { homeAnchor } from '../lib/pageAnchors';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -64,7 +63,7 @@ export function CTA() {
               Start free trial
               <ArrowRight className="h-4 w-4" />
             </a>
-            <a href={homeAnchor('#pricing')} className="btn btn-outline btn-lg">
+            <a href="/pricing" className="btn btn-outline btn-lg">
               See pricing
             </a>
           </div>

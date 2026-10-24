@@ -4,7 +4,7 @@
 export const SUPPORT_EMAIL = 'support@gymflow.sbs';
 export const SUPPORT_PHONE_DISPLAY = '+91 93848 86895';
 export const SUPPORT_PHONE_HREF = '+919384886895';
-export const SUPPORT_PROMISE = 'Priority support on every plan. We reply within 24 hours.';
+export const SUPPORT_PROMISE = 'Direct support from the person who builds GymFlow. We reply within 24 hours.';
 
 // A mailto link with the subject and body already filled in, so the visitor's mail app
 // opens on a ready-to-send message.

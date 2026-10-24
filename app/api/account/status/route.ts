@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
+import { getActiveAnnouncement } from '@/lib/announcement'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,8 +24,12 @@ export const GET = withAuth('ACCOUNT_STATUS_GET', async (req: NextRequest, { sup
     )
   }
 
+  // getActiveAnnouncement never throws; the catch is belt-and-braces so the
+  // banner can never turn a valid status poll into a failure.
+  const announcement = await getActiveAnnouncement().catch(() => null)
+
   return NextResponse.json(
-    { success: true, data },
+    { success: true, data, announcement },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
 })

@@ -88,3 +88,15 @@ the host must do:
 
 [GNU AGPL v3.0](../LICENSE), the same as the rest of the repository. The GymFlow name, logo and
 the launch video are the original project's brand; please use your own for a service you run.
+
+## Maintaining llms.txt
+
+Everything in public/llms.txt must stay consistent with the rendered pages and with the JSON-LD graph in
+index.html. Those three are the same claims in three formats: a figure changed in one and not the others is
+how a language model ends up quoting a price the site no longer charges. The build's copy check
+(scripts/check-copy-sync.mjs) fails when the prices in src/data/plans.ts are missing from index.html or llms.txt.
+
+Bump "Last updated" in llms.txt together with `lastmod` in public/sitemap.xml. When a feature page is added,
+add it to the feature-pages list in llms.txt, to public/sitemap.xml and to src/data/featurePages.ts (the build's
+root HTML entries and the dev clean-URL rewrites are derived from the slugs there; each page also needs a root
+<slug>.html copied from members.html with its own data-page, and a card in public/og/).

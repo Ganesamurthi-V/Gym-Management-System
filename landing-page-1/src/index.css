@@ -1829,3 +1829,11 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   [class*='hero-video-flash'] { animation-duration: 0.01s !important; }
 }
+
+/* The phone cookie bar (CookieBanner) sits over the bottom of the page; the open docs menu gets that
+   much bottom padding, measured by the banner itself, so its last rows can scroll clear of it. */
+@media (max-width: 639px) {
+  html[data-cookie-bar] .docs-mobile-menu {
+    padding-bottom: var(--cookie-bar-h, 0px);
+  }
+}

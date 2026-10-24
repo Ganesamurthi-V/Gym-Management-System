@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { initAnalytics } from './lib/analytics';
 import { initSmoothScroll } from './lib/smoothScroll';
+import { afterFirstPaint } from './lib/afterFirstPaint';
+import { MountedFlag } from './lib/MountedFlag';
+import { FallbackBoundary } from './lib/FallbackBoundary';
 import { getFeaturePage } from './data/featurePages';
 import { FeaturePage } from './pages/FeaturePage';
 import { FeaturesHub } from './pages/FeaturesHub';
@@ -17,6 +20,20 @@ const root = document.getElementById('root')!;
 const page = getFeaturePage(root.dataset.page ?? '');
 if (!page) throw new Error(`Unknown feature page: ${root.dataset.page}`);
 
-createRoot(root).render(
-  <StrictMode>{page.slug === 'features' ? <FeaturesHub page={page} /> : <FeaturePage page={page} />}</StrictMode>
+// Mount after the static copy has painted so the browser reports it as the largest paint (see main.tsx).
+afterFirstPaint(
+  () => {
+    // Taken before createRoot replaces it, so FallbackBoundary can put it back after a render error.
+    const fallbackHtml = root.innerHTML;
+    createRoot(root).render(
+      <StrictMode>
+        <FallbackBoundary html={fallbackHtml}>
+          <MountedFlag />
+          {page.slug === 'features' ? <FeaturesHub page={page} /> : <FeaturePage page={page} />}
+        </FallbackBoundary>
+      </StrictMode>
+    );
+  },
+  1500,
+  false
 );

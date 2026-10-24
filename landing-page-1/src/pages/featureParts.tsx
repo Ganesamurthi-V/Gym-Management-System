@@ -95,9 +95,10 @@ function AccentHeading({ text }: { text: string }) {
 /** The one breadcrumb on a page: it sits at the top of the docs shell, not in the hero. Labels come from the data. */
 export function Breadcrumb({ page }: { page: FeaturePage }) {
   const hub = page.slug === 'features';
+  // Pricing and the guides sit directly under Home, the same as in the BreadcrumbList JSON-LD.
   const crumbs = [
     { name: 'Home', href: '/' },
-    { name: 'Features', href: hub ? undefined : '/features' },
+    ...(page.topLevel ? [] : [{ name: 'Features', href: hub ? undefined : '/features' }]),
     ...(hub ? [] : [{ name: page.breadcrumb, href: undefined }]),
   ];
   // min-h-11 (44px) on every item is the tap target; the row wraps instead of overflowing.
@@ -162,9 +163,11 @@ export function FeatureHero({ page }: { page: FeaturePage }) {
             Start free trial
             <ArrowRight className="h-4 w-4" />
           </a>
-          <a href="/#pricing" className="hero-cta btn btn-outline flex-1 basis-0 sm:flex-none">
-            See pricing
-          </a>
+          {page.slug !== 'pricing' && (
+            <a href="/pricing" className="hero-cta btn btn-outline flex-1 basis-0 sm:flex-none">
+              See pricing
+            </a>
+          )}
         </div>
 
         <ul className="hero-trust mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
@@ -204,8 +207,8 @@ export function FeatureGrid() {
   return (
     <div className="mt-8 grid gap-3 md:grid-cols-2 lg:mt-10">
       {FEATURE_CARDS.map((card, i) => (
-        // Seven cards in two columns: the last one spans both, so the final row has no hole.
-        <div key={card.slug} className={i === FEATURE_CARDS.length - 1 ? 'grid md:col-span-2' : 'grid'}>
+        // An odd number of cards in two columns: the last one spans both, so the final row has no hole.
+        <div key={card.slug} className={i === FEATURE_CARDS.length - 1 && FEATURE_CARDS.length % 2 === 1 ? 'grid md:col-span-2' : 'grid'}>
           <FeatureCard page={card} />
         </div>
       ))}

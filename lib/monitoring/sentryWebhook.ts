@@ -41,7 +41,7 @@ export function sentryEventToAlert(resource: string | null, json: unknown): Aler
     const level = ev?.level ?? 'error'
     const rule = data?.triggered_rule ?? 'event_alert'
     return build('event_alert', rule, level === 'fatal' || level === 'error', clip(ev?.title, 150) || 'Sentry event',
-      [`rule: ${clip(rule, 80)}`, ev?.project != null ? `project: ${String(ev.project)}` : '', `level: ${level}`, ev?.web_url ? `url: ${ev.web_url}` : ''])
+      [`rule: ${clip(rule, 80)}`, typeof ev?.project === 'string' ? `project: ${ev.project}` : '', `level: ${level}`, ev?.web_url ? `url: ${ev.web_url}` : ''])
   }
   if (resource === 'metric_alert') {
     if (action !== 'critical' && action !== 'warning') return null // resolved or unknown

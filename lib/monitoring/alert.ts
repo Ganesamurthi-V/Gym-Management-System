@@ -93,7 +93,9 @@ function parseMax(raw: string | undefined): number {
  */
 export function scrubPii(text: string): string {
   return text
-    .split(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d{4}-\d{2}-\d{2})/i)
+    // Sentry links are kept whole: their issue ids are long digit runs but hold no personal data, and
+    // redacting them would make the link in the alert useless.
+    .split(/(https:\/\/[\w.-]*sentry\.io\/[^\s]*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d{4}-\d{2}-\d{2})/i)
     .map((part, i) => {
       if (i % 2 === 1) return part
       return part
@@ -449,7 +451,8 @@ export function createAlerter(deps: AlertDeps) {
     const tg = withTimeout(telegram(buildTelegramText(input, envName, deps.now(), g.cooldown, info)), SINK_TIMEOUT_MS)
     const hist = withTimeout(history(input, eff, info), SINK_TIMEOUT_MS)
     const sinks: Promise<unknown>[] = [tg, hist]
-    if (input.severity === 'critical' && deps.sentry) {
+    // sentry:* alerts come FROM Sentry; re-capturing them would open a new issue that fires the same alert again.
+    if (input.severity === 'critical' && deps.sentry && !input.key.startsWith('sentry:')) {
       const sentry = deps.sentry
       sinks.push(withTimeout((async () => { try { await sentry(input.title) } catch { /* ignore */ } })(), SINK_TIMEOUT_MS))
     }

@@ -340,6 +340,16 @@ describe('PII scrubbing', () => {
     const id = '550e8400-e29b-41d4-a716-446655440000'
     expect(scrubPii(`gym ${id} failed 1234567 times 42 at 2026-10-24`)).toBe(`gym ${id} failed 1234567 times 42 at 2026-10-24`)
   })
+  it('keeps sentry.io links whole', () => {
+    const url = 'https://gym-flow.sentry.io/issues/7123456789/events/ba2b27cbb16d4b19b7c6e61b081d27a8/'
+    expect(scrubPii(`url: ${url} call 9876543210`)).toBe(`url: ${url} call [number]`)
+  })
+  it('does not re-capture sentry:* alerts into Sentry (would loop)', async () => {
+    const sentry = vi.fn()
+    const { alerter } = make({ sentry })
+    await alerter.report(alert('sentry:event_alert'))
+    expect(sentry).not.toHaveBeenCalled()
+  })
   it('is applied to telegram, history, and sentry', async () => {
     const sentry = vi.fn()
     const { alerter, fetchMock, insert } = make({ sentry })

@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const state = vi.hoisted(() => ({
   planType: 'free' as string,
+  gymExtra: {} as Record<string, unknown>,
   memberRow: { id: 'm1', gym_id: 'g1', created_at: '2026-01-01', name: 'A' } as unknown,
   access: { state: 'ok', data: { member: { id: 'm1' }, gym: { id: 'g1' } } } as
     | { state: 'ok'; data: unknown } | { state: 'blocked' } | { state: 'not_member' },
@@ -29,7 +30,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
-    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { plan_type: state.planType }, error: null }) }) }) }),
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { plan_type: state.planType, ...state.gymExtra }, error: null }) }) }) }),
   }),
 }))
 vi.mock('@/lib/dal', () => ({ getAuthUser: async () => ({ user: state.user }) }))
@@ -52,6 +53,31 @@ describe('getMemberWithGym plan gate', () => {
     const md = await import('@/lib/member/member-data')
     expect((await md.getMemberAccessState()).state).toBe('ok')
     expect(await md.getMemberWithGym()).not.toBeNull()
+  })
+
+  // Regression: the gate only checked plan_type, so a trial that ended without the owner choosing
+  // a plan (status 'expired', plan_type still 'trial') kept the member app forever, and so did a
+  // deactivated gym. Members now lose the app exactly when the owner hits the paywall.
+  it.each([
+    ['an ended trial (cron marked it expired)', 'trial', { subscription_status: 'expired' }],
+    ['a trial past its end date the cron has not flipped yet', 'trial', { subscription_status: 'trial', trial_ends_at: '2020-01-01T00:00:00Z' }],
+    ['a lapsed paid plan', 'monthly', { subscription_status: 'active', subscription_ends_at: '2020-01-01T00:00:00Z' }],
+    ['a suspended gym', 'yearly', { subscription_status: 'suspended' }],
+    ['a deactivated gym', 'yearly', { subscription_status: 'active', is_active: false }],
+  ])('blocks %s', async (_label, plan, extra) => {
+    state.planType = plan
+    state.gymExtra = extra
+    const md = await import('@/lib/member/member-data')
+    expect((await md.getMemberAccessState()).state).toBe('blocked')
+    state.gymExtra = {}
+  })
+
+  it('allows an active paid plan with time left', async () => {
+    state.planType = 'yearly'
+    state.gymExtra = { subscription_status: 'active', is_active: true, subscription_ends_at: '2099-01-01T00:00:00Z' }
+    const md = await import('@/lib/member/member-data')
+    expect((await md.getMemberAccessState()).state).toBe('ok')
+    state.gymExtra = {}
   })
 
   it('reports not_member when there is no member row', async () => {

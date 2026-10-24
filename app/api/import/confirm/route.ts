@@ -11,6 +11,7 @@ import { apiLogger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { calcEndDate, todayIST } from '@/lib/utils'
 import { importRowsToTake } from '@/lib/subscription-utils'
+import { passesCsrfCheck } from '@/lib/api/withAuth'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
 const PLAN_LIMIT_MESSAGE = 'Your plan allows 50 members, and your gym has reached that limit. Upgrade to a paid plan to import more members.'
@@ -40,6 +41,11 @@ export async function POST(req: NextRequest) {
     key: 'import:confirm_failed', severity: 'critical', title: 'Member import failed',
     body: `gymId=${alertGymId ?? 'unknown'} step=${step}`, gymId: alertGymId ?? null,
   })
+  // Not wrapped in withAuth, and the body is read as text without a Content-Type check, so a
+  // cross-site text/plain form could carry JSON here. Apply the same CSRF check as withAuth.
+  if (!passesCsrfCheck(req)) {
+    return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Forbidden' } }, { status: 403 })
+  }
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()

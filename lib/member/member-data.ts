@@ -41,7 +41,7 @@ import { cache } from 'react'
 import { after } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { timed } from '@/lib/perf'
-import { planAllowsMemberApp } from '@/lib/subscription-utils'
+import { planAllowsMemberApp, computeSubscriptionState } from '@/lib/subscription-utils'
 import type { Member, Gym, Membership, Attendance, WorkoutProgram } from '@/types/member-db'
 import { mapMemberGamification } from '@/lib/gamification/mapMemberGamification'
 import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
@@ -162,7 +162,7 @@ export const getMemberAppAccess = cache(async (member: Pick<Member, 'id' | 'gym_
     const admin = createAdminClient()
     const { data: gym, error: gymErr } = await admin
       .from('gyms')
-      .select('plan_type')
+      .select('plan_type, is_active, subscription_status, trial_ends_at, subscription_ends_at')
       .eq('id', member.gym_id)
       .maybeSingle()
     if (gymErr || !gym) {
@@ -170,6 +170,11 @@ export const getMemberAppAccess = cache(async (member: Pick<Member, 'id' | 'gym_
       return false
     }
     if (!planAllowsMemberApp(gym.plan_type)) return false
+    // The member app is a paid feature: a gym whose owner is on the paywall (trial ended
+    // without choosing a plan, paid plan lapsed, cancelled/suspended) or that an admin
+    // deactivated must not keep it. Same rule as the owner paywall, so the two never disagree;
+    // without it a lapsed trial kept the member app forever, which beat choosing Free.
+    if (gym.is_active === false || computeSubscriptionState(gym).isExpired) return false
     // Only trial gyms cap by join order; skip the count query for everyone else.
     if (gym.plan_type !== 'trial') return true
     const { getTrialEligibleMemberIds } = await import('@/lib/member/trialEligibility')

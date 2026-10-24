@@ -198,7 +198,7 @@ the merge.
   `services/whatsapp/` — Graph API client and `templateSpec.ts`; `repositories/whatsapp/` — DB access;
   `config/whatsapp.ts` — config.
 - Event sends (welcome, renewal, prize awarded) fire inline with claim-then-send. Scheduled sends go through
-  `whatsapp_send_queue`, drained 15 msgs / 5 min by QStash at `/api/whatsapp/queue/drain`.
+  `whatsapp_send_queue`, drained 100 msgs / 5 min by QStash (each run stops claiming at a 40 s time budget and reschedules after 1 min) at `/api/whatsapp/queue/drain`.
 - Crons (`vercel.json`): `/api/cron/whatsapp` 03:30 UTC (09:00 IST), `/api/cron/subscription` 00:00 UTC, both
   authenticated by `CRON_SECRET`. New scheduled work becomes a step inside `runDailyWhatsAppAutomation()`; do not add
   Vercel crons.

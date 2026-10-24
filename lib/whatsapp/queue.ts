@@ -5,7 +5,7 @@
  *
  * Bulk automated sends (post-import batch + daily cron) are ENQUEUED into
  * whatsapp_send_queue rather than dispatched inline, then drained at a fixed
- * global rate — BATCH_SIZE sends per DRAIN_INTERVAL — so the single shared
+ * global rate (BATCH_SIZE = 100 sends per DRAIN_INTERVAL) so the single shared
  * WhatsApp Cloud API number is never flagged as spamming.
  *
  * Cadence is driven by QStash: after draining a batch, if work remains the
@@ -28,10 +28,20 @@ import type { TemplateContext, TemplateId, SendResult } from '@/types/whatsapp'
 
 // ─── Cadence constants ──────────────────────────────────────────────────────
 
-/** Messages sent per drain batch. */
-export const BATCH_SIZE = 15
+/** Messages sent per drain window; also the global sliding-window limit (BATCH_SIZE per DRAIN_INTERVAL_MINUTES). */
+export const BATCH_SIZE = 100
 /** Minutes between drain batches. */
 export const DRAIN_INTERVAL_MINUTES = 5
+/**
+ * Wall-clock budget for one drain invocation. The route has maxDuration = 60 s; 100 sequential
+ * sends (token + claim + Meta call + updates, up to ~1 s each) can exceed that, and a function
+ * killed mid-batch leaves claimed rows 'sending' until the 10 min lease, risking a duplicate send.
+ * 40 s leaves ~20 s for the in-flight send, the reaper, the final count query, the reschedule
+ * publish and cold start. The loop stops CLAIMING at the budget; a claimed row is always finished.
+ */
+export const DRAIN_TIME_BUDGET_MS = 40_000
+/** Delay before the follow-up drain when a drain stopped on the time budget with work left. */
+export const CONTINUATION_DELAY_MINUTES = 1
 /**
  * How long a row may sit in 'sending' before it is treated as never sent. A status webhook
  * confirming an accepted send normally arrives within ~1 minute; 10 minutes is a generous
@@ -80,6 +90,8 @@ export interface DrainStats {
   reaped: number
   remaining: number
   rescheduled: boolean
+  /** The loop stopped claiming because DRAIN_TIME_BUDGET_MS elapsed. */
+  timeBudgetHit: boolean
 }
 
 // ─── Enqueue ────────────────────────────────────────────────────────────────
@@ -222,7 +234,18 @@ function drainUrl(): string | null {
  * logs) if publishing failed or QStash isn't configured — the daily cron is
  * always the backstop, so a missed kick just delays sends, never drops them.
  */
-export async function kickDrain(delayMinutes = 0): Promise<boolean> {
+/**
+ * QStash deduplication id. Normal and immediate kicks share an id per 5-minute window and delay
+ * so concurrent kicks (e.g. several gyms in the daily cron) collapse into one. A continuation
+ * kick is unique per call: two continuations inside one window must both be delivered, or the
+ * second would be silently dropped and the chain would stall until the next 5-minute kick.
+ */
+export function drainDedupId(delayMinutes: number, nowMs: number, continuation = false): string {
+  if (continuation) return `wa-drain-cont-${nowMs}`
+  return `wa-drain-d${delayMinutes}-${Math.floor(nowMs / (DRAIN_INTERVAL_MINUTES * 60_000))}`
+}
+
+export async function kickDrain(delayMinutes = 0, opts: { continuation?: boolean } = {}): Promise<boolean> {
   const url = drainUrl()
   const token = process.env.QSTASH_TOKEN
   if (!url || !token) return false
@@ -240,10 +263,9 @@ export async function kickDrain(delayMinutes = 0): Promise<boolean> {
         'Content-Type': 'application/json',
         // QStash delays delivery by this many seconds.
         ...(delayMinutes > 0 ? { 'Upstash-Delay': `${delayMinutes * 60}s` } : {}),
-        // Dedup within the same interval window. Include delayMinutes so an
-        // immediate kick (delay=0) and a reschedule (delay=5) never collide —
-        // otherwise the reschedule is silently dropped and the queue stalls.
-        'Upstash-Deduplication-Id': `wa-drain-d${delayMinutes}-${Math.floor(Date.now() / (DRAIN_INTERVAL_MINUTES * 60_000))}`,
+        // See drainDedupId: delay is part of the id so an immediate kick and a reschedule never
+        // collide, and continuation kicks are unique per call.
+        'Upstash-Deduplication-Id': drainDedupId(delayMinutes, Date.now(), opts.continuation),
       },
       body: JSON.stringify({ trigger: 'drain' }),
     })
@@ -267,7 +289,9 @@ export interface DrainDeps {
   /** Consume one global rate token; resolves { success, remaining }. */
   takeToken?: () => Promise<{ success: boolean; remaining: number }>
   /** Schedule the next drain batch; defaults to QStash kickDrain. */
-  reschedule?: (delayMinutes: number) => Promise<boolean>
+  reschedule?: (delayMinutes: number, opts?: { continuation?: boolean }) => Promise<boolean>
+  /** Clock in ms; defaults to Date.now. Injectable so the time budget is testable. */
+  now?: () => number
   /**
    * Runs only for 'member_app_invitation', right before the send, and returns the context to
    * send (with invitationToken filled). Tokens expire after 24h and a big gym can wait in the
@@ -311,8 +335,8 @@ function defaultTakeToken(): Promise<{ success: boolean; remaining: number }> {
 }
 
 /**
- * Drain up to BATCH_SIZE due rows, throttled by the global rate token, then
- * reschedule the next batch if work remains (or the token bucket was empty).
+ * Drain up to BATCH_SIZE due rows, throttled by the global rate token and bounded by
+ * DRAIN_TIME_BUDGET_MS, then reschedule if work remains (or the token bucket was empty).
  *
  * Row lifecycle per drain:
  *   pending → (claim: status='sending', locked_at, attempts++) → send
@@ -328,7 +352,9 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
   const takeToken = deps.takeToken ?? defaultTakeToken
   const reschedule = deps.reschedule ?? kickDrain
 
-  const stats: DrainStats = { drained: 0, sent: 0, failed: 0, retried: 0, deferred: 0, unconfirmed: 0, reaped: 0, remaining: 0, rescheduled: false }
+  const stats: DrainStats = { drained: 0, sent: 0, failed: 0, retried: 0, deferred: 0, unconfirmed: 0, reaped: 0, remaining: 0, rescheduled: false, timeBudgetHit: false }
+  const clock = deps.now ?? Date.now
+  const startedAt = clock()
   let tokenExhausted = false
   // Earliest time a denied recipient may be retried; sets the next drain delay.
   let earliestRetryAt: number | null = null
@@ -339,6 +365,8 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
   stats.reaped = await reapStaleSends(supabase)
 
   for (let i = 0; i < BATCH_SIZE; i++) {
+    // Checked only between rows: a claimed row is always finished, never abandoned.
+    if (clock() - startedAt > DRAIN_TIME_BUDGET_MS) { stats.timeBudgetHit = true; break }
     const token = await takeToken()
     if (!token.success) { tokenExhausted = true; break }
 
@@ -475,7 +503,10 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     .eq('status', 'pending')
   stats.remaining = count ?? 0
 
-  if (stats.remaining > 0 || tokenExhausted) {
+  if (stats.timeBudgetHit && stats.remaining > 0 && !tokenExhausted && earliestRetryAt === null) {
+    // Stopped for time, not for rate: continue shortly, with a per-call dedup id.
+    stats.rescheduled = await reschedule(CONTINUATION_DELAY_MINUTES, { continuation: true })
+  } else if (stats.remaining > 0 || tokenExhausted) {
     // After a deferral nothing new can go out until a slot frees up, so wait for that, but
     // re-check at least hourly in case the limit was raised or slots freed early.
     const untilRetry = earliestRetryAt === null ? DRAIN_INTERVAL_MINUTES : Math.ceil((earliestRetryAt - Date.now()) / 60_000)

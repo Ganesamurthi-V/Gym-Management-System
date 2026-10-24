@@ -246,11 +246,11 @@ describe('finalizeSendRow', () => {
 describe('estimateDrainMinutes', () => {
   const base = { cap: 220, batchSize: BATCH_SIZE, intervalMinutes: DRAIN_INTERVAL_MINUTES }
   it('keeps the rate-based estimate when everything fits', () => {
-    expect(estimateDrainMinutes({ ...base, queued: 30, unique: 30, free: 220 })).toBe(10)
+    expect(estimateDrainMinutes({ ...base, queued: 30, unique: 30, free: 220 })).toBe(5)
   })
   it('adds whole days for recipients beyond the free slots', () => {
-    expect(estimateDrainMinutes({ ...base, queued: 300, unique: 300, free: 220 })).toBe(20 * 5 + 1440)
-    expect(estimateDrainMinutes({ ...base, queued: 600, unique: 600, free: 100 })).toBe(40 * 5 + 3 * 1440)
+    expect(estimateDrainMinutes({ ...base, queued: 300, unique: 300, free: 220 })).toBe(3 * 5 + 1440)
+    expect(estimateDrainMinutes({ ...base, queued: 600, unique: 600, free: 100 })).toBe(6 * 5 + 3 * 1440)
   })
   it('treats negative free as zero and zero queued as zero', () => {
     expect(estimateDrainMinutes({ ...base, queued: 15, unique: 15, free: -5 })).toBe(5 + 1440)

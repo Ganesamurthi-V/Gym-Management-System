@@ -139,7 +139,7 @@ Four extra templates support the leaderboards: `gym_streak_at_risk`, `gym_weekly
 ## Bulk member-app invites
 
 `POST /api/member-app/invite-all` queues a `member_app_invitation` row per eligible member (has a phone, not
-`activated`) on the same throttled `whatsapp_send_queue`, so even 10 invites drain at 15 per 5 minutes.
+`activated`) on the same throttled `whatsapp_send_queue`, so even 10 invites drain at up to 100 per 5 minutes (each drain run stops claiming after `DRAIN_TIME_BUDGET_MS` = 40 s to stay inside the 60 s function limit, then continues 1 minute later).
 Enqueue stores only the member id and `{ phone, gymName, memberName, gymId }`. The invitation token is minted
 just-in-time inside `drainSendQueue` (the `prepare` step, default `prepareMemberInvitation` in
 `lib/member-invitation-server.ts`), because tokens expire after 24 hours and a large gym can sit in the queue

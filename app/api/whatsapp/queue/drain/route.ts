@@ -1,8 +1,9 @@
 /**
  * POST /api/whatsapp/queue/drain
  *
- * Drains a batch of the throttled WhatsApp send queue (BATCH_SIZE per call),
- * then self-schedules the next batch via QStash if work remains.
+ * Drains a batch of the throttled WhatsApp send queue (up to BATCH_SIZE = 100 per 5 min,
+ * stopping early at DRAIN_TIME_BUDGET_MS so it finishes inside maxDuration), then self-schedules
+ * the next run via QStash if work remains (1 min if it stopped on time, else 5 min).
  *
  * Triggered by QStash (verified via the Upstash-Signature header) or manually
  * with the CRON_SECRET header (local dev / backstop). Never callable anonymously.
@@ -15,7 +16,7 @@ import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { drainSendQueue } from '@/lib/whatsapp/queue'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+export const maxDuration = 60 // keep > DRAIN_TIME_BUDGET_MS (40 s) + reaper/count/publish margin
 
 function adminClient() {
   const url = process.env.SUPABASE_URL

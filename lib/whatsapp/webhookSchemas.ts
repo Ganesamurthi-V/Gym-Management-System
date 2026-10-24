@@ -16,12 +16,15 @@ const metadataSchema = z.object({
 
 // ─── Contact Schema ──────────────────────────────────────────────────────────
 
+// Meta now sends contacts without `profile` (and with a business-scoped `user_id`), so only the
+// shape is checked, not the presence of a name. Readers must tolerate every field being absent.
 const contactSchema = z.object({
   profile: z.object({
-    name: z.string(),
-  }),
-  wa_id: z.string(),
-})
+    name: z.string().optional(),
+  }).passthrough().optional(),
+  wa_id: z.string().optional(),
+  user_id: z.string().optional(),
+}).passthrough()
 
 // ─── Message Schemas ─────────────────────────────────────────────────────────
 
@@ -132,16 +135,20 @@ const referralSchema = z.object({
 
 const errorPayloadSchema = z.object({
   code: z.number(),
-  title: z.string(),
+  title: z.string().optional(),
   message: z.string().optional(),
   error_data: z.object({
-    details: z.string(),
-  }).optional(),
-})
+    details: z.string().optional(),
+  }).passthrough().optional(),
+  href: z.string().optional(),
+}).passthrough()
 
 // Main message schema with all possible message types
 const messageSchema = z.object({
-  from: z.string(),
+  // `from` is absent on some current events (e.g. type 'unsupported'), which carry from_user_id.
+  from: z.string().optional(),
+  from_user_id: z.string().optional(),
+  unsupported: z.unknown().optional(),
   id: z.string(),
   timestamp: z.string(),
   type: z.string(), // Allow any string, we'll handle unknown types gracefully
@@ -175,16 +182,18 @@ const conversationSchema = z.object({
 })
 
 const pricingSchema = z.object({
-  billable: z.boolean(),
-  pricing_model: z.string(),
-  category: z.string(),
-})
+  type: z.string().optional(),
+  billable: z.boolean().optional(),
+  pricing_model: z.string().optional(),
+  category: z.string().optional(),
+}).passthrough()
 
 const statusSchema = z.object({
   id: z.string(),
   status: z.enum(['sent', 'delivered', 'read', 'failed', 'deleted']),
   timestamp: z.string(),
-  recipient_id: z.string(),
+  recipient_id: z.string().optional(),
+  recipient_user_id: z.string().optional(),
   conversation: conversationSchema.optional(),
   pricing: pricingSchema.optional(),
   errors: z.array(errorPayloadSchema).optional(),
@@ -193,7 +202,7 @@ const statusSchema = z.object({
 
 // ─── Webhook Value Schema ────────────────────────────────────────────────────
 
-const webhookValueSchema = z.object({
+export const webhookValueSchema = z.object({
   messaging_product: z.literal('whatsapp'),
   metadata: metadataSchema,
   contacts: z.array(contactSchema).optional(),
@@ -214,6 +223,32 @@ export const webhookPayloadSchema = z.object({
     }).passthrough()),
   }).passthrough()),
 }).passthrough()
+
+// ─── Generic envelope (every field type) ─────────────────────────────────────
+
+/**
+ * Meta delivers many field types to this endpoint (messages, account_update,
+ * message_template_status_update, phone_number_name_update, ...). Only `messages` has the strict
+ * value schema above; everything else just has to be a well-formed envelope so it can be
+ * acknowledged with 200 and Meta stops retrying it.
+ */
+export const webhookEnvelopeSchema = z.object({
+  object: z.literal('whatsapp_business_account'),
+  entry: z.array(z.object({
+    id: z.string(),
+    changes: z.array(z.object({
+      field: z.string(),
+      value: z.object({}).passthrough(),
+    }).passthrough()),
+  }).passthrough()),
+}).passthrough()
+
+/** Paths and messages only, never values (payloads contain personal data). */
+export function summariseIssues(issues: ReadonlyArray<{ path: PropertyKey[]; message: string }>): string {
+  return issues.slice(0, 5)
+    .map(i => `${i.path.map(String).join('.') || '(root)'}: ${i.message}`)
+    .join('; ')
+}
 
 // ─── Webhook Verification Schema ─────────────────────────────────────────────
 

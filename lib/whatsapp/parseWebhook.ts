@@ -80,7 +80,8 @@ function parseMessage(message: Message, phoneNumberId: string): ProcessedMessage
   
   const processed: ProcessedMessage = {
     messageId: message.id,
-    from: message.from,
+    // Some current events (e.g. 'unsupported') have no `from`; the message processor skips those.
+    from: message.from ?? '',
     to: phoneNumberId,
     timestamp: new Date(parseInt(message.timestamp) * 1000),
     type: messageType,
@@ -255,7 +256,7 @@ export function extractContactName(payload: MetaWebhookPayload): Record<string, 
       
       if (value.contacts) {
         for (const contact of value.contacts) {
-          contacts[contact.wa_id] = contact.profile.name
+          if (contact.wa_id && contact.profile?.name) contacts[contact.wa_id] = contact.profile.name
         }
       }
     }

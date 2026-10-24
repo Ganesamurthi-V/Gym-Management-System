@@ -36,6 +36,9 @@ function hourBucket(): string {
   return new Date().toISOString().slice(0, 13).replace(/[-T]/g, '')
 }
 
+/** Failed statuses older than this are persisted but never alert or count (replayed backlog). */
+export const ALERT_MAX_AGE_MS = 2 * 60 * 60 * 1000
+
 /** Delivery failures per UTC hour at which the rate alert fires. */
 export const DELIVERY_FAILURE_RATE_THRESHOLD = 10
 
@@ -241,6 +244,16 @@ async function handleFailedStatus(
       status,
     },
   })
+
+  // Meta retries events it could not deliver for days (e.g. after an outage of this endpoint).
+  // The state change above is still correct for an old failure, but alerting on it would report
+  // a long-fixed problem (an old token error) as new, and a replayed backlog would trip the
+  // hourly rate alert. So only recent failures alert or count.
+  const ageMs = Date.now() - status.timestamp.getTime()
+  if (Number.isFinite(ageMs) && ageMs > ALERT_MAX_AGE_MS) {
+    log.info('Old failed status: persisted, alerts skipped', { messageId: status.messageId, ageMs })
+    return
+  }
 
   // Alerts. Never include the recipient number.
   const kind = classifyMetaError(status.errorCode, status.errorMessage)

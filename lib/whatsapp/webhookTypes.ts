@@ -41,10 +41,11 @@ export interface Metadata {
 // ─── Contact ─────────────────────────────────────────────────────────────────
 
 export interface Contact {
-  profile: {
-    name: string
+  profile?: {
+    name?: string
   }
-  wa_id: string // WhatsApp ID (phone number)
+  wa_id?: string // WhatsApp ID (phone number); absent on some current events
+  user_id?: string // business-scoped user id
 }
 
 // ─── Message Types ───────────────────────────────────────────────────────────
@@ -66,7 +67,8 @@ export type MessageType =
   | 'unknown'
 
 export interface Message {
-  from: string // sender phone number
+  from?: string // sender phone number; absent on some events (see from_user_id)
+  from_user_id?: string
   id: string // message ID
   timestamp: string // Unix timestamp
   type: MessageType
@@ -202,7 +204,8 @@ export interface Status {
   id: string // message ID
   status: StatusType
   timestamp: string // Unix timestamp
-  recipient_id: string // recipient phone number
+  recipient_id?: string // recipient phone number; absent on some current events
+  recipient_user_id?: string
   conversation?: Conversation
   pricing?: Pricing
   errors?: ErrorPayload[]
@@ -218,16 +221,18 @@ export interface Conversation {
 }
 
 export interface Pricing {
-  billable: boolean
-  pricing_model: 'CBP' | string
-  category: 'user_initiated' | 'business_initiated' | 'referral_conversion' | 'authentication' | 'marketing' | 'utility' | 'service'
+  type?: string
+  billable?: boolean
+  pricing_model?: 'CBP' | string
+  category?: string
 }
 
 // ─── Errors ──────────────────────────────────────────────────────────────────
 
 export interface ErrorPayload {
   code: number
-  title: string
+  title?: string
+  href?: string
   message?: string
   error_data?: {
     details: string
@@ -265,7 +270,7 @@ export interface ProcessedMessage {
 export interface ProcessedStatus {
   messageId: string
   status: StatusType
-  recipientId: string
+  recipientId?: string
   timestamp: Date
   conversationId?: string
   errorCode?: number

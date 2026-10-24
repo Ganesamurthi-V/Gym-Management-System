@@ -97,6 +97,15 @@ describe('failed delivery status', () => {
     expect(h.rows.whatsapp_send_queue[0].status).toBe('delivery_failed')
   })
 
+  it('a replayed old failed status is persisted but never alerts or counts', async () => {
+    const old = { ...failed(190, 'Access token expired'), timestamp: new Date(Date.now() - 3 * 3600_000) }
+    await processStatuses([old], log)
+    await flush()
+    expect(h.updates.some(u => u.table === 'whatsapp_automation_logs')).toBe(true)
+    expect(h.alert).not.toHaveBeenCalled()
+    expect(h.incr).not.toHaveBeenCalled()
+  })
+
   it('190 -> critical wa:token_invalid', async () => {
     await processStatuses([failed(190, 'Access token expired')], log)
     expect(keys()).toEqual(['wa:token_invalid'])

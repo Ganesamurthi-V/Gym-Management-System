@@ -115,7 +115,7 @@ function extractEvents(payload: MetaWebhookPayload): ExtractedEvents {
 
       // Extract contact name lookup table (wa_id → display name)
       for (const contact of value.contacts ?? []) {
-        contactNames[contact.wa_id] = contact.profile.name
+        if (contact.wa_id && contact.profile?.name) contactNames[contact.wa_id] = contact.profile.name
       }
 
       for (const msg of value.messages ?? []) messages.push(msg)

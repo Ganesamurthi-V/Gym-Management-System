@@ -75,6 +75,14 @@ async function processSingleMessage(
   contactNames: Record<string, string>,
   log: RequestLogger
 ): Promise<void> {
+  // Some current Meta events (e.g. type 'unsupported') carry no `from`, only a business-scoped
+  // id. There is nothing to attribute or reply to, so skip them instead of throwing (a throw
+  // would be reported to Sentry for every such event).
+  if (!message.from) {
+    log.warn('Inbound message has no sender; skipping', { messageId: message.messageId, type: message.type })
+    return
+  }
+
   // 1. Idempotency check (Redis)
   const isNew = await checkAndMarkEvent(message.messageId, 'message')
   

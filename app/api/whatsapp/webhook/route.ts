@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiLogger } from '@/lib/logger'
 import { verifyWebhook } from '@/lib/whatsapp/verifyWebhook'
 import { verifySignature, getRawBody } from '@/lib/whatsapp/verifySignature'
-import { webhookPayloadSchema } from '@/lib/whatsapp/webhookSchemas'
+import { webhookPayloadSchema, webhookEnvelopeSchema, summariseIssues } from '@/lib/whatsapp/webhookSchemas'
 import { parseMessages, parseStatuses, extractContactName } from '@/lib/whatsapp/parseWebhook'
 import { processMessages } from '@/services/whatsapp/messageProcessor'
 import { processStatuses } from '@/services/whatsapp/statusProcessor'
@@ -148,14 +148,55 @@ export async function POST(req: NextRequest) {
     log.end('PARSE_JSON')
 
     // 4. Validate payload schema
+    // Meta sends many field types here (messages, account_update, template status, ...). The
+    // generic envelope is checked for all of them; the strict value schema applies ONLY to
+    // `messages` changes, otherwise every non-message event would be rejected and retried.
     log.start('VALIDATE_SCHEMA')
-    const validation = webhookPayloadSchema.safeParse(jsonPayload)
+    const envelope = webhookEnvelopeSchema.safeParse(jsonPayload)
+    const messageChanges = envelope.success
+      ? {
+          ...envelope.data,
+          entry: envelope.data.entry
+            .map(e => ({ ...e, changes: e.changes.filter(c => c.field === 'messages') }))
+            .filter(e => e.changes.length > 0),
+        }
+      : null
+    const validation = !envelope.success
+      ? envelope
+      : messageChanges!.entry.length === 0
+        ? null
+        : webhookPayloadSchema.safeParse(messageChanges)
     log.end('VALIDATE_SCHEMA')
 
-    if (!validation.success) {
+    if (envelope.success && validation === null) {
+      // Only non-message fields. Acknowledge so Meta stops retrying; nothing is processed. The
+      // table's event_type is CHECK-constrained, so the field name goes in the note instead.
+      const fields = [...new Set(envelope.data.entry.flatMap(e => e.changes.map(c => c.field)))].join(',').slice(0, 100)
+      log.info('Ignoring non-message webhook field', { fields })
+      await saveWebhookLog(
+        log.requestId, phoneNumberId, 'unknown', jsonPayload, true, true,
+        `ignored field: ${fields}`, Math.round(performance.now() - startTime),
+      )
+      log.summary(200)
+      return NextResponse.json({ success: true }, { status: 200 })
+    }
+
+    if (!validation || !validation.success) {
+      const issues = validation && !validation.success ? validation.error.issues : []
+      const summary = summariseIssues(issues)
       log.warn('Invalid webhook payload schema', {
-        errors: validation.error.issues,
+        errors: issues,
       })
+
+      // Repeated schema failures mean Meta's payload shape changed again; alert at 5 per UTC hour.
+      void bumpCounter(`wa:webhook:schema:${hourBucket()}`, 7200).then(n => {
+        if (n !== null && n >= 5) {
+          reportAlertInBackground({
+            key: 'wa:webhook_schema_invalid', severity: 'warning', title: 'WhatsApp webhook payloads failing validation',
+            body: `${n} payloads failed schema validation this hour. First issue: ${issues[0] ? summariseIssues([issues[0]]) : 'unknown'}`,
+          })
+        }
+      }).catch(() => {})
       
       const processingTime = Math.round(performance.now() - startTime)
       await saveWebhookLog(
@@ -165,7 +206,7 @@ export async function POST(req: NextRequest) {
         jsonPayload,
         true,
         false,
-        'Schema validation failed',
+        `Schema validation failed: ${summary}`.slice(0, 500),
         processingTime
       )
 

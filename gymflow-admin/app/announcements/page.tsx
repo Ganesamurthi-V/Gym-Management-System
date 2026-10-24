@@ -10,6 +10,7 @@ type Announcement = {
   level: Level
   link_url: string | null
   link_label: string | null
+  message_after: string
   is_active: boolean
   version: number
   updated_at: string | null
@@ -17,6 +18,7 @@ type Announcement = {
 
 const MESSAGE_MAX = 200
 const LABEL_MAX = 30
+const AFTER_MAX = 120
 
 // Literal hex so the preview matches the owner app regardless of this app's dark theme.
 const LEVEL_STYLE: Record<Level, { bg: string; border: string; text: string }> = {
@@ -32,6 +34,7 @@ export default function AnnouncementsPage() {
   const [level, setLevel] = useState<Level>('info')
   const [linkUrl, setLinkUrl] = useState('')
   const [linkLabel, setLinkLabel] = useState('')
+  const [messageAfter, setMessageAfter] = useState('')
   const [live, setLive] = useState<Announcement | null>(null)
 
   function apply(a: Announcement) {
@@ -40,6 +43,7 @@ export default function AnnouncementsPage() {
     setLevel(a.level)
     setLinkUrl(a.link_url ?? '')
     setLinkLabel(a.link_label ?? '')
+    setMessageAfter(a.message_after ?? '')
   }
 
   useEffect(() => {
@@ -70,6 +74,7 @@ export default function AnnouncementsPage() {
           level,
           link_url: linkTrim || null,
           link_label: linkLabel.trim() || null,
+          message_after: messageAfter,
           is_active: isActive,
         }),
       })
@@ -170,6 +175,21 @@ export default function AnnouncementsPage() {
           </div>
         </div>
 
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Text after the link (optional)</label>
+            <span className="text-xs font-semibold text-slate-500">{messageAfter.length}/{AFTER_MAX}</span>
+          </div>
+          <input
+            type="text"
+            value={messageAfter}
+            onChange={e => setMessageAfter(e.target.value.slice(0, AFTER_MAX))}
+            className="admin-input"
+            disabled={loading}
+          />
+          <p className="text-xs text-slate-500 mt-1.5">Shown after the link, on the same line.</p>
+        </div>
+
         <div className="pt-4 border-t border-[#1f2937] flex justify-end gap-3">
           <button
             type="button"
@@ -194,10 +214,11 @@ export default function AnnouncementsPage() {
 
       <div className="admin-card p-6 space-y-3">
         <h2 className="text-base font-semibold text-white">How owners will see it</h2>
-        {/* Always the light look, mirroring the owner banner: flex items-center justify-between gap-3 px-4 py-2 border text-sm font-medium */}
-        <div className="rounded-xl p-4" style={{ background: '#F8FAFC' }}>
+        {/* Always the light look. Faux page top: the strip is the first child, a decorative skeleton header sits beneath it.
+            The strip mirrors the owner banner: centered content, X absolutely at the right edge so the text stays centered. */}
+        <div className="rounded-xl overflow-hidden border" style={{ background: '#F8FAFC', borderColor: '#E2E8F0' }}>
           <div
-            className="flex items-center justify-between gap-3 px-4 py-2 border text-sm font-medium"
+            className="relative flex items-center justify-center px-10 py-2 border-b text-sm font-medium text-center"
             style={{ background: style.bg, borderColor: style.border, color: style.text }}
           >
             <span className="min-w-0 break-words">
@@ -205,14 +226,20 @@ export default function AnnouncementsPage() {
                 <>
                   {message}
                   {linkTrim && !linkError && (
-                    <span className="underline ml-2">{linkLabel.trim() || 'Learn more'}</span>
+                    <span className="underline ml-1">{linkLabel.trim() || 'Learn more'}</span>
                   )}
+                  {messageAfter.trim() && <span className="ml-1">{messageAfter.trim()}</span>}
                 </>
               ) : (
                 <span style={{ opacity: 0.6 }}>Your message appears here</span>
               )}
             </span>
-            {level !== 'critical' && <X className="w-4 h-4 flex-shrink-0" aria-hidden />}
+            {level !== 'critical' && <X className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2" aria-hidden />}
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3" aria-hidden>
+            <div className="h-6 w-6 rounded-full" style={{ background: '#E2E8F0' }} />
+            <div className="h-3 w-28 rounded" style={{ background: '#E2E8F0' }} />
+            <div className="h-3 w-16 rounded ml-auto" style={{ background: '#E2E8F0' }} />
           </div>
         </div>
       </div>

@@ -554,6 +554,8 @@ CREATE TABLE IF NOT EXISTS platform_announcement (
   level       TEXT        NOT NULL DEFAULT 'info' CHECK (level IN ('info', 'warning', 'critical')),
   link_url    TEXT,
   link_label  TEXT,
+  -- Plain text shown after the link ("... <link>. We are working on it.").
+  message_after TEXT      NOT NULL DEFAULT '',
   is_active   BOOLEAN     NOT NULL DEFAULT false,
   version     INT         NOT NULL DEFAULT 0,
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()

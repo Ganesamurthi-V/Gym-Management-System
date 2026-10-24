@@ -11,6 +11,7 @@ import { KeyboardSafeView } from '@/components/KeyboardSafeView';
 
 const MAX_MESSAGE = 200;
 const MAX_LABEL = 30;
+const MAX_AFTER = 120;
 const LEVELS: SiteAnnouncement['level'][] = ['info', 'warning', 'critical'];
 
 export default function AnnouncementScreen() {
@@ -21,6 +22,7 @@ export default function AnnouncementScreen() {
   const [level, setLevel] = useState<SiteAnnouncement['level']>('info');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkLabel, setLinkLabel] = useState('');
+  const [messageAfter, setMessageAfter] = useState('');
   const [saving, setSaving] = useState<'publish' | 'off' | null>(null);
 
   const apply = useCallback((a: SiteAnnouncement) => {
@@ -29,6 +31,7 @@ export default function AnnouncementScreen() {
     setLevel(a.level ?? 'info');
     setLinkUrl(a.link_url ?? '');
     setLinkLabel(a.link_label ?? '');
+    setMessageAfter(a.message_after ?? '');
   }, []);
 
   const load = useCallback(async () => {
@@ -54,6 +57,7 @@ export default function AnnouncementScreen() {
     try {
       const saved = await saveAnnouncement({
         message: message.trim(),
+        message_after: messageAfter.trim(),
         level,
         link_url: url || null,
         link_label: url ? linkLabel.trim() || null : null,
@@ -156,10 +160,24 @@ export default function AnnouncementScreen() {
             placeholder="Learn more"
             maxLength={MAX_LABEL}
           />
+
+          <View style={styles.field}>
+            <AdminInput
+              label="Text after the link (optional)"
+              value={messageAfter}
+              onChangeText={t => setMessageAfter(t.slice(0, MAX_AFTER))}
+              maxLength={MAX_AFTER}
+            />
+            <Text style={[styles.counter, messageAfter.length >= MAX_AFTER - 20 && { color: Colors.amber }]}>
+              {messageAfter.length}/{MAX_AFTER}
+            </Text>
+            <Text style={styles.hint}>Shown after the link, on the same line.</Text>
+          </View>
         </View>
 
         <AnnouncementPreview
           message={message}
+          messageAfter={messageAfter}
           level={level}
           linkLabel={linkLabel}
           hasLink={url.length > 0 && !linkInvalid}

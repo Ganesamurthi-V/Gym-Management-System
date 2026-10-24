@@ -7,12 +7,14 @@ export type AnnouncementLevel = (typeof ANNOUNCEMENT_LEVELS)[number]
 export const MESSAGE_MAX = 200
 export const LINK_URL_MAX = 300
 export const LINK_LABEL_MAX = 30
+export const MESSAGE_AFTER_MAX = 120
 
 export type AnnouncementInput = {
   message: string // may be '' only when is_active is false (caller keeps the stored message)
   level: AnnouncementLevel
   link_url: string | null
   link_label: string | null
+  message_after: string // shown after the link on the same line; '' when unused
   is_active: boolean
 }
 
@@ -59,5 +61,12 @@ export function validateAnnouncement(raw: unknown): AnnouncementInput | { error:
     link_label = l && link_url ? l : null
   }
 
-  return { message, level: b.level as AnnouncementLevel, link_url, link_label, is_active: b.is_active }
+  let message_after = ''
+  if (b.message_after != null) {
+    if (typeof b.message_after !== 'string') return { error: 'message_after must be text' }
+    message_after = clean(b.message_after)
+    if (message_after.length > MESSAGE_AFTER_MAX) return { error: `Text after the link must be at most ${MESSAGE_AFTER_MAX} characters` }
+  }
+
+  return { message, level: b.level as AnnouncementLevel, link_url, link_label, message_after, is_active: b.is_active }
 }

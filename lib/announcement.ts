@@ -5,26 +5,38 @@ import { cacheKeys } from '@/lib/cache-keys'
 import { logger } from '@/lib/logger'
 import type { Announcement } from '@/lib/announcement-shared'
 
+// Logged once per process when the message_after migration has not been run yet.
+let warnedMissingAfterColumn = false
+
 async function fetchActiveAnnouncement(): Promise<Announcement | null> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('platform_announcement')
-    .select('message, level, link_url, link_label, is_active, version')
-    .eq('id', 1)
-    .maybeSingle()
+  const cols = 'message, level, link_url, link_label, is_active, version'
+  const read = (c: string) => supabase.from('platform_announcement').select(c).eq('id', 1).maybeSingle()
+
+  let { data, error } = await read(`${cols}, message_after`)
+  if (error && /message_after/.test(error.message ?? '')) {
+    // Older DB (migration not run yet): the banner must still show, without the after-text.
+    if (!warnedMissingAfterColumn) {
+      warnedMissingAfterColumn = true
+      logger.warn('announcement message_after column missing; run 20261024180000 migration')
+    }
+    ;({ data, error } = await read(cols))
+  }
 
   if (error) {
     logger.error('announcement read failed', { error: error.message })
     return null
   }
-  if (!data || !data.is_active || !data.message?.trim()) return null
+  const row = data as any
+  if (!row || !row.is_active || !row.message?.trim()) return null
 
   return {
-    message: data.message,
-    level: data.level,
-    link_url: data.link_url ?? null,
-    link_label: data.link_label ?? null,
-    version: data.version,
+    message: row.message,
+    level: row.level,
+    link_url: row.link_url ?? null,
+    link_label: row.link_label ?? null,
+    message_after: row.message_after ?? '',
+    version: row.version,
   }
 }
 

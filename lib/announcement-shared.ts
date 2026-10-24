@@ -5,6 +5,8 @@ export type Announcement = {
   level: AnnouncementLevel
   link_url: string | null
   link_label: string | null
+  /** Plain text shown after the link; '' when none (max 120 chars, enforced by the admin app). */
+  message_after: string
   version: number
 }
 
@@ -26,4 +28,22 @@ export function shouldShowAnnouncement(a: Announcement | null, dismissedVersion:
   if (!a || !a.message.trim()) return false
   if (a.level === 'critical') return true
   return dismissedVersion !== a.version
+}
+
+export type AnnouncementPart = { kind: 'text'; text: string } | { kind: 'link'; text: string; href: string }
+
+/**
+ * Ordered pieces of the single banner line: message, link (only when its URL is
+ * safe), then message_after. Blank pieces are dropped; the renderer joins them
+ * with spaces so the line wraps naturally.
+ */
+export function buildAnnouncementParts(a: Announcement): AnnouncementPart[] {
+  const parts: AnnouncementPart[] = []
+  const message = a.message?.trim()
+  if (message) parts.push({ kind: 'text', text: message })
+  const href = safeAnnouncementLink(a.link_url)
+  if (href) parts.push({ kind: 'link', text: a.link_label?.trim() || 'Learn more', href })
+  const after = a.message_after?.trim()
+  if (after) parts.push({ kind: 'text', text: after })
+  return parts
 }

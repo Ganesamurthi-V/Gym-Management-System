@@ -219,9 +219,15 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
   return (
     <div className="min-h-full">
 
+      {/* Platform announcement — first element of the shell, full width above sidebar and
+          header. It is sticky, and publishes its height as --gf-banner-h; the fixed sidebar and
+          sticky header below offset by it (0px when no banner, so layout is unchanged). */}
+      <AnnouncementBanner announcement={announcement} />
+
       {/* ── Desktop Sidebar ── */}
       <aside
         onClick={collapsed ? toggle : undefined}
+        style={{ top: 'var(--gf-banner-h, 0px)' }}
         {...tourAttr('sidebar')}
         className={`
           hidden md:flex flex-col bg-surface border-r border-slate-200
@@ -299,11 +305,11 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
       {/* ── Main area ── */}
       <div className={`
-        flex flex-col min-h-screen min-w-0
+        flex flex-col min-h-[calc(100vh-var(--gf-banner-h,0px))] min-w-0
         transition-[padding] duration-300 ease-in-out
         ${collapsed ? 'md:pl-14' : 'md:pl-56 lg:pl-60'}
       `}>
-        <header className="sticky top-0 h-14 md:h-16 bg-surface/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
+        <header style={{ top: 'var(--gf-banner-h, 0px)' }} className="sticky h-14 md:h-16 bg-surface/90 backdrop-blur-md border-b border-slate-200 flex items-center flex-shrink-0 z-20">
           <div className="w-full px-3 xs:px-4 md:px-6 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
               <Image src="/logo_only.png" alt={`${liveGymName || 'GymFlow'} Logo`} width={40} height={40} className="rounded-lg object-contain md:hidden" />
@@ -327,9 +333,6 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
             </div>
           </div>
         </header>
-
-        {/* Platform announcement — renders nothing unless the admin has one active. */}
-        <AnnouncementBanner announcement={announcement} />
 
         {/* Subscription banner — shown between header and main content when
             the subscription is on trial, expiring soon, or already expired.

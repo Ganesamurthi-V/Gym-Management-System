@@ -5,13 +5,13 @@ import { shouldPromptForFeedback } from '@/lib/feedback-prompt'
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/feedback-prompt  →  { show: boolean }
+ * GET /api/feedback-prompt  →  { show: boolean, kind: 'first' | 'monthly' }
  *
- * Should the owner be shown the feedback pop-up now? The rule lives in
- * lib/feedback-prompt.ts: first 30 days of the gym, once onboarding is done, at most every
- * 3 days, and never after feedback has been sent. "Has sent feedback" is any support_tickets
- * row of type 'feedback' for the gym, so feedback given from the Support menu counts as well
- * as feedback given from the pop-up.
+ * Should the owner be shown the feedback pop-up now, and which kind ('first' or 'monthly')? The
+ * rule lives in lib/feedback-prompt.ts: not in the first 3 days, once onboarding is done, once a
+ * day until the owner has sent feedback, then once a month. "Feedback sent" is the newest
+ * support_tickets row of type 'feedback' for the gym, so feedback given from the Support menu
+ * counts as well as feedback given from the pop-up.
  *
  * If anything cannot be read (for example the owner_feedback_prompts migration has not been
  * run yet), the answer is "do not show": a pop-up that cannot record that it was shown would
@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic'
 export const GET = withAuth('FEEDBACK_PROMPT_GET', async (_req: NextRequest, { supabase, gym, log }) => {
   const [gymRes, feedbackRes, promptRes] = await Promise.all([
     supabase.from('gyms').select('created_at, onboarding_completed').eq('id', gym.id).maybeSingle(),
-    supabase.from('support_tickets').select('id').eq('gym_id', gym.id).eq('type', 'feedback').limit(1),
+    supabase.from('support_tickets').select('created_at').eq('gym_id', gym.id).eq('type', 'feedback').order('created_at', { ascending: false }).limit(1),
     supabase.from('owner_feedback_prompts').select('last_shown_at').eq('gym_id', gym.id).maybeSingle(),
   ])
 
@@ -30,24 +30,24 @@ export const GET = withAuth('FEEDBACK_PROMPT_GET', async (_req: NextRequest, { s
       feedback: feedbackRes.error?.message,
       prompt: promptRes.error?.message,
     })
-    return apiSuccess({ show: false })
+    return apiSuccess({ show: false, kind: 'first' as const })
   }
 
   const decision = shouldPromptForFeedback({
     now: new Date(),
     gymCreatedAt: gymRes.data?.created_at ?? null,
     onboardingCompleted: gymRes.data?.onboarding_completed === true,
-    hasFeedback: (feedbackRes.data?.length ?? 0) > 0,
+    lastFeedbackAt: feedbackRes.data?.[0]?.created_at ?? null,
     lastShownAt: promptRes.data?.last_shown_at ?? null,
   })
 
-  return apiSuccess({ show: decision.show })
+  return apiSuccess({ show: decision.show, kind: decision.kind })
 })
 
 /**
  * POST /api/feedback-prompt  { action: 'shown' }
  *
- * Records that the pop-up was shown now, which starts the 3-day wait. Called when it appears,
+ * Records that the pop-up was shown now, which starts the wait until the next ask (a day, or a month once feedback has been sent). Called when it appears,
  * not when it is closed, so closing the tab without touching it still counts.
  */
 export const POST = withAuth('FEEDBACK_PROMPT_SHOWN', async (req: NextRequest, { supabase, gym, log }) => {

@@ -11,15 +11,15 @@ import { cn } from '@/lib/utils'
  * The feedback pop-up for new gym owners.
  *
  * Whether it appears is decided on the server (GET /api/feedback-prompt, rule in
- * lib/feedback-prompt.ts): during the gym's first 30 days, once onboarding is finished, at most
- * every 3 days, and never again after the owner has sent feedback. This component only asks,
- * waits a little, and shows the card.
+ * lib/feedback-prompt.ts): not in the gym's first 3 days, once onboarding is finished, once a
+ * day until the owner has sent feedback, then once a month. This component only asks, waits a
+ * little, and shows the card; the server also says which wording to use ('first' or 'monthly').
  *
  *   - The wait (a few seconds after the page opens) keeps it from landing on top of the page
  *     the owner just arrived at.
  *   - It is skipped while a guided tour is on screen, so the two never fight for attention.
  *   - "Not now" just closes it. It was already recorded as shown when it appeared, so the next
- *     ask is three days later.
+ *     ask is the following day (or the following month once feedback has been sent).
  *   - Sending feedback posts to the same endpoint as the Support menu's Give feedback tab, so
  *     the team sees it in the same place and the server stops asking.
  */
@@ -36,6 +36,7 @@ const RATING_HINTS: Record<number, string> = {
 
 export default function FeedbackPrompt() {
   const [open, setOpen] = useState(false)
+  const [kind, setKind] = useState<'first' | 'monthly'>('first')
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
   const [comment, setComment] = useState('')
@@ -50,8 +51,9 @@ export default function FeedbackPrompt() {
     const timer = window.setTimeout(async () => {
       if (isTourActive()) return
       try {
-        const res = await api.get<{ data: { show: boolean } }>('/api/feedback-prompt')
+        const res = await api.get<{ data: { show: boolean; kind?: 'first' | 'monthly' } }>('/api/feedback-prompt')
         if (!res.data?.show) return
+        setKind(res.data.kind === 'monthly' ? 'monthly' : 'first')
         setOpen(true)
         // Recorded when it appears, so closing the tab without touching it still starts the wait.
         void api.post('/api/feedback-prompt', { action: 'shown' }).catch(() => {})
@@ -98,8 +100,14 @@ export default function FeedbackPrompt() {
             <MessageSquareHeart className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-slate-900">How is GymFlow working for you?</p>
-            <p className="mt-0.5 text-xs text-slate-500">It takes ten seconds and tells us what to improve.</p>
+            <p className="text-sm font-bold text-slate-900">
+              {kind === 'monthly' ? 'How was your month with GymFlow?' : 'How is GymFlow working for you?'}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {kind === 'monthly'
+                ? 'Rate it and write a short review: what works and what to improve.'
+                : 'It takes ten seconds and tells us what to improve.'}
+            </p>
           </div>
           <button
             type="button"
@@ -134,7 +142,7 @@ export default function FeedbackPrompt() {
             onChange={e => setComment(e.target.value)}
             maxLength={1000}
             rows={3}
-            placeholder="Anything you'd like us to know? (optional)"
+            placeholder={kind === 'monthly' ? 'Write a short review (optional)' : "Anything you'd like us to know? (optional)"}
             className="mt-2 w-full resize-none rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         )}

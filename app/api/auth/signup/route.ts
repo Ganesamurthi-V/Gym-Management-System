@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   OWNER_REGISTRATION_INDEX_TTL_SECONDS,
@@ -103,7 +105,9 @@ export async function POST(req: NextRequest) {
           { status: 409 },
         )
       }
-      console.error('[auth/signup] generateLink failed:', linkError.message)
+      logger.error('[auth/signup] generateLink failed:', { error: linkError.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:signup_error', severity: 'critical', title: 'auth:signup_error failure', body: `auth/signup failed: ${String(linkError.message).slice(0, 300)}` })
       const rateLimited = /rate|wait|too many/i.test(linkError.message)
       return NextResponse.json(
         {
@@ -132,10 +136,14 @@ export async function POST(req: NextRequest) {
     })
 
     if (markerError) {
-      console.error('[auth/signup] failed to mark owner registration:', markerError.message)
+      logger.error('[auth/signup] failed to mark owner registration:', { error: markerError.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:signup_error', severity: 'critical', title: 'auth:signup_error failure', body: `auth/signup failed: ${String(markerError.message).slice(0, 300)}` })
       const { error: cleanupError } = await admin.auth.admin.deleteUser(data.user.id)
       if (cleanupError) {
-        console.error('[auth/signup] failed to roll back unmarked user:', cleanupError.message)
+        logger.error('[auth/signup] failed to roll back unmarked user:', { error: cleanupError.message })
+        // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+        reportAlertInBackground({ key: 'auth:signup_error', severity: 'critical', title: 'auth:signup_error failure', body: `auth/signup failed: ${String(cleanupError.message).slice(0, 300)}` })
       }
       return NextResponse.json(
         { error: 'We could not create your account right now. Please try again.' },
@@ -151,10 +159,14 @@ export async function POST(req: NextRequest) {
       setupPasswordLinkFromHashedToken(hashedToken, 'signup', req.nextUrl.origin),
     )
     if (!sent.ok) {
-      console.error('[auth/signup] set-password email failed:', sent.message)
+      logger.error('[auth/signup] set-password email failed:', { error: sent.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:signup_error', severity: 'critical', title: 'auth:signup_error failure', body: `auth/signup failed: ${String(sent.message).slice(0, 300)}` })
       const { error: cleanupError } = await admin.auth.admin.deleteUser(data.user.id)
       if (cleanupError) {
-        console.error('[auth/signup] failed to roll back after email failure:', cleanupError.message)
+        logger.error('[auth/signup] failed to roll back after email failure:', { error: cleanupError.message })
+        // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+        reportAlertInBackground({ key: 'auth:signup_error', severity: 'critical', title: 'auth:signup_error failure', body: `auth/signup failed: ${String(cleanupError.message).slice(0, 300)}` })
       }
       return NextResponse.json(
         { error: 'We could not send your confirmation email right now. Please try again.' },
@@ -180,7 +192,8 @@ export async function POST(req: NextRequest) {
         ex: OWNER_REGISTRATION_INDEX_TTL_SECONDS,
       })
     } catch (indexError) {
-      console.error('[auth/signup] failed to index owner registration:', indexError)
+      logger.warn('[auth/signup] failed to index owner registration:', { error: indexError instanceof Error ? indexError.message : String(indexError) })
+      reportAlertInBackground({ key: 'auth:signup_index_error', severity: 'warning', title: 'Signup Redis index failed', body: 'Owner registration index write failed; cross-device resend falls back to admin lookup.' })
     }
 
     return NextResponse.json(
@@ -188,7 +201,9 @@ export async function POST(req: NextRequest) {
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
   } catch (error) {
-    console.error('[auth/signup] unexpected error:', error)
+    logger.error('[auth/signup] unexpected error:', { error: error instanceof Error ? error.message : String(error) })
+    // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+    reportAlertInBackground({ key: 'auth:signup_error', severity: 'critical', title: 'auth:signup_error failure', body: `auth/signup failed: ${String(error instanceof Error ? error.message : String(error)).slice(0, 300)}` })
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

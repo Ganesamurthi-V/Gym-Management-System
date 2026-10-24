@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from '@/lib/logger'
+import { reportAlert } from '@/lib/monitoring/alert'
 
 /**
  * Meta's cap on UNIQUE customers messaged per rolling 24 h by our one shared WhatsApp number.
@@ -77,6 +78,14 @@ export async function reserveRecipient(
     throw new Error('unexpected reserve_whatsapp_recipient result')
   } catch (err) {
     logger.error('recipientLimit: could not reserve a recipient slot; not sending', err)
+    // Failing closed stops every send, so it must be loud. Generic body on purpose: the RPC
+    // arguments contain a phone number.
+    await reportAlert({
+      key: 'wa:recipient_reserve_failed', severity: 'critical', title: 'WhatsApp recipient limit check failing',
+      body: 'reserve_whatsapp_recipient errored, so all WhatsApp sends are being deferred (fail closed).',
+    })
+    // TODO: wa:recipient_window_high (220 of 250) is raised by the watchdog check; the reserve RPC
+    // does not return the window count and the hot path must not gain another query.
     return { allowed: false, retryAt: new Date(Date.now() + FAIL_CLOSED_RETRY_MS) }
   }
 }

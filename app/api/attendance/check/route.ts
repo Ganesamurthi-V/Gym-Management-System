@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic'
  *
  * Body: { member_number: number, session: 'morning' | 'evening', date: string }
  */
-export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supabase, gym }) => {
+export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supabase, gym, log }) => {
   let body: { member_number?: number; session?: string; date?: string }
   try { body = await req.json() } catch {
     return NextResponse.json(
@@ -98,6 +99,9 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
       .single()
 
     if (insertError) {
+      log.error('attendance check-in insert failed', insertError)
+      // Same key as withAuth's 5xx hook so the two alerts dedupe into one page.
+      reportAlertInBackground({ key: '5xx:ATTENDANCE_CHECK', severity: 'critical', title: 'Attendance check-in failed', body: `gymId=${gym.id} step=insert error=${insertError.message.slice(0, 300)}`, gymId: gym.id })
       return NextResponse.json(
         { success: false, error: { code: 'DATABASE_ERROR', message: insertError.message } },
         { status: 500 }
@@ -126,6 +130,8 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
       .eq('id', attData.id)
 
     if (updateError) {
+      log.error('attendance check-out update failed', updateError)
+      reportAlertInBackground({ key: '5xx:ATTENDANCE_CHECK', severity: 'critical', title: 'Attendance check-out failed', body: `gymId=${gym.id} step=update error=${updateError.message.slice(0, 300)}`, gymId: gym.id })
       return NextResponse.json(
         { success: false, error: { code: 'DATABASE_ERROR', message: updateError.message } },
         { status: 500 }

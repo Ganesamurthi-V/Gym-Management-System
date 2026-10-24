@@ -8,6 +8,7 @@ import { cacheKeys } from '@/lib/cache-keys'
 import { normalizePhoneForImport } from '@/lib/import/normalizers'
 import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/lib/import/schema'
 import { apiLogger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { calcEndDate, todayIST } from '@/lib/utils'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
@@ -26,6 +27,12 @@ export const maxDuration = 60
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
   const log = apiLogger('import_confirm')
+  // Set once the gym is resolved so failure alerts can name it (no member data is ever included).
+  let alertGymId: string | undefined
+  const alertFailure = (step: string) => reportAlertInBackground({
+    key: 'import:confirm_failed', severity: 'critical', title: 'Member import failed',
+    body: `gymId=${alertGymId ?? 'unknown'} step=${step}`, gymId: alertGymId ?? null,
+  })
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -65,6 +72,7 @@ export async function POST(req: NextRequest) {
     const rows = parsedBody.data.rows
 
     const gym = await getGymForUser(supabase, user.id)
+    alertGymId = gym?.id
     if (!gym) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
@@ -80,6 +88,7 @@ export async function POST(req: NextRequest) {
     ])
     if (maxRes.error || takenRes.error) {
       log.error('import number lookup failed', maxRes.error ?? takenRes.error)
+      alertFailure('number_lookup')
       return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: GENERIC_DB_MESSAGE } }, { status: 500 })
     }
     const maxExisting = parseInt(String(maxRes.data?.[0]?.member_number ?? '0')) || 0
@@ -125,6 +134,7 @@ export async function POST(req: NextRequest) {
 
     if (insertErr) {
       log.error('member insert failed', insertErr)
+      alertFailure('member_insert')
       const mapped = safeMapped(insertErr)
       return NextResponse.json(
         { success: false, error: { code: mapped.code, message: mapped.message } },
@@ -166,6 +176,7 @@ export async function POST(req: NextRequest) {
         // The members are already committed. Report the partial state clearly
         // rather than implying the whole import failed.
         log.error('membership insert failed', membershipErr)
+        alertFailure('membership_insert')
         const mapped = safeMapped(membershipErr)
         return NextResponse.json(
           {
@@ -197,6 +208,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err: unknown) {
     log.error('import confirm failed', err)
+    alertFailure('unknown')
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
       { status: 500 },

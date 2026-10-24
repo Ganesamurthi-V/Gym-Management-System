@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser, getGym } from '@/lib/dal'
 import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { startPageTimer, timed } from '@/lib/perf'
 import { reportSchema } from './report-data'
 import { ReportsClient } from './ReportsClient'
@@ -49,6 +50,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       gymId: gym.id,
       rpcError: error?.message,
       shapeError: report && !report.success ? report.error.issues.slice(0, 3) : undefined,
+    })
+    // Owners see an empty page here, so page us (usually a missing migration or RPC failure).
+    reportAlertInBackground({
+      key: 'reports:rpc_failed',
+      severity: 'critical',
+      title: 'Owner reports RPC failed',
+      body: `gymId=${gym.id} ${error ? `code=${error.code ?? 'n/a'} message=${String(error.message).slice(0, 300)}` : 'unexpected response shape'}`,
+      gymId: gym.id,
     })
     return (
       <div className="card p-6 text-center max-w-lg mx-auto mt-10 space-y-1.5">

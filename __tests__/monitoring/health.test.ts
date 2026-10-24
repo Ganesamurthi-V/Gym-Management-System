@@ -8,6 +8,9 @@ import {
   type CheckDefinition,
 } from '@/lib/monitoring/health'
 import { pingHeartbeat } from '@/lib/monitoring/heartbeat'
+import { checkDailyAutomation } from '@/lib/monitoring/checks'
+
+vi.mock('server-only', () => ({}))
 
 const ok = (name: string, critical: boolean): CheckDefinition => ({
   name, critical, run: async () => ({ ok: true }),
@@ -71,6 +74,21 @@ describe('pingHeartbeat', () => {
   it('swallows fetch failures', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('net down')))
     await expect(pingHeartbeat('https://example.test/token')).resolves.toBeUndefined()
+  })
+})
+
+describe('daily_automation (cron heartbeat, not log rows)', () => {
+  const now = Date.parse('2026-10-24T12:00:00Z')
+  it('ok when the cron succeeded recently', async () => {
+    expect(await checkDailyAutomation(async () => new Date(now - 3600_000), now)).toEqual({ ok: true })
+  })
+  it('stale after 26 h', async () => {
+    expect(await checkDailyAutomation(async () => new Date(now - 27 * 3600_000), now)).toEqual({ ok: false, detail: 'stale' })
+  })
+  it('unknown (not an alarm) when no success is recorded', async () => {
+    expect(await checkDailyAutomation(async () => null, now)).toEqual({
+      ok: true, detail: 'unknown (no cron success recorded yet)',
+    })
   })
 })
 

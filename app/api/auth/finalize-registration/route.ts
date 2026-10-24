@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ownerMobileFromUser } from '@/lib/auth/phone'
@@ -60,7 +62,9 @@ export async function POST(_req: NextRequest) {
       .maybeSingle()
 
     if (memberLookupError) {
-      console.error('[auth/finalize-registration] member identity lookup failed:', memberLookupError.message)
+      logger.error('[auth/finalize-registration] member identity lookup failed:', { error: memberLookupError.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:finalize_error', severity: 'critical', title: 'auth:finalize_error failure', body: `auth/finalize-registration failed: ${String(memberLookupError.message).slice(0, 300)}` })
       return NextResponse.json(
         { success: false, error: { code: 'DATABASE_ERROR', message: 'Failed to verify registration status. Please try again.' } },
         { status: 500 },
@@ -82,7 +86,9 @@ export async function POST(_req: NextRequest) {
       .maybeSingle()
 
     if (lookupError) {
-      console.error('[auth/finalize-registration] registration lookup failed:', lookupError.message)
+      logger.error('[auth/finalize-registration] registration lookup failed:', { error: lookupError.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:finalize_error', severity: 'critical', title: 'auth:finalize_error failure', body: `auth/finalize-registration failed: ${String(lookupError.message).slice(0, 300)}` })
       return NextResponse.json(
         { success: false, error: { code: 'DATABASE_ERROR', message: 'Failed to verify registration status. Please try again.' } },
         { status: 500 }
@@ -111,7 +117,9 @@ export async function POST(_req: NextRequest) {
         app_metadata: ownerRegistrationAppMetadata(user),
       })
       if (markerError) {
-        console.error('[auth/finalize-registration] owner marker update failed:', markerError.message)
+        logger.error('[auth/finalize-registration] owner marker update failed:', { error: markerError.message })
+        // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+        reportAlertInBackground({ key: 'auth:finalize_error', severity: 'critical', title: 'auth:finalize_error failure', body: `auth/finalize-registration failed: ${String(markerError.message).slice(0, 300)}` })
         return NextResponse.json(
           { success: false, error: { code: 'INTERNAL_ERROR', message: 'We could not finish creating your account. Please try again.' } },
           { status: 500 },
@@ -170,7 +178,9 @@ export async function POST(_req: NextRequest) {
         )
       }
 
-      console.error('[auth/finalize-registration] gym insert failed:', insertError?.message ?? 'no row returned')
+      logger.error('[auth/finalize-registration] gym insert failed:', { error: insertError?.message ?? 'no row returned' })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:finalize_error', severity: 'critical', title: 'auth:finalize_error failure', body: `auth/finalize-registration failed: ${String(insertError?.message ?? 'no row returned').slice(0, 300)}` })
       return NextResponse.json(
         {
           success: false,
@@ -186,7 +196,9 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ success: true, gymId: newGym.id }, { status: 200 })
 
   } catch (err: unknown) {
-    console.error('[auth/finalize-registration] unexpected error:', err)
+    logger.error('[auth/finalize-registration] unexpected error:', { error: err instanceof Error ? err.message : String(err) })
+    // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+    reportAlertInBackground({ key: 'auth:finalize_error', severity: 'critical', title: 'auth:finalize_error failure', body: `auth/finalize-registration failed: ${String(err instanceof Error ? err.message : String(err)).slice(0, 300)}` })
     return NextResponse.json(
       {
         success: false,

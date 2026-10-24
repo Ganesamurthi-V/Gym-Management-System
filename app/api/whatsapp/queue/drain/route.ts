@@ -14,6 +14,20 @@ import { createClient } from '@supabase/supabase-js'
 import { Receiver } from '@upstash/qstash'
 import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { drainSendQueue } from '@/lib/whatsapp/queue'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
+
+/** Redis counter with TTL; null (never throws) when Redis is unconfigured or errors. */
+async function bumpCounter(key: string, ttlSeconds: number): Promise<number | null> {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) return null
+  try {
+    const { redis } = await import('@/lib/redis')
+    const n = await redis.incr(key)
+    await redis.expire(key, ttlSeconds)
+    return n
+  } catch {
+    return null
+  }
+}
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // keep > DRAIN_TIME_BUDGET_MS (40 s) + reaper/count/publish margin
@@ -51,6 +65,21 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text().catch(() => '')
 
   if (!(await isAuthorized(req, rawBody))) {
+    // Anyone can send a bogus signature header, so a single failure is noise. Count per UTC hour
+    // (not awaited: the 401 must not wait on Redis) and alert at 5+, which also covers rotated
+    // QStash signing keys silently stopping the queue.
+    if (req.headers.get('upstash-signature')) {
+      const hour = new Date().toISOString().slice(0, 13).replace(/[-T]/g, '')
+      void bumpCounter(`wa:drain:badsig:${hour}`, 7200).then(n => {
+        if (n !== null && n >= 5) {
+          reportAlertInBackground({
+            key: 'wa:drain_unauthorized', severity: 'warning', title: 'WhatsApp drain rejected QStash calls',
+            body: `${n} drain calls with an invalid signature this hour; check the QStash signing keys or probing.`,
+            cooldownSeconds: 3600,
+          })
+        }
+      }).catch(() => {})
+    }
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -60,6 +89,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[WA Queue] drain failed:', message)
+    reportAlertInBackground({ key: 'wa:drain_error', severity: 'critical', title: 'WhatsApp queue drain crashed', body: message })
     return NextResponse.json({ success: false, error: 'Internal error' }, { status: 500 })
   }
 }

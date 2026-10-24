@@ -16,6 +16,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { pingHeartbeat } from '@/lib/monitoring/heartbeat'
+import { reportAlert } from '@/lib/monitoring/alert'
+import { markCronOk } from '@/lib/monitoring/cronStatus'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -27,6 +29,11 @@ export async function POST(req: NextRequest) {
   const cronHeader = req.headers.get('x-cron-secret') ?? ''
   const bearer     = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
+  if (!cronSecret) {
+    // Still answers 401 as before; the alert is what tells the owner the job is being rejected.
+    await reportAlert({ key: 'cron:secret_missing', severity: 'critical', title: 'CRON_SECRET is not set',
+      body: 'Scheduled jobs are being rejected because CRON_SECRET is missing on the server.' })
+  }
   if (!cronSecret || (!timingSafeSecretEqual(bearer, cronSecret) && !timingSafeSecretEqual(cronHeader, cronSecret))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -44,6 +51,8 @@ export async function POST(req: NextRequest) {
 
   if (trialsError) {
     console.error('[Cron/Sub] Failed to expire trials:', trialsError)
+    await reportAlert({ key: 'cron:subscription:failed', severity: 'critical', title: 'Subscription cron failed',
+      body: `Failed to expire trials: ${trialsError.message}` })
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
@@ -58,6 +67,8 @@ export async function POST(req: NextRequest) {
 
   if (subsError) {
     console.error('[Cron/Sub] Failed to expire subscriptions:', subsError)
+    await reportAlert({ key: 'cron:subscription:failed', severity: 'critical', title: 'Subscription cron failed',
+      body: `Failed to expire subscriptions: ${subsError.message}` })
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
@@ -67,6 +78,7 @@ export async function POST(req: NextRequest) {
 
   // Only after both updates succeeded, so a missed ping means the cron failed or never ran.
   await pingHeartbeat(process.env.BETTERSTACK_HEARTBEAT_SUBSCRIPTION)
+  await markCronOk('subscription')
 
   return NextResponse.json({ expired: trials + subs, trials, subscriptions: subs })
 }

@@ -609,7 +609,7 @@ CREATE TABLE IF NOT EXISTS owner_feedback_prompts (
 -- `pushed_at` is the dispatch watermark (NULL = not yet sent to FCM).
 CREATE TABLE IF NOT EXISTS notifications (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  type        TEXT        NOT NULL CHECK (type IN ('ticket', 'feedback', 'payment_request', 'new_gym', 'email')),
+  type        TEXT        NOT NULL CHECK (type IN ('ticket', 'feedback', 'payment_request', 'new_gym', 'email', 'alert')),
   gym_id      UUID        REFERENCES gyms(id) ON DELETE CASCADE,
   title       TEXT        NOT NULL,
   body        TEXT        NOT NULL,

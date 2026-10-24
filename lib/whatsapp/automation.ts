@@ -33,6 +33,7 @@ import { isWhatsAppEnabledForGym } from './gymGate'
 import type { TemplateId, TemplateContext, SendResult } from './sender'
 import { enqueueSend, kickDrain } from './queue'
 import { finalizeSendRow } from './finalize'
+import { reportAlert } from '@/lib/monitoring/alert'
 import {
   MAX_REMINDER_SENDS,
   REMINDER_WINDOW_DAYS,
@@ -155,7 +156,7 @@ async function getCycleState(
     .eq('cycle_key', cycleKey)
     // Ignore 'error' rows (transient/systemic failures) so they never consume a
     // cycle slot or advance the 3-day gate — the next cron run simply retries.
-    .in('status', ['sent', 'failed', 'cancelled'])
+    .in('status', ['sent', 'failed', 'cancelled', 'delivery_failed'])
     .order('sent_at', { ascending: false })
     .limit(1)
 
@@ -187,7 +188,7 @@ async function alreadySentToday(
     .select('id')
     .eq('member_id', memberId)
     .eq('template_name', templateName)
-    .eq('status', 'sent')
+    .in('status', ['sent', 'delivery_failed'])
     .gte('sent_at', `${today}T00:00:00.000Z`)
     .lt('sent_at', `${today}T23:59:59.999Z`)
     .limit(1)
@@ -220,7 +221,7 @@ async function resolveDueCycleKey(
     .eq('template_name', 'payment_due_reminder')
     // Ignore transient 'error' rows so a failed attempt never mis-resolves the
     // cycle (its send_count is a claim placeholder, not a real send count).
-    .in('status', ['sent', 'failed', 'cancelled'])
+    .in('status', ['sent', 'failed', 'cancelled', 'delivery_failed'])
     .order('sent_at', { ascending: false })
     .limit(1)
 
@@ -247,7 +248,7 @@ async function welcomeAlreadySent(
     .select('id')
     .eq('member_id', memberId)
     .eq('template_name', '_gymflow_welcome_member')
-    .eq('status', 'sent')
+    .in('status', ['sent', 'delivery_failed'])
     .limit(1)
 
   return !error && data !== null && data.length > 0
@@ -269,7 +270,7 @@ async function birthdayAlreadySentThisYear(
     .select('id')
     .eq('member_id', memberId)
     .eq('template_name', '_birthday_wishes')
-    .eq('status', 'sent')
+    .in('status', ['sent', 'delivery_failed'])
     .gte('sent_at', yearStart)
     .lte('sent_at', yearEnd)
     .limit(1)
@@ -302,7 +303,7 @@ async function recordSend(
     cycleKey: string
     sendCount: number
     messageId?: string
-    status: 'sent' | 'failed' | 'skipped' | 'cancelled' | 'error'
+    status: 'sent' | 'failed' | 'skipped' | 'cancelled' | 'error' | 'delivery_failed'
     errorMessage?: string
     triggerDate?: string
     metadata?: Record<string, unknown>
@@ -584,6 +585,14 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     stats.errors.push(`Fatal: ${msg}`)
+  }
+
+  // One alert per run (not per gym): per-gym failures are caught above so the run continues, which
+  // would otherwise hide them. Keyed so repeated runs de-duplicate.
+  const gymErrors = stats.errors.filter(e => e.startsWith('Gym ')).length
+  if (gymErrors > 0) {
+    await reportAlert({ key: 'wa:daily_gym_error', severity: 'warning', title: 'WhatsApp daily run had gym errors',
+      body: `${gymErrors} gym(s) failed during the daily WhatsApp automation run.` })
   }
 
   // Start draining the freshly enqueued sends (best-effort; the queue persists).
@@ -968,7 +977,7 @@ export async function cancelReminderCycles({
       // resolveDueCycleKey(). Without this filter, a transient failure could be
       // picked as the "latest" row, causing us to either skip cancellation
       // (if its status isn't 'cancelled') or cancel the wrong cycle_key.
-      .in('status', ['sent', 'failed', 'cancelled'])
+      .in('status', ['sent', 'failed', 'cancelled', 'delivery_failed'])
       .order('sent_at', { ascending: false })
       .limit(1)
 
@@ -1162,7 +1171,7 @@ export async function runGamificationNudges(
       .select('member_id, template_name, cycle_key, sent_at')
       .eq('gym_id', gym.id)
       .in('template_name', [...NUDGE_PRIORITY])
-      .in('status', ['sent', 'failed'])
+      .in('status', ['sent', 'failed', 'delivery_failed'])
       .gte('sent_at', since)
       .order('id', { ascending: true })
       .range(from, to),
@@ -1323,7 +1332,7 @@ export async function sendPrizeAwardedMessage({
       .eq('member_id', memberId)
       .eq('template_name', 'gym_prize_awarded')
       .eq('cycle_key', cycleKey)
-      .in('status', ['sent', 'failed'])
+      .in('status', ['sent', 'failed', 'delivery_failed'])
       .limit(1)
     if (earlier && earlier.length > 0) return { sent: false, reason: 'already_sent' }
 

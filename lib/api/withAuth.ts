@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
+import type { AlertInput } from '@/lib/monitoring/alert'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -70,6 +72,11 @@ function passesCsrfCheck(req: NextRequest): boolean {
   return allowed.has(origin)
 }
 
+/** Alerting must never change a response, even if the alert module misbehaves. */
+function safeAlert(input: AlertInput) {
+  try { reportAlertInBackground(input) } catch { /* intentionally ignored */ }
+}
+
 /**
  * Wraps an API route handler with authentication, gym resolution, rate limiting,
  * and CSRF protection.
@@ -95,6 +102,9 @@ export function withAuth(
 ) {
   return async (req: NextRequest) => {
     const log = apiLogger(routeName)
+    // Hoisted so the catch block can say which gym/user hit the failure.
+    let alertUserId: string | undefined
+    let alertGymId: string | undefined
     try {
       // ── CSRF guard ─────────────────────────────────────────────────────────
       // Safe (read-only) methods are exempt. For everything else, validate that
@@ -120,6 +130,7 @@ export function withAuth(
         )
       }
 
+      alertUserId = user.id
       const rpm = options?.rateLimit ?? ROUTE_LIMITS.DEFAULT
       const { allowed } = await checkRateLimit(user.id, routeName, rpm)
       if (!allowed) {
@@ -142,13 +153,33 @@ export function withAuth(
         )
       }
 
+      alertGymId = gym.id
       const ctx: AuthContext = { user, gym, supabase, log }
       const response = await handler(req, ctx)
       log.summary(response.status)
+      // Handled apiError(500, ...) responses are invisible to Sentry; alert on them too.
+      // Only the status is read, so the body is never consumed. 4xx never alerts.
+      if (response.status >= 500) {
+        safeAlert({
+          key: `5xx:${routeName}`,
+          severity: 'critical',
+          title: `Server error in ${routeName}`,
+          body: `route=${routeName} status=${response.status} gymId=${gym.id} userId=${user.id}`,
+          gymId: gym.id,
+        })
+      }
       return response
     } catch (err: unknown) {
       log.error(`Unhandled exception in ${routeName}`, err)
       log.summary(500)
+      // Message only, truncated; never the stack. Background call cannot alter the response.
+      safeAlert({
+        key: `5xx:${routeName}`,
+        severity: 'critical',
+        title: `Unhandled error in ${routeName}`,
+        body: `route=${routeName} gymId=${alertGymId ?? 'unknown'} userId=${alertUserId ?? 'unknown'} error=${(err instanceof Error ? err.message : String(err)).slice(0, 300)}`,
+        gymId: alertGymId ?? null,
+      })
       return NextResponse.json(
         { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
         { status: 500, headers: { 'Cache-Control': 'private, no-store' } }

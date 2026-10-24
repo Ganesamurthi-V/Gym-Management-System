@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { roleFromClaims, homeForRole } from '@/lib/auth/roles'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -180,7 +182,11 @@ export async function POST(req: NextRequest) {
       redirectTo: onboardingCompleted ? homeForRole(role) : gymRow ? '/owner/onboarding' : '/auth/add-phone',
       userName: (data.user.user_metadata?.name as string | undefined) ?? null,
     })
-  } catch {
+  } catch (err) {
+    // Message only: never log the request body, email or password.
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error('[auth/login] unexpected error', { error: message })
+    reportAlertInBackground({ key: 'auth:login_error', severity: 'critical', title: 'Login route failed', body: `auth/login unexpected error: ${message.slice(0, 300)}` })
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

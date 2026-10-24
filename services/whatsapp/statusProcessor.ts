@@ -12,6 +12,44 @@ import { RequestLogger } from '@/lib/logger'
 import { confirmQueuedSend } from '@/lib/whatsapp/queue'
 import { createAdminClient } from '@/lib/supabase/admin'
 import * as Sentry from '@sentry/nextjs'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
+
+/**
+ * Increment a Redis counter with a TTL. Returns null (never throws) when Redis is unconfigured or
+ * errors: an alert counter must never break request handling. Uses the exported client only when
+ * both env vars are set, so dev setups do not log "Redis credentials missing" warnings.
+ */
+async function bumpCounter(key: string, ttlSeconds: number): Promise<number | null> {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) return null
+  try {
+    const { redis } = await import('@/lib/redis')
+    const n = await redis.incr(key)
+    await redis.expire(key, ttlSeconds)
+    return n
+  } catch {
+    return null
+  }
+}
+
+/** yyyyMMddHH in UTC, the bucket for hourly alert counters. */
+function hourBucket(): string {
+  return new Date().toISOString().slice(0, 13).replace(/[-T]/g, '')
+}
+
+/** Delivery failures per UTC hour at which the rate alert fires. */
+export const DELIVERY_FAILURE_RATE_THRESHOLD = 10
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Meta error classes that need action. Everything else is a per-recipient problem or unknown. */
+export function classifyMetaError(code: number | undefined, message: string | undefined):
+  'token' | 'recipient' | 'rate_limit' | 'other' {
+  if (code === 190 || code === 401 || /oauth|access token/i.test(message ?? '')) return 'token'
+  // 131056 is a per-recipient pair rate limit, not a global throttle.
+  if (code === 131030 || code === 131026 || code === 131056) return 'recipient'
+  if (code === 131048 || code === 130429) return 'rate_limit'
+  return 'other'
+}
 
 /**
  * Process WhatsApp status updates
@@ -166,12 +204,32 @@ async function handleFailedStatus(
     errorMessage: status.errorMessage,
   })
 
-  // TODO: Implement failed message handling
-  // - Alert gym staff
-  // - Retry logic
-  // - Update member communication preferences
-  // - Log to monitoring system
-  
+  const reason = `Meta ${status.errorCode ?? 'unknown'}: ${status.errorMessage ?? 'delivery failed'}`.slice(0, 300)
+
+  // Record the real outcome. 'delivery_failed' is counted like 'failed' by the reminder cycle
+  // logic, so the cron never re-queues the same reminder to the same dead number. Best effort:
+  // the alerts below must still fire if the write fails.
+  try {
+    const supabase = createAdminClient()
+    const bizId = status.bizOpaqueData
+    const queueQuery = supabase
+      .from('whatsapp_send_queue')
+      .update({ status: 'delivery_failed', last_error: reason })
+      .in('status', ['sent', 'sending'])
+    // By row id, but only if the row's message_id is this status's message (or still unset):
+    // a late 'failed' for an EARLIER attempt must not flip a row whose retry has a newer message.
+    await (bizId && UUID_RE.test(bizId)
+      ? queueQuery.eq('id', bizId).or(`message_id.is.null,message_id.eq."${status.messageId}"`)
+      : queueQuery.eq('message_id', status.messageId))
+    await supabase
+      .from('whatsapp_automation_logs')
+      .update({ status: 'delivery_failed', error_message: reason })
+      .eq('message_id', status.messageId)
+      .eq('status', 'sent')
+  } catch (error) {
+    log.error(`Failed to persist delivery failure for ${status.messageId}`, error)
+  }
+
   // Report to Sentry for monitoring
   Sentry.captureMessage('WhatsApp message delivery failed', {
     level: 'warning',
@@ -183,6 +241,29 @@ async function handleFailedStatus(
       status,
     },
   })
+
+  // Alerts. Never include the recipient number.
+  const kind = classifyMetaError(status.errorCode, status.errorMessage)
+  if (kind === 'token') {
+    reportAlertInBackground({ key: 'wa:token_invalid', severity: 'critical', title: 'WhatsApp access token invalid or expired: renew it',
+      body: `Meta reported ${reason}` })
+  } else if (kind === 'rate_limit') {
+    reportAlertInBackground({ key: 'wa:meta_rate_limited', severity: 'critical', title: 'WhatsApp rate limited by Meta',
+      body: `Meta reported ${reason}` })
+  } else if (kind === 'other') {
+    reportAlertInBackground({ key: 'wa:delivery_failed', severity: 'warning', title: 'WhatsApp delivery failed',
+      body: `Meta error code ${status.errorCode ?? 'unknown'}: ${status.errorMessage ?? 'no detail'}` })
+  }
+  // 'recipient' (131030 / 131026: not on WhatsApp / undeliverable) is a normal user-level failure:
+  // never alerted individually, only counted toward the hourly rate.
+
+  // Fire-and-forget: Meta expects a fast 200 from the webhook, so no Redis round trip is awaited.
+  void bumpCounter(`wa:delivery_failures:${hourBucket()}`, 7200).then(perHour => {
+  if (perHour === DELIVERY_FAILURE_RATE_THRESHOLD) {
+    reportAlertInBackground({ key: 'wa:delivery_failure_rate', severity: 'warning', title: 'WhatsApp delivery failures spiking',
+      body: `${DELIVERY_FAILURE_RATE_THRESHOLD}+ delivery failures reported by Meta this hour.` })
+  }
+  }).catch(() => {})
 }
 
 /**

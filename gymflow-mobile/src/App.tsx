@@ -226,6 +226,9 @@ export default function App() {
           case 'new_gym':
             if (gymId) { navigationRef.navigate('GymDetail', { gymId }); return; }
             break;
+          case 'alert':
+            // Failure alerts have no screen to open; the tap just opens the app.
+            return;
           default:
             if (gymId) { navigationRef.navigate('GymDetail', { gymId }); return; }
         }

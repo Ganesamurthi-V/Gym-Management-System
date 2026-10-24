@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { createClient } from '@/lib/supabase/server'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
@@ -98,7 +100,9 @@ export async function POST(req: NextRequest) {
 
     if (error || !data.user) {
       // Logged in full server-side; the response stays generic.
-      console.error(`[activate/redeem] verifyOtp failed (${type}):`, error?.message ?? 'no user')
+      logger.error(`[activate/redeem] verifyOtp failed (${type}):`, { error: error?.message ?? 'no user' })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'activate:redeem_error', severity: 'critical', title: 'activate:redeem_error failure', body: `activate/redeem failed: ${String(error?.message ?? 'no user').slice(0, 300)}` })
 
       const message = error?.message?.toLowerCase() ?? ''
       const expired =
@@ -120,7 +124,9 @@ export async function POST(req: NextRequest) {
       { headers: NO_STORE },
     )
   } catch (err) {
-    console.error('[activate/redeem] unexpected error:', err)
+    logger.error('[activate/redeem] unexpected error:', { error: err instanceof Error ? err.message : String(err) })
+    // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+    reportAlertInBackground({ key: 'activate:redeem_error', severity: 'critical', title: 'activate:redeem_error failure', body: `activate/redeem failed: ${String(err instanceof Error ? err.message : String(err)).slice(0, 300)}` })
     return fail(500, 'We could not verify your link right now. Please try again.', 'INTERNAL_ERROR')
   }
 }

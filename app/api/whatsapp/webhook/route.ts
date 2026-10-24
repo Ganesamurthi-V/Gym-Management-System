@@ -28,6 +28,29 @@ import { processMessages } from '@/services/whatsapp/messageProcessor'
 import { processStatuses } from '@/services/whatsapp/statusProcessor'
 import { saveWebhookLog } from '@/repositories/whatsapp/whatsappRepository'
 import * as Sentry from '@sentry/nextjs'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
+
+/**
+ * Increment a Redis counter with a TTL. Returns null (never throws) when Redis is unconfigured or
+ * errors: an alert counter must never break request handling. Uses the exported client only when
+ * both env vars are set, so dev setups do not log "Redis credentials missing" warnings.
+ */
+async function bumpCounter(key: string, ttlSeconds: number): Promise<number | null> {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) return null
+  try {
+    const { redis } = await import('@/lib/redis')
+    const n = await redis.incr(key)
+    await redis.expire(key, ttlSeconds)
+    return n
+  } catch {
+    return null
+  }
+}
+
+/** yyyyMMddHH in UTC, the bucket for hourly alert counters. */
+function hourBucket(): string {
+  return new Date().toISOString().slice(0, 13).replace(/[-T]/g, '')
+}
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 10 // Vercel function timeout: 10 seconds
@@ -85,6 +108,18 @@ export async function POST(req: NextRequest) {
       log.warn('Invalid webhook signature', {
         signatureHeader: req.headers.get('x-hub-signature-256') ? 'present' : 'missing',
       })
+
+      // Repeated bad signatures mean Meta's app secret changed (every webhook then fails) or
+      // someone is probing. One-off failures are noise, so alert at 5 per UTC hour.
+      // Not awaited: the 401 must not wait on Redis.
+      void bumpCounter(`wa:webhook:badsig:${hourBucket()}`, 7200).then(badSigs => {
+        if (badSigs !== null && badSigs >= 5) {
+          reportAlertInBackground({
+            key: 'wa:webhook_bad_signature', severity: 'warning', title: 'WhatsApp webhook signature failures',
+            body: `${badSigs} webhook calls with an invalid signature this hour; check WHATSAPP_APP_SECRET or probing.`,
+          })
+        }
+      }).catch(() => {})
 
       // Nothing is stored for unauthenticated requests: anyone can POST here, so
       // writing a row per request would let attackers fill the database.
@@ -211,6 +246,11 @@ export async function POST(req: NextRequest) {
       scope.setTag('phone_number_id', phoneNumberId)
       scope.setExtra('raw_payload', rawPayload)
       Sentry.captureException(error)
+    })
+
+    reportAlertInBackground({
+      key: 'wa:webhook_error', severity: 'warning', title: 'WhatsApp webhook processing error',
+      body: `Event type ${eventType}: ${error instanceof Error ? error.message : String(error)}`,
     })
 
     // Save error log (best-effort — never let a logging failure mask the real error)

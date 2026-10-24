@@ -17,6 +17,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { activateRateLimitOk, getServiceSupabase, resolveInvitationToken } from '@/lib/member/activation-token'
 import { sendVerificationEmail } from '@/lib/member/activation-email'
 
@@ -108,7 +110,9 @@ export async function POST(req: NextRequest) {
 
     if (updateErr) {
       const msg = updateErr.message ?? ''
-      console.error('[activate/complete] auth update failed:', msg)
+      logger.error('[activate/complete] auth update failed:', { error: msg })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'activate:complete_error', severity: 'critical', title: 'activate:complete_error failure', body: `activate/complete failed: ${String(msg).slice(0, 300)}` })
       if (/already been registered|already registered|duplicate/i.test(msg)) {
         return fail('This email is already in use. Please choose a different one.', 409, { code: 'email_taken' })
       }
@@ -154,7 +158,9 @@ export async function POST(req: NextRequest) {
       { headers: NO_STORE },
     )
   } catch (err) {
-    console.error('[activate/complete] error:', err)
+    logger.error('[activate/complete] error:', { error: err instanceof Error ? err.message : String(err) })
+    // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+    reportAlertInBackground({ key: 'activate:complete_error', severity: 'critical', title: 'activate:complete_error failure', body: `activate/complete failed: ${String(err instanceof Error ? err.message : String(err)).slice(0, 300)}` })
     return fail('Server error', 500)
   }
 }

@@ -25,6 +25,27 @@ import { sendWhatsAppTemplate } from './sender'
 import { finalizeSendRow } from './finalize'
 import { QUEUE_RECIPIENT_CAP } from './recipientLimit'
 import type { TemplateContext, TemplateId, SendResult } from '@/types/whatsapp'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
+
+/**
+ * Increment a Redis counter and set its TTL. Returns null (never throws) when Redis is not
+ * configured or errors: alerting counters must never break a send path. Uses the exported client
+ * only when both env vars are set, so an unconfigured dev setup does not log warnings.
+ */
+async function bumpCounter(key: string, ttlSeconds: number): Promise<number | null> {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) return null
+  try {
+    const { redis } = await import('@/lib/redis')
+    const n = await redis.incr(key)
+    await redis.expire(key, ttlSeconds)
+    return n
+  } catch {
+    return null
+  }
+}
+
+/** Publishes per UTC day at which we warn (QStash free tier allows 1000/day). */
+export const QSTASH_BUDGET_WARN_AT = 800
 
 // ─── Cadence constants ──────────────────────────────────────────────────────
 
@@ -121,6 +142,12 @@ export async function enqueueSend(
       return { enqueued: false }
     }
     console.error('[WA Queue] enqueue failed:', error.message)
+    // A reminder that is not queued is silently never sent; the owner must hear about it.
+    reportAlertInBackground({
+      key: 'wa:enqueue_failed', severity: 'critical', title: 'WhatsApp message not queued',
+      body: `Template ${params.templateName}, gym ${params.gymId}: ${error.message}`,
+      gymId: params.gymId,
+    })
     return { enqueued: false }
   }
   return { enqueued: true }
@@ -169,11 +196,14 @@ async function reapStaleSends(supabase: SupabaseClient): Promise<number> {
     .lte('locked_at', cutoff)
   if (error) {
     console.error('[WA Queue] reap select failed:', error.message)
+    reportAlertInBackground({ key: 'wa:queue_persist', severity: 'warning', title: 'WhatsApp queue database errors',
+      body: `Stale-send reaper select failed: ${error.message}` })
     return 0
   }
   if (!Array.isArray(data)) return 0
 
   let reaped = 0
+  let reapErrors = 0
   for (const r of data as Array<{ id: string; attempts: number; max_attempts: number }>) {
     const patch = r.attempts >= r.max_attempts
       ? { status: 'failed', last_error: 'unconfirmed send; attempts exhausted' }
@@ -191,9 +221,14 @@ async function reapStaleSends(supabase: SupabaseClient): Promise<number> {
       .select('id')
     if (updErr) {
       console.error('[WA Queue] reap update failed:', updErr.message)
+      reapErrors++
       continue
     }
     if (Array.isArray(done) ? done.length > 0 : !!done) reaped++
+  }
+  if (reapErrors > 0) {
+    reportAlertInBackground({ key: 'wa:queue_persist', severity: 'warning', title: 'WhatsApp queue database errors',
+      body: `Stale-send reaper: ${reapErrors} update(s) failed, ${reaped} reaped.` })
   }
   return reaped
 }
@@ -245,10 +280,29 @@ export function drainDedupId(delayMinutes: number, nowMs: number, continuation =
   return `wa-drain-d${delayMinutes}-${Math.floor(nowMs / (DRAIN_INTERVAL_MINUTES * 60_000))}`
 }
 
+async function alertPublishFailure(status: number | null): Promise<void> {
+  if (status === 429) {
+    reportAlertInBackground({ key: 'wa:qstash_quota', severity: 'critical', title: 'QStash daily quota hit',
+      body: 'QStash returned 429; queued WhatsApp messages will not drain until the quota resets.' })
+  } else if (status === 401 || status === 403 || status === 404) {
+    reportAlertInBackground({ key: 'wa:qstash_auth', severity: 'critical', title: 'QStash token or URL wrong',
+      body: `QStash publish returned HTTP ${status}; check QSTASH_TOKEN and QSTASH_URL (region).` })
+  } else {
+    reportAlertInBackground({ key: 'wa:qstash_publish', severity: 'critical', title: 'QStash publish failed',
+      body: status === null ? 'QStash publish threw a network error.' : `QStash publish returned HTTP ${status}.` })
+  }
+}
+
 export async function kickDrain(delayMinutes = 0, opts: { continuation?: boolean } = {}): Promise<boolean> {
   const url = drainUrl()
   const token = process.env.QSTASH_TOKEN
-  if (!url || !token) return false
+  if (!url || !token) {
+    reportAlertInBackground({
+      key: 'wa:qstash_publish', severity: 'critical', title: 'QStash not configured',
+      body: 'QSTASH_TOKEN or NEXT_PUBLIC_APP_URL is missing, so the WhatsApp queue cannot be scheduled.',
+    })
+    return false
+  }
 
   // QStash is regional: a token only works against its own region's endpoint (a US-region token
   // against the default EU address gets 404 "user not found in this region"), so every publish
@@ -271,11 +325,21 @@ export async function kickDrain(delayMinutes = 0, opts: { continuation?: boolean
     })
     if (!res.ok) {
       console.error('[WA Queue] kickDrain publish failed:', res.status, await res.text().catch(() => ''))
+      await alertPublishFailure(res.status)
       return false
+    }
+    // Daily publish counter: QStash's free tier is 1000/day, so warn well before it is hit.
+    const count = await bumpCounter(`qstash:publishes:${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`, 172800)
+    if (count === QSTASH_BUDGET_WARN_AT) {
+      reportAlertInBackground({
+        key: 'wa:qstash_budget', severity: 'warning', title: 'QStash publishes 800 of 1000 today',
+        body: 'The daily QStash publish budget is 80% used; the queue may stall when it runs out.',
+      })
     }
     return true
   } catch (err) {
     console.error('[WA Queue] kickDrain error:', err instanceof Error ? err.message : String(err))
+    await alertPublishFailure(null)
     return false
   }
 }
@@ -356,6 +420,13 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
   const clock = deps.now ?? Date.now
   const startedAt = clock()
   let tokenExhausted = false
+  let persistFailures = 0
+  // Failed-row error classes this run (digits stripped so phone numbers never reach an alert).
+  const failedErrors = new Map<string, number>()
+  const noteFailed = (err: string | null | undefined) => {
+    const cls = (err ?? 'unknown').replace(/\d+/g, '#').slice(0, 80)
+    failedErrors.set(cls, (failedErrors.get(cls) ?? 0) + 1)
+  }
   // Earliest time a denied recipient may be retried; sets the next drain delay.
   let earliestRetryAt: number | null = null
 
@@ -446,7 +517,10 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     if (result.success) {
       // If this write keeps failing the row stays 'sending': the webhook or the lease resolves it.
       const persisted = await persistSent(supabase, row.id, result.messageId ?? null)
-      if (!persisted) console.error('[WA Queue] row left sending after successful send:', row.id)
+      if (!persisted) {
+        console.error('[WA Queue] row left sending after successful send:', row.id)
+        persistFailures++
+      }
       stats.sent++
       if (row.template_name === 'member_app_invitation') {
         const gymId = row.gym_id ?? row.context.gymId
@@ -465,6 +539,7 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
         .update({ status: 'failed', last_error: prepareFailure.error })
         .eq('id', row.id)
       stats.failed++
+      noteFailed(prepareFailure.error)
     } else if (result.skipped) {
       // Deliberately not sent (the gym's WhatsApp switch is off): finished, no retry.
       await supabase
@@ -493,6 +568,7 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
         .update({ status: 'failed', last_error: result.error ?? null })
         .eq('id', row.id)
       stats.failed++
+      noteFailed(result.error)
     }
   }
 
@@ -512,6 +588,21 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     const untilRetry = earliestRetryAt === null ? DRAIN_INTERVAL_MINUTES : Math.ceil((earliestRetryAt - Date.now()) / 60_000)
     const delay = earliestRetryAt === null ? DRAIN_INTERVAL_MINUTES : Math.min(60, Math.max(1, untilRetry))
     stats.rescheduled = await reschedule(delay)
+  }
+
+  // Alerts last, so they can never hold back the reschedule above.
+  if (stats.remaining > 0 && !stats.rescheduled) {
+    reportAlertInBackground({ key: 'wa:drain_not_rescheduled', severity: 'critical', title: 'WhatsApp queue not rescheduled',
+      body: `${stats.remaining} message(s) are still pending and the next drain could not be scheduled.` })
+  }
+  if (persistFailures > 0) {
+    reportAlertInBackground({ key: 'wa:queue_persist', severity: 'warning', title: 'WhatsApp queue database errors',
+      body: `${persistFailures} sent row(s) could not be marked sent this run (sent ${stats.sent}, reaped ${stats.reaped}).` })
+  }
+  if (stats.failed > 0) {
+    const top = [...failedErrors.entries()].sort((a, b) => b[1] - a[1])[0]
+    reportAlertInBackground({ key: 'wa:send_failed', severity: 'warning', title: 'WhatsApp sends failed permanently',
+      body: `${stats.failed} message(s) failed this run. Most common error: ${top ? top[0] : 'unknown'}.` })
   }
 
   return stats

@@ -25,6 +25,7 @@ const TYPE_META: Record<AdminNotification['type'], { icon: string; color: string
   payment_request: { icon: 'credit-card', color: Colors.emerald },
   new_gym: { icon: 'home', color: Colors.indigo },
   email: { icon: 'mail', color: Colors.purple },
+  alert: { icon: 'alert-triangle', color: Colors.red },
 };
 
 function timeAgo(iso: string): string {

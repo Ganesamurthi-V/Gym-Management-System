@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,6 +101,7 @@ export async function POST(req: NextRequest) {
 
   if (uploadError || !upload) {
     logger.error('subscription_proof_upload_failed', { error: uploadError?.message })
+    reportAlertInBackground({ key: 'sub:proof_upload_failed', severity: 'critical', title: 'Payment proof upload failed', body: `gymId=${gym.id} error=${String(uploadError ? uploadError.message : 'no upload result').slice(0, 300)}`, gymId: gym.id })
     return NextResponse.json({ error: 'Upload failed. Please try again.' }, { status: 500 })
   }
 
@@ -114,6 +117,22 @@ export async function POST(req: NextRequest) {
 
   if (insertError) {
     logger.error('subscription_request_insert_failed', { error: insertError.message })
+    reportAlertInBackground({ key: 'sub:request_insert_failed', severity: 'critical', title: 'Subscription request insert failed', body: `gymId=${gym.id} error=${insertError.message.slice(0, 300)}`, gymId: gym.id })
+    // The proof was uploaded but no row references it; remove it so files are not leaked (best effort).
+    // Service role is required: payment-proofs only has INSERT/SELECT policies for users, so a
+    // user-scoped remove() silently deletes nothing. Safe because the path is the object THIS request
+    // just uploaded under the authenticated user's own prefix, never client-supplied (guarded below).
+    if (!upload.path.startsWith(`${user.id}/`)) {
+      logger.warn('subscription_proof_cleanup_skipped', { reason: 'path outside user prefix' })
+    } else {
+      const { data: removed, error: cleanupError } = await createAdminClient()
+        .storage.from('payment-proofs').remove([upload.path])
+      if (cleanupError) {
+        logger.warn('subscription_proof_cleanup_failed', { error: cleanupError.message })
+      } else if (!removed || removed.length === 0) {
+        logger.warn('subscription_proof_cleanup_failed', { error: 'orphan not removed (no object returned)' })
+      }
+    }
     return NextResponse.json({ error: 'Could not save your request. Please try again.' }, { status: 500 })
   }
 

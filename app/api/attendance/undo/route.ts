@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withAuth } from '@/lib/api/withAuth'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
@@ -27,7 +28,7 @@ const bodySchema = z.object({
   action: z.enum(['check_in', 'check_out']),
 })
 
-export const POST = withAuth('ATTENDANCE_UNDO', async (req: NextRequest, { supabase, gym }) => {
+export const POST = withAuth('ATTENDANCE_UNDO', async (req: NextRequest, { supabase, gym, log }) => {
   let json: unknown
   try { json = await req.json() } catch {
     return NextResponse.json(
@@ -70,6 +71,8 @@ export const POST = withAuth('ATTENDANCE_UNDO', async (req: NextRequest, { supab
       : await supabase.from('attendance').update({ check_out_time: null }).eq('id', attendance_id).eq('gym_id', gym.id)
 
   if (error) {
+    log.error('attendance undo failed', error)
+    reportAlertInBackground({ key: '5xx:ATTENDANCE_UNDO', severity: 'critical', title: 'Attendance undo failed', body: `gymId=${gym.id} error=${error.message.slice(0, 300)}`, gymId: gym.id })
     return NextResponse.json(
       { success: false, error: { code: 'DATABASE_ERROR', message: error.message } },
       { status: 500 },

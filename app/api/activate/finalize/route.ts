@@ -11,6 +11,8 @@
  */
 
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 
@@ -45,7 +47,9 @@ export async function POST() {
       .eq('auth_user_id', user.id)
       .maybeSingle()
     if (memberErr) {
-      console.error('[activate/finalize] member lookup failed:', memberErr.message)
+      logger.error('[activate/finalize] member lookup failed:', { error: memberErr.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'activate:finalize_error', severity: 'critical', title: 'activate:finalize_error failure', body: `activate/finalize failed: ${String(memberErr.message).slice(0, 300)}` })
       return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 })
     }
     if (!member) {
@@ -63,7 +67,9 @@ export async function POST() {
       },
     })
     if (updateUserErr) {
-      console.error('[activate/finalize] auth user update failed:', updateUserErr.message)
+      logger.error('[activate/finalize] auth user update failed:', { error: updateUserErr.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'activate:finalize_error', severity: 'critical', title: 'activate:finalize_error failure', body: `activate/finalize failed: ${String(updateUserErr.message).slice(0, 300)}` })
       return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 })
     }
 
@@ -77,7 +83,9 @@ export async function POST() {
       .eq('id', member.id)
       .eq('gym_id', member.gym_id)
     if (memberUpdateErr) {
-      console.error('[activate/finalize] member update failed:', memberUpdateErr.message)
+      logger.error('[activate/finalize] member update failed:', { error: memberUpdateErr.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'activate:finalize_error', severity: 'critical', title: 'activate:finalize_error failure', body: `activate/finalize failed: ${String(memberUpdateErr.message).slice(0, 300)}` })
       return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 })
     }
 
@@ -88,11 +96,17 @@ export async function POST() {
       activity: 'portal_activated',
       performed_by: 'member',
     })
-    if (activityErr) console.error('[activate/finalize] activity log failed:', activityErr.message)
+    if (activityErr) {
+      // Best-effort and non-fatal: warning only, separate key from the fatal paths.
+      logger.warn('[activate/finalize] activity log failed', { error: activityErr.message })
+      reportAlertInBackground({ key: 'activate:activity_log_error', severity: 'warning', title: 'Activation activity log failed', body: `activate/finalize activity log insert failed: ${String(activityErr.message).slice(0, 300)}` })
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    console.error('[activate/finalize] error:', err)
+    logger.error('[activate/finalize] error:', { error: err instanceof Error ? err.message : String(err) })
+    // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+    reportAlertInBackground({ key: 'activate:finalize_error', severity: 'critical', title: 'activate:finalize_error failure', body: `activate/finalize failed: ${String(err instanceof Error ? err.message : String(err)).slice(0, 300)}` })
     return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 })
   }
 }

@@ -1,0 +1,19 @@
+{
+  // External uptime watcher for GymFlow. Runs on a free Cloudflare cron trigger, independent of Vercel.
+  // No "limits.cpu_ms" on purpose: the free plan has a fixed 10 ms CPU budget and rejects custom limits;
+  // this Worker is almost all network wait, which does not count as CPU time.
+  "name": "gymflow-monitoring",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "STATE",
+      // Create it with:  npx wrangler kv namespace create STATE
+      // then paste the printed id here.
+      "id": "33fee721cf154008af1e1d2fc272e38e"
+    }
+  ]
+}

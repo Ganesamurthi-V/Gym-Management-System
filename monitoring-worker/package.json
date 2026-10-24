@@ -1,0 +1,19 @@
+{
+  "name": "gymflow-monitoring",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "External uptime watcher and canary for GymFlow (Cloudflare Worker, free tier)",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20241218.0",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8",
+    "wrangler": "3.99.0"
+  }
+}

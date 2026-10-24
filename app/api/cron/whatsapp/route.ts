@@ -29,6 +29,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { runDailyWhatsAppAutomation } from '@/lib/whatsapp/automation'
 import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { pingHeartbeat } from '@/lib/monitoring/heartbeat'
+import { reportAlert } from '@/lib/monitoring/alert'
+import { markCronOk } from '@/lib/monitoring/cronStatus'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // Allow up to 60 seconds for large gyms
@@ -38,6 +40,8 @@ export async function POST(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {
     console.error('[Cron/WA] CRON_SECRET env var not set')
+    await reportAlert({ key: 'cron:secret_missing', severity: 'critical', title: 'CRON_SECRET is not set',
+      body: 'Scheduled jobs are being rejected because CRON_SECRET is missing on the server.' })
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
   }
 
@@ -64,6 +68,7 @@ export async function POST(req: NextRequest) {
 
     // Only after a successful run, so a missed ping means the cron failed or never ran.
     await pingHeartbeat(process.env.BETTERSTACK_HEARTBEAT_WHATSAPP)
+    await markCronOk('whatsapp')
 
     return NextResponse.json({
       success: true,
@@ -73,6 +78,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[Cron/WA] Fatal error:', message)
+    await reportAlert({ key: 'cron:whatsapp:failed', severity: 'critical', title: 'Daily WhatsApp cron failed', body: message })
     return NextResponse.json({ success: false, error: 'Internal error' }, { status: 500 })
   }
 }

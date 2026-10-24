@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedisClient } from '@/lib/redis'
+import { getCronLastOk } from './cronStatus'
 import { getWhatsAppConfig } from '@/config/whatsapp'
 import type { CheckDefinition } from './health'
 
@@ -27,6 +28,36 @@ export function runtimeInfo() {
     env: process.env.VERCEL_ENV,
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7),
   }
+}
+
+/** Live Graph API probe, shared by the deep health check and the watchdog token check. */
+export async function checkWhatsAppMeta(f: Fetcher = fetch): Promise<{ ok: boolean; detail?: string }> {
+  let cfg
+  try {
+    cfg = getWhatsAppConfig()
+  } catch {
+    return { ok: true, detail: 'not configured' }
+  }
+  const base = cfg.WHATSAPP_BASE_URL.replace(/\/$/, '')
+  const res = await f(
+    `${base}/${cfg.WHATSAPP_API_VERSION}/${cfg.WHATSAPP_PHONE_NUMBER_ID}?fields=id`,
+    { headers: { Authorization: `Bearer ${cfg.WHATSAPP_ACCESS_TOKEN}` }, cache: 'no-store' },
+  )
+  return res.ok ? { ok: true } : { ok: false, detail: `http_${res.status}` }
+}
+
+/**
+ * Cron heartbeat, not log rows: on a quiet day (nothing due) the cron runs fine and writes no
+ * whatsapp_automation_logs, which used to raise a false "stale". A missing key is unknown, not
+ * stale, so a fresh deploy does not alarm before the first run.
+ */
+export async function checkDailyAutomation(
+  getLastOk: typeof getCronLastOk = getCronLastOk,
+  now: number = Date.now(),
+): Promise<{ ok: boolean; detail?: string }> {
+  const last = await getLastOk('whatsapp')
+  if (!last) return { ok: true, detail: 'unknown (no cron success recorded yet)' }
+  return now - last.getTime() <= AUTOMATION_MAX_AGE_MS ? { ok: true } : { ok: false, detail: 'stale' }
 }
 
 export function buildChecks(f: Fetcher = fetch): CheckDefinition[] {
@@ -86,35 +117,12 @@ export function buildChecks(f: Fetcher = fetch): CheckDefinition[] {
     {
       name: 'whatsapp_meta',
       critical: false,
-      run: async () => {
-        let cfg
-        try {
-          cfg = getWhatsAppConfig()
-        } catch {
-          return { ok: true, detail: 'not configured' }
-        }
-        const base = cfg.WHATSAPP_BASE_URL.replace(/\/$/, '')
-        const res = await f(
-          `${base}/${cfg.WHATSAPP_API_VERSION}/${cfg.WHATSAPP_PHONE_NUMBER_ID}?fields=id`,
-          { headers: { Authorization: `Bearer ${cfg.WHATSAPP_ACCESS_TOKEN}` }, cache: 'no-store' },
-        )
-        return res.ok ? { ok: true } : { ok: false, detail: `http_${res.status}` }
-      },
+      run: () => checkWhatsAppMeta(f),
     },
     {
       name: 'daily_automation',
       critical: false,
-      run: async () => {
-        const { data, error } = await createAdminClient()
-          .from('whatsapp_automation_logs')
-          .select('sent_at')
-          .order('sent_at', { ascending: false })
-          .limit(1)
-        if (error) return { ok: true, detail: 'unavailable' }
-        if (!data || data.length === 0) return { ok: false, detail: 'stale' }
-        const age = Date.now() - new Date(data[0].sent_at as string).getTime()
-        return age <= AUTOMATION_MAX_AGE_MS ? { ok: true } : { ok: false, detail: 'stale' }
-      },
+      run: () => checkDailyAutomation(),
     },
     {
       name: 'provider_status',

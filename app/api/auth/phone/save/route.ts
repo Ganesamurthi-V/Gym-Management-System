@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server'
+import { logger } from '@/lib/logger'
+import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { apiError, apiSuccess } from '@/lib/api/withAuth'
@@ -62,7 +64,9 @@ export async function POST(req: NextRequest) {
       .eq('auth_user_id', user.id)
       .maybeSingle()
     if (memberError) {
-      console.error('[auth/phone/save] member lookup failed:', memberError.message)
+      logger.error('[auth/phone/save] member lookup failed:', { error: memberError.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:phone_save_error', severity: 'critical', title: 'auth:phone_save_error failure', body: `auth/phone/save failed: ${String(memberError.message).slice(0, 300)}` })
       return apiError(500, 'DATABASE_ERROR', 'We could not save your number. Please try again.')
     }
     if (memberIdentity?.id || hasMemberIdentityMarker(user)) {
@@ -74,7 +78,9 @@ export async function POST(req: NextRequest) {
       user_metadata: { ...user.user_metadata, mobile_number: phone },
     })
     if (updateError) {
-      console.error('[auth/phone/save] metadata update failed:', updateError.message)
+      logger.error('[auth/phone/save] metadata update failed:', { error: updateError.message })
+      // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+      reportAlertInBackground({ key: 'auth:phone_save_error', severity: 'critical', title: 'auth:phone_save_error failure', body: `auth/phone/save failed: ${String(updateError.message).slice(0, 300)}` })
       return apiError(500, 'INTERNAL_ERROR', 'We could not save your number. Please try again.')
     }
 
@@ -91,7 +97,9 @@ export async function POST(req: NextRequest) {
 
     return apiSuccess({ maskedPhone: maskIndianMobile(phone) })
   } catch (err) {
-    console.error('[auth/phone/save] unexpected error:', err)
+    logger.error('[auth/phone/save] unexpected error:', { error: err instanceof Error ? err.message : String(err) })
+    // Handled failures are invisible to Sentry; page via the central alert (deduped by key).
+    reportAlertInBackground({ key: 'auth:phone_save_error', severity: 'critical', title: 'auth:phone_save_error failure', body: `auth/phone/save failed: ${String(err instanceof Error ? err.message : String(err)).slice(0, 300)}` })
     return apiError(500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.')
   }
 }

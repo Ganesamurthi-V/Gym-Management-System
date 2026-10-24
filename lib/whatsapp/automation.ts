@@ -51,7 +51,8 @@ import { isGamificationTemplateEnabled } from '@/config/whatsapp'
 import { computeStreak } from '@/lib/gamification/streak'
 import { addDays, istToday } from '@/lib/gamification/periods'
 import { normalizeSettings } from '@/lib/gamification/settings'
-import { planAllowsWhatsApp, isAppEligibleRank } from '@/lib/subscription-utils'
+import { planAllowsWhatsApp } from '@/lib/subscription-utils'
+import { getTrialEligibleMemberIds } from '@/lib/member/trialEligibility'
 import {
   NUDGE_PRIORITY,
   RANK_UP_COOLDOWN_DAYS,
@@ -706,17 +707,26 @@ async function processGym(
     `)
     .eq('gym_id', gym.id)
     .not('phone', 'is', null)
-    // Oldest first: the trial's 50-member app limit counts members in join order.
-    .order('created_at', { ascending: true })
 
   if (error || !members) {
     stats.errors.push(`Gym ${gym.id} member fetch: ${error?.message}`)
     return
   }
 
-  for (const [rank, rawMember] of (members as any[]).entries()) {
-    // Trial gyms only cover their first 50 members; later ones get no scheduled sends.
-    if (!isAppEligibleRank(gym.plan_type, rank)) {
+  // Trial gyms only cover their first 50 members (same set as the member app gate); later ones
+  // get no scheduled sends. If the lookup fails, skip the gym rather than message uncovered members.
+  let trialEligible: Set<string> | null = null
+  if (gym.plan_type === 'trial') {
+    try {
+      trialEligible = await getTrialEligibleMemberIds(supabase, gym.id)
+    } catch (err) {
+      stats.errors.push(`Gym ${gym.id} trial eligibility: ${(err as Error)?.message}`)
+      return
+    }
+  }
+
+  for (const rawMember of members as any[]) {
+    if (trialEligible && !trialEligible.has(rawMember.id)) {
       stats.skipped++
       continue
     }

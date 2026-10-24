@@ -41,7 +41,7 @@ import { cache } from 'react'
 import { after } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { timed } from '@/lib/perf'
-import { planAllowsMemberApp, isAppEligibleRank } from '@/lib/subscription-utils'
+import { planAllowsMemberApp } from '@/lib/subscription-utils'
 import type { Member, Gym, Membership, Attendance, WorkoutProgram } from '@/types/member-db'
 import { mapMemberGamification } from '@/lib/gamification/mapMemberGamification'
 import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
@@ -171,17 +171,9 @@ export const getMemberAppAccess = cache(async (member: Pick<Member, 'id' | 'gym_
     if (!planAllowsMemberApp(gym.plan_type)) return false
     // Only trial gyms cap by join order; skip the count query for everyone else.
     if (gym.plan_type !== 'trial') return true
-    if (!member.created_at) return false
-    const { count, error: rankErr } = await admin
-      .from('members')
-      .select('id', { count: 'exact', head: true })
-      .eq('gym_id', member.gym_id)
-      .lt('created_at', member.created_at)
-    if (rankErr || count === null) {
-      console.error('[getMemberAppAccess] rank lookup failed', { gymId: member.gym_id, message: rankErr?.message })
-      return false
-    }
-    return isAppEligibleRank(gym.plan_type, count)
+    const { getTrialEligibleMemberIds } = await import('@/lib/member/trialEligibility')
+    const eligible = await getTrialEligibleMemberIds(admin, member.gym_id)
+    return eligible.has(member.id)
   } catch (err) {
     console.error('[getMemberAppAccess] unexpected error', err)
     return false

@@ -4,7 +4,7 @@ import { parseApiError } from './error-handler';
 // ── Types ─────────────────────────────────────────────────────────
 
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled' | 'suspended';
-export type PlanType = 'trial' | 'monthly' | 'yearly' | 'lifetime';
+export type PlanType = 'trial' | 'free' | 'monthly' | 'yearly' | 'lifetime';
 
 /** Paid tiers an admin can activate or approve a payment against, and their price. */
 export type PaidPlan = 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon';
@@ -45,6 +45,8 @@ export type GymSubscriptionDetail = {
   last_transaction_id?: string | null;
   last_payment_date?: string | null;
   last_payment_status?: string | null;
+  // Paid WhatsApp add-on end date (Free plan); null when never bought.
+  whatsapp_addon_until?: string | null;
 } & GymFlags;
 
 export type OwnerInfo = {

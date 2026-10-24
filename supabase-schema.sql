@@ -3314,15 +3314,22 @@ DECLARE
   v_gym_id   UUID;
   v_plan     TEXT;
   v_trial_end TIMESTAMPTZ;
+  v_status   TEXT;
+  v_active   BOOLEAN;
 BEGIN
-  SELECT id, plan_type, trial_ends_at
-    INTO v_gym_id, v_plan, v_trial_end
+  SELECT id, plan_type, trial_ends_at, subscription_status, is_active
+    INTO v_gym_id, v_plan, v_trial_end, v_status, v_active
     FROM public.gyms
    WHERE owner_id = auth.uid()
    FOR UPDATE;
 
   IF v_gym_id IS NULL THEN
     RAISE EXCEPTION 'no gym for caller' USING ERRCODE = '42501';
+  END IF;
+  -- The switch sets status 'active', so it must not run on a gym an admin suspended,
+  -- cancelled or deactivated: that would let the owner undo the admin's action.
+  IF v_active IS NOT TRUE OR v_status NOT IN ('trial', 'expired') THEN
+    RAISE EXCEPTION 'free plan is not available for a suspended or cancelled gym' USING ERRCODE = '42501';
   END IF;
   IF v_plan <> 'trial' THEN
     RAISE EXCEPTION 'free plan is only available at trial end' USING ERRCODE = '42501';

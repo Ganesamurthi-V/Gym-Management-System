@@ -43,6 +43,27 @@ describe('getTrialEligibleMemberIds', () => {
   })
 })
 
+// Owners read gyms through a column-level SELECT grant. Without this grant getGymCore (every owner
+// page) fails with "permission denied for column" once the migration adds the column.
+describe('whatsapp_addon_until is readable by owners', () => {
+  it('both migrations that can introduce it grant SELECT on it', () => {
+    for (const f of [
+      'supabase/migrations/20261026090000_free_plan.sql',
+      'supabase/migrations/20261026120000_trial_import_member_cap.sql',
+    ]) {
+      expect(fs.readFileSync(f, 'utf8')).toContain('GRANT SELECT (whatsapp_addon_until) ON public.gyms TO authenticated')
+    }
+  })
+})
+
+describe('member cap trigger only locks the gym row for free and trial gyms', () => {
+  it('canonical schema and migration match', () => {
+    for (const f of ['supabase-schema.sql', 'supabase/migrations/20261026120000_trial_import_member_cap.sql']) {
+      expect(fs.readFileSync(f, 'utf8')).toContain("IF v_plan IN ('free', 'trial') THEN")
+    }
+  })
+})
+
 describe('owner_switch_to_free refuses suspended or cancelled gyms', () => {
   const guard = "v_active IS NOT TRUE OR v_status NOT IN ('trial', 'expired')"
   it('canonical schema', () => {

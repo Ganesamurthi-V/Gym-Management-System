@@ -268,7 +268,8 @@ export default function ImportEditPage() {
       // the membership insert itself with a client-supplied gym_id.
       const res = await fetch("/api/import/confirm", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         body: JSON.stringify({ rows: toInsert }),
       });
 

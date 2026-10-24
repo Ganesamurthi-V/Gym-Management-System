@@ -3,7 +3,6 @@ import {
   importRowsToTake,
   planAllowsWhatsApp,
   planAllowsMemberApp,
-  isAppEligibleRank,
 } from '@/lib/subscription-utils'
 
 describe('importRowsToTake', () => {
@@ -45,15 +44,5 @@ describe('planAllowsMemberApp', () => {
     expect(planAllowsMemberApp('free')).toBe(false)
     expect(planAllowsMemberApp('trial')).toBe(true)
     expect(planAllowsMemberApp('monthly')).toBe(true)
-  })
-})
-
-describe('isAppEligibleRank', () => {
-  it('limits trial to the first 50 members', () => {
-    expect(isAppEligibleRank('trial', 49)).toBe(true)
-    expect(isAppEligibleRank('trial', 50)).toBe(false)
-  })
-  it('does not limit paid plans', () => {
-    expect(isAppEligibleRank('monthly', 500)).toBe(true)
   })
 })

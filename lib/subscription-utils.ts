@@ -169,16 +169,6 @@ export function planAllowsWhatsApp(
 }
 
 /**
- * rank is the 0-based position of a member when the gym's members are ordered by
- * join date ascending. Only trial gyms cap app access by rank; Free has the app
- * off entirely (planAllowsMemberApp), so it is capped here too as a safe default.
- */
-export function isAppEligibleRank(plan: string | null | undefined, rank: number): boolean {
-  if (plan === 'trial' || plan === 'free') return rank < TRIAL_APP_MEMBER_LIMIT
-  return true
-}
-
-/**
  * How many import rows may be inserted for this plan and current member count.
  * Trial and Free share one rule: the cap is 50 members for the whole gym, so each
  * upload only gets the room that is left (a per-upload cap let owners import 50

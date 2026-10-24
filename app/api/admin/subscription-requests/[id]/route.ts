@@ -40,7 +40,7 @@ export async function POST(
   // Fetch the request to get gym_id
   const { data: request } = await supabase
     .from('subscription_requests')
-    .select('gym_id, status')
+    .select('gym_id, status, plan_requested')
     .eq('id', id)
     .single()
 
@@ -50,6 +50,27 @@ export async function POST(
   }
 
   const now = new Date()
+
+  // A WhatsApp add-on request (Rs 299) must only extend the add-on. This older admin page sends
+  // plan_type 'monthly' by default, which would grant a full paid plan for the add-on payment,
+  // so the stored request decides here, as in gymflow-admin's approve route.
+  if (action === 'approve' && request.plan_requested === 'whatsapp_addon') {
+    const { error: addonError } = await supabase.rpc('approve_whatsapp_addon', {
+      p_request_id: id,
+      p_gym_id: request.gym_id,
+      p_reviewed_by: 'admin',
+    })
+    if (addonError) {
+      const status = addonError.code === 'P0002' ? 404 : addonError.code === 'P0001' ? 409 : 500
+      return NextResponse.json({ error: 'Could not approve the WhatsApp add-on request' }, { status })
+    }
+    return NextResponse.json({ success: true })
+  }
+
+  // Only real paid plans may be granted here ('free' and 'trial' are not payments).
+  if (action === 'approve' && !['monthly', 'yearly', 'lifetime'].includes(plan_type)) {
+    return NextResponse.json({ error: 'Invalid plan_type' }, { status: 400 })
+  }
 
   if (action === 'approve') {
     // Compute subscription end date based on plan type

@@ -7,7 +7,7 @@
 -- * Owners cannot downgrade a paid plan to free/trial (trigger).
 -- * owner_switch_to_free(): the only owner route onto the free plan, trial-end only.
 -- * Free gyms are capped at 50 members by a BEFORE INSERT trigger on members.
--- * subscription_requests has no plan column or CHECK, so nothing to extend there.
+-- * subscription_requests.plan_requested is added separately (20261026100000).
 --
 -- Deploy together with the app release. Safe to re-run.
 -- Run in Supabase Dashboard -> SQL Editor.
@@ -19,6 +19,12 @@ ALTER TABLE gyms
   CHECK (plan_type IN ('free', 'trial', 'monthly', 'quarterly', 'yearly', 'lifetime'));
 
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS whatsapp_addon_until TIMESTAMPTZ;
+-- Owners read gyms through a column-level SELECT grant (20261008160000), so a new
+-- column is unreadable until granted. getGymCore selects this column on every
+-- owner page; without the grant the whole owner console fails with
+-- "permission denied for column". Read-only for owners: the column guard still
+-- rejects writes.
+GRANT SELECT (whatsapp_addon_until) ON public.gyms TO authenticated;
 
 -- Owner-created gyms must not start with a paid WhatsApp add-on, so the insert
 -- branch of the gyms column guard also resets whatsapp_addon_until.

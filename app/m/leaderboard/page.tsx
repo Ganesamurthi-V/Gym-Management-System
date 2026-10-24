@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { getMemberGamification, getMemberLeaderboard } from '@/lib/member/member-data'
+import { getMemberWithGym, getMemberGamification, getMemberLeaderboard } from '@/lib/member/member-data'
 import { parseLeaderboardBoard } from '@/lib/gamification/mapLeaderboard'
 import { startPageTimer } from '@/lib/perf'
 import LeaderboardClient from './LeaderboardClient'
@@ -22,6 +22,14 @@ export default async function LeaderboardPage({
   const { board: boardParam } = await searchParams
   // An unknown ?board= falls back to the default board instead of a 500 from the RPC.
   const board = parseLeaderboardBoard(Array.isArray(boardParam) ? boardParam[0] : boardParam)
+
+  // Gate first: the layout renders in parallel with this page and is skipped on client-side
+  // navigation, so a plan-blocked member must not reach the RPCs below. Shares the layout's
+  // cached member lookup, so it adds no round trip.
+  if (!(await getMemberWithGym())) {
+    done()
+    return null
+  }
 
   // Independent, so one round trip: the page costs the slower of the two.
   const [summary, rows] = await Promise.all([

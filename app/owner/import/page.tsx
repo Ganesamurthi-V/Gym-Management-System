@@ -24,7 +24,6 @@ import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
 import PlanNotice from "@/components/subscription/PlanNotice";
 import { api } from "@/lib/api/client";
-import { FREE_PLAN_MEMBER_LIMIT, TRIAL_IMPORT_ROW_LIMIT } from "@/lib/subscription-utils";
 
 export interface ImportedRow {
   name: string;
@@ -1062,7 +1061,7 @@ export default function ImportPage() {
           })}
         </div>
 
-        {needsFile && (
+        {needsFile && importLimit?.maxRows !== 0 && (
           <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -1303,17 +1302,17 @@ export default function ImportPage() {
         <PlanNotice
           tone="warning"
           message={
-            importLimit.plan === "trial"
-              ? `During the free trial, only the first ${TRIAL_IMPORT_ROW_LIMIT} members of a file are imported.`
-              : importLimit.maxRows === 0
-                ? `Your Free plan is full (${FREE_PLAN_MEMBER_LIMIT} of ${FREE_PLAN_MEMBER_LIMIT} members). Upgrade to a paid plan to import more.`
-                : `On the Free plan only the first ${importLimit.maxRows} members of a file are imported (limit: ${FREE_PLAN_MEMBER_LIMIT} members in total).`
+            importLimit.maxRows === 0
+              ? "Your gym has reached the 50-member limit of your plan. Upgrade to a paid plan to import more members."
+              : `Your plan allows 50 members in total. You can import ${importLimit.maxRows} more.`
           }
           action={{ href: "/owner/subscription", label: "Upgrade to a paid plan" }}
         />
       )}
 
-      {/* Drag & Drop Upload Zone */}
+      {/* Drag & Drop Upload Zone. Hidden when the plan is full so no file can be chosen
+          (the server still enforces the cap; this is convenience). */}
+      {importLimit?.maxRows !== 0 && (
       <label
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
@@ -1334,6 +1333,7 @@ export default function ImportPage() {
         </div>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
       </label>
+      )}
     </div>
   );
 }

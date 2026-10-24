@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import {
-  getMemberWithGym,
+  getMemberAccessState,
   getMemberMemberships,
   getMemberAttendance,
   getGymWorkoutPrograms,
@@ -18,7 +18,8 @@ import {
  *   member and Postgres RLS restricts rows to `auth.uid()`. No service-role key
  *   is involved and no row filter is accepted from the client, so this route
  *   cannot be used to read another member's data.
- * - Responds 401 when the caller is not a linked member.
+ * - Responds 401 when the caller is not a linked member, and 403 PLAN_NOT_ALLOWED when their
+ *   gym's plan has no member app (Free after the trial).
  * - `Cache-Control: no-store` — this is per-user data and must never be held by
  *   a CDN, proxy, or the browser's HTTP cache. In-memory caching is handled by
  *   TanStack Query on the client, which is scoped to the tab.
@@ -33,19 +34,27 @@ export async function GET() {
   // All four queries are independent and RLS-scoped, so they run concurrently:
   // the route costs one round trip (~250ms) rather than four (~1s). Awaiting
   // the member row first would have split this into two serial phases.
-  const [core, memberships, attendance, programs] = await Promise.all([
-    getMemberWithGym(),
+  // Read-only fetches stay parallel; their results are discarded unless access is 'ok'.
+  const [access, memberships, attendance, programs] = await Promise.all([
+    getMemberAccessState(),
     getMemberMemberships(),
     getMemberAttendance(),
     getGymWorkoutPrograms(),
   ])
 
-  if (!core) {
+  if (access.state === 'blocked') {
+    return NextResponse.json(
+      { error: { code: 'PLAN_NOT_ALLOWED', message: "The member app is not available on your gym's plan." } },
+      { status: 403, headers: NO_STORE },
+    )
+  }
+  if (access.state !== 'ok') {
     return NextResponse.json(
       { error: 'unauthorized', message: 'No member session.' },
       { status: 401, headers: NO_STORE },
     )
   }
+  const core = access.data
 
   return NextResponse.json(
     {

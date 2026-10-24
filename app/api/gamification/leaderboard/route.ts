@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/dal'
 import { roleFromClaims } from '@/lib/auth/roles'
+import { getMemberAccessState } from '@/lib/member/member-data'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { apiError, apiSuccess } from '@/lib/api/withAuth'
 import { apiLogger } from '@/lib/logger'
@@ -91,6 +92,12 @@ export async function GET(req: NextRequest) {
 
     const supabase = await createClient()
     const isMember = roleFromClaims(user) === 'member'
+
+    // Owners use this route for the Member App preview and are unaffected; a member whose gym
+    // plan has no member app must not read the board.
+    if (isMember && (await getMemberAccessState()).state !== 'ok') {
+      return respond(apiError(403, 'PLAN_NOT_ALLOWED', "The member app is not available on your gym's plan."))
+    }
 
     // The RPC returns zero rows both for "nobody has checked in" and for "this
     // gym switched leaderboards off", so `enabled` needs its own signal:

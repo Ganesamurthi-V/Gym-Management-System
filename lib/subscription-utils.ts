@@ -142,7 +142,7 @@ export function computeSubscriptionState(
 export const FREE_PLAN_MEMBER_LIMIT = 50
 /** During the trial only the first N members (by join date) get member-app access. */
 export const TRIAL_APP_MEMBER_LIMIT = 50
-/** A trial gym may import at most this many rows per import. */
+/** A trial gym may import until it holds this many members in total (not per upload). */
 export const TRIAL_IMPORT_ROW_LIMIT = 50
 /** Monthly price of the WhatsApp add-on for Free gyms. */
 export const WHATSAPP_ADDON_PRICE_INR = 299
@@ -178,13 +178,18 @@ export function isAppEligibleRank(plan: string | null | undefined, rank: number)
   return true
 }
 
-/** How many import rows may be inserted for this plan and current member count. */
+/**
+ * How many import rows may be inserted for this plan and current member count.
+ * Trial and Free share one rule: the cap is 50 members for the whole gym, so each
+ * upload only gets the room that is left (a per-upload cap let owners import 50
+ * again and again). Trial manual adds stay uncapped; only imports are limited.
+ */
 export function importRowsToTake(
   plan: string | null | undefined,
   existingCount: number,
   rowCount: number,
 ): number {
-  if (plan === 'trial') return Math.min(rowCount, TRIAL_IMPORT_ROW_LIMIT)
+  if (plan === 'trial') return Math.min(rowCount, Math.max(0, TRIAL_IMPORT_ROW_LIMIT - existingCount))
   if (plan === 'free') return Math.min(rowCount, Math.max(0, FREE_PLAN_MEMBER_LIMIT - existingCount))
   return rowCount
 }

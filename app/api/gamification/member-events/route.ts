@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/dal'
+import { getMemberAccessState } from '@/lib/member/member-data'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { apiError, apiSuccess } from '@/lib/api/withAuth'
 import { apiLogger } from '@/lib/logger'
@@ -46,6 +47,11 @@ export async function GET() {
       allowed = true
     }
     if (!allowed) return respond(apiError(429, 'RATE_LIMITED', 'Rate limit exceeded'))
+
+    // Member-only data: a member on a gym plan without the member app gets nothing.
+    if ((await getMemberAccessState()).state !== 'ok') {
+      return respond(apiError(403, 'PLAN_NOT_ALLOWED', "The member app is not available on your gym's plan."))
+    }
 
     const supabase = await createClient()
     const { data, error } = await supabase.rpc('get_member_events')

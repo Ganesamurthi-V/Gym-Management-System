@@ -7,6 +7,7 @@
 import { z } from 'zod'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/dal'
+import { getMemberAccessState } from '@/lib/member/member-data'
 import { checkRateLimit } from '@/lib/rateLimit'
 
 export type LeaderboardVisibilityResult =
@@ -34,6 +35,11 @@ export async function setLeaderboardVisibility(visible: unknown): Promise<Leader
   // Local JWT verification (~1 ms); PostgREST verifies the token again for the RPC.
   const { user } = await getAuthUser()
   if (!user) return { success: false, error: 'Please sign in again.' }
+
+  // Server actions are reachable without rendering any page, so the plan gate repeats here.
+  if ((await getMemberAccessState()).state !== 'ok') {
+    return { success: false, error: "The member app is not available on your gym's plan." }
+  }
 
   try {
     const { allowed } = await checkRateLimit(user.id, 'MEMBER_LEADERBOARD_VISIBILITY', VISIBILITY_CHANGES_PER_MINUTE)

@@ -61,7 +61,8 @@ export default async function RewardsPage() {
   ])
   if (!data) {
     done()
-    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load rewards.</p></div>
+    // Null also means a plan-blocked member: render nothing; the layout shows the notice.
+    return null
   }
   const { member } = data
 

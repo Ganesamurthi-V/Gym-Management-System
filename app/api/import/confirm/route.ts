@@ -13,6 +13,12 @@ import { calcEndDate, todayIST } from '@/lib/utils'
 import { importRowsToTake } from '@/lib/subscription-utils'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
+const PLAN_LIMIT_MESSAGE = 'Your plan allows 50 members, and your gym has reached that limit. Upgrade to a paid plan to import more members.'
+
+const planLimitResponse = () => NextResponse.json(
+  { success: false, error: { code: 'PLAN_MEMBER_LIMIT', message: PLAN_LIMIT_MESSAGE } },
+  { status: 403 },
+)
 
 // mapSupabaseError falls back to the raw database message; never send that to the browser.
 function safeMapped(err: { code: string; message: string }) {
@@ -79,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Plan limits are decided here from the database, never from the request: a trial gym
-    // imports at most 50 rows, a Free gym only as many as fit under its 50-member cap.
+    // imports only as many rows as fit under 50 members in total, same as a Free gym.
     const [planRes, countRes] = await Promise.all([
       supabase.from('gyms').select('plan_type').eq('id', gym.id).single(),
       supabase.from('members').select('id', { count: 'exact', head: true }).eq('gym_id', gym.id),
@@ -90,6 +96,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: GENERIC_DB_MESSAGE } }, { status: 500 })
     }
     const take = importRowsToTake(planRes.data.plan_type, countRes.count ?? 0, allRows.length)
+    // Nothing fits: answer with the upgrade message instead of inserting an empty batch.
+    if (take === 0 && allRows.length > 0) return planLimitResponse()
     const skipped = allRows.length - take
     const rows = allRows.slice(0, take)
 
@@ -150,6 +158,11 @@ export async function POST(req: NextRequest) {
 
     if (insertErr) {
       log.error('member insert failed', insertErr)
+      // The DB trigger raised the cap (free_plan_member_limit / trial_import_member_limit):
+      // a concurrent import got there first. Expected, so show the upgrade message, no alert.
+      if (insertErr.code === '23514' && insertErr.message?.includes('member_limit')) {
+        return planLimitResponse()
+      }
       alertFailure('member_insert')
       const mapped = safeMapped(insertErr)
       return NextResponse.json(

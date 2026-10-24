@@ -102,9 +102,10 @@ export type MemberWithGym = {
  * since members have no direct SELECT on `gyms`).
  *
  * Returns null if the member can't be found (avoids redirect loops).
- * Deduped per request by `cache()`.
+ * Deduped per request by `cache()`. NOT plan-gated: use `getMemberWithGym` unless you must tell
+ * "blocked" from "not a member".
  */
-export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> => {
+export const getMemberWithGymUnchecked = cache(async (): Promise<MemberWithGym | null> => {
   const userId = await timed('auth (getClaims, local verify)', () => getVerifiedUserId())
   if (!userId) return null
 
@@ -178,6 +179,33 @@ export const getMemberAppAccess = cache(async (member: Pick<Member, 'id' | 'gym_
     console.error('[getMemberAppAccess] unexpected error', err)
     return false
   }
+})
+
+export type MemberAccessState =
+  | { state: 'not_member' }
+  | { state: 'blocked' }
+  | { state: 'ok'; data: MemberWithGym }
+
+/**
+ * Tells "not a linked member" from "member of a gym whose plan has no member app", for the few
+ * places that answer those two cases differently (the layout, the API routes).
+ */
+export const getMemberAccessState = cache(async (): Promise<MemberAccessState> => {
+  const data = await getMemberWithGymUnchecked()
+  if (!data) return { state: 'not_member' }
+  if (!(await getMemberAppAccess(data.member))) return { state: 'blocked' }
+  return { state: 'ok', data }
+})
+
+/**
+ * Plan-gated member loader: null for a non-member AND for a member whose gym plan has no member
+ * app. Gating here, not only in `app/m/layout.tsx`, matters because layouts and pages render in
+ * parallel and client-side navigation between /m pages never re-renders the layout, so every
+ * page, route handler and server action that loads the member must be gated by default.
+ */
+export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> => {
+  const access = await getMemberAccessState()
+  return access.state === 'ok' ? access.data : null
 })
 
 // ─── Membership status helpers ───────────────────────────────────────────────

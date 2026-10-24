@@ -18,10 +18,18 @@ export interface AlertInput {
   gymId?: string | null
   /** Override cooldown; default critical 1800 s, warning 21600 s. */
   cooldownSeconds?: number
+  /**
+   * Optional: tells apart genuinely different problems that share one `key` (for example a Meta error
+   * code, an event type, a template name). Each distinct fingerprint has its own cooldown. It is
+   * lowercased, restricted to [a-z0-9:_-] and cut to 40 chars. Use ONLY small, bounded sets of values:
+   * never raw error text, phone numbers, emails or ids with unbounded cardinality.
+   */
+  fingerprint?: string
 }
 
 export interface AlertRedis {
-  set(key: string, value: string, opts: { nx: true; ex: number }): Promise<unknown>
+  set(key: string, value: string, opts: { nx?: true; ex: number }): Promise<unknown>
+  get(key: string): Promise<unknown>
   incr(key: string): Promise<number>
   decr(key: string): Promise<number>
   expire(key: string, seconds: number): Promise<unknown>
@@ -47,6 +55,23 @@ const MEMORY_MAX_KEYS = 200
 const BODY_MAX = 1500
 /** Warnings stop at this share of the hourly cap so they cannot starve criticals. */
 const WARNING_SHARE = 0.7
+const DEFAULT_MAX_PER_HOUR = 30
+/** Suppressed-repeat counts at which one "STILL FAILING" update is sent while the cooldown is still active. */
+export const ESCALATION_THRESHOLDS = [25, 100]
+/** How long the last-alert marker (used to tell NEW issues from repeats) is remembered. */
+const LAST_ALERT_TTL_S = 86400
+/** Extra life for repeat counters so they outlast the cooldown they belong to. */
+const COUNTER_GRACE_S = 600
+const FINGERPRINT_MAX = 40
+
+/** Dedupe identity: the key, plus `#fingerprint` when the alert carries one. */
+export function sanitizeFingerprint(fp: string | undefined): string {
+  return (fp ?? '').toLowerCase().replace(/[^a-z0-9:_-]/g, '_').slice(0, FINGERPRINT_MAX)
+}
+export function effectiveKey(input: Pick<AlertInput, 'key' | 'fingerprint'>): string {
+  const fp = sanitizeFingerprint(input.fingerprint)
+  return fp ? `${input.key}#${fp}` : input.key
+}
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -59,7 +84,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
 
 function parseMax(raw: string | undefined): number {
   const n = Number.parseInt(raw ?? '', 10)
-  return Number.isFinite(n) && n > 0 ? n : 20
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_PER_HOUR
 }
 
 /**
@@ -116,8 +141,27 @@ const numbered = (items: string[]) => items.map((t, i) => `${i + 1}. ${escapeHtm
  * Structured Telegram message (HTML parse mode). Details are truncated first when the message would
  * pass Telegram's 4096 limit; the check and fix steps are never cut.
  */
-export function buildTelegramText(input: AlertInput, env: string, nowMs: number, cooldownSeconds?: number): string {
+export interface RepeatInfo {
+  /** Suppressed repeats since the previous alert for this key. */
+  repeats?: number
+  /** When the previous alert for this key was sent (ms). */
+  lastAt?: number
+}
+
+/** e.g. "10:12 PM IST". */
+export function formatIstShort(nowMs: number): string {
+  return formatIstUtc(nowMs).split(', ')[1].split(' (')[0]
+}
+
+function repeatLine(info?: RepeatInfo): string {
+  if (!info?.repeats || info.repeats <= 0) return ''
+  const when = info.lastAt ? ` (first alert ${formatIstShort(info.lastAt)})` : ''
+  return `This happened ${info.repeats} more times since the last alert${when}.`
+}
+
+export function buildTelegramText(input: AlertInput, env: string, nowMs: number, cooldownSeconds?: number, info?: RepeatInfo): string {
   const guide = getAlertGuide(input.key)
+  const repeat = repeatLine(info)
   const m = marker(input)
   const cooldown = cooldownSeconds ?? input.cooldownSeconds ?? defaultCooldown(input.severity)
   // Gym id goes first so truncating a long body never cuts it.
@@ -131,6 +175,7 @@ export function buildTelegramText(input: AlertInput, env: string, nowMs: number,
       `<b>What is happening</b>\n${escapeHtml(guide.happening)}`,
       `<b>What is failing</b>\n${escapeHtml(guide.failing)}`,
     ]
+    if (repeat) parts.push(`<i>${escapeHtml(repeat)}</i>`)
     if (detailsRaw && detailMax > 0) parts.push(`<b>Details</b>\n<pre>${escapeHtml(details)}</pre>`)
     parts.push(`<b>What to check</b>\n${numbered(guide.check)}`)
     parts.push(`<b>How to fix</b>\n${numbered(guide.fix)}`)
@@ -138,7 +183,7 @@ export function buildTelegramText(input: AlertInput, env: string, nowMs: number,
       parts.push(`<b>Links</b>\n${guide.links.map(l => `<a href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a>`).join('\n')}`)
     }
     parts.push(
-      `<i>${escapeHtml(env)} | ${formatIstUtc(nowMs)}</i>\n<code>${escapeHtml(input.key)}</code>\n<i>${muteHint(cooldown)}</i>`,
+      `<i>${escapeHtml(env)} | ${formatIstUtc(nowMs)}</i>\n<code>${escapeHtml(effectiveKey(input))}</code>\n<i>${muteHint(cooldown)}</i>`,
     )
     return parts.join('\n\n')
   }
@@ -162,14 +207,39 @@ export function buildSystemText(title: string, body: string, env: string, nowMs:
 }
 
 /** Compact body for the admin app list: scrubbed body plus the first thing to check. */
-export function buildNotificationBody(input: AlertInput): string {
+export function buildNotificationBody(input: AlertInput, info?: RepeatInfo): string {
+  const repeat = repeatLine(info)
   const first = `First step: ${getAlertGuide(input.key).check[0]}`
-  const room = Math.max(0, NOTIFICATION_BODY_MAX - first.length - 1)
+  const tail = repeat ? `${repeat}\n${first}` : first
+  const room = Math.max(0, NOTIFICATION_BODY_MAX - tail.length - 1)
   const body = input.body.length > room ? `${input.body.slice(0, Math.max(0, room - 3))}...` : input.body
-  return body ? `${body}\n${first}` : first
+  return body ? `${body}\n${tail}` : tail
 }
 
-type Verdict = { verdict: 'send' | 'dup' | 'cap'; notice?: boolean; suppressed?: number }
+/** "STILL FAILING" update for an open issue that keeps repeating. Plain and short, not the full guide. */
+export function buildUpdateText(input: AlertInput, count: number, since: number | undefined, env: string, nowMs: number): string {
+  const m = marker(input)
+  const when = since ? ` since ${formatIstShort(since)}` : ''
+  return [
+    `${m.symbol} <b>STILL FAILING: ${escapeHtml(input.title)}</b> (${count} occurrences${when})`,
+    `First check: ${escapeHtml(getAlertGuide(input.key).check[0])}`,
+    `<code>${escapeHtml(effectiveKey(input))}</code>\n<i>${escapeHtml(env)} | ${formatIstUtc(nowMs)}</i>`,
+  ].join('\n\n')
+}
+
+type Verdict = {
+  verdict: 'send' | 'dup' | 'cap' | 'update'
+  notice?: boolean
+  suppressed?: number
+  /** send: suppressed repeats since the previous alert. update: the count that hit the threshold. */
+  repeats?: number
+  lastAt?: number
+}
+
+const toMs = (raw: unknown): number | undefined => {
+  const n = Number(raw)
+  return raw != null && Number.isFinite(n) && n > 0 ? n : undefined
+}
 
 export function createAlerter(deps: AlertDeps) {
   // Per-instance fallback so a Redis outage still alerts (and still dedupes).
@@ -190,14 +260,51 @@ export function createAlerter(deps: AlertDeps) {
     return true
   }
 
-  async function redisGate(r: AlertRedis, input: AlertInput, cooldown: number, limit: number, hour: string): Promise<Verdict> {
-    const dedupeKey = `alert:${input.key}`
-    const claimed = await r.set(dedupeKey, '1', { nx: true, ex: cooldown })
-    if (!claimed) return { verdict: 'dup' }
+  // In-memory mirrors of the Redis state (supp counter, last-alert time, fired escalations), bounded.
+  const memSupp = new Map<string, number>()
+  const memLast = new Map<string, number>()
+  const memEsc = new Set<string>()
+  const bound = <V,>(m: Map<string, V>) => {
+    while (m.size > MEMORY_MAX_KEYS) {
+      const oldest = m.keys().next().value
+      if (oldest === undefined) break
+      m.delete(oldest)
+    }
+  }
+
+  async function redisGate(
+    r: AlertRedis, input: AlertInput, eff: string, cooldown: number, max: number, warnLimit: number, hour: string, nowMs: number,
+  ): Promise<Verdict> {
+    const dedupeKey = `alert:${eff}`
+    const lastKey = `alert:last:${eff}`
+    const suppKey = `alert:supp:${eff}`
     const countKey = `alert:count:${hour}`
+    const claimed = await r.set(dedupeKey, String(nowMs), { nx: true, ex: cooldown })
+
+    if (!claimed) {
+      // Muted repeat: one INCR. It never touches the hourly cap.
+      const n = await r.incr(suppKey)
+      if (n === 1) await r.expire(suppKey, cooldown + COUNTER_GRACE_S)
+      if (!ESCALATION_THRESHOLDS.includes(n)) return { verdict: 'dup' }
+      const fresh = await r.set(`alert:esc:${eff}:${n}`, '1', { nx: true, ex: cooldown + COUNTER_GRACE_S })
+      if (!fresh) return { verdict: 'dup' }
+      const c = await r.incr(countKey)
+      if (c === 1) await r.expire(countKey, 3700)
+      if (c > warnLimit) { await r.decr(countKey); return { verdict: 'dup' } } // updates use the repeat share
+      return { verdict: 'update', repeats: n, lastAt: toMs(await r.get(lastKey)) }
+    }
+
+    const lastAt = toMs(await r.get(lastKey))
+    // A key with no alert in the last 24 h is a NEW issue: it may use the full cap like a critical.
+    const limit = input.severity === 'critical' || lastAt === undefined ? max : warnLimit
     const count = await r.incr(countKey)
     if (count === 1) await r.expire(countKey, 3700)
-    if (count <= limit) return { verdict: 'send' }
+    if (count <= limit) {
+      const repeats = Number((await r.get(suppKey)) ?? 0) || 0
+      if (repeats > 0) await r.del(suppKey)
+      await r.set(lastKey, String(nowMs), { ex: LAST_ALERT_TTL_S })
+      return { verdict: 'send', repeats, lastAt }
+    }
     // Nothing was delivered: hand the slot and the dedupe key back so a later occurrence can retry.
     await r.decr(countKey)
     await r.del(dedupeKey)
@@ -208,12 +315,34 @@ export function createAlerter(deps: AlertDeps) {
     return { verdict: 'cap', notice: !!first, suppressed }
   }
 
-  function memGate(input: AlertInput, cooldown: number, limit: number, hour: string): Verdict {
-    const key = `alert:${input.key}`
-    if (!memClaim(key, cooldown * 1000)) return { verdict: 'dup' }
+  function memGate(input: AlertInput, eff: string, cooldown: number, max: number, warnLimit: number, hour: string): Verdict {
+    const key = `alert:${eff}`
+    const now = deps.now()
+    if (!memClaim(key, cooldown * 1000)) {
+      const n = (memSupp.get(eff) ?? 0) + 1
+      memSupp.set(eff, n)
+      bound(memSupp)
+      if (!ESCALATION_THRESHOLDS.includes(n)) return { verdict: 'dup' }
+      const escKey = `${eff}:${n}`
+      if (memEsc.has(escKey)) return { verdict: 'dup' }
+      memEsc.add(escKey)
+      if (memCap.hour !== hour) { memCap.hour = hour; memCap.count = 0; memCap.suppressed = 0 }
+      if (memCap.count + 1 > warnLimit) return { verdict: 'dup' }
+      memCap.count++
+      return { verdict: 'update', repeats: n, lastAt: memLast.get(eff) }
+    }
+    const lastAt = memLast.get(eff)
+    const fresh = lastAt === undefined || now - lastAt > LAST_ALERT_TTL_S * 1000
+    const limit = input.severity === 'critical' || fresh ? max : warnLimit
     if (memCap.hour !== hour) { memCap.hour = hour; memCap.count = 0; memCap.suppressed = 0 }
     memCap.count++
-    if (memCap.count <= limit) return { verdict: 'send' }
+    if (memCap.count <= limit) {
+      const repeats = memSupp.get(eff) ?? 0
+      memSupp.delete(eff)
+      memLast.set(eff, now)
+      bound(memLast)
+      return { verdict: 'send', repeats, lastAt: fresh ? undefined : lastAt }
+    }
     memCap.count--
     memory.delete(key)
     memCap.suppressed++
@@ -222,22 +351,23 @@ export function createAlerter(deps: AlertDeps) {
     return { verdict: 'cap', notice, suppressed: memCap.suppressed }
   }
 
-  async function gate(input: AlertInput): Promise<Verdict & { release: () => Promise<void>; cooldown: number }> {
+  async function gate(input: AlertInput, eff: string): Promise<Verdict & { release: () => Promise<void>; cooldown: number }> {
     const cooldown = input.cooldownSeconds ?? defaultCooldown(input.severity)
     const max = parseMax(deps.env.ALERT_MAX_PER_HOUR)
-    const limit = input.severity === 'critical' ? max : Math.max(1, Math.floor(max * WARNING_SHARE))
-    const hour = new Date(deps.now()).toISOString().slice(0, 13).replace(/[-T]/g, '')
+    const warnLimit = Math.max(1, Math.floor(max * WARNING_SHARE))
+    const nowMs = deps.now()
+    const hour = new Date(nowMs).toISOString().slice(0, 13).replace(/[-T]/g, '')
     const r = deps.redis
     let v: Verdict | undefined
     if (r) {
       // Upstash retries with backoff, so a slow Redis must not eat the whole alert budget.
-      v = await withTimeout(redisGate(r, input, cooldown, limit, hour), GATE_TIMEOUT_MS)
+      v = await withTimeout(redisGate(r, input, eff, cooldown, max, warnLimit, hour, nowMs), GATE_TIMEOUT_MS)
     }
     const usedRedis = !!v
-    if (!v) v = memGate(input, cooldown, limit, hour) // Redis down/slow/unset: the outage itself still alerts
+    if (!v) v = memGate(input, eff, cooldown, max, warnLimit, hour) // Redis down/slow/unset: the outage itself still alerts
     const release = async () => {
-      memory.delete(`alert:${input.key}`)
-      if (usedRedis && r) await withTimeout(r.del(`alert:${input.key}`), 1000)
+      memory.delete(`alert:${eff}`)
+      if (usedRedis && r) await withTimeout(r.del(`alert:${eff}`), 1000)
     }
     return { ...v, release, cooldown }
   }
@@ -266,13 +396,13 @@ export function createAlerter(deps: AlertDeps) {
     }
   }
 
-  async function history(input: AlertInput): Promise<boolean> {
+  async function history(input: AlertInput, eff: string, info?: RepeatInfo, update?: { title: string; body: string }): Promise<boolean> {
     try {
       // Service role is used because the caller is server code with no user session and the
       // notifications table is service-role only. Input is server-built, never client input.
       const sb = await deps.supabase()
       const { error } = await sb.from('notifications').insert({
-        type: 'alert', gym_id: input.gymId ?? null, title: input.title, body: buildNotificationBody(input), entity_id: input.key,
+        type: 'alert', gym_id: input.gymId ?? null, title: update?.title ?? input.title, body: update?.body ?? buildNotificationBody(input, info), entity_id: eff,
       })
       if (error) { logger.warn('alert: history insert failed', { reason: error.message }); return false }
       return true
@@ -287,9 +417,22 @@ export function createAlerter(deps: AlertDeps) {
     if (env.ALERTS_DISABLED === '1') return
     if (env.NODE_ENV === 'test') return
     const input: AlertInput = { ...raw, title: scrubPii(raw.title), body: scrubPii(raw.body) }
-    const g = await gate(input)
+    const eff = effectiveKey(input)
+    const g = await gate(input, eff)
     if (g.verdict === 'dup') return
     const envName = env.VERCEL_ENV ?? env.NODE_ENV ?? 'unknown'
+    if (g.verdict === 'update') {
+      const count = g.repeats ?? 0
+      const since = g.lastAt ? ` since ${formatIstShort(g.lastAt)}` : ''
+      const tgU = withTimeout(telegram(buildUpdateText(input, count, g.lastAt, envName, deps.now())), SINK_TIMEOUT_MS)
+      const histU = withTimeout(history(input, eff, undefined, {
+        title: `STILL FAILING: ${input.title}`,
+        body: `${count} occurrences${since}.\nFirst step: ${getAlertGuide(input.key).check[0]}`.slice(0, NOTIFICATION_BODY_MAX),
+      }), SINK_TIMEOUT_MS)
+      await Promise.allSettled([tgU, histU])
+      return
+    }
+    const info: RepeatInfo = { repeats: g.repeats, lastAt: g.lastAt }
     if (g.verdict === 'cap') {
       if (g.notice) {
         const text = buildSystemText(
@@ -302,9 +445,9 @@ export function createAlerter(deps: AlertDeps) {
       }
       return
     }
-    logger.error('alert raised', { alertKey: input.key, severity: input.severity })
-    const tg = withTimeout(telegram(buildTelegramText(input, envName, deps.now(), g.cooldown)), SINK_TIMEOUT_MS)
-    const hist = withTimeout(history(input), SINK_TIMEOUT_MS)
+    logger.error('alert raised', { alertKey: eff, severity: input.severity })
+    const tg = withTimeout(telegram(buildTelegramText(input, envName, deps.now(), g.cooldown, info)), SINK_TIMEOUT_MS)
+    const hist = withTimeout(history(input, eff, info), SINK_TIMEOUT_MS)
     const sinks: Promise<unknown>[] = [tg, hist]
     if (input.severity === 'critical' && deps.sentry) {
       const sentry = deps.sentry
@@ -338,9 +481,10 @@ function realDeps(): AlertDeps {
   return {
     redis: haveRedis
       ? {
-          set: async (k, v, o) => (await import('@/lib/redis')).redis.set(k, v, o),
+          set: async (k, v, o) => (await import('@/lib/redis')).redis.set(k, v, o.nx ? { nx: true, ex: o.ex } : { ex: o.ex }),
           incr: async k => (await import('@/lib/redis')).redis.incr(k),
           decr: async k => (await import('@/lib/redis')).redis.decr(k),
+          get: async k => (await import('@/lib/redis')).redis.get(k),
           expire: async (k, s) => (await import('@/lib/redis')).redis.expire(k, s),
           del: async k => (await import('@/lib/redis')).redis.del(k),
         }

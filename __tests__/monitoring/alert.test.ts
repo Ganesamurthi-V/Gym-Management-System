@@ -11,16 +11,24 @@ import {
 
 const TOKEN = 'SECRET-BOT-TOKEN-123'
 
-function fakeRedis() {
+function fakeRedis(clock: () => number = () => 0) {
   const store = new Map<string, number>()
+  const exp = new Map<string, number>()
+  const live = (k: string) => {
+    const e = exp.get(k)
+    if (e !== undefined && e <= clock()) { store.delete(k); exp.delete(k) }
+    return store.has(k)
+  }
   return {
-    set: vi.fn(async (k: string, _v: string, o: { nx: true; ex: number }) => {
-      if (o.nx && store.has(k)) return null
-      store.set(k, 1)
+    set: vi.fn(async (k: string, v: string, o: { nx?: true; ex: number }) => {
+      if (o.nx && live(k)) return null
+      store.set(k, Number(v) || 1)
+      exp.set(k, clock() + o.ex * 1000)
       return 'OK'
     }),
+    get: vi.fn(async (k: string) => (live(k) ? store.get(k)! : null)),
     incr: vi.fn(async (k: string) => {
-      const n = (store.get(k) ?? 0) + 1
+      const n = (live(k) ? store.get(k)! : 0) + 1
       store.set(k, n)
       return n
     }),
@@ -29,8 +37,8 @@ function fakeRedis() {
       store.set(k, n)
       return n
     }),
-    expire: vi.fn(async () => 1),
-    del: vi.fn(async (k: string) => { store.delete(k); return 1 }),
+    expire: vi.fn(async (k: string, sec: number) => { exp.set(k, clock() + sec * 1000); return 1 }),
+    del: vi.fn(async (k: string) => { store.delete(k); exp.delete(k); return 1 }),
     store,
   }
 }
@@ -77,8 +85,8 @@ describe('dedupe', () => {
     const { alerter } = make({ redis })
     await alerter.report(alert('c1'))
     await alerter.report(alert('w1', { severity: 'warning' }))
-    expect(redis.set).toHaveBeenCalledWith('alert:c1', '1', { nx: true, ex: 1800 })
-    expect(redis.set).toHaveBeenCalledWith('alert:w1', '1', { nx: true, ex: 21600 })
+    expect(redis.set).toHaveBeenCalledWith('alert:c1', expect.any(String), { nx: true, ex: 1800 })
+    expect(redis.set).toHaveBeenCalledWith('alert:w1', expect.any(String), { nx: true, ex: 21600 })
   })
 })
 
@@ -92,10 +100,10 @@ describe('hourly cap', () => {
     expect(bodies.filter(t => t.includes('alert cap reached'))).toHaveLength(1)
   })
 
-  it('falls back to default 20 on a garbage env value', async () => {
+  it('falls back to default 30 on a garbage env value', async () => {
     const { alerter, fetchMock } = make({}, { ALERT_MAX_PER_HOUR: 'abc' })
-    for (let i = 0; i < 22; i++) await alerter.report(alert(`k${i}`))
-    expect(fetchMock).toHaveBeenCalledTimes(21) // 20 + 1 cap notice
+    for (let i = 0; i < 32; i++) await alerter.report(alert(`k${i}`))
+    expect(fetchMock).toHaveBeenCalledTimes(31) // 30 + 1 cap notice
   })
 })
 
@@ -106,6 +114,7 @@ describe('redis fallback', () => {
       incr: vi.fn(async () => { throw new Error('down') }),
       decr: vi.fn(async () => { throw new Error('down') }),
       del: vi.fn(async () => { throw new Error('down') }),
+      get: vi.fn(async () => { throw new Error('down') }),
       expire: vi.fn(async () => { throw new Error('down') }),
     }
     const { alerter, fetchMock } = make({ redis })
@@ -246,7 +255,7 @@ describe('redis timeout and bound', () => {
   it('falls back to memory and stays within ~4s when redis never resolves', async () => {
     vi.useFakeTimers()
     const never = () => new Promise<never>(() => {})
-    const { alerter, fetchMock } = make({ redis: { set: never, incr: never, decr: never, expire: never, del: never } })
+    const { alerter, fetchMock } = make({ redis: { set: never, get: never, incr: never, decr: never, expire: never, del: never } })
     const start = Date.now()
     const p = alerter.report(alert())
     await vi.advanceTimersByTimeAsync(4000)
@@ -288,20 +297,35 @@ describe('release and headroom', () => {
     expect(redis.store.has('alert:h')).toBe(true)
   })
 
-  it('warnings stop at 70% of the cap while criticals still get through', async () => {
-    const { alerter, insert } = make({}, { ALERT_MAX_PER_HOUR: '10' })
-    for (let i = 0; i < 10; i++) await alerter.report(alert(`w${i}`, { severity: 'warning' }))
-    const warnInserts = insert.mock.calls.length
-    expect(warnInserts).toBe(7)
-    await alerter.report(alert('crit'))
-    expect(insert).toHaveBeenCalledTimes(8)
-  })
+  // Repeat warnings (keys that alerted before) use 70% of the cap; criticals and first-time keys use all of it.
+  for (const useRedis of [true, false]) {
+    it(`repeat warnings stop at 70% of the cap, criticals do not (${useRedis ? 'redis' : 'memory'})`, async () => {
+      let t = Date.UTC(2026, 9, 24, 10, 0, 0)
+      const { alerter, insert } = make({ redis: useRedis ? fakeRedis(() => t) : null, now: () => t }, { ALERT_MAX_PER_HOUR: '10' })
+      const w = (k: string) => alert(k, { severity: 'warning', cooldownSeconds: 60 })
+      for (let i = 0; i < 5; i++) await alerter.report(w(`w${i}`)) // first time: 5 slots
+      await alerter.report(alert('c0', { cooldownSeconds: 60 })) // 6
+      expect(insert).toHaveBeenCalledTimes(6)
+      t += 120_000
+      for (let i = 0; i < 5; i++) await alerter.report(w(`w${i}`)) // repeats: only slot 7 fits the 70% share
+      expect(insert).toHaveBeenCalledTimes(7)
+      await alerter.report(alert('c0', { cooldownSeconds: 60 })) // critical repeat still allowed (8)
+      expect(insert).toHaveBeenCalledTimes(8)
+    })
 
-  it('memory path also holds back warnings at 70%', async () => {
-    const { alerter, insert } = make({ redis: null }, { ALERT_MAX_PER_HOUR: '10' })
-    for (let i = 0; i < 10; i++) await alerter.report(alert(`w${i}`, { severity: 'warning' }))
-    expect(insert).toHaveBeenCalledTimes(7)
-  })
+    it(`a first-time key is delivered even when the warning share is exhausted (${useRedis ? 'redis' : 'memory'})`, async () => {
+      let t = Date.UTC(2026, 9, 24, 10, 0, 0)
+      const { alerter, insert } = make({ redis: useRedis ? fakeRedis(() => t) : null, now: () => t }, { ALERT_MAX_PER_HOUR: '10' })
+      const w = (k: string) => alert(k, { severity: 'warning', cooldownSeconds: 60 })
+      for (let i = 0; i < 6; i++) await alerter.report(w(`w${i}`))
+      t += 120_000
+      for (let i = 0; i < 6; i++) await alerter.report(w(`w${i}`)) // repeats exhaust the share (7 total)
+      const before = insert.mock.calls.length
+      expect(before).toBe(7)
+      await alerter.report(w('brand-new'))
+      expect(insert).toHaveBeenCalledTimes(before + 1)
+    })
+  }
 })
 
 describe('PII scrubbing', () => {
@@ -353,6 +377,7 @@ describe('real wiring of reportAlert', () => {
     const store = new Set<string>()
     const redis = {
       set: vi.fn(async (k: string) => (store.has(k) ? null : (store.add(k), 'OK'))),
+      get: vi.fn(async () => null),
       incr: vi.fn(async () => 1),
       decr: vi.fn(async () => 0),
       expire: vi.fn(async () => 1),
@@ -369,7 +394,7 @@ describe('real wiring of reportAlert', () => {
     const { mod, fetchMock, insert, redis } = await setup()
     await mod.reportAlert({ key: 'real', severity: 'warning', title: 'T', body: 'B' })
     await mod.reportAlert({ key: 'real', severity: 'warning', title: 'T', body: 'B' })
-    expect(redis.set).toHaveBeenCalledWith('alert:real', '1', { nx: true, ex: 21600 })
+    expect(redis.set).toHaveBeenCalledWith('alert:real', expect.any(String), { nx: true, ex: 21600 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ type: 'alert', entity_id: 'real' }))
   })

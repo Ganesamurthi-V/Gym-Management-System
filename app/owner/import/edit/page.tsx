@@ -10,7 +10,7 @@ import type { ImportedRow } from "../page";
 import WizardHeader from "@/components/import/WizardHeader";
 
 type Step = "edit" | "preview" | "done";
-interface DoneResult { success: number; skipped: number }
+interface DoneResult { success: number; skipped: number; planSkipped: number }
 
 const EDIT_FIELDS: (keyof ImportedRow)[] = [
   "member_number", "name", "phone", "plan", "category", "start_date",
@@ -33,7 +33,7 @@ export default function ImportEditPage() {
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
-  const [doneResult, setDoneResult] = useState<DoneResult>({ success: 0, skipped: 0 });
+  const [doneResult, setDoneResult] = useState<DoneResult>({ success: 0, skipped: 0, planSkipped: 0 });
   const [activeAreaIdx, setActiveAreaIdx] = useState<number | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -273,7 +273,7 @@ export default function ImportEditPage() {
       const result = await readImportResponse<{
         success?: boolean;
         error?: { code?: string; message?: string };
-        data?: { member_ids?: string[] };
+        data?: { member_ids?: string[]; imported?: number; skipped?: number };
       }>(res);
       if (!res.ok || !result.success) {
         throw new Error(messageForApiError(result.error));
@@ -284,7 +284,11 @@ export default function ImportEditPage() {
       // against normalized (E.164 / INVALID_NUMBER) and duplicate phone numbers,
       // which the old "re-query members by phone" approach could not distinguish.
       const memberIds: string[] = result.data?.member_ids ?? [];
-      if (memberIds.length !== toInsert.length) {
+      // On a plan cap the server keeps only the first `imported` rows, so ids align with
+      // toInsert.slice(0, imported). Comparing to toInsert.length showed a false error.
+      const imported = typeof result.data?.imported === "number" ? result.data.imported : toInsert.length;
+      const planSkipped = result.data?.skipped ?? 0;
+      if (memberIds.length !== imported) {
         throw new Error("The import finished, but we could not confirm every member was added. Please check the Members page before trying again.");
       }
 
@@ -309,7 +313,7 @@ export default function ImportEditPage() {
       // router.refresh() discards the whole client cache, not just this route.
       router.refresh();
 
-      setDoneResult({ success: toInsert.length, skipped });
+      setDoneResult({ success: imported, skipped, planSkipped });
       setStep("done");
     } catch (err: any) {
       setError(err instanceof Error && !(err instanceof TypeError) ? err.message : importErrorMessage(err));
@@ -333,6 +337,14 @@ export default function ImportEditPage() {
               <><br /><span className="text-rose-500 font-bold text-xs mt-1 inline-block">{doneResult.skipped} rows skipped due to errors</span></>
             )}
           </p>
+          {doneResult.planSkipped > 0 && (
+            <div className="mt-4 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <p>{doneResult.planSkipped} rows were not imported because of your plan limit</p>
+              <Link href="/owner/subscription" className="inline-block mt-1 font-bold text-brand-600 underline">
+                Upgrade to a paid plan
+              </Link>
+            </div>
+          )}
           <div className="mt-6 mx-auto w-56 h-2 bg-emerald-100/50 rounded-full overflow-hidden border border-emerald-100">
             <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full animate-fill-bar" />
           </div>

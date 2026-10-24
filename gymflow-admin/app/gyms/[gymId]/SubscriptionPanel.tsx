@@ -43,7 +43,8 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
   const [activatePlan, setActivatePlan] = useState<PlanType>('monthly')
   const [trialDays, setTrialDays] = useState('7')
   const [rejectReason, setRejectReason] = useState('')
-  const [approvePlan, setApprovePlan] = useState<ApprovePlanType>('monthly')
+  // null = follow the pending request's stored plan_requested; set once the admin picks a plan.
+  const [approvePlanChoice, setApprovePlanChoice] = useState<ApprovePlanType | null>(null)
 
   async function fetchDetail() {
     setLoading(true)
@@ -92,6 +93,11 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
 
   const { gym, pendingRequest, lastApprovedRequest, timeline } = data
   const badge = STATUS_BADGE[gym.subscription_status] ?? STATUS_BADGE.expired
+  // The server decides add-on vs plan from the stored request; this only mirrors it in the UI.
+  const isAddonRequest = pendingRequest?.plan_requested === 'whatsapp_addon'
+  const approvePlan: ApprovePlanType = isAddonRequest
+    ? 'whatsapp_addon'
+    : approvePlanChoice ?? (pendingRequest?.plan_requested === 'yearly' ? 'yearly' : 'monthly')
 
   return (
     <div className="space-y-6">
@@ -168,13 +174,18 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
           )}
 
           <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#1f2937]">
-            <select value={approvePlan} onChange={e => setApprovePlan(e.target.value as ApprovePlanType)}
-              className="admin-input w-40 text-xs py-1.5">
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-              <option value="lifetime">Lifetime</option>
-              <option value="whatsapp_addon">WhatsApp add-on (30 days)</option>
-            </select>
+            {isAddonRequest ? (
+              <span className="px-2 py-1.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+                WhatsApp add-on, ₹299 / 30 days
+              </span>
+            ) : (
+              <select value={approvePlan} onChange={e => setApprovePlanChoice(e.target.value as ApprovePlanType)}
+                className="admin-input w-40 text-xs py-1.5">
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+            )}
             <button
               onClick={() => callAction('payment/approve', { request_id: pendingRequest.id, plan: approvePlan }, 'Payment approved!')}
               disabled={!!actionLoading}

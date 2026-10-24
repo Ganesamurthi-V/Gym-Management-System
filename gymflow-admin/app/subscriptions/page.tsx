@@ -17,13 +17,23 @@ interface SubscriptionRequest {
   notes: string | null
   rejection_reason: string | null
   uploaded_file_url: string | null
+  plan_requested: 'monthly' | 'yearly' | 'whatsapp_addon' | null
   signedUrl: string | null
   gym_id: string
   gyms: { id: string; name: string; owner_id: string; subscription_status: string; plan_type: string } | null
 }
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected'
-type PlanType = 'monthly' | 'yearly' | 'lifetime'
+type PlanType = 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon'
+
+// Pre-selected plan comes from the stored plan_requested. Legacy rows (NULL) fall back to the
+// owner's "Intended Plan:" note, mapping only monthly/yearly: an add-on is never inferred from
+// free text, because the server rejects it unless the stored request says so.
+function defaultPlan(req: SubscriptionRequest): PlanType {
+  if (req.plan_requested) return req.plan_requested
+  const m = /Intended Plan:\s*(monthly|yearly)/i.exec(req.notes ?? '')
+  return m ? (m[1].toLowerCase() as PlanType) : 'monthly'
+}
 
 /*
   The SaaS plans an admin can approve a payment against, with their prices and
@@ -36,7 +46,7 @@ type PlanType = 'monthly' | 'yearly' | 'lifetime'
   from GET /api/subscriptions alongside each request. For now they exist to label
   the choice, and the expiry math still lives server-side in the approve route.
 */
-const PLAN_OPTIONS: { value: PlanType; label: string }[] = [
+const PLAN_OPTIONS: { value: Exclude<PlanType, 'whatsapp_addon'>; label: string }[] = [
   { value: 'monthly', label: 'Monthly — ₹999 (30d)' },
   { value: 'yearly', label: 'Yearly — ₹9,999 (365d)' },
   { value: 'lifetime', label: 'Lifetime' },
@@ -74,7 +84,7 @@ export default function SubscriptionsPage() {
   useEffect(() => { fetchRequests() }, [])
 
   async function handleApprove(req: SubscriptionRequest) {
-    const plan = planMap[req.id] ?? 'monthly'
+    const plan = planMap[req.id] ?? defaultPlan(req)
     setActionLoading(req.id)
     try {
       const res = await fetch(`/api/admin/gyms/${req.gym_id}/subscription/payment/approve`, {
@@ -224,15 +234,21 @@ export default function SubscriptionsPage() {
                   <div className="mt-4 pt-3 border-t border-[#1f2937]">
                     {!isRejecting ? (
                       <div className="flex items-center gap-3">
-                        <select
-                          value={planMap[req.id] ?? 'monthly'}
-                          onChange={e => setPlanMap(p => ({ ...p, [req.id]: e.target.value as PlanType }))}
-                          className="admin-input w-52 text-xs py-1.5"
-                        >
-                          {PLAN_OPTIONS.map(o => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                        {req.plan_requested === 'whatsapp_addon' ? (
+                          <span className="px-2 py-1.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+                            WhatsApp add-on, ₹299 / 30 days
+                          </span>
+                        ) : (
+                          <select
+                            value={planMap[req.id] ?? defaultPlan(req)}
+                            onChange={e => setPlanMap(p => ({ ...p, [req.id]: e.target.value as PlanType }))}
+                            className="admin-input w-52 text-xs py-1.5"
+                          >
+                            {PLAN_OPTIONS.map(o => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                        )}
                         <button
                           onClick={() => handleApprove(req)}
                           disabled={isThisLoading}

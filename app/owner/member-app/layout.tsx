@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Lock } from 'lucide-react'
 import { getAuthUser, getGymCore } from '@/lib/dal'
 import { createClient } from '@/lib/supabase/server'
-import { isFreePlan } from '@/lib/subscription-utils'
+import { isFreePlan, WHATSAPP_ADDON_PRICE_INR } from '@/lib/subscription-utils'
 
 export default async function MemberAppLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getAuthUser()
@@ -46,6 +46,19 @@ export default async function MemberAppLayout({ children }: { children: React.Re
               </div>
             </div>
           )}
+          {/* Secondary: the add-on is sold separately and does not unlock the Member App. */}
+          <div className="flex items-center justify-between gap-3 border border-surface-border rounded-xl px-3 py-2 text-left">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-600">WhatsApp automation add-on</p>
+              <p className="text-xs text-slate-400">₹{WHATSAPP_ADDON_PRICE_INR}/month</p>
+            </div>
+            <Link
+              href="/owner/subscription#whatsapp-addon"
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 transition-colors"
+            >
+              Add
+            </Link>
+          </div>
           {/* The UPI payment step lives on the subscription page; link to it instead of duplicating it. */}
           <Link
             href="/owner/subscription"

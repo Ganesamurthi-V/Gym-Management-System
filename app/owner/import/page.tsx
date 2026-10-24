@@ -22,6 +22,9 @@ import { checkImportFile, declaredUncompressedSize, MAX_SHEET_ROWS, MAX_SHEET_CO
 import { groupPlanNames, type PlanNameGroup } from "@/lib/import/plan-matching";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
+import PlanNotice from "@/components/subscription/PlanNotice";
+import { api } from "@/lib/api/client";
+import { FREE_PLAN_MEMBER_LIMIT, TRIAL_IMPORT_ROW_LIMIT } from "@/lib/subscription-utils";
 
 export interface ImportedRow {
   name: string;
@@ -498,6 +501,20 @@ export default function ImportPage() {
     setParsing(true);
     router.push(path);
   }
+
+  // Plan cap shown before a file is chosen. Informational only: it stays null while
+  // loading or on any error so a failed lookup never blocks the import.
+  const [importLimit, setImportLimit] = useState<{ plan: string; maxRows: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.get<{ data?: { plan?: string; maxRows?: number | null } }>("/api/import/limits")
+      .then(res => {
+        const d = res?.data;
+        if (!cancelled && d && typeof d.maxRows === "number" && d.plan) setImportLimit({ plan: d.plan, maxRows: d.maxRows });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Restore wizard step state from sessionStorage so clicking step icons never loses data
   useEffect(() => {
@@ -1281,6 +1298,20 @@ export default function ImportPage() {
           </ul>
         </div>
       </div>
+
+      {importLimit && (
+        <PlanNotice
+          tone="warning"
+          message={
+            importLimit.plan === "trial"
+              ? `During the free trial, only the first ${TRIAL_IMPORT_ROW_LIMIT} members of a file are imported.`
+              : importLimit.maxRows === 0
+                ? `Your Free plan is full (${FREE_PLAN_MEMBER_LIMIT} of ${FREE_PLAN_MEMBER_LIMIT} members). Upgrade to a paid plan to import more.`
+                : `On the Free plan only the first ${importLimit.maxRows} members of a file are imported (limit: ${FREE_PLAN_MEMBER_LIMIT} members in total).`
+          }
+          action={{ href: "/owner/subscription", label: "Upgrade to a paid plan" }}
+        />
+      )}
 
       {/* Drag & Drop Upload Zone */}
       <label

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       .from('subscription_requests')
       .select(`
         id, status, submitted_at, reviewed_at,
-        transaction_id, notes, rejection_reason, uploaded_file_url,
+        transaction_id, notes, rejection_reason, uploaded_file_url, plan_requested,
         gym_id,
         gyms ( id, name, owner_id, subscription_status, plan_type )
       `)

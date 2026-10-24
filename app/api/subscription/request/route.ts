@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit } from '@/lib/rateLimit'
@@ -6,6 +7,8 @@ import { logger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 
 export const dynamic = 'force-dynamic'
+
+const planSchema = z.enum(['monthly', 'yearly', 'whatsapp_addon']).optional()
 
 /**
  * POST /api/subscription/request
@@ -67,6 +70,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Transaction ID or notes too long.' }, { status: 400 })
   }
 
+  // Optional so older clients keep working; when sent it must be a known plan.
+  const rawPlan = formData.get('plan')
+  const planParsed = planSchema.safeParse(rawPlan === null || rawPlan === '' ? undefined : rawPlan)
+  if (!planParsed.success) {
+    return NextResponse.json({ error: 'Invalid plan.' }, { status: 400 })
+  }
+  const planRequested = planParsed.data ?? null
+
+  // The add-on is only for Free gyms. Decided from the database, never from the body.
+  if (planRequested === 'whatsapp_addon') {
+    const { data: gymPlan, error: gymPlanError } = await supabase
+      .from('gyms')
+      .select('plan_type')
+      .eq('id', gym.id)
+      .single()
+    if (gymPlanError || !gymPlan) {
+      logger.error('subscription_request_plan_lookup_failed', { error: gymPlanError?.message })
+      return NextResponse.json({ error: 'Could not verify your plan. Please try again.' }, { status: 500 })
+    }
+    if (gymPlan.plan_type !== 'free') {
+      return NextResponse.json(
+        { error: 'The WhatsApp add-on is only available on the Free plan. WhatsApp is included in paid plans.' },
+        { status: 403 }
+      )
+    }
+  }
+
   // Validate file
   const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
   const maxSize = 10 * 1024 * 1024 // 10 MB
@@ -113,6 +143,7 @@ export async function POST(req: NextRequest) {
       uploaded_file_url: upload.path,
       transaction_id: transactionId,
       notes,
+      plan_requested: planRequested,
     })
 
   if (insertError) {

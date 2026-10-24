@@ -264,6 +264,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     const fd = new FormData()
     fd.append('file', file)
     fd.append('transaction_id', transactionId)
+    // Structured plan for the server to validate; the notes line below is kept for the admin.
+    fd.append('plan', selectedPlan)
     
     // Automatically include the selected plan in the notes for the admin
     const finalNotes = `Intended Plan: ${selectedPlan.toUpperCase()}\n${notes}`
@@ -470,27 +472,6 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
           </div>
         )}
 
-        {/* WhatsApp add-on for Free gyms: reuses the same payment step and request route. */}
-        {step === 1 && gym.isFree && (
-          <div id="whatsapp-addon" className="bg-surface-card border border-surface-border rounded-2xl p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-lg font-bold text-slate-900">WhatsApp automation add-on, ₹{WHATSAPP_ADDON_PRICE_INR}/month</h3>
-            </div>
-            <p className="text-sm text-slate-500">
-              {gym.whatsappAddonUntil && new Date(gym.whatsappAddonUntil).getTime() > Date.now()
-                ? `Active until ${new Date(gym.whatsappAddonUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Pay again to extend.`
-                : 'Renewal reminders and other WhatsApp messages for your members, while you stay on the Free plan.'}
-            </p>
-            <button
-              onClick={() => { setSelectedPlan('whatsapp_addon'); setStep(2) }}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
-            >
-              Buy add-on <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
         {/* Step 1 UI */}
         {step === 1 && (
           <div className="bg-surface rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm">
@@ -557,6 +538,35 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                   )
                 })}
              </div>
+
+             {/* WhatsApp add-on, Free gyms only: a small third option that rides the same
+                 payment step and request route. Kept compact so it reads as an extra, not a plan. */}
+             {gym.isFree && (
+               <div
+                 id="whatsapp-addon"
+                 role="radio"
+                 aria-checked={selectedPlan === 'whatsapp_addon'}
+                 tabIndex={0}
+                 onClick={() => setSelectedPlan('whatsapp_addon')}
+                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPlan('whatsapp_addon') } }}
+                 className={`mt-6 max-w-3xl mx-auto cursor-pointer rounded-2xl border-2 p-4 flex items-center gap-3 transition-colors ${
+                   selectedPlan === 'whatsapp_addon' ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-100 bg-surface hover:border-emerald-200'
+                 }`}
+               >
+                 <MessageCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                 <div className="min-w-0 flex-1">
+                   <p className="text-sm font-bold text-slate-800">WhatsApp automation add-on, ₹{WHATSAPP_ADDON_PRICE_INR}/month</p>
+                   <p className="text-xs text-slate-500">
+                     {gym.whatsappAddonUntil && new Date(gym.whatsappAddonUntil).getTime() > Date.now()
+                       ? `Active until ${new Date(gym.whatsappAddonUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Pay again to extend.`
+                       : 'WhatsApp messages for your members while you stay on the Free plan.'}
+                   </p>
+                 </div>
+                 {selectedPlan === 'whatsapp_addon'
+                   ? <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                   : <Circle className="w-6 h-6 text-slate-200 flex-shrink-0" />}
+               </div>
+             )}
 
              <div className="mt-6">
                 {/* All Plans Include */}

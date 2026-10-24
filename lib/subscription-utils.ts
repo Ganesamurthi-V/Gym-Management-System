@@ -188,3 +188,16 @@ export function importRowsToTake(
   if (plan === 'free') return Math.min(rowCount, Math.max(0, FREE_PLAN_MEMBER_LIMIT - existingCount))
   return rowCount
 }
+
+/**
+ * The row cap shown to the owner before they pick a file. Only trial and Free gyms
+ * have one; null means "no cap" so the UI shows nothing. Informational: the import
+ * confirm route re-applies importRowsToTake and stays the authority.
+ */
+export function importMaxRowsForDisplay(
+  plan: string | null | undefined,
+  existingCount: number,
+): number | null {
+  if (plan !== 'trial' && plan !== 'free') return null
+  return importRowsToTake(plan, existingCount, Number.MAX_SAFE_INTEGER)
+}

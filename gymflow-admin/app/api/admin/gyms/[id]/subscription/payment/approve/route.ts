@@ -8,9 +8,6 @@ import { z } from 'zod'
 // would be written to gyms.plan_type.
 const approvePlanSchema = z.enum([...planSchema.options, 'whatsapp_addon'])
 
-// Server-side price; the request body never carries an amount.
-const WHATSAPP_ADDON_PRICE_INR = 299
-const WHATSAPP_ADDON_DAYS = 30
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * POST /api/admin/gyms/[id]/subscription/payment/approve
  * Body: {
  *   request_id: string,
- *   plan: 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon',
+ *   plan: 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon'  (add-on is decided by the stored request, not this field),
  *   performed_by?: string,
  *   notes?: string,
  * }
@@ -43,7 +40,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     // Verify the request belongs to this gym and is pending
     const { data: request, error: reqError } = await supabase
       .from('subscription_requests')
-      .select('*')
+      .select('*, plan_requested')
       .eq('id', request_id)
       .eq('gym_id', id)
       .eq('status', 'pending')
@@ -69,27 +66,34 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     }
     // 'lifetime' intentionally leaves endsAt null (never expires).
 
-    // Add-on: only extends the WhatsApp entitlement. The base plan and subscription status stay
-    // untouched, so a Free gym stays Free and a paid gym keeps its own expiry.
-    if (plan === 'whatsapp_addon') {
-      const addonUntil = new Date(now.getTime() + WHATSAPP_ADDON_DAYS * 86_400_000).toISOString()
-      const { error: addonApproveError } = await supabase
-        .from('subscription_requests')
-        .update({ status: 'approved', reviewed_at: now.toISOString(), reviewed_by: performed_by })
-        .eq('id', request_id)
-      if (addonApproveError) throw addonApproveError
+    // The stored request decides add-on vs plan. A client-supplied plan can never turn a plan
+    // request into an add-on (which would skip activation) or an add-on request into a plan
+    // (which would grant a full plan for Rs 299).
+    const isAddonRequest = request.plan_requested === 'whatsapp_addon'
+    if (!isAddonRequest && plan === 'whatsapp_addon') {
+      return NextResponse.json({ error: 'This request is not a WhatsApp add-on request' }, { status: 400 })
+    }
 
-      const { error: addonUpdateError } = await supabase
-        .from('gyms')
-        .update({
-          whatsapp_addon_until: addonUntil,
-          last_payment_amount: WHATSAPP_ADDON_PRICE_INR,
-          last_transaction_id: request.transaction_id || null,
-          last_payment_date: now.toISOString(),
-          last_payment_status: 'paid',
-        })
-        .eq('id', id)
-      if (addonUpdateError) throw addonUpdateError
+    // Add-on: the SQL function locks the request and only extends whatsapp_addon_until, so a Free
+    // gym stays Free and a paid gym keeps its own expiry. The client plan is ignored entirely.
+    if (isAddonRequest) {
+      const { data: addonUntil, error: addonError } = await supabase.rpc('approve_whatsapp_addon', {
+        p_request_id: request_id,
+        p_gym_id: id,
+        p_reviewed_by: performed_by,
+      })
+      if (addonError) {
+        if (addonError.code === 'P0002') {
+          return NextResponse.json({ error: 'Pending request not found' }, { status: 404 })
+        }
+        if (addonError.code === 'P0001') {
+          const error = addonError.message?.includes('request_not_pending')
+            ? 'This request was already handled'
+            : 'Request does not match this gym or is not a WhatsApp add-on request'
+          return NextResponse.json({ error }, { status: 409 })
+        }
+        throw addonError
+      }
 
       const { error: addonLogError } = await supabase.rpc('log_subscription_action', {
         p_gym_id: id,

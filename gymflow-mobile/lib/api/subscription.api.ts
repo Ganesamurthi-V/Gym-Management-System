@@ -7,7 +7,10 @@ export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled' | 
 export type PlanType = 'trial' | 'monthly' | 'yearly' | 'lifetime';
 
 /** Paid tiers an admin can activate or approve a payment against, and their price. */
-export type PaidPlan = 'monthly' | 'yearly' | 'lifetime';
+export type PaidPlan = 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon';
+
+/** Product a payment request was raised for; null on legacy rows that predate the column. */
+export type RequestedPlan = 'monthly' | 'yearly' | 'whatsapp_addon';
 
 export type GymFlags = {
   is_vip: boolean;
@@ -58,6 +61,8 @@ export type PendingRequest = {
   uploaded_file_url: string;
   transaction_id?: string;
   notes?: string;
+  // Stored on the request by the owner app; the approve endpoint decides from this, not from the plan we send.
+  plan_requested?: RequestedPlan | null;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
   submitted_at: string;

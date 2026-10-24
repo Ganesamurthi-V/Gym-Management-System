@@ -132,3 +132,59 @@ export function computeSubscriptionState(
   // Unknown status value — treat conservatively as expired
   return { status: 'expired', daysLeft: 0, isExpired: true, isExpiringSoon: false }
 }
+
+// ── Free plan and trial limits ───────────────────────────────────────────────
+// Pure helpers shared by middleware, routes and UI. The database enforces the
+// Free member cap with a trigger; these mirror it so the UI and import can
+// explain the limit instead of surfacing a raw DB error.
+
+/** A Free gym may hold at most this many members. */
+export const FREE_PLAN_MEMBER_LIMIT = 50
+/** During the trial only the first N members (by join date) get member-app access. */
+export const TRIAL_APP_MEMBER_LIMIT = 50
+/** A trial gym may import at most this many rows per import. */
+export const TRIAL_IMPORT_ROW_LIMIT = 50
+/** Monthly price of the WhatsApp add-on for Free gyms. */
+export const WHATSAPP_ADDON_PRICE_INR = 299
+
+export function isFreePlan(plan: string | null | undefined): boolean {
+  return plan === 'free'
+}
+
+/** The member app is off for Free gyms. */
+export function planAllowsMemberApp(plan: string | null | undefined): boolean {
+  return plan !== 'free'
+}
+
+/** Free gyms send WhatsApp only while the paid add-on is running. */
+export function planAllowsWhatsApp(
+  plan: string | null | undefined,
+  addonUntil: string | Date | null | undefined,
+  now: Date,
+): boolean {
+  if (plan !== 'free') return true
+  if (!addonUntil) return false
+  const until = new Date(addonUntil).getTime()
+  return Number.isFinite(until) && until > now.getTime()
+}
+
+/**
+ * rank is the 0-based position of a member when the gym's members are ordered by
+ * join date ascending. Only trial gyms cap app access by rank; Free has the app
+ * off entirely (planAllowsMemberApp), so it is capped here too as a safe default.
+ */
+export function isAppEligibleRank(plan: string | null | undefined, rank: number): boolean {
+  if (plan === 'trial' || plan === 'free') return rank < TRIAL_APP_MEMBER_LIMIT
+  return true
+}
+
+/** How many import rows may be inserted for this plan and current member count. */
+export function importRowsToTake(
+  plan: string | null | undefined,
+  existingCount: number,
+  rowCount: number,
+): number {
+  if (plan === 'trial') return Math.min(rowCount, TRIAL_IMPORT_ROW_LIMIT)
+  if (plan === 'free') return Math.min(rowCount, Math.max(0, FREE_PLAN_MEMBER_LIMIT - existingCount))
+  return rowCount
+}

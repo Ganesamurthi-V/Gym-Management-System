@@ -10,6 +10,7 @@ import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/
 import { apiLogger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { calcEndDate, todayIST } from '@/lib/utils'
+import { importRowsToTake } from '@/lib/subscription-utils'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
 
@@ -69,13 +70,28 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       )
     }
-    const rows = parsedBody.data.rows
+    const allRows = parsedBody.data.rows
 
     const gym = await getGymForUser(supabase, user.id)
     alertGymId = gym?.id
     if (!gym) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
+
+    // Plan limits are decided here from the database, never from the request: a trial gym
+    // imports at most 50 rows, a Free gym only as many as fit under its 50-member cap.
+    const [planRes, countRes] = await Promise.all([
+      supabase.from('gyms').select('plan_type').eq('id', gym.id).single(),
+      supabase.from('members').select('id', { count: 'exact', head: true }).eq('gym_id', gym.id),
+    ])
+    if (planRes.error || countRes.error) {
+      log.error('import plan lookup failed', planRes.error ?? countRes.error)
+      alertFailure('plan_lookup')
+      return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: GENERIC_DB_MESSAGE } }, { status: 500 })
+    }
+    const take = importRowsToTake(planRes.data.plan_type, countRes.count ?? 0, allRows.length)
+    const skipped = allRows.length - take
+    const rows = allRows.slice(0, take)
 
     // ── Step 1: current MAX member_number and which requested numbers are taken ──
     const requested = [...new Set(rows.map(r => r.member_number).filter((n): n is number => n !== undefined))]
@@ -203,6 +219,8 @@ export async function POST(req: NextRequest) {
         imported_count: memberIds.length,
         member_ids: memberIds,
         memberships_created: membershipRows.length,
+        imported: memberIds.length,
+        skipped,
       },
       meta: { duration_ms: Date.now() - startTime },
     })

@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { getMemberAppAccess } from '@/lib/member/member-data'
 
 /*
  * Who is being activated comes ONLY from the caller's own session cookie, and the
@@ -43,7 +44,7 @@ export async function POST() {
 
     const { data: member, error: memberErr } = await serviceSupabase
       .from('members')
-      .select('id, gym_id')
+      .select('id, gym_id, created_at')
       .eq('auth_user_id', user.id)
       .maybeSingle()
     if (memberErr) {
@@ -54,6 +55,14 @@ export async function POST() {
     }
     if (!member) {
       return NextResponse.json({ success: false, error: 'No member linkage found' }, { status: 400 })
+    }
+
+    // Plan gate (fresh read, fails closed): no activation on Free gyms or beyond a trial's first 50.
+    if (!(await getMemberAppAccess(member))) {
+      return NextResponse.json(
+        { success: false, error: "The member app is not available on your gym's plan. Please ask your gym owner to upgrade.", code: 'PLAN_NOT_ALLOWED' },
+        { status: 403 },
+      )
     }
 
     // Clear invitation token + mark complete

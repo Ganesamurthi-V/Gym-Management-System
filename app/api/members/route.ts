@@ -193,6 +193,14 @@ export async function POST(req: NextRequest) {
     log.end('DB_INSERT')
 
     if (error) {
+      // Free gyms are capped by a DB trigger; show a plain upgrade message instead of the raw error.
+      if (error.code === '23514' && error.message?.includes('free_plan_member_limit')) {
+        log.summary(403)
+        return NextResponse.json(
+          { success: false, error: { code: 'FREE_PLAN_LIMIT', message: 'Your Free plan allows 50 members. Upgrade to a paid plan to add more.' } },
+          { status: 403 },
+        )
+      }
       const mapped = mapSupabaseError(error)
       log.error('DB insert failed', error)
       log.summary(mapped.status)

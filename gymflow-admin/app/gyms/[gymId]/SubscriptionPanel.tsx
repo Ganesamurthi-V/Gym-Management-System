@@ -23,6 +23,8 @@ interface SubDetail {
 }
 
 type PlanType = 'monthly' | 'yearly' | 'lifetime'
+// Approve-only: the add-on never becomes plan_type, it just extends whatsapp_addon_until.
+type ApprovePlanType = PlanType | 'whatsapp_addon'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   trial: { label: 'Trial', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
@@ -41,7 +43,7 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
   const [activatePlan, setActivatePlan] = useState<PlanType>('monthly')
   const [trialDays, setTrialDays] = useState('7')
   const [rejectReason, setRejectReason] = useState('')
-  const [approvePlan, setApprovePlan] = useState<PlanType>('monthly')
+  const [approvePlan, setApprovePlan] = useState<ApprovePlanType>('monthly')
 
   async function fetchDetail() {
     setLoading(true)
@@ -109,6 +111,11 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
           <div>
             <p className="text-xs text-slate-500">Plan</p>
             <p className="font-bold text-white capitalize">{gym.plan_type || 'None'}</p>
+            {gym.whatsapp_addon_until && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                WhatsApp add-on {new Date(gym.whatsapp_addon_until) > new Date() ? 'until' : 'expired'} {new Date(gym.whatsapp_addon_until).toLocaleDateString('en-IN')}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs text-slate-500">Started</p>
@@ -161,11 +168,12 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
           )}
 
           <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#1f2937]">
-            <select value={approvePlan} onChange={e => setApprovePlan(e.target.value as PlanType)}
+            <select value={approvePlan} onChange={e => setApprovePlan(e.target.value as ApprovePlanType)}
               className="admin-input w-40 text-xs py-1.5">
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
               <option value="lifetime">Lifetime</option>
+              <option value="whatsapp_addon">WhatsApp add-on (30 days)</option>
             </select>
             <button
               onClick={() => callAction('payment/approve', { request_id: pendingRequest.id, plan: approvePlan }, 'Payment approved!')}

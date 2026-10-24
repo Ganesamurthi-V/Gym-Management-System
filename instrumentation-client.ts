@@ -16,7 +16,16 @@ Sentry.init({
   release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
 
   // Add optional integrations for additional features
-  integrations: [Sentry.replayIntegration()],
+  // Replays show real on-screen text (names, phones, amounts) so bugs are reproducible; disclosed in the
+  // privacy policy. Password and one-time-code fields stay masked: they hold credentials, not context.
+  integrations: [
+    Sentry.replayIntegration({
+      maskAllText: false,
+      maskAllInputs: false,
+      blockAllMedia: false,
+      mask: ['input[type="password"]', 'input[autocomplete="one-time-code"]', '[data-sentry-mask]'],
+    }),
+  ],
 
   // Issue 7 fix: 10% sampling in production avoids quota exhaustion and reduces per-request overhead (~5-15ms).
   // 100% sampling retained in development for full visibility.

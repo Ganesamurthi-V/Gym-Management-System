@@ -405,11 +405,19 @@
         <h2 id="analytics">7. Analytics &amp; Error Tracking</h2>
         <p>
           To keep the platform reliable, we use <strong>Sentry</strong> to capture errors,
-          performance data, and session replays (recordings of how a page behaved when something
-          went wrong). We have configured Sentry to <strong>not</strong> automatically collect
-          personal data — IP addresses, cookies, and request bodies are stripped before events are
-          sent — so member names, phone numbers, and similar details are kept out of error reports
-          wherever possible.
+          performance data, and session replays (recordings of how a page looked and behaved, used
+          to reproduce a problem). In the owner console and the member app, a replay captures what
+          is shown on screen and what is tapped or typed, which can include member names, phone
+          numbers, membership and payment details and other information entered into the app.
+          Password and one-time-code fields are masked and are never recorded. A replay is always
+          kept when an error occurs, and a small share of ordinary sessions is also recorded.
+        </p>
+        <p>
+          IP addresses, cookies and request bodies are stripped from error reports before they are
+          sent. Replays and error reports are used only by GymFlow staff to find and fix faults, are
+          held by Sentry for a limited period under its retention settings, and are not used for
+          advertising or sold. If you do not want your sessions recorded, contact us and we will
+          arrange for them to be excluded where we reasonably can.
         </p>
         <p>
           On our public marketing site (www.gymflow.sbs) we use <strong>Microsoft Clarity</strong>

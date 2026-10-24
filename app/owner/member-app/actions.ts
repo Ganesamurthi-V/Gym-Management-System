@@ -243,6 +243,8 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
     gymName: gymData?.name ?? 'Your Gym',
     memberName: memberData.name,
     invitationToken: token,
+    // Server-resolved gym id: without it the send skips the per-gym gate (switch and plan).
+    gymId,
   })
 
   if (sendResult.success) {

@@ -85,11 +85,14 @@ CREATE TABLE IF NOT EXISTS gyms (
   subscription_status     TEXT        NOT NULL DEFAULT 'trial'
                                       CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled', 'suspended')),
   plan_type               TEXT        NOT NULL DEFAULT 'trial'
-                                      CHECK (plan_type IN ('trial', 'monthly', 'quarterly', 'yearly', 'lifetime')),
+                                      CHECK (plan_type IN ('free', 'trial', 'monthly', 'quarterly', 'yearly', 'lifetime')),
   subscription_started_at TIMESTAMPTZ,
   -- NULL for a lifetime plan, which is why "no end date" must never be read as
   -- "expired" anywhere in the app.
   subscription_ends_at    TIMESTAMPTZ,
+  -- Paid WhatsApp add-on end date. Billing state: owners cannot write it (the
+  -- gyms column guard rejects every non-allowlisted column).
+  whatsapp_addon_until    TIMESTAMPTZ,
 
   -- Admin fields, written only by the admin app through the service role.
   is_vip                  BOOLEAN     NOT NULL DEFAULT false,
@@ -3257,6 +3260,7 @@ BEGIN
     NEW.last_payment_date     := NULL;
     NEW.last_payment_status   := 'none';
     NEW.subscription_started_at := NULL;
+    NEW.whatsapp_addon_until  := NULL;
     RETURN NEW;
   END IF;
 
@@ -3264,6 +3268,98 @@ BEGIN
   IF (to_jsonb(NEW) - v_allowed) IS DISTINCT FROM (to_jsonb(OLD) - v_allowed) THEN
     RAISE EXCEPTION 'gyms: only profile and onboarding fields can be changed by the owner'
       USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- ── 1b. gyms: a paid plan cannot be downgraded to free/trial by hand ──
+-- Without this a paid gym could be flipped to 'free' by a bug or a stray
+-- service call and silently keep its data under a 50-member cap, or be reset
+-- to 'trial' to get fresh trial days. Only trusted server roles (admin app,
+-- SQL editor) may do it.
+CREATE OR REPLACE FUNCTION public.guard_gyms_plan_downgrade()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF OLD.plan_type IN ('monthly', 'quarterly', 'yearly', 'lifetime')
+     AND NEW.plan_type IN ('free', 'trial')
+     AND NOT public.is_trusted_db_caller()
+  THEN
+    RAISE EXCEPTION 'gyms: a paid plan cannot be changed to %', NEW.plan_type
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- ── 1c. owner_switch_to_free: the only owner path onto the free plan ──
+-- Takes no arguments: the gym comes from auth.uid() and every eligibility rule
+-- is re-checked here under a row lock, so the client cannot pick a gym, skip
+-- the trial, or race a member import past the 50-member cap. It runs as the
+-- definer, so the gyms column guard treats the write as trusted.
+CREATE OR REPLACE FUNCTION public.owner_switch_to_free()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_gym_id   UUID;
+  v_plan     TEXT;
+  v_trial_end TIMESTAMPTZ;
+BEGIN
+  SELECT id, plan_type, trial_ends_at
+    INTO v_gym_id, v_plan, v_trial_end
+    FROM public.gyms
+   WHERE owner_id = auth.uid()
+   FOR UPDATE;
+
+  IF v_gym_id IS NULL THEN
+    RAISE EXCEPTION 'no gym for caller' USING ERRCODE = '42501';
+  END IF;
+  IF v_plan <> 'trial' THEN
+    RAISE EXCEPTION 'free plan is only available at trial end' USING ERRCODE = '42501';
+  END IF;
+  IF v_trial_end IS NULL OR v_trial_end > now() THEN
+    RAISE EXCEPTION 'trial has not ended' USING ERRCODE = '42501';
+  END IF;
+  IF (SELECT count(*) FROM public.members WHERE gym_id = v_gym_id) > 50 THEN
+    RAISE EXCEPTION 'free plan allows 50 members' USING ERRCODE = '23514';
+  END IF;
+
+  UPDATE public.gyms
+     SET plan_type = 'free',
+         subscription_status = 'active',
+         subscription_ends_at = NULL
+   WHERE id = v_gym_id;
+END;
+$$;
+
+-- ── 1d. members: free plan is capped at 50 members ──
+-- Enforced in the database so every insert path (owner API, bulk import,
+-- member self-signup) is covered. The gym row lock serialises concurrent
+-- inserts, otherwise two requests at 49 members would both pass the count.
+CREATE OR REPLACE FUNCTION public.enforce_free_plan_member_cap()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_plan TEXT;
+BEGIN
+  SELECT plan_type INTO v_plan
+    FROM public.gyms
+   WHERE id = NEW.gym_id
+   FOR UPDATE;
+
+  IF v_plan = 'free'
+     AND (SELECT count(*) FROM public.members WHERE gym_id = NEW.gym_id) >= 50
+  THEN
+    RAISE EXCEPTION 'free_plan_member_limit' USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
 END;
@@ -3837,6 +3933,11 @@ CREATE TRIGGER trg_guard_gyms_privileged_columns
   BEFORE INSERT OR UPDATE ON public.gyms
   FOR EACH ROW EXECUTE FUNCTION public.guard_gyms_privileged_columns();
 
+DROP TRIGGER IF EXISTS trg_guard_gyms_plan_downgrade ON public.gyms;
+CREATE TRIGGER trg_guard_gyms_plan_downgrade
+  BEFORE UPDATE OF plan_type ON public.gyms
+  FOR EACH ROW EXECUTE FUNCTION public.guard_gyms_plan_downgrade();
+
 -- ────────────────────────────────────────────────────────────
 -- triggers on members
 -- ────────────────────────────────────────────────────────────
@@ -3862,6 +3963,11 @@ DROP TRIGGER IF EXISTS trg_guard_member_auth_user_link_insert ON public.members;
 CREATE TRIGGER trg_guard_member_auth_user_link_insert
   BEFORE INSERT ON public.members
   FOR EACH ROW EXECUTE FUNCTION public.guard_member_auth_user_link();
+
+DROP TRIGGER IF EXISTS trg_enforce_free_plan_member_cap ON public.members;
+CREATE TRIGGER trg_enforce_free_plan_member_cap
+  BEFORE INSERT ON public.members
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_free_plan_member_cap();
 
 DROP TRIGGER IF EXISTS trg_guard_member_auth_user_link_update ON public.members;
 CREATE TRIGGER trg_guard_member_auth_user_link_update
@@ -4884,6 +4990,8 @@ REVOKE ALL ON FUNCTION public.notification_snippet(TEXT, INT)         FROM PUBLI
 REVOKE ALL ON FUNCTION public.dispatch_push_on_notification()         FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.email_thread_on_message()               FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_gyms_privileged_columns()         FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_gyms_plan_downgrade()             FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.enforce_free_plan_member_cap()          FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_support_tickets_owner_update()    FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_admin_messages_owner_update()     FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_member_leaderboard_visibility()   FROM PUBLIC, anon, authenticated;
@@ -4899,6 +5007,8 @@ REVOKE ALL ON FUNCTION public.get_member_gamification()             FROM PUBLIC,
 GRANT EXECUTE ON FUNCTION public.get_member_gamification()          TO authenticated;
 REVOKE ALL ON FUNCTION public.set_leaderboard_visibility(BOOLEAN)   FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_leaderboard_visibility(BOOLEAN) TO authenticated;
+REVOKE ALL ON FUNCTION public.owner_switch_to_free()   FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.owner_switch_to_free() TO authenticated;
 REVOKE ALL ON FUNCTION public.record_member_achievements(TEXT[])    FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.record_member_achievements(TEXT[]) TO authenticated;
 

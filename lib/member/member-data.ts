@@ -41,6 +41,7 @@ import { cache } from 'react'
 import { after } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { timed } from '@/lib/perf'
+import { planAllowsMemberApp, isAppEligibleRank } from '@/lib/subscription-utils'
 import type { Member, Gym, Membership, Attendance, WorkoutProgram } from '@/types/member-db'
 import { mapMemberGamification } from '@/lib/gamification/mapMemberGamification'
 import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
@@ -143,6 +144,48 @@ export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> =>
   }
 
   return { member: member as Member, gym }
+})
+
+// ─── Plan gate ───────────────────────────────────────────────────────────────
+
+/**
+ * Whether the member's gym plan lets them use the member app. Read fresh from `gyms` (never
+ * cached, never from the JWT) because the plan is access-control state. Members cannot SELECT
+ * `gyms` or other members, so this uses the service-role client, scoped by the gym id and
+ * created_at of the member row that RLS already verified as the caller's own.
+ * Fails closed: any lookup error means "not available".
+ */
+export const getMemberAppAccess = cache(async (member: Pick<Member, 'id' | 'gym_id' | 'created_at'>): Promise<boolean> => {
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/admin')
+    const admin = createAdminClient()
+    const { data: gym, error: gymErr } = await admin
+      .from('gyms')
+      .select('plan_type')
+      .eq('id', member.gym_id)
+      .maybeSingle()
+    if (gymErr || !gym) {
+      console.error('[getMemberAppAccess] plan lookup failed', { gymId: member.gym_id, message: gymErr?.message })
+      return false
+    }
+    if (!planAllowsMemberApp(gym.plan_type)) return false
+    // Only trial gyms cap by join order; skip the count query for everyone else.
+    if (gym.plan_type !== 'trial') return true
+    if (!member.created_at) return false
+    const { count, error: rankErr } = await admin
+      .from('members')
+      .select('id', { count: 'exact', head: true })
+      .eq('gym_id', member.gym_id)
+      .lt('created_at', member.created_at)
+    if (rankErr || count === null) {
+      console.error('[getMemberAppAccess] rank lookup failed', { gymId: member.gym_id, message: rankErr?.message })
+      return false
+    }
+    return isAppEligibleRank(gym.plan_type, count)
+  } catch (err) {
+    console.error('[getMemberAppAccess] unexpected error', err)
+    return false
+  }
 })
 
 // ─── Membership status helpers ───────────────────────────────────────────────

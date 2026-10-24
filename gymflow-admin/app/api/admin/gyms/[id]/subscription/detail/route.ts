@@ -33,7 +33,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
         is_vip, is_payment_verified, whatsapp_enabled,
         priority_support, auto_renewal_eligible, lifetime_offer, login_disabled,
         last_payment_amount, last_payment_method, last_transaction_id,
-        last_payment_date, last_payment_status
+        last_payment_date, last_payment_status,
+        whatsapp_addon_until
       `)
       .eq('id', id)
       .single()

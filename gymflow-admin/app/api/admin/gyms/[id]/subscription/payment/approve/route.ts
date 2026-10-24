@@ -4,13 +4,21 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { ADMIN_ACTOR, noteSchema, planSchema, sanitizeUUID } from '@/lib/sanitize'
 import { z } from 'zod'
 
+// Local, not planSchema: 'whatsapp_addon' must never be accepted by the activate route, where it
+// would be written to gyms.plan_type.
+const approvePlanSchema = z.enum([...planSchema.options, 'whatsapp_addon'])
+
+// Server-side price; the request body never carries an amount.
+const WHATSAPP_ADDON_PRICE_INR = 299
+const WHATSAPP_ADDON_DAYS = 30
+
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/admin/gyms/[id]/subscription/payment/approve
  * Body: {
  *   request_id: string,
- *   plan: 'monthly' | 'yearly' | 'lifetime',
+ *   plan: 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon',
  *   performed_by?: string,
  *   notes?: string,
  * }
@@ -22,7 +30,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   try {
     const id = sanitizeUUID((await props.params).id)
     if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
-    const parsed = z.object({ request_id: z.string().uuid(), plan: planSchema.default('monthly'), notes: noteSchema })
+    const parsed = z.object({ request_id: z.string().uuid(), plan: approvePlanSchema.default('monthly'), notes: noteSchema })
       .safeParse(await req.json().catch(() => null))
     if (!parsed.success) {
       return NextResponse.json({ error: 'A valid request_id and plan are required' }, { status: 400 })
@@ -60,6 +68,45 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       const d = new Date(now); d.setFullYear(d.getFullYear() + 1); endsAt = d.toISOString()
     }
     // 'lifetime' intentionally leaves endsAt null (never expires).
+
+    // Add-on: only extends the WhatsApp entitlement. The base plan and subscription status stay
+    // untouched, so a Free gym stays Free and a paid gym keeps its own expiry.
+    if (plan === 'whatsapp_addon') {
+      const addonUntil = new Date(now.getTime() + WHATSAPP_ADDON_DAYS * 86_400_000).toISOString()
+      const { error: addonApproveError } = await supabase
+        .from('subscription_requests')
+        .update({ status: 'approved', reviewed_at: now.toISOString(), reviewed_by: performed_by })
+        .eq('id', request_id)
+      if (addonApproveError) throw addonApproveError
+
+      const { error: addonUpdateError } = await supabase
+        .from('gyms')
+        .update({
+          whatsapp_addon_until: addonUntil,
+          last_payment_amount: WHATSAPP_ADDON_PRICE_INR,
+          last_transaction_id: request.transaction_id || null,
+          last_payment_date: now.toISOString(),
+          last_payment_status: 'paid',
+        })
+        .eq('id', id)
+      if (addonUpdateError) throw addonUpdateError
+
+      const { error: addonLogError } = await supabase.rpc('log_subscription_action', {
+        p_gym_id: id,
+        p_action: 'Payment Approved: WhatsApp Add-on',
+        p_prev_status: gym.subscription_status,
+        p_new_status: gym.subscription_status,
+        p_prev_plan: gym.plan_type,
+        p_new_plan: gym.plan_type,
+        p_prev_expiry: gym.subscription_ends_at || gym.trial_ends_at || null,
+        p_new_expiry: gym.subscription_ends_at || gym.trial_ends_at || null,
+        p_performed_by: performed_by,
+        p_notes: notes || `WhatsApp add-on until ${addonUntil}. Transaction ID: ${request.transaction_id || 'N/A'}`,
+      })
+      if (addonLogError) console.error('[PaymentApprove] audit log failed', addonLogError)
+
+      return NextResponse.json({ success: true, whatsapp_addon_until: addonUntil })
+    }
 
     // Approve the request
     const { error: approveError } = await supabase

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getMemberAppAccess } from '@/lib/member/member-data'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -117,6 +119,22 @@ export async function POST(req: NextRequest) {
           : 'We could not verify this link. Please request a new one.',
         expired ? 'TOKEN_EXPIRED' : 'VERIFICATION_FAILED',
       )
+    }
+
+    // Plan gate: the member app is off for Free gyms and capped for trial gyms. Looked up by the
+    // verified session user, never by anything in the request body.
+    const { data: member, error: memberErr } = await createAdminClient()
+      .from('members')
+      .select('id, gym_id, created_at')
+      .eq('auth_user_id', data.user.id)
+      .maybeSingle()
+    if (memberErr) {
+      logger.error('[activate/redeem] member lookup failed:', { error: memberErr.message })
+      return fail(500, 'We could not verify your link right now. Please try again.', 'INTERNAL_ERROR')
+    }
+    if (member && !(await getMemberAppAccess(member))) {
+      await supabase.auth.signOut()
+      return fail(403, "The member app is not available on your gym's plan. Please ask your gym owner to upgrade.", 'PLAN_NOT_ALLOWED')
     }
 
     return NextResponse.json(

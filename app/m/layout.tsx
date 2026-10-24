@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { MemberShell } from '@/components/member/MemberShell'
 import { SessionLifecycle } from '@/components/member/SessionLifecycle'
 import { QueryProvider } from '@/components/providers/QueryProvider'
-import { getMemberWithGym } from '@/lib/member/member-data'
+import { getMemberWithGym, getMemberAppAccess } from '@/lib/member/member-data'
 import { getAuthUser } from '@/lib/dal'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { OWNER_HOME } from '@/lib/protected-routes'
@@ -88,6 +88,23 @@ export default async function MemberLayout({
 
     // A genuinely unlinked account: back to login, which clears the session.
     redirect('/auth/login?role=member&error=not_member')
+  }
+
+  // Plan gate: Free gyms have no member app and trial gyms cover their first 50 members. Checked
+  // here, the authorization boundary, so every /m/* route is covered. Fresh read, fails closed.
+  if (!(await getMemberAppAccess(data.member))) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-surface px-4">
+        <div className="max-w-sm text-center">
+          <h1 className="text-lg font-semibold text-slate-900">
+            Member app is not available on your gym&apos;s plan
+          </h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Please ask your gym owner to upgrade the plan to use the member app.
+          </p>
+        </div>
+      </main>
+    )
   }
 
   return (

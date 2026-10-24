@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import SubscriptionClient from './SubscriptionClient'
 import { redirect } from 'next/navigation'
 import { startPageTimer } from '@/lib/perf'
+import { isFreePlan } from '@/lib/subscription-utils'
 
 // No `dynamic = 'force-dynamic'`: this page reads the auth cookie, which
 // already makes it dynamic. The export was redundant.
@@ -23,7 +24,9 @@ export default async function SubscriptionPage() {
   const subState = getSubscriptionState(gym)
 
   // If the gym is already fully active (not expiring soon), skip the paywall
-  if (!subState.isExpired && subState.status === 'active' && !subState.isExpiringSoon) {
+  // A Free gym has no paywall but still needs this page to buy the add-on or upgrade.
+  const free = isFreePlan(gym.plan_type)
+  if (!free && !subState.isExpired && subState.status === 'active' && !subState.isExpiringSoon) {
     redirect('/owner/dashboard')
   }
 
@@ -48,6 +51,10 @@ export default async function SubscriptionPage() {
 
   done()
 
+  // The trial is over and the owner has not paid or picked Free yet.
+  const trialEnded = gym.plan_type === 'trial'
+    && (subState.isExpired || (!!gym.trial_ends_at && new Date(gym.trial_ends_at).getTime() < Date.now()))
+
   return (
     <SubscriptionClient
       gym={{
@@ -56,6 +63,9 @@ export default async function SubscriptionPage() {
         subscriptionStatus: gym.subscription_status ?? 'trial',
         trialEndsAt: gym.trial_ends_at ?? null,
         subscriptionEndsAt: gym.subscription_ends_at ?? null,
+        isFree: free,
+        trialEnded,
+        whatsappAddonUntil: gym.whatsapp_addon_until ?? null,
       }}
       subState={subState}
       latestRequest={latestRequestResult.data ?? null}

@@ -249,7 +249,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
       await api.post('/api/subscription/free')
       router.refresh()
     } catch (err) {
-      setFreeError(err instanceof GymFlowAPIError ? err.message : 'Could not switch to the Free plan. Please try again.')
+      setFreeError(err instanceof GymFlowAPIError ? err.message : 'Could not switch to the free forever plan. Please try again.')
     } finally {
       setFreeBusy(false)
     }
@@ -461,7 +461,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
         {/* Trial over: the owner can keep a limited Free plan instead of paying. */}
         {step === 1 && gym.trialEnded && (
           <div className="bg-surface-card border border-surface-border rounded-2xl p-5 space-y-3">
-            <h3 className="text-lg font-bold text-slate-900">Continue on Free (up to {FREE_PLAN_MEMBER_LIMIT} members)</h3>
+            <h3 className="text-lg font-bold text-slate-900">Continue on the free forever plan (up to {FREE_PLAN_MEMBER_LIMIT} members)</h3>
             <p className="text-sm text-slate-500">Keep using GymFlow for free with up to {FREE_PLAN_MEMBER_LIMIT} members, or choose a paid plan below for everyone.</p>
             {freeError && (
               <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm font-semibold border border-red-100">
@@ -474,7 +474,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
               disabled={freeBusy}
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold border border-surface-border bg-surface text-slate-700 hover:bg-slate-50 disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              {freeBusy ? <><RefreshCw className="w-4 h-4 animate-spin" /> Switching...</> : 'Continue on Free'}
+              {freeBusy ? <><RefreshCw className="w-4 h-4 animate-spin" /> Switching...</> : 'Continue on the free forever plan'}
             </button>
           </div>
         )}
@@ -566,7 +566,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                    <p className="text-xs text-slate-500">
                      {gym.whatsappAddonUntil && new Date(gym.whatsappAddonUntil).getTime() > Date.now()
                        ? `Active until ${new Date(gym.whatsappAddonUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Pay again to extend.`
-                       : 'WhatsApp messages for your members while you stay on the Free plan.'}
+                       : 'WhatsApp messages for your members while you stay on the free forever plan.'}
                    </p>
                  </div>
                  {selectedPlan === 'whatsapp_addon'

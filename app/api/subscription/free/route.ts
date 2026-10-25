@@ -12,7 +12,7 @@ export const POST = withAuth('SUBSCRIPTION_FREE_POST', async (_req, { supabase, 
       return apiError(403, 'FREE_PLAN_REFUSED', error.message)
     }
     log.error('owner_switch_to_free failed', error)
-    return apiError(500, 'INTERNAL_ERROR', 'Could not switch to the Free plan. Please try again.')
+    return apiError(500, 'INTERNAL_ERROR', 'Could not switch to the free forever plan. Please try again.')
   }
   return apiSuccess({}, 200)
 })

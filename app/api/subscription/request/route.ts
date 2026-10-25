@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     }
     if (gymPlan.plan_type !== 'free') {
       return NextResponse.json(
-        { error: 'The WhatsApp add-on is only available on the Free plan. WhatsApp is included in paid plans.' },
+        { error: 'The WhatsApp add-on is only available on the free forever plan. WhatsApp is included in paid plans.' },
         { status: 403 }
       )
     }

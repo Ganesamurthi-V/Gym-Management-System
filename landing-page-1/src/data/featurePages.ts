@@ -994,7 +994,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           { type: 'h3', text: YEARLY.label },
           { type: 'p', text: `${formatINR(YEARLY.price)} a year, billed once a year. That works out to ${formatINR(perMonth(YEARLY))} a month, about ${savingPercent(YEARLY)}% less than twelve monthly payments.` },
           { type: 'note', text: 'No GST is added. The price you see is the price you pay.' },
-          { type: 'p', text: 'There is no per-member charge, no per-message charge and no setup fee. There is no permanent free plan either: you try everything free for 14 days, then choose a plan.' },
+          { type: 'p', text: 'There is no per-member charge, no per-message charge and no setup fee. You try everything free for 14 days, then choose a paid plan or the free forever plan for up to 50 members.' },
         ],
       },
       {
@@ -1059,9 +1059,9 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'Common questions',
         blocks: [
           { type: 'h3', text: 'Is there a free plan?' },
-          { type: 'p', text: 'No. There is a free 14-day trial with every feature and no credit card. After that you choose the monthly or the yearly plan.' },
+          { type: 'p', text: 'Yes. There is a free forever plan for up to 50 members, available after the free 14-day trial. It does not include the member app, and WhatsApp messages on it need a paid add-on. The trial has every feature and needs no credit card. For unlimited members choose the monthly or the yearly plan.' },
           { type: 'h3', text: 'Do you charge per member or per WhatsApp message?' },
-          { type: 'p', text: 'No. Members and WhatsApp messages are unlimited on both plans, and the price does not change as your gym grows.' },
+          { type: 'p', text: 'No. Members and WhatsApp messages are unlimited on both paid plans, and the price does not change as your gym grows.' },
           { type: 'h3', text: 'Is GST added to the price?' },
           { type: 'p', text: 'No GST is added. The price you see is the price you pay.' },
           { type: 'h3', text: 'Do I need a credit card to start?' },

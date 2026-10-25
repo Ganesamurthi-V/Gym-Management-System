@@ -320,8 +320,8 @@
           GymFlow ("we", "our", or "us") is gym management software for independent gyms in India.
           This Privacy Policy explains what information we collect, why, who we share it with, and
           the choices you have. It covers our website at
-          <a href="https://app.gymflow.sbs">www.gymflow.sbs</a>, the owner console and member app at
-          <a href="https://admin.gymflow.sbs">app.gymflow.sbs</a>, and the GymFlow admin mobile app.
+          <a href="https://app.gymflow.sbs">app.gymflow.sbs</a>, the owner console and member app at
+          <a href="https://admin.gymflow.sbs">admin.gymflow.sbs</a>, and the GymFlow admin mobile app.
         </p>
         <p>
           We follow the Digital Personal Data Protection Act, 2023 (DPDP Act) and the Information
@@ -335,15 +335,17 @@
         <h2 id="information-we-collect">2. Information We Collect</h2>
         <p><strong>From gym owners</strong></p>
         <ul>
-          <li><strong>Account information</strong> — your name, email address, password and mobile number. The mobile number is required when you sign up and is verified with a one-time code sent on WhatsApp.</li>
-          <li><strong>Gym business information</strong> — gym name, address and city, membership plans and pricing, and optionally details such as a gym phone number or GST number that you add on the Account page.</li>
+          <li><strong>Account information</strong> — your name, email address, password and mobile number. The mobile number is required when you sign up. We do not verify it with a code. We keep it in GymFlow's own contact list so we can reach you about GymFlow, and we send you updates and offers on WhatsApp only if you ticked the box to agree to them.</li>
+          <li><strong>Google sign-in</strong> — if you sign in with Google, the name and email address on your Google account.</li>
+          <li><strong>Gym details</strong> — gym name, type, address, city, opening year, and the gym phone number and number of branches if you add them on the Account page. Also the membership plans and prices you set.</li>
           <li><strong>UPI details</strong> — your gym's UPI ID and payee name, so the app can generate a UPI QR code and payment link. We do not store card numbers or bank credentials, and we do not process or hold any money: members pay your UPI account directly, and you record the payment in GymFlow.</li>
-          <li><strong>Subscription payments to GymFlow</strong> — the UPI transaction reference and payment proof you submit, which we check by hand.</li>
-          <li><strong>Support messages</strong> — what you send us by email, WhatsApp or in the app.</li>
+          <li><strong>Subscription payments to GymFlow</strong> — the payment proof file, UPI transaction reference and any note you submit, which we check by hand.</li>
+          <li><strong>Support messages</strong> — the subject and message you send from the app, and what you email to us.</li>
         </ul>
         <p><strong>About members (entered or uploaded by the gym)</strong></p>
         <ul>
-          <li>Name, mobile number and other profile details the gym chooses to record, membership plans, dates and dues, payment records, and attendance (check-in and check-out times).</li>
+          <li>Name, mobile number, gender, age, date of birth and area, as the gym chooses to record them.</li>
+          <li>Membership plan, category, start and end dates, amounts paid and due, payment mode (cash, UPI or card), and attendance (date, morning or evening session, and check-out time).</li>
           <li>Records the gym brings in by uploading an Excel or CSV file. The gym must have the right to upload that data.</li>
           <li>For members who activate the member app: the login created for them, and the activity shown in the app (see <a href="#member-app">Member app &amp; leaderboards</a>).</li>
         </ul>
@@ -356,7 +358,8 @@
         <h2 id="how-we-use">3. How We Use Your Information</h2>
         <ul>
           <li>Provide, maintain and improve the service, including membership, attendance, dues, reports and the member app.</li>
-          <li>Verify your identity and secure your account, including one-time codes on WhatsApp.</li>
+          <li>Verify your identity and secure your account, including one-time codes sent to your email to confirm sensitive actions such as deleting data.</li>
+          <li>Contact you about GymFlow, including updates and offers on WhatsApp where you have agreed to receive them.</li>
           <li>Check your subscription payments and manage your plan.</li>
           <li>Send WhatsApp messages and emails to members and owners as described in this policy.</li>
           <li>Answer support requests. We use an AI tool to draft replies to support emails, which our team reviews before anything is sent.</li>
@@ -368,9 +371,9 @@
         <h2 id="whatsapp">4. WhatsApp Messaging</h2>
         <p>
           GymFlow sends WhatsApp messages through the WhatsApp Business Cloud API provided by Meta,
-          using one shared GymFlow number. The messages include one-time codes, welcome messages,
+          using one shared GymFlow number. The messages include welcome messages,
           membership renewal reminders, payment confirmations and, where a gym uses the member app,
-          engagement messages such as streak and prize notices. Gyms on the Free plan send these
+          engagement messages such as streak and prize notices. Gyms on the free forever plan send these
           only while the paid WhatsApp add-on is active.
         </p>
         <p>
@@ -408,7 +411,7 @@
           <li>Gyms can show leaderboards. Other members see a shortened name (for example "Akhil P."), never a phone number.</li>
           <li>A member can opt out of leaderboards at any time from their profile in the app.</li>
           <li>A gym owner can award prizes and run challenges to members.</li>
-          <li>The member app is not available to gyms on the Free plan.</li>
+          <li>The member app is not available to gyms on the free forever plan.</li>
         </ul>
 
         <h2 id="sharing">7. Data Sharing</h2>
@@ -417,10 +420,10 @@
           us run GymFlow, and only as much as each one needs:
         </p>
         <ul>
-          <li><strong>Supabase</strong> — database, sign-in and file storage (for example gym logos).</li>
+          <li><strong>Supabase</strong> — database, sign-in and file storage (the payment proofs you upload).</li>
           <li><strong>Vercel</strong> — hosting of the owner console and member app.</li>
           <li><strong>Cloudflare</strong> — hosting of our marketing website.</li>
-          <li><strong>Meta (WhatsApp Business Cloud API)</strong> — delivering WhatsApp messages and one-time codes.</li>
+          <li><strong>Meta (WhatsApp Business Cloud API)</strong> — delivering WhatsApp messages.</li>
           <li><strong>Upstash</strong> — Redis for rate limiting and short-lived caching, and QStash for queuing outgoing WhatsApp messages.</li>
           <li><strong>Resend</strong> — sending transactional email such as verification and security notices.</li>
           <li><strong>Sentry</strong> — error tracking, performance data, logs and session replays (see <a href="#analytics">Analytics, cookies &amp; error tracking</a>).</li>
@@ -495,7 +498,7 @@
         <p>
           We keep your information while your account exists and as needed to run the service. When
           a trial or paid plan ends, we do not delete anything automatically: your gym and member
-          data stay in the account, and you can continue on the Free plan (see our
+          data stay in the account, and you can continue on the free forever plan (see our
           <a href="/terms#subscription">Terms</a>) or renew. Data is removed when you delete it, as
           described in the next section, or when you ask us to. We may keep records we are legally
           required to keep, such as payment records. Provider backups and logs expire on the
@@ -505,8 +508,8 @@
         <h2 id="export-delete">12. Exporting and Deleting Your Data</h2>
         <ul>
           <li><strong>Export</strong> — owners can export members, attendance and payments to Excel, and reports to PDF, from the app. We do not offer a single full-account export; if you need more, write to <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a> and we will try to help.</li>
-          <li><strong>Delete all members</strong> — owners can delete every member record, with their memberships, attendance, payments and member logins, while keeping the gym account. A one-time code confirms the request.</li>
-          <li><strong>Delete the whole gym</strong> — owners can permanently delete the gym, all of its data, every member's login and the owner login, confirmed by a one-time code. This cannot be undone.</li>
+          <li><strong>Delete all members</strong> — owners can delete every member record, with their memberships, attendance, payments and member logins, while keeping the gym account. A one-time code sent to your email confirms the request.</li>
+          <li><strong>Delete the whole gym</strong> — owners can permanently delete the gym, all of its data, every member's login and the owner login, confirmed by a one-time code sent to your email. This cannot be undone.</li>
           <li><strong>Members</strong> — ask your gym first. You can also write to <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>.</li>
         </ul>
 

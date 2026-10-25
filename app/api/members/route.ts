@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
       if (error.code === '23514' && error.message?.includes('free_plan_member_limit')) {
         log.summary(403)
         return NextResponse.json(
-          { success: false, error: { code: 'FREE_PLAN_LIMIT', message: 'Your Free plan allows 50 members. Upgrade to a paid plan to add more.' } },
+          { success: false, error: { code: 'FREE_PLAN_LIMIT', message: 'Your free forever plan allows 50 members. Upgrade to a paid plan to add more.' } },
           { status: 403 },
         )
       }

@@ -5,7 +5,7 @@ import QRCode from 'qrcode'
 import {
   Clock, CheckCircle, XCircle, Upload, Copy, CreditCard,
   RefreshCw, MessageCircle, AlertCircle, ArrowRight, Shield,
-  Calendar, Zap, Check, Circle, CheckCircle2
+  Calendar, Zap, Check, Circle, CheckCircle2, ArrowLeft
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -213,6 +213,13 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
             setSuccess(false)
           } else if (payload.new?.status === 'approved') {
             setSuccess(true)
+            // The access-change redirect in syncSubscription never fires for a Free gym buying the
+            // WhatsApp add-on (still Free before and after), so approval itself sends them back.
+            if (!redirectScheduledRef.current) {
+              redirectScheduledRef.current = true
+              toast.success('Payment approved! Redirecting to your dashboard...')
+              window.setTimeout(() => { window.location.href = '/owner/dashboard' }, 1_500)
+            }
           }
         },
       },
@@ -477,6 +484,18 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
               {freeBusy ? <><RefreshCw className="w-4 h-4 animate-spin" /> Switching...</> : 'Continue on the free forever plan'}
             </button>
           </div>
+        )}
+
+        {/* Back to the dashboard. Hidden when the gym is blocked (expired / trial over): the
+            paywall would send them straight back here, so the link would only loop. */}
+        {step === 1 && !liveSubState.isExpired && !gym.trialEnded && (
+          <Link
+            href="/owner/dashboard"
+            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to dashboard
+          </Link>
         )}
 
         {/* Step 1 UI */}

@@ -789,6 +789,17 @@ p, blockquote, figcaption, li {
      visible at all. */
 }
 
+/* Phone: the glyphs are small and faint enough to sit behind the copy. At 12-14px cells and
+   0.31 the marks read as large, heavy characters across a 360px-wide headline and subhead. */
+@media (max-width: 767px) {
+  .hero-pixels {
+    opacity: 0.18;
+  }
+  .dark .hero-pixels {
+    opacity: 0.22;
+  }
+}
+
 /* Hero copy sits over the character grid, so in light mode it needs more contrast
    than the rest of the page does.
 
@@ -1318,7 +1329,7 @@ p, blockquote, figcaption, li {
    compact pill once the inline desktop menu takes over at lg. */
 @media (max-width: 1023px) {
   .btn-nav {
-    min-height: 44px;
+    min-height: 36px;
   }
 }
 

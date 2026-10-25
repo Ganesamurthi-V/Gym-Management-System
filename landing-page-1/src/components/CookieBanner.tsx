@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { AsciiStrip } from './AsciiStrip';
 import { getConsent, setConsent, OPEN_SETTINGS_EVENT, type Consent } from '@/lib/analytics';
 
 type View = 'closed' | 'banner' | 'details';
@@ -76,47 +75,41 @@ export function CookieBanner() {
     'rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90';
 
   if (view === 'banner') {
-    // Same size and weight for "Essential only" and "Accept all": declining must be as easy
-    // and as visible as accepting. "Choose" is a text link in the same row. On a 360x800
-    // phone the old stacked card was 266px (33% of the screen) and hid the hero's trust
-    // bullets; a 114px card was the next version. Under 640px it is now a full-width bar of about
-    // 90px: tight padding, small copy, one row of 44px buttons.
+    // Compact on every screen: one short line and one row of buttons. "Essential only" and
+    // "Accept all" share size and weight, so declining is as easy as accepting.
     const pill =
-      'min-h-11 flex-1 rounded-pill bg-foreground px-3 sm:min-h-0 sm:py-2 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4 sm:text-sm';
+      'min-h-9 flex-1 rounded-pill bg-foreground px-3 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4';
     return (
       <div
         ref={bar}
         role="dialog"
         aria-label="Cookie preferences"
-        className="fixed inset-x-0 bottom-0 z-[90] ml-auto max-w-none overflow-hidden rounded-t-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5 sm:max-w-sm sm:rounded-2xl"
+        className="fixed inset-x-0 bottom-0 z-[90] overflow-hidden rounded-t-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-96 sm:rounded-2xl"
       >
-        <div className="hidden sm:block">
-          <AsciiStrip />
-        </div>
-        <div className="px-3 py-1.5 sm:px-5 sm:pb-5 sm:pt-4">
-          <p className="text-[12px] leading-tight text-muted-foreground sm:text-sm sm:leading-relaxed">
-            <span className="sm:hidden">We use cookies to keep the site working and see how it is used.</span>
-            <span className="hidden sm:inline">
-              We use small files called cookies. Some keep the site working. Others help us see how
-              people use it. You decide which ones to allow.
-            </span>
+        <div className="px-4 py-3">
+          <p className="text-[13px] leading-snug text-muted-foreground">
+            We use cookies to improve your experience on our website. Learn more about our{' '}
+            <a href="/privacy#analytics" className="text-foreground underline underline-offset-2">
+              privacy policy
+            </a>
+            .
           </p>
-          <div className="mt-0.5 flex items-center gap-1.5 sm:mt-3 sm:gap-2 sm:justify-end">
+          <div className="mt-2.5 flex items-center gap-2">
+            <button type="button" onClick={() => save(NONE)} className={pill}>
+              Essential only
+            </button>
+            <button type="button" onClick={() => save(ALL)} className={pill}>
+              Accept all
+            </button>
             <button
               type="button"
               onClick={() => {
                 setDraft(getConsent() ?? NONE);
                 setView('details');
               }}
-              className="min-h-11 shrink-0 px-2 sm:min-h-0 sm:py-2 text-[13px] font-medium text-foreground underline underline-offset-2 order-last sm:order-none sm:text-sm"
+              className="ml-auto min-h-9 shrink-0 px-2 text-[13px] font-medium text-foreground underline underline-offset-2"
             >
               Choose
-            </button>
-            <button type="button" onClick={() => save(NONE)} className={pill}>
-              Essential only
-            </button>
-            <button type="button" onClick={() => save(ALL)} className={pill}>
-              Accept all
             </button>
           </div>
         </div>

@@ -144,7 +144,7 @@ export function Navbar() {
     <header className="fixed inset-x-0 top-0 z-50 px-3 md:px-5" style={{ paddingTop: NAV_TOP }}>
       <nav
         aria-label="Main"
-        className="nav-island relative mx-auto flex items-center justify-between gap-6 px-4 md:px-6"
+        className="nav-island relative mx-auto flex items-center justify-between gap-2 px-4 md:gap-6 md:px-6"
         style={{
           height: scrolled ? NAV_H_SCROLLED : NAV_H,
           maxWidth: scrolled ? NAV_MAX_W_SCROLLED : NAV_MAX_W,
@@ -181,11 +181,11 @@ export function Navbar() {
                invisible. brightness-0 crushes it to black and invert lifts it to
                white — the same treatment the footer logo uses on its blue panel.
 
-               Responsive: h-9 (36px) on mobile, h-14 (56px) from md up. The
+               Responsive: h-11 (44px) on mobile, h-14 (56px) from md up. The
                island is 76px (64px collapsed), so 56px keeps ~4px clearance top
                and bottom when scrolled — a single fixed large height filled the
                whole bar on phones. */
-            className="h-9 w-auto dark:brightness-0 dark:invert md:h-14"
+            className="h-11 w-auto dark:brightness-0 dark:invert md:h-14"
           />
         </a>
 

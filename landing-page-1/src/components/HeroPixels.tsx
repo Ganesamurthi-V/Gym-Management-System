@@ -57,7 +57,7 @@ const PHONE_QUERY = '(max-width: 767px)';
   pair and both have to be re-solved if scale or the target distribution changes.
 */
 const PHONE = {
-  size: 12,
+  size: 8,
   scale: 3,
   intensity: 1.133,
   contrast: 2.496,
@@ -73,7 +73,7 @@ const PHONE = {
   core count decides, and where neither exists the normal phone preset is used.
 */
 const PHONE_LITE = {
-  size: 14,
+  size: 10,
   scale: 3,
   intensity: 1.133,
   contrast: 2.496,

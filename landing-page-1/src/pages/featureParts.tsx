@@ -106,22 +106,20 @@ export function Breadcrumb({ page }: { page: FeaturePage }) {
 }
 
 /**
- * Page title of a feature page: the h1 and the intro as plain text above the docs shell. There
+ * Page title of a feature page: the h1 and the intro as plain text at the top of the docs content column. There
  * is no hero here (no backdrop, badge or call-to-action buttons); the h1 stays because the page
  * needs one for screen readers and search.
  */
 export function FeatureTitle({ page }: { page: FeaturePage }) {
   return (
-    <section aria-labelledby="feature-title" className="px-5 pt-[104px] md:px-8">
-      <div className="mx-auto max-w-[1240px]">
-        <h1 id="feature-title" className="text-[32px] font-medium leading-[1.1] tracking-tight text-foreground md:text-[44px]">
-          {page.h1}
-        </h1>
-        <p className="mt-4 max-w-[720px] text-[16px] leading-relaxed text-foreground/75">
-          <Inline text={page.intro} />
-        </p>
-      </div>
-    </section>
+    <header className="mb-10">
+      <h1 id="feature-title" className="text-[32px] font-medium leading-[1.1] tracking-tight text-foreground md:text-[40px]">
+        {page.h1}
+      </h1>
+      <p className="mt-4 text-[16px] leading-relaxed text-foreground/75">
+        <Inline text={page.intro} />
+      </p>
+    </header>
   );
 }
 

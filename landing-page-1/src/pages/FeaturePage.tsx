@@ -12,9 +12,9 @@ export function FeaturePage({ page }: { page: FeaturePageData }) {
   const ids = sectionIds(page);
   return (
     <FeatureShell>
-      <FeatureTitle page={page} />
       <div ref={scope}>
         <DocsShell page={page}>
+          <FeatureTitle page={page} />
           <div className="flex flex-col gap-10">
             <TutorialSection page={page} />
             <div className="min-w-0">

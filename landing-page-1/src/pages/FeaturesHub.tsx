@@ -10,9 +10,9 @@ export function FeaturesHub({ page }: { page: FeaturePage }) {
   const ids = sectionIds(page);
   return (
     <FeatureShell>
-      <FeatureTitle page={page} />
       <div ref={scope}>
         <DocsShell page={page}>
+          <FeatureTitle page={page} />
           {page.sections.map((section, i) => (
             <SectionView key={section.heading} id={ids[i]} heading={section.heading} blocks={section.blocks} index={i} />
           ))}

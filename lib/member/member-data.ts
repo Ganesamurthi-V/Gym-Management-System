@@ -41,6 +41,7 @@ import { cache } from 'react'
 import { after } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { timed } from '@/lib/perf'
+import { planAllowsMemberApp, computeSubscriptionState } from '@/lib/subscription-utils'
 import type { Member, Gym, Membership, Attendance, WorkoutProgram } from '@/types/member-db'
 import { mapMemberGamification } from '@/lib/gamification/mapMemberGamification'
 import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
@@ -101,9 +102,10 @@ export type MemberWithGym = {
  * since members have no direct SELECT on `gyms`).
  *
  * Returns null if the member can't be found (avoids redirect loops).
- * Deduped per request by `cache()`.
+ * Deduped per request by `cache()`. NOT plan-gated: use `getMemberWithGym` unless you must tell
+ * "blocked" from "not a member".
  */
-export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> => {
+export const getMemberWithGymUnchecked = cache(async (): Promise<MemberWithGym | null> => {
   const userId = await timed('auth (getClaims, local verify)', () => getVerifiedUserId())
   if (!userId) return null
 
@@ -143,6 +145,72 @@ export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> =>
   }
 
   return { member: member as Member, gym }
+})
+
+// ─── Plan gate ───────────────────────────────────────────────────────────────
+
+/**
+ * Whether the member's gym plan lets them use the member app. Read fresh from `gyms` (never
+ * cached, never from the JWT) because the plan is access-control state. Members cannot SELECT
+ * `gyms` or other members, so this uses the service-role client, scoped by the gym id and
+ * created_at of the member row that RLS already verified as the caller's own.
+ * Fails closed: any lookup error means "not available".
+ */
+export const getMemberAppAccess = cache(async (member: Pick<Member, 'id' | 'gym_id' | 'created_at'>): Promise<boolean> => {
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/admin')
+    const admin = createAdminClient()
+    const { data: gym, error: gymErr } = await admin
+      .from('gyms')
+      .select('plan_type, is_active, subscription_status, trial_ends_at, subscription_ends_at')
+      .eq('id', member.gym_id)
+      .maybeSingle()
+    if (gymErr || !gym) {
+      console.error('[getMemberAppAccess] plan lookup failed', { gymId: member.gym_id, message: gymErr?.message })
+      return false
+    }
+    if (!planAllowsMemberApp(gym.plan_type)) return false
+    // The member app is a paid feature: a gym whose owner is on the paywall (trial ended
+    // without choosing a plan, paid plan lapsed, cancelled/suspended) or that an admin
+    // deactivated must not keep it. Same rule as the owner paywall, so the two never disagree;
+    // without it a lapsed trial kept the member app forever, which beat choosing Free.
+    if (gym.is_active === false || computeSubscriptionState(gym).isExpired) return false
+    // Only trial gyms cap by join order; skip the count query for everyone else.
+    if (gym.plan_type !== 'trial') return true
+    const { getTrialEligibleMemberIds } = await import('@/lib/member/trialEligibility')
+    const eligible = await getTrialEligibleMemberIds(admin, member.gym_id)
+    return eligible.has(member.id)
+  } catch (err) {
+    console.error('[getMemberAppAccess] unexpected error', err)
+    return false
+  }
+})
+
+export type MemberAccessState =
+  | { state: 'not_member' }
+  | { state: 'blocked' }
+  | { state: 'ok'; data: MemberWithGym }
+
+/**
+ * Tells "not a linked member" from "member of a gym whose plan has no member app", for the few
+ * places that answer those two cases differently (the layout, the API routes).
+ */
+export const getMemberAccessState = cache(async (): Promise<MemberAccessState> => {
+  const data = await getMemberWithGymUnchecked()
+  if (!data) return { state: 'not_member' }
+  if (!(await getMemberAppAccess(data.member))) return { state: 'blocked' }
+  return { state: 'ok', data }
+})
+
+/**
+ * Plan-gated member loader: null for a non-member AND for a member whose gym plan has no member
+ * app. Gating here, not only in `app/m/layout.tsx`, matters because layouts and pages render in
+ * parallel and client-side navigation between /m pages never re-renders the layout, so every
+ * page, route handler and server action that loads the member must be gated by default.
+ */
+export const getMemberWithGym = cache(async (): Promise<MemberWithGym | null> => {
+  const access = await getMemberAccessState()
+  return access.state === 'ok' ? access.data : null
 })
 
 // ─── Membership status helpers ───────────────────────────────────────────────

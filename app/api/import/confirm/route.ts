@@ -10,8 +10,16 @@ import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/
 import { apiLogger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { calcEndDate, todayIST } from '@/lib/utils'
+import { importRowsToTake } from '@/lib/subscription-utils'
+import { passesCsrfCheck } from '@/lib/api/withAuth'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
+const PLAN_LIMIT_MESSAGE = 'Your plan allows 50 members, and your gym has reached that limit. Upgrade to a paid plan to import more members.'
+
+const planLimitResponse = () => NextResponse.json(
+  { success: false, error: { code: 'PLAN_MEMBER_LIMIT', message: PLAN_LIMIT_MESSAGE } },
+  { status: 403 },
+)
 
 // mapSupabaseError falls back to the raw database message; never send that to the browser.
 function safeMapped(err: { code: string; message: string }) {
@@ -33,6 +41,11 @@ export async function POST(req: NextRequest) {
     key: 'import:confirm_failed', severity: 'critical', title: 'Member import failed',
     body: `gymId=${alertGymId ?? 'unknown'} step=${step}`, gymId: alertGymId ?? null,
   })
+  // Not wrapped in withAuth, and the body is read as text without a Content-Type check, so a
+  // cross-site text/plain form could carry JSON here. Apply the same CSRF check as withAuth.
+  if (!passesCsrfCheck(req)) {
+    return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Forbidden' } }, { status: 403 })
+  }
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -69,13 +82,30 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       )
     }
-    const rows = parsedBody.data.rows
+    const allRows = parsedBody.data.rows
 
     const gym = await getGymForUser(supabase, user.id)
     alertGymId = gym?.id
     if (!gym) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
+
+    // Plan limits are decided here from the database, never from the request: a trial gym
+    // imports only as many rows as fit under 50 members in total, same as a Free gym.
+    const [planRes, countRes] = await Promise.all([
+      supabase.from('gyms').select('plan_type').eq('id', gym.id).single(),
+      supabase.from('members').select('id', { count: 'exact', head: true }).eq('gym_id', gym.id),
+    ])
+    if (planRes.error || countRes.error) {
+      log.error('import plan lookup failed', planRes.error ?? countRes.error)
+      alertFailure('plan_lookup')
+      return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: GENERIC_DB_MESSAGE } }, { status: 500 })
+    }
+    const take = importRowsToTake(planRes.data.plan_type, countRes.count ?? 0, allRows.length)
+    // Nothing fits: answer with the upgrade message instead of inserting an empty batch.
+    if (take === 0 && allRows.length > 0) return planLimitResponse()
+    const skipped = allRows.length - take
+    const rows = allRows.slice(0, take)
 
     // ── Step 1: current MAX member_number and which requested numbers are taken ──
     const requested = [...new Set(rows.map(r => r.member_number).filter((n): n is number => n !== undefined))]
@@ -134,6 +164,11 @@ export async function POST(req: NextRequest) {
 
     if (insertErr) {
       log.error('member insert failed', insertErr)
+      // The DB trigger raised the cap (free_plan_member_limit / trial_import_member_limit):
+      // a concurrent import got there first. Expected, so show the upgrade message, no alert.
+      if (insertErr.code === '23514' && insertErr.message?.includes('member_limit')) {
+        return planLimitResponse()
+      }
       alertFailure('member_insert')
       const mapped = safeMapped(insertErr)
       return NextResponse.json(
@@ -203,6 +238,8 @@ export async function POST(req: NextRequest) {
         imported_count: memberIds.length,
         member_ids: memberIds,
         memberships_created: membershipRows.length,
+        imported: memberIds.length,
+        skipped,
       },
       meta: { duration_ms: Date.now() - startTime },
     })

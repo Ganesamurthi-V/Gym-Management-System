@@ -69,6 +69,30 @@ describe('getGymWhatsAppState', () => {
     expect(await isWhatsAppEnabledForGym('g', client({ data: { whatsapp_enabled: false }, error: null }))).toBe(false)
     expect(await isWhatsAppEnabledForGym('g', client({ data: null, error: new Error('x') }))).toBe(false)
   })
+
+  it('blocks a Free gym with no WhatsApp add-on', async () => {
+    const row = { whatsapp_enabled: true, plan_type: 'free', whatsapp_addon_until: null }
+    expect(await getGymWhatsAppState('g', client({ data: row, error: null }))).toBe('disabled')
+    expect(await isWhatsAppEnabledForGym('g', client({ data: row, error: null }))).toBe(false)
+  })
+
+  it('blocks a Free gym whose add-on has lapsed', async () => {
+    const past = new Date(Date.now() - 86_400_000).toISOString()
+    const row = { whatsapp_enabled: true, plan_type: 'free', whatsapp_addon_until: past }
+    expect(await isWhatsAppEnabledForGym('g', client({ data: row, error: null }))).toBe(false)
+  })
+
+  it('allows a Free gym while its add-on is running', async () => {
+    const future = new Date(Date.now() + 86_400_000).toISOString()
+    const row = { whatsapp_enabled: true, plan_type: 'free', whatsapp_addon_until: future }
+    expect(await isWhatsAppEnabledForGym('g', client({ data: row, error: null }))).toBe(true)
+  })
+
+  it('still allows a trial gym, and still honours the switch for a Free gym with the add-on', async () => {
+    const future = new Date(Date.now() + 86_400_000).toISOString()
+    expect(await isWhatsAppEnabledForGym('g', client({ data: { whatsapp_enabled: true, plan_type: 'trial', whatsapp_addon_until: null }, error: null }))).toBe(true)
+    expect(await isWhatsAppEnabledForGym('g', client({ data: { whatsapp_enabled: false, plan_type: 'free', whatsapp_addon_until: future }, error: null }))).toBe(false)
+  })
 })
 
 describe('sendTemplate honours the gym switch', () => {

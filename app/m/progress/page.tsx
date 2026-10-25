@@ -18,7 +18,8 @@ export default async function ProgressPage() {
   const [data, game] = await Promise.all([getProgressPageData(), getMemberGamification()])
   if (!data) {
     done()
-    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load progress data.</p></div>
+    // Null also means a plan-blocked member: render nothing; the layout shows the notice.
+    return null
   }
   const { memberships, attendance, state } = data
   const { status, latest } = state

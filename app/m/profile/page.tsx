@@ -41,7 +41,8 @@ export default async function ProfilePage() {
   const data = await getMemberWithGym()
   if (!data) {
     done()
-    return <div className="page-container py-6"><p className="text-sm text-slate-500">Unable to load profile.</p></div>
+    // Null also means a plan-blocked member: render nothing; the layout shows the notice.
+    return null
   }
   const { member, gym } = data
 

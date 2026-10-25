@@ -132,3 +132,67 @@ export function computeSubscriptionState(
   // Unknown status value — treat conservatively as expired
   return { status: 'expired', daysLeft: 0, isExpired: true, isExpiringSoon: false }
 }
+
+// ── Free plan and trial limits ───────────────────────────────────────────────
+// Pure helpers shared by middleware, routes and UI. The database enforces the
+// Free member cap with a trigger; these mirror it so the UI and import can
+// explain the limit instead of surfacing a raw DB error.
+
+/** A Free gym may hold at most this many members. */
+export const FREE_PLAN_MEMBER_LIMIT = 50
+/** During the trial only the first N members (by join date) get member-app access. */
+export const TRIAL_APP_MEMBER_LIMIT = 50
+/** A trial gym may import until it holds this many members in total (not per upload). */
+export const TRIAL_IMPORT_ROW_LIMIT = 50
+/** Monthly price of the WhatsApp add-on for Free gyms. */
+export const WHATSAPP_ADDON_PRICE_INR = 299
+
+export function isFreePlan(plan: string | null | undefined): boolean {
+  return plan === 'free'
+}
+
+/** The member app is off for Free gyms. */
+export function planAllowsMemberApp(plan: string | null | undefined): boolean {
+  return plan !== 'free'
+}
+
+/** Free gyms send WhatsApp only while the paid add-on is running. */
+export function planAllowsWhatsApp(
+  plan: string | null | undefined,
+  addonUntil: string | Date | null | undefined,
+  now: Date,
+): boolean {
+  if (plan !== 'free') return true
+  if (!addonUntil) return false
+  const until = new Date(addonUntil).getTime()
+  return Number.isFinite(until) && until > now.getTime()
+}
+
+/**
+ * How many import rows may be inserted for this plan and current member count.
+ * Trial and Free share one rule: the cap is 50 members for the whole gym, so each
+ * upload only gets the room that is left (a per-upload cap let owners import 50
+ * again and again). Trial manual adds stay uncapped; only imports are limited.
+ */
+export function importRowsToTake(
+  plan: string | null | undefined,
+  existingCount: number,
+  rowCount: number,
+): number {
+  if (plan === 'trial') return Math.min(rowCount, Math.max(0, TRIAL_IMPORT_ROW_LIMIT - existingCount))
+  if (plan === 'free') return Math.min(rowCount, Math.max(0, FREE_PLAN_MEMBER_LIMIT - existingCount))
+  return rowCount
+}
+
+/**
+ * The row cap shown to the owner before they pick a file. Only trial and Free gyms
+ * have one; null means "no cap" so the UI shows nothing. Informational: the import
+ * confirm route re-applies importRowsToTake and stays the authority.
+ */
+export function importMaxRowsForDisplay(
+  plan: string | null | undefined,
+  existingCount: number,
+): number | null {
+  if (plan !== 'trial' && plan !== 'free') return null
+  return importRowsToTake(plan, existingCount, Number.MAX_SAFE_INTEGER)
+}

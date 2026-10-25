@@ -51,6 +51,8 @@ import { isGamificationTemplateEnabled } from '@/config/whatsapp'
 import { computeStreak } from '@/lib/gamification/streak'
 import { addDays, istToday } from '@/lib/gamification/periods'
 import { normalizeSettings } from '@/lib/gamification/settings'
+import { planAllowsWhatsApp } from '@/lib/subscription-utils'
+import { getTrialEligibleMemberIds } from '@/lib/member/trialEligibility'
 import {
   NUDGE_PRIORITY,
   RANK_UP_COOLDOWN_DAYS,
@@ -93,6 +95,8 @@ interface AutomationMember {
 interface GymRow {
   id: string
   name: string
+  plan_type?: string | null
+  whatsapp_addon_until?: string | null
 }
 
 interface Stats {
@@ -542,7 +546,7 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
     // ── Fetch all active gyms ──────────────────────────────────────────────
     const { data: gyms, error: gymErr } = await supabase
       .from('gyms')
-      .select('id, name')
+      .select('id, name, plan_type, whatsapp_addon_until')
       .eq('onboarding_completed', true)
       .in('subscription_status', ['active', 'trial'])
       // A gym with WhatsApp switched off is not processed at all: no reminders are worked
@@ -554,7 +558,12 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
       return stats
     }
 
-    for (const gym of gyms as GymRow[]) {
+    // Free-plan gyms without the WhatsApp add-on get nothing, same as the per-send gate.
+    const nowForPlan = new Date()
+    const sendableGyms = (gyms as GymRow[]).filter(g =>
+      planAllowsWhatsApp(g.plan_type, g.whatsapp_addon_until, nowForPlan))
+
+    for (const gym of sendableGyms) {
       try {
         await processGym(supabase, gym, today, stats)
       } catch (err) {
@@ -569,9 +578,9 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
     // reminder. Same gym list: a gym with WhatsApp switched off is not in it.
     if (enabledNudgeTemplates().length > 0) {
       const now = new Date()
-      const settingsByGym = await fetchGamificationSettings(supabase, (gyms as GymRow[]).map(g => g.id), stats)
+      const settingsByGym = await fetchGamificationSettings(supabase, sendableGyms.map(g => g.id), stats)
       if (settingsByGym) {
-        for (const gym of gyms as GymRow[]) {
+        for (const gym of sendableGyms) {
           try {
             await runGamificationNudges(supabase, gym, settingsByGym.get(gym.id) ?? null, now, stats)
           } catch (err) {
@@ -704,7 +713,23 @@ async function processGym(
     return
   }
 
+  // Trial gyms only cover their first 50 members (same set as the member app gate); later ones
+  // get no scheduled sends. If the lookup fails, skip the gym rather than message uncovered members.
+  let trialEligible: Set<string> | null = null
+  if (gym.plan_type === 'trial') {
+    try {
+      trialEligible = await getTrialEligibleMemberIds(supabase, gym.id)
+    } catch (err) {
+      stats.errors.push(`Gym ${gym.id} trial eligibility: ${(err as Error)?.message}`)
+      return
+    }
+  }
+
   for (const rawMember of members as any[]) {
+    if (trialEligible && !trialEligible.has(rawMember.id)) {
+      stats.skipped++
+      continue
+    }
     const phone: string = rawMember.phone ?? ''
     // Skip invalid phones
     if (!phone || phone.replace(/\D/g, '').length < 10) continue

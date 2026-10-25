@@ -22,6 +22,8 @@ import { checkImportFile, declaredUncompressedSize, MAX_SHEET_ROWS, MAX_SHEET_CO
 import { groupPlanNames, type PlanNameGroup } from "@/lib/import/plan-matching";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
+import PlanNotice from "@/components/subscription/PlanNotice";
+import { api } from "@/lib/api/client";
 
 export interface ImportedRow {
   name: string;
@@ -498,6 +500,20 @@ export default function ImportPage() {
     setParsing(true);
     router.push(path);
   }
+
+  // Plan cap shown before a file is chosen. Informational only: it stays null while
+  // loading or on any error so a failed lookup never blocks the import.
+  const [importLimit, setImportLimit] = useState<{ plan: string; maxRows: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.get<{ data?: { plan?: string; maxRows?: number | null } }>("/api/import/limits")
+      .then(res => {
+        const d = res?.data;
+        if (!cancelled && d && typeof d.maxRows === "number" && d.plan) setImportLimit({ plan: d.plan, maxRows: d.maxRows });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Restore wizard step state from sessionStorage so clicking step icons never loses data
   useEffect(() => {
@@ -1045,7 +1061,7 @@ export default function ImportPage() {
           })}
         </div>
 
-        {needsFile && (
+        {needsFile && importLimit?.maxRows !== 0 && (
           <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -1282,7 +1298,21 @@ export default function ImportPage() {
         </div>
       </div>
 
-      {/* Drag & Drop Upload Zone */}
+      {importLimit && (
+        <PlanNotice
+          tone="warning"
+          message={
+            importLimit.maxRows === 0
+              ? "Your gym has reached the 50-member limit of your plan. Upgrade to a paid plan to import more members."
+              : `Your plan allows 50 members in total. You can import ${importLimit.maxRows} more.`
+          }
+          action={{ href: "/owner/subscription", label: "Upgrade to a paid plan" }}
+        />
+      )}
+
+      {/* Drag & Drop Upload Zone. Hidden when the plan is full so no file can be chosen
+          (the server still enforces the cap; this is convenience). */}
+      {importLimit?.maxRows !== 0 && (
       <label
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
@@ -1303,6 +1333,7 @@ export default function ImportPage() {
         </div>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
       </label>
+      )}
     </div>
   );
 }

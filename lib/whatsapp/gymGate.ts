@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from '@/lib/logger'
+import { planAllowsWhatsApp } from '@/lib/subscription-utils'
 
 /**
  * The per-gym WhatsApp switch.
@@ -30,13 +31,16 @@ export async function getGymWhatsAppState(gymId: string, client?: SupabaseClient
     const db = client ?? (await import('@/lib/supabase/admin')).createAdminClient()
     const { data, error } = await db
       .from('gyms')
-      .select('whatsapp_enabled')
+      .select('whatsapp_enabled, plan_type, whatsapp_addon_until')
       .eq('id', gymId)
       .maybeSingle()
     if (error) throw error
     if (!data) return 'unknown'
     // Only an explicit false switches it off; the column defaults to true.
-    return data.whatsapp_enabled === false ? 'disabled' : 'enabled'
+    if (data.whatsapp_enabled === false) return 'disabled'
+    // A Free gym sends only while its paid WhatsApp add-on runs. Read here with the switch
+    // (fresh, uncached) so every send path that checks the gate enforces the plan too.
+    return planAllowsWhatsApp(data.plan_type, data.whatsapp_addon_until, new Date()) ? 'enabled' : 'disabled'
   } catch (err) {
     logger.error('gymGate: could not read whatsapp_enabled', err)
     return 'unknown'

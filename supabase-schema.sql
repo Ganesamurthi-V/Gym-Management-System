@@ -85,11 +85,14 @@ CREATE TABLE IF NOT EXISTS gyms (
   subscription_status     TEXT        NOT NULL DEFAULT 'trial'
                                       CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled', 'suspended')),
   plan_type               TEXT        NOT NULL DEFAULT 'trial'
-                                      CHECK (plan_type IN ('trial', 'monthly', 'quarterly', 'yearly', 'lifetime')),
+                                      CHECK (plan_type IN ('free', 'trial', 'monthly', 'quarterly', 'yearly', 'lifetime')),
   subscription_started_at TIMESTAMPTZ,
   -- NULL for a lifetime plan, which is why "no end date" must never be read as
   -- "expired" anywhere in the app.
   subscription_ends_at    TIMESTAMPTZ,
+  -- Paid WhatsApp add-on end date. Billing state: owners cannot write it (the
+  -- gyms column guard rejects every non-allowlisted column).
+  whatsapp_addon_until    TIMESTAMPTZ,
 
   -- Admin fields, written only by the admin app through the service role.
   is_vip                  BOOLEAN     NOT NULL DEFAULT false,
@@ -512,7 +515,11 @@ CREATE TABLE IF NOT EXISTS subscription_requests (
   rejection_reason  TEXT,
   submitted_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   reviewed_at       TIMESTAMPTZ,
-  reviewed_by       TEXT
+  reviewed_by       TEXT,
+  -- What the payment is for; NULL on rows from before this column existed.
+  plan_requested    TEXT
+                    CONSTRAINT subscription_requests_plan_requested_check
+                    CHECK (plan_requested IN ('monthly', 'yearly', 'whatsapp_addon'))
 );
 
 -- ── subscription_audit_logs ──────────────────────────────────
@@ -3257,6 +3264,7 @@ BEGIN
     NEW.last_payment_date     := NULL;
     NEW.last_payment_status   := 'none';
     NEW.subscription_started_at := NULL;
+    NEW.whatsapp_addon_until  := NULL;
     RETURN NEW;
   END IF;
 
@@ -3264,6 +3272,127 @@ BEGIN
   IF (to_jsonb(NEW) - v_allowed) IS DISTINCT FROM (to_jsonb(OLD) - v_allowed) THEN
     RAISE EXCEPTION 'gyms: only profile and onboarding fields can be changed by the owner'
       USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- ── 1b. gyms: a paid plan cannot be downgraded to free/trial by hand ──
+-- Without this a paid gym could be flipped to 'free' by a bug or a stray
+-- service call and silently keep its data under a 50-member cap, or be reset
+-- to 'trial' to get fresh trial days. Only trusted server roles (admin app,
+-- SQL editor) may do it.
+CREATE OR REPLACE FUNCTION public.guard_gyms_plan_downgrade()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF OLD.plan_type IN ('monthly', 'quarterly', 'yearly', 'lifetime')
+     AND NEW.plan_type IN ('free', 'trial')
+     AND NOT public.is_trusted_db_caller()
+  THEN
+    RAISE EXCEPTION 'gyms: a paid plan cannot be changed to %', NEW.plan_type
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- ── 1c. owner_switch_to_free: the only owner path onto the free plan ──
+-- Takes no arguments: the gym comes from auth.uid() and every eligibility rule
+-- is re-checked here under a row lock, so the client cannot pick a gym, skip
+-- the trial, or race a member import past the 50-member cap. It runs as the
+-- definer, so the gyms column guard treats the write as trusted.
+CREATE OR REPLACE FUNCTION public.owner_switch_to_free()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_gym_id   UUID;
+  v_plan     TEXT;
+  v_trial_end TIMESTAMPTZ;
+  v_status   TEXT;
+  v_active   BOOLEAN;
+BEGIN
+  SELECT id, plan_type, trial_ends_at, subscription_status, is_active
+    INTO v_gym_id, v_plan, v_trial_end, v_status, v_active
+    FROM public.gyms
+   WHERE owner_id = auth.uid()
+   FOR UPDATE;
+
+  IF v_gym_id IS NULL THEN
+    RAISE EXCEPTION 'no gym for caller' USING ERRCODE = '42501';
+  END IF;
+  -- The switch sets status 'active', so it must not run on a gym an admin suspended,
+  -- cancelled or deactivated: that would let the owner undo the admin's action.
+  IF v_active IS NOT TRUE OR v_status NOT IN ('trial', 'expired') THEN
+    RAISE EXCEPTION 'free plan is not available for a suspended or cancelled gym' USING ERRCODE = '42501';
+  END IF;
+  IF v_plan <> 'trial' THEN
+    RAISE EXCEPTION 'free plan is only available at trial end' USING ERRCODE = '42501';
+  END IF;
+  IF v_trial_end IS NULL OR v_trial_end > now() THEN
+    RAISE EXCEPTION 'trial has not ended' USING ERRCODE = '42501';
+  END IF;
+  IF (SELECT count(*) FROM public.members WHERE gym_id = v_gym_id) > 50 THEN
+    RAISE EXCEPTION 'free plan allows 50 members' USING ERRCODE = '23514';
+  END IF;
+
+  UPDATE public.gyms
+     SET plan_type = 'free',
+         subscription_status = 'active',
+         subscription_ends_at = NULL
+   WHERE id = v_gym_id;
+END;
+$$;
+
+-- ── 1d. members: free plan is capped at 50 members ──
+-- Enforced in the database so every insert path (owner API, bulk import,
+-- member self-signup) is covered. The gym row lock serialises concurrent
+-- inserts, otherwise two requests at 49 members would both pass the count.
+CREATE OR REPLACE FUNCTION public.enforce_free_plan_member_cap()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_plan TEXT;
+BEGIN
+  -- Unlocked read first. Paid gyms (most inserts) can never move to free or
+  -- trial (guard_gyms_plan_downgrade), so they skip the gym row lock and their
+  -- inserts do not queue behind other updates to the gyms row.
+  SELECT plan_type INTO v_plan
+    FROM public.gyms
+   WHERE id = NEW.gym_id;
+
+  IF v_plan IN ('free', 'trial') THEN
+    -- Re-read under the row lock: serialises concurrent inserts (two requests
+    -- at 49 members cannot both pass) and orders them against
+    -- owner_switch_to_free, which counts members under the same lock.
+    SELECT plan_type INTO v_plan
+      FROM public.gyms
+     WHERE id = NEW.gym_id
+     FOR UPDATE;
+
+    IF v_plan = 'free'
+       AND (SELECT count(*) FROM public.members WHERE gym_id = NEW.gym_id) >= 50
+    THEN
+      RAISE EXCEPTION 'free_plan_member_limit' USING ERRCODE = '23514';
+    END IF;
+
+    -- Trial: imports (not manual adds) stop at 50 members for the whole gym. The
+    -- lock makes a concurrent second import fail here, which the import route
+    -- reports as the upgrade message rather than a generic error.
+    IF v_plan = 'trial'
+       AND NEW.is_imported IS TRUE
+       AND (SELECT count(*) FROM public.members WHERE gym_id = NEW.gym_id) >= 50
+    THEN
+      RAISE EXCEPTION 'trial_import_member_limit' USING ERRCODE = '23514';
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -3560,6 +3689,68 @@ BEGIN
 END;
 $$;
 
+-- ── approve_whatsapp_addon: atomic admin approval of an add-on payment ──
+-- Service-role only (the admin app). Request lock, gym lock and both writes are
+-- one transaction so a double click or two admins cannot approve the same
+-- request twice and stack 60 days. It runs as the definer, so the gyms column
+-- guard treats the billing writes as trusted. plan_type and subscription_status
+-- are deliberately left alone: the add-on is independent of the plan.
+CREATE OR REPLACE FUNCTION public.approve_whatsapp_addon(
+  p_request_id  UUID,
+  p_gym_id      UUID,
+  p_reviewed_by TEXT
+)
+RETURNS TIMESTAMPTZ
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_req   public.subscription_requests%ROWTYPE;
+  v_until TIMESTAMPTZ;
+BEGIN
+  SELECT * INTO v_req
+    FROM public.subscription_requests
+   WHERE id = p_request_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'request_not_found' USING ERRCODE = 'P0002';
+  END IF;
+  -- The caller's gym id must match the stored one, so a stale or forged pair
+  -- cannot extend a different gym's add-on.
+  IF v_req.gym_id <> p_gym_id OR v_req.plan_requested IS DISTINCT FROM 'whatsapp_addon' THEN
+    RAISE EXCEPTION 'request_mismatch' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_req.status <> 'pending' THEN
+    RAISE EXCEPTION 'request_not_pending' USING ERRCODE = 'P0001';
+  END IF;
+
+  -- Renewing early extends from the current end date instead of losing days.
+  SELECT greatest(now(), coalesce(whatsapp_addon_until, now())) + interval '30 days'
+    INTO v_until
+    FROM public.gyms
+   WHERE id = p_gym_id
+   FOR UPDATE;
+
+  UPDATE public.subscription_requests
+     SET status = 'approved',
+         reviewed_at = now(),
+         reviewed_by = p_reviewed_by
+   WHERE id = p_request_id;
+
+  UPDATE public.gyms
+     SET whatsapp_addon_until = v_until,
+         last_payment_amount  = 299,
+         last_payment_date    = now(),
+         last_payment_status  = 'paid',
+         last_transaction_id  = v_req.transaction_id
+   WHERE id = p_gym_id;
+
+  RETURN v_until;
+END;
+$$;
+
 -- ── Subscription (payment proof) requests ────────────────────
 CREATE OR REPLACE FUNCTION public.notify_on_subscription_request()
 RETURNS TRIGGER
@@ -3573,6 +3764,8 @@ DECLARE
   v_plan     TEXT;
   v_txn      TEXT;
   v_notes    TEXT;
+  v_what     TEXT;
+  v_title    TEXT;
   v_body     TEXT;
 BEGIN
   BEGIN
@@ -3582,9 +3775,23 @@ BEGIN
       v_txn   := public.notification_snippet(NEW.transaction_id, 40);
       v_notes := public.notification_snippet(NEW.notes, 120);
 
-      -- e.g. "Fit Zone Gym submitted a payment proof for review. Current plan:
-      --       trial. Txn: ABC123. Note: paid via GPay"
+      -- What was paid for goes first: a push preview cuts the body short, and an
+      -- add-on request must not be mistaken for a plan renewal.
+      v_what := CASE NEW.plan_requested
+                  WHEN 'whatsapp_addon' THEN ' Requested: WhatsApp automation add-on (Rs 299 / 30 days).'
+                  WHEN 'monthly'        THEN ' Requested plan: Monthly.'
+                  WHEN 'yearly'         THEN ' Requested plan: Yearly.'
+                  ELSE ''
+                END;
+      v_title := CASE WHEN NEW.plan_requested = 'whatsapp_addon'
+                      THEN 'WhatsApp add-on request — '
+                      ELSE 'Payment proof awaiting review — '
+                 END || v_gym;
+
+      -- e.g. "Fit Zone Gym submitted a payment proof and is waiting for approval.
+      --       Requested plan: Monthly. Current plan: trial. Txn: ABC123. Note: paid via GPay"
       v_body := v_gym || ' submitted a payment proof and is waiting for approval.'
+                || v_what
                 || CASE WHEN COALESCE(v_plan, '') <> '' THEN ' Current plan: ' || v_plan || '.' ELSE '' END
                 || CASE WHEN v_txn   <> '' THEN ' Txn: '  || v_txn   || '.' ELSE '' END
                 || CASE WHEN v_notes <> '' THEN ' Note: ' || v_notes        ELSE '' END;
@@ -3593,7 +3800,7 @@ BEGIN
       VALUES (
         'payment_request',
         NEW.gym_id,
-        'Payment proof awaiting review — ' || v_gym,
+        v_title,
         v_body,
         NEW.id::text
       );
@@ -3837,6 +4044,11 @@ CREATE TRIGGER trg_guard_gyms_privileged_columns
   BEFORE INSERT OR UPDATE ON public.gyms
   FOR EACH ROW EXECUTE FUNCTION public.guard_gyms_privileged_columns();
 
+DROP TRIGGER IF EXISTS trg_guard_gyms_plan_downgrade ON public.gyms;
+CREATE TRIGGER trg_guard_gyms_plan_downgrade
+  BEFORE UPDATE OF plan_type ON public.gyms
+  FOR EACH ROW EXECUTE FUNCTION public.guard_gyms_plan_downgrade();
+
 -- ────────────────────────────────────────────────────────────
 -- triggers on members
 -- ────────────────────────────────────────────────────────────
@@ -3862,6 +4074,11 @@ DROP TRIGGER IF EXISTS trg_guard_member_auth_user_link_insert ON public.members;
 CREATE TRIGGER trg_guard_member_auth_user_link_insert
   BEFORE INSERT ON public.members
   FOR EACH ROW EXECUTE FUNCTION public.guard_member_auth_user_link();
+
+DROP TRIGGER IF EXISTS trg_enforce_free_plan_member_cap ON public.members;
+CREATE TRIGGER trg_enforce_free_plan_member_cap
+  BEFORE INSERT ON public.members
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_free_plan_member_cap();
 
 DROP TRIGGER IF EXISTS trg_guard_member_auth_user_link_update ON public.members;
 CREATE TRIGGER trg_guard_member_auth_user_link_update
@@ -4884,6 +5101,8 @@ REVOKE ALL ON FUNCTION public.notification_snippet(TEXT, INT)         FROM PUBLI
 REVOKE ALL ON FUNCTION public.dispatch_push_on_notification()         FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.email_thread_on_message()               FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_gyms_privileged_columns()         FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_gyms_plan_downgrade()             FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.enforce_free_plan_member_cap()          FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_support_tickets_owner_update()    FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_admin_messages_owner_update()     FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_member_leaderboard_visibility()   FROM PUBLIC, anon, authenticated;
@@ -4899,6 +5118,8 @@ REVOKE ALL ON FUNCTION public.get_member_gamification()             FROM PUBLIC,
 GRANT EXECUTE ON FUNCTION public.get_member_gamification()          TO authenticated;
 REVOKE ALL ON FUNCTION public.set_leaderboard_visibility(BOOLEAN)   FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_leaderboard_visibility(BOOLEAN) TO authenticated;
+REVOKE ALL ON FUNCTION public.owner_switch_to_free()   FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.owner_switch_to_free() TO authenticated;
 REVOKE ALL ON FUNCTION public.record_member_achievements(TEXT[])    FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.record_member_achievements(TEXT[]) TO authenticated;
 
@@ -4953,6 +5174,11 @@ REVOKE ALL ON FUNCTION public.log_subscription_action(UUID, TEXT, TEXT, TEXT, TE
 GRANT EXECUTE ON FUNCTION public.log_subscription_action(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT) TO service_role;
 REVOKE ALL ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_gym_usage_stat(UUID, TEXT, INTEGER) TO service_role;
+
+-- Service-role only. Approves a WhatsApp add-on payment for the gym the caller
+-- names, so an owner must never be able to call it on their own gym.
+REVOKE ALL ON FUNCTION public.approve_whatsapp_addon(UUID, UUID, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.approve_whatsapp_addon(UUID, UUID, TEXT) TO service_role;
 REVOKE ALL ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_whatsapp_sent(UUID, INTEGER) TO service_role;
 

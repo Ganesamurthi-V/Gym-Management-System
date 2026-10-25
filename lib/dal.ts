@@ -82,10 +82,11 @@ export type GymCoreRow = {
   plan_type: string | null
   trial_ends_at: string | null
   subscription_ends_at: string | null
+  whatsapp_addon_until: string | null
 }
 
 const GYM_CORE_COLUMNS =
-  'id, name, owner_id, created_at, onboarding_completed, onboarding_data, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at'
+  'id, name, owner_id, created_at, onboarding_completed, onboarding_data, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at, whatsapp_addon_until'
 
 export const getGymCore = cache(async (userId: string) => {
   const supabase = await createClient()

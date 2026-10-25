@@ -47,6 +47,28 @@ const call = () => {
 
 beforeEach(() => { vi.clearAllMocks(); m.uploadPath = null; m.removed = [{ name: 'x' }] })
 
+describe('POST /api/subscription/request CSRF', () => {
+  const callWith = (headers: Record<string, string>) => {
+    const form = new FormData()
+    form.set('file', new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00])], 'p.jpg', { type: 'image/jpeg' }))
+    return POST(new NextRequest('http://localhost/api/subscription/request', { method: 'POST', body: form, headers }))
+  }
+
+  it('rejects a cross-site submission before touching storage', async () => {
+    const res = await callWith({ origin: 'https://evil.example', referer: 'https://evil.example/x' })
+    expect(res.status).toBe(403)
+    expect(m.remove).not.toHaveBeenCalled()
+    expect(m.alert).not.toHaveBeenCalled()
+  })
+
+  // A cross-site page cannot set this header without a CORS preflight, which the server never
+  // grants, so the header alone is enough (same rule as withAuth).
+  it('accepts a request carrying the X-Requested-With header the owner page sends', async () => {
+    const res = await callWith({ 'x-requested-with': 'XMLHttpRequest' })
+    expect(res.status).not.toBe(403)
+  })
+})
+
 describe('POST /api/subscription/request insert failure', () => {
   it('removes the orphan with the admin client and raises sub:request_insert_failed', async () => {
     const res = await call()

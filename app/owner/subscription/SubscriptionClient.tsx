@@ -10,7 +10,8 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { computeSubscriptionState } from '@/lib/subscription-utils'
+import { computeSubscriptionState, WHATSAPP_ADDON_PRICE_INR, FREE_PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
+import { api, GymFlowAPIError } from '@/lib/api/client'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
 
@@ -20,6 +21,9 @@ interface GymInfo {
   subscriptionStatus: string
   trialEndsAt: string | null
   subscriptionEndsAt: string | null
+  isFree: boolean
+  trialEnded: boolean
+  whatsappAddonUntil: string | null
 }
 
 interface SubState {
@@ -44,7 +48,7 @@ interface Settings {
 }
 
 /** The two SaaS billing tiers a gym owner can buy. */
-type PlanId = 'monthly' | 'yearly'
+type PlanId = 'monthly' | 'yearly' | 'whatsapp_addon'
 
 interface Props {
   gym: GymInfo
@@ -57,6 +61,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly')
+  const [freeBusy, setFreeBusy] = useState(false)
+  const [freeError, setFreeError] = useState('')
 
   /*
     The two tiers, in one place. Price is read from here by both the plan grid and
@@ -81,7 +87,11 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     { id: 'yearly',      name: 'Yearly Plan',   price: settings.price_yearly,      period: '/ year',     Icon: Zap,      badge: 'BEST VALUE' },
   ]
 
-  const activePlan = PLANS.find(p => p.id === selectedPlan) ?? PLANS[0]
+  // The add-on is not a tile in PLANS (those are the base tiers); its price is the shared server
+  // constant, and the admin picks 'whatsapp_addon' at approval from the "Intended Plan" note.
+  const activePlan = selectedPlan === 'whatsapp_addon'
+    ? { id: 'whatsapp_addon' as const, name: 'WhatsApp Add-on', price: WHATSAPP_ADDON_PRICE_INR }
+    : PLANS.find(p => p.id === selectedPlan) ?? PLANS[0]
 
   // Comes only from platform_settings.upi_id. There is deliberately no hard-coded fallback:
   // a forked deployment that has not set it must show "not set up" rather than send an
@@ -232,6 +242,19 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     setTimeout(() => setCopied(false), 2000)
   }
 
+  async function continueOnFree() {
+    setFreeBusy(true)
+    setFreeError('')
+    try {
+      await api.post('/api/subscription/free')
+      router.refresh()
+    } catch (err) {
+      setFreeError(err instanceof GymFlowAPIError ? err.message : 'Could not switch to the Free plan. Please try again.')
+    } finally {
+      setFreeBusy(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!file) { setError('Please attach your payment screenshot or PDF.'); return }
@@ -241,12 +264,21 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     const fd = new FormData()
     fd.append('file', file)
     fd.append('transaction_id', transactionId)
+    // Structured plan for the server to validate; the notes line below is kept for the admin.
+    fd.append('plan', selectedPlan)
     
     // Automatically include the selected plan in the notes for the admin
     const finalNotes = `Intended Plan: ${selectedPlan.toUpperCase()}\n${notes}`
     fd.append('notes', finalNotes.trim())
 
-    const res = await fetch('/api/subscription/request', { method: 'POST', body: fd })
+    // Raw fetch (multipart upload), so send the CSRF header lib/api/client.ts would add.
+    // No Content-Type: the browser sets the multipart boundary itself.
+    const res = await fetch('/api/subscription/request', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
     const json = await res.json()
 
     if (!res.ok) {
@@ -278,7 +310,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   ]
 
   // If subscription is active (not expiring soon), show simple active state
-  if (liveSubState.status === 'active' && !liveSubState.isExpired && !liveSubState.isExpiringSoon) {
+  if (!gym.isFree && liveSubState.status === 'active' && !liveSubState.isExpired && !liveSubState.isExpiringSoon) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-surface rounded-2xl border border-emerald-200 p-10 text-center space-y-4 shadow-sm max-w-md w-full">
@@ -426,6 +458,27 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
           </div>
         )}
 
+        {/* Trial over: the owner can keep a limited Free plan instead of paying. */}
+        {step === 1 && gym.trialEnded && (
+          <div className="bg-surface-card border border-surface-border rounded-2xl p-5 space-y-3">
+            <h3 className="text-lg font-bold text-slate-900">Continue on Free (up to {FREE_PLAN_MEMBER_LIMIT} members)</h3>
+            <p className="text-sm text-slate-500">Keep using GymFlow for free with up to {FREE_PLAN_MEMBER_LIMIT} members, or choose a paid plan below for everyone.</p>
+            {freeError && (
+              <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm font-semibold border border-red-100">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {freeError}
+              </div>
+            )}
+            <button
+              onClick={continueOnFree}
+              disabled={freeBusy}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold border border-surface-border bg-surface text-slate-700 hover:bg-slate-50 disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {freeBusy ? <><RefreshCw className="w-4 h-4 animate-spin" /> Switching...</> : 'Continue on Free'}
+            </button>
+          </div>
+        )}
+
         {/* Step 1 UI */}
         {step === 1 && (
           <div className="bg-surface rounded-[2rem] border border-slate-200 p-6 md:p-10 shadow-sm">
@@ -493,6 +546,35 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                 })}
              </div>
 
+             {/* WhatsApp add-on, Free gyms only: a small third option that rides the same
+                 payment step and request route. Kept compact so it reads as an extra, not a plan. */}
+             {gym.isFree && (
+               <div
+                 id="whatsapp-addon"
+                 role="radio"
+                 aria-checked={selectedPlan === 'whatsapp_addon'}
+                 tabIndex={0}
+                 onClick={() => setSelectedPlan('whatsapp_addon')}
+                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPlan('whatsapp_addon') } }}
+                 className={`mt-6 max-w-3xl mx-auto cursor-pointer rounded-2xl border-2 p-4 flex items-center gap-3 transition-colors ${
+                   selectedPlan === 'whatsapp_addon' ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-100 bg-surface hover:border-emerald-200'
+                 }`}
+               >
+                 <MessageCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                 <div className="min-w-0 flex-1">
+                   <p className="text-sm font-bold text-slate-800">WhatsApp automation add-on, ₹{WHATSAPP_ADDON_PRICE_INR}/month</p>
+                   <p className="text-xs text-slate-500">
+                     {gym.whatsappAddonUntil && new Date(gym.whatsappAddonUntil).getTime() > Date.now()
+                       ? `Active until ${new Date(gym.whatsappAddonUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Pay again to extend.`
+                       : 'WhatsApp messages for your members while you stay on the Free plan.'}
+                   </p>
+                 </div>
+                 {selectedPlan === 'whatsapp_addon'
+                   ? <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                   : <Circle className="w-6 h-6 text-slate-200 flex-shrink-0" />}
+               </div>
+             )}
+
              <div className="mt-6">
                 {/* All Plans Include */}
                 <div className="bg-emerald-50/60 border border-emerald-100 rounded-3xl p-6 h-fit">
@@ -537,7 +619,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                    <p className="text-sm text-slate-500 font-medium">Pay securely using any UPI app</p>
                  </div>
                </div>
-               <button onClick={() => setStep(1)} className="text-brand-600 text-sm font-bold hover:underline py-2 px-4 rounded-lg hover:bg-brand-50 transition-colors">
+               <button onClick={() => { setStep(1); if (selectedPlan === 'whatsapp_addon') setSelectedPlan('monthly') }} className="text-brand-600 text-sm font-bold hover:underline py-2 px-4 rounded-lg hover:bg-brand-50 transition-colors">
                  ← Back to Plans
                </button>
              </div>

@@ -1,6 +1,11 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { getAuthUser, getGymCore } from '@/lib/dal'
+import PlanNotice from '@/components/subscription/PlanNotice'
+import {
+  FREE_PLAN_MEMBER_LIMIT, TRIAL_APP_MEMBER_LIMIT, WHATSAPP_ADDON_PRICE_INR,
+  isFreePlan, planAllowsWhatsApp,
+} from '@/lib/subscription-utils'
 import { MembersClient } from './MembersClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
@@ -118,7 +123,7 @@ export default async function MembersPage() {
     if (!user) return null
 
     logger.start('QUERY gyms')
-    const { gym } = await getGym(user.id)
+    const { gym } = await getGymCore(user.id)
     logger.end('QUERY gyms')
 
     if (!gym) return null
@@ -133,10 +138,44 @@ export default async function MembersPage() {
     logger.info('Payload ready', { returned: result.length, count })
     logger.summary(200)
 
+    // Plan notices come from the server-resolved plan, never from the client. `count` is
+    // the gym's real member total (exact count), not the 200-row page.
+    const free = isFreePlan(gym.plan_type)
+    const showAddonPromo = free && !planAllowsWhatsApp(gym.plan_type, gym.whatsapp_addon_until, new Date())
+    const freeLimitReached = free && count >= FREE_PLAN_MEMBER_LIMIT
+    const trialOverLimit = gym.plan_type === 'trial' && count >= TRIAL_APP_MEMBER_LIMIT
+
     return (
-      <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
-        <MembersClient members={result} gymId={gym.id} totalCount={count} />
-      </Suspense>
+      <div className="space-y-4 md:space-y-5">
+        {(showAddonPromo || freeLimitReached || trialOverLimit) && (
+          <div className="space-y-2">
+            {showAddonPromo && (
+              <PlanNotice
+                tone="info"
+                message={`WhatsApp automation: just ₹${WHATSAPP_ADDON_PRICE_INR} per month`}
+                action={{ href: '/owner/subscription#whatsapp-addon', label: 'Buy add-on' }}
+              />
+            )}
+            {freeLimitReached && (
+              <PlanNotice
+                tone="warning"
+                message={`You have reached the ${FREE_PLAN_MEMBER_LIMIT}-member Free plan limit. Upgrade to a paid plan to add more.`}
+                action={{ href: '/owner/subscription', label: 'Upgrade' }}
+              />
+            )}
+            {trialOverLimit && (
+              <PlanNotice
+                tone="warning"
+                message={`Member App and WhatsApp work for the first ${TRIAL_APP_MEMBER_LIMIT} members on the trial. Upgrade to a paid plan to include everyone.`}
+                action={{ href: '/owner/subscription', label: 'Upgrade' }}
+              />
+            )}
+          </div>
+        )}
+        <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading members...</div>}>
+          <MembersClient members={result} gymId={gym.id} totalCount={count} importBlocked={(free || gym.plan_type === 'trial') && count >= FREE_PLAN_MEMBER_LIMIT} />
+        </Suspense>
+      </div>
     )
   } catch (error: any) {
     logger.error('ERROR', error)

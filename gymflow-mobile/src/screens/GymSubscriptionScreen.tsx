@@ -152,34 +152,43 @@ function formatCurrency(amount?: number | null): string {
   in confirm dialogs. Prices mirror platform_settings in the product DB.
   'lifetime' is granted rather than sold, so it carries no price line.
 */
-type ApprovablePlan = 'monthly' | 'yearly' | 'lifetime';
+type ApprovablePlan = 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon';
 const PLAN_DETAILS: Record<ApprovablePlan, { label: string; price?: number; days?: number }> = {
   monthly: { label: 'Monthly', price: 999, days: 30 },
   yearly: { label: 'Yearly', price: 9999, days: 365 },
   lifetime: { label: 'Lifetime' },
+  whatsapp_addon: { label: 'WhatsApp add-on', price: 299, days: 30 },
 };
 
 /*
-  Which plan a pending payment is for. The owner's chosen tier is written into the
-  request notes as "Intended Plan: MONTHLY | YEARLY" by the product
-  app's subscription flow, so the admin approves the tier the customer actually paid
-  for instead of always defaulting to Monthly. Falls back to monthly when the note
-  is absent or unrecognised (older requests predate this line).
+  Which product a pending payment is for. The stored plan_requested is authoritative
+  (the server approves from it too); older requests fall back to the
+  "Intended Plan: X" line in the notes. Only a genuinely absent value (legacy
+  request) falls back to monthly. An add-on or any unrecognised non-empty value must
+  never be shown or confirmed as a Monthly plan, so those return null and the
+  caller refuses to approve blind.
 */
-function intendedPlanFromNotes(notes?: string | null): ApprovablePlan {
-  const m = notes?.match(/Intended Plan:\s*([A-Z_]+)/i);
-  const raw = m?.[1]?.toLowerCase();
-  if (raw === 'yearly' || raw === 'lifetime' || raw === 'monthly') {
-    return raw;
-  }
-  return 'monthly';
+function resolveRequestedPlan(req: { plan_requested?: string | null; notes?: string | null }): ApprovablePlan | null {
+  const m = req.notes?.match(/Intended Plan:\s*([A-Z_]+)/i);
+  const raw = (req.plan_requested || m?.[1] || '').toLowerCase().trim();
+  if (!raw) return 'monthly';
+  if (raw === 'yearly' || raw === 'lifetime' || raw === 'monthly') return raw;
+  if (raw.replace(/_/g, '').includes('addon')) return 'whatsapp_addon';
+  return null;
 }
 
 /** "the Yearly plan (₹9,999) for 365 days" — the human phrase for a confirm dialog. */
 function planPhrase(plan: ApprovablePlan): string {
   const d = PLAN_DETAILS[plan];
   if (plan === 'lifetime') return 'the Lifetime plan (permanent access)';
+  if (plan === 'whatsapp_addon') return `WhatsApp automation for ${d.days} days (${formatCurrency(d.price)})`;
   return `the ${d.label} plan (${formatCurrency(d.price)}) for ${d.days} days`;
+}
+
+/** Confirm-dialog sentence; the add-on is not a plan, so it gets its own wording. */
+function approveMessage(plan: ApprovablePlan, gymName: string): string {
+  if (plan === 'whatsapp_addon') return `Activate ${planPhrase(plan)} for ${gymName}? Their subscription plan is not changed.`;
+  return `Approve the payment for ${gymName} and activate ${planPhrase(plan)}?`;
 }
 
 function getStatusColor(status: string) {
@@ -823,10 +832,11 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       icon: 'credit-card', label: 'Approve Payment', color: D.indigo,
       onPress: () => {
         if (!pendingRequest) { Alert.alert('No Pending Request', 'There is no pending payment request to approve.'); return; }
-        const plan = intendedPlanFromNotes(pendingRequest.notes);
+        const plan = resolveRequestedPlan(pendingRequest);
+        if (!plan) { Alert.alert('Unknown Plan', 'This request is for a product this app version does not recognise. Approve it from the web admin.'); return; }
         confirmAction({
           title: 'Approve Payment?',
-          message: `Approve and activate ${planPhrase(plan)} for ${gym.name}?`,
+          message: approveMessage(plan, gym.name),
           confirmLabel: 'Approve', confirmColor: D.indigo,
           onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)),
         });
@@ -992,10 +1002,33 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 <Feather name="calendar" size={14} color={D.textMuted} style={lintStyles.mb4} />
                 <Text style={styles.dateCellLabel}>Expires On</Text>
                 <Text style={styles.dateCellValue}>
-                  {gym.plan_type === 'lifetime' ? 'Never' : fmtDate(gym.subscription_ends_at || gym.trial_ends_at)}
+                  {/* Free has no end date; falling back to trial_ends_at would show the old trial date. */}
+                  {gym.plan_type === 'lifetime' || gym.plan_type === 'free'
+                    ? 'Never'
+                    : fmtDate(gym.subscription_ends_at || gym.trial_ends_at)}
                 </Text>
               </View>
             </View>
+
+            {/* WhatsApp add-on: shown for Free gyms, and for any gym that has ever had one. */}
+            {(gym.plan_type === 'free' || gym.whatsapp_addon_until) && (() => {
+              const until = gym.whatsapp_addon_until ? new Date(gym.whatsapp_addon_until) : null;
+              const addonDays = until ? Math.ceil((until.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+              const active = until !== null && addonDays > 0;
+              const color = active ? D.emerald : until ? D.red : D.textMuted;
+              const bg = active ? D.emeraldBg : until ? D.redBg : 'transparent';
+              const text = active
+                ? `WhatsApp add-on active until ${fmtDate(gym.whatsapp_addon_until)} (${addonDays} day${addonDays !== 1 ? 's' : ''} left)`
+                : until
+                  ? `WhatsApp add-on expired on ${fmtDate(gym.whatsapp_addon_until)}`
+                  : 'WhatsApp add-on: not purchased';
+              return (
+                <View style={[styles.daysRemainingRow, { backgroundColor: bg, borderColor: color + '44' }]}>
+                  <Feather name="message-circle" size={14} color={color} />
+                  <Text style={[styles.daysRemainingText, { color }]}>{text}</Text>
+                </View>
+              );
+            })()}
 
             {/* Days remaining with progress bar */}
             {days !== null && !isExpired && gym.plan_type !== 'lifetime' && (
@@ -1096,6 +1129,12 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
               </View>
               <InfoRow label="Submitted" value={fmtDateTime(pendingRequest.submitted_at)} />
               <InfoRow label="Transaction ID" value={pendingRequest.transaction_id || '—'} mono />
+              {resolveRequestedPlan(pendingRequest) === 'whatsapp_addon' && (
+                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginVertical: 6, backgroundColor: D.emerald + '22' }}>
+                  <Feather name="message-circle" size={12} color={D.emerald} />
+                  <Text style={{ color: D.emerald, fontSize: 12, fontWeight: '700' }}>WhatsApp add-on (₹299, 30 days)</Text>
+                </View>
+              )}
               {pendingRequest.notes && (
                 <View style={styles.pendingNotes}><Text style={styles.pendingNoteText}>{pendingRequest.notes}</Text></View>
               )}
@@ -1108,8 +1147,9 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
               <View style={styles.approveRejectRow}>
                 <TouchableOpacity style={styles.approveBtn} disabled={actionLoading}
                   onPress={() => {
-                    const plan = intendedPlanFromNotes(pendingRequest.notes);
-                    confirmAction({ title: 'Approve Payment?', message: `Approve the payment for ${gym.name} and activate ${planPhrase(plan)}?`, confirmLabel: 'Approve', confirmColor: D.emerald, onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)) });
+                    const plan = resolveRequestedPlan(pendingRequest);
+                    if (!plan) { Alert.alert('Unknown Plan', 'This request is for a product this app version does not recognise. Approve it from the web admin.'); return; }
+                    confirmAction({ title: 'Approve Payment?', message: approveMessage(plan, gym.name), confirmLabel: 'Approve', confirmColor: D.emerald, onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)) });
                   }}>
                   <Feather name="check" size={14} color={D.emerald} />
                   <Text style={[styles.approveRejectText, { color: D.emerald }]}>Approve</Text>

@@ -69,6 +69,12 @@ for (const [label, raw] of Object.entries(FILES)) {
       expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.approve_plan_payment\(UUID, UUID, TEXT, TEXT\) TO service_role;/)
     })
 
+    it('H: approve_plan_payment refuses to downgrade a Lifetime gym', () => {
+      expect(fnSource(raw, 'approve_plan_payment')).toMatch(
+        /v_gym\.plan_type = 'lifetime' AND p_plan <> 'lifetime'[\s\S]*?RAISE EXCEPTION 'already_lifetime' USING ERRCODE = 'P0001'/,
+      )
+    })
+
     it('I: expected_amount_inr is stamped by a BEFORE INSERT trigger', () => {
       expect(sql).toMatch(/expected_amount_inr INTEGER/)
       expect(fnSource(raw, 'set_subscription_request_expected_amount')).toMatch(/NEW\.expected_amount_inr :=/)

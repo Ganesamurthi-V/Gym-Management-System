@@ -73,4 +73,7 @@ export const POST = withAuth('FEEDBACK_PROMPT_SHOWN', async (req: NextRequest, {
     return apiError(500, 'SAVE_FAILED', 'Could not save')
   }
   return apiSuccess({ ok: true })
+}, {
+  // Records only that the pop-up was shown (per-owner UI state, not gym data), so a lapsed owner's background call must not 403.
+  allowWhenExpired: true,
 })

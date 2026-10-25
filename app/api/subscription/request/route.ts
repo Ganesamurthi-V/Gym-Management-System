@@ -9,7 +9,7 @@ import { passesCsrfCheck } from '@/lib/api/withAuth'
 
 export const dynamic = 'force-dynamic'
 
-const planSchema = z.enum(['monthly', 'yearly', 'whatsapp_addon']).optional()
+const planSchema = z.enum(['monthly', 'yearly', 'whatsapp_addon'])
 
 /**
  * POST /api/subscription/request
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   // Fetch the gym owned by this user
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id')
+    .select('id, plan_type')
     .eq('owner_id', user.id)
     .single()
 
@@ -77,13 +77,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Transaction ID or notes too long.' }, { status: 400 })
   }
 
-  // Optional so older clients keep working; when sent it must be a known plan.
+  // Required: without a plan expected_amount_inr stays NULL and approve_plan_payment accepts any
+  // plan, so only the admin's screenshot check would stand between a monthly payment and a yearly grant.
   const rawPlan = formData.get('plan')
-  const planParsed = planSchema.safeParse(rawPlan === null || rawPlan === '' ? undefined : rawPlan)
+  if (rawPlan === null || rawPlan === '') {
+    return NextResponse.json({ error: 'Choose a plan before submitting your payment.' }, { status: 400 })
+  }
+  const planParsed = planSchema.safeParse(rawPlan)
   if (!planParsed.success) {
     return NextResponse.json({ error: 'Invalid plan.' }, { status: 400 })
   }
-  const planRequested = planParsed.data ?? null
+  const planRequested = planParsed.data
+
+  // A Lifetime gym has nothing to buy, and approving a monthly/yearly payment would downgrade it.
+  // Decided from the database row, never from the body.
+  if (gym.plan_type === 'lifetime') {
+    return NextResponse.json(
+      { error: 'Your gym is on the Lifetime plan, so no payment is needed.' },
+      { status: 409 }
+    )
+  }
 
   // The add-on is only for Free gyms. Decided from the database, never from the body.
   if (planRequested === 'whatsapp_addon') {

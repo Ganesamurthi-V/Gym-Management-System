@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const h = vi.hoisted(() => ({
   updated: [] as string[],
   inserts: 0,
+  lapsed: false,
   reselect: { data: { id: 'gym-1' } as { id: string } | null, error: null as unknown },
 }))
 
@@ -16,6 +17,15 @@ vi.mock('@/lib/logger', () => {
 vi.mock('@/lib/rateLimit', () => ({ checkRateLimit: async () => ({ allowed: true }), ROUTE_LIMITS: { DEFAULT: 10 } }))
 vi.mock('@/lib/auth/roles', () => ({ roleFromClaims: () => 'owner' }))
 vi.mock('@/lib/auth/phone', () => ({ ownerMobileFromUser: () => '9876543210' }))
+// The guard has its own query (which would shift the lookup counter below), so it is stubbed.
+vi.mock('@/lib/subscriptionGuard', async () => {
+  const { NextResponse } = await import('next/server')
+  return {
+    assertGymWritableById: async () => h.lapsed
+      ? NextResponse.json({ success: false, error: { code: 'SUBSCRIPTION_REQUIRED', message: 'ended' } }, { status: 403 })
+      : null,
+  }
+})
 vi.mock('@/app/api/_guard', () => ({ passesCsrf: () => true }))
 
 // Lookup (select by owner_id) finds nothing the first time; after the failed insert it finds the gym.
@@ -40,7 +50,7 @@ const req = () => ({
 }) as never
 
 describe('onboarding/complete unique-owner race', () => {
-  beforeEach(() => { h.updated.length = 0; h.inserts = 0; h.reselect = { data: { id: 'gym-1' }, error: null }; vi.resetModules() })
+  beforeEach(() => { h.updated.length = 0; h.inserts = 0; h.lapsed = false; h.reselect = { data: { id: 'gym-1' }, error: null }; vi.resetModules() })
 
   it('treats 23505 as "gym already exists": re-selects by owner and updates it', async () => {
     const { POST } = await import('@/app/api/onboarding/complete/route')
@@ -56,6 +66,16 @@ describe('onboarding/complete unique-owner race', () => {
     const { POST } = await import('@/app/api/onboarding/complete/route')
     const res = await POST(req())
     expect(res.status).toBe(500)
+    expect(h.updated).toEqual([])
+  })
+
+  it('refuses 403 SUBSCRIPTION_REQUIRED for a lapsed gym and writes nothing', async () => {
+    h.lapsed = true
+    h.reselect = { data: { id: 'gym-1' }, error: null }
+    const { POST } = await import('@/app/api/onboarding/complete/route')
+    const res = await POST({ ...(req() as object), json: async () => ({ gymId: '11111111-1111-4111-8111-111111111111', gymName: 'Iron Gym', gymType: 'Gym', branchCount: 1, openingYear: 2020, plans: [] }) } as never)
+    expect(res.status).toBe(403)
+    expect((await res.json()).error.code).toBe('SUBSCRIPTION_REQUIRED')
     expect(h.updated).toEqual([])
   })
 })

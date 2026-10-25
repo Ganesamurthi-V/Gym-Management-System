@@ -287,6 +287,12 @@ BEGIN
     RAISE EXCEPTION 'request_not_found' USING ERRCODE = 'P0002';
   END IF;
 
+  -- A Lifetime gym has no end date to extend; a monthly or yearly approval would
+  -- downgrade it. Only an explicit lifetime grant may touch it.
+  IF v_gym.plan_type = 'lifetime' AND p_plan <> 'lifetime' THEN
+    RAISE EXCEPTION 'already_lifetime' USING ERRCODE = 'P0001';
+  END IF;
+
   v_renewal := v_gym.subscription_status = 'active'
                AND v_gym.plan_type IN ('monthly', 'quarterly', 'yearly')
                AND v_gym.subscription_ends_at > now();

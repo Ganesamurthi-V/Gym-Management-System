@@ -128,6 +128,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         if (msg.includes('request_not_pending')) {
           return NextResponse.json({ error: 'This request was already handled' }, { status: 409 })
         }
+        if (msg.includes('already_lifetime')) {
+          return NextResponse.json({ error: 'This gym is already on the Lifetime plan' }, { status: 409 })
+        }
         if (msg.includes('plan_mismatch')) {
           return NextResponse.json({ error: 'This payment was for a different plan' }, { status: 409 })
         }

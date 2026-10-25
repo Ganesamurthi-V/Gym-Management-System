@@ -5,6 +5,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { ownerMobileFromUser } from '@/lib/auth/phone'
 import { passesCsrf } from '@/app/api/_guard'
+import { assertGymWritableById } from '@/lib/subscriptionGuard'
 
 interface MembershipPlan {
   planName: string
@@ -301,6 +302,11 @@ export async function POST(req: NextRequest) {
     // success. A function because two paths end here: the gym already existed, or the insert
     // below lost a race against a concurrent request that created it (unique owner_id).
     const saveOnExistingGym = async (id: string) => {
+      // A lapsed gym is read-only on the server; this route authenticates on its own, so it has
+      // to apply the guard itself or an expired owner could still rewrite the gym and its prices.
+      const notWritable = await assertGymWritableById(supabase, id)
+      if (notWritable) return notWritable
+
       const coreUpdate = {
         name: gymName,
         onboarding_completed: true,

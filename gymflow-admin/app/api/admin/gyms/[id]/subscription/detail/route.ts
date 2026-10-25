@@ -95,7 +95,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     let pendingRequestWithUrl = pendingRequest || null;
     if (pendingRequestWithUrl?.uploaded_file_url) {
       const { data } = await supabase.storage
-        .from('payment-proofs')
+        .from('Payments_proof')
         .createSignedUrl(pendingRequestWithUrl.uploaded_file_url, 3600)
       if (data?.signedUrl) {
         pendingRequestWithUrl = { ...pendingRequestWithUrl, uploaded_file_url: data.signedUrl }
@@ -115,7 +115,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     let lastApprovedRequestWithUrl = lastApprovedRequest || null;
     if (lastApprovedRequestWithUrl?.uploaded_file_url) {
       const { data } = await supabase.storage
-        .from('payment-proofs')
+        .from('Payments_proof')
         .createSignedUrl(lastApprovedRequestWithUrl.uploaded_file_url, 3600)
       if (data?.signedUrl) {
         lastApprovedRequestWithUrl = { ...lastApprovedRequestWithUrl, uploaded_file_url: data.signedUrl }

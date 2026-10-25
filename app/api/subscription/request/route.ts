@@ -19,7 +19,7 @@ const planSchema = z.enum(['monthly', 'yearly', 'whatsapp_addon']).optional()
  *   - transaction_id: optional transaction reference string
  *   - notes: optional free-text notes
  *
- * Uploads the file to the `payment-proofs` Supabase Storage bucket,
+ * Uploads the file to the `Payments_proof` Supabase Storage bucket,
  * then inserts a row into `subscription_requests`.
  */
 export async function POST(req: NextRequest) {
@@ -130,10 +130,10 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Upload to Supabase Storage (private bucket `payment-proofs`)
+  // Upload to Supabase Storage (private bucket `Payments_proof`)
   const fileName = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
   const { data: upload, error: uploadError } = await supabase.storage
-    .from('payment-proofs')
+    .from('Payments_proof')
     .upload(fileName, file, { contentType: detectedType, upsert: false })
 
   if (uploadError || !upload) {
@@ -157,14 +157,14 @@ export async function POST(req: NextRequest) {
     logger.error('subscription_request_insert_failed', { error: insertError.message })
     reportAlertInBackground({ key: 'sub:request_insert_failed', severity: 'critical', title: 'Subscription request insert failed', body: `gymId=${gym.id} error=${insertError.message.slice(0, 300)}`, gymId: gym.id })
     // The proof was uploaded but no row references it; remove it so files are not leaked (best effort).
-    // Service role is required: payment-proofs only has INSERT/SELECT policies for users, so a
+    // Service role is required: Payments_proof only has INSERT/SELECT policies for users, so a
     // user-scoped remove() silently deletes nothing. Safe because the path is the object THIS request
     // just uploaded under the authenticated user's own prefix, never client-supplied (guarded below).
     if (!upload.path.startsWith(`${user.id}/`)) {
       logger.warn('subscription_proof_cleanup_skipped', { reason: 'path outside user prefix' })
     } else {
       const { data: removed, error: cleanupError } = await createAdminClient()
-        .storage.from('payment-proofs').remove([upload.path])
+        .storage.from('Payments_proof').remove([upload.path])
       if (cleanupError) {
         logger.warn('subscription_proof_cleanup_failed', { error: cleanupError.message })
       } else if (!removed || removed.length === 0) {

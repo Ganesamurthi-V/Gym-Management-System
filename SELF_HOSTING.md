@@ -74,7 +74,7 @@ Check that it worked, in a new query:
 select count(*) as tables from information_schema.tables
 where table_schema = 'public' and table_type = 'BASE TABLE';      -- expect 29
 
-select id, public from storage.buckets;                           -- expect: payment-proofs, false
+select id, public from storage.buckets;                           -- expect: Payments_proof, false
 
 select key from app_config order by key;                          -- expect: push_cron_secret, push_dispatch_url
 

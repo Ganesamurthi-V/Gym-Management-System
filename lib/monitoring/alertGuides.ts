@@ -512,7 +512,7 @@ const EXACT: Record<string, AlertGuide> = {
     happening: 'A gym\'s payment proof image failed to upload.',
     failing: 'The gym cannot submit its renewal request.',
     check: [
-      'Supabase > Storage > payment-proofs: bucket exists and policies allow the upload.',
+      'Supabase > Storage > Payments_proof: bucket exists and policies allow the upload.',
       'Supabase > Project status.',
     ],
     fix: [

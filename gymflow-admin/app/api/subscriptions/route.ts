@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
         let signedUrl: string | null = null
         if (r.uploaded_file_url) {
           const { data } = await supabase.storage
-            .from('payment-proofs')
+            .from('Payments_proof')
             .createSignedUrl(r.uploaded_file_url, 3600)
           signedUrl = data?.signedUrl ?? null
         }

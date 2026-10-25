@@ -556,10 +556,13 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                  tabIndex={0}
                  onClick={() => setSelectedPlan('whatsapp_addon')}
                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPlan('whatsapp_addon') } }}
-                 className={`mt-6 max-w-3xl mx-auto cursor-pointer rounded-2xl border-2 p-4 flex items-center gap-3 transition-colors ${
-                   selectedPlan === 'whatsapp_addon' ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-100 bg-surface hover:border-emerald-200'
+                 className={`relative mt-6 max-w-3xl mx-auto cursor-pointer rounded-2xl border-2 p-4 flex items-center gap-3 transition-colors ${
+                   selectedPlan === 'whatsapp_addon' ? 'border-emerald-500 bg-emerald-50/40' : 'border-emerald-300 bg-surface hover:border-emerald-500'
                  }`}
                >
+                 <span className="absolute -top-2.5 left-4 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">
+                   Add-on
+                 </span>
                  <MessageCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                  <div className="min-w-0 flex-1">
                    <p className="text-sm font-bold text-slate-800">WhatsApp automation add-on, ₹{WHATSAPP_ADDON_PRICE_INR}/month</p>

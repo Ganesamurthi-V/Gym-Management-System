@@ -5290,7 +5290,7 @@ CREATE POLICY "gym owners receive tenant realtime invalidations"
 -- write and read inside a folder named after their own auth uid. There is no
 -- UPDATE or DELETE policy: uploads are immutable to clients.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-  VALUES ('payment-proofs', 'payment-proofs', false, 10485760,
+  VALUES ('Payments_proof', 'Payments_proof', false, 10485760,
           ARRAY['image/jpeg', 'image/png', 'application/pdf'])
   ON CONFLICT (id) DO UPDATE
     SET public             = false,
@@ -5302,7 +5302,7 @@ CREATE POLICY "gym owner upload payment proof"
   ON storage.objects FOR INSERT
   TO authenticated
   WITH CHECK (
-    bucket_id = 'payment-proofs'
+    bucket_id = 'Payments_proof'
     AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
     AND EXISTS (SELECT 1 FROM public.gyms WHERE owner_id = (SELECT auth.uid()))
   );
@@ -5312,7 +5312,7 @@ CREATE POLICY "gym owner read own payment proofs"
   ON storage.objects FOR SELECT
   TO authenticated
   USING (
-    bucket_id = 'payment-proofs'
+    bucket_id = 'Payments_proof'
     AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
   );
 

@@ -20,7 +20,7 @@ export default async function AdminSubscriptionsPage() {
       let signedUrl = null
       if (r.uploaded_file_url) {
         const { data } = await supabase.storage
-          .from('payment-proofs')
+          .from('Payments_proof')
           .createSignedUrl(r.uploaded_file_url, 3600) // 1-hour expiry
         signedUrl = data?.signedUrl ?? null
       }

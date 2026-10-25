@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { AsciiStrip } from './AsciiStrip';
 import { getConsent, setConsent, OPEN_SETTINGS_EVENT, type Consent } from '@/lib/analytics';
 
 type View = 'closed' | 'banner' | 'details';
@@ -76,29 +75,22 @@ export function CookieBanner() {
     'rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90';
 
   if (view === 'banner') {
-    // Same size and weight for "Essential only" and "Accept all": declining must be as easy
-    // and as visible as accepting. "Choose" is a text link under them on a phone and in the same
-    // row on larger screens.
+    // Compact on every screen: one short line and one row of buttons. "Essential only" and
+    // "Accept all" share size and weight, so declining is as easy as accepting.
     const pill =
-      'min-h-11 flex-1 rounded-pill bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 sm:min-h-0 sm:flex-none sm:py-2';
+      'min-h-9 flex-1 rounded-pill bg-foreground px-3 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4';
     return (
       <div
         ref={bar}
         role="dialog"
         aria-label="Cookie preferences"
-        className="fixed inset-x-0 bottom-0 z-[90] ml-auto max-w-none overflow-hidden rounded-t-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5 sm:max-w-md sm:rounded-2xl"
+        className="fixed inset-x-0 bottom-0 z-[90] overflow-hidden rounded-t-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-96 sm:rounded-2xl"
       >
-        <div className="hidden sm:block">
-          <AsciiStrip />
-        </div>
-        <div className="px-5 pb-5 pt-4">
-          <p className="text-base font-medium text-foreground">Your cookie choices</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            We use small files called cookies. Essential ones keep the site working and remember your
-            light or dark mode. Optional ones from Google count visits, and ones from Microsoft show
-            where people tap, so we can improve the page.
+        <div className="px-4 py-3">
+          <p className="text-[13px] leading-snug text-muted-foreground">
+            We use cookies to keep the site working and see how it is used.
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-end">
+          <div className="mt-2.5 flex items-center gap-2">
             <button type="button" onClick={() => save(NONE)} className={pill}>
               Essential only
             </button>
@@ -111,7 +103,7 @@ export function CookieBanner() {
                 setDraft(getConsent() ?? NONE);
                 setView('details');
               }}
-              className="min-h-11 w-full text-sm font-medium text-foreground underline underline-offset-2 sm:min-h-0 sm:w-auto sm:px-2 sm:py-2"
+              className="ml-auto min-h-9 shrink-0 px-2 text-[13px] font-medium text-foreground underline underline-offset-2"
             >
               Choose
             </button>

@@ -28,6 +28,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { getServiceSupabase } from '@/lib/member/activation-token'
+import { getMemberAppAccess } from '@/lib/member/member-data'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -110,7 +111,7 @@ export async function GET(req: NextRequest) {
     const service = getServiceSupabase()
     const { data: linked, error: linkErr } = await service
       .from('members')
-      .select('id, gym_id')
+      .select('id, gym_id, created_at')
       .eq('auth_user_id', user.id)
       .maybeSingle()
     if (linkErr) {
@@ -126,6 +127,13 @@ export async function GET(req: NextRequest) {
     }
     const memberId = linked.id
     const gymId = linked.gym_id
+
+    // Plan gate before any write (portal flags, auth user): fresh read, fails closed. The
+    // session this exchange just created is dropped so it cannot be used as a member session.
+    if (!(await getMemberAppAccess(linked))) {
+      await supabase.auth.signOut()
+      return NextResponse.redirect(failUrl('plan_not_allowed'))
+    }
 
     await service.auth.admin.updateUserById(user.id, {
       email_confirm: true,

@@ -38,12 +38,21 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const now = new Date()
     let endsAt: string | null = null
 
+    // Same base rule as the approve_plan_payment SQL function: a renewal on a still-running paid
+    // plan adds to the remaining time instead of discarding it.
+    const isRenewal =
+      gym.subscription_status === 'active' &&
+      ['monthly', 'quarterly', 'yearly'].includes(gym.plan_type) &&
+      !!gym.subscription_ends_at &&
+      new Date(gym.subscription_ends_at) > now
+    const base = isRenewal ? new Date(gym.subscription_ends_at as string) : now
+
     if (plan === 'monthly') {
-      const d = new Date(now)
+      const d = new Date(base)
       d.setMonth(d.getMonth() + 1)
       endsAt = d.toISOString()
     } else if (plan === 'yearly') {
-      const d = new Date(now)
+      const d = new Date(base)
       d.setFullYear(d.getFullYear() + 1)
       endsAt = d.toISOString()
     } else if (plan === 'lifetime') {
@@ -56,7 +65,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       .update({
         subscription_status: 'active',
         plan_type: plan,
-        subscription_started_at: now.toISOString(),
+        // Unchanged on a renewal: it marks when the paid subscription began, not the last extension.
+        ...(isRenewal ? {} : { subscription_started_at: now.toISOString() }),
         subscription_ends_at: endsAt,
         // Clear trial remnants so middleware sees a clean 'active' state
         trial_ends_at: null,

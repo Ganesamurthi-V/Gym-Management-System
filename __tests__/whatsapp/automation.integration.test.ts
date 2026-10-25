@@ -223,7 +223,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'x'.repeat(120)
 
-  h.store.gyms = [{ id: 'gym-1', name: 'Iron Temple', onboarding_completed: true, subscription_status: 'active', whatsapp_enabled: true }]
+  h.store.gyms = [{ id: 'gym-1', name: 'Iron Temple', onboarding_completed: true, is_active: true, subscription_status: 'active', whatsapp_enabled: true }]
   h.store.members = []
   h.store.whatsapp_automation_logs = []
   h.store.whatsapp_send_queue = []
@@ -599,7 +599,7 @@ describe('runDailyWhatsAppAutomation stats', () => {
 
 describe('per-gym WhatsApp switch', () => {
   function addGym(id: string, whatsapp_enabled: boolean) {
-    h.store.gyms.push({ id, name: id, onboarding_completed: true, subscription_status: 'active', whatsapp_enabled })
+    h.store.gyms.push({ id, name: id, onboarding_completed: true, is_active: true, subscription_status: 'active', whatsapp_enabled })
   }
   function addMemberTo(gymId: string, id: string) {
     h.store.members.push({
@@ -916,7 +916,7 @@ describe('gamification nudges: gym switches', () => {
 
   it('skips ONLY the gyms that are switched off; the others still get their nudges', async () => {
     const gym = (id: string, whatsapp_enabled: boolean) =>
-      ({ id, name: id, onboarding_completed: true, subscription_status: 'active', whatsapp_enabled })
+      ({ id, name: id, onboarding_completed: true, is_active: true, subscription_status: 'active', whatsapp_enabled })
     h.store.gyms.push(gym('gym-no-boards', true), gym('gym-no-whatsapp', false))
     h.store.gym_gamification_settings.push({ gym_id: 'gym-no-boards', leaderboards_enabled: false, weekly_goal_days: 4 })
 
@@ -1005,7 +1005,7 @@ describe('gym_prize_awarded (event send)', () => {
     })
 
     it('does not message a member of another gym', async () => {
-      h.store.gyms.push({ id: 'gym-2', name: 'Other', onboarding_completed: true, subscription_status: 'active', whatsapp_enabled: true })
+      h.store.gyms.push({ id: 'gym-2', name: 'Other', onboarding_completed: true, is_active: true, subscription_status: 'active', whatsapp_enabled: true })
       addMember() // mem-1 belongs to gym-1
       expect(await sendPrizeAwardedMessage({ ...args, gymId: 'gym-2' })).toEqual({ sent: false, reason: 'not_found' })
       expect(h.sendMock).not.toHaveBeenCalled()

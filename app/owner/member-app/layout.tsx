@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Lock } from 'lucide-react'
 import { getAuthUser, getGymCore } from '@/lib/dal'
-import { createClient } from '@/lib/supabase/server'
-import { isFreePlan, WHATSAPP_ADDON_PRICE_INR } from '@/lib/subscription-utils'
+import { isFreePlan } from '@/lib/subscription-utils'
+import { getPlatformPrices } from '@/lib/platformPrices'
 
 export default async function MemberAppLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getAuthUser()
@@ -16,10 +16,8 @@ export default async function MemberAppLayout({ children }: { children: React.Re
   if (!gym || !isFreePlan(gym.plan_type)) return <>{children}</>
 
   // Same source the /owner/subscription page prices from, so the two never disagree.
-  const { data: prices, error } = await (await createClient())
-    .from('platform_settings')
-    .select('price_monthly, price_yearly')
-    .single()
+  // null (read failed) hides the prices rather than showing a wrong number.
+  const prices = await getPlatformPrices()
 
   return (
     <div className="relative">
@@ -34,15 +32,15 @@ export default async function MemberAppLayout({ children }: { children: React.Re
           </div>
           <h2 className="text-xl font-bold text-slate-900">Upgrade to paid plan</h2>
           <p className="text-sm text-slate-500">The Member App is included with every paid plan.</p>
-          {!error && prices && (
+          {prices && (
             <div className="grid grid-cols-2 gap-3">
               <div className="border border-surface-border rounded-xl p-3">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Monthly</p>
-                <p className="text-xl font-black text-slate-900">₹{prices.price_monthly.toLocaleString('en-IN')}</p>
+                <p className="text-xl font-black text-slate-900">₹{prices.priceMonthly.toLocaleString('en-IN')}</p>
               </div>
               <div className="border border-surface-border rounded-xl p-3">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Yearly</p>
-                <p className="text-xl font-black text-slate-900">₹{prices.price_yearly.toLocaleString('en-IN')}</p>
+                <p className="text-xl font-black text-slate-900">₹{prices.priceYearly.toLocaleString('en-IN')}</p>
               </div>
             </div>
           )}
@@ -50,7 +48,7 @@ export default async function MemberAppLayout({ children }: { children: React.Re
           <div className="flex items-center justify-between gap-3 border border-surface-border rounded-xl px-3 py-2 text-left">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-slate-600">WhatsApp automation add-on</p>
-              <p className="text-xs text-slate-400">₹{WHATSAPP_ADDON_PRICE_INR}/month</p>
+              {prices && <p className="text-xs text-slate-400">₹{prices.whatsappAddonPriceInr.toLocaleString('en-IN')}/month</p>}
             </div>
             <Link
               href="/owner/subscription#whatsapp-addon"

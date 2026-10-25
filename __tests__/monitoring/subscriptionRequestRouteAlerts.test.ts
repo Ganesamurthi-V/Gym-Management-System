@@ -5,7 +5,7 @@ vi.mock('server-only', () => ({}))
 
 const m = vi.hoisted(() => ({
   alert: vi.fn(), remove: vi.fn(), userRemove: vi.fn(), warn: vi.fn(),
-  uploadPath: null as string | null, removed: [{ name: 'x' }] as unknown[],
+  uploadPath: null as string | null, planType: 'trial', removed: [{ name: 'x' }] as unknown[],
 }))
 
 vi.mock('@/lib/monitoring/alert', () => ({ reportAlertInBackground: (...a: unknown[]) => m.alert(...a) }))
@@ -23,7 +23,7 @@ vi.mock('@/lib/supabase/server', () => ({
       const q: Record<string, unknown> = {}
       q.select = () => q
       q.eq = () => q
-      q.single = async () => ({ data: { id: 'gym-1' } })
+      q.single = async () => ({ data: { id: 'gym-1', plan_type: m.planType } })
       q.maybeSingle = async () => ({ data: null })
       q.insert = async () => ({ error: { message: 'insert blew up' } })
       return q
@@ -39,17 +39,19 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { POST } from '@/app/api/subscription/request/route'
 
-const call = () => {
+const call = (plan: string | null = 'monthly') => {
   const form = new FormData()
+  if (plan !== null) form.set('plan', plan)
   form.set('file', new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00])], 'p.jpg', { type: 'image/jpeg' }))
   return POST(new NextRequest('http://localhost/api/subscription/request', { method: 'POST', body: form }))
 }
 
-beforeEach(() => { vi.clearAllMocks(); m.uploadPath = null; m.removed = [{ name: 'x' }] })
+beforeEach(() => { vi.clearAllMocks(); m.uploadPath = null; m.planType = 'trial'; m.removed = [{ name: 'x' }] })
 
 describe('POST /api/subscription/request CSRF', () => {
   const callWith = (headers: Record<string, string>) => {
     const form = new FormData()
+    form.set('plan', 'monthly')
     form.set('file', new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00])], 'p.jpg', { type: 'image/jpeg' }))
     return POST(new NextRequest('http://localhost/api/subscription/request', { method: 'POST', body: form, headers }))
   }
@@ -66,6 +68,22 @@ describe('POST /api/subscription/request CSRF', () => {
   it('accepts a request carrying the X-Requested-With header the owner page sends', async () => {
     const res = await callWith({ 'x-requested-with': 'XMLHttpRequest' })
     expect(res.status).not.toBe(403)
+  })
+})
+
+describe('POST /api/subscription/request plan', () => {
+  it('rejects a request with no plan before touching storage', async () => {
+    const res = await call(null)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'Choose a plan before submitting your payment.' })
+    expect(m.alert).not.toHaveBeenCalled()
+  })
+
+  it.each(['monthly', 'yearly', 'whatsapp_addon'])('refuses a %s request from a Lifetime gym with 409', async (plan) => {
+    m.planType = 'lifetime'
+    const res = await call(plan)
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: 'Your gym is on the Lifetime plan, so no payment is needed.' })
   })
 })
 

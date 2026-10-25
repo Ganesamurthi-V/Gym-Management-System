@@ -58,7 +58,7 @@ export const POST = withAuth(
     return apiSuccess({ sent: true, email: maskEmail(user.email) })
   },
   // A handful per minute is plenty for a human confirming a deletion.
-  { rateLimit: 4 },
+  { rateLimit: 4, allowWhenExpired: true },
 )
 
 /** "ganesh@example.com" -> "ga****@example.com" for display only. */

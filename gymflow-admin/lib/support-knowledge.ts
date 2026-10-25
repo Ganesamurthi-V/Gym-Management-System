@@ -7,7 +7,8 @@
  *
  * Every line is taken from what the website already states (landing-page-1:
  * src/components/Pricing.tsx, FAQ.tsx, BentoFeatures.tsx and public/llms.txt). When the
- * site changes, change this file in the same commit, or drafts will quote old prices.
+ * site changes, change this file in the same commit, or drafts will quote old prices. Rupee prices are deliberately NOT stored here (they live in
+ * platform_settings and change); the text sends customers to the pricing page instead.
  *
  * Kept short on purpose (about 1,000 tokens): it is sent with every draft, and Groq's free
  * plan allows only 8K tokens a minute per model. Facts that rarely come up in support mail
@@ -16,10 +17,10 @@
 export const SUPPORT_KNOWLEDGE = `
 GymFlow is all-in-one gym management software for independent single-location gyms in India. Web: www.gymflow.sbs. App: app.gymflow.sbs. Member app: members open it in a browser on their phone (no app store needed).
 
-PRICING (Indian rupees only; every paid plan includes every feature, unlimited members and unlimited WhatsApp messages; no per-member charge, no setup fee, no add-on modules):
-- Monthly: Rs 999 per month
-- Yearly: Rs 9,999 for 12 months (saves 17%)
-There is a 14-day free trial with every feature unlocked and no credit card needed. After the trial an owner can move to the free forever plan instead of paying: up to 50 members in total, no member app, and WhatsApp messaging only with the paid WhatsApp add-on (Rs 299 for 30 days). The monthly and yearly plans have unlimited members, WhatsApp and the member app.
+PRICING (Indian rupees only; every paid plan includes every feature, unlimited members and unlimited WhatsApp messages; no per-member charge, no setup fee):
+- Monthly plan (billed every month) and Yearly plan (billed once for 12 months, cheaper than twelve monthly payments)
+- Do not quote a rupee amount: current prices are shown on the pricing page at www.gymflow.sbs and on the Payments page in GymFlow; point the customer there
+There is a 14-day free trial with every feature unlocked and no credit card needed. After the trial an owner can move to the free forever plan instead of paying: up to 50 members in total, no member app, and WhatsApp messaging only with the paid WhatsApp add-on (also priced on the Payments page, billed for 30 days). The monthly and yearly plans have unlimited members, WhatsApp and the member app.
 
 HOW TO START AND PAY: sign up at app.gymflow.sbs and go through the setup wizard (gym name, membership plans, pricing, WhatsApp details); it autosaves. To activate a paid plan: 1) pay with any UPI app, net banking or card, 2) open the Payments page in GymFlow and attach the payment screenshot, 3) GymFlow verifies it and switches the account on shortly after. Payments are verified manually, so no card is kept on file and nothing is charged automatically.
 

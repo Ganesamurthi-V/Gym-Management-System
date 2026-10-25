@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser } from '@/lib/dal'
-import { roleFromClaims } from '@/lib/auth/roles'
+import { getAuthUser, getGym } from '@/lib/dal'
 import { getMemberAccessState } from '@/lib/member/member-data'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { apiError, apiSuccess } from '@/lib/api/withAuth'
@@ -90,14 +89,22 @@ export async function GET(req: NextRequest) {
     }
     if (!allowed) return respond(apiError(429, 'RATE_LIMITED', 'Rate limit exceeded'))
 
-    const supabase = await createClient()
-    const isMember = roleFromClaims(user) === 'member'
+    // Decided by whether the caller OWNS a gym (owner_id, RLS), never by the user-editable role
+    // claim: a member claiming to be an owner owns no gym and falls into the member check below.
+    // getGym shares the request-cached gyms query the owner pages use. Owners skip the member
+    // lookup entirely: it would log an error and run extra queries for someone who is not a member.
+    const { gym: ownedGym } = await getGym(user.id)
+    const isMember = !ownedGym
 
-    // Owners use this route for the Member App preview and are unaffected; a member whose gym
-    // plan has no member app must not read the board.
-    if (isMember && (await getMemberAccessState()).state !== 'ok') {
-      return respond(apiError(403, 'PLAN_NOT_ALLOWED', "The member app is not available on your gym's plan."))
+    // A member whose gym plan has no member app must not read the board.
+    if (isMember) {
+      const access = await getMemberAccessState()
+      if (access.state !== 'ok') {
+        return respond(apiError(403, 'PLAN_NOT_ALLOWED', "The member app is not available on your gym's plan."))
+      }
     }
+
+    const supabase = await createClient()
 
     // The RPC returns zero rows both for "nobody has checked in" and for "this
     // gym switched leaderboards off", so `enabled` needs its own signal:

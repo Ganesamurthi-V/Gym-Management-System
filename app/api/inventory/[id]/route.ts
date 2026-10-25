@@ -6,6 +6,7 @@ import { isValidUUID } from '@/lib/api/withAuth'
 import { apiLogger } from '@/lib/logger'
 import { deleteCache } from '@/lib/cache'
 import { passesCsrf, csrfRejected, boundedInt, boundedNumber, boundedText, MAX_MONEY, MAX_STOCK } from '@/app/api/_guard'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +54,9 @@ export async function PATCH(
         { status: 404 }
       )
     }
+
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     // Verify product belongs to this gym
     const { data: product } = await supabase

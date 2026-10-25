@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic'
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 function planMemberLimitResponse() {
   return NextResponse.json(
     { success: false, error: { code: 'PLAN_MEMBER_LIMIT', message: MEMBER_CAP_MESSAGE } },
@@ -178,6 +179,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
     log.info('Gym Info', { gymId: gym.id })
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     // Double-tap guard, claimed after validation so a 400 does not burn the key.
     const duplicate = await claimIdempotencyKey(req, gym.id, 'members')

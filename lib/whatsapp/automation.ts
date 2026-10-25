@@ -463,7 +463,7 @@ export async function sendWelcomeMessage({
   })
   if (!claim.claimed) return
 
-  const result = await sendWhatsAppTemplate('_gymflow_welcome_member', { ...ctx, gymId })
+  const result = await sendWhatsAppTemplate('_gymflow_welcome_member', { ...ctx, gymId, memberRowId: memberId })
   await finalizeSendRow(supabase, claim.id, result)
 }
 
@@ -518,7 +518,7 @@ export async function sendRenewalMessage({
   })
   if (!claim.claimed) return
 
-  const result = await sendWhatsAppTemplate('membership_renewed', { ...ctx, gymId })
+  const result = await sendWhatsAppTemplate('membership_renewed', { ...ctx, gymId, memberRowId: memberId })
   await finalizeSendRow(supabase, claim.id, result)
 }
 
@@ -548,6 +548,8 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
       .from('gyms')
       .select('id, name, plan_type, whatsapp_addon_until')
       .eq('onboarding_completed', true)
+      // A deactivated gym is read-only; the per-send gate also checks, this saves the work.
+      .eq('is_active', true)
       .in('subscription_status', ['active', 'trial'])
       // A gym with WhatsApp switched off is not processed at all: no reminders are worked
       // out, queued or logged for it.
@@ -1381,6 +1383,7 @@ export async function sendPrizeAwardedMessage({
       prize: prizeText,
       periodLabel: period,
       gymId,
+      memberRowId: memberId,
     })
     await finalizeSendRow(supabase, claim.id, result)
 

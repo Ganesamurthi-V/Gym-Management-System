@@ -27,12 +27,14 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   try {
     const id = sanitizeUUID((await props.params).id)
     if (!id) return NextResponse.json({ error: 'Invalid gym id' }, { status: 400 })
+    const rawBody = (await req.json().catch(() => null)) ?? {}
     const parsed = z.object({ request_id: z.string().uuid(), plan: approvePlanSchema.default('monthly'), notes: noteSchema })
-      .safeParse(await req.json().catch(() => null))
+      .safeParse(rawBody)
     if (!parsed.success) {
       return NextResponse.json({ error: 'A valid request_id and plan are required' }, { status: 400 })
     }
-    const { request_id, plan, notes } = parsed.data
+    const { request_id, notes } = parsed.data
+    let plan = parsed.data.plan
     const performed_by = ADMIN_ACTOR
 
     const supabase = createAdminClient()
@@ -56,22 +58,18 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       .single()
     if (gymError) throw gymError
 
-    // Compute new expiry
-    const now = new Date()
-    let endsAt: string | null = null
-    if (plan === 'monthly') {
-      const d = new Date(now); d.setMonth(d.getMonth() + 1); endsAt = d.toISOString()
-    } else if (plan === 'yearly') {
-      const d = new Date(now); d.setFullYear(d.getFullYear() + 1); endsAt = d.toISOString()
-    }
-    // 'lifetime' intentionally leaves endsAt null (never expires).
-
     // The stored request decides add-on vs plan. A client-supplied plan can never turn a plan
     // request into an add-on (which would skip activation) or an add-on request into a plan
     // (which would grant a full plan for Rs 299).
     const isAddonRequest = request.plan_requested === 'whatsapp_addon'
     if (!isAddonRequest && plan === 'whatsapp_addon') {
       return NextResponse.json({ error: 'This request is not a WhatsApp add-on request' }, { status: 400 })
+    }
+
+    // The request already names the plan the owner paid for, so a client that omitted `plan` (and
+    // got the schema default 'monthly') must not turn a yearly payment into a monthly grant.
+    if (!isAddonRequest && !('plan' in rawBody) && (request.plan_requested === 'monthly' || request.plan_requested === 'yearly')) {
+      plan = request.plan_requested
     }
 
     // Add-on: the SQL function locks the request and only extends whatsapp_addon_until, so a Free
@@ -112,32 +110,37 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       return NextResponse.json({ success: true, whatsapp_addon_until: addonUntil })
     }
 
-    // Approve the request
-    const { error: approveError } = await supabase
-      .from('subscription_requests')
-      .update({
-        status: 'approved',
-        reviewed_at: now.toISOString(),
-        reviewed_by: performed_by,
-      })
-      .eq('id', request_id)
-    if (approveError) throw approveError
-
-    // Activate the gym subscription
-    const { error: updateError } = await supabase
-      .from('gyms')
-      .update({
-        subscription_status: 'active',
-        plan_type: plan,
-        subscription_started_at: now.toISOString(),
-        subscription_ends_at: endsAt,
-        is_payment_verified: true,
-        last_payment_status: 'paid',
-        last_transaction_id: request.transaction_id || null,
-        last_payment_date: now.toISOString(),
-      })
-      .eq('id', id)
-    if (updateError) throw updateError
+    // One SQL function locks the request and the gym and does approval + activation atomically, so
+    // a partial failure cannot leave an approved request on an unactivated gym. It also adds a
+    // renewal to the remaining time and records the request's expected amount as the payment.
+    const { data: endsAt, error: approveError } = await supabase.rpc('approve_plan_payment', {
+      p_request_id: request_id,
+      p_gym_id: id,
+      p_plan: plan,
+      p_reviewed_by: performed_by,
+    })
+    if (approveError) {
+      const msg = approveError.message || ''
+      if (approveError.code === 'P0002') {
+        return NextResponse.json({ error: 'Pending request not found' }, { status: 404 })
+      }
+      if (approveError.code === 'P0001') {
+        if (msg.includes('request_not_pending')) {
+          return NextResponse.json({ error: 'This request was already handled' }, { status: 409 })
+        }
+        if (msg.includes('already_lifetime')) {
+          return NextResponse.json({ error: 'This gym is already on the Lifetime plan' }, { status: 409 })
+        }
+        if (msg.includes('plan_mismatch')) {
+          return NextResponse.json({ error: 'This payment was for a different plan' }, { status: 409 })
+        }
+        if (msg.includes('invalid_plan')) {
+          return NextResponse.json({ error: 'Invalid plan. Must be monthly, yearly, or lifetime.' }, { status: 400 })
+        }
+        return NextResponse.json({ error: 'Request does not match this gym or is a WhatsApp add-on request' }, { status: 409 })
+      }
+      throw approveError
+    }
 
     await supabase.rpc('log_subscription_action', {
       p_gym_id: id,
@@ -147,7 +150,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       p_prev_plan: gym.plan_type,
       p_new_plan: plan,
       p_prev_expiry: gym.subscription_ends_at || gym.trial_ends_at || null,
-      p_new_expiry: endsAt,
+      p_new_expiry: endsAt ?? null,
       p_performed_by: performed_by,
       p_notes: notes || `Transaction ID: ${request.transaction_id || 'N/A'}`,
     })
@@ -156,7 +159,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       success: true,
       subscription_status: 'active',
       plan_type: plan,
-      subscription_ends_at: endsAt,
+      subscription_ends_at: endsAt ?? null,
     })
   } catch (err: any) {
     console.error('[PaymentApprove]', err)

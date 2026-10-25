@@ -10,10 +10,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { getAuthUser, getGym, getGymCore } from '@/lib/dal'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { passesCsrf } from '@/app/api/_guard'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 const log = apiLogger('PROGRAM_ASSIGNMENTS')
 const MAX_MEMBER_IDS = 1000
@@ -88,6 +89,11 @@ export async function POST(req: NextRequest) {
 
   const { gym } = await getGym(user.id)
   if (!gym) return NextResponse.json({ error: 'No gym found' }, { status: 404 })
+
+  // getGym omits the subscription columns; getGymCore is the same cached, never-stale row.
+  const { gym: core } = await getGymCore(user.id)
+  const readOnly = assertGymWritable(core)
+  if (readOnly) return readOnly
 
   const supabase = await createClient()
 
@@ -190,6 +196,11 @@ export async function DELETE(req: NextRequest) {
 
   const { gym } = await getGym(user.id)
   if (!gym) return NextResponse.json({ error: 'No gym found' }, { status: 404 })
+
+  // getGym omits the subscription columns; getGymCore is the same cached, never-stale row.
+  const { gym: core } = await getGymCore(user.id)
+  const readOnly = assertGymWritable(core)
+  if (readOnly) return readOnly
 
   const supabase = await createClient()
 

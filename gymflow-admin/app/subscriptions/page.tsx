@@ -18,6 +18,7 @@ interface SubscriptionRequest {
   rejection_reason: string | null
   uploaded_file_url: string | null
   plan_requested: 'monthly' | 'yearly' | 'whatsapp_addon' | null
+  expected_amount_inr: number | null
   signedUrl: string | null
   gym_id: string
   gyms: { id: string; name: string; owner_id: string; subscription_status: string; plan_type: string } | null
@@ -36,19 +37,14 @@ function defaultPlan(req: SubscriptionRequest): PlanType {
 }
 
 /*
-  The SaaS plans an admin can approve a payment against, with their prices and
-  durations. Kept as one list so the dropdown, the toast and any future summary
-  read from the same source. Prices mirror platform_settings in the product DB
-  (₹999 / ₹9,999); lifetime has no set price here since it is granted,
-  not sold on this screen.
-
-  If these ever need to be authoritative rather than indicative, they should come
-  from GET /api/subscriptions alongside each request. For now they exist to label
-  the choice, and the expiry math still lives server-side in the approve route.
+  The SaaS plans an admin can approve a payment against. No prices here: they live in
+  platform_settings and change, so the amount shown is each request's expected_amount_inr
+  (set by the DB from the plan the owner asked for). The expiry math lives in the
+  approve_plan_payment SQL function.
 */
 const PLAN_OPTIONS: { value: Exclude<PlanType, 'whatsapp_addon'>; label: string }[] = [
-  { value: 'monthly', label: 'Monthly — ₹999 (30d)' },
-  { value: 'yearly', label: 'Yearly — ₹9,999 (365d)' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
   { value: 'lifetime', label: 'Lifetime' },
 ]
 
@@ -209,6 +205,9 @@ export default function SubscriptionsPage() {
                     {req.transaction_id && (
                       <p className="text-xs text-slate-400 mt-1">Txn: <span className="font-mono font-medium text-slate-300">{req.transaction_id}</span></p>
                     )}
+                    {req.expected_amount_inr != null && (
+                      <p className="text-xs text-slate-400 mt-1">Expected: <span className="font-medium text-slate-300">Rs {req.expected_amount_inr.toLocaleString('en-IN')}</span></p>
+                    )}
                     {req.notes && (
                       <p className="text-xs text-slate-500 mt-1 italic">&ldquo;{req.notes}&rdquo;</p>
                     )}
@@ -236,7 +235,7 @@ export default function SubscriptionsPage() {
                       <div className="flex items-center gap-3">
                         {req.plan_requested === 'whatsapp_addon' ? (
                           <span className="px-2 py-1.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
-                            WhatsApp add-on, ₹299 / 30 days
+                            WhatsApp add-on{req.expected_amount_inr != null ? `, ₹${req.expected_amount_inr.toLocaleString('en-IN')}` : ''} / 30 days
                           </span>
                         ) : (
                           <select

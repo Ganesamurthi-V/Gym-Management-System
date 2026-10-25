@@ -206,6 +206,12 @@ export interface TemplateContext {
   /** Rupees */
   dueAmount?: number
   memberId?: string
+  /**
+   * members.id (uuid) of the recipient. Distinct from memberId, which is the printed GF id.
+   * Set it on every member-facing send: a trial gym's WhatsApp covers only its first 50
+   * members, and sendTemplate denies a trial send whose member it cannot identify.
+   */
+  memberRowId?: string
   /** Secure token for the member_app_invitation dynamic URL button. */
   invitationToken?: string
   /** gym_streak_at_risk: length of the member's current streak, in days. */

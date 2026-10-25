@@ -147,4 +147,4 @@ export const POST = withAuth('ACCOUNT_DELETE_DATA', async (req: NextRequest, ctx
     memberLoginsDeleted: memberAuthIds.length - failed,
     memberLoginsFailed: failed,
   })
-})
+}, { allowWhenExpired: true })

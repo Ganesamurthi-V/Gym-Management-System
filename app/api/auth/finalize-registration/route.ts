@@ -144,7 +144,10 @@ export async function POST(_req: NextRequest) {
       'My Gym'
 
     // ── 6. Create minimal gym row — onboarding wizard fills the rest ──────────
-    const TRIAL_DAYS = parseInt(process.env.TRIAL_DURATION_DAYS ?? '14', 10)
+    // A malformed or absurd TRIAL_DURATION_DAYS (NaN, 0, 3650) must not hand out a broken or
+    // endless trial: anything but a whole number of 1-31 days falls back to 14.
+    const parsedTrialDays = Number.parseInt(process.env.TRIAL_DURATION_DAYS ?? '14', 10)
+    const TRIAL_DAYS = Number.isInteger(parsedTrialDays) && parsedTrialDays >= 1 && parsedTrialDays <= 31 ? parsedTrialDays : 14
     const now        = new Date()
     const trialEndsAt = new Date(now)
     trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS)

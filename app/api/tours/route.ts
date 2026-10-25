@@ -161,5 +161,6 @@ export const POST = withAuth(
 
     return apiSuccess(next)
   },
-  { rateLimit: 60 },
+  // Per-owner UI state only (tour progress), not gym data, so a lapsed owner's background save must not 403.
+  { rateLimit: 60, allowWhenExpired: true },
 )

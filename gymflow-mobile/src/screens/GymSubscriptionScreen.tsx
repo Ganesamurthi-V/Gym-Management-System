@@ -42,6 +42,7 @@ import {
   type SupportTicket,
 } from '@/lib/api';
 import { openHttpsUrl } from '@/lib/safe-link';
+import { isPaidPlan } from '@/lib/plan';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import type { RootStackParamList } from '../navigation/types';
 import { KeyboardSafeView } from '@/components/KeyboardSafeView';
@@ -148,16 +149,17 @@ function formatCurrency(amount?: number | null): string {
 }
 
 /*
-  The SaaS tiers an admin can approve/activate, with the price and duration shown
-  in confirm dialogs. Prices mirror platform_settings in the product DB.
-  'lifetime' is granted rather than sold, so it carries no price line.
+  The SaaS tiers an admin can approve/activate, with the duration shown in confirm
+  dialogs. No prices: they live in platform_settings and change, so dialogs use the
+  pending request's expected_amount_inr (and omit the amount when it is null).
+  'lifetime' is granted rather than sold, so it carries no duration line.
 */
 type ApprovablePlan = 'monthly' | 'yearly' | 'lifetime' | 'whatsapp_addon';
-const PLAN_DETAILS: Record<ApprovablePlan, { label: string; price?: number; days?: number }> = {
-  monthly: { label: 'Monthly', price: 999, days: 30 },
-  yearly: { label: 'Yearly', price: 9999, days: 365 },
+const PLAN_DETAILS: Record<ApprovablePlan, { label: string; days?: number }> = {
+  monthly: { label: 'Monthly', days: 30 },
+  yearly: { label: 'Yearly', days: 365 },
   lifetime: { label: 'Lifetime' },
-  whatsapp_addon: { label: 'WhatsApp add-on', price: 299, days: 30 },
+  whatsapp_addon: { label: 'WhatsApp add-on', days: 30 },
 };
 
 /*
@@ -177,18 +179,19 @@ function resolveRequestedPlan(req: { plan_requested?: string | null; notes?: str
   return null;
 }
 
-/** "the Yearly plan (₹9,999) for 365 days" — the human phrase for a confirm dialog. */
-function planPhrase(plan: ApprovablePlan): string {
+/** "the Yearly plan for 365 days (for ₹N)": the human phrase for a confirm dialog. */
+function planPhrase(plan: ApprovablePlan, amount?: number | null): string {
   const d = PLAN_DETAILS[plan];
+  const forAmount = amount != null ? ` (for ${formatCurrency(amount)})` : '';
   if (plan === 'lifetime') return 'the Lifetime plan (permanent access)';
-  if (plan === 'whatsapp_addon') return `WhatsApp automation for ${d.days} days (${formatCurrency(d.price)})`;
-  return `the ${d.label} plan (${formatCurrency(d.price)}) for ${d.days} days`;
+  if (plan === 'whatsapp_addon') return `WhatsApp automation for ${d.days} days${forAmount}`;
+  return `the ${d.label} plan for ${d.days} days${forAmount}`;
 }
 
 /** Confirm-dialog sentence; the add-on is not a plan, so it gets its own wording. */
-function approveMessage(plan: ApprovablePlan, gymName: string): string {
-  if (plan === 'whatsapp_addon') return `Activate ${planPhrase(plan)} for ${gymName}? Their subscription plan is not changed.`;
-  return `Approve the payment for ${gymName} and activate ${planPhrase(plan)}?`;
+function approveMessage(plan: ApprovablePlan, gymName: string, amount?: number | null): string {
+  if (plan === 'whatsapp_addon') return `Activate ${planPhrase(plan, amount)} for ${gymName}? Their subscription plan is not changed.`;
+  return `Approve the payment for ${gymName} and activate ${planPhrase(plan, amount)}?`;
 }
 
 function getStatusColor(status: string) {
@@ -677,8 +680,11 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
         promises.push(updateSubscriptionDates(gymId, {
           subscription_started_at: subStartDate?.toISOString() ?? null,
           subscription_ends_at: subEndDate?.toISOString() ?? null,
-          trial_started_at: trialStartDate?.toISOString() ?? null,
-          trial_ends_at: trialEndDate?.toISOString() ?? null,
+          // Server refuses trial dates for paid gyms, so they are not sent.
+          ...(isPaidPlan(data?.gym.plan_type) ? {} : {
+            trial_started_at: trialStartDate?.toISOString() ?? null,
+            trial_ends_at: trialEndDate?.toISOString() ?? null,
+          }),
         }));
       }
       await Promise.all(promises);
@@ -823,7 +829,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
       icon: 'check-circle', label: 'Activate Monthly', color: D.emerald,
       onPress: () => confirmAction({
         title: 'Activate Monthly Subscription?',
-        message: 'This will activate the Monthly plan (₹999) starting today for 30 days.',
+        message: 'This will activate the Monthly plan for 30 days, added to any time remaining on a running paid plan.',
         confirmLabel: 'Activate', confirmColor: D.emerald,
         onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')),
       }),
@@ -836,12 +842,14 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
         if (!plan) { Alert.alert('Unknown Plan', 'This request is for a product this app version does not recognise. Approve it from the web admin.'); return; }
         confirmAction({
           title: 'Approve Payment?',
-          message: approveMessage(plan, gym.name),
+          message: approveMessage(plan, gym.name, pendingRequest.expected_amount_inr),
           confirmLabel: 'Approve', confirmColor: D.indigo,
           onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)),
         });
       },
     },
+    // Trial actions are refused by the server for paid-plan gyms, so the shortcut is not offered.
+    ...(isPaidPlan(gym.plan_type) ? [] : [
     {
       icon: 'clock', label: 'Extend +7 Days', color: D.amber,
       onPress: () => confirmAction({
@@ -851,6 +859,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
         onConfirm: () => doAction(() => extendTrial(gymId, 'extend', 7)),
       }),
     },
+    ]),
     {
       icon: 'phone', label: 'Call Customer', color: D.sky,
       onPress: () => {
@@ -1081,13 +1090,13 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 icon="award" label="Activate Monthly"
                 bg={D.qaGreen} border={D.qaGreenBorder} textColor={D.qaGreenText}
                 disabled={actionLoading}
-                onPress={() => confirmAction({ title: 'Activate Monthly Subscription?', message: 'This will activate the Monthly plan (₹999) starting today for 30 days.', confirmLabel: 'Activate', confirmColor: D.emerald, onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')) })}
+                onPress={() => confirmAction({ title: 'Activate Monthly Subscription?', message: 'This will activate the Monthly plan for 30 days, added to any time remaining on a running paid plan.', confirmLabel: 'Activate', confirmColor: D.emerald, onConfirm: () => doAction(() => activateSubscription(gymId, 'monthly')) })}
               />
               <QuickActionBtn
                 icon="calendar" label="Activate Yearly"
                 bg={D.qaPurple} border={D.qaPurpleBorder} textColor={D.qaPurpleText}
                 disabled={actionLoading}
-                onPress={() => confirmAction({ title: 'Activate Yearly Subscription?', message: 'This will activate the Yearly plan (₹9,999) starting today for 365 days.', confirmLabel: 'Activate', confirmColor: D.indigo, onConfirm: () => doAction(() => activateSubscription(gymId, 'yearly')) })}
+                onPress={() => confirmAction({ title: 'Activate Yearly Subscription?', message: 'This will activate the Yearly plan for 365 days, added to any time remaining on a running paid plan.', confirmLabel: 'Activate', confirmColor: D.indigo, onConfirm: () => doAction(() => activateSubscription(gymId, 'yearly')) })}
               />
               <QuickActionBtn
                 icon="hexagon" label="Activate Lifetime"
@@ -1095,6 +1104,9 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 disabled={actionLoading}
                 onPress={() => confirmAction({ title: 'Activate Lifetime Subscription?', message: 'This will grant permanent lifetime access. This cannot be automatically reversed.', confirmLabel: 'Activate', confirmColor: D.amber, onConfirm: () => doAction(() => activateSubscription(gymId, 'lifetime')) })}
               />
+              {/* Trial actions: hidden on paid plans (the server refuses them; they would downgrade the gym). */}
+              {!isPaidPlan(gym.plan_type) && (
+                <>
               <QuickActionBtn
                 icon="clock" label="Extend Trial"
                 bg={D.qaTeal} border={D.qaTealBorder} textColor={D.qaTealText}
@@ -1107,6 +1119,8 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                 disabled={actionLoading}
                 onPress={() => confirmAction({ title: 'Reset Trial?', message: 'This will reset the trial to a fresh 14-day trial starting today.', confirmLabel: 'Reset', confirmColor: D.purple, onConfirm: () => doAction(() => extendTrial(gymId, 'reset')) })}
               />
+                </>
+              )}
               <QuickActionBtn
                 icon="x-circle" label="Expire Now"
                 bg={D.qaDarkRed} border={D.qaDarkRedBorder} textColor={D.qaDarkRedText}
@@ -1132,8 +1146,11 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
               {resolveRequestedPlan(pendingRequest) === 'whatsapp_addon' && (
                 <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginVertical: 6, backgroundColor: D.emerald + '22' }}>
                   <Feather name="message-circle" size={12} color={D.emerald} />
-                  <Text style={{ color: D.emerald, fontSize: 12, fontWeight: '700' }}>WhatsApp add-on (₹299, 30 days)</Text>
+                  <Text style={{ color: D.emerald, fontSize: 12, fontWeight: '700' }}>WhatsApp add-on (30 days)</Text>
                 </View>
+              )}
+              {pendingRequest.expected_amount_inr != null && (
+                <InfoRow label="Expected" value={formatCurrency(pendingRequest.expected_amount_inr)} />
               )}
               {pendingRequest.notes && (
                 <View style={styles.pendingNotes}><Text style={styles.pendingNoteText}>{pendingRequest.notes}</Text></View>
@@ -1149,7 +1166,7 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
                   onPress={() => {
                     const plan = resolveRequestedPlan(pendingRequest);
                     if (!plan) { Alert.alert('Unknown Plan', 'This request is for a product this app version does not recognise. Approve it from the web admin.'); return; }
-                    confirmAction({ title: 'Approve Payment?', message: approveMessage(plan, gym.name), confirmLabel: 'Approve', confirmColor: D.emerald, onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)) });
+                    confirmAction({ title: 'Approve Payment?', message: approveMessage(plan, gym.name, pendingRequest.expected_amount_inr), confirmLabel: 'Approve', confirmColor: D.emerald, onConfirm: () => doAction(() => approvePayment(gymId, pendingRequest.id, plan)) });
                   }}>
                   <Feather name="check" size={14} color={D.emerald} />
                   <Text style={[styles.approveRejectText, { color: D.emerald }]}>Approve</Text>
@@ -1254,12 +1271,16 @@ export default function GymSubscriptionScreen({ route, navigation }: Props) {
             </View>
             <DateCard label="Subscription Started" value={subStartDate} onChange={d => { setSubStartDate(d); setDatesChanged(true); setDirty(true); }} />
             <DateCard label="Subscription Ends" value={subEndDate} onChange={d => { setSubEndDate(d); setDatesChanged(true); setDirty(true); }} />
-            <Divider />
-            <DateCard label="Trial Started" value={trialStartDate} onChange={d => { setTrialStartDate(d); setDatesChanged(true); setDirty(true); }} />
-            <DateCard label="Trial Ends" value={trialEndDate} onChange={d => { setTrialEndDate(d); setDatesChanged(true); setDirty(true); }} />
+            {!isPaidPlan(gym.plan_type) && (
+              <>
+                <Divider />
+                <DateCard label="Trial Started" value={trialStartDate} onChange={d => { setTrialStartDate(d); setDatesChanged(true); setDirty(true); }} />
+                <DateCard label="Trial Ends" value={trialEndDate} onChange={d => { setTrialEndDate(d); setDatesChanged(true); setDirty(true); }} />
+              </>
+            )}
           </View>
 
-          {gym.subscription_status === 'trial' && (
+          {gym.subscription_status === 'trial' && !isPaidPlan(gym.plan_type) && (
             <View style={[styles.card, { borderColor: D.amber + '55' }]}>
               <View style={styles.sectionHeaderRow}>
                 <Feather name="clock" size={13} color={D.amber} />

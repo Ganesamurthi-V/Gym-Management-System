@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { activateRateLimitOk, getServiceSupabase, resolveInvitationToken } from '@/lib/member/activation-token'
 import { sendVerificationEmail } from '@/lib/member/activation-email'
+import { getMemberAppAccess } from '@/lib/member/member-data'
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
 
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     const { data: member } = await supabase
       .from('members')
-      .select('email, invitation_status, portal_enabled, portal_suspended')
+      .select('id, gym_id, created_at, email, invitation_status, portal_enabled, portal_suspended')
       .eq('id', memberId)
       .eq('gym_id', gymId)
       .maybeSingle()
@@ -78,6 +79,11 @@ export async function POST(req: NextRequest) {
         { success: true, alreadyActivated: true },
         { headers: NO_STORE },
       )
+    }
+
+    // Plan gate before any email goes out (fresh read, fails closed).
+    if (!(await getMemberAppAccess(member))) {
+      return fail("The member app is not available on your gym's plan.", 403, { code: 'PLAN_NOT_ALLOWED' })
     }
 
     // Destination comes from stored state, never from the request body.

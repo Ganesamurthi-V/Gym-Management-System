@@ -57,14 +57,16 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         return NextResponse.json({ success: true, action: 'deleted' })
       }
 
+      // disable_login/enable_login are kept so existing buttons work; the DB mirrors login_disabled
+      // from is_active, so they are now identical to ban/unban.
       case 'disable_login': {
-        gymUpdate = { is_active: false, login_disabled: true }
+        gymUpdate = { is_active: false }
         actionLabel = 'Login Disabled (Admin Action)'
         break
       }
 
       case 'enable_login': {
-        gymUpdate = { is_active: true, login_disabled: false }
+        gymUpdate = { is_active: true }
         actionLabel = 'Login Re-enabled (Admin Action)'
         break
       }

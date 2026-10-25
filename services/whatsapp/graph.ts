@@ -161,7 +161,8 @@ export async function sendTemplate(
   // The per-gym switch, checked here because every send (welcome, renewal, daily reminders
   // through the queue, invitations, the owner's manual send) ends up in this function.
   if (ctx.gymId) {
-    const state = await getGymWhatsAppState(ctx.gymId)
+    // memberRowId is members.id (ctx.memberId is the printed GF id); null = unknown member.
+    const state = await getGymWhatsAppState(ctx.gymId, undefined, ctx.memberRowId ?? null)
     if (state !== 'enabled') {
       logger.info('sendTemplate skipped: gym WhatsApp switch', { templateId, gymId: ctx.gymId, state })
       return {

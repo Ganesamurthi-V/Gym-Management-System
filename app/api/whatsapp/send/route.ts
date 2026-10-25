@@ -94,6 +94,7 @@ export const POST = withAuth('WHATSAPP_SEND', async (req, { gym, supabase }) => 
     dueAmount:  member.pending_amount > 0 ? member.pending_amount : undefined,
     memberId:   formatMemberId(member.member_number),
     gymId:      gym.id,
+    memberRowId: member.id,
   })
 
   if (result.deferred) {

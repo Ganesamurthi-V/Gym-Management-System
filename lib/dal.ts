@@ -35,8 +35,7 @@ export const getAuthUser = cache(async () => {
   // insecure" warning that supabase-js logged on every single render.
   //
   // `created_at` is not carried in the JWT. No consumer of getAuthUser() reads
-  // it (the only `user.created_at` in the codebase is app/api/gyms/[id]/route.ts,
-  // which does its own auth.getUser()), so it is left empty rather than faked.
+  // it (no code reads it from here), so it is left empty rather than faked.
   const user = {
     id: claims.sub,
     aud: (claims.aud as string) ?? 'authenticated',
@@ -136,9 +135,10 @@ export const getGymSubscription = cache(async (userId: string) => {
 })
 
 // ── is_active check (always fresh) ───────────────────────────────────────────
-// Determines whether the gym account is allowed to log in at all (admin ban /
-// login_disabled flag). Served from the same uncached row, so a ban still takes
-// effect on the very next navigation.
+// Determines whether the gym account is allowed to log in at all (admin ban). Only
+// gyms.is_active is read; it covers login_disabled too, because the database keeps
+// login_disabled as a mirror of NOT is_active (trigger). Served from the same uncached
+// row, so a ban still takes effect on the very next navigation.
 export const getGymIsActive = cache(async (userId: string) => {
   const { gym, error } = await getGymCore(userId)
   return { isActive: gym?.is_active ?? true, error }

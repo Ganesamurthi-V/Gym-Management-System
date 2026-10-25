@@ -124,14 +124,17 @@ export const getMemberWithGymUnchecked = cache(async (): Promise<MemberWithGym |
   )
 
   const { data: member, error } = memberRes
-  if (error || !member) {
+  // No row and no error just means the caller is not a member (an owner, for example): not an
+  // error. Only a failed query is logged.
+  if (error) {
     console.error('[getMemberWithGym] member query failed', {
       authUserId: userId,
-      code: error?.code,
-      message: error?.message,
+      code: error.code,
+      message: error.message,
     })
     return null
   }
+  if (!member) return null
 
   const gym = gymRes.data as Gym | null
   if (gymRes.error || !gym) {

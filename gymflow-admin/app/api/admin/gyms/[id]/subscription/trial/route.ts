@@ -43,6 +43,11 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       .single()
     if (fetchError) throw fetchError
 
+    // Writing plan_type 'trial' below would silently downgrade a paying gym, so refuse before any write.
+    if (['monthly', 'quarterly', 'yearly', 'lifetime'].includes(gym.plan_type)) {
+      return NextResponse.json({ error: 'Trial actions are not available for gyms on a paid plan' }, { status: 409 })
+    }
+
     const now = new Date()
     let newTrialStartedAt: string | null = null
     let newTrialEndsAt: string | null = null
@@ -57,15 +62,16 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       actionLabel = 'Trial Reset (14 Days from Today)'
     } else if (action === 'extend') {
       const extendDays = days ?? 7
-      // Extend from current trial end or from now
-      const base = gym.trial_ends_at ? new Date(gym.trial_ends_at) : now
+      // From the later of now and the current end: extending a lapsed trial from its past end date
+      // would leave it expired.
+      const base = gym.trial_ends_at && new Date(gym.trial_ends_at) > now ? new Date(gym.trial_ends_at) : now
       const endsAt = new Date(base)
       endsAt.setDate(endsAt.getDate() + extendDays)
       newTrialEndsAt = endsAt.toISOString()
       actionLabel = `Trial Extended by ${extendDays} Days`
     } else if (action === 'custom') {
       const extendDays = days ?? 7
-      const base = gym.trial_ends_at ? new Date(gym.trial_ends_at) : now
+      const base = gym.trial_ends_at && new Date(gym.trial_ends_at) > now ? new Date(gym.trial_ends_at) : now
       const endsAt = new Date(base)
       endsAt.setDate(endsAt.getDate() + extendDays)
       newTrialEndsAt = endsAt.toISOString()

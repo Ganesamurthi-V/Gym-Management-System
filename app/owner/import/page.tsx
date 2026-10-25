@@ -23,6 +23,7 @@ import { groupPlanNames, type PlanNameGroup } from "@/lib/import/plan-matching";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
 import PlanNotice from "@/components/subscription/PlanNotice";
+import { PLAN_MEMBER_LIMIT } from "@/lib/subscription-utils";
 import { api } from "@/lib/api/client";
 
 export interface ImportedRow {
@@ -1303,8 +1304,8 @@ export default function ImportPage() {
           tone="warning"
           message={
             importLimit.maxRows === 0
-              ? "Your gym has reached the 50-member limit of your plan. Upgrade to a paid plan to import more members."
-              : `Your plan allows 50 members in total. You can import ${importLimit.maxRows} more.`
+              ? `Your gym has reached the ${PLAN_MEMBER_LIMIT}-member limit of your plan. Upgrade to a paid plan to import more members.`
+              : `Your plan allows ${PLAN_MEMBER_LIMIT} members in total. You can import ${importLimit.maxRows} more.`
           }
           action={{ href: "/owner/subscription", label: "Upgrade to a paid plan" }}
         />

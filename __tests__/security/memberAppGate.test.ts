@@ -13,6 +13,8 @@ const state = vi.hoisted(() => ({
   user: { id: 'u1' } as unknown,
   role: 'member',
   rpc: vi.fn(),
+  ownsGym: false,
+  accessCalls: 0,
 }))
 
 vi.mock('server-only', () => ({}))
@@ -33,7 +35,10 @@ vi.mock('@/lib/supabase/admin', () => ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { plan_type: state.planType, ...state.gymExtra }, error: null }) }) }) }),
   }),
 }))
-vi.mock('@/lib/dal', () => ({ getAuthUser: async () => ({ user: state.user }) }))
+vi.mock('@/lib/dal', () => ({
+  getAuthUser: async () => ({ user: state.user }),
+  getGym: async () => ({ gym: state.ownsGym ? { id: 'g1' } : null, error: null }),
+}))
 vi.mock('@/lib/auth/roles', () => ({ roleFromClaims: () => state.role }))
 vi.mock('@/lib/rateLimit', () => ({ checkRateLimit: async () => ({ allowed: true }) }))
 vi.mock('@/lib/logger', () => ({ apiLogger: () => ({ summary: () => {}, error: () => {} }) }))
@@ -93,10 +98,12 @@ describe('member routes', () => {
     vi.resetModules()
     state.user = { id: 'u1' }
     state.role = 'member'
+    state.ownsGym = false
+    state.accessCalls = 0
     state.rpc.mockReset()
     state.rpc.mockResolvedValue({ data: [], error: null })
     vi.doMock('@/lib/member/member-data', () => ({
-      getMemberAccessState: async () => state.access,
+      getMemberAccessState: async () => { state.accessCalls++; return state.access },
       getMemberMemberships: async () => [],
       getMemberAttendance: async () => ({ records: [], thisMonthCount: 0, thisWeekCount: 0, totalCount: 0, checkedInDates: new Set() }),
       getGymWorkoutPrograms: async () => [],
@@ -128,13 +135,25 @@ describe('member routes', () => {
     expect(state.rpc).not.toHaveBeenCalled()
   })
 
-  it('leaderboard: owners are not gated', async () => {
+  it('leaderboard: owners are not gated and never hit the member lookup', async () => {
     state.role = 'owner'
+    state.ownsGym = true
     state.access = { state: 'not_member' }
     const { GET } = await import('@/app/api/gamification/leaderboard/route')
     const res = await GET({ nextUrl: new URL('http://x/api/gamification/leaderboard?board=week') } as never)
     expect(res.status).toBe(200)
     expect(state.rpc).toHaveBeenCalled()
+    expect(state.accessCalls).toBe(0)
+  })
+
+  it('leaderboard: a blocked member whose claims say owner still gets 403', async () => {
+    // user_metadata.role is user-editable, so the claim must not decide who is gated.
+    state.role = 'owner'
+    state.access = { state: 'blocked' }
+    const { GET } = await import('@/app/api/gamification/leaderboard/route')
+    const res = await GET({ nextUrl: new URL('http://x/api/gamification/leaderboard?board=week') } as never)
+    expect(res.status).toBe(403)
+    expect(state.rpc).not.toHaveBeenCalled()
   })
 
   it('member-events: blocked member gets 403 and the RPC never runs', async () => {

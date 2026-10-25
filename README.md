@@ -402,8 +402,6 @@ way for a person to get oriented too.
 - Gym deactivation check post-login
 
 ### Admin Auth
-- Admin panel protected by `ADMIN_EMAIL` env var check
-- API routes protected by `ADMIN_PASSWORD` with IP-based rate limiting (5/min)
 - Gymflow-admin uses JWT session (8hr TTL) signed with `ADMIN_PANEL_SECRET`
 
 ### Password Security

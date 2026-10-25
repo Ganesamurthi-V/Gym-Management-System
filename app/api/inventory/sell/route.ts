@@ -6,6 +6,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { deleteCache } from '@/lib/cache'
 import { passesCsrf, UUID_RE, boundedInt, boundedNumber, MAX_MONEY } from '@/app/api/_guard'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 export async function POST(req: NextRequest) {
   const log = apiLogger('INVENTORY_SELL')
@@ -23,11 +24,13 @@ export async function POST(req: NextRequest) {
 
     const { data: gym } = await supabase
       .from('gyms')
-      .select('id')
+      .select('id, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
       .eq('owner_id', user.id)
       .single()
 
     if (!gym) return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     let body: Record<string, unknown>
     try { body = await req.json() } catch {

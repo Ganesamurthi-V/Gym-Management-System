@@ -10,11 +10,12 @@ import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/
 import { apiLogger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { calcEndDate, todayIST } from '@/lib/utils'
-import { importRowsToTake } from '@/lib/subscription-utils'
+import { importRowsToTake, PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
 import { passesCsrfCheck } from '@/lib/api/withAuth'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
-const PLAN_LIMIT_MESSAGE = 'Your plan allows 50 members, and your gym has reached that limit. Upgrade to a paid plan to import more members.'
+const PLAN_LIMIT_MESSAGE = `Your plan allows ${PLAN_MEMBER_LIMIT} members, and your gym has reached that limit. Upgrade to a paid plan to import more members.`
 
 const planLimitResponse = () => NextResponse.json(
   { success: false, error: { code: 'PLAN_MEMBER_LIMIT', message: PLAN_LIMIT_MESSAGE } },
@@ -89,9 +90,11 @@ export async function POST(req: NextRequest) {
     if (!gym) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     // Plan limits are decided here from the database, never from the request: a trial gym
-    // imports only as many rows as fit under 50 members in total, same as a Free gym.
+    // imports only as many rows as fit under the plan member limit in total, same as a Free gym.
     const [planRes, countRes] = await Promise.all([
       supabase.from('gyms').select('plan_type').eq('id', gym.id).single(),
       supabase.from('members').select('id', { count: 'exact', head: true }).eq('gym_id', gym.id),

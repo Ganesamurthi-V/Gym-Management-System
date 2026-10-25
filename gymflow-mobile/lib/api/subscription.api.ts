@@ -65,6 +65,8 @@ export type PendingRequest = {
   notes?: string;
   // Stored on the request by the owner app; the approve endpoint decides from this, not from the plan we send.
   plan_requested?: RequestedPlan | null;
+  // Rupees the DB expects for this request (from plan_requested + platform_settings); null on legacy rows.
+  expected_amount_inr?: number | null;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
   submitted_at: string;

@@ -10,7 +10,7 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { computeSubscriptionState, WHATSAPP_ADDON_PRICE_INR, FREE_PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
+import { computeSubscriptionState, PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
 import { api, GymFlowAPIError } from '@/lib/api/client'
 import { useRealtimeChannel } from '@/lib/hooks/useRealtimeChannel'
 import { useRealtimeInvalidation } from '@/lib/hooks/useRealtimeInvalidation'
@@ -43,8 +43,18 @@ interface LatestRequest {
 interface Settings {
   upi_id: string
   upi_name: string
-  price_monthly: number
-  price_yearly: number
+}
+
+/** Prices from platform_settings; null when they could not be read (prices are then hidden). */
+interface Prices {
+  monthly: number
+  yearly: number
+  whatsappAddon: number
+}
+
+/** "Price unavailable" rather than a guessed number when the server could not read the price. */
+function formatInr(price: number | null): string {
+  return price === null ? 'Price unavailable' : `₹${price.toLocaleString('en-IN')}`
 }
 
 /** The two SaaS billing tiers a gym owner can buy. */
@@ -55,9 +65,10 @@ interface Props {
   subState: SubState
   latestRequest: LatestRequest | null
   settings: Settings
+  prices: Prices | null
 }
 
-export default function SubscriptionClient({ gym, subState, latestRequest, settings }: Props) {
+export default function SubscriptionClient({ gym, subState, latestRequest, settings, prices }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly')
@@ -78,19 +89,19 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   const PLANS: {
     id: PlanId
     name: string
-    price: number
+    price: number | null
     period: string
     badge?: string
     Icon: typeof Calendar
   }[] = [
-    { id: 'monthly',     name: 'Monthly Plan',  price: settings.price_monthly,     period: '/ month',    Icon: Calendar },
-    { id: 'yearly',      name: 'Yearly Plan',   price: settings.price_yearly,      period: '/ year',     Icon: Zap,      badge: 'BEST VALUE' },
+    { id: 'monthly',     name: 'Monthly Plan',  price: prices?.monthly ?? null,     period: '/ month',    Icon: Calendar },
+    { id: 'yearly',      name: 'Yearly Plan',   price: prices?.yearly ?? null,      period: '/ year',     Icon: Zap,      badge: 'BEST VALUE' },
   ]
 
-  // The add-on is not a tile in PLANS (those are the base tiers); its price is the shared server
-  // constant, and the admin picks 'whatsapp_addon' at approval from the "Intended Plan" note.
-  const activePlan = selectedPlan === 'whatsapp_addon'
-    ? { id: 'whatsapp_addon' as const, name: 'WhatsApp Add-on', price: WHATSAPP_ADDON_PRICE_INR }
+  // The add-on is not a tile in PLANS (those are the base tiers); its price comes from
+  // platform_settings like the base tiers, and the admin picks 'whatsapp_addon' at approval from the "Intended Plan" note.
+  const activePlan: { id: PlanId; name: string; price: number | null } = selectedPlan === 'whatsapp_addon'
+    ? { id: 'whatsapp_addon' as const, name: 'WhatsApp Add-on', price: prices?.whatsappAddon ?? null }
     : PLANS.find(p => p.id === selectedPlan) ?? PLANS[0]
 
   // Comes only from platform_settings.upi_id. There is deliberately no hard-coded fallback:
@@ -106,7 +117,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
     later. Rebuilt whenever the amount or UPI details change.
   */
   const upiString = useMemo(() => {
-    if (!upiId) return ''
+    // No QR without a known price: an unreadable price must never become a payment amount.
+    if (!upiId || activePlan.price === null) return ''
     const params = new URLSearchParams({
       pa: upiId,
       pn: upiName,
@@ -468,8 +480,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
         {/* Trial over: the owner can keep a limited Free plan instead of paying. */}
         {step === 1 && gym.trialEnded && (
           <div className="bg-surface-card border border-surface-border rounded-2xl p-5 space-y-3">
-            <h3 className="text-lg font-bold text-slate-900">Continue on the free forever plan (up to {FREE_PLAN_MEMBER_LIMIT} members)</h3>
-            <p className="text-sm text-slate-500">Keep using GymFlow for free with up to {FREE_PLAN_MEMBER_LIMIT} members, or choose a paid plan below for everyone.</p>
+            <h3 className="text-lg font-bold text-slate-900">Continue on the free forever plan (up to {PLAN_MEMBER_LIMIT} members)</h3>
+            <p className="text-sm text-slate-500">Keep using GymFlow for free with up to {PLAN_MEMBER_LIMIT} members, or choose a paid plan below for everyone.</p>
             {freeError && (
               <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm font-semibold border border-red-100">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -546,7 +558,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                       </div>
                       <h4 className={`text-lg font-bold mb-1 ${isSelected ? 'text-brand-700' : 'text-slate-700'}`}>{plan.name}</h4>
                       <div className="flex items-end gap-1.5 mb-8">
-                        <span className="text-4xl font-black text-slate-900 tracking-tight">₹{plan.price.toLocaleString('en-IN')}</span>
+                        <span className="text-4xl font-black text-slate-900 tracking-tight">{formatInr(plan.price)}</span>
                         <span className="text-sm font-bold text-slate-400 mb-1.5">{plan.period}</span>
                       </div>
 
@@ -584,7 +596,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                  </span>
                  <MessageCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                  <div className="min-w-0 flex-1">
-                   <p className="text-sm font-bold text-slate-800">WhatsApp automation add-on, ₹{WHATSAPP_ADDON_PRICE_INR}/month</p>
+                   <p className="text-sm font-bold text-slate-800">WhatsApp automation add-on{prices ? `, ${formatInr(prices.whatsappAddon)}/month` : ''}</p>
                    <p className="text-xs text-slate-500">
                      {gym.whatsappAddonUntil && new Date(gym.whatsappAddonUntil).getTime() > Date.now()
                        ? `Active until ${new Date(gym.whatsappAddonUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Pay again to extend.`
@@ -622,7 +634,8 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
              <div className="mt-10 pt-8 border-t border-slate-100 flex justify-end">
                <button 
                  onClick={() => setStep(2)}
-                 className="px-8 py-3.5 bg-brand-500 hover:bg-brand-700 text-white rounded-xl font-bold transition-all shadow-md shadow-brand-500/25 flex items-center gap-2"
+                 disabled={activePlan.price === null}
+                 className="px-8 py-3.5 bg-brand-500 hover:bg-brand-700 text-white rounded-xl font-bold transition-all shadow-md shadow-brand-500/25 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                >
                  Continue to Payment <ArrowRight className="w-4 h-4" />
                </button>
@@ -659,7 +672,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                         must stay dark-on-light to scan. eslint-disable-next-line @next/next/no-img-element */
                      <img
                        src={qrDataUrl}
-                       alt={`UPI QR code for the ${activePlan.name} — ₹${activePlan.price.toLocaleString('en-IN')}`}
+                       alt={`UPI QR code for the ${activePlan.name} — ${formatInr(activePlan.price)}`}
                        className="w-full h-full object-contain"
                      />
                    ) : (
@@ -688,7 +701,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                    <div>
                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Amount</p>
                      <p className="text-brand-600 font-black text-lg">
-                       ₹{activePlan.price.toLocaleString('en-IN')}
+                       {formatInr(activePlan.price)}
                        <span className="text-sm font-semibold ml-1">({activePlan.name})</span>
                      </p>
                    </div>

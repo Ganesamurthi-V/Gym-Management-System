@@ -32,4 +32,4 @@ export const GET = withAuth('ACCOUNT_STATUS_GET', async (req: NextRequest, { sup
     { success: true, data, announcement },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
-})
+}, { allowWhenExpired: true })

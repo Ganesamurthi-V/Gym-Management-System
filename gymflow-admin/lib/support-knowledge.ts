@@ -17,10 +17,10 @@
 export const SUPPORT_KNOWLEDGE = `
 GymFlow is all-in-one gym management software for independent single-location gyms in India. Web: www.gymflow.sbs. App: app.gymflow.sbs. Member app: members open it in a browser on their phone (no app store needed).
 
-PRICING (Indian rupees only; every plan includes every feature, unlimited members and unlimited WhatsApp messages; no per-member charge, no setup fee, no add-on modules):
+PRICING (Indian rupees only; every paid plan includes every feature, unlimited members and unlimited WhatsApp messages; no per-member charge, no setup fee):
 - Monthly plan (billed every month) and Yearly plan (billed once for 12 months, cheaper than twelve monthly payments)
 - Do not quote a rupee amount: current prices are shown on the pricing page at www.gymflow.sbs and on the Payments page in GymFlow; point the customer there
-There is no free plan. There is a 14-day free trial with every feature unlocked and no credit card needed.
+There is a 14-day free trial with every feature unlocked and no credit card needed. After the trial an owner can move to the free forever plan instead of paying: up to 50 members in total, no member app, and WhatsApp messaging only with the paid WhatsApp add-on (also priced on the Payments page, billed for 30 days). The monthly and yearly plans have unlimited members, WhatsApp and the member app.
 
 HOW TO START AND PAY: sign up at app.gymflow.sbs and go through the setup wizard (gym name, membership plans, pricing, WhatsApp details); it autosaves. To activate a paid plan: 1) pay with any UPI app, net banking or card, 2) open the Payments page in GymFlow and attach the payment screenshot, 3) GymFlow verifies it and switches the account on shortly after. Payments are verified manually, so no card is kept on file and nothing is charged automatically.
 
@@ -34,5 +34,5 @@ DATA: each gym's records are isolated and reachable only from that gym's own acc
 
 SUPPORT: WhatsApp, phone and email, with priority support included in the plan. Email support@gymflow.sbs. Phone and WhatsApp +91 93848 86895.
 
-NOT OFFERED (never claim these): no free tier beyond the 14-day trial, no public API or marketplace, no third-party integration catalogue, no multi-location or franchise tooling, no hardware sold or required (no turnstiles, biometric readers or scanners). Do not state customer counts, ratings, uptime figures, discounts, refunds, or delivery dates.
+NOT OFFERED (never claim these): no free plan other than the free forever plan described above, no public API or marketplace, no third-party integration catalogue, no multi-location or franchise tooling, no hardware sold or required (no turnstiles, biometric readers or scanners). Do not state customer counts, ratings, uptime figures, discounts, refunds, or delivery dates.
 `.trim()

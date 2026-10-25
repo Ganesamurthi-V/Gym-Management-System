@@ -28,10 +28,8 @@ interface MembershipPlan {
 interface GymDetailsData {
   gymName: string
   gymType: string
-  branchCount: number
   address: string
   openingYear: number
-  phone: string
   city: string
 }
 
@@ -73,10 +71,8 @@ const DEFAULT_DATA: OnboardingData = {
   gymDetails: {
     gymName: '',
     gymType: 'Gym',
-    branchCount: 1,
     address: '',
     openingYear: new Date().getFullYear(),
-    phone: '',
     city: '',
   },
   plans: DEFAULT_PLANS,
@@ -119,15 +115,9 @@ function validateGymDetails(details: GymDetailsData): string | null {
   if (details.gymName.trim().length < 2) {
     return 'Enter a gym name with at least 2 characters.'
   }
-  if (!Number.isInteger(details.branchCount) || details.branchCount < 1 || details.branchCount > 100) {
-    return 'Number of branches must be between 1 and 100.'
-  }
   const latestOpeningYear = new Date().getFullYear() + 1
   if (!Number.isInteger(details.openingYear) || details.openingYear < 1900 || details.openingYear > latestOpeningYear) {
     return `Opening year must be between 1900 and ${latestOpeningYear}.`
-  }
-  if (details.phone && !/^\d{10}$/.test(details.phone)) {
-    return 'Enter a complete 10-digit phone number, or clear the phone field.'
   }
   return null
 }
@@ -224,7 +214,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
     }
   }, [])
 
-  // Keep the draft — including phone — until the server confirms success. This used to
+  // Keep the draft until the server confirms success. This used to
   // autosave on the initial render and had a separate "clear on unmount" effect whose
   // cleanup also ran whenever `submitting` changed. Starting a request therefore erased
   // the very draft the error message claimed was safe. Success is the only removal site.
@@ -333,10 +323,8 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
           gymId,
           gymName: data.gymDetails.gymName,
           gymType: data.gymDetails.gymType,
-          branchCount: data.gymDetails.branchCount,
           address: data.gymDetails.address,
           openingYear: data.gymDetails.openingYear,
-          phone: data.gymDetails.phone,
           city: data.gymDetails.city,
           plans: data.plans,
         }),
@@ -692,16 +680,10 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Number of Branches</label>
-            <input
-              type="number"
-              min={1}
-              value={data.branchCount}
-              onChange={e => {
-                const val = parseInt(e.target.value);
-                onChange({ branchCount: isNaN(val) ? ('' as any) : val });
-              }}
-              className="input-field"
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">City</label>
+            <CityAutocomplete
+              value={data.city}
+              onChange={(val) => onChange({ city: val })}
             />
           </div>
           <div>
@@ -714,33 +696,6 @@ function StepGymDetails({ data, onChange }: { data: GymDetailsData; onChange: (p
               onChange={e => onChange({ openingYear: parseInt(e.target.value) || new Date().getFullYear() })}
               className="input-field"
             />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">City</label>
-            <CityAutocomplete
-              value={data.city}
-              onChange={(val) => onChange({ city: val })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Phone</label>
-            <input
-              type="tel"
-              value={data.phone}
-              onChange={e => {
-                const digits = e.target.value.replace(/\D/g, '').slice(0, 10)
-                onChange({ phone: digits })
-              }}
-              className="input-field"
-              placeholder="10-digit number"
-              maxLength={10}
-            />
-            {data.phone && data.phone.length > 0 && data.phone.length < 10 && (
-              <p className="text-xs text-amber-600 mt-1">{10 - data.phone.length} more digits needed</p>
-            )}
           </div>
         </div>
 

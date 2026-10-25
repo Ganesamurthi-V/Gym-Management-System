@@ -21,7 +21,7 @@
    Inline markup inside any string: **bold** and [link text](href). Nothing else. parseInline()
    below is the one parser, used by the React renderer and by the no-JavaScript copy alike. */
 
-import { PLANS, formatINR, perMonth, savingPercent } from './plans.ts'
+import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, perMonth, savingPercent } from './plans.ts'
 
 export const SITE_ORIGIN = 'https://www.gymflow.sbs'
 
@@ -128,7 +128,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     ogImage: '/og/features.jpg',
     ogAlt: 'GymFlow features: member management, fees, attendance, member app, WhatsApp reminders and reports for gyms in India.',
     title: 'Gym Management Software Features for India — GymFlow',
-    description: 'Every GymFlow feature in one list: member management, fees and dues, attendance, member app, WhatsApp reminders, reports and Excel import. All in every plan.',
+    description: 'Every GymFlow feature in one list: member management, fees and dues, attendance, member app, WhatsApp reminders, reports and Excel import. Paid plans include all of it.',
     h1: 'Gym management software features',
     eyebrow: 'Features',
     intro: 'GymFlow brings the everyday work of an independent gym into one place: members, fees, attendance, a member app, WhatsApp reminders and reports. Each part is described below, in plain language, with what it does and how it works.',
@@ -142,9 +142,9 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         ],
       },
       {
-        heading: 'Every feature is in every plan',
+        heading: 'Every feature is in the paid plans',
         blocks: [
-          { type: 'p', text: 'GymFlow has no add-on modules and no features held back for a higher plan. Whichever plan you choose, you get everything on this page. Members and WhatsApp messages are unlimited, and you can try all of it free for 14 days without a credit card. [See pricing](/pricing).' },
+          { type: 'p', text: 'Both paid plans, monthly and yearly, include everything on this page, with unlimited members and unlimited WhatsApp messages. There is also a free forever plan for up to 50 members, which leaves out the member app and sends WhatsApp messages only with a paid add-on. You can try all of it free for 14 days without a credit card. [See pricing](/pricing).' },
         ],
       },
       {
@@ -153,7 +153,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           {
             type: 'ul',
             items: [
-              '[Pricing](/pricing): two plans with every feature in both, and a 14-day free trial.',
+              '[Pricing](/pricing): a free forever plan, a WhatsApp add-on, and monthly and yearly plans, with a 14-day free trial.',
               '[Gym software vs Excel](/gym-software-vs-excel): when a register or spreadsheet is enough and when it is not.',
             ],
           },
@@ -768,7 +768,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             type: 'ul',
             items: [
               'Messages go out through the official WhatsApp Business Platform using message templates approved by Meta. The wording is fixed by those templates, so owners cannot edit the text.',
-              'WhatsApp messages are unlimited on every plan, with no per-message charge.',
+              'WhatsApp messages are unlimited on the paid plans, with no per-message charge. On the free plan they come with the WhatsApp add-on.',
               'The message buttons on the Dues and Reports pages open a ready-written message in your own WhatsApp. Those are sent from your number, not from GymFlow.',
               'You are responsible for having your members\' permission to contact them on WhatsApp. Members can ask your gym to stop messaging them.',
               'When you [import members](/import-export), those whose plan ends soon or ended in the last two months are reminded straight away. Nobody gets a welcome message from an import.',
@@ -972,35 +972,39 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
   {
     slug: 'pricing',
     ogImage: '/og/pricing.jpg',
-    ogAlt: 'GymFlow card: Pricing, two plans with every feature and a 14-day free trial.',
+    ogAlt: 'GymFlow card: Pricing, a free forever plan, a WhatsApp add-on, monthly and yearly plans, and a 14-day free trial.',
     title: `Gym Software Pricing in India: ${formatINR(MONTHLY.price)} a Month — GymFlow`,
-    description: `GymFlow costs ${formatINR(MONTHLY.price)} a month or ${formatINR(YEARLY.price)} a year. Every feature is in every plan, with unlimited members and WhatsApp messages and a 14-day free trial.`,
+    description: `GymFlow has a free forever plan for up to ${FREE_MEMBER_LIMIT} members, then ${formatINR(MONTHLY.price)} a month or ${formatINR(YEARLY.price)} a year with every feature, unlimited members and WhatsApp messages. WhatsApp add-on ${formatINR(WHATSAPP_ADDON_PRICE)} a month.`,
     h1: 'Gym management software pricing',
     eyebrow: 'Pricing',
-    intro: `GymFlow costs ${formatINR(MONTHLY.price)} a month or ${formatINR(YEARLY.price)} a year. Every feature is in both plans, members and WhatsApp messages are unlimited, and no GST is added: the price you see is the price you pay.`,
+    intro: `GymFlow has four options: a free forever plan, a WhatsApp add-on at ${formatINR(WHATSAPP_ADDON_PRICE)} a month, and paid plans at ${formatINR(MONTHLY.price)} a month or ${formatINR(YEARLY.price)} a year. No GST is added: the price you see is the price you pay.`,
     breadcrumb: 'Pricing',
     cardTitle: 'Pricing',
-    cardText: `Two plans, monthly or yearly, with every feature in both. Start with a 14-day free trial, no credit card.`,
+    cardText: `Free forever, a WhatsApp add-on, or paid monthly and yearly plans. Start with a 14-day free trial, no credit card.`,
     icon: 'tag',
     group: 'Plans',
     topLevel: true,
     related: ['members', 'whatsapp', 'import-export'],
     sections: [
       {
-        heading: 'Two plans, one set of features',
+        heading: 'Four ways to pay',
         blocks: [
+          { type: 'h3', text: 'Free forever' },
+          { type: 'p', text: `${formatINR(0)}, for up to ${FREE_MEMBER_LIMIT} members. Includes member management, fees and dues, attendance tracking and member import. It does not include the member app.` },
+          { type: 'h3', text: 'WhatsApp add-on' },
+          { type: 'p', text: `${formatINR(WHATSAPP_ADDON_PRICE)} a month, for gyms on the free plan. Adds WhatsApp renewal messages, welcome messages and payment due alerts.` },
           { type: 'h3', text: MONTHLY.label },
           { type: 'p', text: `${formatINR(MONTHLY.price)} a month, billed monthly.` },
           { type: 'h3', text: YEARLY.label },
           { type: 'p', text: `${formatINR(YEARLY.price)} a year, billed once a year. That works out to ${formatINR(perMonth(YEARLY))} a month, about ${savingPercent(YEARLY)}% less than twelve monthly payments.` },
           { type: 'note', text: 'No GST is added. The price you see is the price you pay.' },
-          { type: 'p', text: 'There is no per-member charge, no per-message charge and no setup fee. There is no permanent free plan either: you try everything free for 14 days, then choose a plan.' },
+          { type: 'p', text: `There is no per-member charge, no per-message charge and no setup fee. You try everything free for 14 days, then choose a paid plan or the free forever plan for up to ${FREE_MEMBER_LIMIT} members.` },
         ],
       },
       {
-        heading: 'Every feature in every plan',
+        heading: 'Every feature in the paid plans',
         blocks: [
-          { type: 'p', text: 'Nothing is held back for a higher plan. Both plans include all of this:' },
+          { type: 'p', text: 'Nothing is held back for a higher plan. Both the monthly and the yearly plan include all of this:' },
           {
             type: 'ul',
             items: [
@@ -1028,7 +1032,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           {
             type: 'ol',
             items: [
-              'Choose Monthly or Yearly on the subscription page in the app. It shows a UPI QR code and UPI ID for the exact amount, which you can scan with any UPI app such as GPay, PhonePe, Paytm or BHIM.',
+              'Choose Monthly, Yearly or the WhatsApp add-on on the subscription page in the app. It shows a UPI QR code and UPI ID for the exact amount, which you can scan with any UPI app such as GPay, PhonePe, Paytm or BHIM.',
               'Complete the payment, then take a screenshot of it.',
               'Upload the screenshot (or a PDF) on the same page.',
               'We verify the payment, which usually takes a few hours, and switch your account on.',
@@ -1059,9 +1063,9 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'Common questions',
         blocks: [
           { type: 'h3', text: 'Is there a free plan?' },
-          { type: 'p', text: 'No. There is a free 14-day trial with every feature and no credit card. After that you choose the monthly or the yearly plan.' },
+          { type: 'p', text: `Yes. There is a free forever plan for up to ${FREE_MEMBER_LIMIT} members, available after the free 14-day trial. It does not include the member app, and WhatsApp messages on it need the ${formatINR(WHATSAPP_ADDON_PRICE)} a month add-on. The trial has every feature and needs no credit card. For unlimited members choose the monthly or the yearly plan.` },
           { type: 'h3', text: 'Do you charge per member or per WhatsApp message?' },
-          { type: 'p', text: 'No. Members and WhatsApp messages are unlimited on both plans, and the price does not change as your gym grows.' },
+          { type: 'p', text: 'No. Members and WhatsApp messages are unlimited on both paid plans, and the price does not change as your gym grows.' },
           { type: 'h3', text: 'Is GST added to the price?' },
           { type: 'p', text: 'No GST is added. The price you see is the price you pay.' },
           { type: 'h3', text: 'Do I need a credit card to start?' },

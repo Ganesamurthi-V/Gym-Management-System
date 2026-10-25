@@ -285,7 +285,7 @@ async function alertPublishFailure(status: number | null): Promise<void> {
     reportAlertInBackground({ key: 'wa:qstash_quota', severity: 'critical', title: 'QStash daily quota hit',
       body: 'QStash returned 429; queued WhatsApp messages will not drain until the quota resets.' })
   } else if (status === 401 || status === 403 || status === 404) {
-    reportAlertInBackground({ key: 'wa:qstash_auth', severity: 'critical', title: 'QStash token or URL wrong',
+    reportAlertInBackground({ key: 'wa:qstash_auth', severity: 'critical', title: `QStash token or URL wrong (HTTP ${status})`,
       body: `QStash publish returned HTTP ${status}; check QSTASH_TOKEN and QSTASH_URL (region).` })
   } else {
     reportAlertInBackground({ key: 'wa:qstash_publish', fingerprint: status === null ? 'network' : String(status), severity: 'critical', title: 'QStash publish failed',

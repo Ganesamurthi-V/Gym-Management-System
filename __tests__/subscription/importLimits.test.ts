@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
-import { importMaxRowsForDisplay, importRowsToTake } from '@/lib/subscription-utils'
+import { importMaxRowsForDisplay, importRowsToTake, memberCapReached } from '@/lib/subscription-utils'
 
 const read = (p: string) => fs.readFileSync(p, 'utf8').split('\r\n').join('\n')
 
@@ -64,13 +64,43 @@ describe('whole-gym import cap (source checks)', () => {
     expect(cap).toBeGreaterThan(-1)
     expect(cap).toBeLessThan(s.indexOf("alertFailure('member_insert')"))
   })
-  it('canonical schema and the migration enforce the trial import cap in the trigger function', () => {
-    for (const f of ['supabase-schema.sql', 'supabase/migrations/20261026120000_trial_import_member_cap.sql']) {
+  it('canonical schema and the latest migration cap EVERY trial insert (manual adds too) in the trigger function', () => {
+    for (const f of ['supabase-schema.sql', 'supabase/migrations/20261027100000_trial_member_cap_all_inserts.sql']) {
       const s = read(f)
-      expect(s).toContain('trial_import_member_limit')
-      expect(s).toContain('NEW.is_imported IS TRUE')
+      expect(s).toContain('trial_member_limit')
+      expect(s).not.toContain('trial_import_member_limit')
+      expect(s).not.toContain('NEW.is_imported IS TRUE')
       expect(s).toContain('free_plan_member_limit')
       expect(s).toContain('FOR UPDATE')
     }
+  })
+})
+
+describe('memberCapReached', () => {
+  it('caps trial and free at 50', () => {
+    for (const plan of ['trial', 'free']) {
+      expect(memberCapReached(plan, 49)).toBe(false)
+      expect(memberCapReached(plan, 50)).toBe(true)
+      expect(memberCapReached(plan, 51)).toBe(true)
+    }
+  })
+  it('never caps paid or unknown plans', () => {
+    for (const plan of ['monthly', 'quarterly', 'yearly', 'lifetime', null, undefined]) {
+      expect(memberCapReached(plan, 500)).toBe(false)
+    }
+  })
+})
+
+describe('POST /api/members enforces the cap (source checks)', () => {
+  const s = read('app/api/members/route.ts')
+  it('reads the plan and count from the DB for the resolved gym and returns 403 before inserting', () => {
+    expect(s).toContain('memberCapReached(')
+    expect(s).toContain(".eq('gym_id', gym.id)")
+    expect(s).toContain("code: 'PLAN_MEMBER_LIMIT'")
+    expect(s.indexOf('memberCapReached(')).toBeLessThan(s.indexOf("DB_INSERT')"))
+    expect(s).not.toContain('FREE_PLAN_LIMIT')
+  })
+  it('maps a race-loser DB cap error to the same response', () => {
+    expect(s).toContain("error.message?.includes('member_limit')")
   })
 })

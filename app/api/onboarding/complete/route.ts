@@ -30,10 +30,8 @@ type OnboardingRequest = {
   gymId: string | null
   gymName: string
   gymType: string
-  branchCount: number
   address: string
   openingYear: number
-  phone: string
   city: string
   plans: MembershipPlan[]
 }
@@ -85,20 +83,10 @@ function validateRequest(raw: unknown): ValidationResult {
     return { ok: false, message: 'Choose a valid gym type.' }
   }
 
-  const branchCount = Number(raw.branchCount ?? 1)
-  if (!Number.isInteger(branchCount) || branchCount < 1 || branchCount > 100) {
-    return { ok: false, message: 'Number of branches must be between 1 and 100.' }
-  }
-
   const openingYear = Number(raw.openingYear ?? new Date().getFullYear())
   const latestOpeningYear = new Date().getFullYear() + 1
   if (!Number.isInteger(openingYear) || openingYear < 1900 || openingYear > latestOpeningYear) {
     return { ok: false, message: `Opening year must be between 1900 and ${latestOpeningYear}.` }
-  }
-
-  const phone = optionalString(raw.phone, 20)
-  if (phone === null || (phone !== '' && !/^\d{10}$/.test(phone))) {
-    return { ok: false, message: 'Enter a valid 10-digit phone number, or leave the phone field empty.' }
   }
 
   const city = optionalString(raw.city, 200)
@@ -159,10 +147,8 @@ function validateRequest(raw: unknown): ValidationResult {
       gymId,
       gymName,
       gymType: gymType || 'Gym',
-      branchCount,
       address,
       openingYear,
-      phone,
       city,
       plans,
     },
@@ -254,21 +240,17 @@ export async function POST(req: NextRequest) {
       gymId,
       gymName,
       gymType,
-      branchCount,
       address,
       openingYear,
-      phone,
       city,
       plans,
     } = validation.data
 
     const onboardingData = {
       gymType,
-      branchCount,
       address,
       openingYear,
       city,
-      phone,
       plans,
       completedAt: new Date().toISOString(),
     }
@@ -315,7 +297,7 @@ export async function POST(req: NextRequest) {
 
       const updateWithContact = await supabase
         .from('gyms')
-        .update({ ...coreUpdate, phone: phone || null, city: city || null })
+        .update({ ...coreUpdate, city: city || null })
         .eq('id', id)
         .eq('owner_id', user.id)
         .select('id')
@@ -333,7 +315,7 @@ export async function POST(req: NextRequest) {
         */
         log.warn('Contact columns unavailable; saving onboarding data without mirrors', {
           code: updateError?.code,
-          missingColumns: 'city_or_phone',
+          missingColumns: 'city',
         })
 
         const fallbackUpdate = await supabase
@@ -399,7 +381,7 @@ export async function POST(req: NextRequest) {
 
       const insertWithContact = await supabase
         .from('gyms')
-        .insert({ ...coreInsert, phone: phone || null, city: city || null })
+        .insert({ ...coreInsert, city: city || null })
         .select('id')
         .single()
 
@@ -409,7 +391,7 @@ export async function POST(req: NextRequest) {
       if (isMissingContactColumn(insertError)) {
         log.warn('Contact columns unavailable; creating gym without mirrors', {
           code: insertError?.code,
-          missingColumns: 'city_or_phone',
+          missingColumns: 'city',
         })
 
         const fallbackInsert = await supabase

@@ -8,7 +8,13 @@ export const PLANS = [
   { id: 'yearly', label: 'Yearly', price: 9999, months: 12 },
 ] as const;
 
-export type Plan = (typeof PLANS)[number];
+/* The free forever plan and the WhatsApp add-on are not billing terms, so they are not in
+   PLANS. They mirror FREE_PLAN_MEMBER_LIMIT and WHATSAPP_ADDON_PRICE_INR in the app's
+   lib/subscription-utils.ts. */
+export const FREE_MEMBER_LIMIT = 50;
+export const WHATSAPP_ADDON_PRICE = 299;
+
+export type Plan =(typeof PLANS)[number];
 export type PlanId = Plan['id'];
 
 /** The 1-month price is the reference rate every saving is measured against. */

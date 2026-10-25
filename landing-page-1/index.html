@@ -65,7 +65,7 @@
     <title>GymFlow — Gym Management Software for Indian Gyms</title>
     <meta
       name="description"
-      content="Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. From ₹999/month. Free trial."
+      content="Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. Free forever plan, paid plans from ₹999/month."
     />
 
     <!--
@@ -235,7 +235,7 @@
       when real, verifiable reviews exist to point at.
 
       ─── OFFERS LIVE ON THE SoftwareApplication, NOT THE Organization ───────
-      The two plans (monthly ₹999, yearly ₹9,999, from src/data/plans.ts) are Offers
+      The four plans (free ₹0, WhatsApp add-on ₹299, monthly ₹999, yearly ₹9,999, from src/data/plans.ts) are Offers
       on the product being sold. They used to hang off the Organization as a single
       makesOffer; Google reads offers on a SoftwareApplication, and one Offer could
       not show that there are two plans. scripts/check-copy-sync.mjs fails the build
@@ -322,7 +322,7 @@
           "@id": "https://www.gymflow.sbs/#webpage",
           "url": "https://www.gymflow.sbs/",
           "name": "GymFlow — Gym Management Software for Indian Gyms",
-          "description": "Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. From ₹999/month. Free trial.",
+          "description": "Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. Free forever plan, paid plans from ₹999/month.",
           "isPartOf": {
             "@id": "https://www.gymflow.sbs/#website"
           },
@@ -367,6 +367,36 @@
             "@id": "https://www.gymflow.sbs/#organization"
           },
           "offers": [
+            {
+              "@type": "Offer",
+              "@id": "https://www.gymflow.sbs/#offer-free",
+              "name": "GymFlow free forever plan",
+              "description": "GymFlow for up to 50 members at no cost, with member management, fees and dues, attendance tracking and member import. Available after the 14-day free trial.",
+              "price": "0",
+              "priceCurrency": "INR",
+              "availability": "https://schema.org/InStock",
+              "url": "https://www.gymflow.sbs/#pricing"
+            },
+            {
+              "@type": "Offer",
+              "@id": "https://www.gymflow.sbs/#offer-whatsapp-addon",
+              "name": "GymFlow WhatsApp add-on",
+              "description": "WhatsApp reminders (welcome, renewal and payment due messages) for gyms on the free forever plan.",
+              "price": "299",
+              "priceCurrency": "INR",
+              "availability": "https://schema.org/InStock",
+              "url": "https://www.gymflow.sbs/#pricing",
+              "priceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "299",
+                "priceCurrency": "INR",
+                "referenceQuantity": {
+                  "@type": "QuantitativeValue",
+                  "value": 1,
+                  "unitCode": "MON"
+                }
+              }
+            },
             {
               "@type": "Offer",
               "@id": "https://www.gymflow.sbs/#offer-monthly",
@@ -439,7 +469,7 @@
               "name": "How much does GymFlow cost?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "From ₹999 per month — or ₹9,999 for a year (save 17%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later."
+                "text": "Start free: the free forever plan covers up to 50 members. Paid plans are ₹999 per month or ₹9,999 for a year (save 17%), with every feature, unlimited members, and unlimited WhatsApp messages. Gyms on the free plan can add WhatsApp reminders for ₹299 per month. No GST, no per-member charges, and no setup fee."
               }
             },
             {
@@ -447,7 +477,7 @@
               "name": "Are WhatsApp messages really unlimited?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Yes. Welcome messages, renewal reminders, and payment due alerts are all included. They are part of your plan, so there is no per-message charge."
+                "text": "Yes, on the paid plans. Welcome messages, renewal reminders, and payment due alerts are all included, so there is no per-message charge. On the free plan, WhatsApp reminders are a ₹299 per month add-on."
               }
             },
             {
@@ -471,7 +501,7 @@
               "name": "How fast does support reply?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Every plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours."
+                "text": "Every paid plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours."
               }
             },
             {
@@ -579,7 +609,7 @@
         <p>
           Gym management software for independent gyms across India. Members, payments,
           attendance, dues and WhatsApp automation in one place, without the notebooks.
-          From ₹999 per month, with a 14-day free trial, no credit card, and you can cancel anytime.
+          Free forever for up to 50 members, or paid plans from ₹999 per month. 14-day free trial, no credit card, and you can cancel anytime.
         </p>
         <p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="#pricing">See pricing</a></p>
 
@@ -629,10 +659,12 @@
           <li><strong>Start managing your gym.</strong> Track members, attendance, payments, reports and WhatsApp reminders from one place.</li>
         </ol>
 
-        <h2 id="pricing">Gym management software pricing: every feature in every plan</h2>
+        <h2 id="pricing">Gym management software pricing: start free, upgrade when you grow</h2>
         <ul>
-          <li>Monthly: ₹999 per month</li>
-          <li>Yearly: ₹9,999 for a year (save 17%)</li>
+          <li>Free forever: ₹0, up to 50 members, with member management, fees and dues, attendance tracking, and member import</li>
+          <li>WhatsApp add-on: ₹299 per month, for gyms on the free plan, with renewal messages, welcome messages and payment due alerts</li>
+          <li>Monthly: ₹999 per month, with unlimited members, the member app and workouts, reports and analytics, and WhatsApp reminders</li>
+          <li>Yearly: ₹9,999 for a year (save 17%), everything in Monthly</li>
         </ul>
         <p>No GST is added. The price you see is the price you pay.</p>
         <p>
@@ -645,15 +677,15 @@
         <h3>Is there a free trial?</h3>
         <p>Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the 14-day free trial before you decide.</p>
         <h3>How much does GymFlow cost?</h3>
-        <p>From ₹999 per month — or ₹9,999 for a year (save 17%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.</p>
+        <p>Start free: the free forever plan covers up to 50 members. Paid plans are ₹999 per month or ₹9,999 for a year (save 17%), with every feature, unlimited members, and unlimited WhatsApp messages. Gyms on the free plan can add WhatsApp reminders for ₹299 per month. No GST, no per-member charges, and no setup fee.</p>
         <h3>Are WhatsApp messages really unlimited?</h3>
-        <p>Yes. Welcome messages, renewal reminders, and payment due alerts are all included. They are part of your plan, so there is no per-message charge.</p>
+        <p>Yes, on the paid plans. Welcome messages, renewal reminders, and payment due alerts are all included, so there is no per-message charge. On the free plan, WhatsApp reminders are a ₹299 per month add-on.</p>
         <h3>Can I move my existing members from Excel?</h3>
         <p>Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm.</p>
         <h3>Is my gym&#x27;s data safe?</h3>
         <p>Each gym&#x27;s data is kept separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym&#x27;s data from account settings.</p>
         <h3>How fast does support reply?</h3>
-        <p>Every plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.</p>
+        <p>Every paid plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.</p>
         <h3>How do I reach support?</h3>
         <p>Over WhatsApp, phone, or email. You talk to the person who builds GymFlow rather than a ticket queue, and we reply within 24 hours. Support in English and Tamil.</p>
         <h3>Where can I check if GymFlow is working?</h3>

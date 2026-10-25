@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Lock } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
 import { ThemeToggle, ThemeToggleButton } from '@/components/theme/ThemeToggle'
@@ -19,6 +19,7 @@ import { computeSubscriptionState } from '@/lib/subscription-utils'
 import { tourAttr } from '@/lib/tours/anchors'
 import { isTourActive, subscribeTourNav } from '@/lib/tours/tour-state'
 import TourLauncher from '@/components/tours/TourLauncher'
+import { MemberCapProvider, LockedAddMember } from './MemberCap'
 
 const SHELL_EXCLUDED = ['/auth/', '/owner/onboarding', '/owner/subscription']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
@@ -49,9 +50,11 @@ interface ShellGuardProps {
   initialUnreadCount: number | null
   initialSubscriptionStatus: string
   initialTrialDaysLeft: number
+  /** Trial/Free gym already at 50 members: Add Member controls render locked. */
+  memberCapped: boolean
 }
 
-export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount, initialSubscriptionStatus, initialTrialDaysLeft }: ShellGuardProps) {
+export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount, initialSubscriptionStatus, initialTrialDaysLeft, memberCapped }: ShellGuardProps) {
   const pathname = usePathname()
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
@@ -217,6 +220,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
   if (isShellless) return <>{children}</>
 
   return (
+    <MemberCapProvider value={memberCapped}>
     <div className="min-h-full">
 
       {/* Platform announcement — first element of the shell, full width above sidebar and
@@ -278,6 +282,20 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
         {/* ── Add Member button ── */}
         <div className={`flex-shrink-0 transition-all duration-200 ${collapsed ? 'px-2 pb-4 group-hover/sidebar:px-3' : 'px-3 pb-4'}`}>
+          {memberCapped ? (
+            <LockedAddMember
+              {...tourAttr('sidebarAddMember')}
+              className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold rounded-xl"
+            >
+              <Lock className="w-4 h-4 flex-shrink-0" />
+              <span className={`
+                whitespace-nowrap overflow-hidden transition-all duration-200
+                ${collapsed ? 'w-0 opacity-0 group-hover/sidebar:w-auto group-hover/sidebar:opacity-100' : 'w-auto opacity-100'}
+              `}>
+                Add Member
+              </span>
+            </LockedAddMember>
+          ) : (
           <a
             href="/owner/members/new"
             onClick={e => e.stopPropagation()}
@@ -300,6 +318,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
               Add Member
             </span>
           </a>
+          )}
         </div>
       </aside>
 
@@ -362,5 +381,6 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
           lives here so one tour instance survives every /owner/* navigation. */}
       <TourLauncher gymCreatedAt={initialGym?.created_at} />
     </div>
+    </MemberCapProvider>
   )
 }

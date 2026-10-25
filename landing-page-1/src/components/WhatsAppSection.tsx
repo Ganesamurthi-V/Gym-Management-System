@@ -79,6 +79,9 @@ export function WhatsAppSection() {
                 More on WhatsApp reminders
               </a>
             </p>
+            <p className="reveal mt-2 text-xs text-muted-foreground">
+              Unlimited WhatsApp, not billed extra, on all paid plans*
+            </p>
 
             {/* Tabs replace the three stacked cards: one compact control, and the
                 phone beside it carries the message itself. */}

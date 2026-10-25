@@ -5,7 +5,7 @@ import QRCode from 'qrcode'
 import {
   Clock, CheckCircle, XCircle, Upload, Copy, CreditCard,
   RefreshCw, MessageCircle, AlertCircle, ArrowRight, Shield,
-  Calendar, Zap, Check, Circle, CheckCircle2
+  Calendar, Zap, Check, Circle, CheckCircle2, ArrowLeft
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -225,6 +225,13 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
             setSuccess(false)
           } else if (payload.new?.status === 'approved') {
             setSuccess(true)
+            // The access-change redirect in syncSubscription never fires for a Free gym buying the
+            // WhatsApp add-on (still Free before and after), so approval itself sends them back.
+            if (!redirectScheduledRef.current) {
+              redirectScheduledRef.current = true
+              toast.success('Payment approved! Redirecting to your dashboard...')
+              window.setTimeout(() => { window.location.href = '/owner/dashboard' }, 1_500)
+            }
           }
         },
       },
@@ -261,7 +268,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
       await api.post('/api/subscription/free')
       router.refresh()
     } catch (err) {
-      setFreeError(err instanceof GymFlowAPIError ? err.message : 'Could not switch to the Free plan. Please try again.')
+      setFreeError(err instanceof GymFlowAPIError ? err.message : 'Could not switch to the free forever plan. Please try again.')
     } finally {
       setFreeBusy(false)
     }
@@ -473,7 +480,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
         {/* Trial over: the owner can keep a limited Free plan instead of paying. */}
         {step === 1 && gym.trialEnded && (
           <div className="bg-surface-card border border-surface-border rounded-2xl p-5 space-y-3">
-            <h3 className="text-lg font-bold text-slate-900">Continue on Free (up to {PLAN_MEMBER_LIMIT} members)</h3>
+            <h3 className="text-lg font-bold text-slate-900">Continue on the free forever plan (up to {PLAN_MEMBER_LIMIT} members)</h3>
             <p className="text-sm text-slate-500">Keep using GymFlow for free with up to {PLAN_MEMBER_LIMIT} members, or choose a paid plan below for everyone.</p>
             {freeError && (
               <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm font-semibold border border-red-100">
@@ -486,9 +493,21 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
               disabled={freeBusy}
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold border border-surface-border bg-surface text-slate-700 hover:bg-slate-50 disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              {freeBusy ? <><RefreshCw className="w-4 h-4 animate-spin" /> Switching...</> : 'Continue on Free'}
+              {freeBusy ? <><RefreshCw className="w-4 h-4 animate-spin" /> Switching...</> : 'Continue on the free forever plan'}
             </button>
           </div>
+        )}
+
+        {/* Back to the dashboard. Hidden when the gym is blocked (expired / trial over): the
+            paywall would send them straight back here, so the link would only loop. */}
+        {step === 1 && !liveSubState.isExpired && !gym.trialEnded && (
+          <Link
+            href="/owner/dashboard"
+            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to dashboard
+          </Link>
         )}
 
         {/* Step 1 UI */}
@@ -568,17 +587,20 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
                  tabIndex={0}
                  onClick={() => setSelectedPlan('whatsapp_addon')}
                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPlan('whatsapp_addon') } }}
-                 className={`mt-6 max-w-3xl mx-auto cursor-pointer rounded-2xl border-2 p-4 flex items-center gap-3 transition-colors ${
-                   selectedPlan === 'whatsapp_addon' ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-100 bg-surface hover:border-emerald-200'
+                 className={`relative mt-6 max-w-3xl mx-auto cursor-pointer rounded-2xl border-2 p-4 flex items-center gap-3 transition-colors ${
+                   selectedPlan === 'whatsapp_addon' ? 'border-emerald-500 bg-emerald-50/40' : 'border-emerald-300 bg-surface hover:border-emerald-500'
                  }`}
                >
+                 <span className="absolute -top-2.5 left-4 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">
+                   Add-on
+                 </span>
                  <MessageCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                  <div className="min-w-0 flex-1">
                    <p className="text-sm font-bold text-slate-800">WhatsApp automation add-on{prices ? `, ${formatInr(prices.whatsappAddon)}/month` : ''}</p>
                    <p className="text-xs text-slate-500">
                      {gym.whatsappAddonUntil && new Date(gym.whatsappAddonUntil).getTime() > Date.now()
                        ? `Active until ${new Date(gym.whatsappAddonUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Pay again to extend.`
-                       : 'WhatsApp messages for your members while you stay on the Free plan.'}
+                       : 'WhatsApp messages for your members while you stay on the free forever plan.'}
                    </p>
                  </div>
                  {selectedPlan === 'whatsapp_addon'

@@ -161,7 +161,7 @@ export default async function MembersPage() {
             {freeLimitReached && (
               <PlanNotice
                 tone="warning"
-                message={`You have reached the ${PLAN_MEMBER_LIMIT}-member Free plan limit. Upgrade to a paid plan to add more.`}
+                message={`You have reached the ${PLAN_MEMBER_LIMIT}-member free forever plan limit. Upgrade to a paid plan to add more.`}
                 action={{ href: '/owner/subscription', label: 'Upgrade' }}
               />
             )}

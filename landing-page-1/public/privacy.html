@@ -291,7 +291,7 @@
 
       <main>
         <h1>Privacy Policy</h1>
-        <p class="updated">Last updated: October 2026</p>
+        <p class="updated">Last updated: 25 October 2026</p>
 
         <nav class="toc" aria-label="Contents">
           <p>Contents</p>
@@ -301,8 +301,10 @@
             <li><a href="#how-we-use">How we use your information</a></li>
             <li><a href="#whatsapp">WhatsApp messaging</a></li>
             <li><a href="#member-data">Member data &amp; your role</a></li>
+            <li><a href="#member-app">Member app &amp; leaderboards</a></li>
             <li><a href="#sharing">Data sharing</a></li>
-            <li><a href="#analytics">Analytics &amp; error tracking</a></li>
+            <li><a href="#transfers">Transfers outside India</a></li>
+            <li><a href="#analytics">Analytics, cookies &amp; error tracking</a></li>
             <li><a href="#security">Data security</a></li>
             <li><a href="#retention">Data retention</a></li>
             <li><a href="#export-delete">Exporting and deleting your data</a></li>
@@ -315,192 +317,238 @@
 
         <h2 id="introduction">1. Introduction</h2>
         <p class="lead">
-          GymFlow ("we", "our", or "us") is committed to protecting your privacy. This Privacy
-          Policy explains how we collect, use, disclose, and safeguard your information when you
-          use our gym management platform at
-          <a href="https://www.gymflow.sbs">www.gymflow.sbs</a> and the application at
-          <a href="https://app.gymflow.sbs">app.gymflow.sbs</a>.
+          GymFlow ("we", "our", or "us") is gym management software for independent gyms in India.
+          This Privacy Policy explains what information we collect, why, who we share it with, and
+          the choices you have. It covers our website at
+          <a href="https://app.gymflow.sbs">app.gymflow.sbs</a>, the owner console and member app at
+          <a href="https://admin.gymflow.sbs">admin.gymflow.sbs</a>, and the GymFlow admin mobile app.
         </p>
         <p>
-          GymFlow is built for independent gym owners in India. When you sign up as a gym owner,
-          you are our customer. The members you add to your gym are your customers — for their
-          data, you are the data controller and GymFlow acts as your processor. This distinction
-          runs throughout this policy.
+          We follow the Digital Personal Data Protection Act, 2023 (DPDP Act) and the Information
+          Technology Act, 2000. Our role depends on whose data it is:
         </p>
+        <ul>
+          <li><strong>Gym owner account data</strong> (your login, your gym's details, your subscription): GymFlow decides how this is used, so we are the Data Fiduciary.</li>
+          <li><strong>Member data</strong> (the people who train at a gym): the gym owner decides what is collected and why, so the gym is the Data Fiduciary and GymFlow is its Data Processor. We handle member data only on the gym's behalf, to run the service.</li>
+        </ul>
 
         <h2 id="information-we-collect">2. Information We Collect</h2>
-        <p>We collect information that you provide directly to us, including:</p>
+        <p><strong>From gym owners</strong></p>
         <ul>
-          <li><strong>Account information</strong> — name, email address, phone number, and password.</li>
-          <li><strong>Gym business information</strong> — gym name, address, membership plans and pricing.</li>
-          <li><strong>Member data</strong> — the member records you enter into the platform, such as names, contact numbers, membership plans, attendance and payment history.</li>
-          <li><strong>UPI / payment details</strong> — to help you collect payments, we store your gym's UPI merchant details (such as your UPI ID and payee name) so the platform can generate a UPI QR code. We do not store card numbers, bank credentials, or the raw QR image, and we do not process or hold funds — payments settle directly to your own UPI account.</li>
-          <li><strong>Usage data and analytics</strong> — how you interact with the platform, device and browser information, and diagnostic logs used to keep the service reliable.</li>
+          <li><strong>Account information</strong> — your name, email address, password and mobile number. The mobile number is required when you sign up. We do not verify it with a code. We keep it in GymFlow's own contact list so we can reach you about GymFlow, and we send you updates and offers on WhatsApp only if you ticked the box to agree to them.</li>
+          <li><strong>Google sign-in</strong> — if you sign in with Google, the name and email address on your Google account.</li>
+          <li><strong>Gym details</strong> — gym name, type, address, city, opening year, and the gym phone number and number of branches if you add them on the Account page. Also the membership plans and prices you set.</li>
+          <li><strong>UPI details</strong> — your gym's UPI ID and payee name, so the app can generate a UPI QR code and payment link. We do not store card numbers or bank credentials, and we do not process or hold any money: members pay your UPI account directly, and you record the payment in GymFlow.</li>
+          <li><strong>Subscription payments to GymFlow</strong> — the payment proof file, UPI transaction reference and any note you submit, which we check by hand.</li>
+          <li><strong>Support messages</strong> — the subject and message you send from the app, and what you email to us.</li>
+        </ul>
+        <p><strong>About members (entered or uploaded by the gym)</strong></p>
+        <ul>
+          <li>Name, mobile number, gender, age, date of birth and area, as the gym chooses to record them.</li>
+          <li>Membership plan, category, start and end dates, amounts paid and due, payment mode (cash, UPI or card), and attendance (date, morning or evening session, and check-out time).</li>
+          <li>Records the gym brings in by uploading an Excel or CSV file. The gym must have the right to upload that data.</li>
+          <li>For members who activate the member app: the login created for them, and the activity shown in the app (see <a href="#member-app">Member app &amp; leaderboards</a>).</li>
+        </ul>
+        <p><strong>Collected automatically</strong></p>
+        <ul>
+          <li>Technical and usage data such as device and browser type, pages used, and error and performance logs.</li>
+          <li>Session replays inside the owner console and member app (see <a href="#analytics">Analytics, cookies &amp; error tracking</a>).</li>
         </ul>
 
         <h2 id="how-we-use">3. How We Use Your Information</h2>
-        <p>We use the information we collect to:</p>
         <ul>
-          <li>Provide, maintain, and improve our services.</li>
-          <li>Verify your subscription payments and send related information.</li>
-          <li>Generate UPI QR codes from your gym's UPI details so you can collect payments from members.</li>
-          <li>Send WhatsApp notifications to gym members.</li>
-          <li>Respond to your comments, questions, and support requests.</li>
-          <li>Send transactional emails, such as account verification and security notifications.</li>
-          <li>Monitor and analyse trends, usage, and activity to improve the platform.</li>
-          <li>Detect, prevent, and address technical issues, fraud, and abuse.</li>
+          <li>Provide, maintain and improve the service, including membership, attendance, dues, reports and the member app.</li>
+          <li>Verify your identity and secure your account, including one-time codes sent to your email to confirm sensitive actions such as deleting data.</li>
+          <li>Contact you about GymFlow, including updates and offers on WhatsApp where you have agreed to receive them.</li>
+          <li>Check your subscription payments and manage your plan.</li>
+          <li>Send WhatsApp messages and emails to members and owners as described in this policy.</li>
+          <li>Answer support requests. We use an AI tool to draft replies to support emails, which our team reviews before anything is sent.</li>
+          <li>Find and fix faults, keep the service running, and prevent fraud and abuse.</li>
+          <li>Meet legal obligations.</li>
         </ul>
+        <p>We do not sell personal information and we do not use it for advertising.</p>
 
         <h2 id="whatsapp">4. WhatsApp Messaging</h2>
         <p>
-          WhatsApp notifications are a core part of GymFlow and are active for every gym. We use the
-          WhatsApp Business API (provided by Meta) to send transactional messages to gym members on
-          behalf of their gym. These messages include welcome notifications, payment confirmations,
-          and membership reminders.
+          GymFlow sends WhatsApp messages through the WhatsApp Business Cloud API provided by Meta,
+          using one shared GymFlow number. The messages include welcome messages,
+          membership renewal reminders, payment confirmations and, where a gym uses the member app,
+          engagement messages such as streak and prize notices. Gyms on the free forever plan send these
+          only while the paid WhatsApp add-on is active.
         </p>
         <p>
-          Because these messages are sent using the member contact details a gym enters, gym owners
-          are responsible for obtaining consent from their members to be contacted on WhatsApp, and
-          for ensuring the messages sent through their account comply with WhatsApp's Business
-          Messaging Policy and applicable law. Members can ask their gym to stop messaging them at
-          any time.
+          Meta limits how many different people one number may message in 24 hours. When that limit
+          is full, a reminder may be delayed and sent later rather than dropped.
+        </p>
+        <p>
+          The gym enters the member's number, so the gym is responsible for having the member's
+          consent to be messaged on WhatsApp and for following Meta's WhatsApp Business Messaging
+          Policy. A member who does not want these messages can ask their gym to stop them, or
+          block the number in WhatsApp. Meta handles message delivery under its own privacy terms.
         </p>
 
         <h2 id="member-data">5. Member Data &amp; Your Role as a Gym Owner</h2>
         <p>
-          Member data belongs to the gym that entered it. As a gym owner, you decide what member
-          information to collect and how it is used within your gym. You are responsible for having
-          a lawful basis to collect and store that information, and for honouring your members'
-          requests to access, correct, or delete their data.
+          Member data belongs to the gym that entered it. As a gym owner you decide what to collect
+          and how it is used. You are responsible for having a lawful basis, which in most cases
+          means the member's consent, for the information you record or upload. You must also keep
+          it accurate and respond to your members' requests to access, correct or erase their data.
         </p>
         <p>
           GymFlow processes member data only to provide the service to you, and never uses one
-          gym's member data to benefit another gym. If you close your account, we handle member
-          data as described in <a href="#retention">Data Retention</a> below.
+          gym's member data for another gym. Each gym's data is separated from every other gym's.
+          If your account ends, member data is handled as set out in
+          <a href="#retention">Data retention</a>.
         </p>
 
-        <h2 id="sharing">6. Data Sharing</h2>
+        <h2 id="member-app">6. Member App &amp; Leaderboards</h2>
         <p>
-          We do not sell your personal information. We share information only with the service
-          providers (sub-processors) that help us run the platform, and only as needed to provide
-          the service:
+          Members join the member app through an activation link sent on WhatsApp by their gym. The
+          app shows a member their own membership, attendance, streak, points (XP), badges. These are worked out from the member's attendance and membership
+          records; they are not a separate profile.
         </p>
         <ul>
-          <li><strong>Supabase</strong> — database, authentication and file storage (for example, gym logos).</li>
-          <li><strong>Vercel</strong> — application hosting and content delivery.</li>
-          <li><strong>Meta (WhatsApp Business Cloud API)</strong> — sending WhatsApp messages to gym members.</li>
-          <li><strong>Upstash</strong> — QStash to queue and rate-limit outgoing WhatsApp messages, and Redis for rate limiting.</li>
-          <li><strong>Sentry</strong> — error and performance monitoring, and session replay, to diagnose problems (see <a href="#analytics">Analytics &amp; Error Tracking</a>).</li>
-          <li><strong>Resend</strong> — sending transactional email, such as account verification and security notifications.</li>
-          <li><strong>Groq</strong> — generating draft replies to emails sent to our support inbox. The sender's name, the gym name on their account and the text of their message are sent to it so our team can review and edit a draft; nothing is sent automatically, and member records are not sent.</li>
-          <li><strong>Google Maps Platform</strong> — address autocomplete when you enter your gym's address during onboarding.</li>
+          <li>Gyms can show leaderboards. Other members see a shortened name (for example "Akhil P."), never a phone number.</li>
+          <li>A member can opt out of leaderboards at any time from their profile in the app.</li>
+          <li>A gym owner can award prizes and run challenges to members.</li>
+          <li>The member app is not available to gyms on the free forever plan.</li>
         </ul>
-        <p>These providers process data only on our instructions and under their own security and privacy obligations.</p>
+
+        <h2 id="sharing">7. Data Sharing</h2>
+        <p>
+          We do not sell personal information. We share it only with the service providers that help
+          us run GymFlow, and only as much as each one needs:
+        </p>
+        <ul>
+          <li><strong>Supabase</strong> — database, sign-in and file storage (the payment proofs you upload).</li>
+          <li><strong>Vercel</strong> — hosting of the owner console and member app.</li>
+          <li><strong>Cloudflare</strong> — hosting of our marketing website.</li>
+          <li><strong>Meta (WhatsApp Business Cloud API)</strong> — delivering WhatsApp messages.</li>
+          <li><strong>Upstash</strong> — Redis for rate limiting and short-lived caching, and QStash for queuing outgoing WhatsApp messages.</li>
+          <li><strong>Resend</strong> — sending transactional email such as verification and security notices.</li>
+          <li><strong>Sentry</strong> — error tracking, performance data, logs and session replays (see <a href="#analytics">Analytics, cookies &amp; error tracking</a>).</li>
+          <li><strong>Groq</strong> — drafting replies to emails sent to our support inbox. It receives the sender's name, the gym name on their account and the text of their message. Nothing is sent automatically, and member records are not sent.</li>
+          <li><strong>Google Maps Platform</strong> — address and city suggestions when you type your gym's address.</li>
+          <li><strong>Firebase Cloud Messaging (Google)</strong> — push notifications to the GymFlow admin mobile app.</li>
+          <li><strong>Telegram and Better Stack</strong> — internal failure alerts and uptime checks for the GymFlow team. Alert text has phone numbers, email addresses and access tokens removed before it is sent, and may mention a gym's internal ID and counts, but never member contact details.</li>
+          <li><strong>Microsoft Clarity and Google Analytics</strong> — on the marketing website only, and only if you allow them (see <a href="#analytics">Analytics, cookies &amp; error tracking</a>).</li>
+        </ul>
+        <p>These providers act on our instructions and under their own security and privacy terms.</p>
         <p>We may also disclose information:</p>
         <ul>
-          <li><strong>To legal authorities</strong> — when required by applicable law, regulation, legal process, or enforceable governmental request.</li>
-          <li><strong>In a business transfer</strong> — in connection with a merger, acquisition, or sale of assets, in which case we will notify you before your information becomes subject to a different privacy policy.</li>
+          <li><strong>To authorities</strong> — when required by law, legal process or an enforceable government request.</li>
+          <li><strong>In a business transfer</strong> — in a merger, acquisition or sale of assets, in which case we will tell you before your information becomes subject to a different privacy policy.</li>
         </ul>
 
-        <h2 id="analytics">7. Analytics &amp; Error Tracking</h2>
+        <h2 id="transfers">8. Transfers Outside India</h2>
         <p>
-          To keep the platform reliable, we use <strong>Sentry</strong> to capture errors,
-          performance data, and session replays (recordings of how a page looked and behaved, used
-          to reproduce a problem). In the owner console and the member app, a replay captures what
-          is shown on screen and what is tapped or typed, which can include member names, phone
-          numbers, membership and payment details and other information entered into the app.
-          Password and one-time-code fields are masked and are never recorded. A replay is always
-          kept when an error occurs, and a small share of ordinary sessions is also recorded.
-        </p>
-        <p>
-          IP addresses, cookies and request bodies are stripped from error reports before they are
-          sent. Replays and error reports are used only by GymFlow staff to find and fix faults, are
-          held by Sentry for a limited period under its retention settings, and are not used for
-          advertising or sold. If you do not want your sessions recorded, contact us and we will
-          arrange for them to be excluded where we reasonably can.
-        </p>
-        <p>
-          On our public marketing site (www.gymflow.sbs) we use <strong>Microsoft Clarity</strong>
-          to understand how visitors use the page, through heatmaps and anonymised session
-          recordings. Clarity may set a first-party cookie. It masks text typed into form fields,
-          and we do not send it names, phone numbers or other account details. Clarity is not
-          used inside the owner console or the member app. See
-          <a href="https://privacy.microsoft.com/privacystatement" rel="noopener">Microsoft's privacy statement</a>.
-        </p>
-        <p>
-          We also use <strong>Google Analytics</strong> on the public marketing site to measure
-          visits, traffic sources and which sections of the page are used. Google Analytics uses
-          cookies and collects device, browser and approximate location information, in aggregate,
-          and does not receive names, phone numbers or other account details. You can opt out with
-          Google's <a href="https://tools.google.com/dlpage/gaoptout" rel="noopener">browser add-on</a>,
-          or by blocking cookies in your browser. See
-          <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">how Google uses data from sites that use its services</a>.
-        </p>
-        <p>
-          We do not use third-party advertising or sell your data. We monitor overall search
-          performance for our public marketing site using tools such as Google Search Console, which
-          rely on aggregated crawl and search data and do not track individual visitors of the
-          application.
+          Several of the providers above run servers outside India, so your information may be
+          processed in other countries. The DPDP Act allows this except to countries the Government
+          of India restricts. We choose providers with published security and privacy commitments
+          and share only what each service needs.
         </p>
 
-        <h2 id="security">8. Data Security</h2>
+        <h2 id="analytics">9. Analytics, Cookies &amp; Error Tracking</h2>
         <p>
-          We implement appropriate technical and organisational measures to protect your data. This
-          includes encryption of data in transit, secure authentication and row-level access controls.
-          Our database provider maintains its own backups under its terms; we do not currently
-          offer customer-initiated restore. Each gym's data is isolated so that it is only accessible to
-          authorised users of that gym.
+          <strong>Owner console and member app.</strong> We use Sentry to capture errors,
+          performance traces, logs and session replays (a recording of how a page looked and what
+          was tapped or typed, used to reproduce a fault). Replays are
+          <strong>not masked</strong>: they can show names, phone numbers, membership and payment
+          details and text typed into the app. Password fields and one-time-code fields are masked
+          and never recorded. Error reports have IP addresses, cookies and request bodies removed.
+          A replay is kept every time an error happens, and for about 5% of ordinary sessions.
         </p>
         <p>
-          No method of transmission or storage is completely secure, so while we work hard to
-          protect your information, we cannot guarantee absolute security.
+          Only GymFlow staff use these recordings, to fix faults. They are not sold or used for
+          advertising, and Sentry keeps them for a limited period under its own settings. If you
+          do not want your sessions recorded, contact us and we will exclude you where we
+          reasonably can.
+        </p>
+        <p>
+          <strong>Cookies.</strong> The owner console and member app use first-party cookies that
+          keep you signed in; they are needed for the service
+          to work. A theme choice is remembered only for your current visit.
+        </p>
+        <p>
+          <strong>Marketing website.</strong> www.gymflow.sbs shows a cookie choice on your first
+          visit. Nothing below is switched on unless you accept it, and you can change your choice
+          later from "Cookie settings" in the site footer.
+        </p>
+        <ul>
+          <li><strong>Google Analytics</strong> counts visits and traffic sources. It sets no cookies until you allow visit counting. See <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">how Google uses data from sites that use its services</a>, and Google's <a href="https://tools.google.com/dlpage/gaoptout" rel="noopener">opt-out add-on</a>.</li>
+          <li><strong>Microsoft Clarity</strong> records heatmaps and anonymised sessions to show how visitors use the page. It is loaded only if you allow it, and is not used in the owner console or member app. See <a href="https://privacy.microsoft.com/privacystatement" rel="noopener">Microsoft's privacy statement</a>.</li>
+        </ul>
+        <p>We do not use advertising cookies or sell your data.</p>
+
+        <h2 id="security">10. Data Security</h2>
+        <p>
+          We take reasonable technical and organisational steps to protect your data. Data travels
+          over encrypted HTTPS connections. Browsers and apps never connect to our database
+          directly; every request goes through our servers, and row-level access rules in the
+          database keep each gym's data visible only to that gym's authorised users. Our database
+          provider keeps its own backups under its terms; we do not offer customer-initiated
+          restore.
+        </p>
+        <p>
+          No system is completely secure, so we cannot guarantee absolute security. If a personal
+          data breach affects you, we will tell you and the authorities as the law requires.
         </p>
 
-        <h2 id="retention">9. Data Retention</h2>
+        <h2 id="retention">11. Data Retention</h2>
         <p>
-          We retain your information for as long as your account is active or as needed to provide
-          the service. When you delete your gym account, the associated gym and member data are
-          removed: the owner deletes the gym, its members and the associated login, confirmed by a
-          one-time code. Our database provider maintains its own backups under its terms; we do not
-          currently offer customer-initiated restore. We may keep records we are legally required to
-          keep. You can also request deletion of your data by contacting us.
+          We keep your information while your account exists and as needed to run the service. When
+          a trial or paid plan ends, we do not delete anything automatically: your gym and member
+          data stay in the account, and you can continue on the free forever plan (see our
+          <a href="/terms#subscription">Terms</a>) or renew. Data is removed when you delete it, as
+          described in the next section, or when you ask us to. We may keep records we are legally
+          required to keep, such as payment records. Provider backups and logs expire on the
+          provider's own schedule.
         </p>
 
-        <h2 id="export-delete">10. Exporting and Deleting Your Data</h2>
+        <h2 id="export-delete">12. Exporting and Deleting Your Data</h2>
+        <ul>
+          <li><strong>Export</strong> — owners can export members, attendance and payments to Excel, and reports to PDF, from the app. We do not offer a single full-account export; if you need more, write to <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a> and we will try to help.</li>
+          <li><strong>Delete all members</strong> — owners can delete every member record, with their memberships, attendance, payments and member logins, while keeping the gym account. A one-time code sent to your email confirms the request.</li>
+          <li><strong>Delete the whole gym</strong> — owners can permanently delete the gym, all of its data, every member's login and the owner login, confirmed by a one-time code sent to your email. This cannot be undone.</li>
+          <li><strong>Members</strong> — ask your gym first. You can also write to <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>.</li>
+        </ul>
+
+        <h2 id="your-rights">13. Your Rights</h2>
+        <p>Under the DPDP Act you have the right to:</p>
+        <ul>
+          <li>get a summary of the personal data held about you and how it is used;</li>
+          <li>have inaccurate data corrected and incomplete data completed;</li>
+          <li>have data erased once it is no longer needed, subject to legal requirements;</li>
+          <li>have a grievance addressed (see below); and</li>
+          <li>nominate another person to exercise these rights if you die or cannot act for yourself.</li>
+        </ul>
         <p>
-          Owners can export members, attendance and payments to Excel and reports to PDF. Owners can
-          delete all members, or the whole gym, from account settings. Members can ask their gym, or
-          write to <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>.
+          You can also withdraw consent to a use that depends on it, for example by opting out of
+          leaderboards or asking a gym to stop WhatsApp messages. To use any right, write to
+          <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>. If you are a gym member,
+          please contact your gym first, because it holds your records; we will help it act on your
+          request. If you are not satisfied with our response to a grievance, you may complain to
+          the Data Protection Board of India once it is operating.
         </p>
 
-        <h2 id="your-rights">11. Your Rights</h2>
+        <h2 id="children">14. Children's Privacy</h2>
         <p>
-          You have the right to access, correct, or delete your personal information. You may also
-          object to certain processing or request a copy of your data in a portable format. To
-          exercise these rights, contact us at
-          <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>. If you are a gym
-          member, please contact your gym first, as they control your records; we will support your
-          gym in fulfilling your request.
+          GymFlow is for gym owners and their operations and is not directed at children. We do not
+          knowingly collect data from anyone under 18 ourselves. A gym that adds a member under 18
+          must first get verifiable consent from that person's parent or guardian, because the DPDP
+          Act requires it. We will remove a minor's data if we learn it was added without that
+          consent.
         </p>
 
-        <h2 id="children">12. Children's Privacy</h2>
+        <h2 id="changes">15. Changes to This Policy</h2>
         <p>
-          GymFlow is intended for use by gym owners and their operations. It is not directed at
-          children, and we do not knowingly collect personal information from children. If a gym
-          adds a member who is a minor, the gym is responsible for obtaining any consent required
-          from a parent or guardian.
+          We may update this policy from time to time. We will change the "Last updated" date
+          above and, for material changes, tell you in the app or by email. Continuing to use
+          GymFlow after a change takes effect means you accept the updated policy.
         </p>
 
-        <h2 id="changes">13. Changes to This Policy</h2>
-        <p>
-          We may update this Privacy Policy from time to time. When we make material changes, we
-          will update the "Last updated" date above and, where appropriate, notify you through the
-          platform or by email. Your continued use of GymFlow after changes take effect means you
-          accept the revised policy.
-        </p>
-
-        <h2 id="contact">14. Contact Us</h2>
-        <p>If you have questions about this Privacy Policy, please contact us at:</p>
+        <h2 id="contact">16. Contact Us</h2>
+        <p>For questions, requests or grievances about this Privacy Policy, contact us at:</p>
         <div class="contact">
           <dl>
             <dt>Product</dt>

@@ -45,8 +45,9 @@ if (!offerPrices.length) errors.push('index.html: no JSON-LD Offer price found')
 // The SoftwareApplication carries one Offer per plan, so an Offer may be the monthly or the yearly
 // price, but never anything else. Requiring a monthly one keeps the "from" price (the figure search
 // results quote) from silently disappearing if the Offers are ever edited.
+const addon = Number(read('src/data/plans.ts').match(/WHATSAPP_ADDON_PRICE\s*=\s*(\d+)/)?.[1])
 offerPrices.forEach((p) => {
-  if (Number(p) !== monthly && Number(p) !== yearly) errors.push(`index.html: JSON-LD Offer price ${p} is neither the monthly price ${monthly} nor the yearly price ${yearly}`)
+  if (![0, addon, monthly, yearly].includes(Number(p))) errors.push(`index.html: JSON-LD Offer price ${p} is none of free (0), the add-on ${addon}, monthly ${monthly} or yearly ${yearly}`)
 })
 if (offerPrices.length && !offerPrices.some((p) => Number(p) === monthly)) errors.push(`index.html: no JSON-LD Offer carries the monthly price ${monthly}`)
 

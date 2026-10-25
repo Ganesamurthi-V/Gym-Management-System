@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
 import { SUPPORT_PROMISE } from '../data/support';
+import GradientWaves from './ui/GradientWaves';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -42,6 +43,23 @@ export function CTA() {
           aria-hidden
           className="dot-grid pointer-events-none absolute inset-0 opacity-[0.05]"
         />
+        {/* WebGL waves rolling in from the bottom edge, in the brand blue. Light mode
+            draws them as soft ink so the dark heading and trust chips stay readable;
+            the accent wash above is the fallback where WebGL2 is unavailable. */}
+        <div aria-hidden className="pointer-events-none absolute -inset-x-[25%] bottom-0 h-[65%]">
+          <GradientWaves
+            lightMode
+            horizonColor="#2563EB"
+            waveColor="#60A5FA"
+            crestColor="#FFFFFF"
+            speed={0.3}
+            amplitude={2.2}
+            relief={1}
+            lightAngle={120}
+            grain={0.1}
+            quality="medium"
+          />
+        </div>
 
         <div className="relative">
           <h2

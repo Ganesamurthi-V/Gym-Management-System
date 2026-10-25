@@ -135,8 +135,8 @@ export function computeSubscriptionState(
 
 // ── Free plan and trial limits ───────────────────────────────────────────────
 // Pure helpers shared by middleware, routes and UI. The database enforces the
-// Free member cap with a trigger; these mirror it so the UI and import can
-// explain the limit instead of surfacing a raw DB error.
+// Free and Trial member cap (every insert) with a trigger; these mirror it so the
+// UI, the add route and import can explain the limit instead of surfacing a raw DB error.
 
 /** A Free gym may hold at most this many members. */
 export const FREE_PLAN_MEMBER_LIMIT = 50
@@ -144,6 +144,16 @@ export const FREE_PLAN_MEMBER_LIMIT = 50
 export const TRIAL_APP_MEMBER_LIMIT = 50
 /** A trial gym may import until it holds this many members in total (not per upload). */
 export const TRIAL_IMPORT_ROW_LIMIT = 50
+/** Trial and Free gyms cannot hold more than this many members by any path. */
+export const MEMBER_CAP = FREE_PLAN_MEMBER_LIMIT
+export const MEMBER_CAP_MESSAGE = 'Reached 50 members. Upgrade the plan to add more.'
+/** Tooltip / aria text on a locked "Add member" control. */
+export const MEMBER_CAP_TOOLTIP = 'Reached 50 members, upgrade the plan'
+
+/** True when this plan is capped and the gym already holds the cap (no more adds or imports). */
+export function memberCapReached(plan: string | null | undefined, memberCount: number): boolean {
+  return (plan === 'trial' || plan === 'free') && memberCount >= MEMBER_CAP
+}
 /** Monthly price of the WhatsApp add-on for Free gyms. */
 export const WHATSAPP_ADDON_PRICE_INR = 299
 
@@ -172,7 +182,7 @@ export function planAllowsWhatsApp(
  * How many import rows may be inserted for this plan and current member count.
  * Trial and Free share one rule: the cap is 50 members for the whole gym, so each
  * upload only gets the room that is left (a per-upload cap let owners import 50
- * again and again). Trial manual adds stay uncapped; only imports are limited.
+ * again and again). Manual adds are capped at the same number (see memberCapReached).
  */
 export function importRowsToTake(
   plan: string | null | undefined,

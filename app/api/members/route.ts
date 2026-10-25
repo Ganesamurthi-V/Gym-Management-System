@@ -5,12 +5,20 @@ import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
 import { apiLogger } from '@/lib/logger'
+import { memberCapReached, MEMBER_CAP_MESSAGE } from '@/lib/subscription-utils'
 
 export const dynamic = 'force-dynamic'
 
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
+function planMemberLimitResponse() {
+  return NextResponse.json(
+    { success: false, error: { code: 'PLAN_MEMBER_LIMIT', message: MEMBER_CAP_MESSAGE } },
+    { status: 403 },
+  )
+}
+
 export async function GET(req: NextRequest) {
   const log = apiLogger('MEMBERS_API_GET')
   try {
@@ -175,6 +183,21 @@ export async function POST(req: NextRequest) {
     const duplicate = await claimIdempotencyKey(req, gym.id, 'members')
     if (duplicate) return duplicate
 
+    // Trial and Free gyms hold at most 50 members. Plan and count come from the DB for the
+    // server-resolved gym (never the body); paid gyms skip the count query. The DB trigger is the
+    // real guard, this just answers before touching the insert.
+    const { data: planRow } = await supabase.from('gyms').select('plan_type').eq('id', gym.id).single()
+    if (planRow?.plan_type === 'trial' || planRow?.plan_type === 'free') {
+      const { count, error: countErr } = await supabase
+        .from('members')
+        .select('id', { count: 'exact', head: true })
+        .eq('gym_id', gym.id)
+      if (!countErr && memberCapReached(planRow.plan_type, count ?? 0)) {
+        log.summary(403)
+        return planMemberLimitResponse()
+      }
+    }
+
     log.start('DB_INSERT')
     const { data, error } = await supabase
       .from('members')
@@ -193,13 +216,10 @@ export async function POST(req: NextRequest) {
     log.end('DB_INSERT')
 
     if (error) {
-      // Free gyms are capped by a DB trigger; show a plain upgrade message instead of the raw error.
-      if (error.code === '23514' && error.message?.includes('free_plan_member_limit')) {
+      // The DB trigger is the real cap (a concurrent add can lose the race): same plain upgrade message.
+      if (error.code === '23514' && error.message?.includes('member_limit')) {
         log.summary(403)
-        return NextResponse.json(
-          { success: false, error: { code: 'FREE_PLAN_LIMIT', message: 'Your free forever plan allows 50 members. Upgrade to a paid plan to add more.' } },
-          { status: 403 },
-        )
+        return planMemberLimitResponse()
       }
       const mapped = mapSupabaseError(error)
       log.error('DB insert failed', error)

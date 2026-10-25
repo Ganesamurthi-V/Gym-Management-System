@@ -4,7 +4,7 @@ import { useState, Suspense, useEffect, useDeferredValue, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
-import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download } from 'lucide-react'
+import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download, Lock } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
@@ -12,6 +12,7 @@ import { formatMemberId } from '@/types'
 import { loadMoreMembersAction, exportMembersToExcelAction } from './actions'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 import { tourAttr } from '@/lib/tours/anchors'
+import { LockedAddMember, useMemberCapped } from '@/components/layout/MemberCap'
 
 interface Props {
   members: MemberWithStatus[]
@@ -33,6 +34,7 @@ export function MembersClient({ members, gymId, totalCount, importBlocked }: Pro
 
 function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
   const router = useRouter()
+  const memberCapped = useMemberCapped()
   const searchParams = useSearchParams()
 
   // Auto-refresh when members/memberships change in this gym (realtime).
@@ -356,11 +358,19 @@ function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
             <Calendar className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span>Attendance Log</span>
           </Link>
+          {memberCapped ? (
+            <LockedAddMember {...tourAttr('membersAddBtn')} className="flex items-center gap-1.5 px-2.5 xs:px-3 md:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg">
+              <Lock className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+              <span className="hidden xs:inline">Add Member</span>
+              <span className="xs:hidden">Add</span>
+            </LockedAddMember>
+          ) : (
           <Link href="/owner/members/new" {...tourAttr('membersAddBtn')} className="flex items-center gap-1.5 px-2.5 xs:px-3 md:px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all">
             <Plus className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden xs:inline">Add Member</span>
             <span className="xs:hidden">Add</span>
           </Link>
+          )}
         </div>
       </div>
 
@@ -480,7 +490,13 @@ function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
         {filtered.length === 0 ? (
           <div className="card p-10 text-center">
             <p className="text-slate-400 text-sm">No members found</p>
-            <Link href="/owner/members/new" className="text-brand-600 text-sm font-semibold mt-1 inline-block">+ Add first member</Link>
+            {memberCapped ? (
+              <LockedAddMember className="mt-1 inline-flex items-center gap-1 text-sm font-semibold bg-transparent">
+                <Lock className="w-3.5 h-3.5" /> Add first member
+              </LockedAddMember>
+            ) : (
+              <Link href="/owner/members/new" className="text-brand-600 text-sm font-semibold mt-1 inline-block">+ Add first member</Link>
+            )}
           </div>
         ) : filtered.map((member) => {
           const { label, cls } = statusConfig[member.status]
@@ -565,7 +581,13 @@ function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
               <tr>
                 <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
                   No members found.{' '}
-                  <Link href="/owner/members/new" className="text-brand-600 font-semibold hover:underline">Add first member</Link>
+                  {memberCapped ? (
+                    <LockedAddMember className="inline-flex items-center gap-1 font-semibold bg-transparent">
+                      <Lock className="w-3.5 h-3.5" /> Add first member
+                    </LockedAddMember>
+                  ) : (
+                    <Link href="/owner/members/new" className="text-brand-600 font-semibold hover:underline">Add first member</Link>
+                  )}
                 </td>
               </tr>
             ) : filtered.map((member) => {

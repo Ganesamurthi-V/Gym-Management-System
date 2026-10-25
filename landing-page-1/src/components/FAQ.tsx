@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useReveal } from '../lib/useReveal';
-import { PLANS, formatINR, savingPercent } from '../data/plans';
+import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, savingPercent } from '../data/plans';
 
 const [MONTHLY, YEARLY] = PLANS;
 
@@ -20,11 +20,11 @@ const FAQS = [
   },
   {
     q: 'How much does GymFlow cost?',
-    a: `From ${formatINR(MONTHLY.price)} per month — or ${formatINR(YEARLY.price)} for a year (save ${savingPercent(YEARLY)}%). Every plan includes every feature, unlimited members, and unlimited WhatsApp messages. No per-member charges, no setup fee, and no modules to unlock later.`,
+    a: `Start free: the free forever plan covers up to ${FREE_MEMBER_LIMIT} members. Paid plans are ${formatINR(MONTHLY.price)} per month or ${formatINR(YEARLY.price)} for a year (save ${savingPercent(YEARLY)}%), with every feature, unlimited members, and unlimited WhatsApp messages. Gyms on the free plan can add WhatsApp reminders for ${formatINR(WHATSAPP_ADDON_PRICE)} per month. No GST, no per-member charges, and no setup fee.`,
   },
   {
     q: 'Are WhatsApp messages really unlimited?',
-    a: 'Yes. Welcome messages, renewal reminders, and payment due alerts are all included. They are part of your plan, so there is no per-message charge.',
+    a: 'Yes, on the paid plans. Welcome messages, renewal reminders, and payment due alerts are all included, so there is no per-message charge. On the free plan, WhatsApp reminders are a ₹299 per month add-on.',
   },
   {
     q: 'Can I move my existing members from Excel?',
@@ -36,7 +36,7 @@ const FAQS = [
   },
   {
     q: 'How fast does support reply?',
-    a: 'Every plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
+    a: 'Every paid plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
   },
   {
     q: 'How do I reach support?',

@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, Menu } from 'lucide-react'
+import { X, Menu, Lock } from 'lucide-react'
 import { navTourAttr, tourAttr } from '@/lib/tours/anchors'
 import { subscribeTourNav } from '@/lib/tours/tour-state'
+import { LockedAddMember, useMemberCapped } from './MemberCap'
 
 type NavItem = {
   label: string;
@@ -95,6 +96,7 @@ export function MobileNav() {
   const pathname = usePathname()
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const current = NAV_ITEMS.find(n => isActive(n.href))
+  const memberCapped = useMemberCapped()
 
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
@@ -162,6 +164,12 @@ export function MobileNav() {
           })}
         </nav>
         <div className="px-3 xs:px-4 pb-6 xs:pb-8 pt-2 pb-safe-bottom">
+          {memberCapped ? (
+            <LockedAddMember className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold rounded-2xl">
+              <Lock className="w-4 h-4" />
+              Add Member
+            </LockedAddMember>
+          ) : (
           <Link
             href="/owner/members/new"
             onClick={() => setOpen(false)}
@@ -172,6 +180,7 @@ export function MobileNav() {
             </svg>
             Add Member
           </Link>
+          )}
         </div>
       </div>
     </>

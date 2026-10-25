@@ -7,6 +7,8 @@ import { PATHNAME_HEADER, needsSubscriptionGuard } from '@/lib/protected-routes'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { MEMBER_HOME } from '@/lib/member/redirect'
 import { startPageTimer } from '@/lib/perf'
+import { createClient } from '@/lib/supabase/server'
+import { memberCapReached } from '@/lib/subscription-utils'
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const done = startPageTimer('AppShell')
@@ -31,6 +33,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
   let isActive = true
   let subscriptionStatus = 'unknown'
   let trialDaysLeft = 0
+  let memberCapped = false
 
   if (user) {
     // ONE merged `gyms` query supplies identity + subscription + is_active.
@@ -76,6 +79,18 @@ export default async function AppShell({ children }: { children: React.ReactNode
       }
       isActive = core.is_active ?? true
 
+      // Add-member lock. plan_type is already loaded, so paid gyms (the hot path) skip the count
+      // query entirely; trial/free gyms pay one head-only count scoped to the server-resolved gym.
+      if (core.plan_type === 'trial' || core.plan_type === 'free') {
+        const supabase = await createClient()
+        const { count } = await supabase
+          .from('members')
+          .select('id', { count: 'exact', head: true })
+          .eq('gym_id', core.id)
+        // A failed count leaves the control unlocked; the API and DB trigger still refuse.
+        memberCapped = memberCapReached(core.plan_type, count ?? 0)
+      }
+
       const subState = getSubscriptionState(core)
       subscriptionStatus = subState.status
       trialDaysLeft = subState.daysLeft ?? 0
@@ -120,6 +135,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
       initialUnreadCount={null}
       initialSubscriptionStatus={subscriptionStatus}
       initialTrialDaysLeft={trialDaysLeft}
+      memberCapped={memberCapped}
     >
       {children}
     </ShellGuard>

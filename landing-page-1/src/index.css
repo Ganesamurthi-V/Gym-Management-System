@@ -1837,3 +1837,39 @@ footer {
     padding-bottom: var(--cookie-bar-h, 0px);
   }
 }
+
+/* Glowing animated border for the featured free-plan card (Border Beam pattern:
+   a conic gradient rotated by an @property angle, masked down to a 2px ring, with
+   a blurred copy underneath for the glow). */
+@property --glow-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes glow-spin {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+.glow-ring {
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 0 60%,
+    #2563eb 80%,
+    #38bdf8 92%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: glow-spin 3.5s linear infinite;
+}
+.glow-ring-blur {
+  filter: blur(10px);
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glow-ring {
+    animation: none;
+  }
+}

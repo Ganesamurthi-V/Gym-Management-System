@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
 
     if (insertErr) {
       log.error('member insert failed', insertErr)
-      // The DB trigger raised the cap (free_plan_member_limit / trial_import_member_limit):
+      // The DB trigger raised the cap (free_plan_member_limit / trial_member_limit):
       // a concurrent import got there first. Expected, so show the upgrade message, no alert.
       if (insertErr.code === '23514' && insertErr.message?.includes('member_limit')) {
         return planLimitResponse()

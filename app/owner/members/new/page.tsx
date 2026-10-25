@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash, Plus } from 'lucide-react'
+import { ArrowLeft, Lock, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash, Plus } from 'lucide-react'
 import { calcEndDate, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import type { Plan, PaymentMode } from '@/types'
 import { formatMemberId } from '@/types'
@@ -11,6 +11,8 @@ import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import UPIPaymentModal from '@/components/upi/UPIPaymentModal'
 import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'
+import { useMemberCapped } from '@/components/layout/MemberCap'
+import { MEMBER_CAP_MESSAGE } from '@/lib/subscription-utils'
 
 type Step = 'personal' | 'membership' | 'preview'
 
@@ -23,7 +25,26 @@ interface MembershipPlan {
   customDurationMonths?: number
 }
 
+// The API and DB trigger enforce the cap; this just shows the owner why instead of a form that cannot save.
+function MemberCapCard() {
+  return (
+    <div className="max-w-md mx-auto card p-6 text-center space-y-3">
+      <div className="w-10 h-10 mx-auto rounded-full bg-slate-100 flex items-center justify-center">
+        <Lock className="w-5 h-5 text-slate-500" />
+      </div>
+      <p className="text-sm font-medium text-slate-700">{MEMBER_CAP_MESSAGE}</p>
+      <Link href="/owner/subscription" className="inline-block text-sm font-semibold text-brand-600 hover:underline">Upgrade the plan</Link>
+    </div>
+  )
+}
+
 export default function NewMemberPage() {
+  const capped = useMemberCapped()
+  const [capHit, setCapHit] = useState(false)
+  return capped || capHit ? <MemberCapCard /> : <NewMemberForm onCapHit={() => setCapHit(true)} />
+}
+
+function NewMemberForm({ onCapHit }: { onCapHit: () => void }) {
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('personal')
@@ -201,6 +222,11 @@ export default function NewMemberPage() {
       if (!memberRes.ok) {
         if (memberJson.error?.code === 'CONFLICT') {
           throw new Error(`${formatMemberId(memberNumber)} is already taken`)
+        }
+        if (memberJson.error?.code === 'PLAN_MEMBER_LIMIT') {
+          // Lost a race with another add: show the upgrade card instead of a generic error.
+          onCapHit()
+          return
         }
         throw new Error(memberJson.error?.message || 'Failed to create member')
       }

@@ -9,6 +9,7 @@ import { importErrorMessage, messageForApiError, readImportResponse } from "@/li
 import type { ImportedRow } from "../page";
 import WizardHeader from "@/components/import/WizardHeader";
 import PlanNotice from "@/components/subscription/PlanNotice";
+import { api } from "@/lib/api/client";
 
 type Step = "edit" | "preview" | "done";
 interface DoneResult { success: number; skipped: number; planSkipped: number }
@@ -36,6 +37,19 @@ export default function ImportEditPage() {
   const [error, setError] = useState("");
   // Set when the server says the plan's member cap is reached, so the upgrade notice replaces the generic error.
   const [planLimit, setPlanLimit] = useState(false);
+  // How many rows this gym's plan still has room for (null = no cap). Informational: it stays
+  // null while loading or on error, and /api/import/confirm enforces the same cap.
+  const [importCap, setImportCap] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.get<{ data?: { maxRows?: number | null } }>("/api/import/limits")
+      .then(res => {
+        const m = res?.data?.maxRows;
+        if (!cancelled && typeof m === "number") setImportCap(m);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const [doneResult, setDoneResult] = useState<DoneResult>({ success: 0, skipped: 0, planSkipped: 0 });
   const [activeAreaIdx, setActiveAreaIdx] = useState<number | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
@@ -214,11 +228,24 @@ export default function ImportEditPage() {
 
   const validRows = rows.filter(r => r._status !== "error" && r._status !== "duplicate");
   const skippedRows = rows.filter(r => r._status === "error" || r._status === "duplicate");
+  // Valid rows past the plan cap are hidden and never sent, so the preview shows exactly what will
+  // be imported. Derived from row order, so deleting a row pulls the next one back in.
+  const overCapIdx = new Set<number>();
+  if (importCap !== null) {
+    let seen = 0;
+    rows.forEach((r, i) => {
+      if (r._status === "error" || r._status === "duplicate") return;
+      if (seen >= importCap) overCapIdx.add(i);
+      seen++;
+    });
+  }
+  const importRows = rows.filter((r, i) => !overCapIdx.has(i) && r._status !== "error" && r._status !== "duplicate");
   const editedCount = rows.reduce((count, row) => count + (isRowChanged(row) ? 1 : 0), 0);
 
   const anyOriginallySkipped = originalRows.some(o => o._status === "error" || o._status === "duplicate");
 
   const filtered = rows.map((r, i) => ({ ...r, _idx: i })).filter(r => {
+    if (overCapIdx.has(r._idx)) return false;
     if (anyOriginallySkipped) {
       const orig = originalRows.find(o => o._rowId === r._rowId);
       const originallySkipped = orig && (orig._status === "error" || orig._status === "duplicate");
@@ -235,8 +262,8 @@ export default function ImportEditPage() {
       ? "bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.5 rounded"
       : "";
 
-  const conflictCount = rows.filter(r => r._id_conflict).length;
-  const missingIdCount = validRows.filter(r => !r.member_number || !parseInt(r.member_number)).length;
+  const conflictCount = rows.filter((r, i) => r._id_conflict && !overCapIdx.has(i)).length;
+  const missingIdCount = importRows.filter(r => !r.member_number || !parseInt(r.member_number)).length;
 
   function goBackToReview() {
     // Persist current edits so they survive the round-trip
@@ -258,7 +285,7 @@ export default function ImportEditPage() {
     setPlanLimit(false);
 
     try {
-      const toInsert = validRows;
+      const toInsert = importRows;
       const skipped = skippedRows.length;
 
       // ── Insert members AND their memberships via the server route ──────────
@@ -293,7 +320,7 @@ export default function ImportEditPage() {
       // On a plan cap the server keeps only the first `imported` rows, so ids align with
       // toInsert.slice(0, imported). Comparing to toInsert.length showed a false error.
       const imported = typeof result.data?.imported === "number" ? result.data.imported : toInsert.length;
-      const planSkipped = result.data?.skipped ?? 0;
+      const planSkipped = (result.data?.skipped ?? 0) + overCapIdx.size;
       if (memberIds.length !== imported) {
         throw new Error("The import finished, but we could not confirm every member was added. Please check the Members page before trying again.");
       }
@@ -410,10 +437,18 @@ export default function ImportEditPage() {
       </div>
 
       <div className="flex items-center gap-3 text-sm text-slate-500">
-        <span className="text-emerald-600 font-semibold">{validRows.length} valid</span>
+        <span className="text-emerald-600 font-semibold">{importRows.length} valid</span>
         <span>·</span>
         <span className="text-red-500 font-semibold">{skippedRows.length} will be skipped</span>
       </div>
+
+      {overCapIdx.size > 0 && (
+        <PlanNotice
+          tone="warning"
+          message={`Your plan allows 50 members in total, so only the first ${importRows.length} rows are shown and will be imported. ${overCapIdx.size} more rows are left out.`}
+          action={{ href: "/owner/subscription", label: "Upgrade to a paid plan" }}
+        />
+      )}
 
       {planLimit && error && (
         <PlanNotice tone="warning" message={error} action={{ href: "/owner/subscription", label: "Upgrade to a paid plan" }} />

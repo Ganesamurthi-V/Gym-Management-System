@@ -826,7 +826,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_send_queue (
 );
 
 COMMENT ON TABLE whatsapp_send_queue IS
-  'Throttled outbound queue for automated WhatsApp sends (15 per 5 minutes, drained via QStash).';
+  'Throttled outbound queue for automated WhatsApp sends (100 per 5 minutes, drained via QStash).';
 
 -- ── gym_admin_notes ──────────────────────────────────────────
 -- The super admin's private notes about a gym. Deliberately NOT a gyms column:

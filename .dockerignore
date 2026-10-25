@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.env
+.env.*
+graphify-out
+landing-page-1
+gymflow-admin
+gymflow-mobile
+output

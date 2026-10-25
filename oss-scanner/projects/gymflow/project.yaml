@@ -1,0 +1,6 @@
+# Staged copy of the enrollment file. Submit it to anthropics/oss-scanner at
+# projects/gymflow/project.yaml via a pull request; it does not take effect from this repo.
+repo: "https://github.com/Ganesamurthi-V/Gym-Management-System"
+primary_contact: "support@gymflow.sbs"
+dockerfile: "Dockerfile"
+homepage: "https://gymflow.sbs"

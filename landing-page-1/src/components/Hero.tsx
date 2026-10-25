@@ -55,7 +55,10 @@ export function Hero() {
           case the mesh is the backdrop on its own. It does run on phones. */}
       <HeroPixels />
 
-      <div className="mx-auto max-w-[1240px]">
+      {/* On a phone the copy fills the first screen below the navbar and is centred in it, so the
+          hero sits in the middle of the viewport whatever the phone's height. 100svh is the small
+          viewport (browser bars showing), so nothing is pushed under them. */}
+      <div className="mx-auto flex min-h-[calc(100svh-124px)] max-w-[1240px] flex-col justify-center md:min-h-0">
         {/* ── Copy ──────────────────────────────────────────────────────── */}
         {/* 900px fits the longest headline line with headroom for the serif's
             wider metrics, without letting the measure sprawl. */}

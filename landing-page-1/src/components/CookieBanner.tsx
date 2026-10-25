@@ -88,7 +88,11 @@ export function CookieBanner() {
       >
         <div className="px-4 py-3">
           <p className="text-[13px] leading-snug text-muted-foreground">
-            We use cookies to keep the site working and see how it is used.
+            We use cookies to improve your experience on our website. Learn more about our{' '}
+            <a href="/privacy#analytics" className="text-foreground underline underline-offset-2">
+              privacy policy
+            </a>
+            .
           </p>
           <div className="mt-2.5 flex items-center gap-2">
             <button type="button" onClick={() => save(NONE)} className={pill}>

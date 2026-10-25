@@ -80,9 +80,9 @@ export function CookieBanner() {
     // and as visible as accepting. "Choose" is a text link in the same row. On a 360x800
     // phone the old stacked card was 266px (33% of the screen) and hid the hero's trust
     // bullets; a 114px card was the next version. Under 640px it is now a full-width bar of about
-    // 90px: tight padding, small copy, one row of 44px buttons.
+    // 90px: tight padding, small copy, one row of 36px buttons.
     const pill =
-      'min-h-11 flex-1 rounded-pill bg-foreground px-3 sm:min-h-0 sm:py-2 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4 sm:text-sm';
+      'min-h-9 flex-1 rounded-pill bg-foreground px-3 sm:min-h-0 sm:py-2 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4 sm:text-sm';
     return (
       <div
         ref={bar}
@@ -108,7 +108,7 @@ export function CookieBanner() {
                 setDraft(getConsent() ?? NONE);
                 setView('details');
               }}
-              className="min-h-11 shrink-0 px-2 sm:min-h-0 sm:py-2 text-[13px] font-medium text-foreground underline underline-offset-2 order-last sm:order-none sm:text-sm"
+              className="min-h-9 shrink-0 px-2 sm:min-h-0 sm:py-2 text-[13px] font-medium text-foreground underline underline-offset-2 order-last sm:order-none sm:text-sm"
             >
               Choose
             </button>

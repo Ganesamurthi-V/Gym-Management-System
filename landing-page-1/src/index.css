@@ -1318,7 +1318,7 @@ p, blockquote, figcaption, li {
    compact pill once the inline desktop menu takes over at lg. */
 @media (max-width: 1023px) {
   .btn-nav {
-    min-height: 44px;
+    min-height: 36px;
   }
 }
 

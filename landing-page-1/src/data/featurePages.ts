@@ -1024,6 +1024,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'The 14-day free trial',
         blocks: [
           { type: 'p', text: 'Create your gym account and use every feature for 14 days. No credit card is needed to start, and you can cancel anytime. A banner in the app counts down the days left in your trial. Load your real member list with the [Excel import](/import-export) during the trial, so you judge GymFlow on your own gym and not on sample data.' },
+          { type: 'p', text: `During the trial a gym can hold up to ${FREE_MEMBER_LIMIT} members, and the member app and WhatsApp messages cover those first ${FREE_MEMBER_LIMIT}. A paid plan removes the limit.` },
         ],
       },
       {
@@ -1038,6 +1039,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
               'We verify the payment, which usually takes a few hours, and switch your account on.',
             ],
           },
+          { type: 'p', text: 'If you pay again before your plan ends, the new period is added to the days you have left, so an early payment never costs you time.' },
           { type: 'p', text: 'GymFlow does not store a card and nothing is charged automatically. You pay when you decide to, so there is no surprise renewal.' },
         ],
       },
@@ -1045,6 +1047,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'After the trial ends',
         blocks: [
           { type: 'p', text: 'When your trial ends, GymFlow takes you to the subscription page each time you open the owner console, until a plan is activated. Pay and upload your screenshot as above, and you carry on with the same members and records. Before a paid plan ends, the app warns you how many days are left, so you can pay again in good time.' },
+          { type: 'p', text: 'Until a plan is active, your members and records stay safe but cannot be changed: adding members, recording payments, sending messages and editing are paused. The subscription page, your account settings and support stay open. Members cannot sign in to the member app, and no WhatsApp messages go out, until you renew.' },
         ],
       },
       {

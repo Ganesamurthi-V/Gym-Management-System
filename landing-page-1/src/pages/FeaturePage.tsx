@@ -2,7 +2,7 @@ import { useReveal } from '../lib/useReveal';
 import { sectionIds, type FeaturePage as FeaturePageData } from '../data/featurePages';
 import { DocsPager } from './DocsPager';
 import { DocsShell } from './DocsShell';
-import { FeatureHero, FeatureShell, RelatedFeatures, ScreenshotsSection, SectionView, TutorialSection } from './featureParts';
+import { FeatureTitle, FeatureShell, RelatedFeatures, ScreenshotsSection, SectionView, TutorialSection } from './featureParts';
 
 /** A page under /features: hero, then the docs shell (sidebar, sections, pager), related pages. */
 export function FeaturePage({ page }: { page: FeaturePageData }) {
@@ -12,7 +12,7 @@ export function FeaturePage({ page }: { page: FeaturePageData }) {
   const ids = sectionIds(page);
   return (
     <FeatureShell>
-      <FeatureHero page={page} />
+      <FeatureTitle page={page} />
       <div ref={scope}>
         <DocsShell page={page}>
           <div className="flex flex-col gap-10">

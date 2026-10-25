@@ -4,6 +4,7 @@ import SubscriptionClient from './SubscriptionClient'
 import { redirect } from 'next/navigation'
 import { startPageTimer } from '@/lib/perf'
 import { isFreePlan } from '@/lib/subscription-utils'
+import { getPlatformPrices } from '@/lib/platformPrices'
 
 // No `dynamic = 'force-dynamic'`: this page reads the auth cookie, which
 // already makes it dynamic. The export was redundant.
@@ -35,7 +36,7 @@ export default async function SubscriptionPage() {
   // We still need gym.id for the queries below. Fetch the full id via gym from sub row.
   const gymId = gym.id
 
-  const [latestRequestResult, settingsResult] = await Promise.all([
+  const [latestRequestResult, settingsResult, prices] = await Promise.all([
     supabase
       .from('subscription_requests')
       .select('id, status, submitted_at, rejection_reason')
@@ -45,8 +46,9 @@ export default async function SubscriptionPage() {
       .maybeSingle(),
     supabase
       .from('platform_settings')
-      .select('upi_id, upi_name, price_monthly, price_yearly')
+      .select('upi_id, upi_name')
       .single(),
+    getPlatformPrices(),
   ])
 
   done()
@@ -72,9 +74,8 @@ export default async function SubscriptionPage() {
       settings={settingsResult.data ?? {
         upi_id: '',
         upi_name: 'GymFlow',
-        price_monthly: 999,
-        price_yearly: 9999,
       }}
+      prices={prices ? { monthly: prices.priceMonthly, yearly: prices.priceYearly, whatsappAddon: prices.whatsappAddonPriceInr } : null}
     />
   )
 }

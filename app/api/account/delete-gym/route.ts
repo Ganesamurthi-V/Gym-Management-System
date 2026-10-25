@@ -192,4 +192,4 @@ export const POST = withAuth('ACCOUNT_DELETE_GYM', async (req: NextRequest, ctx)
     memberLoginsDeleted: memberAuthIds.length - failedMemberDeletions.length,
     memberLoginsFailed: failedMemberDeletions.length,
   })
-})
+}, { allowWhenExpired: true })

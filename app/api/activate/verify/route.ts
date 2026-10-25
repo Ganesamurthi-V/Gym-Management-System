@@ -19,6 +19,7 @@ import {
   resolveInvitationToken,
   isPlaceholderEmail,
 } from '@/lib/member/activation-token'
+import { getMemberAppAccess } from '@/lib/member/member-data'
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
 
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     // Fetch member and gym together — one round trip instead of two.
     const { data: member, error: memberErr } = await supabase
       .from('members')
-      .select('name, phone, email, invitation_status, portal_enabled, portal_suspended, gyms!inner(name)')
+      .select('id, gym_id, created_at, name, phone, email, invitation_status, portal_enabled, portal_suspended, gyms!inner(name)')
       .eq('id', memberId)
       .eq('gym_id', gymId)
       .maybeSingle()
@@ -98,6 +99,12 @@ export async function POST(req: NextRequest) {
 
     if (member.invitation_status === 'activated') {
       return fail('This account has already been activated. Please go to login.', 409, 'already_activated')
+    }
+
+    // Plan gate (fresh read, fails closed): do not show the activation form for a gym whose plan
+    // has no member app, so the member is not walked through steps that would be refused.
+    if (!(await getMemberAppAccess(member))) {
+      return fail("The member app is not available on your gym's plan.", 403, 'PLAN_NOT_ALLOWED')
     }
 
     const gymRow = (member as unknown as { gyms?: { name?: string } | null }).gyms

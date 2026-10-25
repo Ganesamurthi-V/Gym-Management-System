@@ -49,13 +49,10 @@ export function isProtectedPath(pathname: string) {
  *
  *  - `/owner/subscription` — an expired owner must still be able to reach the
  *    page that lets them renew.
- *  - `/owner/admin` — the platform super-admin console. It has its own
- *    ADMIN_EMAIL gate and is not a gym-owner surface, so a missing or expired
- *    gym subscription must not lock the operator out of it. Before the unified
- *    migration this lived at `/admin`, outside PROTECTED_PREFIXES, and was
- *    never paywalled; this keeps that behaviour identical.
+ *
+ * There is no admin area in this app: the platform admin is the separate gymflow-admin project.
  */
-const SUBSCRIPTION_EXEMPT_PREFIXES = ['/owner/subscription', '/owner/admin'] as const
+const SUBSCRIPTION_EXEMPT_PREFIXES = ['/owner/subscription'] as const
 
 /**
  * True when the subscription paywall should be enforced for this path.
@@ -92,7 +89,6 @@ export const LEGACY_OWNER_PREFIXES = [
   '/account',
   '/subscription',
   '/onboarding',
-  '/admin',
 ] as const
 
 /**

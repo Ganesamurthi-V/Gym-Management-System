@@ -10,6 +10,7 @@ import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
 import { isImportedMembership } from '@/lib/payments/import-membership'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 
 export async function GET(req: NextRequest) {
@@ -127,6 +128,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
     log.info('Gym Info', { gymId: gym.id })
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     // The composite FK would also reject a foreign member, but check up front
     // so the caller gets a clean 403 and no insert is attempted.

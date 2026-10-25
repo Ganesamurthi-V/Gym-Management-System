@@ -137,6 +137,16 @@ describe('member routes', () => {
     expect(state.rpc).toHaveBeenCalled()
   })
 
+  it('leaderboard: a blocked member whose claims say owner still gets 403', async () => {
+    // user_metadata.role is user-editable, so the claim must not decide who is gated.
+    state.role = 'owner'
+    state.access = { state: 'blocked' }
+    const { GET } = await import('@/app/api/gamification/leaderboard/route')
+    const res = await GET({ nextUrl: new URL('http://x/api/gamification/leaderboard?board=week') } as never)
+    expect(res.status).toBe(403)
+    expect(state.rpc).not.toHaveBeenCalled()
+  })
+
   it('member-events: blocked member gets 403 and the RPC never runs', async () => {
     state.access = { state: 'blocked' }
     const { GET } = await import('@/app/api/gamification/member-events/route')

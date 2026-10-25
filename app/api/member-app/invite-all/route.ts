@@ -14,6 +14,7 @@
 import { withAuth, apiError, apiSuccess } from '@/lib/api/withAuth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isWhatsAppEnabledForGym } from '@/lib/whatsapp/gymGate'
+import { gymMayManageMemberApp, splitMemberAppEligible, MEMBER_APP_NOT_INCLUDED_MESSAGE } from '@/lib/member/memberAppAccess'
 import { selectInviteTargets, type InviteCandidate } from '@/lib/whatsapp/inviteAll'
 import { enqueueSend, kickDrain, BATCH_SIZE, DRAIN_INTERVAL_MINUTES } from '@/lib/whatsapp/queue'
 import { estimateDrainMinutes, getRecipientWindowUsage, normalisePhone, QUEUE_RECIPIENT_CAP } from '@/lib/whatsapp/recipientLimit'
@@ -25,6 +26,9 @@ export const maxDuration = 60
 const PAGE_SIZE = 1000
 
 export const POST = withAuth('MEMBER_APP_INVITE_ALL', async (_req, { gym, supabase, log }) => {
+  // Writability is already enforced by withAuth; the plan comes from the gym row it loaded.
+  if (!gymMayManageMemberApp(gym)) return apiError(403, 'PLAN_REQUIRED', MEMBER_APP_NOT_INCLUDED_MESSAGE)
+
   const admin = createAdminClient()
 
   if (!(await isWhatsAppEnabledForGym(gym.id, admin))) {
@@ -51,7 +55,21 @@ export const POST = withAuth('MEMBER_APP_INVITE_ALL', async (_req, { gym, supaba
     if (!data || data.length < PAGE_SIZE) break
   }
 
-  const { targets, skippedNoPhone, alreadyActivated } = selectInviteTargets(members)
+  const selected = selectInviteTargets(members)
+  const { skippedNoPhone, alreadyActivated } = selected
+
+  // On a trial only the first members by join date are covered; skip the rest and say how many.
+  let targets = selected.targets
+  let skippedNotInPlan = 0
+  try {
+    const split = await splitMemberAppEligible(supabase, gym, targets.map(m => m.id))
+    const covered = new Set(split.allowed)
+    targets = targets.filter(m => covered.has(m.id))
+    skippedNotInPlan = split.skipped
+  } catch (err) {
+    log.error('Trial eligibility lookup failed for invite-all', err)
+    return apiError(500, 'FETCH_FAILED', 'Could not check your plan coverage. Please try again.')
+  }
 
   // Unique index (member_id, template_name, cycle_key) while pending/sending makes a repeat
   // click a no-op: enqueued=false then means "already waiting in the queue".
@@ -90,6 +108,7 @@ export const POST = withAuth('MEMBER_APP_INVITE_ALL', async (_req, { gym, supaba
   return apiSuccess({
     queued,
     skippedNoPhone,
+    skippedNotInPlan,
     alreadyActivated,
     alreadyQueued,
     estimatedMinutes,

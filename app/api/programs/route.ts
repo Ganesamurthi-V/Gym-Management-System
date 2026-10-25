@@ -4,6 +4,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf } from '@/app/api/_guard'
 import { apiLogger, RequestLogger } from '@/lib/logger'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,12 @@ async function authorize(log: RequestLogger, req: NextRequest): Promise<Authoriz
   log.end('GET_GYM')
 
   if (!gym) return fail(log, 404, 'NOT_FOUND', 'Gym not found')
+
+  // Reads stay open on a lapsed gym; every write is refused.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
+  }
 
   log.info('Scope resolved', { userId: user.id, gymId: gym.id })
   return { supabase, gymId: gym.id }

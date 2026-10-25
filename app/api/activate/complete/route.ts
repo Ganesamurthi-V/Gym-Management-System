@@ -21,6 +21,7 @@ import { logger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { activateRateLimitOk, getServiceSupabase, resolveInvitationToken } from '@/lib/member/activation-token'
 import { sendVerificationEmail } from '@/lib/member/activation-email'
+import { getMemberAppAccess } from '@/lib/member/member-data'
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
 
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     // The owner may have suspended or disabled access after the page loaded.
     const { data: member } = await supabase
       .from('members')
-      .select('invitation_status, portal_enabled, portal_suspended')
+      .select('id, gym_id, created_at, invitation_status, portal_enabled, portal_suspended')
       .eq('id', memberId)
       .eq('gym_id', gymId)
       .maybeSingle()
@@ -91,6 +92,14 @@ export async function POST(req: NextRequest) {
     }
     if (member.invitation_status === 'activated') {
       return fail('This account has already been activated. Please go to login.', 409, { code: 'already_activated' })
+    }
+
+    // ── Plan gate ─────────────────────────────────────────────────────────────
+    // Before any write: a link sent while the gym had the member app must not set a password
+    // once the gym is on Free, lapsed, deactivated or the member is beyond a trial's first 50.
+    // Fresh read, fails closed.
+    if (!(await getMemberAppAccess(member))) {
+      return fail("The member app is not available on your gym's plan.", 403, { code: 'PLAN_NOT_ALLOWED' })
     }
 
     // ── Set the chosen email + password ───────────────────────────────────────

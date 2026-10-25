@@ -8,13 +8,12 @@ import type { MetadataRoute } from 'next'
  * (`/admin/`, `/dashboard/`, `/member/`, `/login`, `/signup`) do NOT exist here
  * and would silently protect nothing:
  *
- *     /owner/admin/       not /admin/
  *     /owner/dashboard/   not /dashboard/
  *     /m/                 not /member/
  *     /auth/login         not /login
  *     /auth/create-account   not /signup
  *
- * `/owner/` covers the whole owner console including admin and dashboard, and
+ * `/owner/` covers the whole owner console including the dashboard, and
  * `/m/` covers the entire member PWA, so both are single entries.
  *
  * `/activate/` and `/auth/` matter most and are the easiest to forget. Those
@@ -50,7 +49,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
       disallow: [
-        '/owner/',    // owner console, incl. /owner/admin and /owner/dashboard
+        '/owner/',    // owner console, incl. /owner/dashboard
         '/m/',        // member PWA
         '/auth/',     // login, create-account, setup-password (token in fragment)
         '/activate/', // member activation links (one-time token in fragment)

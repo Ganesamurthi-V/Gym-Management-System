@@ -1,6 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { gymIsWritable } from '@/lib/subscription-utils'
+import { SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/subscriptionGuard'
 
 export interface UPIConfig {
   id: string
@@ -56,10 +58,12 @@ export async function saveUPIConfig(params: {
 
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id')
+    .select('id, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
     .eq('owner_id', session.user.id)
     .single()
   if (!gym) return { success: false, error: 'Gym not found' }
+  // A lapsed gym is read-only on the server; the UI paywall is not the only gate.
+  if (!gymIsWritable(gym)) return { success: false, error: SUBSCRIPTION_ENDED_MESSAGE }
 
   const row = {
     gym_id: gym.id,
@@ -93,10 +97,12 @@ export async function deleteUPIConfig(): Promise<{ success: boolean; error?: str
 
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id')
+    .select('id, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
     .eq('owner_id', session.user.id)
     .single()
   if (!gym) return { success: false, error: 'Gym not found' }
+  // A lapsed gym is read-only on the server; the UI paywall is not the only gate.
+  if (!gymIsWritable(gym)) return { success: false, error: SUBSCRIPTION_ENDED_MESSAGE }
 
   const { error } = await supabase
     .from('gym_upi_config')

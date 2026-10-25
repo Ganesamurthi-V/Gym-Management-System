@@ -16,7 +16,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 export async function getGymForUser(supabase: SupabaseClient, userId: string) {
   const { data: gym, error } = await supabase
     .from('gyms')
-    .select('id, name') // Some places need name as well
+    .select('id, name, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at') // subscription columns feed the read-only guard in withAuth; same single query, never cached
     .eq('owner_id', userId)
     .single()
 

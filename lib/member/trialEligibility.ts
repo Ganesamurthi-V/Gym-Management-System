@@ -1,8 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { TRIAL_APP_MEMBER_LIMIT } from '@/lib/subscription-utils'
+import { PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
 
 /**
- * Ids of a trial gym's first TRIAL_APP_MEMBER_LIMIT members in join order: the members the trial's
+ * Ids of a trial gym's first PLAN_MEMBER_LIMIT members in join order: the members the trial's
  * Member App and WhatsApp cover.
  *
  * Ordered by (created_at, id), not by counting rows with an earlier created_at: a bulk import gives
@@ -18,7 +18,7 @@ export async function getTrialEligibleMemberIds(db: SupabaseClient, gymId: strin
     .eq('gym_id', gymId)
     .order('created_at', { ascending: true })
     .order('id', { ascending: true })
-    .limit(TRIAL_APP_MEMBER_LIMIT)
+    .limit(PLAN_MEMBER_LIMIT)
   if (error) throw error
   if (!data) throw new Error('trial eligibility: no data')
   return new Set(data.map(r => r.id as string))

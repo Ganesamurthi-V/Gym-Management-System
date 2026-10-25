@@ -3,6 +3,7 @@ import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { ADMIN_ACTOR, dateOrClearSchema, noteSchema, sanitizeUUID } from '@/lib/sanitize'
 import { z } from 'zod'
+import { isPaidPlan } from '@/lib/plan'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,10 +40,16 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     const { data: gym, error: fetchError } = await supabase
       .from('gyms')
-      .select('subscription_started_at, subscription_ends_at, trial_started_at, trial_ends_at, owner_id')
+      .select('plan_type, subscription_started_at, subscription_ends_at, trial_started_at, trial_ends_at, owner_id')
       .eq('id', id)
       .single()
+    // Fail closed: a failed plan lookup throws (500) instead of letting the write through.
     if (fetchError) throw fetchError
+
+    // Editing trial dates on a paid gym is the trial reset by another door (see trial/route.ts).
+    if ((trial_started_at !== undefined || trial_ends_at !== undefined) && isPaidPlan(gym.plan_type)) {
+      return NextResponse.json({ error: 'Trial dates cannot be changed for gyms on a paid plan' }, { status: 409 })
+    }
 
     const updates: Record<string, any> = {}
     if (subscription_started_at !== undefined) updates.subscription_started_at = subscription_started_at || null

@@ -7,6 +7,7 @@ import {
   RefreshCw, Trash2, Ban, Unlock, Star, MessageCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { isPaidPlan } from '@/lib/plan'
 
 interface Props {
   gymId: string
@@ -158,6 +159,12 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
               <p className="text-xs text-slate-500">Submitted</p>
               <p className="text-slate-300">{new Date(pendingRequest.submitted_at).toLocaleString('en-IN')}</p>
             </div>
+            {pendingRequest.expected_amount_inr != null && (
+              <div>
+                <p className="text-xs text-slate-500">Expected</p>
+                <p className="text-slate-300">Rs {Number(pendingRequest.expected_amount_inr).toLocaleString('en-IN')}</p>
+              </div>
+            )}
             {pendingRequest.notes && (
               <div className="col-span-2">
                 <p className="text-xs text-slate-500">Notes</p>
@@ -176,7 +183,7 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
           <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#1f2937]">
             {isAddonRequest ? (
               <span className="px-2 py-1.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
-                WhatsApp add-on, ₹299 / 30 days
+                WhatsApp add-on{pendingRequest.expected_amount_inr != null ? `, ₹${Number(pendingRequest.expected_amount_inr).toLocaleString('en-IN')}` : ''} / 30 days
               </span>
             ) : (
               <select value={approvePlan} onChange={e => setApprovePlanChoice(e.target.value as ApprovePlanType)}
@@ -240,29 +247,31 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
             </div>
           </div>
 
-          {/* Trial Management */}
-          <div className="bg-[#0F172A] rounded-xl p-4 border border-[#1f2937] space-y-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trial Management</p>
-            <div className="flex items-center gap-2">
-              <input type="number" value={trialDays} onChange={e => setTrialDays(e.target.value)}
-                className="admin-input w-16 text-xs py-1.5 text-center" min="1" max="90" />
-              <span className="text-xs text-slate-500">days</span>
-              <button
-                onClick={() => callAction('trial', { action: 'extend', days: parseInt(trialDays) || 7 }, `Trial extended by ${trialDays} days`)}
-                disabled={!!actionLoading}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
-              >
-                Extend
-              </button>
-              <button
-                onClick={() => callAction('trial', { action: 'reset' }, 'Trial reset to 14 days')}
-                disabled={!!actionLoading}
-                className="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
-              >
-                Reset
-              </button>
+          {/* Trial Management: hidden on paid plans, the trial route refuses them (would downgrade the gym) */}
+          {!isPaidPlan(gym.plan_type) && (
+            <div className="bg-[#0F172A] rounded-xl p-4 border border-[#1f2937] space-y-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trial Management</p>
+              <div className="flex items-center gap-2">
+                <input type="number" value={trialDays} onChange={e => setTrialDays(e.target.value)}
+                  className="admin-input w-16 text-xs py-1.5 text-center" min="1" max="90" />
+                <span className="text-xs text-slate-500">days</span>
+                <button
+                  onClick={() => callAction('trial', { action: 'extend', days: parseInt(trialDays) || 7 }, `Trial extended by ${trialDays} days`)}
+                  disabled={!!actionLoading}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                >
+                  Extend
+                </button>
+                <button
+                  onClick={() => callAction('trial', { action: 'reset' }, 'Trial reset to 14 days')}
+                  disabled={!!actionLoading}
+                  className="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Expire */}
           <div className="bg-[#0F172A] rounded-xl p-4 border border-[#1f2937] space-y-3">

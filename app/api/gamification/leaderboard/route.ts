@@ -93,9 +93,12 @@ export async function GET(req: NextRequest) {
     const supabase = await createClient()
     const isMember = roleFromClaims(user) === 'member'
 
-    // Owners use this route for the Member App preview and are unaffected; a member whose gym
-    // plan has no member app must not read the board.
-    if (isMember && (await getMemberAccessState()).state !== 'ok') {
+    // Owners use this route for the Member App preview and are unaffected (they resolve to
+    // 'not_member'); a member whose gym plan has no member app must not read the board. The
+    // role claim is user_metadata, which the user can edit, so it cannot decide who is gated:
+    // 'blocked' is derived from the members row and applies whatever the claim says.
+    const access = await getMemberAccessState()
+    if (access.state === 'blocked' || (isMember && access.state !== 'ok')) {
       return respond(apiError(403, 'PLAN_NOT_ALLOWED', "The member app is not available on your gym's plan."))
     }
 

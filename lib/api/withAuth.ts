@@ -6,13 +6,23 @@ import { apiLogger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import type { AlertInput } from '@/lib/monitoring/alert'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
+import { gymIsWritable } from '@/lib/subscription-utils'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type AuthContext = {
   user: { id: string; email?: string }
-  gym: { id: string; name: string }
+  gym: { id: string; name: string } & GymWriteFields
   supabase: SupabaseClient
   log: ReturnType<typeof apiLogger>
+}
+
+/** Subscription columns loaded by getGymForUser; optional so tests and callers can pass a bare gym. */
+type GymWriteFields = {
+  is_active?: boolean | null
+  subscription_status?: string | null
+  plan_type?: string | null
+  trial_ends_at?: string | null
+  subscription_ends_at?: string | null
 }
 
 type HandlerFn = (
@@ -98,7 +108,11 @@ function safeAlert(input: AlertInput) {
 export function withAuth(
   routeName: string,
   handler: HandlerFn,
-  options?: { rateLimit?: number }
+  options?: {
+    rateLimit?: number
+    /** Billing, account, support and logout routes stay writable for a lapsed gym so it can renew or leave. */
+    allowWhenExpired?: boolean
+  }
 ) {
   return async (req: NextRequest) => {
     const log = apiLogger(routeName)
@@ -154,6 +168,14 @@ export function withAuth(
       }
 
       alertGymId = gym.id
+
+      // A lapsed or deactivated gym is read-only on the server, not only behind the UI paywall
+      // (which a direct API call skips). Runs after auth so an anonymous caller still gets 401.
+      if (!SAFE_METHODS.has(req.method) && !options?.allowWhenExpired && !gymIsWritable(gym)) {
+        log.summary(403)
+        return apiError(403, 'SUBSCRIPTION_REQUIRED', 'Your subscription has ended. Renew to make changes.')
+      }
+
       const ctx: AuthContext = { user, gym, supabase, log }
       const response = await handler(req, ctx)
       log.summary(response.status)

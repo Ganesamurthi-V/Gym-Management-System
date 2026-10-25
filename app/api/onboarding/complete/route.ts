@@ -297,7 +297,10 @@ export async function POST(req: NextRequest) {
       targetGymId = existingGym?.id ?? null
     }
 
-    if (targetGymId) {
+    // Saves the onboarding details onto an existing gym. Returns an error response, or null on
+    // success. A function because two paths end here: the gym already existed, or the insert
+    // below lost a race against a concurrent request that created it (unique owner_id).
+    const saveOnExistingGym = async (id: string) => {
       const coreUpdate = {
         name: gymName,
         onboarding_completed: true,
@@ -307,7 +310,7 @@ export async function POST(req: NextRequest) {
       const updateWithContact = await supabase
         .from('gyms')
         .update({ ...coreUpdate, phone: phone || null, city: city || null })
-        .eq('id', targetGymId)
+        .eq('id', id)
         .eq('owner_id', user.id)
         .select('id')
         .maybeSingle()
@@ -330,7 +333,7 @@ export async function POST(req: NextRequest) {
         const fallbackUpdate = await supabase
           .from('gyms')
           .update(coreUpdate)
-          .eq('id', targetGymId)
+          .eq('id', id)
           .eq('owner_id', user.id)
           .select('id')
           .maybeSingle()
@@ -350,13 +353,19 @@ export async function POST(req: NextRequest) {
       }
 
       if (!updatedGym) {
-        log.warn('Onboarding update matched no gym', { userId: user.id, hasGymId: Boolean(targetGymId) })
+        log.warn('Onboarding update matched no gym', { userId: user.id, hasGymId: Boolean(gymId) })
         return errorResponse(
           'GYM_NOT_FOUND',
           'We could not find this gym on your account. Refresh the page and try again.',
           404,
         )
       }
+      return null
+    }
+
+    if (targetGymId) {
+      const failed = await saveOnExistingGym(targetGymId)
+      if (failed) return failed
     } else {
       // No gym yet, so this call would create it. It must honour the same mobile-number gate as
       // /api/auth/finalize-registration. user_metadata is user-editable, so this is a "we asked"
@@ -366,7 +375,7 @@ export async function POST(req: NextRequest) {
       }
 
       const parsedTrialDays = Number.parseInt(process.env.TRIAL_DURATION_DAYS ?? '14', 10)
-      const trialDays = Number.isFinite(parsedTrialDays) && parsedTrialDays > 0 ? parsedTrialDays : 14
+      const trialDays = Number.isInteger(parsedTrialDays) && parsedTrialDays >= 1 && parsedTrialDays <= 31 ? parsedTrialDays : 14
       const now = new Date()
       const trialEndsAt = new Date(now)
       trialEndsAt.setDate(trialEndsAt.getDate() + trialDays)
@@ -407,7 +416,28 @@ export async function POST(req: NextRequest) {
         insertError = fallbackInsert.error
       }
 
-      if (insertError || !newGym) {
+      if (insertError?.code === '23505') {
+        // A concurrent request created this owner's gym between the lookup and the insert
+        // (gyms.owner_id is unique). Continue as an update on that gym, like
+        // /api/auth/finalize-registration, instead of failing with a 500.
+        const { data: raceGym, error: raceError } = await supabase
+          .from('gyms')
+          .select('id')
+          .eq('owner_id', user.id)
+          .maybeSingle()
+        if (raceError || !raceGym) {
+          log.error('Could not load gym after duplicate insert', databaseErrorDetails(raceError))
+          return errorResponse(
+            'DATABASE_ERROR',
+            'We could not create your gym right now. Your details are still on this device—please try again.',
+            500,
+            true,
+          )
+        }
+        const failed = await saveOnExistingGym(raceGym.id)
+        if (failed) return failed
+        targetGymId = raceGym.id
+      } else if (insertError || !newGym) {
         log.error('Could not create gym during onboarding', databaseErrorDetails(insertError))
         return errorResponse(
           'DATABASE_ERROR',
@@ -415,9 +445,9 @@ export async function POST(req: NextRequest) {
           500,
           true,
         )
+      } else {
+        targetGymId = newGym.id
       }
-
-      targetGymId = newGym.id
     }
 
     if (plans.length > 0 && targetGymId) {

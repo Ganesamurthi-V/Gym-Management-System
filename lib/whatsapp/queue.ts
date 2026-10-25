@@ -482,10 +482,10 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     let prepareFailure: { error: string; permanent: boolean } | null = null
     try {
       // dedupeKey is the row id, identical on every attempt: Meta echoes it in status webhooks.
-      let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId, dedupeKey: row.id, recipientCap: QUEUE_RECIPIENT_CAP }
+      let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId, memberRowId: row.member_id, dedupeKey: row.id, recipientCap: QUEUE_RECIPIENT_CAP }
       if (row.template_name === 'member_app_invitation') {
         const prep = await (deps.prepare ?? ((r) => defaultPrepare(supabase, r)))(row)
-        if (prep.ok) ctx = { ...prep.context, gymId: ctx.gymId, dedupeKey: row.id, recipientCap: QUEUE_RECIPIENT_CAP }
+        if (prep.ok) ctx = { ...prep.context, gymId: ctx.gymId, memberRowId: row.member_id, dedupeKey: row.id, recipientCap: QUEUE_RECIPIENT_CAP }
         else prepareFailure = { error: prep.error, permanent: prep.permanent }
       }
       // gymId rides along so sendTemplate can check the gym's WhatsApp switch at the moment of

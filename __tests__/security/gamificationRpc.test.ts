@@ -24,6 +24,15 @@ const MIGRATION = read('supabase/migrations/20261012120000_gamification.sql')
 // their current definition; the canonical schema must match the newest one.
 const EVENTS_MIGRATION = read('supabase/migrations/20261013120000_gamification_events.sql')
 const REDEFINED_BY_EVENTS = new Set(['get_member_gamification', 'get_gym_leaderboard'])
+// The member app gate added a member_app_allowed() check to every member RPC, so
+// this migration carries their newest definition and wins over both above.
+const HARDENING_MIGRATION = read('supabase/migrations/20261026130000_subscription_hardening.sql')
+const REDEFINED_BY_HARDENING = new Set([
+  'get_member_gamification',
+  'get_gym_leaderboard',
+  'set_leaderboard_visibility',
+  'record_member_achievements',
+])
 
 /** The CREATE FUNCTION statement for `name`, from its header to the closing `$$;`. */
 function functionSource(sql: string, name: string): { args: string; full: string } {
@@ -159,7 +168,9 @@ describe('migration and canonical schema describe the same functions', () => {
   ]
   for (const name of names) {
     it(`${name} is identical in both files`, () => {
-      const latest = REDEFINED_BY_EVENTS.has(name) ? EVENTS_MIGRATION : MIGRATION
+      const latest = REDEFINED_BY_HARDENING.has(name)
+        ? HARDENING_MIGRATION
+        : REDEFINED_BY_EVENTS.has(name) ? EVENTS_MIGRATION : MIGRATION
       expect(functionSource(latest, name).full).toBe(functionSource(SCHEMA, name).full)
     })
   }

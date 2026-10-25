@@ -11,7 +11,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { hasOwnerRegistrationMarker } from '@/lib/auth/owner-registration'
 import { z } from 'zod'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { getAuthUser, getGymCore } from '@/lib/dal'
+import { gymIsWritable } from '@/lib/subscription-utils'
+import { SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/subscriptionGuard'
+import {
+  gymMayManageMemberApp,
+  splitMemberAppEligible,
+  MEMBER_APP_NOT_INCLUDED_MESSAGE,
+} from '@/lib/member/memberAppAccess'
 import { logger } from '@/lib/logger'
 import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
 import {
@@ -40,18 +47,43 @@ import type {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-async function getOwnerGymId(): Promise<string | null> {
+// Plan and subscription columns are read here, server-side, so the write guards below never
+// depend on anything the browser sent.
+type OwnerGymRow = {
+  id: string
+  is_active: boolean | null
+  subscription_status: string | null
+  plan_type: string | null
+  trial_ends_at: string | null
+  subscription_ends_at: string | null
+}
+
+async function getOwnerGymRow(): Promise<OwnerGymRow | null> {
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return null
 
   const { data: gym } = await supabase
     .from('gyms')
-    .select('id')
+    .select('id, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
     .eq('owner_id', session.user.id)
     .single()
 
-  return gym?.id ?? null
+  return (gym as OwnerGymRow | null) ?? null
+}
+
+/**
+ * Which of these members the Member App covers on this gym's plan: all of them on a paid plan,
+ * the first PLAN_MEMBER_LIMIT by join date on a trial. Fails closed (nobody) if the lookup errors.
+ */
+async function memberAppCovered(gym: OwnerGymRow, memberIds: string[]): Promise<{ allowed: string[]; skipped: number }> {
+  try {
+    const supabase = await createClient()
+    return await splitMemberAppEligible(supabase, gym, memberIds)
+  } catch (err) {
+    console.error('[member-app] trial eligibility lookup failed:', err)
+    return { allowed: [], skipped: memberIds.length }
+  }
 }
 
 async function logActivity(gymId: string, memberId: string, activity: MemberActivityType) {
@@ -74,7 +106,11 @@ async function logActivity(gymId: string, memberId: string, activity: MemberActi
  * invitation existed. Anyone who reached /activate then failed verification
  * because there was nothing to verify against.
  */
-async function issueInvitation(gymId: string, memberId: string): Promise<ActionResult> {
+async function issueInvitation(gym: OwnerGymRow, memberId: string): Promise<ActionResult> {
+  const gymId = gym.id
+  // Callers also check trial coverage per member; this is the last gate before a login is created.
+  if (!gymMayManageMemberApp(gym)) return { success: false, message: MEMBER_APP_NOT_INCLUDED_MESSAGE }
+
   const serviceUrl = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceUrl || !serviceKey) {
@@ -243,6 +279,7 @@ async function issueInvitation(gymId: string, memberId: string): Promise<ActionR
     gymName: gymData?.name ?? 'Your Gym',
     memberName: memberData.name,
     invitationToken: token,
+    memberRowId: memberId,
     // Server-resolved gym id: without it the send skips the per-gym gate (switch and plan).
     gymId,
   })
@@ -274,8 +311,20 @@ export async function memberRowAction(
   action: MemberRowAction,
   memberId: string,
 ): Promise<ActionResult> {
-  const gymId = await getOwnerGymId()
-  if (!gymId) return { success: false, message: 'Unauthorized' }
+  const gym = await getOwnerGymRow()
+  if (!gym) return { success: false, message: 'Unauthorized' }
+  const gymId = gym.id
+
+  // Every row action writes (or deletes portal data); a lapsed gym is read-only.
+  if (!gymIsWritable(gym)) return { success: false, message: SUBSCRIPTION_ENDED_MESSAGE }
+
+  // Turning the Member App on for a member needs a plan that includes it and, on a trial,
+  // coverage for that member. Suspending or removing access stays allowed on any plan.
+  if (action === 'enable_portal' || action === 'send_invitation' || action === 'resend_invitation' || action === 'reactivate_access') {
+    if (!gymMayManageMemberApp(gym)) return { success: false, message: MEMBER_APP_NOT_INCLUDED_MESSAGE }
+    const covered = await memberAppCovered(gym, [memberId])
+    if (covered.allowed.length === 0) return { success: false, message: MEMBER_APP_NOT_INCLUDED_MESSAGE }
+  }
 
   const supabase = await createClient()
 
@@ -344,7 +393,7 @@ export async function memberRowAction(
 
     case 'send_invitation':
     case 'resend_invitation': {
-      const result = await issueInvitation(gymId, memberId)
+      const result = await issueInvitation(gym, memberId)
       // The member row/token may have changed even when Meta did not confirm
       // delivery, so refresh cached UI state for both outcomes.
       if (!result.success) return result
@@ -395,9 +444,13 @@ export async function memberBulkAction(
   action: MemberBulkAction,
   memberIds: string[],
 ): Promise<ActionResult> {
-  const gymId = await getOwnerGymId()
-  if (!gymId) return { success: false, message: 'Unauthorized' }
+  const gym = await getOwnerGymRow()
+  if (!gym) return { success: false, message: 'Unauthorized' }
+  const gymId = gym.id
   if (memberIds.length === 0) return { success: false, message: 'No members selected' }
+
+  // Export only reads; every other bulk action writes.
+  if (action !== 'bulk_export' && !gymIsWritable(gym)) return { success: false, message: SUBSCRIPTION_ENDED_MESSAGE }
 
   const supabase = await createClient()
   const count = memberIds.length
@@ -412,17 +465,33 @@ export async function memberBulkAction(
     return { success: false, message: 'One or more members not found in your gym' }
   }
 
+  // Enabling the portal or inviting needs a plan with the Member App; on a trial only the covered
+  // members are processed and the rest are reported as skipped.
+  let coveredIds = memberIds
+  let skippedNotInPlan = 0
+  if (action === 'bulk_enable_portal' || action === 'bulk_send_invitation') {
+    if (!gymMayManageMemberApp(gym)) return { success: false, message: MEMBER_APP_NOT_INCLUDED_MESSAGE }
+    const covered = await memberAppCovered(gym, memberIds)
+    if (covered.allowed.length === 0) return { success: false, message: MEMBER_APP_NOT_INCLUDED_MESSAGE }
+    coveredIds = covered.allowed
+    skippedNotInPlan = covered.skipped
+  }
+  const coveredCount = coveredIds.length
+  const skippedNote = skippedNotInPlan > 0
+    ? ` ${skippedNotInPlan} skipped: not included in your plan.`
+    : ''
+
   switch (action) {
     case 'bulk_enable_portal': {
       const { error } = await supabase.from('members')
         .update({ portal_enabled: true, portal_suspended: false })
-        .in('id', memberIds)
+        .in('id', coveredIds)
       if (error) return { success: false, message: 'Could not enable portal for selected members. Please try again.' }
-      const activities = memberIds.map(id => ({
+      const activities = coveredIds.map(id => ({
         gym_id: gymId, member_id: id, activity: 'portal_enabled' as const, performed_by: 'owner',
       }))
       await supabase.from('member_portal_activity').insert(activities)
-      return { success: true, message: `Portal enabled for ${count} member${count === 1 ? '' : 's'}` }
+      return { success: true, message: `Portal enabled for ${coveredCount} member${coveredCount === 1 ? '' : 's'}.${skippedNote}`.trim() }
     }
 
     case 'bulk_send_invitation': {
@@ -431,7 +500,7 @@ export async function memberBulkAction(
       // as invited when no invitation existed. It now runs the real invitation
       // for each member and reports per-member outcomes.
       const results = await Promise.all(
-        memberIds.map(async (id) => ({ id, result: await issueInvitation(gymId, id) })),
+        coveredIds.map(async (id) => ({ id, result: await issueInvitation(gym, id) })),
       )
 
       const delivered = results.filter((entry) => entry.result.whatsappSent === true)
@@ -454,7 +523,7 @@ export async function memberBulkAction(
       if (notDelivered.length === 0) {
         return {
           success: true,
-          message: `Invitation sent to ${delivered.length} member${delivered.length === 1 ? '' : 's'}`,
+          message: `Invitation sent to ${delivered.length} member${delivered.length === 1 ? '' : 's'}.${skippedNote}`.trim(),
           invitationCreated: invitationCreated.length > 0,
           whatsappSent: true,
         }
@@ -463,7 +532,7 @@ export async function memberBulkAction(
         return {
           success: false,
           message: invitationCreated.length > 0
-            ? `WhatsApp couldn't confirm delivery for the selected member${count === 1 ? '' : 's'}. Check their numbers and try again.`
+            ? `WhatsApp couldn't confirm delivery for the selected member${coveredCount === 1 ? '' : 's'}. Check their numbers and try again.`
             : `No invitations were created. ${notDelivered[0].result.message}`,
           invitationCreated: invitationCreated.length > 0,
           whatsappSent: false,
@@ -471,7 +540,7 @@ export async function memberBulkAction(
       }
       return {
         success: true,
-        message: `WhatsApp delivered ${delivered.length} of ${count} invitations. Check the ${notDelivered.length} member number${notDelivered.length === 1 ? '' : 's'} and try again.`,
+        message: `WhatsApp delivered ${delivered.length} of ${coveredCount} invitations. Check the ${notDelivered.length} member number${notDelivered.length === 1 ? '' : 's'} and try again.${skippedNote}`,
         invitationCreated: invitationCreated.length > 0,
         whatsappSent: true,
       }
@@ -510,11 +579,13 @@ const gamificationLog = logger.child({ component: 'MEMBER_APP_GAMIFICATION' })
  * on both tables is still the real boundary: every statement runs on the
  * cookie-session client.
  */
-async function getOwnerGym(): Promise<{ gymId: string } | null> {
+async function getOwnerGym(): Promise<{ gymId: string; writable: boolean } | null> {
   const { user } = await getAuthUser()
   if (!user) return null
-  const { gym } = await getGym(user.id)
-  return gym ? { gymId: gym.id } : null
+  // getGymCore is the same cached, never-stale gym row getGym used; it also carries the
+  // subscription columns the read-only guard needs.
+  const { gym } = await getGymCore(user.id)
+  return gym ? { gymId: gym.id, writable: gymIsWritable(gym) } : null
 }
 
 const SETTINGS_SAVE_FAILED = 'Could not save the settings. Please try again.'
@@ -531,6 +602,7 @@ const UNDO_FAILED = 'Could not undo that award. Please try again.'
 export async function updateGamificationSettings(patch: unknown): Promise<GamificationSettingsResult> {
   const owner = await getOwnerGym()
   if (!owner) return { success: false, message: 'Unauthorized' }
+  if (!owner.writable) return { success: false, message: SUBSCRIPTION_ENDED_MESSAGE }
 
   const parsed = gamificationSettingsPatchSchema.safeParse(patch)
   if (!parsed.success) {
@@ -590,6 +662,7 @@ const AWARD_COLUMNS =
 export async function markGamificationPrizeAwarded(input: unknown): Promise<GamificationAwardResult> {
   const owner = await getOwnerGym()
   if (!owner) return { success: false, message: 'Unauthorized' }
+  if (!owner.writable) return { success: false, message: SUBSCRIPTION_ENDED_MESSAGE }
 
   const parsed = awardInputSchema.safeParse(input)
   if (!parsed.success) return { success: false, message: AWARD_FAILED }
@@ -683,6 +756,7 @@ export async function markGamificationPrizeAwarded(input: unknown): Promise<Gami
 export async function undoGamificationAward(awardId: unknown): Promise<ActionResult> {
   const owner = await getOwnerGym()
   if (!owner) return { success: false, message: 'Unauthorized' }
+  if (!owner.writable) return { success: false, message: SUBSCRIPTION_ENDED_MESSAGE }
 
   const parsed = z.string().uuid().safeParse(awardId)
   if (!parsed.success) return { success: false, message: UNDO_FAILED }

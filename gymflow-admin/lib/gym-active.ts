@@ -4,7 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * Single place that activates/deactivates a gym. Flipping gyms.is_active alone
  * left the owner able to keep signing in (the /gyms/[gymId]/status route did
  * exactly that), so the owner's auth user is banned/unbanned in the same step.
- * `extra` carries additional gyms columns (e.g. login_disabled) written in the same update.
+ * `extra` carries additional gyms columns written in the same update.
+ * gyms.login_disabled is not written here: the DB keeps it equal to NOT is_active.
  * Throws on any DB/auth error; returns false when the gym does not exist.
  */
 export async function setGymActive(supabase: SupabaseClient, gymId: string, active: boolean, extra: Record<string, unknown> = {}): Promise<boolean> {

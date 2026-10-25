@@ -20,6 +20,8 @@ import { getGymForUser } from '@/lib/supabase/queries'
 import { apiLogger } from '@/lib/logger'
 import { prepareMemberInvitation } from '@/lib/member-invitation-server'
 import { passesCsrf, csrfRejected, UUID_RE } from '@/app/api/_guard'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
+import { gymMayManageMemberApp, splitMemberAppEligible, MEMBER_APP_NOT_INCLUDED_MESSAGE } from '@/lib/member/memberAppAccess'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,6 +75,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
 
+    // Plan and subscription come from the gym row loaded above, never from the request.
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
+    if (!gymMayManageMemberApp(gym)) {
+      log.summary(403)
+      return NextResponse.json({ success: false, error: { code: 'PLAN_REQUIRED', message: MEMBER_APP_NOT_INCLUDED_MESSAGE } }, { status: 403 })
+    }
+
     let body: { memberId: string }
     try { body = await req.json() } catch {
       log.summary(400)
@@ -83,6 +93,13 @@ export async function POST(req: NextRequest) {
     if (typeof memberId !== 'string' || !UUID_RE.test(memberId)) {
       log.summary(400)
       return NextResponse.json({ success: false, error: { code: 'BAD_REQUEST', message: 'A valid memberId is required' } }, { status: 400 })
+    }
+
+    // A trial covers only its first members by join date; fail closed if that cannot be read.
+    const { allowed: coveredIds } = await splitMemberAppEligible(supabase, gym, [memberId])
+    if (coveredIds.length === 0) {
+      log.summary(403)
+      return NextResponse.json({ success: false, error: { code: 'PLAN_REQUIRED', message: MEMBER_APP_NOT_INCLUDED_MESSAGE } }, { status: 403 })
     }
 
     // Member fetch, auth identity, token and status columns live in prepareMemberInvitation so
@@ -111,6 +128,7 @@ export async function POST(req: NextRequest) {
       gymName,
       memberName: member.name,
       invitationToken: token,
+      memberRowId: memberId,
       gymId: gym.id,
     })
     log.end('SEND_WHATSAPP')

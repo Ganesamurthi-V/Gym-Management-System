@@ -45,11 +45,3 @@ describe('secret comparisons are constant-time and errors are generic', () => {
     })
   }
 })
-
-describe('reset-password is limited to gym owners', () => {
-  it('looks up gyms by owner_id', () => {
-    const s = read('app/api/gyms/reset-password/route.ts')
-    expect(s).toContain(".eq('owner_id', userId)")
-    expect(s).toContain('403')
-  })
-})

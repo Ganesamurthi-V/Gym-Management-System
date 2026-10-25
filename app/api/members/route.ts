@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic'
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
+import { PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
 export async function GET(req: NextRequest) {
   const log = apiLogger('MEMBERS_API_GET')
   try {
@@ -170,6 +172,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
     log.info('Gym Info', { gymId: gym.id })
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     // Double-tap guard, claimed after validation so a 400 does not burn the key.
     const duplicate = await claimIdempotencyKey(req, gym.id, 'members')
@@ -197,7 +201,7 @@ export async function POST(req: NextRequest) {
       if (error.code === '23514' && error.message?.includes('free_plan_member_limit')) {
         log.summary(403)
         return NextResponse.json(
-          { success: false, error: { code: 'FREE_PLAN_LIMIT', message: 'Your Free plan allows 50 members. Upgrade to a paid plan to add more.' } },
+          { success: false, error: { code: 'FREE_PLAN_LIMIT', message: `Your Free plan allows ${PLAN_MEMBER_LIMIT} members. Upgrade to a paid plan to add more.` } },
           { status: 403 },
         )
       }

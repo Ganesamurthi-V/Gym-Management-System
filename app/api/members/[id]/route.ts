@@ -9,6 +9,7 @@ import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, UU
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 
 export async function GET(
@@ -66,6 +67,8 @@ export async function PATCH(
 
     const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     const { data: memberCheck } = await supabase.from('members').select('gym_id').eq('id', id).eq('gym_id', gym.id).maybeSingle()
     if (!memberCheck) return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
@@ -167,6 +170,8 @@ export async function DELETE(
 
     const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     // Verify the member belongs to this gym
     const { data: memberCheck } = await supabase.from('members').select('gym_id').eq('id', id).eq('gym_id', gym.id).maybeSingle()

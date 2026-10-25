@@ -138,14 +138,21 @@ export function computeSubscriptionState(
 // Free member cap with a trigger; these mirror it so the UI and import can
 // explain the limit instead of surfacing a raw DB error.
 
-/** A Free gym may hold at most this many members. */
-export const FREE_PLAN_MEMBER_LIMIT = 50
-/** During the trial only the first N members (by join date) get member-app access. */
-export const TRIAL_APP_MEMBER_LIMIT = 50
-/** A trial gym may import until it holds this many members in total (not per upload). */
-export const TRIAL_IMPORT_ROW_LIMIT = 50
-/** Monthly price of the WhatsApp add-on for Free gyms. */
-export const WHATSAPP_ADDON_PRICE_INR = 299
+/**
+ * The one member limit of the Free plan and of the trial (Member App, WhatsApp and import
+ * coverage). Must equal public.plan_member_limit() in supabase-schema.sql; a test enforces it.
+ */
+export const PLAN_MEMBER_LIMIT = 50
+
+/**
+ * Whether the owner may write (add members, record payments, send, import...). A deactivated gym
+ * or one whose subscription has lapsed is read-only on the server, not only behind the UI paywall.
+ * Uses the same rule as the paywall (computeSubscriptionState), so the two never disagree.
+ */
+export function gymIsWritable(gym: (GymSubscriptionFields & { is_active?: boolean | null }) | null | undefined): boolean {
+  if (!gym) return false
+  return gym.is_active !== false && !computeSubscriptionState(gym).isExpired
+}
 
 export function isFreePlan(plan: string | null | undefined): boolean {
   return plan === 'free'
@@ -179,8 +186,8 @@ export function importRowsToTake(
   existingCount: number,
   rowCount: number,
 ): number {
-  if (plan === 'trial') return Math.min(rowCount, Math.max(0, TRIAL_IMPORT_ROW_LIMIT - existingCount))
-  if (plan === 'free') return Math.min(rowCount, Math.max(0, FREE_PLAN_MEMBER_LIMIT - existingCount))
+  if (plan === 'trial') return Math.min(rowCount, Math.max(0, PLAN_MEMBER_LIMIT - existingCount))
+  if (plan === 'free') return Math.min(rowCount, Math.max(0, PLAN_MEMBER_LIMIT - existingCount))
   return rowCount
 }
 

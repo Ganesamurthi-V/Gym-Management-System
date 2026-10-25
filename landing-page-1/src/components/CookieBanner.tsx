@@ -96,12 +96,7 @@ export function CookieBanner() {
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
             We use small files called cookies. Essential ones keep the site working and remember your
             light or dark mode. Optional ones from Google count visits, and ones from Microsoft show
-            where people tap, so we can improve the page. They never see your name or phone number,
-            and the optional ones stay off until you allow them. Read the{' '}
-            <a href="/privacy#analytics" className="text-foreground underline underline-offset-2">
-              Privacy Policy
-            </a>
-            .
+            where people tap, so we can improve the page.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-end">
             <button type="button" onClick={() => save(NONE)} className={pill}>

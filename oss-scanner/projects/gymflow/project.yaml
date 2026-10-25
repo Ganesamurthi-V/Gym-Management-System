@@ -1,6 +1,17 @@
-# Staged copy of the enrollment file. Submit it to anthropics/oss-scanner at
-# projects/gymflow/project.yaml via a pull request; it does not take effect from this repo.
-repo: "https://github.com/Ganesamurthi-V/Gym-Management-System"
-primary_contact: "support@gymflow.sbs"
-dockerfile: "Dockerfile"
-homepage: "https://gymflow.sbs"
+# Staged copy of the enrollment file. Submit it to anthropics/oss-scanner at projects/gymflow/project.yaml
+# via a pull request; it does not take effect from this repo.
+
+# REQUIRED. The ONE git repository to scan, as an https:// URL.
+repo: https://github.com/Ganesamurthi-V/Gym-Management-System
+
+# REQUIRED. Who should we email our reports to, and use as the primary contact for questions.
+primary_contact: support@gymflow.sbs
+
+# Optional. The project's home page.
+homepage: https://gymflow.sbs
+
+# REQUIRED. The Dockerfile lives in the repository, as recommended.
+dockerfile: .oss-scanner/Dockerfile
+
+# Optional, but strongly recommended. The threat model lives in the repository, as recommended.
+threat_model: .oss-scanner/threat_model.md

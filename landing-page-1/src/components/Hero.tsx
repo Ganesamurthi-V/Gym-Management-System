@@ -57,8 +57,9 @@ export function Hero() {
 
       {/* On a phone the copy fills the first screen below the navbar and is centred in it, so the
           hero sits in the middle of the viewport whatever the phone's height. 100svh is the small
-          viewport (browser bars showing), so nothing is pushed under them. */}
-      <div className="mx-auto flex min-h-[calc(100svh-124px)] max-w-[1240px] flex-col justify-center md:min-h-0">
+          viewport (browser bars showing), so nothing is pushed under them. The cookie bar's height is
+          taken off too (set by CookieBanner), so the centring ignores the space the bar covers. */}
+      <div className="mx-auto flex min-h-[calc(100svh-124px-var(--cookie-bar-h,0px))] max-w-[1240px] flex-col justify-center md:min-h-0">
         {/* ── Copy ──────────────────────────────────────────────────────── */}
         {/* 900px fits the longest headline line with headroom for the serif's
             wider metrics, without letting the measure sprawl. */}

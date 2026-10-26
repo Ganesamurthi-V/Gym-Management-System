@@ -1,4 +1,3 @@
-import { useReveal } from '../lib/useReveal';
 import { sectionIds, type FeaturePage as FeaturePageData } from '../data/featurePages';
 import { DocsPager } from './DocsPager';
 import { DocsShell } from './DocsShell';
@@ -6,13 +5,10 @@ import { FeatureTitle, FeatureShell, RelatedFeatures, ScreenshotsSection, Sectio
 
 /** A page under /features: hero, then the docs shell (sidebar, sections, pager), related pages. */
 export function FeaturePage({ page }: { page: FeaturePageData }) {
-  // Only the article blocks fade in; the sidebar and table of contents are never transformed,
-  // because a transform on a sticky element's ancestor stops it from sticking.
-  const scope = useReveal<HTMLDivElement>({ perElement: true, y: 24, duration: 0.7, start: 'top 90%' });
   const ids = sectionIds(page);
   return (
     <FeatureShell>
-      <div ref={scope}>
+      <div>
         <DocsShell page={page}>
           <FeatureTitle page={page} />
           <div className="flex flex-col gap-10">

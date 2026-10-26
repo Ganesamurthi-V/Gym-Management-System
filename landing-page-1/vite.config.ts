@@ -23,17 +23,22 @@ import {
 // built feature pages (dist/members.html at /members, ...). Vite's dev and preview servers
 // do not, and answer those paths with the SPA's index.html, so the page appears to "redirect"
 // to the home page. Rewrite the clean URLs to their files locally.
-const LEGAL_PAGES = ['/privacy', '/terms', ...FEATURE_SLUGS.map(slug => `/${slug}`)]
+// The feature and guide entry files live in pages/ so the project root is not 16 HTML files. The
+// dev server reads them from there; preview serves dist, where flattenPagesOutput() has already
+// moved them to the root. The legal pages are plain files in public/ either way.
+const LEGAL_PAGES = ['/privacy', '/terms']
+const FEATURE_URLS = FEATURE_SLUGS.map(slug => `/${slug}`)
 function cleanLegalUrls(): Plugin {
-  const rewrite = (req: { url?: string }, _res: unknown, next: () => void) => {
+  const rewriter = (featureDir: string) => (req: { url?: string }, _res: unknown, next: () => void) => {
     const path = (req.url ?? '').split('?')[0]
     if (LEGAL_PAGES.includes(path)) req.url = `${path}.html`
+    else if (FEATURE_URLS.includes(path)) req.url = `${featureDir}${path}.html`
     next()
   }
   return {
     name: 'clean-legal-urls',
-    configureServer: server => void server.middlewares.use(rewrite),
-    configurePreviewServer: server => void server.middlewares.use(rewrite),
+    configureServer: server => void server.middlewares.use(rewriter('/pages')),
+    configurePreviewServer: server => void server.middlewares.use(rewriter('')),
   }
 }
 
@@ -229,9 +234,28 @@ function featureHead(): Plugin {
   }
 }
 
+// Vite writes an HTML entry to the same relative path it has in the project, so pages/members.html
+// would land at dist/pages/members.html. The host serves dist/members.html at /members, so move
+// them up once the build has written its files. Asset URLs in them are absolute, so nothing inside
+// changes.
+function flattenPagesOutput(): Plugin {
+  let outDir = ''
+  return {
+    name: 'flatten-pages-output',
+    apply: 'build',
+    configResolved: config => void (outDir = resolve(config.root, config.build.outDir)),
+    writeBundle() {
+      const dir = resolve(outDir, 'pages')
+      if (!fs.existsSync(dir)) return
+      for (const file of fs.readdirSync(dir)) fs.renameSync(resolve(dir, file), resolve(outDir, file))
+      fs.rmdirSync(dir)
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), cleanLegalUrls(), featureHead()],
+  plugins: [react(), tailwindcss(), cleanLegalUrls(), featureHead(), flattenPagesOutput()],
   resolve: {
     // Must mirror the "paths" entry in tsconfig.app.json. TypeScript resolves
     // @/* for the typecheck, but Vite needs its own mapping to resolve it at
@@ -243,12 +267,13 @@ export default defineConfig({
   },
   build: {
     // One HTML entry per page: there is no SPA fallback on the host (wrangler.jsonc serves
-    // 404.html for unknown paths), so /members must exist as dist/members.html.
+    // 404.html for unknown paths), so /members must exist as dist/members.html. The entries are
+    // pages/<slug>.html and flattenPagesOutput() moves them to the dist root.
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         ...Object.fromEntries(
-          FEATURE_SLUGS.map(slug => [slug, fileURLToPath(new URL(`./${slug}.html`, import.meta.url))]),
+          FEATURE_SLUGS.map(slug => [slug, fileURLToPath(new URL(`./pages/${slug}.html`, import.meta.url))]),
         ),
       },
     },

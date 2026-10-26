@@ -195,7 +195,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardTitle: 'Member management',
     cardText: 'Member records, plans, expiry dates, search and filters, renewals and one-tap WhatsApp.',
     icon: 'users',
-    related: ['fees-and-dues', 'member-app', 'import-export'],
+    related: ['fees-and-dues', 'member-app', 'import-export', 'gym-membership-renewal-reminders'],
     tutorial: tutorialSlot('members', 'How member management works in GymFlow'),
     screenshots: [],
     sections: [
@@ -396,7 +396,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardTitle: 'Attendance tracking',
     cardText: 'A check-in kiosk for your front desk, with check-out times and a full attendance log.',
     icon: 'calendar-check',
-    related: ['member-app', 'reports', 'members'],
+    related: ['member-app', 'reports', 'members', 'gym-attendance-tracking-guide'],
     tutorial: tutorialSlot('attendance', 'How the attendance kiosk works in GymFlow'),
     screenshots: [],
     sections: [
@@ -703,7 +703,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardTitle: 'WhatsApp reminders',
     cardText: 'Automatic welcome, renewal, expiry, due and birthday messages. No per-message charge.',
     icon: 'message',
-    related: ['fees-and-dues', 'members', 'member-app'],
+    related: ['fees-and-dues', 'members', 'member-app', 'gym-whatsapp-automation-guide'],
     tutorial: tutorialSlot('whatsapp', 'How WhatsApp reminders work in GymFlow'),
     screenshots: [],
     sections: [
@@ -1187,6 +1187,603 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           { type: 'p', text: 'Export your data to Excel while your account is active, and keep that file. Plans are paid by hand and never renew on their own, so nothing is charged after you stop.' },
           { type: 'h3', text: 'Will my members need to learn anything new?' },
           { type: 'p', text: 'Not to be counted. At the desk, a member only types their member ID. The member app is optional, and it opens from a link sent on WhatsApp with no app store download.' },
+        ],
+      },
+    ],
+  },
+  /* ── Guides ─────────────────────────────────────────────────────────────────
+     Written as how-to articles for people searching a question, not as feature pages. Every claim
+     about GymFlow below was checked against the feature pages above and the app: the reminder
+     schedule (18 days, every 3 days, up to 7 times), Morning/Evening as the only two sessions,
+     plan lengths of 1 to 24 months, and the absence of class booking, class packs, batches and
+     branches. General advice (what to record, when to remind) is marked as advice, not as a
+     GymFlow behaviour. */
+  {
+    slug: 'gym-attendance-tracking-guide',
+    title: 'How to Track Gym Attendance: A Guide for Gym Owners',
+    description: 'How to track gym member attendance: paper register, Excel or check-in kiosk, what to record, how to spot members who have stopped coming, and a weekly routine.',
+    h1: 'How to track gym attendance: a practical guide for gym owners',
+    eyebrow: 'Guide',
+    intro: 'Tracking gym attendance means recording who came, in which session and for how long, then using that record to notice who has stopped coming before their membership lapses. This guide compares the common ways to do it, shows what to record and describes a short weekly routine.',
+    breadcrumb: 'Gym attendance guide',
+    cardTitle: 'How to track gym attendance',
+    cardText: 'Register, Excel or kiosk: what to record and how to spot members who have stopped coming.',
+    icon: 'calendar-check',
+    group: 'Guides',
+    topLevel: true,
+    related: ['attendance', 'reports', 'gym-membership-renewal-reminders'],
+    sections: [
+      {
+        heading: 'Why track attendance at all',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**Notice members who are drifting.** A member who stops coming is the one least likely to renew. A list of people who have been away for a week gives you a reason to call while their plan is still running.',
+              '**Know your busy times.** Seeing which days and which session, morning or evening, are crowded lets you plan staff, cleaning and equipment around them.',
+              '**Settle doubts with a record.** "I came every day" and "he has not been here for weeks" both become answers instead of arguments.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Four ways to track gym attendance',
+        blocks: [
+          { type: 'h3', text: 'A paper register' },
+          { type: 'p', text: 'It costs almost nothing and needs no power or internet. But entries are handwritten and hard to search, and nobody can tell at a glance who has not come for ten days. Adding up a month takes an evening.' },
+          { type: 'h3', text: 'Excel or Google Sheets' },
+          { type: 'p', text: 'Searchable and sortable, and workable for a small gym where one person types everything. Someone still has to enter every visit, and the sheet shows absentees only if you build the formulas for it. See [gym software vs Excel](/gym-software-vs-excel) for where a sheet starts to hurt.' },
+          { type: 'h3', text: 'Biometric, card or turnstile hardware' },
+          { type: 'p', text: 'Fingerprint readers, cards and turnstiles record visits without a person at the desk and can also control the door. They have to be bought, installed and maintained, they need power and a network connection, and a device that stops working leaves a gap in the record.' },
+          { type: 'h3', text: 'A software check-in kiosk' },
+          { type: 'p', text: 'A page on a phone, tablet or computer at the front desk where each member types their member ID. There is no hardware to buy, every visit is saved as it happens and the reports are built from those records. It records visits; it does not lock or unlock a door. This is how GymFlow works.' },
+          { type: 'note', text: 'Which one is right depends on the job. If the door must stay shut to non-members, hardware does something software cannot. If the aim is to know who comes and who has stopped, a kiosk is enough.' },
+        ],
+      },
+      {
+        heading: 'What to record for every visit',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'The **member**, by a number rather than a name, so two people called Ravi are never mixed up.',
+              'The **date**.',
+              'The **session**, morning or evening, if you run separate batches.',
+              'The **check-in time**, and the **check-out time** if you want to know how long people train.',
+            ],
+          },
+          { type: 'p', text: 'One rule matters more than the rest: record it when it happens. A visit written down at the end of the day is a visit half remembered.' },
+        ],
+      },
+      {
+        heading: 'Set up a check-in kiosk with GymFlow',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Add your members first, so each one has a member ID. If you already have a list, [import it from Excel or CSV](/import-export).',
+              'Open **Attendance** on a phone, tablet or computer at the front desk.',
+              'Check the session at the top right, **Morning** or **Evening**. It is picked from the time of day on your device and you can switch it with one tap.',
+              'The member types the digits of their member ID and taps **Confirm**. A full-screen result shows their name, member ID and plan expiry date, then clears itself for the next person.',
+              'On the way out, the member enters the ID again in the same session. GymFlow records the check-out time and how long they trained.',
+            ],
+          },
+          { type: 'p', text: 'If someone types the wrong number, the **Entered wrong number? Re-enter ID** button on the result screen reverses exactly that entry. [Attendance tracking](/attendance) describes every screen.' },
+        ],
+      },
+      {
+        heading: 'Turn the records into action',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**Members who have stopped coming:** the attendance report under Reports lists members with a current plan who have not checked in for 7 days or more. Members who joined this week are left out.',
+              '**Busiest and quietest days:** the same report shows your busiest and quietest day of the week and the share of check-ins in the morning, from the last 90 days.',
+              '**Today:** the dashboard shows today\'s check-in count.',
+              '**One member\'s history:** open a member to see recent attendance next to their payments.',
+              '**The full log:** every visit with date, member, session, check-in and check-out time and duration. Search it, filter by today, last 7 days, last 30 days, all time or your own dates, and export it to Excel.',
+            ],
+          },
+          { type: 'p', text: 'Reaching out is up to you. Call, or use the message button next to a name to open a ready-written WhatsApp message in your own WhatsApp.' },
+        ],
+      },
+      {
+        heading: 'A short weekly routine',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Open **Reports**, then the **Attendance** tab.',
+              'Read the list of members who have been away for 7 days or more. The **Leaving** tab shows whose plans end soon; contact those members first, because they are the ones about to be lost.',
+              'Look at your busiest and quietest days. If one day is always crowded, plan staff and cleaning around it.',
+            ],
+          },
+          { type: 'p', text: 'The same list feeds your renewals. See [gym membership renewal reminders](/gym-membership-renewal-reminders) for what to send and when.' },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Do members need a smartphone to check in?' },
+          { type: 'p', text: 'No. The kiosk is a page on your own phone, tablet or computer at the desk, and the member types their member ID digits there. Members do not need the member app to be counted.' },
+          { type: 'h3', text: 'Can I track attendance without buying any hardware?' },
+          { type: 'p', text: 'Yes. The GymFlow kiosk is a web page, so there is no turnstile, scanner or biometric device to install. The trade-off is that it records visits and does not control your door.' },
+          { type: 'h3', text: 'Does attendance tracking cost extra?' },
+          { type: 'p', text: `No. Attendance tracking is part of the free forever plan, which is ${formatINR(0)} for up to ${FREE_MEMBER_LIMIT} members, and of every paid plan. See [pricing](/pricing).` },
+          { type: 'h3', text: 'What if a member forgets to check out?' },
+          { type: 'p', text: 'The check-in is still on record. Without a check-out, GymFlow cannot show how long that member trained.' },
+          { type: 'h3', text: 'Can a member check in for both the morning and the evening session?' },
+          { type: 'p', text: 'Yes. A member can check in once per session each day, and both visits are kept in the log. Streaks in the member app count the two as one attended day.' },
+        ],
+      },
+      {
+        heading: 'Good to know',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'The kiosk saves every check-in to your account as it happens, so it needs an internet connection and works only while you are signed in on that device.',
+              'Days follow India time, so a late-evening visit counts for that day and not the next.',
+              'The check-in does not block a member whose plan has expired. It shows the expiry date so your front-desk staff can decide what to do.',
+              'Undo is for fixing a typing mistake right after it happens. It reverses only a recent action in your own gym.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Who it is for',
+        blocks: [
+          { type: 'p', text: 'Gym owners who still keep a register or a sheet and want to know who has stopped coming, without buying hardware. Pair it with [member management](/members) so every ID maps to a plan and an expiry date.' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gym-whatsapp-automation-guide',
+    title: 'WhatsApp Automation for Gyms: What to Send and When',
+    description: 'How gyms can automate WhatsApp: welcome, renewal, expiry, payment due and birthday messages, a sample timeline, a set-up checklist and what automation cannot do.',
+    h1: 'WhatsApp automation for gyms: what to automate and how to set it up',
+    eyebrow: 'Guide',
+    intro: 'WhatsApp automation for a gym means the right message reaches the right member at the right time without you typing it: a welcome when they join, reminders before the plan ends and a nudge when money is pending. This guide covers what is worth automating, how the schedule works in GymFlow and what to check before you rely on it.',
+    breadcrumb: 'Gym WhatsApp guide',
+    cardTitle: 'WhatsApp automation for gyms',
+    cardText: 'What to automate, the reminder schedule, a set-up checklist and what automation cannot do.',
+    icon: 'message',
+    group: 'Guides',
+    topLevel: true,
+    related: ['whatsapp', 'fees-and-dues', 'gym-membership-renewal-reminders'],
+    sections: [
+      {
+        heading: 'Why gyms automate WhatsApp',
+        blocks: [
+          { type: 'p', text: 'Most of a gym owner\'s messages are the same few, sent again and again: welcome, renew, pay. Typed by hand they depend on your memory and your free evenings, and the ones you forget are the ones that cost money. Automation does the repeating part and leaves you the conversations that need a person.' },
+        ],
+      },
+      {
+        heading: 'Seven messages worth automating',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**Welcome:** sent once when a member is added, with the plan, start date and member ID.',
+              '**Renewal confirmation:** sent when you renew a membership, with the plan and the date it is valid until.',
+              '**Expiry reminder:** starts 18 days before the plan ends and tells the member how many days are left.',
+              '**Membership expired:** if the member has not renewed, a message after the end date asks them to come back, for up to 18 days.',
+              '**Payment due:** sent when an amount is pending, and names the amount.',
+              '**Birthday wishes:** sent on the member\'s birthday, if you saved their date of birth.',
+              '**Member app invitation:** sent when you invite a member to the [member app](/member-app), with their personal link.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'A sample timeline for one member',
+        blocks: [
+          { type: 'p', text: 'Take a member whose plan ends on the 30th of the month and who still owes part of the fee. The dates are an example.' },
+          {
+            type: 'ol',
+            items: [
+              '**The day you add them:** a welcome message goes out once.',
+              '**The 12th, 18 days before the plan ends:** the first expiry reminder, saying how many days are left. It repeats about every 3 days, up to 7 times.',
+              '**If they renew on the 20th:** you record the renewal, a renewal confirmation goes out and the remaining expiry reminders stop.',
+              '**If they do not renew:** after the 30th the expired-membership messages begin and continue for up to 18 days.',
+              '**While money is pending:** a payment due reminder names the amount and repeats about every 3 days, up to 7 times. It stops when the due is paid in full.',
+              '**On their birthday:** a birthday wish, if you saved the date of birth.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'The rules behind the schedule',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Expiry, expired and payment due reminders are checked once a day, in the morning (about 9 AM India time).',
+              'Each reminder repeats every 3 days, up to 7 times, then stops.',
+              'The moment you renew a plan, its expiry reminders stop. The moment a due is paid in full, its payment reminders stop.',
+              'A member never gets the same reminder twice on one day.',
+              'Only members with a valid 10-digit mobile number receive messages.',
+              'Scheduled messages are queued and sent in small batches, so a very large list can take a while to finish. A message that cannot be sent straight away is held and tried again later.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'A set-up checklist before you rely on it',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              '**Check every mobile number.** Only valid 10-digit numbers get messages. Numbers are tidied into that format when you import a list.',
+              '**Save dates of birth** if you want birthday wishes.',
+              '**Record every renewal and payment as it happens**, so the right reminders stop. A payment you forget to enter keeps the reminder going.',
+              '**Tell members you will message them on WhatsApp.** You are responsible for having their permission to contact them, and members can ask your gym to stop messaging them.',
+              '**Importing an existing list?** Members whose plan ends soon or ended in the last two months are reminded straight away, and nobody gets a welcome message from an import. See [import and export](/import-export).',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What automation does not do',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**It does not let you change the wording.** The messages use templates approved by Meta, the company behind WhatsApp. Each one carries your gym\'s name and the member\'s name, plus details such as the plan, the dates or the amount due.',
+              '**It does not replace a conversation.** A member with a large balance, or an unhappy member, deserves a call.',
+              '**It does not come from your own number.** Automatic messages go out from GymFlow\'s WhatsApp Business number, so there is nothing for you to register. The message buttons on the Dues and Reports pages are different: they open a ready-written message in your own WhatsApp, sent from your number.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What it costs',
+        blocks: [
+          { type: 'p', text: `On the free forever plan (${formatINR(0)} for up to ${FREE_MEMBER_LIMIT} members), WhatsApp messages need the WhatsApp add-on at ${formatINR(WHATSAPP_ADDON_PRICE)} a month. On the paid plans, ${formatINR(MONTHLY.price)} a month or ${formatINR(YEARLY.price)} a year, there is no per-message charge. See [pricing](/pricing).` },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Do I need my own WhatsApp Business account?' },
+          { type: 'p', text: 'No. Messages go out from GymFlow\'s WhatsApp Business number, so there is nothing to register or connect on your side. Your only job is to keep each member\'s mobile number correct.' },
+          { type: 'h3', text: 'Can I change the wording of the messages?' },
+          { type: 'p', text: 'No. The wording is fixed by the templates Meta has approved. What you control is who you add and what you record.' },
+          { type: 'h3', text: 'Can I send a message myself?' },
+          { type: 'p', text: 'Yes. Open any member and tap **WhatsApp**. Choose one of the approved messages (welcome, renewed, expiry reminder, expired, payment due or birthday), read the preview and send it.' },
+          { type: 'h3', text: 'How many reminders will a member get?' },
+          { type: 'p', text: 'Expiry, expired and payment due reminders are checked once a day and repeat every 3 days up to 7 times. They stop when you renew a plan or the due is paid in full, and a member never gets the same reminder twice in one day.' },
+        ],
+      },
+      {
+        heading: 'Who it is for',
+        blocks: [
+          { type: 'p', text: 'Owners who spend part of every week phoning members to renew or pay. The full list of messages and the schedule is on the [WhatsApp reminders](/whatsapp) page, and [gym membership renewal reminders](/gym-membership-renewal-reminders) shows how to use them to keep members.' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gym-membership-renewal-reminders',
+    title: 'Gym Membership Renewal Reminders: When and How to Send Them',
+    description: 'How to get gym members to renew on time: track expiry dates, a reminder timeline, what to say, handling dues at renewal, and how GymFlow automates the repeating part.',
+    h1: 'Gym membership renewals: a reminder routine that does not depend on memory',
+    eyebrow: 'Guide',
+    intro: 'A renewal you miss is money you never see, and it often comes down to nobody noticing in time. A good renewal routine has three parts: know who is expiring, remind them early and more than once, and make renewing quick. This guide lays the routine out and shows which part GymFlow does for you.',
+    breadcrumb: 'Gym renewal reminders',
+    cardTitle: 'Gym membership renewal reminders',
+    cardText: 'Who is expiring, when to remind them, what to say and how to make renewing quick.',
+    icon: 'users',
+    group: 'Guides',
+    topLevel: true,
+    related: ['members', 'whatsapp', 'gym-whatsapp-automation-guide'],
+    sections: [
+      {
+        heading: 'Step 1: know who is expiring',
+        blocks: [
+          { type: 'p', text: 'You cannot remind someone you have not noticed. In GymFlow every member is marked **Active**, **Expiring** (7 days or fewer left) or **Expired**, and you can filter the member list by any of them. The **Leaving** report shows how many plans end this week and in the next 30 days, what they are worth if everyone renews, and who has let a plan end in the last 30 days without renewing.' },
+          { type: 'p', text: 'On a register or a sheet, the same step means sorting by expiry date and reading the top of the list every day. See [gym software vs Excel](/gym-software-vs-excel).' },
+        ],
+      },
+      {
+        heading: 'Step 2: remind more than once',
+        blocks: [
+          { type: 'p', text: 'This is general advice, not a GymFlow setting. One reminder is easy to miss, so a sequence works better than a single message:' },
+          {
+            type: 'ul',
+            items: [
+              '**Two to three weeks before:** a friendly first reminder with the end date.',
+              '**About a week before:** a second one, with the fee and how to pay.',
+              '**A few days before:** a short last reminder.',
+              '**When the plan ends:** tell them the plan has ended and what to do next.',
+              '**After it ends:** one or two gentle messages inviting them back, then stop.',
+            ],
+          },
+          { type: 'p', text: 'GymFlow follows the same shape. The first expiry reminder goes out 18 days before the end date and repeats about every 3 days, up to 7 times. After the end date, expired-membership messages continue for up to 18 days.' },
+        ],
+      },
+      {
+        heading: 'Step 3: say it simply',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Say who the message is from, the member\'s name and the date the plan ends.',
+              'Say what to do: come to the desk, or pay by UPI.',
+              'Keep it short. One request per message.',
+            ],
+          },
+          { type: 'p', text: 'GymFlow\'s automatic messages already do this, using templates approved by Meta. The wording is fixed, so you cannot edit it. Each message carries your gym\'s name, the member\'s name and details such as the plan and the dates.' },
+        ],
+      },
+      {
+        heading: 'Step 4: make renewing quick',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Open the member and tap **Renew**.',
+              'Pick the plan, the start date, the amount and how they paid (cash, UPI or card).',
+              'Save. GymFlow records the renewal, sends the member a renewal confirmation on WhatsApp and stops any expiry reminders still going out for the old plan.',
+            ],
+          },
+          { type: 'p', text: 'Plans can be monthly, quarterly, annual or any length from 1 to 24 months, and GymFlow works out the expiry date from the start date and the plan. Longer plans mean fewer renewals to chase.' },
+        ],
+      },
+      {
+        heading: 'What to do about money owed at renewal',
+        blocks: [
+          { type: 'p', text: 'A member who renews but pays only part now keeps the rest as a pending due. GymFlow sends a payment due reminder with the amount, repeating about every 3 days up to 7 times, and stops when the due is paid in full. You can also tap the green WhatsApp button next to a member on the Dues page to open a ready-written message in your own WhatsApp. See [fees and dues](/fees-and-dues).' },
+        ],
+      },
+      {
+        heading: 'Step 5: check how it is going',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'The **Members** report shows how many members joined and renewed this month, with a chart of new members and renewals for each of the last six months.',
+              'The **Leaving** report shows plans ending this week and in the next 30 days.',
+              'If plans keep ending and renewals do not keep up, your reminders are not landing: look at the **Attendance** report for members who stopped coming before their plan ended. See [how to track gym attendance](/gym-attendance-tracking-guide).',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'How early should I remind members to renew?' },
+          { type: 'p', text: 'There is no single right answer. Two to three weeks is long enough for a member to plan and short enough that they do not forget. GymFlow starts 18 days before the end date.' },
+          { type: 'h3', text: 'What if a member lets the plan lapse for a few weeks?' },
+          { type: 'p', text: 'They show as Expired. The expired-membership message goes out for up to 18 days after the end date, and the Leaving report lists members whose plan ended in the last 30 days and who have not renewed, with a one-tap message button for each.' },
+          { type: 'h3', text: 'Do the reminders stop when I renew a member?' },
+          { type: 'p', text: 'Yes. The moment you record the renewal, that member\'s expiry reminders stop and a renewal confirmation goes out instead.' },
+          { type: 'h3', text: 'Will members I import get reminders?' },
+          { type: 'p', text: 'Yes, if their plan ends soon or ended in the last two months, they are reminded straight away. Nobody gets a welcome message from an import. See [import and export](/import-export).' },
+        ],
+      },
+      {
+        heading: 'Good to know',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'WhatsApp messages only go to members with a valid 10-digit mobile number, so keep numbers complete.',
+              'You are responsible for having your members\' permission to contact them on WhatsApp.',
+              'Reminders can only follow what you record. A renewal or payment you forget to enter will not stop its reminders.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Who it is for',
+        blocks: [
+          { type: 'p', text: 'Owners who find out a plan has ended only when the member walks in, or never. For the full list of automatic messages and how they are scheduled, see [WhatsApp automation for gyms](/gym-whatsapp-automation-guide).' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'fitness-studio-management-software',
+    title: 'Fitness Studio Management Software: Yoga, Zumba, Dance',
+    description: 'Can a yoga, Zumba, dance or CrossFit studio use gym software? What GymFlow does for memberships, fees, attendance and WhatsApp reminders, and what it does not do.',
+    h1: 'Fitness studio management software for yoga, Zumba and dance studios',
+    eyebrow: 'Guide',
+    intro: 'GymFlow was built for gyms, but a studio that sells memberships by the month has the same everyday jobs: record who joined, track fees and expiry dates, see who turns up and remind people to renew. This guide says which of those GymFlow handles for a yoga, Zumba, dance, aerobics or CrossFit-style studio, and what it does not do, so you can decide before you try it.',
+    breadcrumb: 'Fitness studio software',
+    cardTitle: 'Software for fitness studios',
+    cardText: 'What GymFlow does for yoga, Zumba and dance studios, and what it does not do.',
+    icon: 'dumbbell',
+    group: 'Guides',
+    topLevel: true,
+    related: ['members', 'attendance', 'gymnastics-academy-management-software'],
+    sections: [
+      {
+        heading: 'The short answer',
+        blocks: [
+          { type: 'p', text: 'If your studio sells time-based memberships (monthly, quarterly, annual or a length you choose) and wants to track fees, expiry dates and visits, GymFlow fits. If you sell class packs, take bookings for named classes or limit the seats in a class, GymFlow does not do that.' },
+        ],
+      },
+      {
+        heading: 'What works well for a studio',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**Memberships by length:** plans can be monthly, quarterly, annual or any length from 1 to 24 months, each with its own fee and admission fee. You name the plan yourself, for example "Yoga morning, monthly". See [member management](/members).',
+              '**Fees and part payments:** record cash, UPI or card payments, take part payments and see who owes what. See [fees and dues](/fees-and-dues).',
+              '**Expiry and renewals:** every member shows as Active, Expiring or Expired, so you see who to call. See [membership renewal reminders](/gym-membership-renewal-reminders).',
+              '**Attendance:** a check-in screen at the entrance records each visit as Morning or Evening, with check-in and check-out times. See [attendance tracking](/attendance).',
+              '**WhatsApp reminders:** welcome, renewal, expiry, payment due and birthday messages go out by themselves. See [WhatsApp automation](/gym-whatsapp-automation-guide).',
+              '**Reports and import:** five plain-English reports, and a bulk import from your existing Excel or CSV list.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What GymFlow does not do for studios',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**No class timetable and no booking.** Members cannot reserve a spot, and GymFlow does not limit how many people check in.',
+              '**No class packs or pay-per-class pricing.** Fees follow plan lengths in months.',
+              '**Two sessions only.** Attendance is recorded as Morning or Evening. If you run more batches than that, visits are still recorded, but they are not labelled by batch.',
+              '**Gym wording in places.** When you set up a plan, the category choices are Strength, Cardio and Strength + Cardio. You can leave the default and name each plan yourself.',
+              '**Gym-based member app content.** The workout programs and exercise library in the [member app](/member-app) are built around gym training, with mostly strength exercises and a few cardio and mobility ones. You can add your own exercises by name, and you do not have to use workout programs at all.',
+              '**No payment collection, no GST invoices, and one location.** GymFlow records payments but does not take them, and it is built for one gym, not a chain of branches.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'How a studio could set it up',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Create the plans you sell, with your own names and fees.',
+              'Import your current member list from Excel or CSV, or add members one at a time. See [import and export](/import-export).',
+              'Give each member an ID and check their mobile number. Reminders go only to valid 10-digit numbers.',
+              'Open **Attendance** on a phone or tablet at the entrance. Members type their ID as they arrive.',
+              'Record renewals and payments as they happen, so the right reminders stop.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Which studios it suits',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**A good fit:** a yoga, Zumba, aerobics or dance studio that charges a monthly or quarterly membership, and a CrossFit-style box that sells monthly memberships.',
+              '**Probably not a fit:** a drop-in studio, one that sells packs of classes, or one that must take bookings and cap the numbers in each class.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Can I use GymFlow for a yoga studio?' },
+          { type: 'p', text: 'Yes, if you sell memberships by length of time. You can name your own plans, record fees, track attendance and send renewal reminders. It will not take class bookings.' },
+          { type: 'h3', text: 'Does GymFlow have class booking?' },
+          { type: 'p', text: 'No. There is no timetable and no way for a member to reserve a place in a class.' },
+          { type: 'h3', text: 'Can I try it with my own members first?' },
+          { type: 'p', text: `Yes. The 14-day free trial needs no credit card and includes every feature, so you can load your own list and judge it on your real studio. After that there is a free forever plan for up to ${FREE_MEMBER_LIMIT} members, without the member app. See [pricing](/pricing).` },
+          { type: 'h3', text: 'Can I run more than one studio location?' },
+          { type: 'p', text: 'GymFlow is built for one location. It does not manage branches.' },
+        ],
+      },
+      {
+        heading: 'Who it is for',
+        blocks: [
+          { type: 'p', text: 'Studio owners who sell memberships, collect fees by hand and chase renewals from memory. A centre that teaches children has a few extra things to think about. See [gymnastics academies, martial arts schools and kids\' clubs](/gymnastics-academy-management-software).' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gymnastics-academy-management-software',
+    title: 'Gymnastics Academy and Kids Sports Club Software',
+    description: 'How a gymnastics academy, martial arts school or kids sports club can use GymFlow for fees, term renewals, attendance and WhatsApp reminders to parents, and where it falls short.',
+    h1: 'Software for gymnastics academies, martial arts schools and kids sports clubs',
+    eyebrow: 'Guide',
+    intro: 'Gymnastics academies, karate and taekwondo schools and kids sports clubs run on the same rhythm as a gym: students join, fees fall due, parents need reminding and coaches want to know who is turning up. This guide shows how such a centre can use GymFlow for fees, renewals, attendance and WhatsApp reminders to parents, and what it does not cover, such as batch timetables and skill levels.',
+    breadcrumb: 'Academy software',
+    cardTitle: 'Software for gymnastics academies',
+    cardText: 'How a gymnastics academy or kids club can use GymFlow for fees, attendance and parent reminders.',
+    icon: 'calendar-check',
+    group: 'Guides',
+    topLevel: true,
+    related: ['fees-and-dues', 'whatsapp', 'fitness-studio-management-software'],
+    sections: [
+      {
+        heading: 'The jobs an academy shares with a gym',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Fees come due every month or every term, and some families pay in parts.',
+              'Parents forget, so someone has to remind them.',
+              'Coaches want to know who is actually attending.',
+              'The owner wants to know who is about to leave.',
+            ],
+          },
+          { type: 'p', text: 'These are the jobs GymFlow does for a gym. The difference is that your member is a child and the person who pays and reads the messages is a parent.' },
+        ],
+      },
+      {
+        heading: 'How to set it up for a children\'s centre',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              '**Name your plans after your programmes,** for example "Beginner gymnastics, monthly". A plan can be monthly, quarterly, annual or any length from 1 to 24 months, so a three-month term is a plan of 3 months. Each plan has its own fee and admission fee.',
+              '**Use the parent\'s mobile number as the member\'s number.** WhatsApp reminders go to the number saved on the member, so that is how they reach the parent. The messages are written with the member\'s name, so the child\'s name appears in them.',
+              '**Add a date of birth** if you want birthday wishes to go out.',
+              '**Import your current list** from Excel or CSV if you have one. See [import and export](/import-export).',
+              '**Record each fee as it is paid.** The renewal, payment due and expiry reminders depend on it.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Fees: terms, part payments and siblings',
+        blocks: [
+          { type: 'p', text: 'You enter the fee for each member yourself, so a sibling can be charged less. If a family pays part now and the rest later, the balance stays on the member as a pending due until it is cleared, and a payment due reminder with the amount goes to the saved number about every 3 days, up to 7 times. See [fees and dues](/fees-and-dues).' },
+        ],
+      },
+      {
+        heading: 'Attendance for classes',
+        blocks: [
+          { type: 'p', text: 'A check-in screen at the entrance records each visit as Morning or Evening. Younger children cannot type an ID number, so the parent or a coach would type it at drop-off. Each visit is saved with a check-in and a check-out time. See [how to track gym attendance](/gym-attendance-tracking-guide).' },
+          { type: 'p', text: 'The attendance report lists members with a current plan who have not checked in for 7 days or more. That suits centres where students come several days a week. If your classes meet once a week, a student who misses one class will appear on that list.' },
+        ],
+      },
+      {
+        heading: 'WhatsApp reminders to parents',
+        blocks: [
+          { type: 'p', text: 'Welcome, renewal, expiry, expired, payment due and birthday messages go out by themselves. The wording is fixed by templates approved by Meta, and each message carries your centre\'s name and the member\'s name. When you send one yourself from a member\'s page, you can read it in a preview first. See [WhatsApp automation for gyms](/gym-whatsapp-automation-guide) for the schedule.' },
+          { type: 'note', text: 'You are responsible for having permission to contact families on WhatsApp, and they can ask you to stop messaging them. Collect only the details you need.' },
+        ],
+      },
+      {
+        heading: 'What GymFlow does not do for an academy',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**No timetable, batches or class groups.** Students are not grouped into classes, and there is no booking.',
+              '**Two sessions only.** Attendance is recorded as Morning or Evening.',
+              '**No skill levels, belts or grades.** It does not track a student\'s progress through a syllabus.',
+              '**No competition or event registration.**',
+              '**No payment collection and no GST invoices.** It records payments but does not take them.',
+              '**One location.** It is not built for several branches.',
+              '**A gym-style member app.** The member app is optional. It asks the member to set an email address and a password, so for young children that would be the parent. Its workout programs are written around gym exercises. Leaderboards can be switched off for your whole centre.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Can parents get the reminders?' },
+          { type: 'p', text: 'Yes, if you save the parent\'s mobile number on the member. Messages go to the number saved on the record and only to valid 10-digit numbers.' },
+          { type: 'h3', text: 'Can I charge by term?' },
+          { type: 'p', text: 'Yes. Choose a plan length of 1 to 24 months and enter the fee. GymFlow works out the expiry date from the start date.' },
+          { type: 'h3', text: 'Does GymFlow handle batches by age group?' },
+          { type: 'p', text: 'No. It does not group students into batches or classes. You could put the age group in the plan name, for example "Under-10 gymnastics, monthly", so it shows on the member.' },
+          { type: 'h3', text: 'Is there a free option?' },
+          { type: 'p', text: `There is a 14-day free trial with every feature and no credit card. After that, a free forever plan covers up to ${FREE_MEMBER_LIMIT} members without the member app, and WhatsApp messages on it need the add-on. See [pricing](/pricing).` },
+        ],
+      },
+      {
+        heading: 'Who it is for',
+        blocks: [
+          { type: 'p', text: 'Owners of gymnastics academies, martial arts schools and kids sports clubs who sell monthly or term memberships and want to stop chasing fees and renewals by memory. A centre for adults, such as a yoga or dance studio, has a similar list on [fitness studio management software](/fitness-studio-management-software).' },
         ],
       },
     ],

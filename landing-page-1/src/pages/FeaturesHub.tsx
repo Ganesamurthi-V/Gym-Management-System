@@ -1,4 +1,3 @@
-import { useReveal } from '../lib/useReveal';
 import { sectionIds, type FeaturePage } from '../data/featurePages';
 import { DocsPager } from './DocsPager';
 import { DocsShell } from './DocsShell';
@@ -6,11 +5,10 @@ import { FeatureTitle, FeatureShell, SectionView } from './featureParts';
 
 /** /features: the docs home. The first section carries the card grid, the rest read as an article. */
 export function FeaturesHub({ page }: { page: FeaturePage }) {
-  const scope = useReveal<HTMLDivElement>({ perElement: true, y: 24, duration: 0.7, start: 'top 90%' });
   const ids = sectionIds(page);
   return (
     <FeatureShell>
-      <div ref={scope}>
+      <div>
         <DocsShell page={page}>
           <FeatureTitle page={page} />
           {page.sections.map((section, i) => (

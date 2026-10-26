@@ -50,6 +50,30 @@
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
       onload="this.onload=null;this.rel='stylesheet'"
     />
+    <!--
+      The hero film's poster is the LCP element, and it is a <video poster> that React renders after the
+      first paint, so the browser only learned of it once the entry chunk had run (requested at ~1.3 s in
+      a local Lighthouse trace, Lighthouse "LCP request discovery" failing). These two hints make it
+      discoverable from the HTML. The media queries are the same 768px split HeroVideo.tsx uses to pick
+      the 9:16 or the 16:9 cut, so a phone does not fetch the laptop poster or the other way round.
+      Keep both URLs in step with FILMS in src/components/HeroVideo.tsx.
+    -->
+    <link
+      rel="preload"
+      as="image"
+      href="/video/gymflow-launch-portrait-poster.webp"
+      type="image/webp"
+      media="(max-width: 767.98px)"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="/video/gymflow-launch-poster.webp"
+      type="image/webp"
+      media="(min-width: 768px)"
+      fetchpriority="high"
+    />
     <noscript>
       <link
         rel="stylesheet"

@@ -13,7 +13,7 @@ phone.
 
 Site: https://www.gymflow.sbs/
 Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
-Last updated: 2026-10-24
+Last updated: 2026-10-26
 
 ## Quick answers
 
@@ -96,6 +96,11 @@ One page per feature, each explaining what it does and how it works:
 - [Import and export](https://www.gymflow.sbs/import-export): import members from Excel or CSV, export data to Excel.
 - [Pricing](https://www.gymflow.sbs/pricing): all four options, the free trial, how activation works and support.
 - [Gym software vs Excel](https://www.gymflow.sbs/gym-software-vs-excel): an honest guide to when a register or spreadsheet is enough and when it is not.
+- [How to track gym attendance](https://www.gymflow.sbs/gym-attendance-tracking-guide): register, Excel or check-in kiosk, what to record and how to spot members who have stopped coming.
+- [WhatsApp automation for gyms](https://www.gymflow.sbs/gym-whatsapp-automation-guide): which messages to automate, the reminder schedule, a set-up checklist and what automation cannot do.
+- [Gym membership renewal reminders](https://www.gymflow.sbs/gym-membership-renewal-reminders): who is expiring, when to remind them, what to say and how to make renewing quick.
+- [Fitness studio management software](https://www.gymflow.sbs/fitness-studio-management-software): what GymFlow does and does not do for yoga, Zumba, dance and CrossFit-style studios.
+- [Gymnastics academy and kids club software](https://www.gymflow.sbs/gymnastics-academy-management-software): how a gymnastics academy, martial arts school or kids sports club can use GymFlow, and where it falls short.
 
 ## Member app
 

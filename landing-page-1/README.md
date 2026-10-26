@@ -26,10 +26,14 @@ npm run preview      # serves dist/ locally
 ```
 landing-page-1/
 ├── index.html            # <head>: SEO meta, JSON-LD, the no-JavaScript copy of the page
+├── pages/                # One thin HTML entry per feature page and guide (members.html, ...);
+│                         #   built to dist/<name>.html. Content lives in src/data/featurePages.ts
 ├── src/
 │   ├── App.tsx           # Hero loads first; everything below the fold is a lazy chunk
 │   ├── BelowFold.tsx     # The sections under the hero
 │   ├── components/       # One file per section, plus the cookie banner
+│   ├── data/             # featurePages.ts (every feature page and guide), plans.ts
+│   ├── pages/            # React for the feature pages and guides (docs layout)
 │   └── lib/analytics.ts  # Consent-gated Microsoft Clarity and Google Analytics
 ├── public/
 │   ├── privacy.html, terms.html, 404.html

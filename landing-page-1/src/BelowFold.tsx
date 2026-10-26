@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { TrustStrip } from './components/TrustStrip';
-import { WhyGymFlow } from './components/WhyGymFlow';
+import { Purpose } from './components/Purpose';
+import { Problems } from './components/Problems';
+import { Benefits } from './components/Benefits';
 import { BentoFeatures } from './components/BentoFeatures';
 import { WhatsAppSection } from './components/WhatsAppSection';
 import { HowItWorks } from './components/HowItWorks';
@@ -19,8 +20,9 @@ import { Footer } from './components/Footer';
  * visible before the visitor scrolls.
  */
 const SECTIONS = [
-  { key: 'trust', Section: TrustStrip },
-  { key: 'why', Section: WhyGymFlow },
+  { key: 'why', Section: Purpose },
+  { key: 'problems', Section: Problems },
+  { key: 'benefits', Section: Benefits },
   { key: 'features', Section: BentoFeatures },
   { key: 'whatsapp', Section: WhatsAppSection },
   { key: 'how', Section: HowItWorks },

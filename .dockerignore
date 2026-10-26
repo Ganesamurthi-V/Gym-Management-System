@@ -1,8 +1,14 @@
 node_modules
+**/node_modules
 .next
+**/.next
+dist
+**/dist
 .git
 .env
 .env.*
+*.log
+_archived
 graphify-out
 landing-page-1
 gymflow-admin

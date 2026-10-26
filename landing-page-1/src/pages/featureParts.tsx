@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react';
-import { HeroPixels } from '../components/HeroPixels';
 import BorderGlow from '../components/BorderGlow';
-import { ShinyText } from '../components/ShinyText';
 import {
   ArrowRight,
   ChevronRight,
@@ -25,11 +23,6 @@ import { CookieBanner } from '../components/CookieBanner';
 import { Footer } from '../components/Footer';
 import { Layout } from '../components/Layout';
 import { Navbar } from '../components/Navbar';
-
-const APP_URL = 'https://app.gymflow.sbs';
-
-// The same three points as the homepage hero.
-const TRUST_POINTS = ['14-day free trial', 'No credit card', 'Cancel anytime'] as const;
 
 const LINK_CLASS =
   'font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
@@ -76,22 +69,6 @@ export function FeatureShell({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * The last word of the heading in the homepage accent italic. The space before it lives in the preceding text node, so the heading reads
- * "...software for India" to a text extractor and not "...software forIndia".
- */
-function AccentHeading({ text }: { text: string }) {
-  const cut = text.lastIndexOf(' ') + 1;
-  return (
-    <>
-      {text.slice(0, cut)}
-      <em className="display-accent">
-        <ShinyText text={text.slice(cut)} speed={2.8} spread={120} />
-      </em>
-    </>
-  );
-}
-
 /** The one breadcrumb on a page: it sits at the top of the docs shell, not in the hero. Labels come from the data. */
 export function Breadcrumb({ page }: { page: FeaturePage }) {
   const hub = page.slug === 'features';
@@ -129,57 +106,20 @@ export function Breadcrumb({ page }: { page: FeaturePage }) {
 }
 
 /**
- * Hero of a feature page: the homepage hero's copy block over the same character-grid
- * backdrop, so every page opens like the homepage. HeroPixels lazy-loads CharGrid only once
- * its gates pass (motion allowed, connection not metered, browser idle), so the grid stays
- * out of the page's first load. The product film is left out; a content page has no use
- * for it. The entrance classes are the homepage's own.
+ * Page title of a feature page: the h1 and the intro as plain text at the top of the docs content column. There
+ * is no hero here (no backdrop, badge or call-to-action buttons); the h1 stays because the page
+ * needs one for screen readers and search.
  */
-export function FeatureHero({ page }: { page: FeaturePage }) {
-  const Icon = page.icon ? ICONS[page.icon] : LayoutGrid;
+export function FeatureTitle({ page }: { page: FeaturePage }) {
   return (
-    <section
-      aria-labelledby="feature-title"
-      className="hero-surface hero-fill relative overflow-hidden px-5 pt-[124px] pb-20 md:px-8 md:pb-28"
-    >
-      <HeroPixels />
-
-      <div className="mx-auto max-w-[900px] text-center">
-        <span className="hero-badge pill pill-accent">
-          <Icon className="h-3.5 w-3.5" />
-          {page.eyebrow}
-        </span>
-
-        <h1 id="feature-title" className="display-1 feature-h1 hero-line mt-6">
-          <AccentHeading text={page.h1} />
-        </h1>
-
-        <p className="hero-sub lead mx-auto mt-6 max-w-[640px]">
-          <Inline text={page.intro} />
-        </p>
-
-        <div className="mt-8 flex flex-row items-center justify-center gap-3">
-          <a href={APP_URL} className="hero-cta btn btn-primary flex-1 basis-0 sm:flex-none">
-            Start free trial
-            <ArrowRight className="h-4 w-4" />
-          </a>
-          {page.slug !== 'pricing' && (
-            <a href="/pricing" className="hero-cta btn btn-outline flex-1 basis-0 sm:flex-none">
-              See pricing
-            </a>
-          )}
-        </div>
-
-        <ul className="hero-trust mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-          {TRUST_POINTS.map(point => (
-            <li key={point} className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-              {point}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
+    <header className="mb-10">
+      <h1 id="feature-title" className="text-[32px] font-medium leading-[1.1] tracking-tight text-foreground md:text-[40px]">
+        {page.h1}
+      </h1>
+      <p className="mt-4 text-[16px] leading-relaxed text-foreground/75">
+        <Inline text={page.intro} />
+      </p>
+    </header>
   );
 }
 

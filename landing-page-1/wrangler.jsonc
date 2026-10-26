@@ -8,7 +8,7 @@
     "directory": "./dist",
     "not_found_handling": "404-page"
   },
-  // Required by `npx wrangler preview` (the Workers Builds preview step). The block can be empty:
-  // assets and compatibility settings stay at the top level.
+  // `wrangler preview` (the deploy command for pull-request builds) refuses to run without this
+  // block. Empty is enough: assets and compatibility settings above are shared with previews.
   "previews": {}
 }

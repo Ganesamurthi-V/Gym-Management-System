@@ -46,7 +46,7 @@ export function DocsShell({ page, children }: { page: FeaturePage; children: Rea
   }, []);
   const toc = page.sections.map((s, i) => ({ id: ids[i], label: s.heading }));
   return (
-    <div className="px-5 pb-8 pt-4 md:px-8 md:pb-10 md:pt-5">
+    <div className="px-5 pb-8 pt-[88px] md:px-8 md:pb-10 md:pt-[92px]">
       <div className="mx-auto max-w-[1240px]">
         <Breadcrumb page={page} />
         <DocsMobileMenu page={page} />

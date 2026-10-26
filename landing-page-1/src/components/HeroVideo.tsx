@@ -80,7 +80,9 @@ export function HeroVideo() {
       let top = 0;
       for (let e: HTMLElement | null = wrap; e; e = e.offsetParent as HTMLElement | null) top += e.offsetTop;
       const base = parseFloat(getComputedStyle(wrap).marginTop) || 0;
-      const extra = Math.min(640, Math.max(0, window.innerHeight + 16 - top));
+      // Not on a phone: the copy is short against a tall screen, so pushing the film below the
+      // fold left a blank band under the trust points. The film follows the copy instead.
+      const extra = window.innerWidth < 768 ? 0 : Math.min(640, Math.max(0, window.innerHeight + 16 - top));
       if (extra > 0) wrap.style.marginTop = `${base + extra}px`;
       // Skipped on the first call: no trigger exists yet (the one below is created in an effect
       // that runs after this), and the refresh was a full pass of layout reads in front of the

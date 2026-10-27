@@ -4,7 +4,7 @@ import { useState, Suspense, useEffect, useDeferredValue, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
-import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download, Lock } from 'lucide-react'
+import { Search, Plus, MessageCircle, Upload, ChevronRight, Edit2, Hash, Users, Check, X, AlertCircle, Filter, Zap, CreditCard, Target, Calendar, Download, Lock, Tag } from 'lucide-react'
 import { buildWhatsAppLink, formatDate, cn, isValidPhone } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
@@ -326,6 +326,10 @@ function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
       <div className="flex flex-col xs:flex-row xs:items-start sm:items-center justify-between gap-3">
         <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Members</h1>
         <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
+          <Link href="/owner/plans" aria-label="Plans" className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <Tag className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <span>Plans</span>
+          </Link>
           <button
             onClick={() => setShowAdvFilterModal(true)}
             {...tourAttr('membersAdvancedFilter')}
@@ -341,13 +345,13 @@ function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
             )}
           </button>
           <button onClick={() => setShowExportModal(true)} {...tourAttr('membersExport')} className="flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
-            <Download className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <Upload className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
           <Link href={importBlocked ? '/owner/subscription' : '/owner/import'} {...tourAttr('membersImport')} className={importBlocked
             ? 'flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all'
             : 'flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all'}>
-            <Upload className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+            <Download className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             <span className="hidden sm:inline">{importBlocked ? 'Upgrade to import' : 'Import'}</span>
           </Link>
           <Link href="/owner/members/bulk-edit" {...tourAttr('membersBulkEdit')} className="hidden md:flex items-center gap-1.5 px-2.5 xs:px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-surface border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">

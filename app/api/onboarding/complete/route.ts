@@ -6,6 +6,7 @@ import { roleFromClaims } from '@/lib/auth/roles'
 import { ownerMobileFromUser } from '@/lib/auth/phone'
 import { passesCsrf } from '@/app/api/_guard'
 import { assertGymWritableById } from '@/lib/subscriptionGuard'
+import { getPlanPrices } from '@/lib/plans/prices'
 
 interface MembershipPlan {
   planName: string
@@ -175,18 +176,6 @@ function databaseErrorDetails(error: DatabaseError | null) {
     error: error?.message ?? 'Database returned no row and no error',
     details: error?.details,
     hint: error?.hint,
-  }
-}
-
-function getPlanPrices(plans: MembershipPlan[]) {
-  const byDuration = (duration: MembershipPlan['duration']) => plans.find((plan) => plan.duration === duration)
-  return {
-    monthly: byDuration('monthly')?.price ?? 1500,
-    quarterly: byDuration('quarterly')?.price ?? 4000,
-    annual: byDuration('annual')?.price ?? 10000,
-    joining_fee_monthly: byDuration('monthly')?.joiningFee ?? 0,
-    joining_fee_quarterly: byDuration('quarterly')?.joiningFee ?? 0,
-    joining_fee_annual: byDuration('annual')?.joiningFee ?? 0,
   }
 }
 

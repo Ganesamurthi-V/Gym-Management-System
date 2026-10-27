@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { useReveal } from '../lib/useReveal';
+import { Section, SectionHead, Split } from './layout/Section';
 import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, savingPercent } from '../data/plans';
 
 const [MONTHLY, YEARLY] = PLANS;
@@ -53,57 +53,30 @@ const FAQS = [
 const canHover = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 export function FAQ() {
-  /*
-    Two scopes rather than one on the section, because the header and the list want
-    different reveal behaviour.
-
-    The header is a group that arrives together, so it keeps the default: one
-    trigger for the scope, targets staggered. The list is tall enough that a single
-    trigger would fire while the lower cards were still well below the fold, so
-    those would animate unseen and sit at rest by the time they were reached.
-    perElement gives each card its own trigger, which is how the reference site
-    behaves: measured there, cards four and five held at opacity 0 until scrolled
-    to, while the first three had already resolved.
-  */
-  const headerScope = useReveal<HTMLDivElement>({ stagger: 0.08 });
-  const listScope = useReveal<HTMLUListElement>({ perElement: true, start: 'top 90%' });
-
   // First item open, matching the reference — it also proves the rows expand.
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" aria-labelledby="faq-title" className="has-dots px-5 py-24 md:px-8 md:py-28">
-      {/* Centred header over a single narrow column of cards, with the two actions under
-          the heading, as in the reference. (An earlier pass split this into a sticky
-          left half and the list on the right, with the buttons dropped.) */}
-      <div className="mx-auto max-w-[1240px]">
-        {/* ── Header ────────────────────────────────────────────────────── */}
-        <div ref={headerScope} className="mx-auto flex max-w-[900px] flex-col items-center text-center">
-          <span className="reveal eyebrow">Frequently asked questions</span>
-          <h2 id="faq-title" className="reveal display-2 mt-4 text-balance">
-            {'Gym software FAQ: everything you '}
-            <em className="display-accent">need</em>
-            {' to know'}
-          </h2>
-          <p className="reveal lead mt-5 max-w-[440px]">
-            Straight answers on pricing, WhatsApp messages and moving your members over.
-          </p>
-          <div className="reveal mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a href={APP_URL} className="btn btn-primary">
-              Get Started
-            </a>
-            <a href="#support" className="btn btn-outline">
-              Contact Support
-            </a>
-          </div>
-        </div>
-
+    <Section id="faq" labelledBy="faq-title">
+      <Split
+        head={
+          <SectionHead
+            title={<h2 id="faq-title" className="display-2 text-balance">{'Gym software FAQ: everything you need to know'}</h2>}
+            lead="Straight answers on pricing, WhatsApp messages and moving your members over."
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <a href={APP_URL} className="btn btn-primary">
+                Get Started
+              </a>
+              <a href="#support" className="btn btn-outline">
+                Contact Support
+              </a>
+            </div>
+          </SectionHead>
+        }
+      >
         {/* ── Accordion ─────────────────────────────────────────────────── */}
-        {/* Separate cards with a gap, not rows divided by hairlines. gap-3 matches
-            the reference; the card itself is the project's own .card, so the radius,
-            surface and border come from the design system rather than being
-            restated here. */}
-        <ul ref={listScope} className="mx-auto mt-12 flex max-w-[820px] flex-col gap-3">
+        <ul className="flex flex-col border-b border-border-subtle">
           {FAQS.map((item, index) => {
             const expanded = open === index;
             const panelId = `faq-panel-${index}`;
@@ -115,7 +88,7 @@ export function FAQ() {
                 onMouseEnter={() => {
                   if (canHover()) setOpen(index);
                 }}
-                className="reveal card transition-colors hover:border-border-strong"
+                className="border-t border-border-subtle"
               >
                 <h3>
                   {/*
@@ -135,7 +108,7 @@ export function FAQ() {
                     // With a mouse, hover has already opened the card, so a click must not
                     // close it again; it still toggles on touch and for keyboard users.
                     onClick={() => setOpen(expanded && !canHover() ? null : index)}
-                    className="flex w-full items-center justify-between gap-4 p-5 text-left sm:p-6"
+                    className="flex w-full items-center justify-between gap-4 py-5 text-left"
                   >
                     <span className="text-[15.5px] font-medium tracking-tight text-foreground sm:text-[16.5px]">
                       {item.q}
@@ -180,10 +153,7 @@ export function FAQ() {
                   }}
                 >
                   <div className="overflow-hidden">
-                    {/* Indented to the button's padding so the answer lines up under
-                        the question. No top padding: the button's own bottom padding
-                        already separates them. */}
-                    <p className="px-5 pb-5 text-[14.5px] leading-relaxed text-muted-foreground sm:px-6 sm:pb-6">
+                    <p className="pb-5 text-[14.5px] leading-relaxed text-muted-foreground">
                       {item.a}
                     </p>
                   </div>
@@ -192,7 +162,7 @@ export function FAQ() {
             );
           })}
         </ul>
-      </div>
-    </section>
+      </Split>
+    </Section>
   );
 }

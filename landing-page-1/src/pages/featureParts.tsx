@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
-import BorderGlow from '../components/BorderGlow';
 import {
   ArrowRight,
   ChevronRight,
   ImageIcon,
   Info,
-  LayoutGrid,
   PlayCircle,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,7 +16,6 @@ import {
   type FeatureBlock,
   type FeaturePage,
 } from '../data/featurePages';
-import { ICONS } from './featureIcons';
 import { CookieBanner } from '../components/CookieBanner';
 import { Footer } from '../components/Footer';
 import { Layout } from '../components/Layout';
@@ -60,7 +57,7 @@ export function FeatureShell({ children }: { children: ReactNode }) {
     <Layout>
       <Navbar />
       {/* Opaque and above the footer from lg up: it is the curtain the footer is revealed under. */}
-      <main id="main-content" className="bg-background lg:relative lg:z-10">
+      <main id="main-content" className="relative isolate bg-background lg:z-10">
         {children}
       </main>
       <Footer reveal />
@@ -113,7 +110,7 @@ export function Breadcrumb({ page }: { page: FeaturePage }) {
 export function FeatureTitle({ page }: { page: FeaturePage }) {
   return (
     <header className="mb-10">
-      <h1 id="feature-title" className="text-[32px] font-medium leading-[1.1] tracking-tight text-foreground md:text-[40px]">
+      <h1 id="feature-title" className="display-1 feature-h1 text-balance">
         {page.h1}
       </h1>
       <p className="mt-4 text-[16px] leading-relaxed text-foreground/75">
@@ -124,20 +121,14 @@ export function FeatureTitle({ page }: { page: FeaturePage }) {
 }
 
 export function FeatureCard({ page }: { page: FeaturePage }) {
-  const Icon = page.icon ? ICONS[page.icon] : LayoutGrid;
   return (
-    <a href={`/${page.slug}`} className="reveal grid rounded-card focus-visible:outline-offset-4">
-      <BorderGlow as="div" contentClassName="p-5 md:p-6" fillOpacity={0}>
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent-soft text-accent-text">
-          <Icon aria-hidden className="h-5 w-5" />
-        </span>
-        <h3 className="mt-4 text-[20px] font-medium leading-[1.15] tracking-tight text-foreground">{page.cardTitle}</h3>
-        <p className="mt-2 text-[15px] leading-relaxed text-foreground/75">{page.cardText}</p>
-        <span className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-accent-text">
-          Learn more
-          <ArrowRight aria-hidden className="h-4 w-4" />
-        </span>
-      </BorderGlow>
+    <a href={`/${page.slug}`} className="card grid p-5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent md:p-6">
+      <h3 className="text-[20px] font-semibold leading-[1.15] text-foreground">{page.cardTitle}</h3>
+      <p className="mt-2 text-[15px] leading-relaxed text-foreground/75">{page.cardText}</p>
+      <span className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent-text">
+        Learn more
+        <ArrowRight aria-hidden className="h-4 w-4" />
+      </span>
     </a>
   );
 }
@@ -177,7 +168,7 @@ function Block({ block }: { block: FeatureBlock }) {
       return <Paragraph text={block.text} />;
     case 'h3':
       return (
-        <h3 className="mt-8 text-[15px] font-semibold uppercase tracking-[0.14em] text-accent-text md:text-[16px]">
+        <h3 className="mt-8 text-[16px] font-semibold text-accent-text md:text-[17px]">
           {block.text}
         </h3>
       );
@@ -227,22 +218,13 @@ function Block({ block }: { block: FeatureBlock }) {
 }
 
 /**
- * One content section: a numbered eyebrow, the flush-left heading with its accent last word, a
- * blue bar and the blocks. The id is the anchor the sidebar search and the table of contents link
- * to; html scroll-padding-top (96px) already clears the floating navbar, so scroll-mt only adds a little air.
+ * One content section: the flush-left heading and the blocks. The id is the anchor the sidebar search and the
+ * table of contents link to; html scroll-padding-top (96px) already clears the floating navbar, so scroll-mt only adds a little air.
  */
-export function SectionView({ id, heading, blocks, index }: { id: string; heading: string; blocks: FeatureBlock[]; index: number }) {
-  const cut = heading.lastIndexOf(' ') + 1;
+export function SectionView({ id, heading, blocks }: { id: string; heading: string; blocks: FeatureBlock[] }) {
   return (
-    <article id={id} className="reveal scroll-mt-4 border-t border-border-subtle py-8 first:border-t-0 first:pt-0 md:py-10">
-      <div className="flex flex-col items-start">
-        <span className="eyebrow">{String(index + 1).padStart(2, '0')}</span>
-        <h2 className="display-3 mt-3 text-balance">
-          {heading.slice(0, cut)}
-          <em className="display-accent">{heading.slice(cut)}</em>
-        </h2>
-        <span aria-hidden className="mt-5 h-1 w-12 rounded-full bg-accent" />
-      </div>
+    <article id={id} className="scroll-mt-4 border-t border-border-subtle py-8 first:border-t-0 first:pt-0 md:py-10">
+      <h2 className="display-3 text-balance">{heading}</h2>
       {blocks.map((block, i) => (
         <Block key={i} block={block} />
       ))}
@@ -263,7 +245,7 @@ function SlotPlaceholder({ icon: Icon, title, children }: { icon: LucideIcon; ti
   );
 }
 
-const CODE = 'rounded bg-surface-secondary px-1.5 py-0.5 font-mono text-[13px]';
+const CODE = 'rounded bg-subtle px-1.5 py-0.5 font-mono text-[13px]';
 
 /** The page's tutorial video: native player, no autoplay, size set so nothing shifts as it loads. */
 export function TutorialSection({ page }: { page: FeaturePage }) {
@@ -272,7 +254,7 @@ export function TutorialSection({ page }: { page: FeaturePage }) {
   if (!tutorial.src) {
     if (!import.meta.env.DEV) return null;
     return (
-      <section aria-label="Tutorial video" className="reveal">
+      <section aria-label="Tutorial video">
         <h2 className="display-3 text-balance">Watch how it works</h2>
         <SlotPlaceholder icon={PlayCircle} title="Tutorial video goes here">
           Add <code className={CODE}>public/features/{page.slug}/tutorial.mp4</code> and a poster, then set{' '}
@@ -285,7 +267,7 @@ export function TutorialSection({ page }: { page: FeaturePage }) {
   // A portrait phone recording stays phone-sized; a landscape one takes the reading column.
   const portrait = tutorial.height > tutorial.width;
   return (
-    <section aria-label="Tutorial video" className="reveal">
+    <section aria-label="Tutorial video">
       <h2 className="display-3 text-balance">Watch how it works</h2>
       <figure className={`mt-8 w-full ${portrait ? 'max-w-[360px]' : 'max-w-[900px]'}`}>
         <video
@@ -312,7 +294,7 @@ export function ScreenshotsSection({ page }: { page: FeaturePage }) {
   if (shots.length === 0) {
     if (!import.meta.env.DEV) return null;
     return (
-      <section aria-label="Screenshots" className="reveal">
+      <section aria-label="Screenshots">
         <h2 className="display-3 text-balance">See it in the app</h2>
         <SlotPlaceholder icon={ImageIcon} title="Screenshots go here">
           Add 2 to 4 screenshots to <code className={CODE}>public/features/{page.slug}/</code>, then list them in{' '}
@@ -322,7 +304,7 @@ export function ScreenshotsSection({ page }: { page: FeaturePage }) {
     );
   }
   return (
-    <section aria-label="Screenshots" className="reveal">
+    <section aria-label="Screenshots">
       <h2 className="display-3 text-balance">See it in the app</h2>
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
         {shots.map(shot => (
@@ -350,15 +332,20 @@ export function RelatedFeatures({ page }: { page: FeaturePage }) {
   return (
     <section aria-labelledby="related-title" className="contain-visible px-5 py-14 md:px-8 md:py-16">
       <div className="mx-auto max-w-[1240px]">
-        <h2 id="related-title" className="reveal display-3 text-balance text-center">
+        <h2 id="related-title" className="display-3 text-balance text-center">
           {RELATED_HEADING}
         </h2>
-        <div className="mt-8 grid gap-3 md:grid-cols-3">
+        <ul className="mt-8">
           {related.map(p => (
-            <FeatureCard key={p.slug} page={p} />
+            <li key={p.slug} className="border-t border-border-subtle last:border-b">
+              <a href={`/${p.slug}`} className="block py-7 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent md:py-8">
+                <h3 className="text-[20px] font-bold leading-snug text-foreground md:text-[22px]">{p.cardTitle}</h3>
+                <p className="mt-2 max-w-[58ch] text-[16px] leading-relaxed text-muted-foreground">{p.cardText}</p>
+              </a>
+            </li>
           ))}
-        </div>
-        <p className="reveal mt-8 text-center text-[15px] text-muted-foreground">
+        </ul>
+        <p className="mt-8 text-center text-[15px] text-muted-foreground">
           <Inline text={FEATURE_OUTRO} />
         </p>
       </div>

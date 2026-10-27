@@ -26,14 +26,13 @@
       The site always opens in the light theme, whatever the visitor's OS setting, so
       the browser chrome is light for every scheme. Matches --background in src/index.css.
     -->
-    <meta name="theme-color" content="#f5f5f5" />
+    <meta name="theme-color" content="#f1f4f8" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
-      Instrument Serif is requested italic-only (ital@1) and at a single weight,
-      because the sole thing it sets is the emphasised words in the hero heading.
-      Asking for the roman too would double the payload for glyphs never drawn.
+      One family, Archivo, with its width and weight axes (DESIGN.md). Width 62-125 covers the
+      condensed headings and the normal-width body; the latin-ext subset carries the rupee sign.
     -->
     <!--
       Non-blocking. A plain rel="stylesheet" here stops the first paint until Google Fonts
@@ -45,13 +44,13 @@
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap"
       onload="this.onload=null;this.rel='stylesheet'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap"
       />
     </noscript>
     <style>
@@ -63,9 +62,9 @@
 <!--
       ─── THEME BOOTSTRAP ────────────────────────────────────────────────────
       Runs before first paint and before the CSS applies, so the theme is already
-      on <html> when the page renders. Dark is the default, so without this the
-      page would paint light and then swap to dark a frame later — a visible white
-      flash for the majority of visits.
+      on <html> when the page renders. Light is the default; without this a visitor who
+      switched to dark earlier in the visit would see the page paint light and then swap
+      to dark a frame later.
 
       Inline and synchronous on purpose: a deferred or external script would run
       after paint and defeat the point. Kept in sync with useTheme() in
@@ -98,7 +97,7 @@
         (--background, --foreground, --muted-foreground, --hero-copy, --border-strong) because
         this block loads before that file; html.dark is set by the bootstrap script above.
       */
-      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 124px 20px 48px; font: 16px/1.6 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #0a0a0a; }
+      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 124px 20px 48px; font: 16px/1.6 "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #0a0a0a; }
       #seo-fallback a { color: #1d4ed8; }
       #seo-fallback nav { text-align: center; font-size: 13px; line-height: 32px; color: #6b6b6b; }
       #seo-fallback nav a { color: inherit; text-decoration: none; }

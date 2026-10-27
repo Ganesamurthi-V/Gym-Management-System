@@ -92,11 +92,11 @@ export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: 
             if (!e.relatedTarget || !e.currentTarget.closest('[role=search]')?.contains(e.relatedTarget as Node)) setOpen(false);
           }}
           onKeyDown={onKeyDown}
-          className="h-11 w-full rounded-xl border border-border-subtle bg-surface pl-9 pr-9 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="h-11 w-full rounded-xl border border-border-subtle bg-frame pl-9 pr-9 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <kbd
           aria-hidden
-          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border-subtle px-1.5 font-mono text-[11px] text-muted-foreground lg:block"
+          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border-subtle px-1.5 text-[11px] text-muted-foreground lg:block"
         >
           /
         </kbd>
@@ -106,7 +106,7 @@ export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: 
           id={listId}
           role="listbox"
           aria-label="Search results"
-          className="mt-2 max-h-[60vh] overflow-y-auto rounded-xl border border-border-subtle bg-surface p-1.5 shadow-lg lg:absolute lg:left-0 lg:top-full lg:z-30 lg:w-[380px]"
+          className="mt-2 max-h-[60vh] overflow-y-auto rounded-xl border border-border-subtle bg-frame p-1.5 shadow-lg lg:absolute lg:left-0 lg:top-full lg:z-30 lg:w-[380px]"
         >
           {results.length === 0 && (
             <li role="option" aria-selected="false" aria-disabled="true" className="px-3 py-3 text-[14px] text-muted-foreground">
@@ -125,7 +125,7 @@ export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: 
                 }}
                 className={`block rounded-lg px-3 py-2.5 ${i === active ? 'bg-accent-soft' : ''}`}
               >
-                <span className="block text-[12px] font-medium uppercase tracking-wide text-accent-text">{r.pageLabel}</span>
+                <span className="block text-[13px] font-semibold text-accent-text">{r.pageLabel}</span>
                 <span className="mt-0.5 block text-[15px] font-medium text-foreground">{r.heading}</span>
                 <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">
                   {r.snippet.map((part, k) =>

@@ -1,208 +1,67 @@
-import { ArrowRight, MapPin } from 'lucide-react';
-import { Marquee } from './Marquee';
 import { HeroVideo } from './HeroVideo';
-import { HeroPixels } from './HeroPixels';
-import { ShinyText } from './ShinyText';
+import { HeroDemo } from './HeroDemo';
+import { FREE_MEMBER_LIMIT, PLANS, formatINR } from '../data/plans';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
-/**
- * Coverage, not a customer list. A logo strip of named gyms would assert
- * specific clients the site cannot evidence; where the product is available is
- * a fact. Spread across regions so the strip reads as national reach rather
- * than one state.
- */
-const CITIES = [
-  'Mumbai',
-  'Delhi',
-  'Bengaluru',
-  'Hyderabad',
-  'Chennai',
-  'Kolkata',
-  'Pune',
-  'Ahmedabad',
-  'Jaipur',
-  'Lucknow',
+/* Facts only, read from plans.ts so a price is never typed twice. */
+const FACTS = [
+  '14-day free trial, no credit card',
+  `Free for up to ${FREE_MEMBER_LIMIT} members`,
+  `${formatINR(PLANS[0].price)} a month after that, no GST added`,
 ] as const;
 
-const TRUST_POINTS = ['14-day free trial', 'No credit card', 'Cancel anytime'] as const;
-
-// The entrance animation is CSS (.hero-badge, .hero-line, .hero-sub, .hero-cta, .hero-trust,
-// .hero-frame and .hero-marquee in index.css), not a gsap timeline. gsap was only used here and
-// in HeroVideo's scroll effect, so doing the entrance in CSS lets both leave the entry chunk
-// (about 28 KiB gzipped of the 116 KiB the hero waits for), and the start pose is in place at the
-// first paint instead of being applied by an effect that ran after it. The headline and subtitle
-// never start at opacity 0: the subtitle is the LCP element, and a fade-in from 0 kept it from
-// being a paint candidate until the tween began, about 0.7s in.
+/**
+ * Copy on the left, the product moment on the right (DESIGN.md). The copy does not animate: the
+ * headline is the largest paint, and it should be there on the first frame. HeroDemo carries the
+ * page's one piece of motion.
+ */
 export function Hero() {
-  // aria-labelledby turns this into a named region. A <section> without an
-  // accessible name is not exposed as a landmark at all, so the page had ten
-  // anonymous sections and no navigable outline.
+  // aria-labelledby makes the section a named landmark.
   return (
-    <section
-      aria-labelledby="hero-title"
-      className="hero-surface relative overflow-hidden px-5 pt-[124px] pb-16 md:px-8"
-    >
-      {/* The hero's moving backdrop in both themes: a character grid flowing over the
-          mesh wash below, inked with the accent in light and white in dark. It runs
-          behind the copy rather than around it, so the legibility work is in the type
-          and the layer opacity rather than in a mask; see .hero-pixels.
-
-          This replaced HeroBeams, which used to cover dark mode on its own. The
-          reference keeps one effect across both themes and only reinks it, and two
-          WebGL contexts in a single hero is not a trade worth making for decoration.
-          Renders nothing under reduced motion or on a metered connection, in which
-          case the mesh is the backdrop on its own. It does run on phones. */}
-      <HeroPixels />
-
-      <div className="mx-auto max-w-[1240px]">
-        {/* ── Copy ──────────────────────────────────────────────────────── */}
-        {/* 900px fits the longest headline line with headroom for the serif's
-            wider metrics, without letting the measure sprawl. */}
-        <div className="mx-auto max-w-[900px] text-center">
-          <span className="hero-badge pill pill-accent">
-            <MapPin className="h-3.5 w-3.5" />
-            Built for independent gyms across India
-            {/* Inherits the pill's colour rather than naming the accent, so the
-                monochrome hero override in .hero-surface reaches it too. */}
-            <span aria-hidden>✦</span>
-          </span>
-
-          {/* Two explicit lines rather than one balanced block. Left to wrap on
-              its own the heading broke as "Built to make gym / management
-              effortless.", splitting the compound noun, and text-balance cannot
-              fix that because it only chooses where to break, not what stays
-              together. Fixing the break needs the phrase to fall in two units.
-
-              <em> rather than a styled span: "effortless" carries the stress of
-              the sentence, so the emphasis is real and not just decoration.
-
-              The <em> keeps the serif italic and the size correction; ShinyText
-              only takes over the paint. Its base colour is passed as the same value
-              the class resolves to in the hero, so the word looks unchanged between
-              sweeps and reduced motion lands on exactly that colour.
-
-              Passed rather than left to the component's default, because ShinyText
-              writes both colours as inline custom properties and no stylesheet rule
-              can reach those. The glint is white by request; the contrast trade that
-              involves is recorded on --hero-shine-display in index.css. */}
-          <h1 id="hero-title" className="display-1 mt-8">
-            {/* The trailing space inside each text node is for text extractors: the two
-                lines are blocks and the word is an <em>, so a reader that joins the
-                nodes would otherwise run "management,made" and "madeeffortless"
-                together. It collapses at the end of a line, so nothing shifts. */}
-            <span className="hero-line block">{'Gym management, '}</span>
-            <span className="hero-line block">
-              {'made '}
-              <em className="display-accent">
-                <ShinyText
-                  text="effortless."
-                  speed={2.8}
-                  spread={120}
-                  color="var(--hero-accent-display)"
-                  shineColor="var(--hero-shine-display)"
-                />
-              </em>
-            </span>
+    <section aria-labelledby="hero-title" className="hero-surface relative overflow-hidden px-5 pt-[116px] pb-16 md:px-8 md:pt-[136px]">
+      <div className="mx-auto grid max-w-[1200px] items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div>
+          {/* The trailing spaces keep the words apart for text extractors, which join the block
+              spans without one; at a line end the space collapses. */}
+          <h1 id="hero-title" className="display-1 text-foreground">
+            <span className="block">{'Gym management '}</span>
+            <span className="block">{'that runs from '}</span>
+            <span className="block">your phone.</span>
           </h1>
 
-          {/* Trimmed to two lines. The full product definition still lives in the
-              meta description and the features section; repeating it here only
-              pushed the product shot below the fold.
-
-              "WhatsApp automation" carries the shine — the same treatment the
-              hero heading gives "effortless" and the WhatsApp section gives
-              "Unlimited". It is the differentiating feature in this list (every
-              rival does members and payments; the built-in WhatsApp is the hook),
-              so it earns the one spot of emphasis in an otherwise plain sentence.
-              font-medium lifts it just enough that the shine reads as intentional
-              against the muted body text around it. */}
-          <p className="hero-sub lead mx-auto mt-7 max-w-[620px]">
-            Members, payments, attendance, dues and{' '}
-            {/* Resting colour is blue-800 rather than --accent-text: this word is 19px
-                regular, so it answers to 4.5:1 rather than 3:1, and --accent-text only
-                reaches 3.16 against the grid behind it. The glint is white, same as the
-                headline's. */}
-            <ShinyText
-              text="WhatsApp automation"
-              speed={3}
-              spread={120}
-              className="font-medium"
-              color="var(--hero-accent-body)"
-              shineColor="var(--hero-shine-body)"
-            />{' '}
-            — in one place, without the notebooks.
+          <p className="hero-sub lead mt-7 max-w-[520px]">
+            For independent gyms in India. Members, fees, attendance and WhatsApp reminders in one place,
+            instead of a register book and your memory.
           </p>
 
-          {/* Side by side at every width. On mobile the two pills share the row
-              at equal width (flex-1 + basis-0); from sm up they shrink to their
-              content and centre, so they sit as a natural inline pair rather than
-              two stretched half-widths.
-
-              Sizing comes from .hero-cta (see index.css): base .btn size on
-              mobile, growing to btn-lg dimensions from sm up. The other btn-lg
-              CTAs on the page stay large on mobile because their larger tap
-              target is right there. */}
-          <div className="mt-9 flex flex-row items-center justify-center gap-3">
-            <a
-              href={APP_URL}
-              className="hero-cta btn btn-primary flex-1 basis-0 sm:flex-none"
-            >
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a href={APP_URL} className="btn btn-accent btn-lg">
               Start free trial
-              <ArrowRight className="h-4 w-4" />
             </a>
-            <a
-              href="/pricing"
-              className="hero-cta btn btn-outline flex-1 basis-0 sm:flex-none"
-            >
+            <a href="/pricing" className="btn btn-outline btn-lg">
               See pricing
             </a>
           </div>
 
-          <ul className="hero-trust mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            {TRUST_POINTS.map(point => (
-              <li
-                key={point}
-                className="flex items-center gap-2 text-xs font-medium text-muted-foreground"
-              >
-                {/* currentColor, so the dot follows --hero-copy with the text it
-                    belongs to instead of being the one blue mark left in the row. */}
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-                {point}
+          <ul className="mt-8 grid gap-2 text-[14px] text-muted-foreground sm:max-w-[520px]">
+            {FACTS.map(fact => (
+              <li key={fact} className="flex items-baseline gap-2.5">
+                <span aria-hidden className="h-[3px] w-3 shrink-0 translate-y-[-3px] rounded-full bg-accent" />
+                {fact}
               </li>
             ))}
           </ul>
         </div>
 
+        <HeroDemo />
       </div>
 
-      {/* ── Product film ──────────────────────────────────────────────────
-          Outside the 1240px column on purpose: the film grows wider than the copy
-          as it is scrolled up. The section's own padding is what keeps a margin
-          at the page edges. .hero-frame is a wrapper because the entrance tween
-          and the scroll growth both write a transform, and they must not share
-          an element. The interactive dashboard demo that used to sit here is in
-          _archived/landing-page-1.
-
-          HeroVideo pushes this wrapper down until the film's top edge is below the
-          first screen, so the hero opens on the copy alone: a sliver of the film
-          showing under the trust points read as a cut-off box, not as a video. The
-          coverage strip follows the film for the same reason — the first screen is
-          kept plain. */}
-      <div className="hero-frame mt-16 md:mt-20">
+      {/* The one-minute product film, under the first screen. .hero-frame is the wrapper HeroVideo
+          measures and pushes below the fold on wider screens. */}
+      <div className="hero-frame mt-20 md:mt-24">
         <HeroVideo />
       </div>
-
-      <div className="mx-auto max-w-[1240px]">
-        {/* ── Coverage marquee ──────────────────────────────────────────── */}
-        <div className="hero-marquee mt-16">
-          <p className="mb-6 text-center text-xs font-medium tracking-wide text-muted-foreground">
-            Available for gyms all over India
-          </p>
-          <Marquee items={CITIES} durationSeconds={38} />
-        </div>
-      </div>
-
     </section>
   );
 }

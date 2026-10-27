@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { KeyPoints } from './components/KeyPoints';
 import { Purpose } from './components/Purpose';
 import { Problems } from './components/Problems';
 import { Benefits } from './components/Benefits';
@@ -20,6 +21,7 @@ import { Footer } from './components/Footer';
  * visible before the visitor scrolls.
  */
 const SECTIONS = [
+  { key: 'facts', Section: KeyPoints },
   { key: 'why', Section: Purpose },
   { key: 'problems', Section: Problems },
   { key: 'benefits', Section: Benefits },

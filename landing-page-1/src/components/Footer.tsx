@@ -128,7 +128,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
           {/* ── Link columns ──────────────────────────────────────────────── */}
           {COLUMNS.map(column => (
             <nav key={column.heading} aria-label={column.heading}>
-              <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <h3 className="text-sm font-semibold text-foreground">
                 {column.heading}
               </h3>
               {/* No gap: each link carries its own 44 px tap height (13.5px text, so the rows were 17 px); desktop keeps the compact rows. */}
@@ -155,7 +155,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
             can actually see rather than claiming details that appear nowhere.
           */}
           <div>
-            <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <h3 className="text-sm font-semibold text-foreground">
               Contact
             </h3>
             <address className="mt-5 flex flex-col gap-1 text-[13px] not-italic text-muted-foreground">

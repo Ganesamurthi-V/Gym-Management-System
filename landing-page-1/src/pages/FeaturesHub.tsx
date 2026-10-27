@@ -12,7 +12,7 @@ export function FeaturesHub({ page }: { page: FeaturePage }) {
         <DocsShell page={page}>
           <FeatureTitle page={page} />
           {page.sections.map((section, i) => (
-            <SectionView key={section.heading} id={ids[i]} heading={section.heading} blocks={section.blocks} index={i} />
+            <SectionView key={section.heading} id={ids[i]} heading={section.heading} blocks={section.blocks} />
           ))}
           <DocsPager page={page} />
         </DocsShell>

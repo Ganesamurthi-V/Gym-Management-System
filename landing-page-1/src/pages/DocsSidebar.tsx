@@ -139,16 +139,16 @@ export function DocsMobileMenu({ page }: { page: FeaturePage }) {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(o => !o)}
-        className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface px-4 text-left text-[15px] text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border-subtle bg-frame px-4 text-left text-[15px] text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Menu aria-hidden className="h-4 w-4 shrink-0 text-accent-text" />
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Documentation menu</span>
+          <span className="block text-[13px] font-semibold text-muted-foreground">Documentation menu</span>
           <span className="block truncate font-medium">{docLabel(page)}</span>
         </span>
         <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      <div id={panelId} hidden={!open} className="mt-2 rounded-xl border border-border-subtle bg-surface p-3">
+      <div id={panelId} hidden={!open} className="mt-2 rounded-xl border border-border-subtle bg-frame p-3">
         <DocsSearch onNavigate={() => setOpen(false)} />
         <div className="mt-3">
           <PageList current={page} />

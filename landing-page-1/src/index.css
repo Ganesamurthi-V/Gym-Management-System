@@ -19,21 +19,22 @@
    flips with the .dark class instead of being frozen at build time.
 ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --background: #f5f5f5;
-  --foreground: #0a0a0a;
+  /* Palette from DESIGN.md: Chalk (page), Paper (raised), Ink (text), Steel (secondary
+     text), Line (borders). A steel-tinted light rather than neutral grey, and a navy ink
+     rather than near-black, both tied to the Royal Blue the product already uses. */
+  --background: #f1f4f8;
+  --foreground: #14213d;
 
   --muted: #ffffff;
-  /* #737373 is the usual neutral-500 here, but on the #f5f5f5 page it lands at
-     4.35:1 — just under WCAG AA for body text. #6b6b6b reads identically and
-     clears it at 4.84:1. */
-  --muted-foreground: #6b6b6b;
-  --subtle: #fafafa;
+  /* Steel. 5.6:1 on Chalk and 6.2:1 on Paper, so it carries body-size text. */
+  --muted-foreground: #53627a;
+  --subtle: #e8edf4;
 
-  --border: #e5e5e5;
-  --border-strong: #d4d4d4;
+  --border: #d9e0ea;
+  --border-strong: #c3cddb;
   --ring: #2563eb;
 
-  /* Elevated surfaces (cards, panels, the browser frame in the hero mockup) */
+  /* Elevated surfaces (panels, product screens) */
   --frame: #ffffff;
 
   /* ── Brand blue ─────────────────────────────────────────────────────────
@@ -99,21 +100,6 @@
   --wa-home: #111b21;
   --wa-green: #00a884;
 
-  /* Chips and arc orbiting the phone mock.
- 
-     Written as full colours rather than relying on a `/30` opacity modifier on
-     border-whatsapp: that modifier silently produced nothing and the utility fell
-     through to the base --border rule, so the chips ended up outlined in neutral
-     grey.
- 
-     Light needs a white face plus a real drop shadow — the section is #fff here,
-     so a tinted face alone measured 1.05 against it and simply vanished. The arc
-     also has to be carried harder on white than on near-black. */
-  --wa-chip-face: #ffffff;
-  --wa-chip-edge: color-mix(in srgb, var(--whatsapp) 45%, transparent);
-  --wa-chip-lift: 0 6px 18px -8px rgb(24 24 27 / 22%);
-  --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 55%, transparent);
-
   /* Owner console chrome, for the interactive dashboard mock in the hero.
 
      Same reasoning as the --wa-* block above: the mock depicts a real product
@@ -169,44 +155,23 @@
      applies and each card keeps its tone; set under .dark, the one value wins for all
      six at once and they go neutral. One property instead of six. */
 
-  /* Highlight that sweeps through a ShinyText word. Paired with --accent-text as
-     the base, so it has to stay legible against the page rather than just look
-     bright: the base measures 6.15:1 here and this holds 3.5:1, above the 3:1 AA
-     threshold for the display sizes it is used at.
- 
-     Picked by measurement, not by eye. The first choice, #6d9bff, looked right and
-     came out at 2.47:1 — under the threshold — because a highlight on a light page
-     has to move *towards* the background to read as lighter, which spends contrast
-     rather than gaining it. This is the lightest blue that still clears 3:1 while
-     staying visibly brighter than the base. */
-  --shine-glint: #4f7dee;
-
-  /* BorderGlow surface treatment. These live here rather than as props because
-     the component would otherwise have to read the theme in JS, and a value read
-     at render goes stale the moment ThemeToggle flips .dark — nothing re-renders
-     the cards. On a light surface the halo composites normally; a blend mode
-     would wash it out against near-white. */
-  --glow-border: rgb(24 24 27 / 12%);
-  --glow-shadow: rgb(24 24 27 / 4%) 0 1px 2px, rgb(24 24 27 / 5%) 0 8px 24px;
-  --glow-blend-fill: normal;
-  --glow-blend-halo: normal;
-
   --shadow-color: 0deg 0% 0%;
 }
 
 .dark {
-  --background: #141414;
-  --foreground: #fafafa;
+  /* Deep navy rather than near-black (see DESIGN.md). */
+  --background: #0d1526;
+  --foreground: #e9eef6;
 
-  --muted: #171717;
-  --muted-foreground: #a3a3a3;
-  --subtle: #1c1c1c;
+  --muted: #15203a;
+  --muted-foreground: #9faec4;
+  --subtle: #1a2642;
 
-  --border: #262626;
-  --border-strong: #333333;
+  --border: #26324d;
+  --border-strong: #33415f;
   --ring: #60a5fa;
 
-  --frame: #000000;
+  --frame: #15203a;
 
   /* --accent and --card-primary hold their light-mode values: the contrast that
      matters on a filled surface is against the fill, not the page. The tokens
@@ -243,14 +208,6 @@
   --wa-ink-faint: #6f7f88;
   --wa-home: #e9edef;
   --wa-green: #00a884;
-
-  /* Tinted face and a green bloom instead of a drop shadow: on a near-black
-     section a dark shadow does nothing, and the glow is what makes these read as
-     lit chips the way the reference does. */
-  --wa-chip-face: #14251a;
-  --wa-chip-edge: color-mix(in srgb, var(--whatsapp) 32%, transparent);
-  --wa-chip-lift: 0 0 22px -4px color-mix(in srgb, var(--whatsapp) 45%, transparent);
-  --wa-orbit-line: color-mix(in srgb, var(--whatsapp) 30%, transparent);
 
   /* Console chrome, dark. Verbatim from app/theme.css: --dash-page is the app's
      --c-surface-secondary, --dash-surface its --c-surface, --dash-raise its
@@ -291,11 +248,6 @@
      cards in dark and keeps the colour in the icon and the number. */
   --dash-stat-edge: #2a2a2a;
 
-  /* White here. The dark-mode base is #93c5fd, so the glint has to be lighter
-     than that to read as a highlight, and white is both the brightest option and
-     the highest contrast against the page. */
-  --shine-glint: #ffffff;
-
   /* Base the Beams field sits on — deliberately blacker than --background so the
      ribbons read against near-black rather than against the page grey.
 
@@ -318,16 +270,6 @@
      canvas is painted there. */
   --beams-base: #000000;
   --beams-scrim: #000000;
-
-  /* On a dark surface the mesh needs to blend rather than sit on top: soft-light
-     keeps the inward bleed tinting the card instead of covering it, and
-     plus-lighter makes the halo read as emitted light. */
-  --glow-border: rgb(255 255 255 / 15%);
-  --glow-shadow: rgb(0 0 0 / 10%) 0 1px 2px, rgb(0 0 0 / 10%) 0 2px 4px,
-    rgb(0 0 0 / 10%) 0 4px 8px, rgb(0 0 0 / 10%) 0 8px 16px,
-    rgb(0 0 0 / 10%) 0 16px 32px, rgb(0 0 0 / 10%) 0 32px 64px;
-  --glow-blend-fill: soft-light;
-  --glow-blend-halo: plus-lighter;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -392,13 +334,17 @@
   --color-dash-accent-soft: var(--dash-accent-soft);
   --color-dash-accent-chip: var(--dash-accent-chip);
 
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+  /* One family (DESIGN.md): Archivo, roles told apart by width and weight. --font-mono and
+     --font-serif point at it too, so any leftover font-mono / font-serif utility renders in the
+     same family instead of falling back to a system face. */
+  --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --font-serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-sans);
+  --font-serif: var(--font-sans);
 
-  /* Radii — the template is built on pills and generously rounded cards */
-  --radius-card: 20px;
+  /* Radius follows hierarchy: panels 16, free-standing bands and device frames 28,
+     buttons 10 (set on .btn), chips keep the pill. */
+  --radius-card: 16px;
   --radius-card-lg: 28px;
   --radius-pill: 9999px;
 }
@@ -421,8 +367,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01";
-  font-variation-settings: "opsz" 32;
+  font-stretch: 100%;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -462,124 +407,37 @@ p, blockquote, figcaption, li {
    that flatters a 96px headline makes 32px text look cramped, so it scales with
    the clamp rather than being a fixed value.
 ═══════════════════════════════════════════════════════════════════════════ */
-/* -0.025em is the template's own ratio: -2.4px against a 96px headline. */
-/* 40px floor, up from 36 — the mobile heading was asked to be larger. The floor
-   is bounded by the first line, "Gym management,", which needs ~335px at 40px:
-   at a 390px viewport the px-5 gutters leave a 350px content column, so 40px
-   clears with margin. It was 44 originally, which broke after "Gym" on phones;
-   40 is the largest that stays on one line down to the ~360px-wide viewports. */
+/* Condensed, heavy, tight: Archivo's narrow widths read like gym signage (DESIGN.md).
+   Condensing lets a large size fit a phone: at width 70 the hero's longest line still
+   fits a 320px column at the 44px floor. Sentence case always. */
 .display-1 {
-  font-size: clamp(40px, 9vw, 96px);
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  font-size: clamp(44px, 9vw, 96px);
+  font-stretch: 70%;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
 }
 
-/* Feature-page headline. The keyword-bearing H1s are longer than the homepage's, and at the full
-   96px "Gym member management" is about 1160px wide, wider than the 900px hero column. 5vw caps at
-   72px, where that line is about 870px, so it fits the column on one line. Same weight, leading and
-   tracking as .display-1; the doubled selector outranks it. */
+/* Feature-page headline. The keyword-bearing H1s are longer than the homepage's, so the
+   ceiling is lower; the doubled selector outranks .display-1. */
 .display-1.feature-h1 {
-  font-size: clamp(40px, 5vw, 72px);
+  font-size: clamp(40px, 5.4vw, 72px);
 }
 
 .display-2 {
-  font-size: clamp(34px, 4.8vw, 60px);
-  font-weight: 500;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  font-size: clamp(32px, 4.6vw, 56px);
+  font-stretch: 75%;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.005em;
 }
 
 .display-3 {
-  font-size: clamp(26px, 3.2vw, 40px);
-  font-weight: 500;
-  line-height: 1.15;
-  letter-spacing: -0.025em;
-}
-
-/* Emphasised words inside a display heading: serif italic in the accent colour.
-   --accent-text rather than --accent because this sits on the page background,
-   where --accent drops to 3.6:1 in dark mode.
-
-   The size bump and negative right margin are optical, not arbitrary: Instrument
-   Serif has a smaller x-height than Geist at the same px, and its italic slant
-   leaves a gap after the final glyph that reads as a broken word space. */
-.display-accent {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: 1.08em;
-  letter-spacing: -0.005em;
-  color: var(--accent-text);
-}
-
-/* ShinyText — a metallic sheen sweeping through a word.
- 
-   Driven entirely by CSS rather than the upstream React Bits implementation,
-   which animates background-position through motion/react. That would have meant
-   adding Framer Motion alongside the GSAP already here, ~60KB for one decorative
-   text effect, plus a per-instance requestAnimationFrame callback for something
-   the compositor does for free.
- 
-   Every knob is a custom property written by the component, so the prop API is
-   unchanged and the animation still runs off the main thread. */
-.shiny-text {
-  display: inline-block;
-  background-image: linear-gradient(
-    var(--shine-angle, 120deg),
-    var(--shine-color) 0%,
-    var(--shine-color) 35%,
-    var(--shine-glint-local) 50%,
-    var(--shine-color) 65%,
-    var(--shine-color) 100%
-  );
-  /* 200% wide, so sliding the position moves the highlight across the glyphs
-     instead of resizing the ramp. */
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: shinyTextSweep var(--shine-duration, 2s) linear infinite;
-}
-
-/* From fully off the right to fully off the left. --shine-end carries the delay:
-   pushing the end further past -50% leaves the highlight off-screen for the rest
-   of the cycle, which is how the upstream component's hold phase looks. */
-@keyframes shinyTextSweep {
-  from {
-    background-position: 150% center;
-  }
-  to {
-    background-position: var(--shine-end, -50%) center;
-  }
-}
-
-.shiny-text-pause-on-hover:hover {
-  animation-play-state: paused;
-}
-
-/* Decoration, so it goes first — and the fallback has to restore a painted glyph,
-   not just stop the sweep. With the fill transparent and the gradient gone the
-   word would disappear entirely. */
-@media (prefers-reduced-motion: reduce) {
-  .shiny-text {
-    animation: none;
-    background-image: none;
-    color: var(--shine-color);
-    -webkit-text-fill-color: var(--shine-color);
-  }
-}
-
-/* Forced colours drops background-image, which would leave nothing painting the
-   text at all. Hand it back to the system colour. */
-@media (forced-colors: active) {
-  .shiny-text {
-    animation: none;
-    background-image: none;
-    color: CanvasText;
-    -webkit-text-fill-color: CanvasText;
-  }
+  font-size: clamp(24px, 2.8vw, 34px);
+  font-stretch: 80%;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: 0;
 }
 
 .lead {
@@ -588,14 +446,14 @@ p, blockquote, figcaption, li {
   color: var(--muted-foreground);
 }
 
-/* Small mono label above section headings */
+/* Small label, only where it says something the heading does not (DESIGN.md). Sentence case,
+   same family; never tracked-out capitals. */
 .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--accent-text);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -623,347 +481,106 @@ p, blockquote, figcaption, li {
   }
 }
 
-/* ── Hero surface ─────────────────────────────────────────────────────────────
-   Pure white in light, pure black in dark, matching the reference: its hero is
-   #ffffff with near-black glyphs and #0a0a0a with white ones, and no tint either
-   side. The grid ink is set to the same two values in HeroPixels.
-
-   This replaced a four-stop mesh in the two brand hues. A wash in --accent is what
-   kept the hero from reading as monochrome, and it was also carrying a contrast cost
-   for no legibility benefit: its strength had been tuned down to 5-12% precisely
-   because a flat accent tint fails AA behind the subhead by 10%.
-
-   It sits on the section rather than on a layer of its own, which is what lets it be
-   opaque. A child at negative z-index paints above its parent's background but below
-   its content, so the section's own background is the only place a solid fill can go
-   without hiding the grid at -z-20. The old mesh could only ever be translucent
-   because it was a sibling in front of the canvas.
-
-   The fade at the bottom keeps the change inside the hero. The page is --background
-   (#f5f5f5 light, #141414 dark), so pure white to the section edge would leave a seam
-   where the next section starts; easing into it from 560 to 800px hides that. The
-   grid has already feathered out by 740, so the two transitions overlap rather than
-   stacking up as two visible bands. */
+/* Flat page colour: the redesign has no hero wash or backdrop effect (DESIGN.md). */
 .hero-surface {
-  background: linear-gradient(to bottom, #fff 0, #fff 560px, var(--background) 800px);
+  background: var(--background);
 }
-.dark .hero-surface {
-  background: linear-gradient(to bottom, #000 0, #000 560px, var(--background) 800px);
-}
-.dark .hero-pixels {
-  opacity: 0.35;
-}
-
-/* Feature-page heroes. The stops above are fixed pixels fitted to the homepage hero, whose
-   film carries it well past 800px. A feature hero is shorter and its height moves with the
-   viewport, so on the fixed stops the grid stopped short of the section and the wash had not
-   reached --background at its edge, leaving a seam against the next section. Here both are
-   tied to the section's own height instead: the grid fills it and feathers out over the last
-   160px, and the wash lands on --background exactly at the bottom edge. */
-.hero-fill.hero-surface {
-  background: linear-gradient(to bottom, #fff 0, #fff calc(100% - 240px), var(--background) 100%);
-}
-.dark .hero-fill.hero-surface {
-  background: linear-gradient(to bottom, #000 0, #000 calc(100% - 240px), var(--background) 100%);
-}
-.hero-fill .hero-pixels {
-  height: 100%;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 76px,
-    #000 210px,
-    #000 calc(100% - 160px),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 76px,
-    #000 210px,
-    #000 calc(100% - 160px),
-    transparent 100%
-  );
-}
-
-/* ── Character grid ───────────────────────────────────────────────────────────
-   Sits directly on the hero surface and below the copy, in both themes. The shader
-   fades its own four edges; everything here is about how strongly it prints.
-
-   Legibility is the type's job here, not this layer's. There was a mask that cut the
-   grid out from behind the copy entirely, which is the strongest guarantee available
-   and was dropped anyway: a rectangular void in the middle of the pattern is itself a
-   shape, and it read as a box sitting in the hero. What replaced it is contrast
-   headroom in the copy, see --hero-copy.
-
-   The opacity is set by contrast, not taste, because the grid runs behind the copy
-   rather than around it.
-
-   The ink is pure black on the white surface, so a full mark at opacity a leaves the
-   local backdrop at 255(1 - a). At 0.5 that measured rgb(132,135,153) under the subhead
-   and #3a3a3a against it came to 3.20:1 at 1440 and 2.88:1 at 390, against a 4.5 floor.
-   0.35 is the ceiling that clears it; 0.3 leaves margin for whichever phase the field
-   is in when the page loads.
-
-   Note this still leaves our marks bolder than the reference's, not fainter. Measured
-   inside its own subhead, its darkest backdrop is rgb(233,234,246), about twelve levels
-   off white; ours at 0.3 sits around seventy-five off. It gets away with 0.5 because
-   only 5.5% of that rect carries a mark at all. */
-.hero-pixels {
-  /* 0.31 is the ceiling, not a preference. A full mark at opacity a leaves the backdrop
-     at 255(1 - a) on the white surface, so each piece of hero text implies a limit:
-     0.635 for the headline, 0.361 for the body copy, 0.459 for the blue emphasis at
-     rest, and 0.322 for its glint, which binds. Past that the sweep on "effortless."
-     falls under 3:1. The rest of the visibility had to come from density, which costs no
-     contrast at all; see the note on the ramp in HeroPixels. */
-  opacity: 0.31;
-  /* Dark runs higher, at 0.35, because its limits are looser rather than for symmetry.
-     Its ink is white, so each mark lightens the backdrop instead of darkening it, and
-     the hero text there is light too: the brighter the mark, the less contrast the copy
-     has. Against the black surface the limits are 0.571 for the headline, 0.385 for the
-     body copy and 0.373 for the blue emphasis at rest, so 0.35 sits just inside. Still
-     short of the reference's 0.6, which it can afford because its glyphs are
-     near-neutral rather than full white. */
-  /*
-    One mask layer, feathered at both ends. Across the width it does nothing: the grid
-    runs the full width of the hero and straight through the copy, which is what the
-    reference does.
-
-    What was here before was a hole: two additive layers whose union was everything
-    except the rectangle the copy sits in. It kept the copy pristine, but a
-    rectangular void in the middle of the pattern is itself a shape, and it read as a
-    box sitting in the hero.
-
-    Legibility moved to the type instead, which is where it belongs. The hero copy
-    now carries enough contrast to be read over the grid rather than needing the grid
-    removed from behind it; see .hero-sub and .hero-trust below. That is what the
-    reference does not do, and why its own subhead measures 3.97:1 against a 4.5
-    floor.
-
-    Feathered at both ends.
-
-    The top: clear across the navbar, then ramping in to full by 210px. The reference
-    does the same, and it is the more legible arrangement either way. The navbar is
-    the one strip of the hero where small text sits directly on the backdrop with no
-    fill of its own, and it is also where the grid is least useful, since it reads as
-    noise behind the links rather than as part of the wave. Full strength starts below
-    the badge and arrives as the headline does.
-
-    The bottom: the layer is a fixed 760px tall, so without a fade the grid would stop
-    dead on a horizontal line partway down the page. Out from 520 to 740, which also
-    thins it behind the trust row on the way past.
-  */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 76px,
-    #000 210px,
-    #000 520px,
-    transparent 740px
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 76px,
-    #000 210px,
-    #000 520px,
-    transparent 740px
-  );
-  /* No fade-in, deliberately, after two attempts at one caused two different bugs.
-
-     Reusing the beams' keyframes put the layer at opacity 1: beams-in ends at 1 and
-     animation-fill-mode: both keeps that end state applied forever, overriding the
-     0.5 declared above, so the grid rendered at full strength.
-
-     Its own keyframes ending at 0.5 then failed the other way. Measured on this
-     element, the animation sat at playState running with currentTime 0 for seconds
-     on end while the element and its canvas both stayed put, so it never left its
-     from keyframe and the layer was invisible. Dropping the fill mode did not help,
-     because an animation stuck inside its active interval still applies the value at
-     t=0. I did not establish why this element never receives a start time when
-     .hero-beams, mounted the same way, does.
-
-     So the layer simply sits at its resting opacity. The cost is that it appears
-     rather than fades when the canvas mounts on idle, which is a cosmetic detail;
-     the alternative was a decorative transition deciding whether the backdrop is
-     visible at all. */
-}
-
-/* Phone: the glyphs are small and faint enough to sit behind the copy. At 12-14px cells and
-   0.31 the marks read as large, heavy characters across a 360px-wide headline and subhead. */
-@media (max-width: 767px) {
-  .hero-pixels {
-    opacity: 0.18;
-  }
-  .dark .hero-pixels {
-    opacity: 0.22;
-  }
-}
-
-/* Hero copy sits over the character grid, so in light mode it needs more contrast
-   than the rest of the page does.
-
-   --muted-foreground is #6b6b6b, which clears the 4.5 floor on a flat page by about
-   four tenths of a point. That is enough for flat, and not enough for anything drawn
-   on top. A black mark at 0.3 over the white surface puts the local backdrop at
-   rgb(179), where #6b6b6b measures 2.5:1. Holding the token would have meant capping
-   the grid near 5% opacity behind the copy, which is invisible, so the choice was a
-   darker hero subhead or no grid behind the text at all.
-
-   A token rather than a literal, because the two themes move in opposite directions.
-   Light ink is black and darkens the backdrop, so light copy has to get darker; dark
-   ink is white and lightens it while the text is light too, so dark copy has to get
-   lighter. The ceilings, measured against the worst mark each theme produces:
-   #464646 in light, #bdbdbd in dark. The values below sit clear of both.
-
-   Scoped to the hero rather than changed on --muted-foreground itself, which the
-   navbar, pricing, features and footer all use and none of which have a shader behind
-   them.
-
-   The headline needs nothing: it is --foreground at 40px and up, and measures in the
-   teens over the same grid. */
+/* The hero lead is read first, so it sits between Ink and Steel. */
 :root {
-  --hero-copy: #3a3a3a;
-}
-
-/* The emphasised words in the hero, back in brand blue, and their sweep.
-   
-   Two accent values, not one, because the two sit at different sizes and so answer to
-   different floors. "effortless." is 96px, which is large text at 3:1, and takes
-   --accent-text unchanged. "WhatsApp automation" is 19px regular at 4.5:1, where
-   --accent-text measures only 3.16 against the worst mark the grid puts behind it, so
-   it steps down to blue-900. Same hue, enough darker to clear the floor.
-
-   Both glints are white, in both themes, and in light mode that is a deliberate
-   exception to the contrast floor rather than an oversight.
-
-   The glint replaces the glyph's paint at the highlight rather than adding to it:
-   .shiny-text puts --shine-glint-local at the gradient's 50% stop and clips it to the
-   text, so mid-sweep those pixels ARE the glint colour. On the white surface a white
-   glint therefore measures about 1:1 where it peaks, and the slice of the word under it
-   is invisible for the moment it passes. In dark it is the opposite and entirely safe,
-   around 13.5:1, because white moves away from a black surface.
-
-   What keeps this from being a plain regression:
-     - the resting colour carries the word, and it is comfortably compliant. Measured
-       4.78 light and 3.88 dark for the display word, 4.91 and 6.77 for the body one.
-     - the gradient only reaches full glint at a single stop, with base at 35% and 65%,
-       so what fails is a narrow moving slice and not the word.
-     - prefers-reduced-motion and forced-colors both drop the gradient entirely and fall
-       back to that resting colour, so anyone who has asked not to see motion gets a
-       flat compliant word.
-
-   It is still a knowing trade of a moment of legibility for the sheen, chosen after the
-   legible version (blue-800 lifting to blue-700, which measured 3.09) was judged too
-   subtle to read as a shine. Worth revisiting if AA compliance across the animation ever
-   has to be provable rather than argued. */
-:root {
-  /* The theme's blue text token, which is as bright as this can go with the grid at
-     0.31. Measured against its worst mark, rgb(176): --accent-text is 3.09, which clears
-     the 3:1 a 96px word answers to. --accent, brand-500, is 2.38 and does not.
-
-     The body word cannot follow it there. It rides the subhead, which is
-     clamp(16px, 1.35vw, 19px), so on a phone it is 16px normal text at 4.5:1 rather than
-     3:1, and --accent-text only reaches 3.09. blue-900 is the brightest blue that clears
-     that floor, at 4.78. The two are deliberately different values for that reason, not
-     an oversight. */
-  --hero-accent-display: var(--accent-text);
-  --hero-accent-body: #1e3a8a;
-  --hero-shine-display: #ffffff;
-  --hero-shine-body: #ffffff;
+  --hero-copy: #34435e;
 }
 .dark {
-  /* #d4d4d4 cleared the floor but only just, measuring 4.73 on the trust row at 390 on
-     the old #141414 surface. Ten levels brighter, plus the surface going to pure black,
-     puts it comfortably clear. Still clearly separated from the #fafafa headline. */
-  --hero-copy: #dedede;
-  /* The body accent lightens to blue-200, since blue-900 on black would be unreadable.
-     Both glints are pure white here: against a black surface that is the brightest a
-     sheen can be and the safest, since it moves the glyphs away from the background
-     rather than toward it. 8.45:1 at the highlight. */
-  --hero-accent-display: var(--accent-text);
-  --hero-accent-body: #bfdbfe;
-  --hero-shine-display: #ffffff;
-  --hero-shine-body: #ffffff;
+  --hero-copy: #c9d3e3;
 }
-.hero-sub,
-.hero-trust li {
+.hero-sub {
   color: var(--hero-copy);
 }
 
-/* Hero entrance, in CSS rather than gsap so the copy is painted from the very first frame and
-   gsap can stay out of the entry chunk (see the note above Hero in Hero.tsx). Cubic-out is the
-   power3.out the old timeline used, and the delays below are that timeline's start times: badge
-   at 0, headline lines at 0 and 0.1, subtitle at 0.1, CTAs at 0.95 (0.08 apart, fade only, see
-   .hero-cta below), trust row at 1.28, product film at 1.33, coverage strip at 1.83. "backwards" holds the start pose through
-   the delay. The headline and subtitle move but never fade: the subtitle is the LCP element. */
-@media (prefers-reduced-motion: no-preference) {
-  .hero-badge,
-  .hero-line,
-  .hero-sub,
-  .hero-cta,
-  .hero-trust,
-  .hero-frame,
-  .hero-marquee {
-    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
-    animation-fill-mode: backwards;
-  }
-  .hero-badge {
-    --rise: 16px;
-    animation: hero-rise-fade 0.5s;
-  }
-  .hero-line {
-    --rise: 30px;
-    animation: hero-rise 0.75s;
-  }
-  .hero-line + .hero-line {
-    animation-delay: 0.1s;
-  }
-  .hero-sub {
-    --rise: 18px;
-    animation: hero-rise 0.6s 0.1s;
-  }
-  .hero-cta {
-    animation: hero-fade 0.55s 0.95s;
-  }
-  .hero-cta + .hero-cta {
-    animation-delay: 1.03s;
-  }
-  .hero-trust {
-    animation: hero-fade 0.5s 1.28s;
-  }
-  .hero-frame {
-    --rise: 40px;
-    animation: hero-rise-fade 0.9s 1.33s;
-  }
-  .hero-marquee {
-    animation: hero-fade 0.6s 1.83s;
-  }
+/* Full-bleed Ink band (DESIGN.md: the one dark band, used for the benefits section). In dark mode it
+   steps one shade lighter than the page so it still reads as a band. Text inside uses the band's own
+   pair; .lead and text-muted-foreground are remapped so a component needs no special classes. */
+:root {
+  --band-ink-bg: #14213d;
+  --band-ink-fg: #f1f4f8;
+  --band-ink-muted: #b8c4d8;
+  --band-ink-line: #2b3a5c;
 }
-/* The CTAs rest 16px below their place in the layout, and always did: the old gsap tween read its
-   end pose from computed style while the .btn transform transition was still at the start pose,
-   so it "rose" from 16px to 16px and only faded. This keeps them where they were, so the move off
-   gsap changes nothing on screen. `translate` composes with the hover transform instead of being
-   overridden by it. Delete this rule to put them where the layout (mt-9) actually places them. */
-.hero-cta {
-  translate: 0 16px;
+.dark {
+  --band-ink-bg: #1a2642;
+  --band-ink-fg: #e9eef6;
+  --band-ink-muted: #a9b6cb;
+  --band-ink-line: #33415f;
 }
-@keyframes hero-rise {
-  from {
-    transform: translateY(var(--rise));
-  }
+.band-ink {
+  background: var(--band-ink-bg);
+  color: var(--band-ink-fg);
+  --foreground: var(--band-ink-fg);
+  --muted-foreground: var(--band-ink-muted);
+  --border: var(--band-ink-line);
+  --accent-text: #93c5fd;
 }
-@keyframes hero-rise-fade {
+
+/* ReminderFeed: the newest entry slides in from above; the rest are simply re-keyed into place. */
+.feed-item-new {
+  animation: feed-in 0.45s cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+@keyframes feed-in {
   from {
     opacity: 0;
-    transform: translateY(var(--rise));
+    transform: translateY(-14px);
   }
 }
-@keyframes hero-fade {
-  from {
-    opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+  .feed-item-new {
+    animation: none;
   }
 }
+
+/* Member status chips inside product screens (HeroDemo), in the console's own colours. */
+:root {
+  --status-active-bg: #dcfce7;
+  --status-active-fg: #166534;
+  --status-expiring-bg: #fef3c7;
+  --status-expiring-fg: #92400e;
+  --status-expired-bg: #fee2e2;
+  --status-expired-fg: #991b1b;
+}
+.dark {
+  --status-active-bg: #0f2e1e;
+  --status-active-fg: #86efac;
+  --status-expiring-bg: #3a2a0b;
+  --status-expiring-fg: #fcd34d;
+  --status-expired-bg: #3b1215;
+  --status-expired-fg: #fca5a5;
+}
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+.status-active {
+  background: var(--status-active-bg);
+  color: var(--status-active-fg);
+}
+.status-expiring {
+  background: var(--status-expiring-bg);
+  color: var(--status-expiring-fg);
+}
+.status-expired {
+  background: var(--status-expired-bg);
+  color: var(--status-expired-fg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-chip {
+    transition: none;
+  }
+}
+
 
 /* ── Beams backdrop ───────────────────────────────────────────────────────────
    Dark mode only. HeroBeams returns null in light mode, so none of the three
@@ -1198,45 +815,16 @@ p, blockquote, figcaption, li {
   white-space: nowrap;
 }
 
-/* --accent-text handles both themes, so this no longer needs a .dark override */
-.pill-accent {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  background: var(--accent-soft);
-  color: var(--accent-text);
-}
-
-/* ── Monochrome hero accents ──────────────────────────────────────────────────
-   The surface and the grid ink went to pure black and white, and these were what
-   was left holding brand blue inside the hero: the badge pill, the serif emphasis
-   in the headline, and the dot before each trust point.
-
-   Scoped to .hero-surface rather than changed at the source. .display-accent is
-   also the emphasis in the WhatsApp heading, and .text-accent-text is used by
-   Bento, Pricing and the Navbar; all of those keep the brand palette. .pill-accent
-   currently has no other user, but scoping it means a second use elsewhere still
-   gets the branded version rather than inheriting a hero-specific decision.
-
-   The badge keeps a visible edge, since without the blue fill a borderless pill on
-   pure white has nothing to define it. */
-.hero-surface .pill-accent {
-  border-color: var(--border-strong);
-  background: var(--subtle);
-  color: var(--foreground);
-}
-.hero-surface .display-accent {
-  color: var(--hero-accent-display);
-}
-
-/* Buttons — every CTA on the page is a pill */
+/* Buttons: squared-off rectangles (10px), not pills, to sit with the condensed signage type. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 12px 22px;
-  border-radius: var(--radius-pill);
+  border-radius: 10px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
   cursor: pointer;
@@ -1297,25 +885,6 @@ p, blockquote, figcaption, li {
   font-size: 15px;
 }
 
-/* Hero-only: keep the CTAs at the base .btn size on mobile and only grow to
-   btn-lg from sm up. The other btn-lg CTAs on the page (nav sheet, CTA band,
-   pricing) are full-width mobile buttons where the larger tap target is right,
-   so this shrink is scoped to the hero rather than folded into .btn-lg itself.
-   A dedicated class because btn-lg is not a Tailwind utility, so `sm:btn-lg`
-   would never generate. */
-.hero-cta {
-  padding: 9px 16px;
-  font-size: 13px;
-  /* Was 36px tall on a phone; 44px is the minimum touch target. */
-  min-height: 44px;
-}
-@media (min-width: 640px) {
-  .hero-cta {
-    padding: 15px 30px;
-    font-size: 15px;
-  }
-}
-
 /* Compact primary CTA for the nav strip. A dedicated class rather than Tailwind
    px/py/text utilities on the element, because .btn sets padding and font-size
    as its own declarations and — being authored later in this file than Tailwind
@@ -1343,117 +912,10 @@ p, blockquote, figcaption, li {
 .card-hover {
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
+/* No lift: a hover that moves every card is a generated-page default (DESIGN.md). The border
+   alone says the card is interactive. */
 .card-hover:hover {
-  transform: translateY(-4px);
   border-color: var(--border-strong);
-  box-shadow: 0 18px 40px -18px color-mix(in srgb, var(--foreground) 22%, transparent);
-}
-
-/* Host for BorderGlow. The translate3d promotes the card to its own compositing
-   layer — without it the masked mix-blend-mode layers inside seam visibly on
-   some GPUs. It lives here rather than as an inline style so the hover lift can
-   share the same transform instead of being overridden by it. */
-.glow-card {
-  transform: translate3d(0, 0, 0.01px);
-  transition: transform 0.25s ease;
-}
-.glow-card:hover {
-  transform: translate3d(0, -4px, 0.01px);
-}
-
-/* The two mesh layers' compositing. Constant per layer and theme-driven, so it
-   belongs here rather than inline — and React types mix-blend-mode and
-   mask-composite as closed unions that reject a var() and a multi-value list. */
-.glow-card-fill {
-  mask-composite: subtract, add, add, add, add, add;
-  -webkit-mask-composite: source-out, source-over, source-over, source-over,
-    source-over, source-over;
-  mix-blend-mode: var(--glow-blend-fill);
-}
-
-.glow-card-halo {
-  mix-blend-mode: var(--glow-blend-halo);
-}
-
-/* 3D tilt for the WhatsApp phone mock.
- 
-   A class rather than a pile of arbitrary utilities so the four angles sit in one
-   place and can be tuned without decoding an underscore-escaped transform.
- 
-   The perspective belongs on the parent, not the rotated element — declared on
-   its own element so the phone keeps its own transform slot free for the float
-   animation stacked above it.
- 
-   Only from lg up. Below that the phone is nearly the full width of its column,
-   and rotating type at that size costs real legibility for a flourish that reads
-   as an accident on a narrow screen. */
-.phone-scene {
-  /* Shorter than it was (1400px). Perspective distance is inversely related to how
-     strong the foreshortening reads, so pulling the vanishing point closer makes
-     the same rotation look like more of a turn. */
-  perspective: 1150px;
-}
-
-/* Chips orbiting the phone.
- 
-   A class, not three arbitrary utilities, because two of the three are ambiguous
-   to Tailwind when handed a bare var(): `border-[var(--x)]` could be a width and
-   `shadow-[var(--x)]` could be a shadow colour, so both resolved to nothing and
-   the chips came out with the default grey border and no lift. Only bg-[var()]
-   survived. Declaring them here sidesteps the guessing entirely. */
-.orbit-chip {
-  background: var(--wa-chip-face);
-  border: 1px solid var(--wa-chip-edge);
-  box-shadow: var(--wa-chip-lift);
-}
-
-@media (min-width: 1024px) {
-  .phone-tilt {
-    /* Was 4/-15/3. The Y turn does most of the work and carries most of the
-       increase; X and Z follow it up so the device still reads as one coherent
-       rotation rather than a flat card swung sideways.
-
-       -24deg foreshortens the screen by cos(24) = 0.91, so the chat content loses
-       9% of its width — still comfortably readable, which is the limit worth
-       respecting here. Past roughly -30 the message text starts to compress
-       enough to notice. */
-    transform: rotateX(7deg) rotateY(-24deg) rotateZ(5deg);
-    transform-style: preserve-3d;
-  }
-}
-
-/* Filled accent card — the template's signature block. Static; the blue cards
-   that need a hover go through BorderGlow and .glow-card-accent below. */
-.card-accent {
-  background: var(--card-primary);
-  color: var(--accent-ink);
-  border: 1px solid color-mix(in srgb, var(--accent) 70%, #000);
-  /* Same radius as .card. This was --radius-card-lg, so a filled card sat beside a
-     white one with rounder corners in Features, Testimonials and Pricing. The large
-     radius is kept for free-standing panels (the closing CTA). */
-  border-radius: var(--radius-card);
-}
-
-/* Filled-accent variant of a BorderGlow card.
-
-   The blue cards previously hovered with a flat border-colour swap, which read
-   as a different interaction from the white cards beside them — those track the
-   pointer and light only the arc facing it. Routing the blue cards through
-   BorderGlow gives the whole grid one hover behaviour.
-
-   Only the two custom properties BorderGlow reads through inline style are set
-   here. Background and radius cannot be: BorderGlow writes those inline, and an
-   inline declaration beats anything in this rule. They go in as props instead
-   (see ACCENT_GLOW). */
-.glow-card-accent {
-  color: var(--accent-ink);
-  /* Resting rim — the same darkened accent the static .card-accent uses, so
-     these cards look untouched until the pointer arrives. */
-  --glow-border: color-mix(in srgb, var(--accent) 70%, #000);
-  /* The white cards carry a soft drop shadow to lift them off a near-white
-     page. A fully saturated blue card already separates from it, and the shadow
-     only muddied the bottom edge. */
-  --glow-shadow: none;
 }
 
 .card-accent-soft {
@@ -1503,60 +965,9 @@ p, blockquote, figcaption, li {
   );
 }
 
-/* Dot-grid section background */
-.dot-grid {
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--foreground) 12%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 28px 28px;
-}
-
-/* A faint dot field along the top of a section, fading out downward.
-
-   Only the hero had any texture, so the page went from a patterned first screen to
-   flat colour for the rest of its length. This is the hero's dot rhythm at a
-   fraction of the strength, drawn behind the section's header so each section opens
-   on the same surface the page opened on. A pseudo-element, so no section needs extra
-   markup; isolation keeps its negative z-index above the page background rather than
-   behind it. Plain CSS: nothing here costs a frame, which matters on a cheap phone. */
-.has-dots {
-  position: relative;
-  isolation: isolate;
-}
-.has-dots::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 440px;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--foreground) 16%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 26px 26px;
-  opacity: 0.5;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    KEYFRAMES
 ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Marquee travels exactly -50%: the track holds the list twice, so the loop
-   point lands on an identical frame and the seam is invisible. */
-@keyframes marquee {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
 
 @keyframes fadeInUp {
   from {
@@ -1609,140 +1020,10 @@ p, blockquote, figcaption, li {
   }
 }
 
-.animate-marquee {
-  animation: marquee var(--marquee-duration, 42s) linear infinite;
-}
 .animate-float {
   animation: floatY 4s ease-in-out infinite;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   PHONE + ORBIT IDLE MOTION
-
-   Four separate clocks, and more importantly four different easing curves.
-
-   The phone and its ring used to share one animated wrapper, so they drifted as
-   a single rigid object and the ring read as painted onto the device. Splitting
-   them is only half the fix: with the same easing they would still breathe in
-   step. Contrasting curves are what sell the ring as sitting in space around the
-   phone rather than stuck to it.
-
-   Periods are 7 / 11 / 9 / 4.5s — deliberately non-multiples, so the four
-   elements take minutes to return to the same relative pose.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Phone — sine in-out. Symmetric, no hang at either end, so the device reads as
-   suspended in a fluid. This is the calm reference the other three play against.
-
-   The float and the 3D tilt are on separate elements on purpose: one transform
-   property cannot hold both a static rotation and an animated translation
-   without the keyframes having to restate the rotation. */
-@keyframes phoneBob {
-  0%,
-  100% {
-    transform: translate3d(0, -6px, 0);
-  }
-  50% {
-    transform: translate3d(0, 8px, 0);
-  }
-}
-
-.phone-bob {
-  animation: phoneBob 7s cubic-bezier(0.37, 0, 0.63, 1) infinite;
-  will-change: transform;
-}
-
-/* Ring — a hard in-out that loiters at both extremes and crosses the middle
-   quickly. That is the opposite emphasis to the phone's sine, so even when the
-   two periods briefly align the motion still reads as unrelated.
-
-   Centring lives on a wrapper element rather than here: Tailwind's
-   -translate-x-1/2 and this animation both write `transform`, and the animation
-   would win and throw the ring off centre. */
-@keyframes orbitBreathe {
-  0%,
-  100% {
-    transform: rotate(-3.5deg) scale(0.985);
-    opacity: 0.7;
-  }
-  50% {
-    transform: rotate(3.5deg) scale(1.03);
-    opacity: 1;
-  }
-}
-
-.orbit-ring {
-  transform-origin: center;
-  animation: orbitBreathe 11s cubic-bezier(0.85, 0, 0.15, 1) infinite;
-  will-change: transform, opacity;
-}
-
-/* Scroll-driven swing of the whole orbit around the phone.
- 
-   --orbit-angle is written per frame by a scrubbed ScrollTrigger, so scrolling
-   down carries the ring and chips one way around the device and scrolling up
-   unwinds them. It defaults to 0deg, which is the composed rest pose, so nothing
-   depends on the JS having run — reduced motion and no-JS both land there.
- 
-   .orbit-counter cancels the same angle on each chip. Rotating the assembly moves
-   a chip to a new position AND spins the chip itself; without the counter the
-   icons would tumble as they travelled. The custom property inherits from the
-   swinging ancestor, so one write per frame drives both directions. */
-.orbit-swing {
-  transform: rotate(var(--orbit-angle, 0deg));
-  will-change: transform;
-}
-
-.orbit-counter {
-  transform: rotate(calc(-1 * var(--orbit-angle, 0deg)));
-}
-
-/* Chips — a back-out whose control point passes 1, so each one overshoots and
-   settles. That springy arrival is the clearest tell that they are not bolted to
-   the phone, which never overshoots. Staggered by negative delay at the call
-   site so the three are already out of phase on first paint. */
-@keyframes chipBob {
-  0%,
-  100% {
-    transform: translate3d(0, 5px, 0);
-  }
-  50% {
-    transform: translate3d(0, -7px, 0);
-  }
-}
-
-.orbit-chip {
-  animation: chipBob 9s cubic-bezier(0.34, 1.32, 0.64, 1) infinite;
-}
-
-/* Dots — quad in-out, the mildest of the four, and the shortest period. Opacity
-   only: these are SVG circles, and animating a transform on them would need
-   transform-box juggling for no visual gain. */
-@keyframes orbitDotPulse {
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.orbit-dot {
-  animation: orbitDotPulse 4.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-
-/* Idle motion is decoration, so it is the first thing to go. Killing the
-   animation leaves each element at its keyframe-free resting position, which is
-   the composed layout — nothing jumps. */
-@media (prefers-reduced-motion: reduce) {
-  .phone-bob,
-  .orbit-ring,
-  .orbit-chip,
-  .orbit-dot {
-    animation: none;
-  }
-}
 .animate-pulse-dot {
   animation: pulseDot 1.8s ease-in-out infinite;
 }
@@ -1750,10 +1031,6 @@ p, blockquote, figcaption, li {
   animation: fadeInUp 0.25s ease-out both;
 }
 
-/* Pause the marquee on hover so a visitor can actually read a name */
-.marquee-track:hover .animate-marquee {
-  animation-play-state: paused;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SCROLLBAR
@@ -1817,18 +1094,6 @@ footer {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-
-  .animate-marquee {
-    animation: none !important;
-    transform: none !important;
-  }
-
-  /* Hold the lift, keep the layer promotion — the transition above is already
-     ~0, so without this the card would jump 4px instead of easing. The glow
-     itself stays: it is a pointer-driven hover affordance, not a loop. */
-  .glow-card:hover {
-    transform: translate3d(0, 0, 0.01px);
-  }
 }
 
 /* HeroVideo: the play/pause icon that flashes in the centre after a click or Space. */
@@ -1846,41 +1111,5 @@ footer {
 @media (max-width: 639px) {
   html[data-cookie-bar] .docs-mobile-menu {
     padding-bottom: var(--cookie-bar-h, 0px);
-  }
-}
-
-/* Glowing animated border for the featured free-plan card (Border Beam pattern:
-   a conic gradient rotated by an @property angle, masked down to a 2px ring, with
-   a blurred copy underneath for the glow). */
-@property --glow-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-@keyframes glow-spin {
-  to {
-    --glow-angle: 360deg;
-  }
-}
-.glow-ring {
-  background: conic-gradient(
-    from var(--glow-angle),
-    transparent 0 60%,
-    #2563eb 80%,
-    #38bdf8 92%,
-    transparent 100%
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: glow-spin 3.5s linear infinite;
-}
-.glow-ring-blur {
-  filter: blur(10px);
-  opacity: 0.7;
-}
-@media (prefers-reduced-motion: reduce) {
-  .glow-ring {
-    animation: none;
   }
 }

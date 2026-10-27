@@ -15,7 +15,7 @@ export function FeaturePage({ page }: { page: FeaturePageData }) {
             <TutorialSection page={page} />
             <div className="min-w-0">
               {page.sections.map((section, i) => (
-                <SectionView key={section.heading} id={ids[i]} heading={section.heading} blocks={section.blocks} index={i} />
+                <SectionView key={section.heading} id={ids[i]} heading={section.heading} blocks={section.blocks} />
               ))}
             </div>
             <ScreenshotsSection page={page} />

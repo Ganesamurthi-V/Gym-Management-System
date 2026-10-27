@@ -102,7 +102,6 @@ const flat = (block) =>
     .trim()
 const HEADINGS = [
   ['BentoFeatures', 'features-title', 'features'],
-  ['Purpose', 'why-title', 'why'],
   ['Problems', 'problems-title', 'problems'],
   ['Benefits', 'benefits-title', 'benefits'],
   ['WhatsAppSection', 'whatsapp-title', 'whatsapp'],

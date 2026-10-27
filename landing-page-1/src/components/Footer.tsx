@@ -36,7 +36,6 @@ const COLUMNS = [
       { label: 'Reports and analytics', href: '/reports' },
       { label: 'Import and export', href: '/import-export' },
       { label: 'How it works', href: '#how' },
-      { label: 'Why GymFlow', href: '#why' },
       { label: 'Pricing', href: '#pricing' },
     ],
   },

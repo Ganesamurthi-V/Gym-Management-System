@@ -1,15 +1,18 @@
 import Link from 'next/link'
 import {
-  Activity, CreditCard, Dumbbell, QrCode,
+  Activity, Dumbbell, IndianRupee,
   AlertCircle, CheckCircle2, Clock, Flame,
 } from 'lucide-react'
-import { getMembershipPageData, getMemberGamification, recordMemberLogin } from '@/lib/member/member-data'
+import { getAssignedWorkoutPrograms, getMembershipPageData, getMemberGamification, recordMemberLogin } from '@/lib/member/member-data'
 import { StreakBadge } from '@/components/member/StreakBadge'
 import { WeeklyGoalRing } from '@/components/member/WeeklyGoalRing'
 import { LeaderboardEntryCard } from '@/components/member/LeaderboardEntryCard'
 import { weeklyGoalProgress } from '@/lib/gamification/leaderboardDisplay'
 import { formatDate } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
+import { formatCurrency, todayIST } from '@/lib/utils'
+import { quoteForDate } from '@/lib/member/daily-quote'
+import { workoutToday } from '@/lib/member/todays-workout'
 
 // No `revalidate` export: this page reads the auth cookie, which already makes
 // it dynamic. A route-level `revalidate` cannot cache per-user responses in the
@@ -23,9 +26,10 @@ export default async function HomePage() {
   // member + gym + memberships fetched in parallel (one round trip, not three).
   // The gamification RPC resolves the member from the session, so it joins the
   // same parallel batch instead of waiting for the member row.
-  const [data, game] = await Promise.all([
+  const [data, game, programs] = await Promise.all([
     getMembershipPageData(),
     getMemberGamification(),
+    getAssignedWorkoutPrograms(),
   ])
   if (!data) {
     done()
@@ -43,6 +47,8 @@ export default async function HomePage() {
 
   const firstName = member.name.split(' ')[0]
   const goal = weeklyGoalProgress(game.daysLast7, game.weeklyGoalDays)
+  const pendingAmount = member.pending_amount > 0 ? member.pending_amount : 0
+  const workout = workoutToday(programs, todayIST())
 
   const statusConfig = {
     active:   { icon: CheckCircle2, text: `Active · ${daysLeft} days left`,   colour: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -54,10 +60,8 @@ export default async function HomePage() {
   const StatusIcon = cfg.icon
 
   const quickActions = [
-    { label: 'Membership', icon: CreditCard,  href: '/m/membership' },
     { label: 'Attendance', icon: Activity,    href: '/m/attendance' },
     { label: 'Workout',    icon: Dumbbell,    href: '/m/workout' },
-    { label: 'My Card',    icon: QrCode,      href: '/m/membership/card' },
   ]
 
   return (
@@ -70,29 +74,29 @@ export default async function HomePage() {
         <p className="mt-1 text-xs text-slate-400">{gym.name}</p>
       </header>
 
-      {/* Membership status banner */}
-      <Link
-        href="/m/membership"
-        className={`mb-5 flex items-center gap-3 rounded-2xl border p-4 transition-all active:scale-[0.98] ${cfg.bg} ${cfg.border}`}
-      >
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface/70 ${cfg.colour}`}>
-          <StatusIcon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className={`text-sm font-bold ${cfg.colour}`}>{cfg.text}</p>
-          {latest && (
-            <p className="mt-0.5 truncate text-xs text-slate-500">
-              {latest.plan.charAt(0).toUpperCase() + latest.plan.slice(1)} plan
-              &nbsp;·&nbsp;expires {formatDate(latest.end_date)}
-            </p>
-          )}
+      {/* Daily quote: one line per day (IST), the same for everyone, a different one tomorrow. */}
+      <section className="mb-5">
+        <blockquote className="text-base font-semibold leading-snug text-slate-700">
+          {quoteForDate(todayIST())}
+        </blockquote>
+      </section>
+
+      {/* Pending dues: only when the member owes something. Just a notice: payment is made at the gym, so no link or pay button. */}
+      {pendingAmount > 0 && (
+        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface/70 text-amber-600">
+            <IndianRupee aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-amber-600">{formatCurrency(pendingAmount)} pending</p>
+            <p className="mt-0.5 text-xs text-slate-500">Please clear your dues at the gym front desk.</p>
+          </div>
         </div>
-        <span className="text-slate-300">›</span>
-      </Link>
+      )}
 
       {/* Streak + weekly goal */}
       <section aria-label="Your streak and weekly goal" className="mb-5 grid grid-cols-2 gap-3">
-        <div className="card rounded-2xl p-4">
+        <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
             <Flame aria-hidden="true" className={`h-3.5 w-3.5 ${game.streak > 0 ? 'text-orange-500' : 'text-slate-300'}`} />
             Streak
@@ -129,21 +133,66 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Today's workout, from the programs the gym assigned (day = IST weekday). */}
+      {workout.kind !== 'none' && (
+        <Link
+          href="/m/workout"
+          className="mb-5 block rounded-2xl border border-brand-200 bg-brand-50 p-4 transition-all active:scale-[0.98]"
+        >
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface/70 text-brand-600">
+              <Dumbbell aria-hidden="true" className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Today&apos;s workout</p>
+              {workout.kind === 'workout' ? (
+                <>
+                  <p className="mt-1 truncate text-sm font-bold text-slate-900">{workout.workout.programName}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {workout.workout.exerciseCount} exercise{workout.workout.exerciseCount === 1 ? '' : 's'}
+                    {workout.workout.exerciseNames.length > 0 && <> · {workout.workout.exerciseNames.join(', ')}</>}
+                  </p>
+                  <p className="mt-2 text-xs font-bold text-brand-600">Start workout ›</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-sm font-bold text-slate-900">Rest day</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {workout.nextDay ? `Your next workout is on ${workout.nextDay}.` : 'No exercises are scheduled yet.'}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </Link>
+      )}
+
       {game.leaderboardsEnabled && <LeaderboardEntryCard className="mb-5" />}
 
-      {/* Hero card */}
-      <section className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 text-white shadow-lg shadow-brand-200">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-100">{gym.name}</p>
-        <h2 className="mt-2 text-xl font-bold">Your fitness journey</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-brand-100">
-          Track your attendance, view your membership, and access your digital card — all in one place.
-        </p>
-      </section>
+      {/* Membership status banner */}
+      <Link
+        href="/m/membership"
+        className={`mb-5 flex items-center gap-3 rounded-2xl border p-4 transition-all active:scale-[0.98] ${cfg.bg} ${cfg.border}`}
+      >
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface/70 ${cfg.colour}`}>
+          <StatusIcon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-bold ${cfg.colour}`}>{cfg.text}</p>
+          {latest && (
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {latest.plan.charAt(0).toUpperCase() + latest.plan.slice(1)} plan
+              &nbsp;·&nbsp;expires {formatDate(latest.end_date)}
+            </p>
+          )}
+        </div>
+        <span className="text-slate-300">›</span>
+      </Link>
 
       {/* Quick actions */}
       <section aria-labelledby="quick-actions-title">
         <h2 id="quick-actions-title" className="mb-3 text-sm font-semibold text-slate-700">Quick actions</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {quickActions.map(({ label, icon: Icon, href }) => (
             <Link
               key={href}

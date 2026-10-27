@@ -20,6 +20,7 @@ import {
   MEMBER_APP_NOT_INCLUDED_MESSAGE,
 } from '@/lib/member/memberAppAccess'
 import { logger } from '@/lib/logger'
+import { WHATSAPP_DISABLED_MESSAGE } from '@/lib/whatsapp/gymGate'
 import { leaderboardRpcArgs, mapLeaderboard } from '@/lib/gamification/mapLeaderboard'
 import {
   GAMIFICATION_SETTINGS_COLUMNS,
@@ -297,6 +298,9 @@ async function issueInvitation(gym: OwnerGymRow, memberId: string): Promise<Acti
   // an accurate, actionable outcome; the token and activation URL must never
   // be copied into a browser notification.
   console.error('[member-app/invitation] WhatsApp delivery failed:', sendResult.error ?? 'unknown error')
+  if (sendResult.skipped && sendResult.error === WHATSAPP_DISABLED_MESSAGE) {
+    return { success: false, message: WHATSAPP_OFF_MESSAGE, invitationCreated: true, whatsappSent: false }
+  }
   return {
     success: false,
     message: `WhatsApp couldn't confirm delivery to ${memberData.name}. Check the member's WhatsApp number and try again.`,
@@ -304,6 +308,11 @@ async function issueInvitation(gym: OwnerGymRow, memberId: string): Promise<Acti
     whatsappSent: false,
   }
 }
+
+// Shown when the platform admin has switched WhatsApp off for this gym. Matches the wording the
+// single-invite API route (app/api/member-app/invite) already uses.
+const WHATSAPP_OFF_MESSAGE =
+  'WhatsApp is not enabled for your gym, so the invitation was not sent. Please contact GymFlow support to enable this feature.'
 
 // ─── Row Actions ─────────────────────────────────────────────────────────────
 
@@ -531,7 +540,9 @@ export async function memberBulkAction(
       if (delivered.length === 0) {
         return {
           success: false,
-          message: invitationCreated.length > 0
+          message: notDelivered.every(entry => entry.result.message === WHATSAPP_OFF_MESSAGE)
+            ? WHATSAPP_OFF_MESSAGE
+            : invitationCreated.length > 0
             ? `WhatsApp couldn't confirm delivery for the selected member${coveredCount === 1 ? '' : 's'}. Check their numbers and try again.`
             : `No invitations were created. ${notDelivered[0].result.message}`,
           invitationCreated: invitationCreated.length > 0,

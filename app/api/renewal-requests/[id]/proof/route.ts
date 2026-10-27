@@ -1,10 +1,14 @@
 import { NextRequest } from 'next/server'
 import { withAuth, apiError, apiSuccess, isValidUUID } from '@/lib/api/withAuth'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { proofPathBelongsToGym } from '@/lib/renewal/proof'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/renewal-requests/[id]/proof  ->  { url, isPdf } (signed URL valid for 60 s; the raw path is never returned) */
+/**
+ * GET /api/renewal-requests/[id]/proof  ->  { url, isPdf }
+ * `url` is this app's own file route (it re-checks the owner on every request); no storage link and no raw
+ * path is ever returned.
+ */
 export const GET = withAuth('RENEWAL_REQUEST_PROOF', async (req: NextRequest, { gym, supabase, log }) => {
   const id = req.nextUrl.pathname.split('/').at(-2) ?? ''
   if (!isValidUUID(id)) return apiError(400, 'NOT_FOUND', 'Invalid request id')
@@ -22,19 +26,14 @@ export const GET = withAuth('RENEWAL_REQUEST_PROOF', async (req: NextRequest, { 
   }
   if (!request) return apiError(404, 'NOT_FOUND', 'Request not found')
 
-  // Belt and braces: the file must sit under this gym's folder.
-  if (!request.proof_path.startsWith(`${gym.id}/`)) {
+  // The file must sit under this gym's folder.
+  if (!proofPathBelongsToGym(request.proof_path, gym.id)) {
     log.error('Proof path outside gym prefix', { id })
     return apiError(404, 'NOT_FOUND', 'Request not found')
   }
 
-  const { data, error: signError } = await createAdminClient()
-    .storage.from('member_payment_proofs')
-    .createSignedUrl(request.proof_path, 60)
-  if (signError || !data?.signedUrl) {
-    log.error('Proof signed URL failed', signError)
-    return apiError(500, 'SERVER_ERROR', 'Could not load the proof.')
-  }
-
-  return apiSuccess({ url: data.signedUrl, isPdf: request.proof_path.toLowerCase().endsWith('.pdf') })
+  return apiSuccess({
+    url: `/api/renewal-requests/${id}/proof/file`,
+    isPdf: request.proof_path.toLowerCase().endsWith('.pdf'),
+  })
 }, { rateLimit: 60 })

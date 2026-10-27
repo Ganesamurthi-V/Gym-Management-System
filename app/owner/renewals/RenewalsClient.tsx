@@ -379,6 +379,7 @@ function RejectDialog({ req, onClose, onDone, onStale }: { req: OwnerRenewalRequ
 
 function ProofOverlay({ url, onClose }: { url: string; onClose: () => void }) {
   const [mounted, setMounted] = useState(false)
+  const [failed, setFailed] = useState(false)
   useEffect(() => setMounted(true), [])
   if (!mounted) return null
   return createPortal(
@@ -386,8 +387,14 @@ function ProofOverlay({ url, onClose }: { url: string; onClose: () => void }) {
       <button onClick={onClose} aria-label="Close" className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center">
         <X className="w-5 h-5" />
       </button>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="Payment proof" className="max-w-full max-h-full object-contain rounded-lg" onClick={e => e.stopPropagation()} />
+      {failed ? (
+        <p className="rounded-lg bg-white/10 px-4 py-3 text-sm text-white" onClick={e => e.stopPropagation()}>
+          The proof could not be loaded. Close this and try again, or ask the member to upload it again.
+        </p>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="Payment proof" onError={() => setFailed(true)} className="max-w-full max-h-full object-contain rounded-lg" onClick={e => e.stopPropagation()} />
+      )}
     </div>,
     document.body,
   )

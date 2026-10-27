@@ -6,7 +6,6 @@ import {
 import { getAssignedWorkoutPrograms, getMembershipPageData, getMemberGamification, recordMemberLogin } from '@/lib/member/member-data'
 import { StreakBadge } from '@/components/member/StreakBadge'
 import { WeeklyGoalRing } from '@/components/member/WeeklyGoalRing'
-import { LeaderboardEntryCard } from '@/components/member/LeaderboardEntryCard'
 import { weeklyGoalProgress } from '@/lib/gamification/leaderboardDisplay'
 import { formatDate } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
@@ -84,11 +83,54 @@ export default async function HomePage() {
       {pendingAmount > 0 && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <IndianRupee aria-hidden="true" className="h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-sm text-slate-600">
+          <p className="min-w-0 flex-1 text-sm text-slate-600">
             <span className="font-bold text-amber-600">{formatCurrency(pendingAmount)} pending.</span>{' '}
-            Please clear it at the gym front desk.
+            Pay it here or at the gym front desk.
           </p>
+          <Link
+            href="/m/membership/pay-due"
+            className="inline-flex min-h-[44px] shrink-0 items-center rounded-xl border border-amber-300 bg-amber-100 px-4 text-sm font-bold text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          >
+            Pay now
+          </Link>
         </div>
+      )}
+
+      {/* Today's workout, from the programs the gym assigned (day = IST weekday). The page's one filled card:
+          it is the thing a member opens the app to do. */}
+      {workout.kind === 'workout' && (
+        <Link
+          href="/m/workout"
+          className="mb-5 block rounded-2xl bg-brand-500 p-5 text-white shadow-sm transition-all active:scale-[0.98]"
+        >
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
+            <Dumbbell aria-hidden="true" className="h-3.5 w-3.5" />
+            Today&apos;s workout
+          </p>
+          <p className="mt-2 text-xl font-bold leading-tight">{workout.workout.programName}</p>
+          <p className="mt-1 text-sm leading-snug text-white/85">
+            {workout.workout.exerciseCount} exercise{workout.workout.exerciseCount === 1 ? '' : 's'}
+            {workout.workout.exerciseNames.length > 0 && <> · {workout.workout.exerciseNames.join(', ')}</>}
+          </p>
+          <span className="mt-4 inline-flex min-h-[44px] items-center gap-1 rounded-xl bg-white px-4 text-sm font-bold text-brand-500">
+            Start workout
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </span>
+        </Link>
+      )}
+      {workout.kind === 'rest' && (
+        <Link href="/m/workout" className="card mb-5 flex items-center gap-3 rounded-2xl p-4 transition-all active:scale-[0.98]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+            <Dumbbell aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-slate-900">Rest day</span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              {workout.nextDay ? `Your next workout is on ${workout.nextDay}.` : 'No exercises are scheduled yet.'}
+            </span>
+          </span>
+          <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
+        </Link>
       )}
 
       {/* Streak and weekly goal: one card, two numbers. Neutral, so the page keeps one loud element. */}
@@ -130,45 +172,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Today's workout, from the programs the gym assigned (day = IST weekday). The page's one filled card:
-          it is the thing a member opens the app to do. */}
-      {workout.kind === 'workout' && (
-        <Link
-          href="/m/workout"
-          className="mb-5 block rounded-2xl bg-brand-500 p-5 text-white shadow-sm transition-all active:scale-[0.98]"
-        >
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
-            <Dumbbell aria-hidden="true" className="h-3.5 w-3.5" />
-            Today&apos;s workout
-          </p>
-          <p className="mt-2 text-xl font-bold leading-tight">{workout.workout.programName}</p>
-          <p className="mt-1 text-sm leading-snug text-white/85">
-            {workout.workout.exerciseCount} exercise{workout.workout.exerciseCount === 1 ? '' : 's'}
-            {workout.workout.exerciseNames.length > 0 && <> · {workout.workout.exerciseNames.join(', ')}</>}
-          </p>
-          <span className="mt-4 inline-flex min-h-[44px] items-center gap-1 rounded-xl bg-white px-4 text-sm font-bold text-brand-500">
-            Start workout
-            <ChevronRight aria-hidden="true" className="h-4 w-4" />
-          </span>
-        </Link>
-      )}
-      {workout.kind === 'rest' && (
-        <Link href="/m/workout" className="card mb-5 flex items-center gap-3 rounded-2xl p-4 transition-all active:scale-[0.98]">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-            <Dumbbell aria-hidden="true" className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-slate-900">Rest day</span>
-            <span className="mt-0.5 block text-xs text-slate-500">
-              {workout.nextDay ? `Your next workout is on ${workout.nextDay}.` : 'No exercises are scheduled yet.'}
-            </span>
-          </span>
-          <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
-        </Link>
-      )}
-
-      {game.leaderboardsEnabled && <LeaderboardEntryCard className="mb-5" />}
-
       {/* Membership status. Colour carries the meaning here: green is fine, amber and red need action. */}
       <Link
         href="/m/membership"
@@ -188,6 +191,14 @@ export default async function HomePage() {
         </div>
         <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
       </Link>
+      {status !== 'active' && (
+        <Link
+          href="/m/membership/renew"
+          className="-mt-3 mb-6 flex min-h-[44px] items-center justify-center rounded-xl bg-brand-500 px-4 text-sm font-bold text-white transition-all active:scale-[0.98]"
+        >
+          Renew
+        </Link>
+      )}
 
       {/* Quick actions */}
       <section aria-labelledby="quick-actions-title">

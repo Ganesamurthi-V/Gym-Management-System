@@ -17,9 +17,10 @@ interface Props {
   stats: DashboardStats
   expiringMembers: MemberWithStatus[]
   gymId: string
+  pendingRenewals: number
 }
 
-export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Props) {
+export function DashboardClient({ gymName, stats, expiringMembers, gymId, pendingRenewals }: Props) {
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
   const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
@@ -73,6 +74,12 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
         </div>
       </div>
+
+      {pendingRenewals > 0 && (
+        <Link href="/owner/renewals" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
+          {pendingRenewals} payment {pendingRenewals === 1 ? 'request' : 'requests'} waiting
+        </Link>
+      )}
 
       {/* Stats Grid — 2 cols mobile, 3 cols tablet, 6 cols desktop */}
       <div {...tourAttr('dashStats')} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">

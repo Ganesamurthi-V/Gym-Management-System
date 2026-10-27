@@ -5,6 +5,7 @@ import { DashboardClient } from './DashboardClient'
 import { addDays } from '@/lib/gamification/periods'
 import { isImportedMembership } from '@/lib/payments/import-membership'
 
+import { countPendingRenewals } from '@/lib/owner/renewal-data'
 import { cacheWrapper } from '@/lib/cache'
 import { apiLogger, type RequestLogger } from '@/lib/logger'
 
@@ -99,11 +100,13 @@ export default async function DashboardPage() {
     logger.start('CACHE')
     const dashboardData = await getDashboardData(gym.id, logger)
     logger.end('CACHE')
-    
+    // Fresh on purpose: never inside the cached dashboard stats.
+    const pendingRenewals = await countPendingRenewals(gym.id)
+
     logger.summary(200)
 
     return (
-      <DashboardClient gymName={gym.name} stats={dashboardData.stats} expiringMembers={dashboardData.expiringMembers} gymId={gym.id} />
+      <DashboardClient gymName={gym.name} stats={dashboardData.stats} expiringMembers={dashboardData.expiringMembers} gymId={gym.id} pendingRenewals={pendingRenewals} />
     )
   } catch (error: any) {
     logger.error('ERROR', error)

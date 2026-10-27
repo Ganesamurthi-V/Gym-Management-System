@@ -120,13 +120,26 @@ export default async function MembershipPage() {
         </section>
       )}
 
+      <Link
+        href="/m/membership/renew"
+        className="tap-target mb-5 flex min-h-[48px] w-full items-center justify-center rounded-xl bg-brand-500 px-4 text-sm font-bold text-white transition-all active:scale-[0.98]"
+      >
+        Renew membership
+      </Link>
+
       {/* Pending dues */}
       {member.pending_amount > 0 && (
         <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4">
           <p className="text-sm font-bold text-red-700">
             Pending dues: {formatCurrency(member.pending_amount)}
           </p>
-          <p className="mt-0.5 text-xs text-red-600">Please settle at your gym.</p>
+          <p className="mt-0.5 text-xs text-red-600">Pay online or settle at your gym.</p>
+          <Link
+            href="/m/membership/pay-due"
+            className="mt-3 inline-flex min-h-[44px] items-center rounded-xl bg-red-600 px-4 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          >
+            Pay dues
+          </Link>
         </div>
       )}
 

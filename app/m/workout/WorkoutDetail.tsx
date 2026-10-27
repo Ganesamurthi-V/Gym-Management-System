@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { ArrowLeft, Calendar, Dumbbell, Play, Target } from 'lucide-react'
 import type { WorkoutProgram } from '@/types/member-db'
 import type { Json } from '@/types/member-db'
+import type { LastWeights } from '@/types/progress'
 import WorkoutSession from './WorkoutSession'
 
 interface ExerciseSet {
@@ -24,6 +25,7 @@ interface ExerciseInstance {
 
 interface Props {
   program: WorkoutProgram
+  lastWeights: LastWeights
   onBack: () => void
 }
 
@@ -41,7 +43,7 @@ function parseSchedule(raw: Json): Record<string, ExerciseInstance[]> {
   return out
 }
 
-export default function WorkoutDetail({ program, onBack }: Props) {
+export default function WorkoutDetail({ program, lastWeights, onBack }: Props) {
   const [activeDay, setActiveDay] = useState<string>(TODAY_KEY)
   const [sessionStarted, setSessionStarted] = useState(false)
 
@@ -64,6 +66,7 @@ export default function WorkoutDetail({ program, onBack }: Props) {
     return (
       <WorkoutSession
         programName={program.name}
+        lastWeights={lastWeights}
         dayLabel={activeDay}
         exercises={exercises.map(ex => ({
           id: ex.id,

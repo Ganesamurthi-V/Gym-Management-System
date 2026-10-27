@@ -1,8 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, ChevronRight, Timer } from 'lucide-react'
-import WorkoutComplete from './WorkoutComplete'
+import { api } from '@/lib/api/client'
+import { PROGRESS_LIMITS, normaliseExerciseName, type LastWeights } from '@/types/progress'
+import WorkoutComplete, { type SaveState } from './WorkoutComplete'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +29,7 @@ interface Props {
   programName: string
   dayLabel: string
   exercises: SessionExercise[]
+  lastWeights: LastWeights
   onFinish: () => void
   onBack: () => void
 }
@@ -34,6 +38,7 @@ interface SetLog {
   planned: ExerciseSet
   completed: boolean
   completedAt: number | null // timestamp
+  actualWeight: string // text typed by the member; '' = none
 }
 
 interface ExerciseLog {
@@ -58,22 +63,56 @@ function parseRestSeconds(rest: string | undefined): number {
   return Number.isFinite(num) && num > 0 ? num : 0
 }
 
+/** Empty -> null (bodyweight); invalid or out of range -> undefined. Accepts "42,5". */
+function parseWeight(text: string): number | null | undefined {
+  const t = text.trim().replace(',', '.')
+  if (t === '') return null
+  const n = Number(t)
+  return Number.isFinite(n) && n >= 0 && n <= PROGRESS_LIMITS.liftMax ? n : undefined
+}
+
+function plannedNumber(text: string | undefined): number | null {
+  const n = parseFloat(text ?? '')
+  return Number.isFinite(n) ? n : null
+}
+
+function newClientId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.floor(Math.random() * 16)
+    return (c === 'x' ? r : (r & 3) | 8).toString(16)
+  })
+}
+
+/** Short "Last time" hint: one value if all sets match, otherwise "40 / 42.5 / 45". */
+function lastTimeText(weights: (number | null)[] | undefined): string | null {
+  const w = (weights ?? []).filter((x): x is number => x != null)
+  if (w.length === 0) return null
+  const unique = [...new Set(w)]
+  return `${unique.length === 1 ? unique[0] : unique.join(' / ')} kg`
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function WorkoutSession({ programName, dayLabel, exercises, onFinish, onBack }: Props) {
+export default function WorkoutSession({ programName, dayLabel, exercises, lastWeights, onFinish, onBack }: Props) {
+  const router = useRouter()
   // Build the full log structure on mount
   const initialLog = useMemo<ExerciseLog[]>(() =>
     exercises.map(ex => ({
       exercise: ex,
-      sets: (ex.sets.length > 0 ? ex.sets : [{ reps: '10', weight: '', rest: '60' }]).map(s => ({
-        planned: s,
-        completed: false,
-        completedAt: null,
-      })),
+      sets: (ex.sets.length > 0 ? ex.sets : [{ reps: '10', weight: '', rest: '60' }]).map((s, i) => {
+        const prefill = lastWeights[normaliseExerciseName(ex.name)]?.[i] ?? plannedNumber(s.weight)
+        return {
+          planned: s,
+          completed: false,
+          completedAt: null,
+          actualWeight: prefill != null ? String(prefill) : '',
+        }
+      }),
       startedAt: null,
       finishedAt: null,
     })),
-  [exercises])
+  [exercises, lastWeights])
 
   const [log, setLog] = useState<ExerciseLog[]>(initialLog)
   const [currentExIdx, setCurrentExIdx] = useState(0)
@@ -81,6 +120,10 @@ export default function WorkoutSession({ programName, dayLabel, exercises, onFin
   const [sessionStartedAt] = useState(Date.now())
   const [elapsed, setElapsed] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('saving')
+  const clientIdRef = useRef(newClientId())
+  const startedAtRef = useRef(new Date(sessionStartedAt).toISOString())
+  const saveStartedRef = useRef(false)
 
   // Rest timer state
   const [restCountdown, setRestCountdown] = useState(0)
@@ -126,6 +169,8 @@ export default function WorkoutSession({ programName, dayLabel, exercises, onFin
 
   const currentExercise = log[currentExIdx]
   const currentSet = currentExercise?.sets[currentSetIdx]
+  const weightInvalid = currentSet ? parseWeight(currentSet.actualWeight) === undefined : false
+  const lastHint = currentExercise ? lastTimeText(lastWeights[normaliseExerciseName(currentExercise.exercise.name)]) : null
   const totalSets = log.reduce((sum, ex) => sum + ex.sets.length, 0)
   const completedSets = log.reduce((sum, ex) => sum + ex.sets.filter(s => s.completed).length, 0)
   const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0
@@ -185,6 +230,47 @@ export default function WorkoutSession({ programName, dayLabel, exercises, onFin
     }
   }, [currentExIdx, currentSetIdx, currentExercise, currentSet, log.length])
 
+  const setWeight = (text: string) => {
+    setLog(prev => prev.map((ex, ei) => ei !== currentExIdx ? ex : {
+      ...ex,
+      sets: ex.sets.map((s, si) => si === currentSetIdx ? { ...s, actualWeight: text } : s),
+    }))
+  }
+
+  const saveSession = useCallback(async () => {
+    setSaveState('saving')
+    try {
+      await api.post('/api/member/workout-sessions', {
+        client_id: clientIdRef.current,
+        program_name: programName,
+        day_label: dayLabel,
+        started_at: startedAtRef.current,
+        duration_seconds: Math.round(elapsed / 1000),
+        exercises: log.map(ex => ({
+          name: ex.exercise.name,
+          sets: ex.sets.map(s => {
+            const reps = parseInt(s.planned.reps ?? '', 10)
+            return {
+              reps: Number.isFinite(reps) ? reps : null,
+              weight_kg: parseWeight(s.actualWeight) ?? null,
+              done: s.completed,
+            }
+          }),
+        })),
+      })
+      setSaveState('saved')
+    } catch {
+      setSaveState('error')
+    }
+  }, [programName, dayLabel, elapsed, log])
+
+  // Save once when the session completes; Retry re-sends the same client_id.
+  useEffect(() => {
+    if (!isComplete || saveStartedRef.current) return
+    saveStartedRef.current = true
+    void saveSession()
+  }, [isComplete, saveSession])
+
   const skipRest = useCallback(() => {
     setRestCountdown(0)
     setIsResting(false)
@@ -198,7 +284,9 @@ export default function WorkoutSession({ programName, dayLabel, exercises, onFin
         dayLabel={dayLabel}
         log={log}
         totalElapsedMs={elapsed}
-        onDone={onFinish}
+        saveState={saveState}
+        onRetrySave={() => void saveSession()}
+        onDone={() => { router.refresh(); onFinish() }}
       />
     )
   }
@@ -266,6 +354,7 @@ export default function WorkoutSession({ programName, dayLabel, exercises, onFin
                 </p>
                 <h3 className="text-lg font-bold text-slate-900">{currentExercise.exercise.name}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">{currentExercise.exercise.target} · {currentExercise.exercise.type}</p>
+                {lastHint && <p className="text-xs text-slate-400 mt-0.5">Last time: {lastHint}</p>}
               </div>
             </div>
 
@@ -320,12 +409,32 @@ export default function WorkoutSession({ programName, dayLabel, exercises, onFin
             </div>
           </div>
 
+          {/* Weight actually used for the current set */}
+          {!isResting && currentSet && !currentSet.completed && (
+            <label className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-surface-border bg-surface-card px-4 py-2">
+              <span className="text-xs font-bold text-slate-700">Weight used, set {currentSetIdx + 1}</span>
+              <span className="flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={currentSet.actualWeight}
+                  onChange={e => setWeight(e.target.value)}
+                  placeholder="0"
+                  aria-invalid={weightInvalid}
+                  className="h-11 w-24 rounded-xl border border-surface-border bg-surface px-3 text-right text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none"
+                />
+                <span className="text-xs font-semibold text-slate-500">kg</span>
+              </span>
+            </label>
+          )}
+
           {/* Complete set button */}
           {!isResting && currentSet && !currentSet.completed && (
             <button
               type="button"
               onClick={completeSet}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.97] hover:bg-emerald-600"
+              disabled={weightInvalid}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.97] hover:bg-emerald-600 disabled:opacity-50"
             >
               <Check className="h-5 w-5" />
               Complete Set {currentSetIdx + 1}

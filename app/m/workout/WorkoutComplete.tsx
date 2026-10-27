@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import Link from 'next/link'
 import { CheckCircle2, Clock, Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
 
 // ─── Types (mirrored from WorkoutSession) ────────────────────────────────────
@@ -25,6 +26,7 @@ interface SetLog {
   planned: ExerciseSet
   completed: boolean
   completedAt: number | null
+  actualWeight: string
 }
 
 interface ExerciseLog {
@@ -34,11 +36,15 @@ interface ExerciseLog {
   finishedAt: number | null
 }
 
+export type SaveState = 'saving' | 'saved' | 'error'
+
 interface Props {
   programName: string
   dayLabel: string
   log: ExerciseLog[]
   totalElapsedMs: number
+  saveState: SaveState
+  onRetrySave: () => void
   onDone: () => void
 }
 
@@ -62,20 +68,21 @@ function formatMins(ms: number): string {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function WorkoutComplete({ programName, dayLabel, log, totalElapsedMs, onDone }: Props) {
+export default function WorkoutComplete({ programName, dayLabel, log, totalElapsedMs, saveState, onRetrySave, onDone }: Props) {
   const stats = useMemo(() => {
     const totalExercises = log.length
     const totalSets = log.reduce((s, ex) => s + ex.sets.length, 0)
     const completedSets = log.reduce((s, ex) => s + ex.sets.filter(st => st.completed).length, 0)
 
-    // Total volume (rough: sum of reps × weight where available)
+    // Total volume: reps × weight actually entered; planned weight only when none was entered
     let totalVolume = 0
     let totalReps = 0
     for (const ex of log) {
       for (const set of ex.sets) {
         if (!set.completed) continue
         const reps = parseInt(set.planned.reps ?? '0', 10) || 0
-        const weight = parseFloat(set.planned.weight ?? '0') || 0
+        const entered = parseFloat(set.actualWeight.replace(',', '.'))
+        const weight = Number.isFinite(entered) ? entered : parseFloat(set.planned.weight ?? '0') || 0
         totalReps += reps
         totalVolume += reps * weight
       }
@@ -239,6 +246,22 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
           </div>
         </section>
       )}
+
+      {/* Save status; never blocks the summary */}
+      <p className="mb-3 text-center text-xs font-semibold text-slate-500" role="status">
+        {saveState === 'saving' && 'Saving...'}
+        {saveState === 'saved' && (
+          <>Saved to your history. <Link href="/m/progress/workouts" className="text-brand-600 underline">View</Link></>
+        )}
+        {saveState === 'error' && (
+          <>
+            Could not save. Try again{' '}
+            <button type="button" onClick={onRetrySave} className="min-h-11 px-3 font-bold text-brand-600 underline">
+              Retry
+            </button>
+          </>
+        )}
+      </p>
 
       {/* Done button */}
       <button

@@ -3,19 +3,22 @@
 import { useState } from 'react'
 import { Calendar, ChevronRight, Dumbbell, Target, Users } from 'lucide-react'
 import type { WorkoutProgram } from '@/types/member-db'
+import type { LastWeights } from '@/types/progress'
 import WorkoutDetail from './WorkoutDetail'
 
 interface Props {
   programs: WorkoutProgram[]
+  lastWeights: LastWeights
 }
 
-export default function WorkoutClient({ programs }: Props) {
+export default function WorkoutClient({ programs, lastWeights }: Props) {
   const [selectedProgram, setSelectedProgram] = useState<WorkoutProgram | null>(null)
 
   if (selectedProgram) {
     return (
       <WorkoutDetail
         program={selectedProgram}
+        lastWeights={lastWeights}
         onBack={() => setSelectedProgram(null)}
       />
     )

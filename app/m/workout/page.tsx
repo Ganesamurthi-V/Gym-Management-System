@@ -1,12 +1,13 @@
 import { Dumbbell } from 'lucide-react'
 import { getWorkoutPageData } from '@/lib/member/member-data'
 import { startPageTimer } from '@/lib/perf'
+import { getLastWeights } from '@/lib/member/progress-data'
 import WorkoutClient from './WorkoutClient'
 
 export default async function WorkoutPage() {
   const done = startPageTimer('workout')
 
-  const data = await getWorkoutPageData()
+  const [data, lastWeights] = await Promise.all([getWorkoutPageData(), getLastWeights()])
   if (!data) {
     done()
     // Null also means a plan-blocked member: render nothing; the layout shows the notice.
@@ -34,7 +35,7 @@ export default async function WorkoutPage() {
           <p className="mt-1 text-xs text-slate-400">Your gym will assign workout programs to you soon.</p>
         </div>
       ) : (
-        <WorkoutClient programs={programs} />
+        <WorkoutClient programs={programs} lastWeights={lastWeights} />
       )}
 
     </div>

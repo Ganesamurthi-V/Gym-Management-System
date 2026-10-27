@@ -400,6 +400,23 @@ CREATE TABLE IF NOT EXISTS gym_event_completions (
   CONSTRAINT gym_event_completions_event_member_key UNIQUE (event_id, member_id)
 );
 
+-- ── gym_notices ──────────────────────────────────────────────
+-- Short messages an owner posts for members (holiday timings, a new batch, a
+-- closure). Members read the active, unexpired ones on the member app home.
+-- Max 20 active per gym, enforced by guard_gym_notices_cap().
+CREATE TABLE IF NOT EXISTS gym_notices (
+  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id      UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  kind        TEXT        NOT NULL DEFAULT 'info'
+                          CHECK (kind IN ('info', 'holiday', 'batch', 'closure', 'offer')),
+  title       TEXT        NOT NULL CHECK (char_length(btrim(title)) BETWEEN 3 AND 80),
+  body        TEXT        NOT NULL CHECK (char_length(btrim(body)) BETWEEN 3 AND 500),
+  expires_on  DATE,
+  is_active   BOOLEAN     NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ── inventory ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS inventory (
   id                    UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -1178,6 +1195,13 @@ CREATE INDEX IF NOT EXISTS idx_gym_events_gym_active ON gym_events(gym_id, is_ac
 CREATE INDEX IF NOT EXISTS idx_gym_event_completions_gym_id    ON gym_event_completions(gym_id);
 CREATE INDEX IF NOT EXISTS idx_gym_event_completions_member_id ON gym_event_completions(member_id);
 CREATE INDEX IF NOT EXISTS idx_gym_event_completions_event_id  ON gym_event_completions(event_id);
+
+-- ────────────────────────────────────────────────────────────
+-- indexes on gym_notices
+-- ────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_gym_notices_gym_active_created
+  ON gym_notices(gym_id, is_active, created_at DESC);
 
 -- ────────────────────────────────────────────────────────────
 -- indexes on member_portal_activity
@@ -4673,6 +4697,26 @@ BEGIN
 END;
 $$;
 
+-- ── guard_gym_notices_cap: at most 20 active notices per gym ──
+-- Runs on insert and on re-activation. The advisory lock serialises concurrent
+-- writers of one gym so two requests cannot both slip past the count.
+CREATE OR REPLACE FUNCTION public.guard_gym_notices_cap()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.is_active AND (TG_OP = 'INSERT' OR NOT OLD.is_active) THEN
+    PERFORM pg_advisory_xact_lock(hashtext('gym_notices:' || NEW.gym_id::text));
+    IF (SELECT count(*) FROM gym_notices
+         WHERE gym_id = NEW.gym_id AND is_active AND id <> NEW.id) >= 20 THEN
+      RAISE EXCEPTION 'TOO_MANY_NOTICES' USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 
 -- ############################################################
 -- 6 — TRIGGERS
@@ -4775,6 +4819,21 @@ DROP TRIGGER IF EXISTS trg_guard_gym_events ON gym_events;
 CREATE TRIGGER trg_guard_gym_events
   BEFORE INSERT OR UPDATE ON gym_events
   FOR EACH ROW EXECUTE FUNCTION public.guard_gym_events();
+
+-- ────────────────────────────────────────────────────────────
+-- triggers on gym_notices
+-- ────────────────────────────────────────────────────────────
+
+DROP TRIGGER IF EXISTS gym_notices_updated_at ON gym_notices;
+CREATE TRIGGER gym_notices_updated_at
+  BEFORE UPDATE ON gym_notices
+  FOR EACH ROW
+  EXECUTE FUNCTION update_whatsapp_messages_updated_at();
+
+DROP TRIGGER IF EXISTS trg_guard_gym_notices_cap ON gym_notices;
+CREATE TRIGGER trg_guard_gym_notices_cap
+  BEFORE INSERT OR UPDATE ON gym_notices
+  FOR EACH ROW EXECUTE FUNCTION public.guard_gym_notices_cap();
 
 -- ────────────────────────────────────────────────────────────
 -- triggers on gyms
@@ -5044,6 +5103,7 @@ ALTER TABLE member_achievements      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gamification_awards      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_events               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_event_completions    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_notices              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_units          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_sales          ENABLE ROW LEVEL SECURITY;
@@ -5262,6 +5322,41 @@ CREATE POLICY "Owner can update own event completions"
   ON gym_event_completions FOR UPDATE
   USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()))
   WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ────────────────────────────────────────────────────────────
+-- policies on gym_notices
+-- ────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Owner can read own gym notices" ON gym_notices;
+CREATE POLICY "Owner can read own gym notices"
+  ON gym_notices FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Owner can insert own gym notices" ON gym_notices;
+CREATE POLICY "Owner can insert own gym notices"
+  ON gym_notices FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Owner can update own gym notices" ON gym_notices;
+CREATE POLICY "Owner can update own gym notices"
+  ON gym_notices FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Owner can delete own gym notices" ON gym_notices;
+CREATE POLICY "Owner can delete own gym notices"
+  ON gym_notices FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+-- Members of the gym read its notices; blocked gyms lose them like other member data.
+DROP POLICY IF EXISTS "Members can view their gym notices" ON gym_notices;
+CREATE POLICY "Members can view their gym notices"
+  ON gym_notices FOR SELECT
+  TO authenticated
+  USING (
+    gym_id = (SELECT public.current_member_gym_id())
+    AND (SELECT public.member_app_allowed())
+  );
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_plan_prices
@@ -5838,6 +5933,10 @@ GRANT SELECT ON public.member_achievements TO authenticated;
 REVOKE ALL ON public.gamification_awards FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON public.gamification_awards TO authenticated;
 
+-- ── Gym notices ──────────────────────────────────────────────
+REVOKE ALL ON public.gym_notices FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gym_notices TO authenticated;
+
 -- ── Gamification events ──────────────────────────────────────
 REVOKE ALL ON public.gym_events FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gym_events TO authenticated;
@@ -6037,6 +6136,7 @@ REVOKE ALL ON FUNCTION public.update_whatsapp_messages_updated_at() FROM PUBLIC,
 REVOKE ALL ON FUNCTION public.generate_member_code()             FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_member_auth_user_link()      FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_gym_events()                 FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_gym_notices_cap()            FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.delete_old_whatsapp_webhook_logs() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_old_whatsapp_webhook_logs() TO service_role;
 

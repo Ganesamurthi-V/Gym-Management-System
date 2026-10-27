@@ -56,7 +56,7 @@ export const TOUR_ANCHORS = {
   dashQuickActions: 'dash-quick-actions',
   // The five Quick Action shortcuts, anchored individually so the tour can walk
   // them one at a time.
-  dashAddMember: 'dash-add-member',
+  dashNotices: 'dash-notices',
   dashMarkAttendance: 'dash-mark-attendance',
   dashAttendanceLog: 'dash-attendance-log',
   dashReportBtn: 'dash-report-btn',

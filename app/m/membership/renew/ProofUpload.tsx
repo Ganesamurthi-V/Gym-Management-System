@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Loader2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { focusRing } from './UpiPayPanel'
+import { clearPaymentDraft } from './paymentDraft'
 
 const MAX_BYTES = 10 * 1024 * 1024
 const ALLOWED = ['image/jpeg', 'image/png', 'application/pdf']
@@ -38,14 +39,16 @@ export default function ProofUpload({
     setSubmitting(true)
     setError(null)
     try {
-      setError(await onSubmit(file, txn.trim()))
+      const message = await onSubmit(file, txn.trim())
+      if (!message) clearPaymentDraft()
+      setError(message)
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={submit} className="mt-3 space-y-4">
+    <form id="proof-upload" onSubmit={submit} className="mt-3 scroll-mt-4 space-y-4">
       <div>
         <label htmlFor="proof-file" className="mb-1 block text-sm font-semibold text-slate-700">
           Payment screenshot or PDF

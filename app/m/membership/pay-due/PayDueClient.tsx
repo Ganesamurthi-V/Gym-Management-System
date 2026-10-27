@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Clock, AlertCircle } from 'lucide-react'
@@ -8,6 +8,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 import type { RenewalPageData } from '@/types/renewal'
 import UpiPayPanel, { focusRing as focus } from '../renew/UpiPayPanel'
 import ProofUpload from '../renew/ProofUpload'
+import { DUE_DRAFT_KEY, loadDraft, saveDraft } from '../renew/paymentDraft'
 
 const APPROVED_VISIBLE_MS = 3 * 24 * 60 * 60 * 1000
 
@@ -22,6 +23,17 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
     setPrevDue(pendingDue)
     setAmountText(String(pendingDue))
   }
+
+  // Restore the amount if the page was reloaded while the member was in a UPI app, and keep it up to date.
+  useEffect(() => {
+    const d = loadDraft<{ amountText: string }>(DUE_DRAFT_KEY)
+    if (d?.amountText && /^\d+$/.test(d.amountText) && Number(d.amountText) <= pendingDue) setAmountText(d.amountText)
+    // Only on first load: later changes come from the member typing or from the server value above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (/^\d+$/.test(amountText)) saveDraft(DUE_DRAFT_KEY, { amountText })
+  }, [amountText])
 
   const backLink = (
     <Link

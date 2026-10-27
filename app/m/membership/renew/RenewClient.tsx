@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Clock, AlertCircle } from 'lucide-react'
@@ -8,6 +8,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 import type { RenewalCategory, RenewalPageData } from '@/types/renewal'
 import UpiPayPanel, { focusRing as focus } from './UpiPayPanel'
 import ProofUpload from './ProofUpload'
+import { RENEW_DRAFT_KEY, loadDraft, saveDraft } from './paymentDraft'
 
 const APPROVED_VISIBLE_MS = 3 * 24 * 60 * 60 * 1000
 
@@ -27,6 +28,17 @@ export default function RenewClient({ data }: { data: RenewalPageData }) {
 
   const [categoryPick, setCategoryPick] = useState<RenewalCategory | null>(null)
   const [planKey, setPlanKey] = useState<string | null>(null)
+
+  // Restore the member's choice if the page was reloaded while they were in a UPI app, and keep it up to date.
+  useEffect(() => {
+    const d = loadDraft<{ categoryPick: RenewalCategory | null; planKey: string | null }>(RENEW_DRAFT_KEY)
+    if (!d) return
+    if (d.categoryPick) setCategoryPick(d.categoryPick)
+    if (d.planKey) setPlanKey(d.planKey)
+  }, [])
+  useEffect(() => {
+    if (planKey) saveDraft(RENEW_DRAFT_KEY, { categoryPick, planKey })
+  }, [categoryPick, planKey])
 
   const categories = CATEGORIES.filter((c) => options.plans.some((p) => p.category === c.key))
   // One category only: pick it automatically and skip the category step.

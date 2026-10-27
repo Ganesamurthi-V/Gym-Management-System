@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Copy, Loader2 } from 'lucide-react'
+import { ArrowDown, Copy, Loader2 } from 'lucide-react'
 import { generateUPILink, generateQRCode } from '@/lib/upi'
 import { cn, formatCurrency } from '@/lib/utils'
 import type { RenewalUpi } from '@/types/renewal'
+import { markUpiOpened, upiOpenedRecently } from './paymentDraft'
 
 const UPI_PREFIX = 'upi://pay?'
 
@@ -21,6 +22,32 @@ export const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-vi
 export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; amount: number; note: string }) {
   const [qr, setQr] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  // True once the member tapped a UPI app and has come back to this page (or the page was reloaded after).
+  const [returned, setReturned] = useState(false)
+  const [opened, setOpened] = useState(false)
+
+  // A reload while away (the phone often does this) loses `opened`, so the stored timestamp restores it.
+  useEffect(() => {
+    if (upiOpenedRecently()) setReturned(true)
+  }, [])
+
+  useEffect(() => {
+    if (!opened) return
+    const back = () => { if (document.visibilityState === 'visible') setReturned(true) }
+    document.addEventListener('visibilitychange', back)
+    window.addEventListener('pageshow', back)
+    return () => {
+      document.removeEventListener('visibilitychange', back)
+      window.removeEventListener('pageshow', back)
+    }
+  }, [opened])
+
+  const goToUpload = () => document.getElementById('proof-upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  // Bring the upload step into view as soon as the member is back from the UPI app.
+  useEffect(() => {
+    if (returned) goToUpload()
+  }, [returned])
 
   const upiLink = useMemo(
     () =>
@@ -85,6 +112,7 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
           <a
             key={a.name}
             href={a.href}
+            onClick={() => { markUpiOpened(); setOpened(true) }}
             className={cn('flex min-h-[44px] items-center justify-center rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-700 active:bg-slate-200', focusRing)}
           >
             {a.name}
@@ -94,6 +122,22 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
       <p className="mt-3 text-xs text-slate-500">
         On your phone, tap a UPI app above. The QR code is for paying from another device.
       </p>
+      {returned && (
+        <div role="status" className="mt-3 rounded-xl border border-brand-200 bg-brand-50 p-3">
+          <p className="text-sm font-bold text-slate-900">Back from your UPI app?</p>
+          <p className="mt-1 text-xs text-slate-600">
+            If your payment went through, add the screenshot below and submit it. If you cancelled, tap a UPI app above to try again.
+          </p>
+          <button
+            type="button"
+            onClick={goToUpload}
+            className={cn('mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-brand-500 px-3 text-sm font-bold text-white', focusRing)}
+          >
+            <ArrowDown aria-hidden="true" className="h-4 w-4" />
+            Add my screenshot
+          </button>
+        </div>
+      )}
     </div>
   )
 }

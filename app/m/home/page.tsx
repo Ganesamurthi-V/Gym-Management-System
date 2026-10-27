@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import {
   Activity, BarChart3, Dumbbell, IndianRupee,
-  AlertCircle, CheckCircle2, ChevronRight, Clock, Flame,
+  AlertCircle, CheckCircle2, ChevronRight, Clock, Flame, Megaphone,
 } from 'lucide-react'
 import { getAssignedWorkoutPrograms, getMembershipPageData, getMemberGamification, recordMemberLogin } from '@/lib/member/member-data'
 import { StreakBadge } from '@/components/member/StreakBadge'
 import { WeeklyGoalRing } from '@/components/member/WeeklyGoalRing'
 import { weeklyGoalProgress } from '@/lib/gamification/leaderboardDisplay'
-import { formatDate } from '@/lib/member/member-utils'
+import { formatDate, formatDateShort } from '@/lib/member/member-utils'
+import { getMemberNotices } from '@/lib/member/notice-data'
+import type { NoticeKind } from '@/types/notice'
 import { startPageTimer } from '@/lib/perf'
 import { formatCurrency, todayIST } from '@/lib/utils'
 import { quoteForDate } from '@/lib/member/daily-quote'
@@ -20,16 +22,26 @@ import { greetingForHour, istHour } from '@/lib/member/greeting'
 // served instantly from the client Router Cache instead — see
 // `experimental.staleTimes` in next.config.mjs and the prefetching BottomNav.
 
+// Left border carries the kind; the kind word stays visible because colour alone is not enough.
+const NOTICE_STYLE: Record<NoticeKind, { border: string; label: string }> = {
+  closure: { border: 'border-l-red-400', label: 'Closure' },
+  holiday: { border: 'border-l-amber-400', label: 'Holiday' },
+  batch: { border: 'border-l-emerald-400', label: 'New batch' },
+  offer: { border: 'border-l-brand-400', label: 'Offer' },
+  info: { border: 'border-l-slate-300', label: 'Info' },
+}
+
 export default async function HomePage() {
   const done = startPageTimer('home')
 
   // member + gym + memberships fetched in parallel (one round trip, not three).
   // The gamification RPC resolves the member from the session, so it joins the
   // same parallel batch instead of waiting for the member row.
-  const [data, game, programs] = await Promise.all([
+  const [data, game, programs, notices] = await Promise.all([
     getMembershipPageData(),
     getMemberGamification(),
     getAssignedWorkoutPrograms(),
+    getMemberNotices(),
   ])
   if (!data) {
     done()
@@ -78,6 +90,23 @@ export default async function HomePage() {
       <blockquote className="mb-5 border-l-2 border-brand-300 pl-3 text-sm leading-snug text-slate-600">
         {quoteForDate(todayIST())}
       </blockquote>
+
+      {/* Gym notices: server-rendered, only when the gym has posted any that are live. */}
+      {notices.length > 0 && (
+        <section aria-label="Notices" className="mb-5 space-y-3">
+          {notices.map(n => (
+            <article key={n.id} className={`card rounded-2xl border-l-4 p-4 ${NOTICE_STYLE[n.kind].border}`}>
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                <Megaphone aria-hidden="true" className="h-3.5 w-3.5" />
+                {NOTICE_STYLE[n.kind].label}
+              </p>
+              <h2 className="mt-1 text-sm font-bold text-slate-900">{n.title}</h2>
+              <p className="mt-1 whitespace-pre-line text-sm text-slate-600">{n.body}</p>
+              <p className="mt-2 text-xs text-slate-400">Posted {formatDateShort(n.createdAt)} by {gym.name}</p>
+            </article>
+          ))}
+        </section>
+      )}
 
       {/* Pending dues: only when the member owes something. A notice, not a link: payment is made at the gym. */}
       {pendingAmount > 0 && (

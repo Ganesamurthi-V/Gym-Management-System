@@ -19,6 +19,7 @@ interface Payment {
   plan: string
   start_date: string
   end_date: string
+  is_renewal?: boolean
   amount: number
   admission_fee: number | null
   due_amount: number | null
@@ -89,7 +90,7 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
     mode: p.payment_mode,
     title: p.member?.name ?? 'Unknown',
     subtitle: p.member?.phone ?? '',
-    col3: p.plan,
+    col3: p.is_renewal ? `${p.plan} · Renewal` : p.plan,
     col4: `${formatDate(p.start_date)} – ${formatDate(p.end_date)}`,
     feeBreakdown: p.admission_fee && p.admission_fee > 0 ? `${formatCurrency(p.amount)} + ${formatCurrency(p.admission_fee)} adm${p.due_amount ? ` - ${formatCurrency(p.due_amount)} due` : ''}` : undefined,
     member_number: p.member?.member_number

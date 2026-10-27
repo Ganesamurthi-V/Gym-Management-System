@@ -4,7 +4,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { buildLastWeights } from '@/lib/progress/lastWeights'
 import { mapBodyLogRow, mapExercises, mapSessionRow } from '@/lib/progress/validate'
-import type { BodyLog, LastWeights, WorkoutSessionSummary } from '@/types/progress'
+import { BODY_GOALS, type BodyGoal, type BodyLog, type BodyProfile, type LastWeights, type WorkoutSessionSummary } from '@/types/progress'
 
 // RLS scopes both tables to the signed-in member's own rows, so no member filter is needed here.
 const BODY_LOG_COLUMNS = 'id, logged_on, weight_kg, waist_cm, chest_cm, hips_cm, arm_cm, thigh_cm'
@@ -21,6 +21,28 @@ export const getBodyLogs = cache(async (): Promise<BodyLog[]> => {
     .limit(120)
   if (error) throw new Error(`getBodyLogs failed: ${error.message}`)
   return (data ?? []).map((r) => mapBodyLogRow(r as Record<string, unknown>))
+})
+
+/** The member's height and goal, or null before the baseline is saved. Throws on a query error. */
+export const getBodyProfile = cache(async (): Promise<BodyProfile | null> => {
+  const supabase = await getServerClient()
+  const { data, error } = await supabase
+    .from('member_body_profile')
+    .select('height_cm, goal, target_weight_kg, target_date')
+    .maybeSingle()
+  if (error) throw new Error(`getBodyProfile failed: ${error.message}`)
+  if (!data) return null
+  const row = data as { height_cm: unknown; goal: unknown; target_weight_kg: unknown; target_date: unknown }
+  const heightCm = Number(row.height_cm)
+  if (!Number.isFinite(heightCm) || !BODY_GOALS.includes(row.goal as BodyGoal)) return null
+  const targetKg = row.target_weight_kg == null ? NaN : Number(row.target_weight_kg)
+  const hasTarget = Number.isFinite(targetKg) && typeof row.target_date === 'string'
+  return {
+    heightCm,
+    goal: row.goal as BodyGoal,
+    targetWeightKg: hasTarget ? targetKg : null,
+    targetDate: hasTarget ? (row.target_date as string) : null,
+  }
 })
 
 /** Newest first. Throws on a query error. */

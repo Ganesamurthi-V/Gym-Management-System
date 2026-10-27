@@ -1,15 +1,15 @@
-import { addMonths, format, parseISO } from 'date-fns'
+import { addDays, addMonths, format, parseISO } from 'date-fns'
 
 /**
- * Start date of an approved member renewal.
- *
- * Mirrors the owner's Renew form (app/owner/members/[id]/MemberDetailClient.tsx): its start date
- * defaults to today (the `start_date: format(new Date(), 'yyyy-MM-dd')` initial state, L32) and is never
- * moved to the old end date, so neither is this one. `currentEndDate` is accepted so the rule can change in
- * one place. Pass today's IST date, never the server's UTC day.
+ * Start date of a renewal. A member who renews while still covered keeps every paid day: the new plan
+ * starts the day after the current end date. A lapsed member (end date before today) starts today.
+ * `currentEndDate` is the latest end date across the member's memberships (null for none). Pass today's
+ * IST date, never the server's UTC day.
  */
 export function renewalStartDate(currentEndDate: string | null, today: string): string {
-  void currentEndDate
+  if (currentEndDate && currentEndDate >= today) {
+    return format(addDays(parseISO(currentEndDate), 1), 'yyyy-MM-dd')
+  }
   return today
 }
 

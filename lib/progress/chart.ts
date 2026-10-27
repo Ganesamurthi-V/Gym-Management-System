@@ -63,6 +63,11 @@ export function longDate(date: string): string {
   return `${wd}, ${d} ${MONTHS[m - 1]} ${y}`
 }
 
+/** '2026-10-27' -> '27 Oct 2026' */
+export function mediumDate(date: string): string {
+  return `${shortDate(date)} ${date.slice(0, 4)}`
+}
+
 /** ISO timestamp -> IST 'YYYY-MM-DD'. */
 export function istDateOf(iso: string): string {
   return new Date(new Date(iso).getTime() + 19_800_000).toISOString().slice(0, 10)

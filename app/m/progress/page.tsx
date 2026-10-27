@@ -6,7 +6,6 @@ import { getProgressPageData, getMemberGamification } from '@/lib/member/member-
 import { StreakBadge } from '@/components/member/StreakBadge'
 import { formatCount } from '@/lib/gamification/leaderboardDisplay'
 import { levelFromXp } from '@/lib/gamification/xp'
-import { formatDate, formatPlan } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
@@ -26,8 +25,7 @@ export default async function ProgressPage() {
     // Null also means a plan-blocked member: render nothing; the layout shows the notice.
     return null
   }
-  const { memberships, attendance, state } = data
-  const { status, latest } = state
+  const { memberships, attendance } = data
 
   done()
 
@@ -96,27 +94,6 @@ export default async function ProgressPage() {
           <p className="mt-0.5 text-xs font-semibold text-slate-400">Total XP · level {level}</p>
         </div>
       </div>
-
-      {/* Current plan summary */}
-      {latest && (
-        <section className="card mb-5 p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Current Plan</p>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-base font-bold text-slate-900">{formatPlan(latest.plan)}</p>
-              <p className="text-xs text-slate-500">
-                {formatDate(latest.start_date)} – {formatDate(latest.end_date)}
-              </p>
-            </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-bold
-              ${status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                status === 'expiring' ? 'bg-amber-100 text-amber-700' :
-                'bg-red-100 text-red-700'}`}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </span>
-          </div>
-        </section>
-      )}
 
       <div className="space-y-3">
         <Link href="/m/progress/body" className="card flex min-h-[44px] items-center justify-between gap-3 p-4">

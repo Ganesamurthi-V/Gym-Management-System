@@ -52,6 +52,18 @@ export const PROGRESS_LIMITS = {
   maxSets: 20,
 } as const
 
+export const BODY_GOALS = ['lose_fat', 'build_muscle', 'gain_weight', 'stay_fit'] as const
+export type BodyGoal = (typeof BODY_GOALS)[number]
+
+/** Height, goal and optional target, saved once with the first body entry. Table: member_body_profile. */
+export interface BodyProfile {
+  heightCm: number
+  goal: BodyGoal
+  /** Optional target, both set or both null. targetDate is a YYYY-MM-DD India date. */
+  targetWeightKg: number | null
+  targetDate: string | null
+}
+
 export function normaliseExerciseName(name: string): string {
   return name.trim().toLowerCase()
 }

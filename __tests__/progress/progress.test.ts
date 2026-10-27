@@ -114,9 +114,14 @@ describe('progress schema is member-read-only and tenant-checked', () => {
   const read = (p: string) => readFileSync(join(root, p), 'utf8')
   const files = {
     migration: read('supabase/migrations/20261028150000_member_progress.sql'),
+    profileMigration: read('supabase/migrations/20261029100000_member_body_profile.sql'),
+    targetMigration: read('supabase/migrations/20261029160000_member_body_target.sql'),
     schema: read('supabase-schema.sql'),
   }
   const tables = ['member_body_logs', 'member_workout_sessions']
+  // The first profile migration created the 2-argument form; the target migration and the schema have the 4-argument one.
+  const profileFnOld = 'save_body_profile(NUMERIC, TEXT)'
+  const profileFnNew = 'save_body_profile(NUMERIC, TEXT, NUMERIC, DATE)'
   const fns = [
     'save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC)',
     'delete_body_log(UUID)',
@@ -125,7 +130,12 @@ describe('progress schema is member-read-only and tenant-checked', () => {
 
   for (const [label, sql] of Object.entries(files)) {
     describe(label, () => {
-      for (const t of tables) {
+      const isTarget = label === 'targetMigration'
+      const isProfile = label === 'profileMigration' || isTarget
+      const profileFn = label === 'profileMigration' ? profileFnOld : profileFnNew
+      const isMain = label === 'migration'
+      const tbls = isProfile ? ['member_body_profile'] : isMain ? tables : [...tables, 'member_body_profile']
+      for (const t of isTarget ? [] : tbls) {
         it(`${t}: RLS on, SELECT policies only, authenticated select grant, composite FK`, () => {
           expect(sql).toMatch(new RegExp(`ALTER TABLE ${t}\\s+ENABLE ROW LEVEL SECURITY`))
           const policies = [...sql.matchAll(new RegExp(`CREATE POLICY "[^"]+"\\s+ON public\\.${t} FOR (\\w+)`, 'g'))]
@@ -138,7 +148,10 @@ describe('progress schema is member-read-only and tenant-checked', () => {
         })
       }
       it('RPCs are SECURITY DEFINER, search_path empty, derive the caller from auth.uid()', () => {
-        for (const name of ['save_body_log', 'delete_body_log', 'save_workout_session']) {
+        const names = isProfile
+          ? ['save_body_profile']
+          : isMain ? ['save_body_log', 'delete_body_log', 'save_workout_session'] : ['save_body_log', 'delete_body_log', 'save_workout_session', 'save_body_profile']
+        for (const name of names) {
           const start = sql.indexOf(`CREATE FUNCTION public.${name}(`)
           expect(start).toBeGreaterThan(-1)
           const body = sql.slice(start, sql.indexOf('$$;', sql.indexOf('AS $$', start)))
@@ -149,7 +162,7 @@ describe('progress schema is member-read-only and tenant-checked', () => {
         }
       })
       it('RPCs are granted to authenticated only', () => {
-        for (const f of fns) {
+        for (const f of isProfile ? [profileFn] : isMain ? fns : [...fns, profileFn]) {
           expect(sql).toContain(`REVOKE ALL ON FUNCTION public.${f} FROM PUBLIC, anon;`)
           expect(sql).toContain(`GRANT EXECUTE ON FUNCTION public.${f} TO authenticated;`)
         }

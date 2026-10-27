@@ -653,6 +653,20 @@ CREATE TABLE IF NOT EXISTS member_renewal_requests (
     CHECK (request_type <> 'renewal' OR (duration IS NOT NULL AND months IS NOT NULL))
 );
 
+-- ── member_body_profile ──────────────────────────────────────
+-- Height and goal (the body baseline). Written only by save_body_profile; clients can only SELECT.
+CREATE TABLE IF NOT EXISTS member_body_profile (
+  member_id  UUID         PRIMARY KEY REFERENCES members(id) ON DELETE CASCADE,
+  gym_id     UUID         NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  height_cm  NUMERIC(4,1) NOT NULL CHECK (height_cm BETWEEN 100 AND 230),
+  goal       TEXT         NOT NULL CHECK (goal IN ('lose_fat', 'build_muscle', 'gain_weight', 'stay_fit')),
+  -- Optional target, both set or both null.
+  target_weight_kg NUMERIC(5,2) CHECK (target_weight_kg BETWEEN 20 AND 300),
+  target_date      DATE,
+  updated_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  CONSTRAINT member_body_profile_target_both_or_none CHECK ((target_weight_kg IS NULL) = (target_date IS NULL))
+);
+
 -- ── member_body_logs / member_workout_sessions ───────────────
 -- Member progress. Written only by save_body_log, delete_body_log and save_workout_session
 -- (SECURITY DEFINER); clients can only SELECT. Limits mirror PROGRESS_LIMITS in types/progress.ts.
@@ -1023,6 +1037,7 @@ BEGIN
     ('memberships',            'fk_memberships_member_same_gym',     'member_id',    'members', 'CASCADE'),
     ('member_renewal_requests','fk_member_renewal_requests_member_same_gym','member_id','members', 'CASCADE'),
     ('member_body_logs',       'fk_member_body_logs_member_same_gym','member_id',    'members', 'CASCADE'),
+    ('member_body_profile',    'fk_member_body_profile_member_same_gym','member_id', 'members', 'CASCADE'),
     ('member_workout_sessions','fk_member_workout_sessions_member_same_gym','member_id','members', 'CASCADE'),
     ('attendance',             'fk_attendance_member_same_gym',      'member_id',    'members', 'CASCADE'),
     ('due_payments',           'fk_due_payments_member_same_gym',    'member_id',    'members', 'CASCADE'),
@@ -2222,6 +2237,60 @@ BEGIN
    WHERE b.id = p_id AND b.member_id = v_member_id;
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   RETURN v_deleted > 0;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.save_body_profile(NUMERIC, TEXT);
+DROP FUNCTION IF EXISTS public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE);
+CREATE FUNCTION public.save_body_profile(
+  p_height_cm        NUMERIC,
+  p_goal             TEXT,
+  p_target_weight_kg NUMERIC DEFAULT NULL,
+  p_target_date      DATE    DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_gym_id    UUID;
+  v_today     DATE := (now() AT TIME ZONE 'Asia/Kolkata')::date;
+BEGIN
+  SELECT m.id, m.gym_id INTO v_member_id, v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  IF p_height_cm IS NULL OR p_height_cm NOT BETWEEN 100 AND 230
+     OR p_goal IS NULL OR p_goal NOT IN ('lose_fat', 'build_muscle', 'gain_weight', 'stay_fit') THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_VALUE';
+  END IF;
+
+  -- Both target fields together or neither; the date must be after today (India) and within 2 years.
+  IF (p_target_weight_kg IS NULL) <> (p_target_date IS NULL)
+     OR (p_target_weight_kg IS NOT NULL AND (
+           p_target_weight_kg NOT BETWEEN 20 AND 300
+        OR p_target_date <= v_today
+        OR p_target_date > v_today + 730)) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_VALUE';
+  END IF;
+
+  INSERT INTO public.member_body_profile (member_id, gym_id, height_cm, goal, target_weight_kg, target_date)
+  VALUES (v_member_id, v_gym_id, round(p_height_cm, 1), p_goal, round(p_target_weight_kg, 2), p_target_date)
+  ON CONFLICT (member_id) DO UPDATE
+    SET height_cm        = EXCLUDED.height_cm,
+        goal             = EXCLUDED.goal,
+        target_weight_kg = EXCLUDED.target_weight_kg,
+        target_date      = EXCLUDED.target_date,
+        updated_at       = now();
 END;
 $$;
 
@@ -5406,6 +5475,7 @@ ALTER TABLE member_portal_activity   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_requests    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_renewal_requests   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_logs         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_body_profile      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_workout_sessions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_audit_logs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_settings        ENABLE ROW LEVEL SECURITY;
@@ -5911,6 +5981,22 @@ CREATE POLICY "Members can view their own renewal requests"
     AND (SELECT public.member_app_allowed())
   );
 
+-- policies on member_body_profile (read-only: writes go through save_body_profile)
+DROP POLICY IF EXISTS "Gym owners can view member body profiles" ON public.member_body_profile;
+CREATE POLICY "Gym owners can view member body profiles"
+  ON public.member_body_profile FOR SELECT
+  TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = member_body_profile.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Members can view their own body profile" ON public.member_body_profile;
+CREATE POLICY "Members can view their own body profile"
+  ON public.member_body_profile FOR SELECT
+  TO authenticated
+  USING (
+    member_id IN (SELECT id FROM public.members WHERE auth_user_id = (SELECT auth.uid()))
+    AND (SELECT public.member_app_allowed())
+  );
+
 -- policies on member_body_logs / member_workout_sessions (read-only: writes go through definer functions)
 DROP POLICY IF EXISTS "Gym owners can view member body logs" ON public.member_body_logs;
 CREATE POLICY "Gym owners can view member body logs"
@@ -6387,6 +6473,8 @@ GRANT EXECUTE ON FUNCTION public.reject_member_renewal_request(UUID, TEXT)      
 -- Member progress: read-only tables; the definer functions are the only writers.
 REVOKE ALL ON public.member_body_logs        FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.member_body_logs        TO authenticated;
+REVOKE ALL ON public.member_body_profile     FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.member_body_profile     TO authenticated;
 REVOKE ALL ON public.member_workout_sessions FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.member_workout_sessions TO authenticated;
 
@@ -6394,6 +6482,8 @@ REVOKE ALL ON FUNCTION public.save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUM
 GRANT EXECUTE ON FUNCTION public.save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC) TO authenticated;
 REVOKE ALL ON FUNCTION public.delete_body_log(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_body_log(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE) TO authenticated;
 REVOKE ALL ON FUNCTION public.save_workout_session(UUID, TEXT, TEXT, TIMESTAMPTZ, INTEGER, JSONB) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.save_workout_session(UUID, TEXT, TEXT, TIMESTAMPTZ, INTEGER, JSONB) TO authenticated;
 

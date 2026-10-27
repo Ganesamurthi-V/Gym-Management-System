@@ -3,14 +3,18 @@ import fs from 'node:fs'
 import { renewalStartDate, renewalEndDate } from '@/lib/renewal/dates'
 import { memberRenewalSchema, memberDueSchema, paymentKindSchema, rejectRenewalSchema, approveRenewalSchema, isStartDateInWindow } from '@/lib/renewal/validate'
 
-describe('renewalStartDate (mirrors the owner Renew form: starts today)', () => {
-  it('expired member starts today', () => {
+describe('renewalStartDate (no paid day is lost)', () => {
+  it('starts the day after the current end date when still covered', () => {
+    expect(renewalStartDate('2026-11-15', '2026-10-27')).toBe('2026-11-16')
+    expect(renewalStartDate('2026-10-31', '2026-10-27')).toBe('2026-11-01')
+    expect(renewalStartDate('2026-12-31', '2026-10-27')).toBe('2027-01-01')
+  })
+  it('a plan ending today is still covered today, so the next one starts tomorrow', () => {
+    expect(renewalStartDate('2026-10-27', '2026-10-27')).toBe('2026-10-28')
+  })
+  it('starts today when the plan already ended or there is none', () => {
     expect(renewalStartDate('2026-09-01', '2026-10-27')).toBe('2026-10-27')
-  })
-  it('active member renewing early also starts today, like the owner form', () => {
-    expect(renewalStartDate('2026-11-15', '2026-10-27')).toBe('2026-10-27')
-  })
-  it('member with no plan starts today', () => {
+    expect(renewalStartDate('2026-10-26', '2026-10-27')).toBe('2026-10-27')
     expect(renewalStartDate(null, '2026-10-27')).toBe('2026-10-27')
   })
 })

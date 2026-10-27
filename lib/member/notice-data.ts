@@ -11,7 +11,7 @@ import { NOTICE_LIMITS, type GymNotice } from '@/types/notice'
  * scopes the rows to the member's own gym. A failure returns [] (and is logged)
  * so a notice problem never breaks the home page.
  */
-export const getMemberNotices = cache(async (): Promise<GymNotice[]> => {
+export const getMemberNotices = cache(async (limit: number = NOTICE_LIMITS.homeShown): Promise<GymNotice[]> => {
   const supabase = await getServerClient()
   const { data, error } = await supabase
     .from('gym_notices')
@@ -19,7 +19,7 @@ export const getMemberNotices = cache(async (): Promise<GymNotice[]> => {
     .eq('is_active', true)
     .or(`expires_on.is.null,expires_on.gte.${todayIST()}`)
     .order('created_at', { ascending: false })
-    .limit(NOTICE_LIMITS.homeShown)
+    .limit(limit)
 
   if (error) {
     logger.error('Could not load member notices', error)

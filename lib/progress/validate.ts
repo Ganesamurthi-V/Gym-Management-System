@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  BODY_GOALS,
   PROGRESS_LIMITS,
   type BodyLog,
   type SessionExerciseRecord,
@@ -41,6 +42,18 @@ export const bodyLogSchema = z
     (b) => [b.weight_kg, b.waist_cm, b.chest_cm, b.hips_cm, b.arm_cm, b.thigh_cm].some((x) => x !== null),
     { message: 'Enter at least one measurement' },
   )
+
+/** Body of POST /api/member/body-profile. */
+export const bodyProfileSchema = z
+  .object({
+    height_cm: z.preprocess(toNumber, z.number().finite().min(100).max(230)),
+    goal: z.enum(BODY_GOALS),
+    target_weight_kg: bounded(L.weightMin, L.weightMax).optional(),
+    target_date: z.preprocess((v) => (v === '' || v === null ? undefined : v), dateOnly.optional()),
+  })
+  .refine((b) => (b.target_weight_kg == null) === (b.target_date == null), {
+    message: 'Enter both a target weight and a target date',
+  })
 
 export type BodyLogInput = z.infer<typeof bodyLogSchema>
 

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { ArrowLeft, MessageCircle, Plus, Trash2, Check, Calendar, CreditCard, Edit2, Sun, Moon } from 'lucide-react'
-import { formatDate, formatCurrency, calcEndDate, cn, isValidPhone } from '@/lib/utils'
+import { formatDate, formatCurrency, calcEndDate, cn, isValidPhone, todayIST } from '@/lib/utils'
+import { renewalStartDate } from '@/lib/renewal/dates'
 import type { Member, Membership, Attendance, MemberStatus, Plan, PaymentMode } from '@/types'
 import { formatMemberId } from '@/types'
 import { format } from 'date-fns'
@@ -29,7 +30,11 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
   const [renewForm, setRenewForm] = useState({
     plan: 'monthly' as Plan,
     custom_months: '',
-    start_date: format(new Date(), 'yyyy-MM-dd'),
+    // Renewing while covered continues from the day after the latest end date, so no paid day is lost.
+    start_date: renewalStartDate(
+      memberships.reduce<string | null>((max, m) => (max === null || m.end_date > max ? m.end_date : max), null),
+      todayIST(),
+    ),
     amount: '',
     payment_mode: 'cash' as PaymentMode,
   })

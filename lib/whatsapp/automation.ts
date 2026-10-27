@@ -593,6 +593,18 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
         }
       }
     }
+    // ── Member Web Push (expiring, body progress, we-miss-you, weekly quote) ──
+    // Last and fully isolated: a push failure must never fail or alter the WhatsApp run. Not a Vercel cron;
+    // it rides this one (09:00 IST, inside the 07:00-21:00 push window). No-op unless VAPID is configured.
+    try {
+      const { isPushConfigured } = await import('@/lib/push/config')
+      if (isPushConfigured()) {
+        const { runDailyPushStep } = await import('@/lib/push/daily')
+        await runDailyPushStep()
+      }
+    } catch (err) {
+      console.error('[WA Automation] Push step failed:', err instanceof Error ? err.message : String(err))
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     stats.errors.push(`Fatal: ${msg}`)

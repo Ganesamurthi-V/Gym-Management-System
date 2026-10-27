@@ -82,3 +82,16 @@ export function workoutToday(programs: readonly ProgramLike[], date: string): Wo
   // Programs exist but none has a single exercise yet.
   return { kind: 'rest', nextDay: null }
 }
+
+/** Cookie holding the program a member picked with "For me" when several are assigned. Read on the server for the home card. */
+export const MY_PROGRAM_COOKIE = 'gf-my-program'
+
+/**
+ * With several assigned programs the member can pick one ("For me"); the home screen then considers only
+ * that one. An unknown or stale id (program unassigned since) falls back to all programs, so the card never goes blank.
+ */
+export function programsForHome<T extends ProgramLike>(programs: readonly T[], chosenId: string | undefined): readonly T[] {
+  if (programs.length < 2 || !chosenId) return programs
+  const chosen = programs.find(p => p.id === chosenId)
+  return chosen ? [chosen] : programs
+}

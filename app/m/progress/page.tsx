@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { BarChart3, CalendarCheck, TrendingUp, Award, Flame, Zap, ChevronRight } from 'lucide-react'
-import { getBodyLogs, getRecentSessions } from '@/lib/member/progress-data'
+import { Scale, Activity, Ruler, CircleDot, Flame, Zap, ChevronRight } from 'lucide-react'
+import { getBodyLogs, getBodyProfile, getRecentSessions } from '@/lib/member/progress-data'
+import { buildReport, type MetricKey, type Tone } from '@/lib/progress/report'
 import { fmtNum, shortDate, istDateOf } from '@/lib/progress/chart'
 import { getProgressPageData, getMemberGamification } from '@/lib/member/member-data'
 import { StreakBadge } from '@/components/member/StreakBadge'
@@ -17,15 +18,14 @@ export default async function ProgressPage() {
   // member + gym + memberships + attendance all in parallel (one round trip).
   // Previously the member query had to resolve first to supply member.id.
   // The gamification RPC needs no member id either, so it rides in the same batch.
-  const [data, game, bodyLogs, sessions] = await Promise.all([
-    getProgressPageData(), getMemberGamification(), getBodyLogs(), getRecentSessions(),
+  const [data, game, bodyLogs, sessions, profile] = await Promise.all([
+    getProgressPageData(), getMemberGamification(), getBodyLogs(), getRecentSessions(), getBodyProfile(),
   ])
   if (!data) {
     done()
     // Null also means a plan-blocked member: render nothing; the layout shows the notice.
     return null
   }
-  const { memberships, attendance } = data
 
   done()
 
@@ -48,12 +48,26 @@ export default async function ProgressPage() {
     ? 'Your finished workouts appear here'
     : `${sessions.length} recent ${sessions.length === 1 ? 'workout' : 'workouts'}, latest ${shortDate(istDateOf(sessions[0].startedAt))}`
 
-  const stats = [
-    { label: 'Total check-ins',  value: attendance.totalCount,    icon: CalendarCheck, colour: 'text-brand-600',   bg: 'bg-brand-50' },
-    { label: 'This month',       value: attendance.thisMonthCount, icon: TrendingUp,    colour: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'This week',        value: attendance.thisWeekCount,  icon: BarChart3,     colour: 'text-orange-500',  bg: 'bg-orange-50' },
-    { label: 'Memberships',      value: memberships.length,        icon: Award,         colour: 'text-violet-600',  bg: 'bg-violet-50' },
+  // Body metrics replace the attendance counts here; attendance lives on the home and attendance pages.
+  const report = buildReport(bodyLogs, profile)
+  const tiles: { key: MetricKey; label: string; icon: typeof Scale; colour: string; bg: string }[] = [
+    { key: 'weight', label: 'Weight', icon: Scale,     colour: 'text-brand-600',   bg: 'bg-brand-50' },
+    { key: 'bmi',    label: 'BMI',    icon: Activity,  colour: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { key: 'waist',  label: 'Waist',  icon: Ruler,     colour: 'text-orange-500',  bg: 'bg-orange-50' },
+    { key: 'hips',   label: 'Hips',   icon: CircleDot, colour: 'text-violet-600',  bg: 'bg-violet-50' },
   ]
+  const toneClass: Record<Tone, string> = { good: 'text-emerald-600', bad: 'text-amber-600', neutral: 'text-slate-400' }
+  const stats = tiles.map((t) => {
+    const row = report.rows.find((r) => r.key === t.key)
+    const value = row?.latest != null ? `${fmtNum(row.latest)}${row.unit === '' ? '' : ` ${row.unit}`}` : '-'
+    let note = 'Not logged yet'
+    if (row?.latest != null) {
+      note = row.change == null || row.change === 0
+        ? 'Latest'
+        : `${row.change < 0 ? 'Down' : 'Up'} ${fmtNum(Math.abs(row.change))}${row.unit === '' ? '' : ` ${row.unit}`} since start`
+    }
+    return { ...t, value, note, tone: row?.tone ?? 'neutral' }
+  })
 
   return (
     <div className="page-container py-6">
@@ -65,13 +79,14 @@ export default async function ProgressPage() {
 
       {/* Stats grid */}
       <div className="mb-5 grid grid-cols-2 gap-3">
-        {stats.map(({ label, value, icon: Icon, colour, bg }) => (
+        {stats.map(({ label, value, note, tone, icon: Icon, colour, bg }) => (
           <div key={label} className="card p-4">
             <span className={`mb-2 flex h-9 w-9 items-center justify-center rounded-xl ${bg} ${colour}`}>
               <Icon className="h-4 w-4" />
             </span>
             <p className="text-2xl font-bold text-slate-900">{value}</p>
             <p className="mt-0.5 text-xs font-semibold text-slate-400">{label}</p>
+            <p className={`mt-1 text-xs font-semibold ${toneClass[tone]}`}>{note}</p>
           </div>
         ))}
       </div>

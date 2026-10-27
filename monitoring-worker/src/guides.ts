@@ -99,7 +99,7 @@ const GUIDES: Record<string, Entry> = {
     happening: 'The public website www.gymflow.sbs is not loading correctly.',
     failing: 'New visitors cannot see GymFlow. The app itself may still work.',
     check: [OPEN_IN_BROWSER, 'Cloudflare dashboard > Workers & Pages > gymflow-landing-page > Deployments: latest deploy fine?', CF_STATUS],
-    fix: ['Redeploy the landing page (deploy from the landing-page-1 folder) or roll back in Cloudflare.', 'If DNS changed, restore the www record in Cloudflare > DNS.'],
+    fix: ['Redeploy the landing page (deploy from the landing-page folder) or roll back in Cloudflare.', 'If DNS changed, restore the www record in Cloudflare > DNS.'],
     variants: {
       ...appVariants('New visitors cannot see GymFlow. The app itself may still work.'),
       keyword: {

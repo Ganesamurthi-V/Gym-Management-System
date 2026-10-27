@@ -7,7 +7,7 @@ needs no environment variables to run.
 ## Run it
 
 ```bash
-cd landing-page-1
+cd landing-page
 npm install
 npm run dev          # Vite dev server, prints the URL
 ```
@@ -24,7 +24,7 @@ npm run preview      # serves dist/ locally
 ## Layout
 
 ```
-landing-page-1/
+landing-page/
 ├── index.html            # <head>: SEO meta, JSON-LD, the no-JavaScript copy of the page
 ├── pages/                # One thin HTML entry per feature page and guide (members.html, ...);
 │                         #   built to dist/<name>.html. Content lives in src/data/featurePages.ts

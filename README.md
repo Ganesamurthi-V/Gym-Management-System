@@ -57,7 +57,7 @@ their own `package.json` and `node_modules`, deployed on their own.
 | `/` (root) | Owner console + member PWA (Next.js 15) | `npm run dev` → http://localhost:3004 | this file |
 | `gymflow-admin/` | Super-admin panel (Next.js) | `npm run dev` → http://localhost:3001 | [gymflow-admin/README.md](gymflow-admin/README.md) |
 | `gymflow-mobile/` | Admin mobile app (React Native 0.75, Android/iOS) | `npm run android` | [gymflow-mobile/README.md](gymflow-mobile/README.md) |
-| `landing-page-1/` | Marketing site (Vite + React) | `npm run dev` | [landing-page-1/README.md](landing-page-1/README.md) |
+| `landing-page/` | Marketing site (Vite + React) | `npm run dev` | [landing-page/README.md](landing-page/README.md) |
 | `supabase-schema.sql` | The complete database schema as one runnable file | run once in the SQL editor | [SELF_HOSTING.md](SELF_HOSTING.md#2-database) |
 | `supabase/migrations/` | The same schema as individual change files (history) | for existing databases | |
 | `emails/` | Source HTML of the transactional email templates | published to Resend | [SELF_HOSTING.md](SELF_HOSTING.md#5-email-resend) |
@@ -163,7 +163,7 @@ and parameters must match the code exactly. See [lib/whatsapp/README.md](lib/wha
 | `app.gymflow.sbs` | Owner console (`/owner`), member PWA (`/m`) and API | Main Next.js app |
 | `admin.gymflow.sbs` | Super-admin panel and the API the mobile app calls | `gymflow-admin/` |
 | `graph.gymflow.sbs` | WhatsApp Graph API reverse proxy (API-only) | Same Vercel project, domain-isolated |
-| `www.gymflow.sbs` | Marketing site (`landing-page-1/`); `gymflow.sbs` redirects here | Separate static deployment |
+| `www.gymflow.sbs` | Marketing site (`landing-page/`); `gymflow.sbs` redirects here | Separate static deployment |
 
 ### Domain Isolation Security
 
@@ -563,9 +563,10 @@ while the service role (used by the admin API) bypasses RLS.
 
 ## Two Separate Push Systems
 
-> **Note.** Only the Firebase (admin mobile) system exists in the current code. Web Push with
-> VAPID keys belonged to the standalone member app, which has been merged into the root app
-> without it. The VAPID notes below are kept for anyone who wants to add Web Push back.
+> **Note.** Member Web Push is back in the root app: subscriptions live in `member_push_subscriptions`,
+> sends go through QStash to `/api/push/send`, and the whole feature stays off until the three VAPID
+> variables below (plus `VAPID_SUBJECT`) are set. See `lib/push/README.md`. The Firebase (admin
+> mobile) system is separate and unchanged.
 
 The project has two unrelated push mechanisms. Keep them distinct — they use different
 keys, different transports, and different audiences.
@@ -587,6 +588,7 @@ public/private pair:
 |-----|---------|
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Shared with the browser so it can subscribe to push |
 | `VAPID_PRIVATE_KEY` | Stays on the server to sign outgoing push messages |
+| `VAPID_SUBJECT` | `mailto:you@example.com` or an https URL identifying the sender |
 
 Generate a pair with:
 ```bash

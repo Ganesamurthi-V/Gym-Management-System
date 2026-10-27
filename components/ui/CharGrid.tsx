@@ -6,9 +6,9 @@ import * as THREE from 'three'
 /* ═══════════════════════════════════════════════════════════════════════════
    CharGrid — a flow field rendered as a grid of characters.
 
-   Ported from landing-page-1/src/components/CharGrid.tsx, which is the canonical
+   Ported from landing-page/src/components/CharGrid.tsx, which is the canonical
    copy. The two are separate builds with no shared package: the root has no npm
-   workspaces and tsconfig.json excludes landing-page-1 outright, so there is no
+   workspaces and tsconfig.json excludes landing-page outright, so there is no
    import path between them and this is a deliberate duplicate. The shader is
    identical on purpose — the point of it here is that the login panel carries the
    same effect as the marketing hero. If the shader changes in one, it has to change

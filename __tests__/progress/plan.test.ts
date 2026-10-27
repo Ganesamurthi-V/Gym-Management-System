@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, adviceFor, buildPlan, planMessage, targetDateValid, type PlanInput } from '@/lib/progress/plan'
+import { addDays, addDaysIso, adviceFor, buildPlan, buildStructuredPlan, planMessage, targetDateValid, type PlanInput } from '@/lib/progress/plan'
 import { bodyProfileSchema } from '@/lib/progress/validate'
 
 const TODAY = '2026-10-28'
@@ -110,5 +110,47 @@ describe('targetDateValid and schema', () => {
     expect(bodyProfileSchema.safeParse({ ...ok, target_weight_kg: 70 }).success).toBe(false)
     expect(bodyProfileSchema.safeParse({ ...ok, target_date: '2027-01-01' }).success).toBe(false)
     expect(bodyProfileSchema.safeParse({ ...ok, target_weight_kg: 5, target_date: '2027-01-01' }).success).toBe(false)
+  })
+})
+
+describe('addDaysIso', () => {
+  it('adds days across month and year ends', () => {
+    expect(addDaysIso('2026-10-28', 90)).toBe('2027-01-26')
+    expect(addDaysIso('2026-12-31', 1)).toBe('2027-01-01')
+  })
+})
+
+describe('buildStructuredPlan', () => {
+  it('lose_fat: milestones on a straight line, capped at 8', () => {
+    const s = buildStructuredPlan(base, TODAY) // 91 days, 80 -> 72
+    expect(s.milestones.length).toBeLessThanOrEqual(8)
+    const last = s.milestones[s.milestones.length - 1]
+    expect(last).toEqual({ week: 13, date: '2027-01-27', expectedWeightKg: 72 })
+    expect(s.milestones[0].date).toBe(addDays(TODAY, 14))
+    expect(s.milestones[0].expectedWeightKg).toBe(78.8)
+    expect(s.nutrition[0]).toContain('112 to 160 g')
+    expect(s.nutrition.join(' ')).toContain('500 to 1,000 kcal')
+    expect(s.checkpointsToday?.milestone.date).toBe(s.milestones[0].date)
+  })
+  it('under 14 days gives one end checkpoint; long plans cap at 8', () => {
+    expect(buildStructuredPlan({ ...base, targetWeightKg: 79, targetDate: addDays(TODAY, 10) }, TODAY).milestones).toHaveLength(1)
+    expect(buildStructuredPlan({ ...base, targetDate: addDays(TODAY, 730) }, TODAY).milestones).toHaveLength(8)
+  })
+  it('too fast adds an extend-days warning', () => {
+    const s = buildStructuredPlan({ ...base, targetWeightKg: 65, targetDate: '2026-12-09' }, TODAY)
+    expect(s.nutrition.some((l) => l.includes('Extend your days'))).toBe(true)
+  })
+  it('build_muscle: 3 strength days, light cardio, no calorie numbers', () => {
+    const s = buildStructuredPlan({ ...base, goal: 'build_muscle', targetWeightKg: 84 }, TODAY)
+    expect(s.weekly[0]).toContain('3 days')
+    expect(s.weekly[1]).toContain('Light cardio')
+    expect(s.nutrition.join(' ')).not.toContain('kcal')
+  })
+  it('stay_fit has no milestones; all lines are short', () => {
+    const s = buildStructuredPlan({ ...base, goal: 'stay_fit' }, TODAY)
+    expect(s.milestones).toEqual([])
+    expect(s.checkpointsToday).toBeNull()
+    expect(s.nutrition).toHaveLength(1)
+    for (const l of [...s.weekly, ...s.nutrition]) expect(l.length).toBeLessThan(140)
   })
 })

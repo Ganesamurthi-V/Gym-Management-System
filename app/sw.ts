@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
 import { CacheFirst, ExpirationPlugin, NetworkOnly, Serwist } from 'serwist'
+import { safePushUrl } from '../lib/push/url'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -85,6 +86,58 @@ self.addEventListener('message', (event) => {
   if (event.data?.type !== 'CLEAR_RUNTIME_CACHES') return
   event.waitUntil(
     caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name)))),
+  )
+})
+
+/**
+ * Web Push (member app only; owners never subscribe). The payload has no personal data because
+ * lock screens are public. A malformed payload still shows a generic message: browsers penalise
+ * a push event that shows nothing.
+ */
+self.addEventListener('push', (event) => {
+  let title = 'GymFlow'
+  let body = 'You have a new message'
+  let tag = 'gymflow'
+  let url = '/m/home'
+  try {
+    const data = event.data?.json()
+    if (typeof data?.title === 'string' && data.title) title = data.title
+    if (typeof data?.body === 'string' && data.body) body = data.body
+    if (typeof data?.tag === 'string' && data.tag) tag = data.tag
+    url = data?.url
+  } catch {
+    /* keep the generic text */
+  }
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/favicon-192.png',
+      badge: '/favicon-192.png',
+      tag,
+      data: { url: safePushUrl(url) },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = safePushUrl(event.notification.data?.url)
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of windows) {
+        const { origin, pathname } = new URL(client.url)
+        if (origin !== self.location.origin || !(pathname === '/m' || pathname.startsWith('/m/'))) continue
+        await client.focus()
+        if ('navigate' in client) {
+          await client.navigate(target)
+        } else {
+          client.postMessage({ type: 'NAVIGATE', url: target })
+        }
+        return
+      }
+      await self.clients.openWindow(target)
+    })(),
   )
 })
 

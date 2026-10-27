@@ -708,6 +708,22 @@ CREATE TABLE IF NOT EXISTS member_workout_sessions (
   CONSTRAINT uq_member_workout_sessions_client UNIQUE (member_id, client_id)
 );
 
+-- ── member_push_subscriptions ────────────────────────────────
+-- Member Web Push endpoints and keys. No policies and no table privileges: only register_push_subscription /
+-- unregister_push_subscription (SECURITY DEFINER) and the service-role sender touch it. Limits mirror PUSH_LIMITS in types/push.ts.
+CREATE TABLE IF NOT EXISTS member_push_subscriptions (
+  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id          UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id       UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  endpoint        TEXT        NOT NULL UNIQUE CHECK (char_length(endpoint) <= 600),
+  p256dh          TEXT        NOT NULL CHECK (char_length(p256dh) <= 200),
+  auth            TEXT        NOT NULL CHECK (char_length(auth) <= 100),
+  user_agent      TEXT        CHECK (char_length(user_agent) <= 300),
+  failure_count   INTEGER     NOT NULL DEFAULT 0,
+  last_success_at TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ── owner_feedback_prompts ───────────────────────────────────
 -- When the feedback pop-up was last shown to each gym owner. Kept in the
 -- database rather than the browser so a closed tab or a second device does not
@@ -1039,6 +1055,7 @@ BEGIN
     ('member_body_logs',       'fk_member_body_logs_member_same_gym','member_id',    'members', 'CASCADE'),
     ('member_body_profile',    'fk_member_body_profile_member_same_gym','member_id', 'members', 'CASCADE'),
     ('member_workout_sessions','fk_member_workout_sessions_member_same_gym','member_id','members', 'CASCADE'),
+    ('member_push_subscriptions','fk_member_push_subscriptions_member_same_gym','member_id','members', 'CASCADE'),
     ('attendance',             'fk_attendance_member_same_gym',      'member_id',    'members', 'CASCADE'),
     ('due_payments',           'fk_due_payments_member_same_gym',    'member_id',    'members', 'CASCADE'),
     ('member_portal_activity', 'fk_portal_activity_member_same_gym', 'member_id',    'members', 'CASCADE'),
@@ -1289,6 +1306,11 @@ CREATE INDEX IF NOT EXISTS idx_member_body_logs_member_day
   ON member_body_logs (member_id, logged_on DESC);
 CREATE INDEX IF NOT EXISTS idx_member_workout_sessions_member_started
   ON member_workout_sessions (member_id, started_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_member_push_subscriptions_gym
+  ON member_push_subscriptions (gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_push_subscriptions_member
+  ON member_push_subscriptions (member_id);
 
 -- ────────────────────────────────────────────────────────────
 -- indexes on members
@@ -2435,6 +2457,144 @@ BEGIN
 
   RETURN v_id;
 END;
+$$;
+
+DROP FUNCTION IF EXISTS public.register_push_subscription(TEXT, TEXT, TEXT, TEXT);
+CREATE FUNCTION public.register_push_subscription(
+  p_endpoint   TEXT,
+  p_p256dh     TEXT,
+  p_auth       TEXT,
+  p_user_agent TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_gym_id    UUID;
+BEGIN
+  SELECT m.id, m.gym_id INTO v_member_id, v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  IF p_endpoint IS NULL OR char_length(p_endpoint) NOT BETWEEN 10 AND 600
+     OR p_p256dh IS NULL OR char_length(p_p256dh) NOT BETWEEN 1 AND 200
+     OR p_auth IS NULL OR char_length(p_auth) NOT BETWEEN 1 AND 100 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_VALUE';
+  END IF;
+
+  -- A shared phone: the same endpoint moves to whoever is signed in now.
+  INSERT INTO public.member_push_subscriptions
+    (gym_id, member_id, endpoint, p256dh, auth, user_agent)
+  VALUES
+    (v_gym_id, v_member_id, p_endpoint, p_p256dh, p_auth, left(p_user_agent, 300))
+  ON CONFLICT (endpoint) DO UPDATE
+    SET gym_id        = EXCLUDED.gym_id,
+        member_id     = EXCLUDED.member_id,
+        p256dh        = EXCLUDED.p256dh,
+        auth          = EXCLUDED.auth,
+        user_agent    = EXCLUDED.user_agent,
+        failure_count = 0;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.unregister_push_subscription(TEXT);
+CREATE FUNCTION public.unregister_push_subscription(p_endpoint TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_count     INTEGER;
+BEGIN
+  SELECT m.id INTO v_member_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  DELETE FROM public.member_push_subscriptions s
+   WHERE s.endpoint = p_endpoint
+     AND s.member_id = v_member_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count > 0;
+END;
+$$;
+
+-- Members of one gym whose streak is alive (>= 2 days) but who have not checked in today (IST). Used by the evening
+-- push nudge (/api/cron/push-evening). Mirrors get_gym_leaderboard() / get_member_gamification() and lib/gamification/streak.ts
+-- streakFromDays: effective day with the 05:00 IST rollover, days after the IST today ignored, alive while
+-- last day >= (IST date of now - 5 h) - 1, pending while last day < IST today. Only members with a push subscription.
+-- Service-role only: it takes a gym id, so it must never be callable by clients.
+DROP FUNCTION IF EXISTS public.members_streak_at_risk(UUID);
+CREATE FUNCTION public.members_streak_at_risk(p_gym_id UUID)
+RETURNS TABLE (member_id UUID)
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+  WITH t AS (
+    SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date AS ist_today,
+           ((now() - INTERVAL '5 hours') AT TIME ZONE 'Asia/Kolkata')::date AS gym_today
+  ),
+  days AS (
+    SELECT DISTINCT
+           a.member_id AS mid,
+           CASE
+             WHEN (a.created_at AT TIME ZONE 'Asia/Kolkata')::date = a.date
+                  AND (a.created_at AT TIME ZONE 'Asia/Kolkata')::time < TIME '05:00'
+             THEN CASE
+                    WHEN NOT EXISTS (
+                      SELECT 1 FROM public.attendance p
+                       WHERE p.member_id = a.member_id
+                         AND p.date = a.date - 1
+                    )
+                    THEN a.date - 1
+                    ELSE a.date
+                  END
+             ELSE a.date
+           END AS day
+      FROM public.attendance a
+     WHERE a.gym_id = p_gym_id
+       AND EXISTS (SELECT 1 FROM public.member_push_subscriptions s WHERE s.member_id = a.member_id AND s.gym_id = p_gym_id)
+  ),
+  runs AS (
+    SELECT d.mid, d.day,
+           d.day - (ROW_NUMBER() OVER (PARTITION BY d.mid ORDER BY d.day))::int AS grp
+      FROM days d, t
+     WHERE d.day <= t.ist_today
+  ),
+  islands AS (
+    SELECT r.mid, COUNT(*)::int AS len, MAX(r.day) AS last_day
+      FROM runs r
+     GROUP BY r.mid, r.grp
+  ),
+  cur AS (
+    SELECT DISTINCT ON (i.mid) i.mid, i.len, i.last_day
+      FROM islands i
+     ORDER BY i.mid, i.last_day DESC
+  )
+  SELECT c.mid
+    FROM cur c, t
+   WHERE c.last_day >= t.gym_today - 1
+     AND c.last_day < t.ist_today
+     AND c.len >= 2;
 $$;
 
 -- ────────────────────────────────────────────────────────────
@@ -5477,6 +5637,7 @@ ALTER TABLE member_renewal_requests   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_logs         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_profile      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_workout_sessions  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_audit_logs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_settings        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_announcement    ENABLE ROW LEVEL SECURITY;
@@ -6486,6 +6647,15 @@ REVOKE ALL ON FUNCTION public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE) FR
 GRANT EXECUTE ON FUNCTION public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE) TO authenticated;
 REVOKE ALL ON FUNCTION public.save_workout_session(UUID, TEXT, TEXT, TIMESTAMPTZ, INTEGER, JSONB) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.save_workout_session(UUID, TEXT, TEXT, TIMESTAMPTZ, INTEGER, JSONB) TO authenticated;
+
+-- Member push: no direct table access at all; only the functions below and the service-role sender.
+REVOKE ALL ON public.member_push_subscriptions FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.register_push_subscription(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.register_push_subscription(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.unregister_push_subscription(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.unregister_push_subscription(TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.members_streak_at_risk(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.members_streak_at_risk(UUID) TO service_role;
 
 -- Member app gate: called by the member policies and RPCs as the member.
 REVOKE ALL ON FUNCTION public.member_app_allowed()    FROM PUBLIC, anon;

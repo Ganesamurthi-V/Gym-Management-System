@@ -76,7 +76,7 @@ function plannedNumber(text: string | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-function newClientId(): string {
+export function newClientId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.floor(Math.random() * 16)

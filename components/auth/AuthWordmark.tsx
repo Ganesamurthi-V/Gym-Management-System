@@ -15,7 +15,7 @@ import Image from 'next/image'
  * a square mark plus a hand-set "gymflow" span sitting beside it, so the spacing, weight and
  * letterforms are now the brand's rather than whatever Tailwind classes approximated them.
  *
- * The .png rather than the .webp of the same lockup that landing-page-1 uses. Next's image
+ * The .png rather than the .webp of the same lockup that landing-page uses. Next's image
  * optimizer is on — there is no `images` block in next.config.mjs, so `formats` defaults to
  * WebP — which means this is delivered to the browser as WebP whatever the source format is.
  * The extension here only decides what the optimizer reads, and on that the PNG wins twice:

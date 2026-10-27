@@ -8,6 +8,8 @@ import { isIsoDate } from '@/app/api/_guard'
 import { sendRenewalMessage, cancelReminderCycles } from '@/lib/whatsapp/automation'
 import { renewalStartDate, renewalEndDate } from '@/lib/renewal/dates'
 import { approveRenewalSchema, isStartDateInWindow } from '@/lib/renewal/validate'
+import { publishPushJob } from '@/lib/push/publish'
+import { PUSH_COPY } from '@/lib/push/payload'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +60,8 @@ export const POST = withAuth('RENEWAL_REQUEST_APPROVE', async (req: NextRequest,
     } catch (err) {
       log.error('Due payment cache bust failed', err)
     }
+    void publishPushJob({ gymId: gym.id, kind: 'payment_decision', ref: `${id}-approved`, memberIds: [request.member_id], body: PUSH_COPY.dueApproved, url: '/m/notifications' })
+      .catch(err => log.error('Due approval push publish failed', err))
     return apiSuccess(result as DueApproveResult)
   }
 
@@ -133,6 +137,9 @@ export const POST = withAuth('RENEWAL_REQUEST_APPROVE', async (req: NextRequest,
   } catch (err) {
     log.error('Renewal WhatsApp step failed', err)
   }
+
+  void publishPushJob({ gymId: gym.id, kind: 'payment_decision', ref: `${id}-approved`, memberIds: [request.member_id], body: PUSH_COPY.renewalApproved, url: '/m/notifications' })
+    .catch(err => log.error('Renewal approval push publish failed', err))
 
   return apiSuccess({ membershipId, startDate, endDate })
 }, { rateLimit: 30 })

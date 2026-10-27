@@ -13,8 +13,11 @@ import { NotificationBell } from '@/components/member/NotificationBell'
 import { startPageTimer } from '@/lib/perf'
 import { formatCurrency, todayIST } from '@/lib/utils'
 import { quoteForDate } from '@/lib/member/daily-quote'
-import { workoutToday } from '@/lib/member/todays-workout'
+import { cookies } from 'next/headers'
+import { workoutToday, programsForHome, MY_PROGRAM_COOKIE } from '@/lib/member/todays-workout'
 import { greetingForHour, istHour } from '@/lib/member/greeting'
+import { PushReminderBanner } from '@/components/member/PushReminderBanner'
+import { isPushConfigured, vapidPublicKey } from '@/lib/push/config'
 
 // No `revalidate` export: this page reads the auth cookie, which already makes
 // it dynamic. A route-level `revalidate` cannot cache per-user responses in the
@@ -48,10 +51,12 @@ export default async function HomePage() {
 
   done()
 
+  const pushKey = isPushConfigured() ? vapidPublicKey() : null
   const firstName = member.name.split(' ')[0]
   const goal = weeklyGoalProgress(game.daysLast7, game.weeklyGoalDays)
   const pendingAmount = member.pending_amount > 0 ? member.pending_amount : 0
-  const workout = workoutToday(programs, todayIST())
+  const chosenProgramId = (await cookies()).get(MY_PROGRAM_COOKIE)?.value
+  const workout = workoutToday(programsForHome(programs, chosenProgramId), todayIST())
 
   const statusConfig = {
     active:   { icon: CheckCircle2, text: `Active · ${daysLeft} days left`,   colour: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -85,6 +90,8 @@ export default async function HomePage() {
         {quoteForDate(todayIST())}
       </blockquote>
 
+      {pushKey && <PushReminderBanner publicKey={pushKey} />}
+
       {/* Pending dues: only when the member owes something. A notice, not a link: payment is made at the gym. */}
       {pendingAmount > 0 && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -106,7 +113,7 @@ export default async function HomePage() {
           it is the thing a member opens the app to do. */}
       {workout.kind === 'workout' && (
         <Link
-          href="/m/workout"
+          href={`/m/workout?program=${workout.workout.programId}`}
           className="mb-5 block rounded-2xl bg-brand-500 p-5 text-white shadow-sm transition-all active:scale-[0.98]"
         >
           <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">

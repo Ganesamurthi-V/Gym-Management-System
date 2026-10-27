@@ -37,6 +37,11 @@ export function addDays(date: string, days: number): string {
   return new Date((dayNumber(date) + days) * 86_400_000).toISOString().slice(0, 10)
 }
 
+/** Today (IST 'YYYY-MM-DD') plus n days: the saved target date when the member enters "days to reach". */
+export function addDaysIso(todayIso: string, n: number): string {
+  return addDays(todayIso, n)
+}
+
 /** True when date is after today and within TARGET_MAX_DAYS. */
 export function targetDateValid(date: string, today: string): boolean {
   const d = dayNumber(date) - dayNumber(today)
@@ -160,6 +165,71 @@ export function verdictTone(v: Verdict): 'warn' | 'good' | 'neutral' {
   if (v === 'too_fast' || v === 'wrong_direction' || v === 'passed') return 'warn'
   if (v === 'safe' || v === 'reached') return 'good'
   return 'neutral'
+}
+
+export interface Milestone { week: number; date: string; expectedWeightKg: number }
+
+export interface StructuredPlan {
+  milestones: Milestone[]
+  weekly: string[]
+  nutrition: string[]
+  /** Next milestone dated today or later, and kg the current weight is from its expected weight (current minus expected). */
+  checkpointsToday: { milestone: Milestone; diffKg: number } | null
+}
+
+/**
+ * Milestones on a straight line from the current weight to the target on the target date (about every 2 weeks,
+ * at most 8; one end checkpoint under 14 days), plus the weekly template and eating lines. No milestones for stay_fit.
+ */
+export function buildStructuredPlan(input: PlanInput, today: string): StructuredPlan {
+  const { goal, currentWeightKg: current, targetWeightKg: target } = input
+  const gain = goal === 'build_muscle' || goal === 'gain_weight'
+  const days = dayNumber(input.targetDate) - dayNumber(today)
+
+  const milestones: Milestone[] = []
+  if (goal !== 'stay_fit' && days > 0) {
+    const step = days < 14 ? days : Math.max(14, Math.ceil(days / 8))
+    const offsets: number[] = []
+    for (let d = step; d < days; d += step) offsets.push(d)
+    offsets.push(days)
+    for (const d of offsets) {
+      milestones.push({
+        week: Math.round(d / 7),
+        date: addDays(today, d),
+        expectedWeightKg: r1(current + (target - current) * (d / days)),
+      })
+    }
+  }
+
+  const next = milestones.find((m) => m.date >= today)
+  const checkpointsToday = next ? { milestone: next, diffKg: r1(current - next.expectedWeightKg) } : null
+
+  const weekly = [
+    gain
+      ? 'Strength training on 3 days, covering all major muscle groups (WHO 2020).'
+      : 'Strength training on at least 2 days, covering all major muscle groups (WHO 2020).',
+    gain
+      ? 'Light cardio only on your other days, about 75 to 150 minutes a week.'
+      : 'About 150 minutes of moderate activity a week, split over your other days (WHO 2020).',
+    'Take one full rest day.',
+    'Weigh in once a week, on the same morning.',
+    'Take tape measurements every 4 weeks.',
+  ]
+
+  const nutrition = [
+    `Protein: about ${Math.round(current * 1.4)} to ${Math.round(current * 2.0)} g a day, for your ${r1(current)} kg (ISSN 2017).`,
+  ]
+  if (goal === 'lose_fat') {
+    nutrition.push('A daily calorie deficit of roughly 500 to 1,000 kcal gives the healthy 0.45 to 0.9 kg a week (CDC).')
+    const p = buildPlan(input, today)
+    if (p?.verdict === 'too_fast' && p.suggestedDate) {
+      nutrition.push(`Your target needs more than 0.9 kg a week. Extend your days, to ${mediumDate(p.suggestedDate)} or later.`)
+    }
+  } else if (gain) {
+    nutrition.push('Eat a little above your usual, and add more only if your weight has not moved in 2 weeks.')
+  }
+
+  return { milestones, weekly, nutrition, checkpointsToday }
 }
 
 /** 3 to 4 short tips for the goal. Protein grams are for the member's current weight. */

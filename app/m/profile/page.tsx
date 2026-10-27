@@ -7,6 +7,8 @@ import { startPageTimer } from '@/lib/perf'
 import { LogoutButton } from '@/components/member/LogoutButton'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { LeaderboardVisibilitySwitch } from './LeaderboardVisibilitySwitch'
+import { PushToggle } from '@/components/member/PushToggle'
+import { isPushConfigured, vapidPublicKey } from '@/lib/push/config'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
 // route-level `revalidate` cannot be used for per-user pages.
@@ -48,6 +50,7 @@ export default async function ProfilePage() {
 
   done()
 
+  const pushKey = isPushConfigured() ? vapidPublicKey() : null
   const memberCode = member.member_code ?? `GF${String(member.member_number).padStart(5, '0')}`
 
   return (
@@ -125,6 +128,7 @@ export default async function ProfilePage() {
       <section className="card mb-5 p-4">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Privacy</p>
         <LeaderboardVisibilitySwitch initialVisible={member.show_on_leaderboard !== false} />
+        {pushKey && <PushToggle publicKey={pushKey} />}
       </section>
 
       {/* Sign out */}

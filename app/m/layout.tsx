@@ -7,6 +7,8 @@ import { getMemberAccessState } from '@/lib/member/member-data'
 import { getAuthUser } from '@/lib/dal'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { OWNER_HOME } from '@/lib/protected-routes'
+import { PushSync } from '@/components/member/PushSync'
+import { isPushConfigured } from '@/lib/push/config'
 
 /**
  * Member experience layout — also the authorization boundary for every
@@ -112,6 +114,7 @@ export default async function MemberLayout({
   return (
     <QueryProvider>
       <SessionLifecycle />
+      {isPushConfigured() && <PushSync />}
       <MemberShell>{children}</MemberShell>
     </QueryProvider>
   )

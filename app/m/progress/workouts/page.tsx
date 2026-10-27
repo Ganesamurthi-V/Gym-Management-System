@@ -28,7 +28,11 @@ export default async function WorkoutHistoryPage() {
                     <p className="text-xs font-semibold text-slate-400">{longDate(istDateOf(s.startedAt))}</p>
                     <p className="mt-0.5 truncate text-sm font-bold text-slate-900">{s.programName} · {s.dayLabel}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      {formatDuration(s.durationSeconds)} · {s.completedSets}/{s.totalSets} sets · {fmtNum(s.volumeKg)} kg
+                      {[
+                        s.durationSeconds > 0 ? formatDuration(s.durationSeconds) : null,
+                        `${s.completedSets}/${s.totalSets} sets`,
+                        s.volumeKg > 0 ? `${fmtNum(s.volumeKg)} kg` : null,
+                      ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />

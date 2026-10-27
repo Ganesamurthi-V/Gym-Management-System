@@ -5,6 +5,8 @@ import { getMemberNotifications } from '@/lib/member/notifications'
 import { MarkNotificationsSeen } from '@/components/member/MarkNotificationsSeen'
 import { istDateOf, shortDate } from '@/lib/progress/chart'
 import type { NoticeKind } from '@/types/notice'
+import { PushPrompt } from '@/components/member/PushPrompt'
+import { isPushConfigured, vapidPublicKey } from '@/lib/push/config'
 
 // Left border carries the kind; the kind word stays visible because colour alone is not enough.
 const NOTICE_STYLE: Record<NoticeKind, { border: string; label: string }> = {
@@ -18,6 +20,7 @@ const NOTICE_STYLE: Record<NoticeKind, { border: string; label: string }> = {
 export default async function NotificationsPage() {
   const [{ items, failed }, data] = await Promise.all([getMemberNotifications(), getMembershipPageData()])
   const gymName = data?.gym.name
+  const pushKey = isPushConfigured() ? vapidPublicKey() : null
 
   return (
     <div className="page-container py-6">
@@ -32,6 +35,8 @@ export default async function NotificationsPage() {
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Notifications</h1>
       </header>
+
+      {pushKey && <PushPrompt publicKey={pushKey} />}
 
       {failed && <p className="mb-4 text-sm text-slate-500">Could not load notifications</p>}
 

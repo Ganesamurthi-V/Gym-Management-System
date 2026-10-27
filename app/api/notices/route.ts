@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server'
 import { withAuth, apiSuccess, apiError } from '@/lib/api/withAuth'
 import { createNoticeSchema, mapNoticeRow, NOTICE_COLUMNS } from '@/lib/notices/validate'
+import { publishPushJob } from '@/lib/push/publish'
+import { PUSH_COPY } from '@/lib/push/payload'
+import { todayIST } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +37,12 @@ export const POST = withAuth(
       }
       log.error('Could not create notice', error)
       return apiError(500, 'SERVER_ERROR', 'Could not save the notice. Please try again.')
+    }
+
+    // Best effort and not awaited: a push problem must never fail or slow the owner's save.
+    if (data.is_active && (!data.expires_on || data.expires_on >= todayIST())) {
+      void publishPushJob({ gymId: gym.id, kind: 'notice', ref: data.id, body: PUSH_COPY.notice(data.title), url: '/m/notifications' })
+        .catch(err => log.error('Notice push publish failed', err))
     }
 
     return apiSuccess({ notice: mapNoticeRow(data) }, 201)

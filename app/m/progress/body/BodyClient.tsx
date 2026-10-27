@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2 } from 'lucide-react'
+import { Check, Trash2 } from 'lucide-react'
 import { api, GymFlowAPIError } from '@/lib/api/client'
 import { WeightChart } from '@/components/member/WeightChart'
-import { fmtNum, longDate, mediumDate } from '@/lib/progress/chart'
+import { dayNumber, fmtNum, longDate, mediumDate } from '@/lib/progress/chart'
 import {
-  BMI_WARNING_TEXT, NOT_MEDICAL_TEXT, TARGET_MAX_DAYS, addDays, adviceFor, buildPlan, planMessage, verdictTone,
+  BMI_WARNING_TEXT, NOT_MEDICAL_TEXT, TARGET_MAX_DAYS, addDaysIso, adviceFor, buildPlan, buildStructuredPlan, planMessage,
+  verdictTone,
 } from '@/lib/progress/plan'
 import { bmi, bmiCategory, buildReport, measurementsDue, weighInDue, type Tone } from '@/lib/progress/report'
 import { cn } from '@/lib/utils'
@@ -116,17 +117,26 @@ const VERDICT_CLASS = { warn: 'text-amber-600', good: 'text-emerald-600', neutra
 
 interface PlanBasis { heightCm: number; startWeightKg: number; startDate: string; currentWeightKg: number }
 
-/** Target weight and date, with a live one-line plan check. Hidden for "Stay fit" (no pace to check). */
+const TARGET_MIN_DAYS = 7
+const DAY_CHIPS = [30, 60, 90, 180]
+
+/** The typed day count as an integer within range, else null. */
+function parseDays(days: string): number | null {
+  const n = Number(days)
+  return days.trim() !== '' && Number.isInteger(n) && n >= TARGET_MIN_DAYS && n <= TARGET_MAX_DAYS ? n : null
+}
+
+/** Target weight and days to reach it, with a live one-line plan check. Hidden for "Stay fit" (no pace to check). */
 function TargetFields(props: {
-  goal: BodyGoal | null; today: string; basis: PlanBasis
-  weight: string; date: string; onWeight: (v: string) => void; onDate: (v: string) => void
+  goal: BodyGoal | null; today: string; basis: PlanBasis; editing?: boolean; passed?: boolean
+  weight: string; days: string; onWeight: (v: string) => void; onDays: (v: string) => void
 }) {
-  const { goal, today, basis, weight, date, onWeight, onDate } = props
+  const { goal, today, basis, weight, days, onWeight, onDays, editing, passed } = props
   if (!goal || goal === 'stay_fit') return null
   const tw = Number(weight)
-  const ready = weight.trim() !== '' && tw > 0 && date !== '' && basis.startWeightKg > 0 && basis.currentWeightKg > 0
-    && date > today && date <= addDays(today, TARGET_MAX_DAYS)
-  const plan = ready ? buildPlan({ goal, ...basis, targetWeightKg: tw, targetDate: date }, today) : null
+  const n = parseDays(days)
+  const ready = weight.trim() !== '' && tw > 0 && n != null && basis.startWeightKg > 0 && basis.currentWeightKg > 0
+  const plan = ready ? buildPlan({ goal, ...basis, targetWeightKg: tw, targetDate: addDaysIso(today, n) }, today) : null
   return (
     <div className="space-y-3">
       <Field label="Target weight (kg)">
@@ -135,12 +145,28 @@ function TargetFields(props: {
           value={weight} onChange={(e) => onWeight(e.target.value)} className={numberInput}
         />
       </Field>
-      <Field label="Target date">
+      <Field
+        label={editing ? 'Days left to reach your goal' : 'Days to reach your goal'}
+        help={passed && days === '' ? 'Your target date has passed. Set new days.' : `${TARGET_MIN_DAYS} to ${TARGET_MAX_DAYS} days`}
+      >
         <input
-          type="date" value={date} min={addDays(today, 1)} max={addDays(today, TARGET_MAX_DAYS)}
-          onChange={(e) => onDate(e.target.value)} className={numberInput}
+          type="number" inputMode="numeric" step="1" min={TARGET_MIN_DAYS} max={TARGET_MAX_DAYS}
+          value={days} onChange={(e) => onDays(e.target.value)} className={numberInput}
         />
       </Field>
+      <div className="flex flex-wrap gap-2">
+        {DAY_CHIPS.map((d) => (
+          <button
+            key={d} type="button" onClick={() => onDays(String(d))}
+            className={cn(
+              'min-h-[44px] rounded-xl border px-4 text-sm font-semibold',
+              days === String(d) ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-surface-border bg-surface-card text-slate-600',
+            )}
+          >
+            {d} days
+          </button>
+        ))}
+      </div>
       {plan && (
         <p className={cn('text-sm font-semibold', VERDICT_CLASS[verdictTone(plan.verdict)])}>
           {planMessage(plan, goal)}
@@ -152,10 +178,12 @@ function TargetFields(props: {
 }
 
 /** Both target fields or neither; returns the request fields, or an error text. */
-function targetBody(goal: BodyGoal, weight: string, date: string): { fields: Record<string, unknown> } | { error: string } {
-  if (goal === 'stay_fit' || (weight.trim() === '' && date === '')) return { fields: {} }
-  if (weight.trim() === '' || date === '') return { error: 'Enter both a target weight and a target date, or leave both empty.' }
-  return { fields: { target_weight_kg: Number(weight), target_date: date } }
+function targetBody(goal: BodyGoal, weight: string, days: string, today: string): { fields: Record<string, unknown> } | { error: string } {
+  if (goal === 'stay_fit' || (weight.trim() === '' && days.trim() === '')) return { fields: {} }
+  if (weight.trim() === '' || days.trim() === '') return { error: 'Enter both a target weight and the days to reach it, or leave both empty.' }
+  const n = parseDays(days)
+  if (n == null) return { error: `Days must be a whole number from ${TARGET_MIN_DAYS} to ${TARGET_MAX_DAYS}.` }
+  return { fields: { target_weight_kg: Number(weight), target_date: addDaysIso(today, n) } }
 }
 
 /** The first-time form: height, goal, weight and tape measurements, saved once as the baseline. */
@@ -164,7 +192,7 @@ function Baseline({ profile, today, onSaved }: { profile: BodyProfile | null; to
   const [goal, setGoal] = useState<BodyGoal | null>(profile?.goal ?? null)
   const [weight, setWeight] = useState('')
   const [targetWeight, setTargetWeight] = useState('')
-  const [targetDate, setTargetDate] = useState('')
+  const [targetDays, setTargetDays] = useState('')
   const [tape, setTape] = useState<Tape>(EMPTY_TAPE)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -176,7 +204,7 @@ function Baseline({ profile, today, onSaved }: { profile: BodyProfile | null; to
       setError('Enter your height, choose a goal and enter your weight.')
       return
     }
-    const target = targetBody(goal, targetWeight, targetDate)
+    const target = targetBody(goal, targetWeight, targetDays, today)
     if ('error' in target) {
       setError(target.error)
       return
@@ -219,7 +247,7 @@ function Baseline({ profile, today, onSaved }: { profile: BodyProfile | null; to
       <TargetFields
         goal={goal} today={today}
         basis={{ heightCm: Number(height), startWeightKg: Number(weight), startDate: today, currentWeightKg: Number(weight) }}
-        weight={targetWeight} date={targetDate} onWeight={setTargetWeight} onDate={setTargetDate}
+        weight={targetWeight} days={targetDays} onWeight={setTargetWeight} onDays={setTargetDays}
       />
       <div>
         <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Tape measurements (optional)</h3>
@@ -265,7 +293,7 @@ function GoalCard({ logs, profile, today, onSetTarget }: {
           type="button" onClick={onSetTarget}
           className="mt-1 min-h-[44px] text-left text-sm font-semibold text-brand-600"
         >
-          Set a target weight and date
+          Set a target weight and days
         </button>
       )}
       {hasTarget && current != null && (
@@ -304,6 +332,60 @@ function GoalCard({ logs, profile, today, onSetTarget }: {
       )}
       <p className="mt-3 text-xs text-slate-400">{NOT_MEDICAL_TEXT}</p>
     </section>
+  )
+}
+
+/** Milestones, weekly template and eating lines. Native details, closed by default. */
+function PlanCard({ logs, profile, today }: { logs: BodyLog[]; profile: BodyProfile; today: string }) {
+  const weighed = logs.filter((l) => l.weightKg != null)
+  const first = weighed[weighed.length - 1]
+  const current = weighed[0]?.weightKg ?? null
+  const stayFit = profile.goal === 'stay_fit'
+  const hasTarget = profile.targetWeightKg != null && profile.targetDate != null
+  if (!first || current == null || (!stayFit && !hasTarget)) return null
+  const plan = buildStructuredPlan({
+    goal: profile.goal, heightCm: profile.heightCm, startWeightKg: first.weightKg as number, startDate: first.loggedOn,
+    currentWeightKg: current, targetWeightKg: profile.targetWeightKg ?? current, targetDate: profile.targetDate ?? today,
+  }, today)
+  const sign = (profile.targetWeightKg ?? current) >= current ? 1 : -1
+  const heading = 'text-xs font-bold uppercase tracking-widest text-slate-400'
+  return (
+    <details className="card mb-4 p-4">
+      <summary className="min-h-[44px] cursor-pointer text-base font-bold text-slate-900">Your plan</summary>
+      {plan.milestones.length > 0 && (
+        <>
+          <h3 className={cn(heading, 'mt-2')}>Milestones</h3>
+          <ol className="mt-2 space-y-2 border-l border-surface-border pl-4">
+            {plan.milestones.map((m) => {
+              const reached = (current - m.expectedWeightKg) * sign >= 0
+              return (
+                <li key={m.date} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-slate-700">Week {m.week} · {mediumDate(m.date)}</span>
+                  <span className="flex items-center gap-1 font-bold text-slate-900">
+                    {fmtNum(m.expectedWeightKg)} kg
+                    {reached && <Check className="h-4 w-4 text-emerald-600" aria-label="Reached" />}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+          {plan.checkpointsToday && (
+            <p className="mt-2 text-sm text-slate-600">
+              Next: {mediumDate(plan.checkpointsToday.milestone.date)}, {fmtNum(plan.checkpointsToday.milestone.expectedWeightKg)} kg.
+              You are {fmtNum(Math.abs(plan.checkpointsToday.diffKg))} kg {plan.checkpointsToday.diffKg * sign >= 0 ? 'ahead of' : 'behind'} it.
+            </p>
+          )}
+        </>
+      )}
+      <h3 className={cn(heading, 'mt-4')}>Every week</h3>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+        {plan.weekly.map((t) => <li key={t}>{t}</li>)}
+      </ul>
+      <h3 className={cn(heading, 'mt-4')}>Eating</h3>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+        {plan.nutrition.map((t) => <li key={t}>{t}</li>)}
+      </ul>
+    </details>
   )
 }
 
@@ -351,14 +433,16 @@ function EditProfile({ profile, basis, today, open, setOpen, onDone }: {
   const [height, setHeight] = useState(String(profile.heightCm))
   const [goal, setGoal] = useState<BodyGoal>(profile.goal)
   const [targetWeight, setTargetWeight] = useState(profile.targetWeightKg != null ? String(profile.targetWeightKg) : '')
-  const [targetDate, setTargetDate] = useState(profile.targetDate ?? '')
+  const left = profile.targetDate != null ? dayNumber(profile.targetDate) - dayNumber(today) : null
+  const passed = left != null && left < 1
+  const [targetDays, setTargetDays] = useState(left != null && left >= 1 ? String(left) : '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const target = targetBody(goal, targetWeight, targetDate)
+    const target = targetBody(goal, targetWeight, targetDays, today)
     if ('error' in target) {
       setError(target.error)
       return
@@ -399,7 +483,8 @@ function EditProfile({ profile, basis, today, open, setOpen, onDone }: {
       </div>
       <TargetFields
         goal={goal} today={today} basis={{ ...basis, heightCm: Number(height) }}
-        weight={targetWeight} date={targetDate} onWeight={setTargetWeight} onDate={setTargetDate}
+        editing passed={passed}
+        weight={targetWeight} days={targetDays} onWeight={setTargetWeight} onDays={setTargetDays}
       />
       {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
       <div className="flex gap-2">
@@ -480,6 +565,8 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
   return (
     <>
       <GoalCard logs={logs} profile={profile} today={today} onSetTarget={() => setEditOpen(true)} />
+
+      <PlanCard logs={logs} profile={profile} today={today} />
 
       <ReportCard logs={logs} profile={profile} />
 

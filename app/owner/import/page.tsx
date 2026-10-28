@@ -4,11 +4,10 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw, FolderOpen, Search, Hash, CheckCircle2 } from "lucide-react";
 import { clearImportStorage, removeImportKeys } from "@/lib/import/storage";
 import Link from "next/link";
-import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   cellStr as sharedCellStr,
-  excelSerialToDate as sharedExcelSerialToDate,
   normalizePlan,
   normalizeGender,
   normalizePaymentMode,
@@ -19,7 +18,10 @@ import {
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
 import { checkImportFile, declaredUncompressedSize, MAX_SHEET_ROWS, MAX_SHEET_COLUMNS, MAX_XLSX_UNCOMPRESSED_BYTES } from "@/lib/import/schema";
-import { groupPlanNames, type PlanNameGroup } from "@/lib/import/plan-matching";
+import { groupPlanNames, recognizePlanMonths, type PlanNameGroup } from "@/lib/import/plan-matching";
+import { monthsForPlan, parseStartDate, planForMonths } from "@/lib/import/membershipDates";
+import { findGymPlan, gymChoiceValue, GYM_PREFIX, nearestStandard, suggestGymPlan, type GymPlanChoice } from "@/lib/import/gymPlans";
+import { todayIST } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
 import PlanNotice from "@/components/subscription/PlanNotice";
@@ -32,6 +34,14 @@ export interface ImportedRow {
   plan: string;
   category?: string;
   start_date: string;
+  /** Exact plan length in months when the sheet states one that differs from the plan label ("18 months" is labelled annual). */
+  duration_months?: number;
+  /** Name of the gym's own saved plan the owner linked this row to (the server re-checks it). */
+  plan_name?: string;
+  /** True when the sheet had no start date column, so today was filled in. The owner must confirm before importing. */
+  _start_defaulted?: boolean;
+  /** True while the start date is blank or unreadable; the row is skipped until the owner fixes it. */
+  _start_invalid?: boolean;
   amount: string;
   payment_mode: string;
   gender: string;
@@ -421,7 +431,6 @@ function getCol(row: any, colMap: Record<string, number>, field: string): string
   return cellStr(row.getCell(idx).value);
 }
 
-function excelSerialToDate(serial: number): string { return sharedExcelSerialToDate(serial); }
 
 const FIELD_LABELS: Record<string, string> = {
   member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan", category: "Category",
@@ -450,6 +459,8 @@ export default function ImportPage() {
   const [parsing, setParsing] = useState(false);
   const [parseStage, setParseStage] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  // The first click on the upload zone shows a plan reminder before the file picker opens (see the zone below).
+  const [planTip, setPlanTip] = useState<'hidden' | 'shown' | 'done'>('hidden');
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -457,6 +468,8 @@ export default function ImportPage() {
   // name collected into one group so the owner maps "Gold" once, not per spelling.
   const [unmappedPlans, setUnmappedPlans] = useState<PlanNameGroup[]>([]);
   const [planMapping, setPlanMapping] = useState<Record<string, string>>({});
+  // The gym's saved plans (Plans page). Empty = the built-in monthly / quarterly / annual choices only.
+  const [gymPlans, setGymPlans] = useState<GymPlanChoice[]>([]);
   const [tempImportState, setTempImportState] = useState<{
     parsedRows: ImportedRow[];
     detectedColumns: Record<string, string>;
@@ -543,6 +556,8 @@ export default function ImportPage() {
       try {
         setUnmappedPlans(JSON.parse(storedUnmapped));
         if (storedPlanMap) setPlanMapping(JSON.parse(storedPlanMap));
+        const storedGymPlans = sessionStorage.getItem("import_gym_plans");
+        if (storedGymPlans) setGymPlans(JSON.parse(storedGymPlans));
       } catch {}
     }
 
@@ -604,10 +619,27 @@ export default function ImportPage() {
     setParseStage(4);
 
     const mappedRows = currentState.parsedRows.map(r => {
-      if (r._rawPlan && planMapping[r._rawPlan]) {
+      const choice = r._rawPlan ? planMapping[r._rawPlan] : undefined;
+      if (r._rawPlan && choice) {
+        const gp = choice.startsWith(GYM_PREFIX) ? findGymPlan(gymPlans, choice.slice(GYM_PREFIX.length)) : undefined;
+        if (gp) {
+          // The chosen plan decides label, category and exact length; the server re-checks all three.
+          const label = planForMonths(gp.months);
+          return {
+            ...r,
+            plan: label,
+            category: gp.category,
+            plan_name: gp.planName,
+            duration_months: gp.months !== monthsForPlan(label) ? gp.months : undefined,
+          };
+        }
+        // A standard label keeps an exact stated length that belongs to it ("18 months" -> annual, 18).
+        const stated = recognizePlanMonths(r._rawPlan);
         return {
           ...r,
-          plan: planMapping[r._rawPlan],
+          plan: choice,
+          plan_name: undefined,
+          duration_months: stated !== null && planForMonths(stated) === choice && stated !== monthsForPlan(choice) ? stated : undefined,
         };
       }
       return r;
@@ -640,6 +672,7 @@ export default function ImportPage() {
       clearImportStorage();
       setUnmappedPlans([]);
       setPlanMapping({});
+      setGymPlans([]);
       setTempImportState(null);
       setHasRows(false);
     }
@@ -733,7 +766,7 @@ export default function ImportPage() {
       sessionStorage.setItem("import_column_mapping", JSON.stringify(userMapping));
       sessionStorage.setItem("import_column_mapping_applied", JSON.stringify(userMapping));
       // Everything downstream is rebuilt from this read of the sheet.
-      removeImportKeys("import_review_state", "import_plan_mapping_applied", "import_unmapped_plans", "import_plan_mapping", "import_temp_state");
+      removeImportKeys("import_review_state", "import_plan_mapping_applied", "import_unmapped_plans", "import_plan_mapping", "import_gym_plans", "import_temp_state");
       setUnmappedPlans([]);
       setPlanMapping({});
       setTempImportState(null);
@@ -777,6 +810,14 @@ export default function ImportPage() {
 
     const parsed: ImportedRow[] = [];
     const unrecognizedCounts: Record<string, number> = {};
+    // Loaded from the server (the Plans page's saved plans). A failure falls back to the built-in labels.
+    let ownPlans: GymPlanChoice[] = [];
+    try {
+      const res = await api.get<{ data?: { plans?: GymPlanChoice[] } }>("/api/import/gym-plans");
+      ownPlans = res?.data?.plans ?? [];
+    } catch { /* no saved plans -> built-in labels, exactly as before */ }
+    const today = todayIST();
+    const hasStartCol = !!colMap.start_date;
     ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
       if (rowIndex <= headerRowIndex) return;
       const name = getCol(row, colMap, "name");
@@ -799,29 +840,19 @@ export default function ImportPage() {
       const rawMemberNum = getCol(row, colMap, "member_number");
       const { number: member_number, original: legacy_member_id } = normalizeMemberNumber(rawMemberNum);
 
-      let start_date: string;
-      const rawDateTrimmed = rawDate.trim();
-      const datetimeMatch = rawDateTrimmed.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (datetimeMatch) {
-        start_date = datetimeMatch[1];
-      } else {
-        const dateNum = Number(rawDateTrimmed);
-        if (!isNaN(dateNum) && rawDateTrimmed !== "" && !rawDateTrimmed.includes("-") && !rawDateTrimmed.includes("/")) {
-          start_date = excelSerialToDate(dateNum);
-        } else if (rawDateTrimmed.includes("/")) {
-          const parts = rawDateTrimmed.split("/");
-          if (parts.length === 3) {
-            const [a, b, c] = parts;
-            start_date = `${c.length === 4 ? c : "20" + c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-          } else { start_date = format(new Date(), "yyyy-MM-dd"); }
-        } else { start_date = rawDateTrimmed || format(new Date(), "yyyy-MM-dd"); }
-      }
+      // A blank or unreadable start date is never replaced by today: that would hand an
+      // existing member a fresh full plan. The row is held back until the owner fixes it.
+      const startResult = hasStartCol ? parseStartDate(rawDate, today) : null;
+      const start_date = startResult ? (startResult.ok ? startResult.date : "") : today;
+      const statedMonths = rawPlan ? recognizePlanMonths(rawPlan) : null;
+      const duration_months = statedMonths !== null && statedMonths !== monthsForPlan(plan) ? statedMonths : undefined;
 
       let _error = "";
       if (!name) _error = "Missing name";
       else if (phone && phone.length !== 10) _error = "Invalid phone";
+      else if (startResult && !startResult.ok) _error = startResult.message;
 
-      if (rawPlan && !isRecognizedPlan(rawPlan)) {
+      if (rawPlan && (ownPlans.length > 0 || !isRecognizedPlan(rawPlan))) {
         const key = rawPlan.trim();
         unrecognizedCounts[key] = (unrecognizedCounts[key] ?? 0) + 1;
       }
@@ -833,6 +864,9 @@ export default function ImportPage() {
         category,
         _rawPlan: rawPlan ? rawPlan.trim() : undefined,
         start_date,
+        duration_months,
+        _start_defaulted: hasStartCol ? undefined : true,
+        _start_invalid: startResult && !startResult.ok ? true : undefined,
         amount,
         payment_mode,
         gender,
@@ -842,7 +876,7 @@ export default function ImportPage() {
         member_number,
         legacy_member_id: legacy_member_id || undefined,
         _rowId: parsed.length,
-        _status: !name ? "error" : "ok",
+        _status: !name || (startResult && !startResult.ok) ? "error" : "ok",
         _error
       });
     });
@@ -852,9 +886,14 @@ export default function ImportPage() {
       setUnmappedPlans(unrecognizedGroups);
       const initialMapping: Record<string, string> = {};
       Object.keys(unrecognizedCounts).forEach(p => {
-        initialMapping[p] = "monthly";
+        if (ownPlans.length === 0) { initialMapping[p] = "monthly"; return; }
+        // Suggestion only. "" stays visibly unresolved until the owner picks.
+        const name = suggestGymPlan(p, ownPlans);
+        initialMapping[p] = name ? gymChoiceValue(name) : (nearestStandard(p) ?? "");
       });
       setPlanMapping(initialMapping);
+      setGymPlans(ownPlans);
+      sessionStorage.setItem("import_gym_plans", JSON.stringify(ownPlans));
       const tempState = {
         parsedRows: parsed,
         detectedColumns: summaryMapping,
@@ -1129,7 +1168,9 @@ export default function ImportPage() {
           </div>
           <h2 className="text-2xl font-bold text-slate-800">Map Unrecognized Memberships</h2>
           <p className="text-sm text-slate-500 mt-1 max-w-lg mx-auto">
-            These plan names in your file do not say how long they run. Spellings of the same name are grouped together, so choose a duration once for each.
+            {gymPlans.length > 0
+              ? "Choose which of your plans each value in your file belongs to. Spellings of the same name are grouped together, so choose once for each. The plan decides the length, so the end date counts from each member's start date."
+              : "These plan names in your file do not say how long they run. Spellings of the same name are grouped together, so choose a duration once for each."}
           </p>
         </div>
 
@@ -1191,7 +1232,7 @@ export default function ImportPage() {
                       <span className="text-slate-400 font-bold hidden sm:inline">→</span>
                       <select
                         aria-label={`Duration for ${group.label}`}
-                        value={planMapping[group.label] || "monthly"}
+                        value={planMapping[group.label] ?? (gymPlans.length > 0 ? "" : "monthly")}
                         onChange={(e) => {
                           const nextPlanMap = {
                             ...planMapping,
@@ -1202,10 +1243,25 @@ export default function ImportPage() {
                         }}
                         className="w-full sm:w-auto px-3 py-2.5 sm:py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-surface text-slate-700 font-bold min-w-[180px]"
                       >
-                        <option value="monthly">Monthly (1 Month)</option>
-                        <option value="quarterly">Quarterly (3 Months)</option>
-                        <option value="annual">Annual (1 Year)</option>
+                        {gymPlans.length > 0 && <option value="" disabled>Choose a plan</option>}
+                        {gymPlans.length > 0 && (
+                          <optgroup label="Your plans">
+                            {gymPlans.map(p => (
+                              <option key={p.planName} value={gymChoiceValue(p.planName)}>
+                                {p.planName} · {p.months} {p.months === 1 ? "month" : "months"} · ₹{p.price}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        <optgroup label={gymPlans.length > 0 ? "Standard length only" : "Duration"}>
+                          <option value="monthly">Monthly (1 Month)</option>
+                          <option value="quarterly">Quarterly (3 Months)</option>
+                          <option value="annual">Annual (1 Year)</option>
+                        </optgroup>
                       </select>
+                      {gymPlans.length > 0 && !planMapping[group.label] && (
+                        <span className="text-xs font-bold text-amber-600">Not linked yet</span>
+                      )}
                     </div>
                   </div>
                 );
@@ -1218,9 +1274,17 @@ export default function ImportPage() {
                   Changing a duration here rebuilds the member list, so edits made in the later steps are reset. Leave them as they are to keep your edits.
                 </p>
               )}
+              <p className="text-xs text-slate-500 text-center">
+                {gymPlans.length > 0 ? "Missing a plan? " : "You have not saved any plans yet. "}
+                <Link href="/owner/plans" className="font-bold text-brand-600 hover:text-brand-700">
+                  {gymPlans.length > 0 ? "Manage your plans" : "Add your plans"}
+                </Link>
+                {gymPlans.length > 0 ? ", then upload the file again." : " to link them here next time."}
+              </p>
               <button
                 onClick={applyPlanMappingAndProceed}
-                className="btn-primary flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
+                disabled={gymPlans.length > 0 && unmappedPlans.some(g => g.variants.some(v => !planMapping[v.raw]))}
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group relative overflow-hidden w-full py-3"
               >
                 <span className="relative z-10 flex items-center gap-2 font-bold text-sm">
                   Confirm & Proceed <ArrowRight className="w-4 h-4" />
@@ -1311,10 +1375,63 @@ export default function ImportPage() {
         />
       )}
 
+      {/* Plan reminder: a centred popup over a blurred page, portalled so AppShell does not clip it. */}
+      {planTip === 'shown' && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-sm"
+          onClick={() => setPlanTip('hidden')}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plan-tip-title"
+            className="w-full max-w-md rounded-2xl border border-surface-border bg-surface-card p-6 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                  <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <h2 id="plan-tip-title" className="text-base font-bold text-slate-900">Update your plans first</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPlanTip('hidden')}
+                aria-label="Close"
+                className="-mr-2 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Before you import, update all of your existing membership plans so every member&apos;s plan is matched smoothly.
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <Link
+                href="/owner/plans"
+                className="flex min-h-[44px] w-full items-center justify-center whitespace-nowrap rounded-xl bg-brand-500 px-4 text-sm font-bold text-white hover:bg-brand-600"
+              >
+                Update my plans
+              </Link>
+              <button
+                type="button"
+                onClick={() => { setPlanTip('done'); fileInputRef.current?.click(); }}
+                className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-slate-200 bg-surface px-4 py-2 text-center text-sm font-bold text-slate-700 hover:border-brand-400 sm:whitespace-nowrap"
+              >
+                My plans are up to date. Choose file
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       {/* Drag & Drop Upload Zone. Hidden when the plan is full so no file can be chosen
           (the server still enforces the cap; this is convenience). */}
       {importLimit?.maxRows !== 0 && (
       <label
+        onClick={e => { if (planTip === 'hidden') { e.preventDefault(); setPlanTip('shown'); } }}
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}

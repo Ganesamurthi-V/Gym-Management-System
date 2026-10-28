@@ -1025,3 +1025,13 @@ describe('gym_prize_awarded (event send)', () => {
     })
   })
 })
+
+describe('3-month reminder window (import batch)', () => {
+  it('skips a long-expired member but still queues a recently expired one', async () => {
+    addMember({ id: 'old', memberships: [{ plan: 'monthly', end_date: label(-120), created_at: label(-150) }] })
+    addMember({ id: 'recent', memberships: [{ plan: 'monthly', end_date: label(-10), created_at: label(-40) }] })
+    await runImportBatchAutomation({ gymId: 'gym-1', memberIds: ['old', 'recent'] })
+    const queued = h.store.whatsapp_send_queue.map((r: any) => r.member_id)
+    expect(queued).toEqual(['recent'])
+  })
+})

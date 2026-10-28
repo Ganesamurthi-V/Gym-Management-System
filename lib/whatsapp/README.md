@@ -147,6 +147,17 @@ longer than that. A permanent prepare failure (already activated, no phone, emai
 `failed` without sending; a transient one retries like any other failure. After a successful send the worker
 logs `invitation_resent` in `member_portal_activity`.
 
+## Reminder window
+
+`membership_expiry_reminder` and `membership_expired` are never sent to a member whose latest
+`end_date` (max across all their memberships) is more than 3 calendar months before today (IST).
+The rule is `isExpiredBeyondReminderWindow` in `reminderWindow.ts`: an end date exactly 3 months
+back is still allowed, one day earlier is not. It is applied when scheduling (daily cron and
+import batch) and again in the queue drain right before sending, so rows queued earlier are
+dropped. A drain skip is recorded as `cancelled` (queue row and log row), a permanent business
+rule that closes the cycle, unlike the per-gym switch which uses `error` so sends resume.
+Other templates are unaffected.
+
 ## Exactly-once sends
 
 Meta's Cloud API has no idempotency key, so a send is made effectively exactly-once by never resending

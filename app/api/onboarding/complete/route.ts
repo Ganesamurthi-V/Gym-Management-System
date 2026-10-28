@@ -5,6 +5,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { ownerMobileFromUser } from '@/lib/auth/phone'
 import { passesCsrf } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { assertGymWritableById } from '@/lib/subscriptionGuard'
 import { getPlanPrices } from '@/lib/plans/prices'
 
@@ -449,6 +450,7 @@ export async function POST(req: NextRequest) {
     }
 
 
+    recordOwnerAction(supabase, req, 'ONBOARDING_COMPLETE')
     return NextResponse.json(
       { success: true, data: { gymId: targetGymId } },
       { headers: { 'Cache-Control': 'no-store' } },

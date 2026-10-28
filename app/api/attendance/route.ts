@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { deleteCache } from '@/lib/cache'
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest) {
     await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
     log.summary(200)
+    recordOwnerAction(supabase, req, 'ATTENDANCE_CHECK')
     return NextResponse.json({ success: true, data, meta: { request_id: log.requestId } })
   } catch (err: unknown) {
     log.error('Unhandled exception in POST /api/attendance', err)

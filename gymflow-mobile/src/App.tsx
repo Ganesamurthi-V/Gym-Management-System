@@ -25,6 +25,7 @@ import InboxScreen from './screens/tabs/InboxScreen';
 import LogsScreen from './screens/tabs/LogsScreen';
 import GymDetailScreen from './screens/GymDetailScreen';
 import GymSubscriptionScreen from './screens/GymSubscriptionScreen';
+import GymActivityScreen from './screens/GymActivityScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import AnnouncementScreen from './screens/AnnouncementScreen';
 import EmailThreadScreen from './screens/EmailThreadScreen';
@@ -323,6 +324,18 @@ export default function App() {
                   headerStyle: { backgroundColor: Colors.bg },
                   headerTintColor: Colors.textPrimary,
                   headerTitle: 'Manage Subscription',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="GymActivity"
+                component={GymActivityScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: 'Activity',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
                 }}

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { apiLogger, RequestLogger } from '@/lib/logger'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 
@@ -259,6 +260,7 @@ export async function POST(req: NextRequest) {
 
     log.info('Program saved', { programId: result.data?.id, mode: id ? 'update' : 'insert', isDraft })
     log.summary(id ? 200 : 201)
+    recordOwnerAction(supabase, req, 'PROGRAMS_API_POST')
     return NextResponse.json(
       { success: true, data: result.data, meta: { request_id: log.requestId } },
       { status: id ? 200 : 201 },
@@ -303,6 +305,7 @@ export async function DELETE(req: NextRequest) {
 
     log.info('Program deleted', { programId: id })
     log.summary(200)
+    recordOwnerAction(supabase, req, 'PROGRAMS_API_DELETE')
     return NextResponse.json({ success: true, meta: { request_id: log.requestId } })
   } catch (err: unknown) {
     log.error('Unhandled exception in DELETE /api/programs', err)

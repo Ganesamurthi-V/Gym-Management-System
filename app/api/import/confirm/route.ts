@@ -13,6 +13,7 @@ import { todayIST } from '@/lib/utils'
 import { monthsForPlan, parseStartDate, resolveImportedMembership } from '@/lib/import/membershipDates'
 import { importRowsToTake, PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
 import { passesCsrfCheck } from '@/lib/api/withAuth'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { applyGymPlans, gymPlansFromOnboarding } from '@/lib/import/gymPlans'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 
@@ -270,6 +271,7 @@ export async function POST(req: NextRequest) {
       deleteCache(cacheKeys.dashboard(gym.id, today)),
     ])
 
+    recordOwnerAction(supabase, req, 'IMPORT_CONFIRM')
     return NextResponse.json({
       success: true,
       data: {

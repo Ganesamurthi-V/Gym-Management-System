@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, UUID_RE } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
@@ -145,6 +146,7 @@ export async function PATCH(
 
     await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
+    recordOwnerAction(supabase, req, 'MEMBERS_UPDATE')
     return NextResponse.json({ success: true, data, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {
     console.error('[members/[id]] unhandled', err)
@@ -201,6 +203,7 @@ export async function DELETE(
 
     await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
+    recordOwnerAction(supabase, req, 'MEMBERS_DELETE')
     return NextResponse.json({ success: true, data: { id }, meta: { duration_ms: Date.now() - startTime } })
   } catch (err: unknown) {
     console.error('[members/[id]] unhandled', err)

@@ -608,6 +608,15 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
     } catch (err) {
       console.error('[WA Automation] Push step failed:', err instanceof Error ? err.message : String(err))
     }
+    // ── Owner activity retention (15 days) ──
+    // Isolated like the push step: a cleanup failure must never fail the WhatsApp run.
+    try {
+      const { data: deleted, error } = await supabase.rpc('delete_old_owner_activity', { p_days: 15 })
+      if (error) throw new Error(error.message)
+      console.log(`[WA Automation] Owner activity cleanup deleted ${deleted ?? 0} rows`)
+    } catch (err) {
+      console.error('[WA Automation] Owner activity cleanup failed:', err instanceof Error ? err.message : String(err))
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     stats.errors.push(`Fatal: ${msg}`)

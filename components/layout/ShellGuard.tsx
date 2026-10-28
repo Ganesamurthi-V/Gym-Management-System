@@ -12,6 +12,7 @@ import { signOutViaApi } from '@/lib/auth/client-auth'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 
+import ActivityBeacon from './ActivityBeacon'
 import TrialBanner from './TrialBanner'
 import AnnouncementBanner from './AnnouncementBanner'
 import type { Announcement } from '@/lib/announcement-shared'
@@ -217,7 +218,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     })
   }
 
-  if (isShellless) return <>{children}</>
+  if (isShellless) return <><ActivityBeacon />{children}</>
 
   return (
     <MemberCapProvider value={memberCapped}>
@@ -373,6 +374,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       {/* New-owner feedback pop-up. The server decides whether it appears (first 30 days, every
           3 days, until feedback is sent); only in the shell, so never during onboarding. */}
       <FeedbackPrompt />
+      <ActivityBeacon />
 
       {/* ── Mobile nav ── */}
       <MobileNav />

@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<TabParamList> | undefined;
   GymDetail: { gymId: string };
   GymSubscription: { gymId: string };
+  GymActivity: { gymId: string; gymName?: string };
   Notifications: undefined;
   Announcements: undefined;
   // An email conversation in the support inbox. Push taps and the inbox list open it.

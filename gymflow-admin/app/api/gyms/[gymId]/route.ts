@@ -42,6 +42,15 @@ export async function GET(
   const onboardingPhone = typeof onboarding.phone === 'string' ? onboarding.phone.trim() : ''
   const phone = gym.phone?.trim() || onboardingPhone || null
 
+  // Newest owner app open; null when none kept (15-day retention) or the lookup fails.
+  const lastOpen = await supabase
+    .from('owner_activity_events')
+    .select('created_at')
+    .eq('gym_id', gymId)
+    .eq('kind', 'app_open')
+    .order('created_at', { ascending: false })
+    .limit(1)
+
   return NextResponse.json({
     gym: { ...gym, phone },
     owner: owner ? {
@@ -49,6 +58,7 @@ export async function GET(
       phone: owner.user_metadata?.mobile_number || owner.phone || null,
       created_at: owner.created_at,
       last_sign_in_at: owner.last_sign_in_at,
+      last_open_at: lastOpen.data?.[0]?.created_at ?? null,
       email_confirmed_at: owner.email_confirmed_at,
     } : null,
   })

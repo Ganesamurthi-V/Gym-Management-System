@@ -667,6 +667,21 @@ CREATE TABLE IF NOT EXISTS member_body_profile (
   CONSTRAINT member_body_profile_target_both_or_none CHECK ((target_weight_kg IS NULL) = (target_date IS NULL))
 );
 
+-- ── owner_activity_events ────────────────────────────────────
+-- What each gym owner did in the app: opened it, visited a page, performed an action. Written only by
+-- record_owner_activity (SECURITY DEFINER); no policies, so no API role reads it. The super admin reads it
+-- with the service role. Rows are deleted after 15 days by delete_old_owner_activity (daily automation).
+CREATE TABLE IF NOT EXISTS owner_activity_events (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id     UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  owner_id   UUID        NOT NULL,
+  kind       TEXT        NOT NULL CHECK (kind IN ('app_open', 'page_view', 'action')),
+  path       TEXT        CHECK (char_length(path) <= 200),
+  label      TEXT        CHECK (char_length(label) <= 80),
+  platform   TEXT        CHECK (platform IN ('mobile', 'desktop')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ── member_body_logs / member_workout_sessions ───────────────
 -- Member progress. Written only by save_body_log, delete_body_log and save_workout_session
 -- (SECURITY DEFINER); clients can only SELECT. Limits mirror PROGRESS_LIMITS in types/progress.ts.
@@ -1299,6 +1314,12 @@ CREATE INDEX IF NOT EXISTS idx_member_renewal_requests_gym_status
   ON member_renewal_requests (gym_id, status, created_at DESC);
 
 -- ────────────────────────────────────────────────────────────
+-- indexes on owner_activity_events
+CREATE INDEX IF NOT EXISTS idx_owner_activity_gym_created
+  ON owner_activity_events (gym_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_owner_activity_created
+  ON owner_activity_events (created_at);
+
 -- indexes on member_body_logs / member_workout_sessions
 -- ────────────────────────────────────────────────────────────
 
@@ -2161,6 +2182,72 @@ BEGIN
   UPDATE public.member_renewal_requests
      SET status = 'rejected', reject_reason = v_reason, reviewed_at = now()
    WHERE id = v_req.id;
+END;
+$$;
+
+-- ────────────────────────────────────────────────────────────
+-- Owner activity (app opens, page views, feature actions)
+-- ────────────────────────────────────────────────────────────
+
+DROP FUNCTION IF EXISTS public.record_owner_activity(TEXT, TEXT, TEXT, TEXT);
+CREATE FUNCTION public.record_owner_activity(
+  p_kind     TEXT,
+  p_path     TEXT,
+  p_label    TEXT,
+  p_platform TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_gym_id UUID;
+  v_path   TEXT;
+BEGIN
+  IF auth.uid() IS NULL OR p_kind IS NULL OR p_kind NOT IN ('app_open', 'page_view', 'action') THEN
+    RETURN;
+  END IF;
+
+  SELECT g.id INTO v_gym_id FROM public.gyms g WHERE g.owner_id = auth.uid() LIMIT 1;
+  IF v_gym_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- Pathname only; ids and long numbers become ':id' so one row shape covers every record.
+  v_path := NULLIF(left(
+    regexp_replace(
+      regexp_replace(split_part(split_part(COALESCE(p_path, ''), '?', 1), '#', 1),
+        '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', ':id', 'g'),
+      '[0-9]{4,}', ':id', 'g'),
+    200), '');
+
+  INSERT INTO public.owner_activity_events (gym_id, owner_id, kind, path, label, platform)
+  VALUES (
+    v_gym_id,
+    auth.uid(),
+    p_kind,
+    v_path,
+    NULLIF(left(COALESCE(p_label, ''), 80), ''),
+    CASE WHEN p_platform IN ('mobile', 'desktop') THEN p_platform ELSE NULL END
+  );
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.delete_old_owner_activity(INT);
+CREATE FUNCTION public.delete_old_owner_activity(p_days INT DEFAULT 15)
+RETURNS INT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_count INT;
+BEGIN
+  DELETE FROM public.owner_activity_events
+   WHERE created_at < now() - make_interval(days => GREATEST(COALESCE(p_days, 15), 1));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
 END;
 $$;
 
@@ -5635,6 +5722,7 @@ ALTER TABLE member_portal_activity   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_requests    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_renewal_requests   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_logs         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owner_activity_events    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_profile      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_workout_sessions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_push_subscriptions ENABLE ROW LEVEL SECURITY;
@@ -6638,6 +6726,12 @@ REVOKE ALL ON public.member_body_profile     FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.member_body_profile     TO authenticated;
 REVOKE ALL ON public.member_workout_sessions FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.member_workout_sessions TO authenticated;
+REVOKE ALL ON public.owner_activity_events FROM PUBLIC, anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.record_owner_activity(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.record_owner_activity(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.delete_old_owner_activity(INT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_old_owner_activity(INT) TO service_role;
 
 REVOKE ALL ON FUNCTION public.save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC) TO authenticated;

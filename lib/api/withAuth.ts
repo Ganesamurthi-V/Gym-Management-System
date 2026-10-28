@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
@@ -7,6 +7,7 @@ import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import type { AlertInput } from '@/lib/monitoring/alert'
 import { mapSupabaseError } from '@/lib/utils/errorMapper'
 import { gymIsWritable } from '@/lib/subscription-utils'
+import { normalizeRequestPath } from '@/lib/activity/normalize'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type AuthContext = {
@@ -189,6 +190,25 @@ export function withAuth(
           body: `route=${routeName} status=${response.status} gymId=${gym.id} userId=${user.id}`,
           gymId: gym.id,
         })
+      }
+      // Owner activity log: a successful state-changing call is a feature action. after() runs once the
+      // response is sent, so it never delays it; a logging failure is logged, never thrown.
+      if (!SAFE_METHODS.has(req.method) && response.status < 400) {
+        const actionPath = normalizeRequestPath(req.nextUrl.pathname)
+        if (actionPath !== '/api/owner/activity') {
+          try {
+            after(async () => {
+              try {
+                const { error } = await supabase.rpc('record_owner_activity', {
+                  p_kind: 'action', p_path: actionPath, p_label: routeName, p_platform: null,
+                })
+                if (error) log.error('record_owner_activity failed', error)
+              } catch (e) {
+                log.error('record_owner_activity threw', e)
+              }
+            })
+          } catch { /* after() unavailable outside a request scope; logging is best-effort */ }
+        }
       }
       return response
     } catch (err: unknown) {

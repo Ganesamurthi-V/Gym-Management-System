@@ -13,7 +13,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { fetchGymDetail, toggleGymStatus, resetGymPassword } from '@/lib/api';
+import { fetchGymDetail, fetchGymActivity, toggleGymStatus, resetGymPassword } from '@/lib/api';
+import { formatDateTime } from '@/lib/activity-format';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { CacheKeys, invalidate } from '@/lib/cache';
@@ -53,6 +54,12 @@ export default function GymDetailScreen({ route, navigation }: Props) {
   const { data: detail, loading, refresh: loadDetail } = useCachedQuery<GymDetail>({
     key: CacheKeys.gymDetail(gymId),
     fetcher: () => fetchGymDetail(gymId),
+  });
+
+  // Separate query so a failing activity endpoint never blanks the rest of the screen.
+  const { data: activity, error: activityError } = useCachedQuery({
+    key: `gym-activity:${gymId}`,
+    fetcher: () => fetchGymActivity(gymId, { kind: 'app_open', limit: 3 }),
   });
 
   useRealtimeInvalidation({
@@ -139,6 +146,7 @@ export default function GymDetailScreen({ route, navigation }: Props) {
   }
 
   const { gym, owner } = detail;
+  const lastOpenAt = owner?.last_open_at ?? activity?.summary.lastOpenAt ?? null;
   const created = new Date(gym.created_at).toLocaleDateString('en-IN', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
@@ -180,6 +188,11 @@ export default function GymDetailScreen({ route, navigation }: Props) {
           value={owner?.last_sign_in_at ? new Date(owner.last_sign_in_at).toLocaleString('en-IN') : 'Never'}
         />
         <InfoRow
+          icon="smartphone"
+          label="Last opened"
+          value={lastOpenAt ? formatDateTime(lastOpenAt) : 'Never'}
+        />
+        <InfoRow
           icon="check-circle"
           label="Email Verified"
           value={owner?.email_confirmed_at ? 'Yes, Verified' : 'Pending'}
@@ -192,6 +205,34 @@ export default function GymDetailScreen({ route, navigation }: Props) {
           <Text style={styles.idLabel}>Gym ID</Text>
           <Text style={styles.idValue}>{gym.id}</Text>
         </View>
+      </View>
+
+      {/* Owner Activity */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Feather name="activity" size={15} color={Colors.sky} />
+          <Text style={styles.cardTitle}>Owner Activity</Text>
+        </View>
+        {activity ? (
+          <>
+            <Text style={styles.toggleLabel}>
+              Opened {activity.summary.opensLast7Days} {activity.summary.opensLast7Days === 1 ? 'time' : 'times'} in
+              the last 7 days, {activity.summary.opensLast15Days} in the last 15 days
+            </Text>
+            {activity.events.slice(0, 3).map(e => (
+              <Text key={e.id} style={styles.toggleSub}>{formatDateTime(e.createdAt)}</Text>
+            ))}
+          </>
+        ) : activityError ? (
+          <Text style={styles.activityError}>Could not load activity</Text>
+        ) : (
+          <ActivityIndicator color={Colors.indigo} />
+        )}
+        <AdminButton
+          label="View all activity"
+          onPress={() => navigation.navigate('GymActivity', { gymId, gymName: gym.name })}
+          variant="primary"
+        />
       </View>
 
       {/* Status Toggle */}
@@ -318,6 +359,7 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   toggleInfo: { flex: 1 },
   toggleLabel: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  activityError: { fontSize: 11, color: Colors.red },
   toggleSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   passwordWarn: {
     fontSize: 12, color: Colors.amber, backgroundColor: Colors.amberBg,

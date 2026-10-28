@@ -24,6 +24,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
 import { finalizeSendRow } from './finalize'
 import { QUEUE_RECIPIENT_CAP } from './recipientLimit'
+import { EXPIRY_LAPSE_TEMPLATES, isExpiredBeyondReminderWindow } from './reminderWindow'
+import { todayIST } from '@/lib/utils'
 import type { TemplateContext, TemplateId, SendResult } from '@/types/whatsapp'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 
@@ -372,6 +374,10 @@ export interface DrainDeps {
    * queue for hours, so the token is minted here and never at enqueue time. permanent=true
    * fails the row for good; otherwise it follows the normal retry path.
    */
+  /** Latest end_date over all of a member's memberships; defaults to a DB lookup. Test seam. */
+  latestEndDate?: (memberId: string) => Promise<string | null>
+  /** Today's IST date (YYYY-MM-DD); defaults to todayIST(). */
+  today?: () => string
   prepare?: (row: PrepareRow) => Promise<
     { ok: true; context: TemplateContext } | { ok: false; error: string; permanent: boolean }
   >
@@ -389,6 +395,20 @@ async function defaultPrepare(supabase: SupabaseClient, row: PrepareRow) {
   const res = await prepareMemberInvitation(supabase, { gymId, memberId: row.member_id, skipIfActivated: true })
   if (!res.ok) return { ok: false as const, error: `${res.code}: ${res.message}`, permanent: res.permanent }
   return { ok: true as const, context: { ...row.context, invitationToken: res.token } }
+}
+
+const BEYOND_WINDOW_ERROR = 'membership expired more than 3 months ago'
+
+async function lookupLatestEndDate(supabase: SupabaseClient, memberId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('end_date')
+    .eq('member_id', memberId)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw new Error(`end_date lookup failed: ${error.message}`)
+  return (data as { end_date: string | null } | null)?.end_date ?? null
 }
 
 let _sharedLimiter: Ratelimit | null = null
@@ -480,7 +500,15 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     let result: SendResult
     // Set when prepare fails for good; the row is failed below without calling the sender.
     let prepareFailure: { error: string; permanent: boolean } | null = null
+    // Set when an expiry/lapse row is past the 3-month reminder window at send time.
+    let beyondWindow = false
     try {
+      // Re-check at send time so rows queued before the rule existed (or while the member lapsed
+      // further) are not sent. A failed lookup throws into the normal transient-retry path.
+      if (EXPIRY_LAPSE_TEMPLATES.includes(row.template_name)) {
+        const end = await (deps.latestEndDate ?? ((id) => lookupLatestEndDate(supabase, id)))(row.member_id)
+        beyondWindow = isExpiredBeyondReminderWindow(end, (deps.today ?? todayIST)())
+      }
       // dedupeKey is the row id, identical on every attempt: Meta echoes it in status webhooks.
       let ctx: TemplateContext = { ...row.context, gymId: row.gym_id ?? row.context.gymId, memberRowId: row.member_id, dedupeKey: row.id, recipientCap: QUEUE_RECIPIENT_CAP }
       if (row.template_name === 'member_app_invitation') {
@@ -490,7 +518,9 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
       }
       // gymId rides along so sendTemplate can check the gym's WhatsApp switch at the moment of
       // sending: a message queued before the admin turned WhatsApp off is stopped here.
-      result = prepareFailure
+      result = beyondWindow
+        ? { success: false, skipped: true, error: BEYOND_WINDOW_ERROR }
+        : prepareFailure
         ? { success: false, error: prepareFailure.error }
         : await sender(row.template_name, ctx)
     } catch (err) {
@@ -500,7 +530,14 @@ export async function drainSendQueue(deps: DrainDeps): Promise<DrainStats> {
     // finalizeSendRow ignores a null log_row_id, which is what invitation rows carry.
 
     // Reconcile the pre-claimed automation-log row (message id / failure status).
-    await finalizeSendRow(supabase, row.log_row_id, result)
+    if (beyondWindow && row.log_row_id) {
+      // Permanent business-rule skip: 'cancelled' closes this reminder cycle for good (unlike the
+      // gym switch, which uses 'error' so reminders resume when it is turned back on).
+      await supabase.from('whatsapp_automation_logs')
+        .update({ status: 'cancelled', error_message: BEYOND_WINDOW_ERROR }).eq('id', row.log_row_id)
+    } else {
+      await finalizeSendRow(supabase, row.log_row_id, result)
+    }
 
     if (result.deferred) {
       // The 24 h unique-recipient limit: nothing was sent, so this is not an attempt and not a

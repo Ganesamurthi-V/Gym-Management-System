@@ -21,8 +21,10 @@ export function usePushState(publicKey: string) {
     setError(null)
     const result = await enablePush(publicKey)
     if (!result.ok) setError(result.message)
-    setState(await getPushState())
+    const next = await getPushState()
+    setState(next)
     setBusy(false)
+    return next
   }, [publicKey])
 
   const disable = useCallback(async () => {
@@ -37,5 +39,12 @@ export function usePushState(publicKey: string) {
     setBusy(false)
   }, [])
 
-  return { state, busy, error, enable, disable }
+  /** Re-read the device state, e.g. when the member returns from the phone's settings. */
+  const refresh = useCallback(async () => {
+    const next = await getPushState()
+    setState(next)
+    return next
+  }, [])
+
+  return { state, busy, error, enable, disable, refresh }
 }

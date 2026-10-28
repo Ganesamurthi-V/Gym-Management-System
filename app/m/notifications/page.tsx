@@ -5,7 +5,7 @@ import { getMemberNotifications } from '@/lib/member/notifications'
 import { MarkNotificationsSeen } from '@/components/member/MarkNotificationsSeen'
 import { istDateOf, shortDate } from '@/lib/progress/chart'
 import type { NoticeKind } from '@/types/notice'
-import { PushPrompt } from '@/components/member/PushPrompt'
+import { PushHeaderButton } from '@/components/member/PushHeaderButton'
 import { isPushConfigured, vapidPublicKey } from '@/lib/push/config'
 
 // Left border carries the kind; the kind word stays visible because colour alone is not enough.
@@ -34,9 +34,8 @@ export default async function NotificationsPage() {
           <ChevronLeft aria-hidden="true" className="h-5 w-5" />
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Notifications</h1>
+        {pushKey && <div className="ml-auto"><PushHeaderButton publicKey={pushKey} /></div>}
       </header>
-
-      {pushKey && <PushPrompt publicKey={pushKey} />}
 
       {failed && <p className="mb-4 text-sm text-slate-500">Could not load notifications</p>}
 

@@ -4,7 +4,7 @@ import {
   MAX_IMPORT_ROWS, MAX_IMPORT_FILE_BYTES,
 } from '@/lib/import/schema'
 
-const row = (over: Record<string, unknown> = {}) => ({ name: 'Akhil', phone: '9876543210', ...over })
+const row = (over: Record<string, unknown> = {}) => ({ name: 'Akhil', phone: '9876543210', start_date: '2026-03-01', ...over })
 const parse = (rows: unknown[], extra: Record<string, unknown> = {}) => importConfirmSchema.safeParse({ rows, ...extra })
 
 describe('importConfirmSchema', () => {
@@ -52,14 +52,13 @@ describe('importConfirmSchema', () => {
     expect(parse([row({ member_number: 1e12 })]).success).toBe(false)
   })
   it('drops soft fields that are invalid instead of failing the batch', () => {
-    const r = parse([row({ age: '200', gender: 'x', date_of_birth: '2020-13-45', start_date: 'garbage', payment_mode: 'bitcoin', category: 'zumba' })])
+    const r = parse([row({ age: '200', gender: 'x', date_of_birth: '2020-13-45', payment_mode: 'bitcoin', category: 'zumba' })])
     expect(r.success).toBe(true)
     if (r.success) {
       const d = r.data.rows[0]
       expect(d.age).toBeUndefined()
       expect(d.gender).toBeUndefined()
       expect(d.date_of_birth).toBeUndefined()
-      expect(d.start_date).toBeUndefined()
       expect(d.payment_mode).toBe('cash')
       expect(d.category).toBe('both')
     }
@@ -68,8 +67,19 @@ describe('importConfirmSchema', () => {
     const r = parse([row({ start_date: '2026-02-28', name: 'A\u0000ki\u0007l' })])
     expect(r.success).toBe(true)
     if (r.success) { expect(r.data.rows[0].start_date).toBe('2026-02-28'); expect(r.data.rows[0].name).toBe('Akil') }
-    const bad = parse([row({ start_date: '2026-02-30' })])
-    if (bad.success) expect(bad.data.rows[0].start_date).toBeUndefined()
+  })
+  it('refuses a missing, impossible or pre-2000 start date instead of defaulting it to today', () => {
+    expect(parse([row({ start_date: undefined })]).success).toBe(false)
+    expect(parse([row({ start_date: '' })]).success).toBe(false)
+    expect(parse([row({ start_date: 'garbage' })]).success).toBe(false)
+    expect(parse([row({ start_date: '2026-02-30' })]).success).toBe(false)
+    expect(parse([row({ start_date: '1999-12-31' })]).success).toBe(false)
+  })
+  it('accepts an exact plan length only when it belongs to the plan label', () => {
+    expect(parse([row({ plan: 'annual', duration_months: 18 })]).success).toBe(true)
+    expect(parse([row({ plan: 'quarterly', duration_months: 6 })]).success).toBe(true)
+    expect(parse([row({ plan: 'monthly', duration_months: 18 })]).success).toBe(false)
+    expect(parse([row({ plan: 'annual', duration_months: 500 })]).success).toBe(false)
   })
 })
 

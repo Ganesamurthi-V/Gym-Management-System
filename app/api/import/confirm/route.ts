@@ -9,7 +9,8 @@ import { normalizePhoneForImport } from '@/lib/import/normalizers'
 import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/lib/import/schema'
 import { apiLogger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
-import { calcEndDate, todayIST } from '@/lib/utils'
+import { todayIST } from '@/lib/utils'
+import { monthsForPlan, parseStartDate, resolveImportedMembership } from '@/lib/import/membershipDates'
 import { importRowsToTake, PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
 import { passesCsrfCheck } from '@/lib/api/withAuth'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
@@ -84,6 +85,15 @@ export async function POST(req: NextRequest) {
       )
     }
     const allRows = parsedBody.data.rows
+    const today = todayIST()
+    // The schema checks the date is real; "not absurdly far ahead" depends on today, so it is checked here.
+    const badStart = allRows.findIndex(r => !parseStartDate(r.start_date, today).ok)
+    if (badStart >= 0) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: `Start date looks wrong (rows.${badStart}.start_date)` } },
+        { status: 400 },
+      )
+    }
 
     const gym = await getGymForUser(supabase, user.id)
     alertGymId = gym?.id
@@ -190,7 +200,13 @@ export async function POST(req: NextRequest) {
     const membershipRows = memberIds.map((memberId, i) => {
       const r = rows[i]
       const plan = r.plan
-      const start = r.start_date ?? todayIST()
+      // Counted from the sheet's start date over the plan's real length, never from today:
+      // an existing member keeps the days they have left, and an ended plan stays ended.
+      const { startDate: start, endDate } = resolveImportedMembership({
+        startDate: r.start_date,
+        durationMonths: monthsForPlan(plan, r.duration_months),
+        today,
+      })
 
       return {
         member_id: memberId,
@@ -198,7 +214,7 @@ export async function POST(req: NextRequest) {
         plan,
         category: r.category,
         start_date: start,
-        end_date: calcEndDate(start, plan),
+        end_date: endDate,
         // The import brings in member and plan details only. A payment taken before joining
         // GymFlow is not a collection, so no amount is recorded (it would feed Payments, the
         // dashboard and reports). The file's amount/payment mode are intentionally not stored.
@@ -232,7 +248,7 @@ export async function POST(req: NextRequest) {
 
     await Promise.all([
       deleteCache(cacheKeys.paymentsAll(gym.id)),
-      deleteCache(cacheKeys.dashboard(gym.id, todayIST())),
+      deleteCache(cacheKeys.dashboard(gym.id, today)),
     ])
 
     return NextResponse.json({

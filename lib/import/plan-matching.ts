@@ -204,13 +204,78 @@ function bucket(months: number): PlanDuration | null {
   return "annual";
 }
 
+/** The length itself when it is a plan length at all (same limits as `bucket`). */
+function validMonths(months: number): number | null {
+  return bucket(months) === null ? null : months;
+}
+
 /** A cell holding nothing but a number: a count of months, or a count of days. */
-function bareNumber(n: number): PlanDuration | null {
-  if (n <= 24) return bucket(n);
-  if (n >= 28 && n <= 31) return "monthly";
-  if ((n >= 84 && n <= 93) || (n >= 180 && n <= 186)) return "quarterly";
-  if (n >= 360 && n <= 366) return "annual";
+function bareNumberMonths(n: number): number | null {
+  if (n <= 24) return validMonths(n);
+  if (n >= 28 && n <= 31) return 1;
+  if (n >= 84 && n <= 93) return 3;
+  if (n >= 180 && n <= 186) return 6;
+  if (n >= 360 && n <= 366) return 12;
   return null; // "2500" in the plan column is a price, not a plan
+}
+
+const STANDARD_MONTHS: Record<PlanDuration, number> = { monthly: 1, quarterly: 3, annual: 12 };
+/** Exact spellings that sit under "quarterly" only because there is no half-yearly plan. */
+const SIX_MONTH_EXACT = new Set(["6months", "6month", "6m", "sixmonths", "sixmonth", "halfyear", "halfyearly", "biannual", "semiannual", "180days", "180day"]);
+
+/** Months stated by the cell, one entry per statement; null when it states none. */
+function statedMonths(raw: string): number[] | null {
+  const tokens = tokenize(raw);
+  if (tokens.length === 0) return null;
+
+  const joined = tokens.join("");
+  const exact = EXACT_LOOKUP.get(joined);
+  if (exact) return [SIX_MONTH_EXACT.has(joined) ? 6 : STANDARD_MONTHS[exact]];
+
+  // "3+1 months", "12 + 2 months free": the member gets the total.
+  for (let i = 0; i + 2 < tokens.length; i++) {
+    const a = numberOf(tokens[i]);
+    const b = numberOf(tokens[i + 2]);
+    if (a !== null && b !== null && tokens[i + 1] === "plus") {
+      tokens.splice(i, 3, String(a + b));
+      i--;
+    }
+  }
+
+  const stated: (number | null)[] = [];
+  const abbreviated: number[] = [];
+  const loneNumbers: number[] = [];
+  let unexplained = 0;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    const next = tokens[i + 1];
+
+    const n = numberOf(token);
+    if (n !== null) {
+      const unit = next === undefined ? null : unitMonths(next);
+      if (unit !== null) { stated.push(validMonths(n * unit)); i++; } else loneNumbers.push(n);
+      continue;
+    }
+    // "half yearly", "semi annual", "bi-annual" are six months, not a year.
+    if ((token === "half" || token === "semi" || token === "bi") && next !== undefined) {
+      const following = keywordMonths(next);
+      if (following !== null) { stated.push(following === 12 ? 6 : null); i++; continue; }
+    }
+    if (FILLER.has(token)) continue;
+    if (token in ABBREVIATIONS) { abbreviated.push(ABBREVIATIONS[token]); continue; }
+    const months = keywordMonths(token);
+    if (months !== null) { stated.push(validMonths(months)); continue; }
+    unexplained++;
+  }
+
+  let found = stated;
+  if (found.length === 0 && unexplained === 0) {
+    if (abbreviated.length > 0) found = abbreviated.map(validMonths);
+    else if (loneNumbers.length === 1) found = [bareNumberMonths(loneNumbers[0])];
+  }
+  if (found.length === 0 || found.includes(null)) return null;
+  return found as number[];
 }
 
 /**
@@ -223,56 +288,23 @@ function bareNumber(n: number): PlanDuration | null {
  * lengths ("1 year 6 months") it returns null rather than pick one.
  */
 export function recognizePlanDuration(raw: string): PlanDuration | null {
-  const tokens = tokenize(raw);
-  if (tokens.length === 0) return null;
+  const months = statedMonths(raw);
+  if (!months) return null;
+  const buckets = months.map(bucket);
+  return buckets.every(plan => plan === buckets[0]) ? buckets[0] : null;
+}
 
-  const exact = EXACT_LOOKUP.get(tokens.join(""));
-  if (exact) return exact;
-
-  // "3+1 months", "12 + 2 months free": the member gets the total.
-  for (let i = 0; i + 2 < tokens.length; i++) {
-    const a = numberOf(tokens[i]);
-    const b = numberOf(tokens[i + 2]);
-    if (a !== null && b !== null && tokens[i + 1] === "plus") {
-      tokens.splice(i, 3, String(a + b));
-      i--;
-    }
-  }
-
-  const stated: (PlanDuration | null)[] = [];
-  const abbreviated: number[] = [];
-  const loneNumbers: number[] = [];
-  let unexplained = 0;
-
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    const next = tokens[i + 1];
-
-    const n = numberOf(token);
-    if (n !== null) {
-      const unit = next === undefined ? null : unitMonths(next);
-      if (unit !== null) { stated.push(bucket(n * unit)); i++; } else loneNumbers.push(n);
-      continue;
-    }
-    // "half yearly", "semi annual", "bi-annual" are six months, not a year.
-    if ((token === "half" || token === "semi" || token === "bi") && next !== undefined) {
-      const following = keywordMonths(next);
-      if (following !== null) { stated.push(following === 12 ? bucket(6) : null); i++; continue; }
-    }
-    if (FILLER.has(token)) continue;
-    if (token in ABBREVIATIONS) { abbreviated.push(ABBREVIATIONS[token]); continue; }
-    const months = keywordMonths(token);
-    if (months !== null) { stated.push(bucket(months)); continue; }
-    unexplained++;
-  }
-
-  let found = stated;
-  if (found.length === 0 && unexplained === 0) {
-    if (abbreviated.length > 0) found = abbreviated.map(bucket);
-    else if (loneNumbers.length === 1) found = [bareNumber(loneNumbers[0])];
-  }
-  if (found.length === 0 || found.includes(null)) return null;
-  return found.every(plan => plan === found[0]) ? found[0] : null;
+/**
+ * The exact length in months a cell states ("18 months" -> 18, "6 months" -> 6,
+ * "45 days" -> 1.5), or null when it states none or two different lengths. The
+ * database only knows monthly / quarterly / annual, so recognizePlanDuration picks
+ * the label; this is what the end date must be counted with, otherwise an 18 month
+ * plan would be cut to 12 and a 6 month plan to 3.
+ */
+export function recognizePlanMonths(raw: string): number | null {
+  const months = statedMonths(raw);
+  if (!months) return null;
+  return months.every(m => Math.abs(m - months[0]) < 1e-9) ? months[0] : null;
 }
 
 // ── 2. Plan names ────────────────────────────────────────────────────────────

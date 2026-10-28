@@ -108,7 +108,8 @@ export async function runImportPipeline(
   const usedInFile = new Set<number>()
 
   parsed.forEach((r) => {
-    if (r._status === 'error' || r._status === 'duplicate') return
+    // A row held back only for its start date still gets an ID, so fixing the date is enough.
+    if ((r._status === 'error' && !r._start_invalid) || r._status === 'duplicate') return
 
     const parsedNum = parseInt(r.member_number)
     const hasExplicitNum = !isNaN(parsedNum) && parsedNum > 0

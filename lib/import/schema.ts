@@ -7,6 +7,7 @@
  * here. Unknown keys (notably `gym_id`) are stripped, never read.
  */
 import { z } from 'zod'
+import { MAX_PLAN_MONTHS, MIN_START_YEAR, planForMonths } from '@/lib/import/membershipDates'
 
 export const MAX_IMPORT_ROWS = 500
 /** Raw request body cap for the confirm route (500 rows is well under 300 KB). */
@@ -83,7 +84,7 @@ const intFrom = (min: number, max: number) =>
       return n
     })
 
-export const importRowSchema = z.object({
+const baseRowSchema = z.object({
   name: text(255).refine(s => s.length > 0, 'name is required'),
   // Normalised (and the invalid sentinel applied) by normalizePhoneForImport afterwards.
   phone: z.preprocess(blankToUndef, z.union([z.string().max(40), z.number()]).optional()),
@@ -98,10 +99,23 @@ export const importRowSchema = z.object({
   legacy_member_id: z.preprocess(blankToUndef, text(50).optional()),
   plan: z.preprocess(blankToUndef, z.enum(['monthly', 'quarterly', 'annual']).default('monthly')),
   category: z.preprocess(blankToUndef, z.enum(['strength', 'cardio', 'both']).catch('both').default('both')),
-  start_date: z.preprocess(blankToUndef, z.string().refine(isRealDate, 'invalid date').optional().catch(undefined)),
+  // Required and strict: a missing or bad start date must never silently become today (that would
+  // grant a fresh full plan). The preview holds such rows back, so a request that still lacks one is refused.
+  start_date: z.string('start date is required')
+    .refine(isRealDate, 'invalid start date')
+    .refine(s => Number(s.slice(0, 4)) >= MIN_START_YEAR, 'start date is too old'),
+  // Exact plan length when the sheet states one the three labels cannot (18 months is labelled annual).
+  duration_months: z.preprocess(blankToUndef, z.number().min(0.9).max(MAX_PLAN_MONTHS).optional()),
   // INR, whole rupees. Upper bound keeps sums and the int column safe.
   amount: intFrom(0, 10_000_000).transform(v => v ?? 0),
   payment_mode: z.preprocess(blankToUndef, z.enum(['cash', 'upi', 'card']).catch('cash').default('cash')),
+})
+
+export const importRowSchema = baseRowSchema.superRefine((row, ctx) => {
+  // The label must be the one the length belongs to, so the stored plan never contradicts the end date.
+  if (row.duration_months !== undefined && planForMonths(row.duration_months) !== row.plan) {
+    ctx.addIssue({ code: 'custom', path: ['duration_months'], message: 'does not match the plan' })
+  }
 })
 
 export const importConfirmSchema = z.object({

@@ -4,11 +4,9 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw, FolderOpen, Search, Hash, CheckCircle2 } from "lucide-react";
 import { clearImportStorage, removeImportKeys } from "@/lib/import/storage";
 import Link from "next/link";
-import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   cellStr as sharedCellStr,
-  excelSerialToDate as sharedExcelSerialToDate,
   normalizePlan,
   normalizeGender,
   normalizePaymentMode,
@@ -19,7 +17,9 @@ import {
 } from "@/lib/import/normalizers";
 import { runImportPipeline } from "@/lib/import/pipeline";
 import { checkImportFile, declaredUncompressedSize, MAX_SHEET_ROWS, MAX_SHEET_COLUMNS, MAX_XLSX_UNCOMPRESSED_BYTES } from "@/lib/import/schema";
-import { groupPlanNames, type PlanNameGroup } from "@/lib/import/plan-matching";
+import { groupPlanNames, recognizePlanMonths, type PlanNameGroup } from "@/lib/import/plan-matching";
+import { monthsForPlan, parseStartDate } from "@/lib/import/membershipDates";
+import { todayIST } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import WizardHeader from "@/components/import/WizardHeader";
 import PlanNotice from "@/components/subscription/PlanNotice";
@@ -32,6 +32,12 @@ export interface ImportedRow {
   plan: string;
   category?: string;
   start_date: string;
+  /** Exact plan length in months when the sheet states one that differs from the plan label ("18 months" is labelled annual). */
+  duration_months?: number;
+  /** True when the sheet had no start date column, so today was filled in. The owner must confirm before importing. */
+  _start_defaulted?: boolean;
+  /** True while the start date is blank or unreadable; the row is skipped until the owner fixes it. */
+  _start_invalid?: boolean;
   amount: string;
   payment_mode: string;
   gender: string;
@@ -421,8 +427,6 @@ function getCol(row: any, colMap: Record<string, number>, field: string): string
   return cellStr(row.getCell(idx).value);
 }
 
-function excelSerialToDate(serial: number): string { return sharedExcelSerialToDate(serial); }
-
 const FIELD_LABELS: Record<string, string> = {
   member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan", category: "Category",
   start_date: "Start Date", amount: "Amount", payment_mode: "Payment Mode",
@@ -450,6 +454,8 @@ export default function ImportPage() {
   const [parsing, setParsing] = useState(false);
   const [parseStage, setParseStage] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  // The first click on the upload zone shows a plan reminder before the file picker opens (see the zone below).
+  const [planTip, setPlanTip] = useState<'hidden' | 'shown' | 'done'>('hidden');
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -608,6 +614,7 @@ export default function ImportPage() {
         return {
           ...r,
           plan: planMapping[r._rawPlan],
+          duration_months: undefined,
         };
       }
       return r;
@@ -777,6 +784,8 @@ export default function ImportPage() {
 
     const parsed: ImportedRow[] = [];
     const unrecognizedCounts: Record<string, number> = {};
+    const today = todayIST();
+    const hasStartCol = !!colMap.start_date;
     ws.eachRow({ includeEmpty: false }, (row: any, rowIndex: number) => {
       if (rowIndex <= headerRowIndex) return;
       const name = getCol(row, colMap, "name");
@@ -799,27 +808,17 @@ export default function ImportPage() {
       const rawMemberNum = getCol(row, colMap, "member_number");
       const { number: member_number, original: legacy_member_id } = normalizeMemberNumber(rawMemberNum);
 
-      let start_date: string;
-      const rawDateTrimmed = rawDate.trim();
-      const datetimeMatch = rawDateTrimmed.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (datetimeMatch) {
-        start_date = datetimeMatch[1];
-      } else {
-        const dateNum = Number(rawDateTrimmed);
-        if (!isNaN(dateNum) && rawDateTrimmed !== "" && !rawDateTrimmed.includes("-") && !rawDateTrimmed.includes("/")) {
-          start_date = excelSerialToDate(dateNum);
-        } else if (rawDateTrimmed.includes("/")) {
-          const parts = rawDateTrimmed.split("/");
-          if (parts.length === 3) {
-            const [a, b, c] = parts;
-            start_date = `${c.length === 4 ? c : "20" + c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-          } else { start_date = format(new Date(), "yyyy-MM-dd"); }
-        } else { start_date = rawDateTrimmed || format(new Date(), "yyyy-MM-dd"); }
-      }
+      // A blank or unreadable start date is never replaced by today: that would hand an
+      // existing member a fresh full plan. The row is held back until the owner fixes it.
+      const startResult = hasStartCol ? parseStartDate(rawDate, today) : null;
+      const start_date = startResult ? (startResult.ok ? startResult.date : "") : today;
+      const statedMonths = rawPlan ? recognizePlanMonths(rawPlan) : null;
+      const duration_months = statedMonths !== null && statedMonths !== monthsForPlan(plan) ? statedMonths : undefined;
 
       let _error = "";
       if (!name) _error = "Missing name";
       else if (phone && phone.length !== 10) _error = "Invalid phone";
+      else if (startResult && !startResult.ok) _error = startResult.message;
 
       if (rawPlan && !isRecognizedPlan(rawPlan)) {
         const key = rawPlan.trim();
@@ -833,6 +832,9 @@ export default function ImportPage() {
         category,
         _rawPlan: rawPlan ? rawPlan.trim() : undefined,
         start_date,
+        duration_months,
+        _start_defaulted: hasStartCol ? undefined : true,
+        _start_invalid: startResult && !startResult.ok ? true : undefined,
         amount,
         payment_mode,
         gender,
@@ -842,7 +844,7 @@ export default function ImportPage() {
         member_number,
         legacy_member_id: legacy_member_id || undefined,
         _rowId: parsed.length,
-        _status: !name ? "error" : "ok",
+        _status: !name || (startResult && !startResult.ok) ? "error" : "ok",
         _error
       });
     });
@@ -1311,10 +1313,28 @@ export default function ImportPage() {
         />
       )}
 
+      {planTip === 'shown' && (
+        <div className="space-y-2">
+          <PlanNotice
+            tone="info"
+            message="Before you import, update all of your existing membership plans so every member's plan is matched smoothly."
+            action={{ href: "/owner/plans", label: "Update my plans" }}
+          />
+          <button
+            type="button"
+            onClick={() => { setPlanTip('done'); fileInputRef.current?.click(); }}
+            className="min-h-[44px] px-4 rounded-xl border border-slate-200 bg-surface text-sm font-bold text-slate-700 hover:border-brand-400"
+          >
+            My plans are up to date. Choose file
+          </button>
+        </div>
+      )}
+
       {/* Drag & Drop Upload Zone. Hidden when the plan is full so no file can be chosen
           (the server still enforces the cap; this is convenience). */}
       {importLimit?.maxRows !== 0 && (
       <label
+        onClick={e => { if (planTip === 'hidden') { e.preventDefault(); setPlanTip('shown'); } }}
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}

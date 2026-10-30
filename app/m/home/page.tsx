@@ -1,15 +1,23 @@
 import Link from 'next/link'
 import {
-  Activity, CreditCard, Dumbbell, QrCode,
-  AlertCircle, CheckCircle2, Clock, Flame,
+  Activity, Scale, Dumbbell, IndianRupee,
+  AlertCircle, CheckCircle2, ChevronRight, Clock, Flame,
 } from 'lucide-react'
-import { getMembershipPageData, getMemberGamification, recordMemberLogin } from '@/lib/member/member-data'
+import { getAssignedWorkoutPrograms, getMembershipPageData, getMemberGamification, recordMemberLogin } from '@/lib/member/member-data'
 import { StreakBadge } from '@/components/member/StreakBadge'
 import { WeeklyGoalRing } from '@/components/member/WeeklyGoalRing'
-import { LeaderboardEntryCard } from '@/components/member/LeaderboardEntryCard'
 import { weeklyGoalProgress } from '@/lib/gamification/leaderboardDisplay'
 import { formatDate } from '@/lib/member/member-utils'
+import { getMemberNotifications } from '@/lib/member/notifications'
+import { NotificationBell } from '@/components/member/NotificationBell'
 import { startPageTimer } from '@/lib/perf'
+import { formatCurrency, todayIST } from '@/lib/utils'
+import { quoteForDate } from '@/lib/member/daily-quote'
+import { cookies } from 'next/headers'
+import { workoutToday, programsForHome, MY_PROGRAM_COOKIE } from '@/lib/member/todays-workout'
+import { greetingForHour, istHour } from '@/lib/member/greeting'
+import { PushReminderBanner } from '@/components/member/PushReminderBanner'
+import { isPushConfigured, vapidPublicKey } from '@/lib/push/config'
 
 // No `revalidate` export: this page reads the auth cookie, which already makes
 // it dynamic. A route-level `revalidate` cannot cache per-user responses in the
@@ -23,9 +31,11 @@ export default async function HomePage() {
   // member + gym + memberships fetched in parallel (one round trip, not three).
   // The gamification RPC resolves the member from the session, so it joins the
   // same parallel batch instead of waiting for the member row.
-  const [data, game] = await Promise.all([
+  const [data, game, programs, notifications] = await Promise.all([
     getMembershipPageData(),
     getMemberGamification(),
+    getAssignedWorkoutPrograms(),
+    getMemberNotifications(),
   ])
   if (!data) {
     done()
@@ -41,8 +51,12 @@ export default async function HomePage() {
 
   done()
 
+  const pushKey = isPushConfigured() ? vapidPublicKey() : null
   const firstName = member.name.split(' ')[0]
   const goal = weeklyGoalProgress(game.daysLast7, game.weeklyGoalDays)
+  const pendingAmount = member.pending_amount > 0 ? member.pending_amount : 0
+  const chosenProgramId = (await cookies()).get(MY_PROGRAM_COOKIE)?.value
+  const workout = workoutToday(programsForHome(programs, chosenProgramId), todayIST())
 
   const statusConfig = {
     active:   { icon: CheckCircle2, text: `Active · ${daysLeft} days left`,   colour: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -54,47 +68,89 @@ export default async function HomePage() {
   const StatusIcon = cfg.icon
 
   const quickActions = [
-    { label: 'Membership', icon: CreditCard,  href: '/m/membership' },
     { label: 'Attendance', icon: Activity,    href: '/m/attendance' },
-    { label: 'Workout',    icon: Dumbbell,    href: '/m/workout' },
-    { label: 'My Card',    icon: QrCode,      href: '/m/membership/card' },
+    { label: 'Body progress', icon: Scale,    href: '/m/progress/body' },
   ]
 
   return (
     <div className="page-container py-6">
 
       {/* Greeting */}
-      <header className="mb-5">
-        <p className="text-sm font-medium text-slate-500">Welcome back,</p>
-        <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">{firstName} 👋</h1>
-        <p className="mt-1 text-xs text-slate-400">{gym.name}</p>
+      <header className="mb-5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-500">{greetingForHour(istHour())}</p>
+          <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Hi {firstName} 👋</h1>
+          <p className="mt-0.5 text-xs text-slate-400">{gym.name}</p>
+        </div>
+        <NotificationBell latestAt={notifications.items[0]?.at ?? null} />
       </header>
 
-      {/* Membership status banner */}
-      <Link
-        href="/m/membership"
-        className={`mb-5 flex items-center gap-3 rounded-2xl border p-4 transition-all active:scale-[0.98] ${cfg.bg} ${cfg.border}`}
-      >
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface/70 ${cfg.colour}`}>
-          <StatusIcon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className={`text-sm font-bold ${cfg.colour}`}>{cfg.text}</p>
-          {latest && (
-            <p className="mt-0.5 truncate text-xs text-slate-500">
-              {latest.plan.charAt(0).toUpperCase() + latest.plan.slice(1)} plan
-              &nbsp;·&nbsp;expires {formatDate(latest.end_date)}
-            </p>
-          )}
-        </div>
-        <span className="text-slate-300">›</span>
-      </Link>
+      {/* Daily quote: one line per day (IST), the same for everyone, a different one tomorrow. Kept quiet. */}
+      <blockquote className="mb-5 border-l-2 border-brand-300 pl-3 text-sm leading-snug text-slate-600">
+        {quoteForDate(todayIST())}
+      </blockquote>
 
-      {/* Streak + weekly goal */}
-      <section aria-label="Your streak and weekly goal" className="mb-5 grid grid-cols-2 gap-3">
-        <div className="card rounded-2xl p-4">
-          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            <Flame aria-hidden="true" className={`h-3.5 w-3.5 ${game.streak > 0 ? 'text-orange-500' : 'text-slate-300'}`} />
+      {pushKey && <PushReminderBanner publicKey={pushKey} />}
+
+      {/* Pending dues: only when the member owes something. A notice, not a link: payment is made at the gym. */}
+      {pendingAmount > 0 && (
+        <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <IndianRupee aria-hidden="true" className="h-4 w-4 shrink-0 text-amber-600" />
+          <p className="min-w-0 flex-1 text-sm text-slate-600">
+            <span className="font-bold text-amber-600">{formatCurrency(pendingAmount)} pending.</span>{' '}
+            Pay it here or at the gym front desk.
+          </p>
+          <Link
+            href="/m/membership/pay-due"
+            className="inline-flex min-h-[44px] shrink-0 items-center rounded-xl border border-amber-300 bg-amber-100 px-4 text-sm font-bold text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          >
+            Pay now
+          </Link>
+        </div>
+      )}
+
+      {/* Today's workout, from the programs the gym assigned (day = IST weekday). The page's one filled card:
+          it is the thing a member opens the app to do. */}
+      {workout.kind === 'workout' && (
+        <Link
+          href={`/m/workout?program=${workout.workout.programId}`}
+          className="mb-5 block rounded-2xl bg-brand-500 p-5 text-white shadow-sm transition-all active:scale-[0.98]"
+        >
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
+            <Dumbbell aria-hidden="true" className="h-3.5 w-3.5" />
+            Today&apos;s workout
+          </p>
+          <p className="mt-2 text-xl font-bold leading-tight">{workout.workout.programName}</p>
+          <p className="mt-1 text-sm leading-snug text-white/85">
+            {workout.workout.exerciseCount} exercise{workout.workout.exerciseCount === 1 ? '' : 's'}
+            {workout.workout.exerciseNames.length > 0 && <> · {workout.workout.exerciseNames.join(', ')}</>}
+          </p>
+          <span className="mt-4 inline-flex min-h-[44px] items-center gap-1 rounded-xl bg-white px-4 text-sm font-bold text-brand-500">
+            Start workout
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </span>
+        </Link>
+      )}
+      {workout.kind === 'rest' && (
+        <Link href="/m/workout" className="card mb-5 flex items-center gap-3 rounded-2xl p-4 transition-all active:scale-[0.98]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+            <Dumbbell aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-slate-900">Rest day</span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              {workout.nextDay ? `Your next workout is on ${workout.nextDay}.` : 'No exercises are scheduled yet.'}
+            </span>
+          </span>
+          <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
+        </Link>
+      )}
+
+      {/* Streak and weekly goal: one card, two numbers. Neutral, so the page keeps one loud element. */}
+      <section aria-label="Your streak and weekly goal" className="card mb-5 grid grid-cols-2 divide-x divide-slate-100 rounded-2xl">
+        <div className="p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+            <Flame aria-hidden="true" className="h-3.5 w-3.5 text-orange-500" />
             Streak
           </p>
           {/* The number is attended days only; the hourglass (inside StreakBadge)
@@ -109,16 +165,16 @@ export default async function HomePage() {
             className="mt-2"
           />
           {!game.streakPending && (
-            <p className={`mt-2 text-xs font-semibold ${game.attendedToday ? 'text-emerald-600' : 'text-slate-500'}`}>
+            <p className={`mt-2 text-xs font-medium ${game.attendedToday ? 'text-emerald-600' : 'text-slate-500'}`}>
               {game.attendedToday ? 'Checked in today' : 'Check in to start a streak'}
             </p>
           )}
         </div>
 
-        <div className="card flex items-center gap-3 rounded-2xl p-4">
+        <div className="flex items-center gap-3 p-4">
           <WeeklyGoalRing days={game.daysLast7} goal={game.weeklyGoalDays} />
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Weekly goal</p>
+            <p className="text-xs font-semibold text-slate-500">Weekly goal</p>
             <p className={`mt-1 text-xs font-bold leading-snug ${goal.reached ? 'text-emerald-600' : 'text-slate-700'}`}>
               {goal.reached
                 ? 'Goal reached'
@@ -129,31 +185,48 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {game.leaderboardsEnabled && <LeaderboardEntryCard className="mb-5" />}
-
-      {/* Hero card */}
-      <section className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 text-white shadow-lg shadow-brand-200">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-100">{gym.name}</p>
-        <h2 className="mt-2 text-xl font-bold">Your fitness journey</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-brand-100">
-          Track your attendance, view your membership, and access your digital card — all in one place.
-        </p>
-      </section>
+      {/* Membership status. Colour carries the meaning here: green is fine, amber and red need action. */}
+      <Link
+        href="/m/membership"
+        className={`mb-6 flex items-center gap-3 rounded-2xl border p-4 transition-all active:scale-[0.98] ${cfg.bg} ${cfg.border}`}
+      >
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface/70 ${cfg.colour}`}>
+          <StatusIcon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-bold ${cfg.colour}`}>{cfg.text}</p>
+          {latest && (
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {latest.plan.charAt(0).toUpperCase() + latest.plan.slice(1)} plan
+              &nbsp;·&nbsp;expires {formatDate(latest.end_date)}
+            </p>
+          )}
+        </div>
+        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
+      </Link>
+      {status !== 'active' && (
+        <Link
+          href="/m/membership/renew"
+          className="-mt-3 mb-6 flex min-h-[44px] items-center justify-center rounded-xl bg-brand-500 px-4 text-sm font-bold text-white transition-all active:scale-[0.98]"
+        >
+          Renew
+        </Link>
+      )}
 
       {/* Quick actions */}
       <section aria-labelledby="quick-actions-title">
         <h2 id="quick-actions-title" className="mb-3 text-sm font-semibold text-slate-700">Quick actions</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {quickActions.map(({ label, icon: Icon, href }) => (
             <Link
               key={href}
               href={href}
-              className="card tap-target flex flex-col items-center justify-center gap-1.5 py-4 text-center transition-all active:scale-[0.96]"
+              className="card tap-target flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-all active:scale-[0.96]"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
                 <Icon aria-hidden="true" className="h-4 w-4" />
               </span>
-              <span className="text-[11px] font-semibold text-slate-600 leading-tight">{label}</span>
+              <span className="text-sm font-semibold text-slate-700">{label}</span>
             </Link>
           ))}
         </div>

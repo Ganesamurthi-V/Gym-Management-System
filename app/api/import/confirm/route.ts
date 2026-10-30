@@ -9,9 +9,12 @@ import { normalizePhoneForImport } from '@/lib/import/normalizers'
 import { importConfirmSchema, MAX_CONFIRM_BODY_BYTES, MAX_IMPORT_ROWS } from '@/lib/import/schema'
 import { apiLogger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
-import { calcEndDate, todayIST } from '@/lib/utils'
+import { todayIST } from '@/lib/utils'
+import { monthsForPlan, parseStartDate, resolveImportedMembership } from '@/lib/import/membershipDates'
 import { importRowsToTake, PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
 import { passesCsrfCheck } from '@/lib/api/withAuth'
+import { recordOwnerAction } from '@/lib/activity/record'
+import { applyGymPlans, gymPlansFromOnboarding } from '@/lib/import/gymPlans'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
@@ -83,7 +86,16 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       )
     }
-    const allRows = parsedBody.data.rows
+    let allRows = parsedBody.data.rows
+    const today = todayIST()
+    // The schema checks the date is real; "not absurdly far ahead" depends on today, so it is checked here.
+    const badStart = allRows.findIndex(r => !parseStartDate(r.start_date, today).ok)
+    if (badStart >= 0) {
+      return NextResponse.json(
+        { success: false, error: { code: 'BAD_REQUEST', message: `Start date looks wrong (rows.${badStart}.start_date)` } },
+        { status: 400 },
+      )
+    }
 
     const gym = await getGymForUser(supabase, user.id)
     alertGymId = gym?.id
@@ -92,6 +104,24 @@ export async function POST(req: NextRequest) {
     }
     const readOnly = assertGymWritable(gym)
     if (readOnly) return readOnly
+
+    // A row that names a plan is checked against THIS gym's saved plans (server-resolved gym) and
+    // takes label, category and exact length from them; what the browser sent for those is dropped.
+    if (allRows.some(r => r.plan_name !== undefined)) {
+      const { data: g, error: gErr } = await supabase.from('gyms').select('onboarding_data').eq('id', gym.id).single()
+      if (gErr || !g) {
+        log.error('import gym plans lookup failed', gErr)
+        return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: GENERIC_DB_MESSAGE } }, { status: 500 })
+      }
+      const applied = applyGymPlans(allRows, gymPlansFromOnboarding(g.onboarding_data))
+      if (!applied.ok) {
+        return NextResponse.json(
+          { success: false, error: { code: 'BAD_REQUEST', message: `Plan is not one of your plans (rows.${applied.index}.plan_name)` } },
+          { status: 400 },
+        )
+      }
+      allRows = applied.rows
+    }
 
     // Plan limits are decided here from the database, never from the request: a trial gym
     // imports only as many rows as fit under the plan member limit in total, same as a Free gym.
@@ -190,7 +220,13 @@ export async function POST(req: NextRequest) {
     const membershipRows = memberIds.map((memberId, i) => {
       const r = rows[i]
       const plan = r.plan
-      const start = r.start_date ?? todayIST()
+      // Counted from the sheet's start date over the plan's real length, never from today:
+      // an existing member keeps the days they have left, and an ended plan stays ended.
+      const { startDate: start, endDate } = resolveImportedMembership({
+        startDate: r.start_date,
+        durationMonths: monthsForPlan(plan, r.duration_months),
+        today,
+      })
 
       return {
         member_id: memberId,
@@ -198,7 +234,7 @@ export async function POST(req: NextRequest) {
         plan,
         category: r.category,
         start_date: start,
-        end_date: calcEndDate(start, plan),
+        end_date: endDate,
         // The import brings in member and plan details only. A payment taken before joining
         // GymFlow is not a collection, so no amount is recorded (it would feed Payments, the
         // dashboard and reports). The file's amount/payment mode are intentionally not stored.
@@ -232,9 +268,10 @@ export async function POST(req: NextRequest) {
 
     await Promise.all([
       deleteCache(cacheKeys.paymentsAll(gym.id)),
-      deleteCache(cacheKeys.dashboard(gym.id, todayIST())),
+      deleteCache(cacheKeys.dashboard(gym.id, today)),
     ])
 
+    recordOwnerAction(supabase, req, 'IMPORT_CONFIRM')
     return NextResponse.json({
       success: true,
       data: {

@@ -400,6 +400,23 @@ CREATE TABLE IF NOT EXISTS gym_event_completions (
   CONSTRAINT gym_event_completions_event_member_key UNIQUE (event_id, member_id)
 );
 
+-- ── gym_notices ──────────────────────────────────────────────
+-- Short messages an owner posts for members (holiday timings, a new batch, a
+-- closure). Members read the active, unexpired ones on the member app home.
+-- Max 20 active per gym, enforced by guard_gym_notices_cap().
+CREATE TABLE IF NOT EXISTS gym_notices (
+  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id      UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  kind        TEXT        NOT NULL DEFAULT 'info'
+                          CHECK (kind IN ('info', 'holiday', 'batch', 'closure', 'offer')),
+  title       TEXT        NOT NULL CHECK (char_length(btrim(title)) BETWEEN 3 AND 80),
+  body        TEXT        NOT NULL CHECK (char_length(btrim(body)) BETWEEN 3 AND 500),
+  expires_on  DATE,
+  is_active   BOOLEAN     NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ── inventory ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS inventory (
   id                    UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -606,6 +623,120 @@ CREATE TABLE IF NOT EXISTS gym_upi_config (
   raw_params      JSONB       NOT NULL DEFAULT '{}',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── member_renewal_requests ──────────────────────────────────
+-- A member's UPI renewal awaiting the owner's review of the payment proof. Written only by the
+-- SECURITY DEFINER functions create/approve/reject_member_renewal_request.
+CREATE TABLE IF NOT EXISTS member_renewal_requests (
+  id             UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id         UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id      UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  -- 'renewal' buys a plan; 'due' pays part or all of members.pending_amount (plan_name is then 'Due payment').
+  request_type   TEXT        NOT NULL DEFAULT 'renewal' CHECK (request_type IN ('renewal', 'due')),
+  plan_name      TEXT        NOT NULL,
+  duration       TEXT        CHECK (duration IN ('monthly', 'quarterly', 'annual')),
+  months         INTEGER     CHECK (months IN (1, 3, 12)),
+  category       TEXT        NOT NULL DEFAULT 'both' CHECK (category IN ('strength', 'cardio', 'both')),
+  amount         INTEGER     NOT NULL CHECK (amount >= 0),
+  -- Path inside the private member_payment_proofs bucket: <gym_id>/<member_id>/<file>.
+  proof_path     TEXT        NOT NULL,
+  transaction_id TEXT        CHECK (char_length(transaction_id) <= 100),
+  notes          TEXT        CHECK (char_length(notes) <= 500),
+  status         TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reject_reason  TEXT        CHECK (char_length(reject_reason) <= 300),
+  membership_id  UUID        REFERENCES memberships(id) ON DELETE SET NULL,
+  due_payment_id UUID        REFERENCES due_payments(id) ON DELETE SET NULL,
+  created_at     TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at    TIMESTAMPTZ,
+  CONSTRAINT member_renewal_requests_renewal_has_plan_check
+    CHECK (request_type <> 'renewal' OR (duration IS NOT NULL AND months IS NOT NULL))
+);
+
+-- ── member_body_profile ──────────────────────────────────────
+-- Height and goal (the body baseline). Written only by save_body_profile; clients can only SELECT.
+CREATE TABLE IF NOT EXISTS member_body_profile (
+  member_id  UUID         PRIMARY KEY REFERENCES members(id) ON DELETE CASCADE,
+  gym_id     UUID         NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  height_cm  NUMERIC(4,1) NOT NULL CHECK (height_cm BETWEEN 100 AND 230),
+  goal       TEXT         NOT NULL CHECK (goal IN ('lose_fat', 'build_muscle', 'gain_weight', 'stay_fit')),
+  -- Optional target, both set or both null.
+  target_weight_kg NUMERIC(5,2) CHECK (target_weight_kg BETWEEN 20 AND 300),
+  target_date      DATE,
+  updated_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  CONSTRAINT member_body_profile_target_both_or_none CHECK ((target_weight_kg IS NULL) = (target_date IS NULL))
+);
+
+-- ── owner_activity_events ────────────────────────────────────
+-- What each gym owner did in the app: opened it, visited a page, performed an action. Written only by
+-- record_owner_activity (SECURITY DEFINER); no policies, so no API role reads it. The super admin reads it
+-- with the service role. Rows are deleted after 15 days by delete_old_owner_activity (daily automation).
+CREATE TABLE IF NOT EXISTS owner_activity_events (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id     UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  owner_id   UUID        NOT NULL,
+  kind       TEXT        NOT NULL CHECK (kind IN ('app_open', 'page_view', 'action')),
+  path       TEXT        CHECK (char_length(path) <= 200),
+  label      TEXT        CHECK (char_length(label) <= 80),
+  platform   TEXT        CHECK (platform IN ('mobile', 'desktop')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── member_body_logs / member_workout_sessions ───────────────
+-- Member progress. Written only by save_body_log, delete_body_log and save_workout_session
+-- (SECURITY DEFINER); clients can only SELECT. Limits mirror PROGRESS_LIMITS in types/progress.ts.
+CREATE TABLE IF NOT EXISTS member_body_logs (
+  id         UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id     UUID         NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id  UUID         NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  -- India date. One entry per member per day: a second save the same day replaces the first.
+  logged_on  DATE         NOT NULL DEFAULT ((now() AT TIME ZONE 'Asia/Kolkata')::date),
+  weight_kg  NUMERIC(5,2) CHECK (weight_kg BETWEEN 20 AND 300),
+  waist_cm   NUMERIC(5,1) CHECK (waist_cm  BETWEEN 10 AND 250),
+  chest_cm   NUMERIC(5,1) CHECK (chest_cm  BETWEEN 10 AND 250),
+  hips_cm    NUMERIC(5,1) CHECK (hips_cm   BETWEEN 10 AND 250),
+  arm_cm     NUMERIC(5,1) CHECK (arm_cm    BETWEEN 10 AND 250),
+  thigh_cm   NUMERIC(5,1) CHECK (thigh_cm  BETWEEN 10 AND 250),
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  CONSTRAINT member_body_logs_has_measurement_check
+    CHECK (num_nonnulls(weight_kg, waist_cm, chest_cm, hips_cm, arm_cm, thigh_cm) >= 1),
+  CONSTRAINT uq_member_body_logs_member_day UNIQUE (member_id, logged_on)
+);
+
+CREATE TABLE IF NOT EXISTS member_workout_sessions (
+  id               UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id           UUID          NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id        UUID          NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  -- Generated by the browser per session; makes a retried save idempotent.
+  client_id        UUID          NOT NULL,
+  program_name     TEXT          NOT NULL DEFAULT '' CHECK (char_length(program_name) <= 100),
+  day_label        TEXT          NOT NULL DEFAULT '' CHECK (char_length(day_label) <= 100),
+  started_at       TIMESTAMPTZ   NOT NULL,
+  duration_seconds INTEGER       NOT NULL CHECK (duration_seconds BETWEEN 0 AND 86400),
+  completed_sets   INTEGER       NOT NULL CHECK (completed_sets >= 0),
+  total_sets       INTEGER       NOT NULL CHECK (total_sets >= 0),
+  volume_kg        NUMERIC(10,1) NOT NULL CHECK (volume_kg >= 0),
+  -- [{ name, sets: [{ reps, weightKg, done }] }], built by save_workout_session.
+  exercises        JSONB         NOT NULL
+    CHECK (jsonb_typeof(exercises) = 'array' AND jsonb_array_length(exercises) <= 30 AND pg_column_size(exercises) <= 65536),
+  created_at       TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  CONSTRAINT uq_member_workout_sessions_client UNIQUE (member_id, client_id)
+);
+
+-- ── member_push_subscriptions ────────────────────────────────
+-- Member Web Push endpoints and keys. No policies and no table privileges: only register_push_subscription /
+-- unregister_push_subscription (SECURITY DEFINER) and the service-role sender touch it. Limits mirror PUSH_LIMITS in types/push.ts.
+CREATE TABLE IF NOT EXISTS member_push_subscriptions (
+  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gym_id          UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  member_id       UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  endpoint        TEXT        NOT NULL UNIQUE CHECK (char_length(endpoint) <= 600),
+  p256dh          TEXT        NOT NULL CHECK (char_length(p256dh) <= 200),
+  auth            TEXT        NOT NULL CHECK (char_length(auth) <= 100),
+  user_agent      TEXT        CHECK (char_length(user_agent) <= 300),
+  failure_count   INTEGER     NOT NULL DEFAULT 0,
+  last_success_at TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ── owner_feedback_prompts ───────────────────────────────────
@@ -935,6 +1066,11 @@ DECLARE
 BEGIN
   FOR r IN SELECT * FROM (VALUES
     ('memberships',            'fk_memberships_member_same_gym',     'member_id',    'members', 'CASCADE'),
+    ('member_renewal_requests','fk_member_renewal_requests_member_same_gym','member_id','members', 'CASCADE'),
+    ('member_body_logs',       'fk_member_body_logs_member_same_gym','member_id',    'members', 'CASCADE'),
+    ('member_body_profile',    'fk_member_body_profile_member_same_gym','member_id', 'members', 'CASCADE'),
+    ('member_workout_sessions','fk_member_workout_sessions_member_same_gym','member_id','members', 'CASCADE'),
+    ('member_push_subscriptions','fk_member_push_subscriptions_member_same_gym','member_id','members', 'CASCADE'),
     ('attendance',             'fk_attendance_member_same_gym',      'member_id',    'members', 'CASCADE'),
     ('due_payments',           'fk_due_payments_member_same_gym',    'member_id',    'members', 'CASCADE'),
     ('member_portal_activity', 'fk_portal_activity_member_same_gym', 'member_id',    'members', 'CASCADE'),
@@ -1151,6 +1287,13 @@ CREATE INDEX IF NOT EXISTS idx_gym_event_completions_member_id ON gym_event_comp
 CREATE INDEX IF NOT EXISTS idx_gym_event_completions_event_id  ON gym_event_completions(event_id);
 
 -- ────────────────────────────────────────────────────────────
+-- indexes on gym_notices
+-- ────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_gym_notices_gym_active_created
+  ON gym_notices(gym_id, is_active, created_at DESC);
+
+-- ────────────────────────────────────────────────────────────
 -- indexes on member_portal_activity
 -- ────────────────────────────────────────────────────────────
 
@@ -1159,6 +1302,36 @@ CREATE INDEX IF NOT EXISTS idx_portal_activity_gym
 
 CREATE INDEX IF NOT EXISTS idx_portal_activity_member
   ON member_portal_activity(member_id, created_at DESC);
+
+-- ────────────────────────────────────────────────────────────
+-- indexes on member_renewal_requests
+-- ────────────────────────────────────────────────────────────
+
+-- One pending renewal and one pending due payment per member.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_member_renewal_requests_one_pending_per_type
+  ON member_renewal_requests (member_id, request_type) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_member_renewal_requests_gym_status
+  ON member_renewal_requests (gym_id, status, created_at DESC);
+
+-- ────────────────────────────────────────────────────────────
+-- indexes on owner_activity_events
+CREATE INDEX IF NOT EXISTS idx_owner_activity_gym_created
+  ON owner_activity_events (gym_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_owner_activity_created
+  ON owner_activity_events (created_at);
+
+-- indexes on member_body_logs / member_workout_sessions
+-- ────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_member_body_logs_member_day
+  ON member_body_logs (member_id, logged_on DESC);
+CREATE INDEX IF NOT EXISTS idx_member_workout_sessions_member_started
+  ON member_workout_sessions (member_id, started_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_member_push_subscriptions_gym
+  ON member_push_subscriptions (gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_push_subscriptions_member
+  ON member_push_subscriptions (member_id);
 
 -- ────────────────────────────────────────────────────────────
 -- indexes on members
@@ -1637,6 +1810,878 @@ AS $$
   SELECT g.id, g.name, g.city AS location, g.created_at
     FROM public.gyms g
    WHERE g.id = public.current_member_gym_id()
+$$;
+
+-- ────────────────────────────────────────────────────────────
+-- Member renewal requests (pay by UPI, owner approves)
+-- ────────────────────────────────────────────────────────────
+
+-- Internal helper: the gym's renewable plans from gyms.onboarding_data.plans. key = zero-based index.
+-- Skips custom durations, durations that are not 1/3/12 months and prices <= 0. Price is the plan's list
+-- price, exactly what owners/members/new charges (it ignores hasDiscount/discountPercent, so this does too).
+CREATE OR REPLACE FUNCTION public.renewal_plan_options(p_gym_id UUID)
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'key', t.idx::text, 'name', t.name, 'duration', t.duration,
+        'months', t.months, 'category', t.category, 'price', t.price
+      ) ORDER BY t.idx
+    ),
+    '[]'::jsonb
+  )
+  FROM (
+    SELECT (e.ord - 1)::int AS idx,
+           left(trim(COALESCE(NULLIF(e.elem->>'planName', ''), 'Plan')), 100) AS name,
+           e.elem->>'duration' AS duration,
+           CASE e.elem->>'duration' WHEN 'monthly' THEN 1 WHEN 'quarterly' THEN 3 WHEN 'annual' THEN 12 END AS months,
+           CASE WHEN e.elem->>'category' IN ('strength', 'cardio') THEN e.elem->>'category' ELSE 'both' END AS category,
+           CASE WHEN (e.elem->>'price') ~ '^[0-9]{1,9}(\.[0-9]+)?$'
+                THEN round((e.elem->>'price')::numeric)::int END AS price
+      FROM public.gyms g,
+           LATERAL jsonb_array_elements(
+             CASE WHEN jsonb_typeof(g.onboarding_data->'plans') = 'array'
+                  THEN g.onboarding_data->'plans' ELSE '[]'::jsonb END
+           ) WITH ORDINALITY AS e(elem, ord)
+     WHERE g.id = p_gym_id
+  ) t
+  WHERE t.months IS NOT NULL AND t.price IS NOT NULL AND t.price > 0
+$$;
+
+DROP FUNCTION IF EXISTS public.get_member_renewal_options();
+CREATE FUNCTION public.get_member_renewal_options()
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_gym_id   UUID;
+  v_gym_name TEXT;
+  v_upi      JSONB;
+BEGIN
+  SELECT m.gym_id INTO v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_gym_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT g.name INTO v_gym_name FROM public.gyms g WHERE g.id = v_gym_id;
+
+  SELECT jsonb_build_object('upiId', u.upi_id, 'merchantName', u.merchant_name, 'merchantCode', u.merchant_code)
+    INTO v_upi
+    FROM public.gym_upi_config u
+   WHERE u.gym_id = v_gym_id;
+
+  RETURN jsonb_build_object(
+    'gymName', COALESCE(v_gym_name, ''),
+    'plans', public.renewal_plan_options(v_gym_id),
+    'upi', v_upi
+  );
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.create_member_renewal_request(TEXT, TEXT, TEXT, TEXT);
+CREATE FUNCTION public.create_member_renewal_request(
+  p_plan_key       TEXT,
+  p_proof_path     TEXT,
+  p_transaction_id TEXT DEFAULT NULL,
+  p_notes          TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_gym_id    UUID;
+  v_plans     JSONB;
+  v_plan      JSONB;
+  v_id        UUID;
+BEGIN
+  SELECT m.id, m.gym_id INTO v_member_id, v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  IF p_proof_path IS NULL
+     OR char_length(p_proof_path) NOT BETWEEN 1 AND 300
+     OR p_proof_path NOT LIKE v_gym_id::text || '/' || v_member_id::text || '/%'
+     OR p_proof_path LIKE '%..%' THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_PROOF';
+  END IF;
+  IF char_length(COALESCE(p_transaction_id, '')) > 100 OR char_length(COALESCE(p_notes, '')) > 500 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_TEXT';
+  END IF;
+
+  v_plans := public.renewal_plan_options(v_gym_id);
+  IF jsonb_array_length(v_plans) = 0 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NO_PLANS';
+  END IF;
+
+  SELECT p INTO v_plan FROM jsonb_array_elements(v_plans) p WHERE p->>'key' = p_plan_key LIMIT 1;
+  IF v_plan IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_PLAN';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.gym_upi_config u WHERE u.gym_id = v_gym_id) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NO_UPI';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.member_renewal_requests r
+     WHERE r.member_id = v_member_id AND r.status = 'pending' AND r.request_type = 'renewal'
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'ALREADY_PENDING';
+  END IF;
+
+  BEGIN
+    INSERT INTO public.member_renewal_requests
+      (gym_id, member_id, request_type, plan_name, duration, months, category, amount, proof_path, transaction_id, notes)
+    VALUES
+      (v_gym_id, v_member_id, 'renewal', v_plan->>'name', v_plan->>'duration', (v_plan->>'months')::int,
+       v_plan->>'category', (v_plan->>'price')::int, p_proof_path,
+       NULLIF(btrim(p_transaction_id), ''), NULLIF(btrim(p_notes), ''))
+    RETURNING id INTO v_id;
+  EXCEPTION WHEN unique_violation THEN
+    -- Two taps racing past the check above: the partial unique index is the real guard.
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'ALREADY_PENDING';
+  END;
+
+  RETURN v_id;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.create_member_due_payment_request(INTEGER, TEXT, TEXT, TEXT);
+CREATE FUNCTION public.create_member_due_payment_request(
+  p_amount         INTEGER,
+  p_proof_path     TEXT,
+  p_transaction_id TEXT DEFAULT NULL,
+  p_notes          TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_gym_id    UUID;
+  v_pending   INTEGER;
+  v_id        UUID;
+BEGIN
+  SELECT m.id, m.gym_id, m.pending_amount INTO v_member_id, v_gym_id, v_pending
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  IF p_proof_path IS NULL
+     OR char_length(p_proof_path) NOT BETWEEN 1 AND 300
+     OR p_proof_path NOT LIKE v_gym_id::text || '/' || v_member_id::text || '/%'
+     OR p_proof_path LIKE '%..%' THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_PROOF';
+  END IF;
+  IF char_length(COALESCE(p_transaction_id, '')) > 100 OR char_length(COALESCE(p_notes, '')) > 500 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_TEXT';
+  END IF;
+
+  IF COALESCE(v_pending, 0) <= 0 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOTHING_DUE';
+  END IF;
+  IF p_amount IS NULL OR p_amount < 1 OR p_amount > v_pending THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_AMOUNT';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.gym_upi_config u WHERE u.gym_id = v_gym_id) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NO_UPI';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.member_renewal_requests r
+     WHERE r.member_id = v_member_id AND r.status = 'pending' AND r.request_type = 'due'
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'ALREADY_PENDING';
+  END IF;
+
+  BEGIN
+    INSERT INTO public.member_renewal_requests
+      (gym_id, member_id, request_type, plan_name, category, amount, proof_path, transaction_id, notes)
+    VALUES
+      (v_gym_id, v_member_id, 'due', 'Due payment', 'both', p_amount, p_proof_path,
+       NULLIF(btrim(p_transaction_id), ''), NULLIF(btrim(p_notes), ''))
+    RETURNING id INTO v_id;
+  EXCEPTION WHEN unique_violation THEN
+    -- Two taps racing past the check above: the partial unique index is the real guard.
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'ALREADY_PENDING';
+  END;
+
+  RETURN v_id;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.approve_member_renewal_request(UUID, DATE, DATE);
+CREATE FUNCTION public.approve_member_renewal_request(
+  p_request_id UUID,
+  p_start_date DATE,
+  p_end_date   DATE
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_req           public.member_renewal_requests%ROWTYPE;
+  v_membership_id UUID;
+BEGIN
+  -- Ownership is part of the lookup: another gym's request is simply "not found".
+  -- A due-payment request never creates a membership, so it is "not found" here too.
+  SELECT r.* INTO v_req
+    FROM public.member_renewal_requests r
+    JOIN public.gyms g ON g.id = r.gym_id
+   WHERE r.id = p_request_id AND g.owner_id = auth.uid() AND r.request_type = 'renewal'
+     FOR UPDATE OF r;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_FOUND';
+  END IF;
+  IF v_req.status <> 'pending' THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_PENDING';
+  END IF;
+
+  IF p_start_date IS NULL OR p_end_date IS NULL
+     OR p_end_date < p_start_date
+     OR p_end_date > (p_start_date + interval '25 months')::date THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_DATES';
+  END IF;
+
+  INSERT INTO public.memberships
+    (member_id, gym_id, plan, category, start_date, end_date, amount, admission_fee, due_amount, payment_mode)
+  VALUES
+    (v_req.member_id, v_req.gym_id, v_req.duration, v_req.category, p_start_date, p_end_date,
+     v_req.amount, 0, 0, 'upi')
+  RETURNING id INTO v_membership_id;
+
+  UPDATE public.member_renewal_requests
+     SET status = 'approved', reviewed_at = now(), membership_id = v_membership_id
+   WHERE id = v_req.id;
+
+  INSERT INTO public.member_portal_activity (gym_id, member_id, activity, performed_by)
+  VALUES (v_req.gym_id, v_req.member_id, 'membership_renewed', 'owner');
+
+  RETURN v_membership_id;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.approve_member_due_payment_request(UUID);
+CREATE FUNCTION public.approve_member_due_payment_request(
+  p_request_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_req            public.member_renewal_requests%ROWTYPE;
+  v_pending        INTEGER;
+  v_collect        INTEGER;
+  v_due_payment_id UUID;
+BEGIN
+  SELECT r.* INTO v_req
+    FROM public.member_renewal_requests r
+    JOIN public.gyms g ON g.id = r.gym_id
+   WHERE r.id = p_request_id AND g.owner_id = auth.uid() AND r.request_type = 'due'
+     FOR UPDATE OF r;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_FOUND';
+  END IF;
+  IF v_req.status <> 'pending' THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_PENDING';
+  END IF;
+
+  -- Lock the balance so a concurrent Collect cannot subtract from the same starting value.
+  SELECT m.pending_amount INTO v_pending
+    FROM public.members m
+   WHERE m.id = v_req.member_id AND m.gym_id = v_req.gym_id
+     FOR UPDATE;
+
+  v_collect := LEAST(v_req.amount, COALESCE(v_pending, 0));
+  IF v_collect <= 0 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOTHING_DUE';
+  END IF;
+
+  UPDATE public.members
+     SET pending_amount = v_pending - v_collect
+   WHERE id = v_req.member_id AND gym_id = v_req.gym_id;
+
+  INSERT INTO public.due_payments (gym_id, member_id, amount, payment_mode)
+  VALUES (v_req.gym_id, v_req.member_id, v_collect, 'upi')
+  RETURNING id INTO v_due_payment_id;
+
+  UPDATE public.member_renewal_requests
+     SET status = 'approved', reviewed_at = now(), due_payment_id = v_due_payment_id
+   WHERE id = v_req.id;
+
+  RETURN jsonb_build_object('collected', v_collect, 'newPending', v_pending - v_collect);
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.reject_member_renewal_request(UUID, TEXT);
+CREATE FUNCTION public.reject_member_renewal_request(
+  p_request_id UUID,
+  p_reason     TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_req    public.member_renewal_requests%ROWTYPE;
+  v_reason TEXT := btrim(COALESCE(p_reason, ''));
+BEGIN
+  IF char_length(v_reason) NOT BETWEEN 3 AND 300 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_REASON';
+  END IF;
+
+  SELECT r.* INTO v_req
+    FROM public.member_renewal_requests r
+    JOIN public.gyms g ON g.id = r.gym_id
+   WHERE r.id = p_request_id AND g.owner_id = auth.uid()
+     FOR UPDATE OF r;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_FOUND';
+  END IF;
+  IF v_req.status <> 'pending' THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_PENDING';
+  END IF;
+
+  UPDATE public.member_renewal_requests
+     SET status = 'rejected', reject_reason = v_reason, reviewed_at = now()
+   WHERE id = v_req.id;
+END;
+$$;
+
+-- ────────────────────────────────────────────────────────────
+-- Owner activity (app opens, page views, feature actions)
+-- ────────────────────────────────────────────────────────────
+
+DROP FUNCTION IF EXISTS public.record_owner_activity(TEXT, TEXT, TEXT, TEXT);
+CREATE FUNCTION public.record_owner_activity(
+  p_kind     TEXT,
+  p_path     TEXT,
+  p_label    TEXT,
+  p_platform TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_gym_id UUID;
+  v_path   TEXT;
+BEGIN
+  IF auth.uid() IS NULL OR p_kind IS NULL OR p_kind NOT IN ('app_open', 'page_view', 'action') THEN
+    RETURN;
+  END IF;
+
+  SELECT g.id INTO v_gym_id FROM public.gyms g WHERE g.owner_id = auth.uid() LIMIT 1;
+  IF v_gym_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- Pathname only; ids and long numbers become ':id' so one row shape covers every record.
+  v_path := NULLIF(left(
+    regexp_replace(
+      regexp_replace(split_part(split_part(COALESCE(p_path, ''), '?', 1), '#', 1),
+        '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', ':id', 'g'),
+      '[0-9]{4,}', ':id', 'g'),
+    200), '');
+
+  INSERT INTO public.owner_activity_events (gym_id, owner_id, kind, path, label, platform)
+  VALUES (
+    v_gym_id,
+    auth.uid(),
+    p_kind,
+    v_path,
+    NULLIF(left(COALESCE(p_label, ''), 80), ''),
+    CASE WHEN p_platform IN ('mobile', 'desktop') THEN p_platform ELSE NULL END
+  );
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.delete_old_owner_activity(INT);
+CREATE FUNCTION public.delete_old_owner_activity(p_days INT DEFAULT 15)
+RETURNS INT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_count INT;
+BEGIN
+  DELETE FROM public.owner_activity_events
+   WHERE created_at < now() - make_interval(days => GREATEST(COALESCE(p_days, 15), 1));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+-- ────────────────────────────────────────────────────────────
+-- Member progress (body logs, workout session history)
+-- ────────────────────────────────────────────────────────────
+
+DROP FUNCTION IF EXISTS public.save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC);
+CREATE FUNCTION public.save_body_log(
+  p_logged_on DATE,
+  p_weight_kg NUMERIC,
+  p_waist_cm  NUMERIC,
+  p_chest_cm  NUMERIC,
+  p_hips_cm   NUMERIC,
+  p_arm_cm    NUMERIC,
+  p_thigh_cm  NUMERIC
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_gym_id    UUID;
+  v_today     DATE := (now() AT TIME ZONE 'Asia/Kolkata')::date;
+  v_on        DATE;
+  v_id        UUID;
+BEGIN
+  SELECT m.id, m.gym_id INTO v_member_id, v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  v_on := COALESCE(p_logged_on, v_today);
+  IF v_on > v_today OR v_on < v_today - 365 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_DATE';
+  END IF;
+
+  IF num_nonnulls(p_weight_kg, p_waist_cm, p_chest_cm, p_hips_cm, p_arm_cm, p_thigh_cm) = 0 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'EMPTY_LOG';
+  END IF;
+  IF (p_weight_kg IS NOT NULL AND p_weight_kg NOT BETWEEN 20 AND 300)
+     OR (p_waist_cm IS NOT NULL AND p_waist_cm NOT BETWEEN 10 AND 250)
+     OR (p_chest_cm IS NOT NULL AND p_chest_cm NOT BETWEEN 10 AND 250)
+     OR (p_hips_cm  IS NOT NULL AND p_hips_cm  NOT BETWEEN 10 AND 250)
+     OR (p_arm_cm   IS NOT NULL AND p_arm_cm   NOT BETWEEN 10 AND 250)
+     OR (p_thigh_cm IS NOT NULL AND p_thigh_cm NOT BETWEEN 10 AND 250) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_VALUE';
+  END IF;
+
+  INSERT INTO public.member_body_logs
+    (gym_id, member_id, logged_on, weight_kg, waist_cm, chest_cm, hips_cm, arm_cm, thigh_cm)
+  VALUES
+    (v_gym_id, v_member_id, v_on, round(p_weight_kg, 2), round(p_waist_cm, 1), round(p_chest_cm, 1),
+     round(p_hips_cm, 1), round(p_arm_cm, 1), round(p_thigh_cm, 1))
+  ON CONFLICT (member_id, logged_on) DO UPDATE
+    SET weight_kg = EXCLUDED.weight_kg,
+        waist_cm  = EXCLUDED.waist_cm,
+        chest_cm  = EXCLUDED.chest_cm,
+        hips_cm   = EXCLUDED.hips_cm,
+        arm_cm    = EXCLUDED.arm_cm,
+        thigh_cm  = EXCLUDED.thigh_cm
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.delete_body_log(UUID);
+CREATE FUNCTION public.delete_body_log(p_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_deleted   INTEGER;
+BEGIN
+  SELECT m.id INTO v_member_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+
+  DELETE FROM public.member_body_logs b
+   WHERE b.id = p_id AND b.member_id = v_member_id;
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  RETURN v_deleted > 0;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.save_body_profile(NUMERIC, TEXT);
+DROP FUNCTION IF EXISTS public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE);
+CREATE FUNCTION public.save_body_profile(
+  p_height_cm        NUMERIC,
+  p_goal             TEXT,
+  p_target_weight_kg NUMERIC DEFAULT NULL,
+  p_target_date      DATE    DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_gym_id    UUID;
+  v_today     DATE := (now() AT TIME ZONE 'Asia/Kolkata')::date;
+BEGIN
+  SELECT m.id, m.gym_id INTO v_member_id, v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  IF p_height_cm IS NULL OR p_height_cm NOT BETWEEN 100 AND 230
+     OR p_goal IS NULL OR p_goal NOT IN ('lose_fat', 'build_muscle', 'gain_weight', 'stay_fit') THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_VALUE';
+  END IF;
+
+  -- Both target fields together or neither; the date must be after today (India) and within 2 years.
+  IF (p_target_weight_kg IS NULL) <> (p_target_date IS NULL)
+     OR (p_target_weight_kg IS NOT NULL AND (
+           p_target_weight_kg NOT BETWEEN 20 AND 300
+        OR p_target_date <= v_today
+        OR p_target_date > v_today + 730)) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_VALUE';
+  END IF;
+
+  INSERT INTO public.member_body_profile (member_id, gym_id, height_cm, goal, target_weight_kg, target_date)
+  VALUES (v_member_id, v_gym_id, round(p_height_cm, 1), p_goal, round(p_target_weight_kg, 2), p_target_date)
+  ON CONFLICT (member_id) DO UPDATE
+    SET height_cm        = EXCLUDED.height_cm,
+        goal             = EXCLUDED.goal,
+        target_weight_kg = EXCLUDED.target_weight_kg,
+        target_date      = EXCLUDED.target_date,
+        updated_at       = now();
+END;
+$$;
+
+-- p_exercises: [{ "name": text, "sets": [{ "reps": int|null, "weight_kg": number|null, "done": bool }] }].
+-- Totals are computed here from the sets; nothing the client says about totals is accepted.
+DROP FUNCTION IF EXISTS public.save_workout_session(UUID, TEXT, TEXT, TIMESTAMPTZ, INTEGER, JSONB);
+CREATE FUNCTION public.save_workout_session(
+  p_client_id        UUID,
+  p_program_name     TEXT,
+  p_day_label        TEXT,
+  p_started_at       TIMESTAMPTZ,
+  p_duration_seconds INTEGER,
+  p_exercises        JSONB
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id  UUID;
+  v_gym_id     UUID;
+  v_program    TEXT := btrim(COALESCE(p_program_name, ''));
+  v_day        TEXT := btrim(COALESCE(p_day_label, ''));
+  v_ex         JSONB;
+  v_set        JSONB;
+  v_name       TEXT;
+  v_reps       INTEGER;
+  v_weight     NUMERIC;
+  v_done       BOOLEAN;
+  v_sets_out   JSONB;
+  v_out        JSONB := '[]'::jsonb;
+  v_total      INTEGER := 0;
+  v_completed  INTEGER := 0;
+  v_volume     NUMERIC := 0;
+  v_id         UUID;
+BEGIN
+  SELECT m.id, m.gym_id INTO v_member_id, v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  IF p_client_id IS NULL
+     OR char_length(v_program) > 100 OR char_length(v_day) > 100
+     OR p_started_at IS NULL
+     OR p_started_at > now() + interval '1 day'
+     OR p_started_at < now() - interval '1 year'
+     OR p_duration_seconds IS NULL OR p_duration_seconds NOT BETWEEN 0 AND 86400
+     OR p_exercises IS NULL OR jsonb_typeof(p_exercises) <> 'array' THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+  END IF;
+  IF jsonb_array_length(p_exercises) NOT BETWEEN 1 AND 30 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+  END IF;
+
+  FOR v_ex IN SELECT e FROM jsonb_array_elements(p_exercises) AS e LOOP
+    -- IS DISTINCT FROM: a missing key gives a NULL type, and NULL <> 'x' would let it through.
+    IF jsonb_typeof(v_ex) IS DISTINCT FROM 'object'
+       OR jsonb_typeof(v_ex->'name') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(v_ex->'sets') IS DISTINCT FROM 'array' THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+    END IF;
+    IF jsonb_array_length(v_ex->'sets') NOT BETWEEN 1 AND 20 THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+    END IF;
+    v_name := btrim(v_ex->>'name');
+    IF char_length(v_name) NOT BETWEEN 1 AND 80 THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+    END IF;
+
+    v_sets_out := '[]'::jsonb;
+    FOR v_set IN SELECT s FROM jsonb_array_elements(v_ex->'sets') AS s LOOP
+      IF jsonb_typeof(v_set) <> 'object' THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+      END IF;
+
+      v_reps := NULL;
+      IF jsonb_typeof(v_set->'reps') = 'number' THEN
+        IF (v_set->>'reps')::numeric <> trunc((v_set->>'reps')::numeric)
+           OR (v_set->>'reps')::numeric NOT BETWEEN 0 AND 1000 THEN
+          RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+        END IF;
+        v_reps := (v_set->>'reps')::integer;
+      ELSIF COALESCE(jsonb_typeof(v_set->'reps'), 'null') <> 'null' THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+      END IF;
+
+      v_weight := NULL;
+      IF jsonb_typeof(v_set->'weight_kg') = 'number' THEN
+        IF (v_set->>'weight_kg')::numeric NOT BETWEEN 0 AND 500 THEN
+          RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+        END IF;
+        v_weight := round((v_set->>'weight_kg')::numeric, 2);
+      ELSIF COALESCE(jsonb_typeof(v_set->'weight_kg'), 'null') <> 'null' THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+      END IF;
+
+      v_done := false;
+      IF jsonb_typeof(v_set->'done') = 'boolean' THEN
+        v_done := (v_set->>'done')::boolean;
+      ELSIF COALESCE(jsonb_typeof(v_set->'done'), 'null') <> 'null' THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_SESSION';
+      END IF;
+
+      v_total := v_total + 1;
+      IF v_done THEN
+        v_completed := v_completed + 1;
+        IF v_reps IS NOT NULL AND v_weight IS NOT NULL THEN
+          v_volume := v_volume + v_reps * v_weight;
+        END IF;
+      END IF;
+
+      v_sets_out := v_sets_out || jsonb_build_array(
+        jsonb_build_object('reps', v_reps, 'weightKg', v_weight, 'done', v_done)
+      );
+    END LOOP;
+
+    v_out := v_out || jsonb_build_array(jsonb_build_object('name', v_name, 'sets', v_sets_out));
+  END LOOP;
+
+  INSERT INTO public.member_workout_sessions
+    (gym_id, member_id, client_id, program_name, day_label, started_at, duration_seconds,
+     completed_sets, total_sets, volume_kg, exercises)
+  VALUES
+    (v_gym_id, v_member_id, p_client_id, v_program, v_day, p_started_at, p_duration_seconds,
+     v_completed, v_total, round(v_volume, 1), v_out)
+  ON CONFLICT (member_id, client_id) DO NOTHING
+  RETURNING id INTO v_id;
+
+  -- A retried save: hand back the row the first attempt created.
+  IF v_id IS NULL THEN
+    SELECT s.id INTO v_id
+      FROM public.member_workout_sessions s
+     WHERE s.member_id = v_member_id AND s.client_id = p_client_id;
+  END IF;
+
+  RETURN v_id;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.register_push_subscription(TEXT, TEXT, TEXT, TEXT);
+CREATE FUNCTION public.register_push_subscription(
+  p_endpoint   TEXT,
+  p_p256dh     TEXT,
+  p_auth       TEXT,
+  p_user_agent TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_gym_id    UUID;
+BEGIN
+  SELECT m.id, m.gym_id INTO v_member_id, v_gym_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  IF p_endpoint IS NULL OR char_length(p_endpoint) NOT BETWEEN 10 AND 600
+     OR p_p256dh IS NULL OR char_length(p_p256dh) NOT BETWEEN 1 AND 200
+     OR p_auth IS NULL OR char_length(p_auth) NOT BETWEEN 1 AND 100 THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_VALUE';
+  END IF;
+
+  -- A shared phone: the same endpoint moves to whoever is signed in now.
+  INSERT INTO public.member_push_subscriptions
+    (gym_id, member_id, endpoint, p256dh, auth, user_agent)
+  VALUES
+    (v_gym_id, v_member_id, p_endpoint, p_p256dh, p_auth, left(p_user_agent, 300))
+  ON CONFLICT (endpoint) DO UPDATE
+    SET gym_id        = EXCLUDED.gym_id,
+        member_id     = EXCLUDED.member_id,
+        p256dh        = EXCLUDED.p256dh,
+        auth          = EXCLUDED.auth,
+        user_agent    = EXCLUDED.user_agent,
+        failure_count = 0;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.unregister_push_subscription(TEXT);
+CREATE FUNCTION public.unregister_push_subscription(p_endpoint TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_member_id UUID;
+  v_count     INTEGER;
+BEGIN
+  SELECT m.id INTO v_member_id
+    FROM public.members m
+   WHERE m.auth_user_id = auth.uid()
+   LIMIT 1;
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
+  END IF;
+
+  DELETE FROM public.member_push_subscriptions s
+   WHERE s.endpoint = p_endpoint
+     AND s.member_id = v_member_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count > 0;
+END;
+$$;
+
+-- Members of one gym whose streak is alive (>= 2 days) but who have not checked in today (IST). Used by the evening
+-- push nudge (/api/cron/push-evening). Mirrors get_gym_leaderboard() / get_member_gamification() and lib/gamification/streak.ts
+-- streakFromDays: effective day with the 05:00 IST rollover, days after the IST today ignored, alive while
+-- last day >= (IST date of now - 5 h) - 1, pending while last day < IST today. Only members with a push subscription.
+-- Service-role only: it takes a gym id, so it must never be callable by clients.
+DROP FUNCTION IF EXISTS public.members_streak_at_risk(UUID);
+CREATE FUNCTION public.members_streak_at_risk(p_gym_id UUID)
+RETURNS TABLE (member_id UUID)
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+  WITH t AS (
+    SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date AS ist_today,
+           ((now() - INTERVAL '5 hours') AT TIME ZONE 'Asia/Kolkata')::date AS gym_today
+  ),
+  days AS (
+    SELECT DISTINCT
+           a.member_id AS mid,
+           CASE
+             WHEN (a.created_at AT TIME ZONE 'Asia/Kolkata')::date = a.date
+                  AND (a.created_at AT TIME ZONE 'Asia/Kolkata')::time < TIME '05:00'
+             THEN CASE
+                    WHEN NOT EXISTS (
+                      SELECT 1 FROM public.attendance p
+                       WHERE p.member_id = a.member_id
+                         AND p.date = a.date - 1
+                    )
+                    THEN a.date - 1
+                    ELSE a.date
+                  END
+             ELSE a.date
+           END AS day
+      FROM public.attendance a
+     WHERE a.gym_id = p_gym_id
+       AND EXISTS (SELECT 1 FROM public.member_push_subscriptions s WHERE s.member_id = a.member_id AND s.gym_id = p_gym_id)
+  ),
+  runs AS (
+    SELECT d.mid, d.day,
+           d.day - (ROW_NUMBER() OVER (PARTITION BY d.mid ORDER BY d.day))::int AS grp
+      FROM days d, t
+     WHERE d.day <= t.ist_today
+  ),
+  islands AS (
+    SELECT r.mid, COUNT(*)::int AS len, MAX(r.day) AS last_day
+      FROM runs r
+     GROUP BY r.mid, r.grp
+  ),
+  cur AS (
+    SELECT DISTINCT ON (i.mid) i.mid, i.len, i.last_day
+      FROM islands i
+     ORDER BY i.mid, i.last_day DESC
+  )
+  SELECT c.mid
+    FROM cur c, t
+   WHERE c.last_day >= t.gym_today - 1
+     AND c.last_day < t.ist_today
+     AND c.len >= 2;
 $$;
 
 -- ────────────────────────────────────────────────────────────
@@ -4261,6 +5306,26 @@ BEGIN
 END;
 $$;
 
+-- ── guard_gym_notices_cap: at most 20 active notices per gym ──
+-- Runs on insert and on re-activation. The advisory lock serialises concurrent
+-- writers of one gym so two requests cannot both slip past the count.
+CREATE OR REPLACE FUNCTION public.guard_gym_notices_cap()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.is_active AND (TG_OP = 'INSERT' OR NOT OLD.is_active) THEN
+    PERFORM pg_advisory_xact_lock(hashtext('gym_notices:' || NEW.gym_id::text));
+    IF (SELECT count(*) FROM gym_notices
+         WHERE gym_id = NEW.gym_id AND is_active AND id <> NEW.id) >= 20 THEN
+      RAISE EXCEPTION 'TOO_MANY_NOTICES' USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 
 -- ############################################################
 -- 6 — TRIGGERS
@@ -4363,6 +5428,21 @@ DROP TRIGGER IF EXISTS trg_guard_gym_events ON gym_events;
 CREATE TRIGGER trg_guard_gym_events
   BEFORE INSERT OR UPDATE ON gym_events
   FOR EACH ROW EXECUTE FUNCTION public.guard_gym_events();
+
+-- ────────────────────────────────────────────────────────────
+-- triggers on gym_notices
+-- ────────────────────────────────────────────────────────────
+
+DROP TRIGGER IF EXISTS gym_notices_updated_at ON gym_notices;
+CREATE TRIGGER gym_notices_updated_at
+  BEFORE UPDATE ON gym_notices
+  FOR EACH ROW
+  EXECUTE FUNCTION update_whatsapp_messages_updated_at();
+
+DROP TRIGGER IF EXISTS trg_guard_gym_notices_cap ON gym_notices;
+CREATE TRIGGER trg_guard_gym_notices_cap
+  BEFORE INSERT OR UPDATE ON gym_notices
+  FOR EACH ROW EXECUTE FUNCTION public.guard_gym_notices_cap();
 
 -- ────────────────────────────────────────────────────────────
 -- triggers on gyms
@@ -4632,6 +5712,7 @@ ALTER TABLE member_achievements      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gamification_awards      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_events               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_event_completions    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_notices              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_units          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_sales          ENABLE ROW LEVEL SECURITY;
@@ -4639,6 +5720,12 @@ ALTER TABLE workout_programs         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE program_assignments      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_portal_activity   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_requests    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_renewal_requests   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_body_logs         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owner_activity_events    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_body_profile      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_workout_sessions  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_audit_logs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_settings        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_announcement    ENABLE ROW LEVEL SECURITY;
@@ -4849,6 +5936,41 @@ CREATE POLICY "Owner can update own event completions"
   ON gym_event_completions FOR UPDATE
   USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()))
   WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+
+-- ────────────────────────────────────────────────────────────
+-- policies on gym_notices
+-- ────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Owner can read own gym notices" ON gym_notices;
+CREATE POLICY "Owner can read own gym notices"
+  ON gym_notices FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Owner can insert own gym notices" ON gym_notices;
+CREATE POLICY "Owner can insert own gym notices"
+  ON gym_notices FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Owner can update own gym notices" ON gym_notices;
+CREATE POLICY "Owner can update own gym notices"
+  ON gym_notices FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Owner can delete own gym notices" ON gym_notices;
+CREATE POLICY "Owner can delete own gym notices"
+  ON gym_notices FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gym_notices.gym_id AND owner_id = (SELECT auth.uid())));
+
+-- Members of the gym read its notices; blocked gyms lose them like other member data.
+DROP POLICY IF EXISTS "Members can view their gym notices" ON gym_notices;
+CREATE POLICY "Members can view their gym notices"
+  ON gym_notices FOR SELECT
+  TO authenticated
+  USING (
+    gym_id = (SELECT public.current_member_gym_id())
+    AND (SELECT public.member_app_allowed())
+  );
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_plan_prices
@@ -5086,6 +6208,72 @@ CREATE POLICY "Members can insert their own login activity"
     AND gym_id = public.current_member_gym_id()
     -- Blocked gyms (Free, lapsed, suspended, outside the trial's first members)
     -- lose member app data here too, not only behind the app's own gate.
+    AND (SELECT public.member_app_allowed())
+  );
+
+-- ────────────────────────────────────────────────────────────
+-- policies on member_renewal_requests (read-only: writes go through definer functions)
+-- ────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Gym owners can view renewal requests" ON public.member_renewal_requests;
+CREATE POLICY "Gym owners can view renewal requests"
+  ON public.member_renewal_requests FOR SELECT
+  TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = member_renewal_requests.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Members can view their own renewal requests" ON public.member_renewal_requests;
+CREATE POLICY "Members can view their own renewal requests"
+  ON public.member_renewal_requests FOR SELECT
+  TO authenticated
+  USING (
+    member_id IN (SELECT id FROM public.members WHERE auth_user_id = (SELECT auth.uid()))
+    AND (SELECT public.member_app_allowed())
+  );
+
+-- policies on member_body_profile (read-only: writes go through save_body_profile)
+DROP POLICY IF EXISTS "Gym owners can view member body profiles" ON public.member_body_profile;
+CREATE POLICY "Gym owners can view member body profiles"
+  ON public.member_body_profile FOR SELECT
+  TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = member_body_profile.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Members can view their own body profile" ON public.member_body_profile;
+CREATE POLICY "Members can view their own body profile"
+  ON public.member_body_profile FOR SELECT
+  TO authenticated
+  USING (
+    member_id IN (SELECT id FROM public.members WHERE auth_user_id = (SELECT auth.uid()))
+    AND (SELECT public.member_app_allowed())
+  );
+
+-- policies on member_body_logs / member_workout_sessions (read-only: writes go through definer functions)
+DROP POLICY IF EXISTS "Gym owners can view member body logs" ON public.member_body_logs;
+CREATE POLICY "Gym owners can view member body logs"
+  ON public.member_body_logs FOR SELECT
+  TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = member_body_logs.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Members can view their own body logs" ON public.member_body_logs;
+CREATE POLICY "Members can view their own body logs"
+  ON public.member_body_logs FOR SELECT
+  TO authenticated
+  USING (
+    member_id IN (SELECT id FROM public.members WHERE auth_user_id = (SELECT auth.uid()))
+    AND (SELECT public.member_app_allowed())
+  );
+
+DROP POLICY IF EXISTS "Gym owners can view member workout sessions" ON public.member_workout_sessions;
+CREATE POLICY "Gym owners can view member workout sessions"
+  ON public.member_workout_sessions FOR SELECT
+  TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = member_workout_sessions.gym_id AND owner_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS "Members can view their own workout sessions" ON public.member_workout_sessions;
+CREATE POLICY "Members can view their own workout sessions"
+  ON public.member_workout_sessions FOR SELECT
+  TO authenticated
+  USING (
+    member_id IN (SELECT id FROM public.members WHERE auth_user_id = (SELECT auth.uid()))
     AND (SELECT public.member_app_allowed())
   );
 
@@ -5406,6 +6594,10 @@ GRANT SELECT ON public.member_achievements TO authenticated;
 REVOKE ALL ON public.gamification_awards FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON public.gamification_awards TO authenticated;
 
+-- ── Gym notices ──────────────────────────────────────────────
+REVOKE ALL ON public.gym_notices FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gym_notices TO authenticated;
+
 -- ── Gamification events ──────────────────────────────────────
 REVOKE ALL ON public.gym_events FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gym_events TO authenticated;
@@ -5507,6 +6699,58 @@ GRANT EXECUTE ON FUNCTION public.owner_switch_to_free() TO authenticated;
 REVOKE ALL ON FUNCTION public.record_member_achievements(TEXT[])    FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.record_member_achievements(TEXT[]) TO authenticated;
 
+-- Member renewal requests: table is read-only to clients; the definer functions are the only writers.
+REVOKE ALL ON public.member_renewal_requests FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.member_renewal_requests TO authenticated;
+
+-- Internal helper: only the definer functions above call it.
+REVOKE ALL ON FUNCTION public.renewal_plan_options(UUID) FROM PUBLIC, anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.get_member_renewal_options()                          FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_member_renewal_options()                       TO authenticated;
+REVOKE ALL ON FUNCTION public.create_member_renewal_request(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_member_renewal_request(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.approve_member_renewal_request(UUID, DATE, DATE)      FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.approve_member_renewal_request(UUID, DATE, DATE)   TO authenticated;
+REVOKE ALL ON FUNCTION public.create_member_due_payment_request(INTEGER, TEXT, TEXT, TEXT)    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_member_due_payment_request(INTEGER, TEXT, TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.approve_member_due_payment_request(UUID)              FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.approve_member_due_payment_request(UUID)           TO authenticated;
+REVOKE ALL ON FUNCTION public.reject_member_renewal_request(UUID, TEXT)             FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.reject_member_renewal_request(UUID, TEXT)          TO authenticated;
+
+-- Member progress: read-only tables; the definer functions are the only writers.
+REVOKE ALL ON public.member_body_logs        FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.member_body_logs        TO authenticated;
+REVOKE ALL ON public.member_body_profile     FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.member_body_profile     TO authenticated;
+REVOKE ALL ON public.member_workout_sessions FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.member_workout_sessions TO authenticated;
+REVOKE ALL ON public.owner_activity_events FROM PUBLIC, anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.record_owner_activity(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.record_owner_activity(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.delete_old_owner_activity(INT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_old_owner_activity(INT) TO service_role;
+
+REVOKE ALL ON FUNCTION public.save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.save_body_log(DATE, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC) TO authenticated;
+REVOKE ALL ON FUNCTION public.delete_body_log(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_body_log(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.save_body_profile(NUMERIC, TEXT, NUMERIC, DATE) TO authenticated;
+REVOKE ALL ON FUNCTION public.save_workout_session(UUID, TEXT, TEXT, TIMESTAMPTZ, INTEGER, JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.save_workout_session(UUID, TEXT, TEXT, TIMESTAMPTZ, INTEGER, JSONB) TO authenticated;
+
+-- Member push: no direct table access at all; only the functions below and the service-role sender.
+REVOKE ALL ON public.member_push_subscriptions FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.register_push_subscription(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.register_push_subscription(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.unregister_push_subscription(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.unregister_push_subscription(TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.members_streak_at_risk(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.members_streak_at_risk(UUID) TO service_role;
+
 -- Member app gate: called by the member policies and RPCs as the member.
 REVOKE ALL ON FUNCTION public.member_app_allowed()    FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.member_app_allowed() TO authenticated;
@@ -5585,6 +6829,7 @@ REVOKE ALL ON FUNCTION public.update_whatsapp_messages_updated_at() FROM PUBLIC,
 REVOKE ALL ON FUNCTION public.generate_member_code()             FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_member_auth_user_link()      FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_gym_events()                 FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_gym_notices_cap()            FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.delete_old_whatsapp_webhook_logs() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_old_whatsapp_webhook_logs() TO service_role;
 
@@ -5712,6 +6957,13 @@ CREATE POLICY "gym owner read own payment proofs"
     AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
   );
 
+
+-- Private bucket for member renewal payment proofs. NO storage policies: only the service role
+-- (member renewal route, owner signed-URL route) reads or writes it.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES ('member_payment_proofs', 'member_payment_proofs', false, 10485760,
+          ARRAY['image/jpeg', 'image/png', 'application/pdf'])
+  ON CONFLICT (id) DO NOTHING;
 
 -- ############################################################
 -- 12 — SEED ROWS

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { passesCsrf, UUID_RE } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { deleteCache } from '@/lib/cache'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 
@@ -80,6 +81,7 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
       }
     }
 
+    recordOwnerAction(supabase, req, 'INVENTORY_SALE_DELETE')
     return NextResponse.json({ success: true, restoredQuantity: sale.quantity })
 
   } catch (err: unknown) {

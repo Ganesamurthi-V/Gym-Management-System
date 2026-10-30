@@ -14,6 +14,7 @@ import { getAuthUser, getGym, getGymCore } from '@/lib/dal'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { passesCsrf } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 const log = apiLogger('PROGRAM_ASSIGNMENTS')
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Could not assign the program' }, { status: 500 })
   }
 
+  recordOwnerAction(supabase, req, 'PROGRAMS_ASSIGN')
   return NextResponse.json({
     success: true,
     assigned: targetIds.length,
@@ -216,6 +218,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Could not unassign members' }, { status: 500 })
   }
 
+  recordOwnerAction(supabase, req, 'PROGRAMS_UNASSIGN')
   return NextResponse.json({
     success: true,
     removed: memberIds.length,

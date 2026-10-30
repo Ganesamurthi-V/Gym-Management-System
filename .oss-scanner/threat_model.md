@@ -19,7 +19,7 @@ bug, not a feature.
 - Most: tenant isolation (RLS policies in `supabase-schema.sql` and `supabase/migrations/`), the auth and
   subscription paywall (`lib/dal.ts`, `middleware.ts`, `app/owner/layout`, `app/m/layout.tsx`), `withAuth`
   (`lib/api/withAuth.ts`), the WhatsApp send path (`lib/whatsapp/`), and the secrets handling in `lib/supabase/`.
-- Less: the marketing site (`landing-page-1/`) and the bare React Native admin app (`gymflow-mobile/`), which is still
+- Less: the marketing site (`landing-page/`) and the bare React Native admin app (`gymflow-mobile/`), which is still
   in scope but holds no tenant data beyond what the API returns.
 - `gymflow-admin/` (super-admin panel with service-role access) is in scope and high-impact: treat any bypass of its
   own JWT session as serious.

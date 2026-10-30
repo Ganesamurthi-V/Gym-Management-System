@@ -45,6 +45,7 @@ import {
   decideScheduledSend,
   type CycleState,
 } from './scheduling'
+import { isExpiredBeyondReminderWindow } from './reminderWindow'
 import { todayIST } from '@/lib/utils'
 import { formatMemberId } from '@/types'
 import { isGamificationTemplateEnabled } from '@/config/whatsapp'
@@ -85,6 +86,8 @@ interface AutomationMember {
   phone: string
   date_of_birth: string | null
   pending_amount: number
+  /** Max end_date over ALL memberships (not just the newest-created); drives the 3-month reminder cutoff. */
+  max_end_date?: string | null
   latest_membership: {
     plan: string
     end_date: string
@@ -593,6 +596,27 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
         }
       }
     }
+    // ── Member Web Push (expiring, body progress, we-miss-you, weekly quote) ──
+    // Last and fully isolated: a push failure must never fail or alter the WhatsApp run. Not a Vercel cron;
+    // it rides this one (09:00 IST, inside the 07:00-21:00 push window). No-op unless VAPID is configured.
+    try {
+      const { isPushConfigured } = await import('@/lib/push/config')
+      if (isPushConfigured()) {
+        const { runDailyPushStep } = await import('@/lib/push/daily')
+        await runDailyPushStep()
+      }
+    } catch (err) {
+      console.error('[WA Automation] Push step failed:', err instanceof Error ? err.message : String(err))
+    }
+    // ── Owner activity retention (15 days) ──
+    // Isolated like the push step: a cleanup failure must never fail the WhatsApp run.
+    try {
+      const { data: deleted, error } = await supabase.rpc('delete_old_owner_activity', { p_days: 15 })
+      if (error) throw new Error(error.message)
+      console.log(`[WA Automation] Owner activity cleanup deleted ${deleted ?? 0} rows`)
+    } catch (err) {
+      console.error('[WA Automation] Owner activity cleanup failed:', err instanceof Error ? err.message : String(err))
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     stats.errors.push(`Fatal: ${msg}`)
@@ -827,6 +851,7 @@ function toAutomationMember(rawMember: any): AutomationMember {
     phone: rawMember.phone ?? '',
     date_of_birth: rawMember.date_of_birth ?? null,
     pending_amount: rawMember.pending_amount ?? 0,
+    max_end_date: memberships.reduce<string | null>((m, x) => (x.end_date && (!m || x.end_date > m) ? x.end_date : m), null),
     latest_membership: latestMs
       ? { plan: latestMs.plan, end_date: latestMs.end_date }
       : null,
@@ -856,6 +881,13 @@ async function processExpiryExpired(
   if (!member.latest_membership) return
   const endDate = member.latest_membership.end_date
   const phone = member.phone
+
+  // Expired more than 3 months ago (by the latest end_date across all memberships, so a renewed
+  // member is unaffected): no reminder at all, even for the import-time window.
+  if (isExpiredBeyondReminderWindow(member.max_end_date ?? endDate, today)) {
+    stats.skipped++
+    return
+  }
 
   if (isExpiringInWindow(endDate, today)) {
     await tryScheduledSend({

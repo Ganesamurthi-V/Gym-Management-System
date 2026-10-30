@@ -4,14 +4,18 @@
  * auto-import and manual-mapping import flows.
  */
 
-import { format } from "date-fns";
 import { recognizePlanDuration } from "./plan-matching";
 
 export function excelSerialToDate(serial: number): string {
-  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  const d = new Date(Math.floor(serial - 25569) * 86400 * 1000);
   // A huge or non-finite number in a date column makes an Invalid Date, and
   // date-fns format() throws on it, which aborted the whole file read.
-  return isNaN(d.getTime()) ? "" : format(d, "yyyy-MM-dd");
+  // UTC getters: the serial is a calendar day, so the viewer's time zone must not move it.
+  return isNaN(d.getTime()) ? "" : utcDay(d);
+}
+
+function utcDay(d: Date): string {
+  return `${String(d.getUTCFullYear()).padStart(4, "0")}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
 
 /** Longest text kept from one spreadsheet cell; a cell can hold 32,767 characters. */
@@ -28,7 +32,9 @@ function cellText(value: unknown): string {
   if (typeof value === "string") return value.trim();
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return String(value);
-  if (value instanceof Date) return isNaN(value.getTime()) ? "" : format(value, "yyyy-MM-dd");
+  // ExcelJS hands back a date cell as that calendar day at 00:00 UTC; local getters would
+  // read the previous day in a browser west of UTC.
+  if (value instanceof Date) return isNaN(value.getTime()) ? "" : utcDay(value);
   if (typeof value === "object") {
     const o = value as Record<string, unknown>;
     if (Array.isArray(o.richText))
@@ -95,7 +101,7 @@ export function normalizeAge(raw: string): string {
 
 /**
  * Normalize a date-of-birth cell to "YYYY-MM-DD", or "" when absent/unparseable.
- * Unlike normalizeDate() it never defaults to today (a bogus DOB would fire a
+ * It never defaults to today (a bogus DOB would fire a
  * wrong-day birthday message). Only month+day matter for the birthday_wishes
  * automation, so an ambiguous 2-digit year is harmless.
  */
@@ -118,24 +124,6 @@ export function normalizeDob(raw: string): string {
   return "";
 }
 
-export function normalizeDate(raw: string): string {
-  const t = raw.trim();
-  const isoMatch = t.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (isoMatch) return isoMatch[1];
-  const n = Number(t);
-  if (!isNaN(n) && t !== "" && !t.includes("-") && !t.includes("/"))
-    return excelSerialToDate(n);
-  if (t.includes("/")) {
-    const parts = t.split("/");
-    if (parts.length === 3) {
-      const [a, b, c] = parts;
-      return `${c.length === 4 ? c : "20" + c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-    }
-  }
-  return t || format(new Date(), "yyyy-MM-dd");
-}
-
-/**
 /**
  * Normalizes a member number from the import file.
  *

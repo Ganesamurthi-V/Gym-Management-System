@@ -15,7 +15,7 @@ Please include:
 
 - what the problem is and what an attacker could do with it,
 - the steps or a proof of concept to reproduce it,
-- the affected part (root app, `gymflow-admin`, `gymflow-mobile`, `landing-page-1`) and commit,
+- the affected part (root app, `gymflow-admin`, `gymflow-mobile`, `landing-page`) and commit,
 - how you would like to be credited, if at all.
 
 You can expect an acknowledgement within a few days. Please give us reasonable time to fix the

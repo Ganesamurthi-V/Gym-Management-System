@@ -148,10 +148,10 @@ export const TOUR_CHAPTERS: TourChapter[] = [
         align: 'start',
       },
       {
-        anchor: 'dashAddMember',
-        title: '1. Add New Member',
+        anchor: 'dashNotices',
+        title: '1. Gym Notices',
         description:
-          'Sign someone up: name, phone, plan and start date. GymFlow works out the expiry date and gives them a member ID.',
+          'Post a short message for your members, like holiday timings, a new batch or a closure. They see it on their app home screen.',
         side: 'left',
         mobileSide: 'bottom',
         align: 'center',

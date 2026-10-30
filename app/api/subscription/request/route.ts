@@ -6,6 +6,7 @@ import { checkRateLimit } from '@/lib/rateLimit'
 import { logger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { passesCsrfCheck } from '@/lib/api/withAuth'
+import { recordOwnerAction } from '@/lib/activity/record'
 
 export const dynamic = 'force-dynamic'
 
@@ -187,5 +188,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Could not save your request. Please try again.' }, { status: 500 })
   }
 
+  recordOwnerAction(supabase, req, 'SUBSCRIPTION_REQUEST')
   return NextResponse.json({ success: true })
 }

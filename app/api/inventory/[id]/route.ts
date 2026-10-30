@@ -6,6 +6,7 @@ import { isValidUUID } from '@/lib/api/withAuth'
 import { apiLogger } from '@/lib/logger'
 import { deleteCache } from '@/lib/cache'
 import { passesCsrf, csrfRejected, boundedInt, boundedNumber, boundedText, MAX_MONEY, MAX_STOCK } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 export const dynamic = 'force-dynamic'
@@ -164,6 +165,7 @@ export async function PATCH(
       deleteCache(`inventory:${gym.id}`),
     ])
 
+    recordOwnerAction(supabase, req, 'INVENTORY_PATCH')
     return NextResponse.json(
       { success: true, data },
       { headers: { 'Cache-Control': 'private, no-store' } }

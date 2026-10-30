@@ -23,7 +23,7 @@ are changing; each has its own `node_modules`.
 | `/` | Owner console and member PWA (Next.js) |
 | `gymflow-admin/` | Super-admin panel (Next.js) |
 | `gymflow-mobile/` | Admin mobile app (React Native) |
-| `landing-page-1/` | Marketing site (Vite + React) |
+| `landing-page/` | Marketing site (Vite + React) |
 
 `_archived/` is dead code kept for reference. Do not import from it or add to it.
 
@@ -46,7 +46,7 @@ npm run verify:whatsapp  # only if you touched WhatsApp code
 
 **gymflow-mobile**: `npx tsc --noEmit` and `npm run lint`
 
-**landing-page-1**: `npx tsc -b`, `npm run lint` and `npm run build`
+**landing-page**: `npx tsc -b`, `npm run lint` and `npm run build`
 
 ## Rules that keep tenants isolated
 

@@ -20,6 +20,7 @@ import { getGymForUser } from '@/lib/supabase/queries'
 import { apiLogger } from '@/lib/logger'
 import { prepareMemberInvitation } from '@/lib/member-invitation-server'
 import { passesCsrf, csrfRejected, UUID_RE } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 import { gymMayManageMemberApp, splitMemberAppEligible, MEMBER_APP_NOT_INCLUDED_MESSAGE } from '@/lib/member/memberAppAccess'
 
@@ -180,6 +181,7 @@ export async function POST(req: NextRequest) {
 
     log.info('Invitation sent successfully', { memberId })
     log.summary(200)
+    recordOwnerAction(supabase, req, 'MEMBER_APP_INVITE')
     return NextResponse.json(
       {
         success: true,

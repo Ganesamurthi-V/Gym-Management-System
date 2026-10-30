@@ -56,8 +56,32 @@ export default async function PaymentsPage() {
         .limit(500),
     ]))
 
+    // A membership is a renewal when the same member has an earlier one. The list is capped at 12 months, so
+    // members whose first plan is older than that are looked up separately.
+    const rows = paymentsRes.data ?? []
+    const memberIds = Array.from(new Set(rows.map(r => r.member_id)))
+    const olderRes = memberIds.length === 0
+      ? { data: [] as { member_id: string }[], error: null }
+      : await supabase
+          .from('memberships')
+          .select('member_id')
+          .eq('gym_id', gym.id)
+          .in('member_id', memberIds)
+          .lt('created_at', twelveMonthsAgo)
+    if (olderRes.error) throw new Error(`Could not load earlier memberships: ${olderRes.error.message}`)
+    const hasOlder = new Set((olderRes.data ?? []).map(r => r.member_id))
+    const firstSeen = new Map<string, string>()
+    for (const r of rows) {
+      const seen = firstSeen.get(r.member_id)
+      if (seen === undefined || r.created_at < seen) firstSeen.set(r.member_id, r.created_at)
+    }
+    const payments = rows.map(r => ({
+      ...r,
+      is_renewal: hasOlder.has(r.member_id) || firstSeen.get(r.member_id) !== r.created_at,
+    }))
+
     return {
-      payments: paymentsRes.data ?? [],
+      payments,
       productSales: productSalesRes.data ?? [],
       pendingMembers: pendingMembersRes.data ?? [],
       duePayments: duePaymentsRes.data ?? [],

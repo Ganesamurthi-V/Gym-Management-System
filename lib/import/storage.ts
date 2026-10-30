@@ -35,6 +35,7 @@ export const IMPORT_STORAGE_KEYS = [
   'import_column_mapping',
   'import_unmapped_plans',
   'import_plan_mapping',
+  'import_gym_plans',
   'import_plan_mapping_applied',
   'import_column_mapping_applied',
   // The parsed sheet held while plans are mapped: a full copy of every row.

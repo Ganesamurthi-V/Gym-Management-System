@@ -5,7 +5,7 @@
  * from nothing else, and to hand anything outside it to a person. So a fact missing here
  * becomes a holding reply, never an invented answer.
  *
- * Every line is taken from what the website already states (landing-page-1:
+ * Every line is taken from what the website already states (landing-page:
  * src/components/Pricing.tsx, FAQ.tsx, BentoFeatures.tsx and public/llms.txt). When the
  * site changes, change this file in the same commit, or drafts will quote old prices. Rupee prices are deliberately NOT stored here (they live in
  * platform_settings and change); the text sends customers to the pricing page instead.

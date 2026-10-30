@@ -92,7 +92,7 @@ deployed independently, and excluded from the root `tsconfig.json`:
 | `/` (root) | Unified owner console + member PWA (Next.js 15 App Router) | `npm run dev` → :3004 |
 | `gymflow-admin/` | Super-admin panel (Next.js, own JWT session, service-role DB access) | `npm run dev` → :3001 |
 | `gymflow-mobile/` | Admin mobile app (bare React Native 0.75, FCM push) | `npm run android` |
-| `landing-page-1/` | Marketing site www.gymflow.sbs (Vite + React, oxlint, Cloudflare Workers static assets) | `npm run dev` |
+| `landing-page/` | Marketing site www.gymflow.sbs (Vite + React, oxlint, Cloudflare Workers static assets) | `npm run dev` |
 | `_archived/` | Dead code kept for reference. Do not import from it. | |
 | `output/` | Promo films and tutorial videos (HTML compositions + renders). Not app code; never import from it. | |
 | `graphify-out/` | Generated knowledge graph of the codebase, for navigation only. | |

@@ -12,7 +12,7 @@ data_old.sql
 data_clean.sql
 /migrate
 # package-lock.json
-!landing-page-1/package-lock.json
+!landing-page/package-lock.json
 geo_normalization.sql
 supabase-geo-intelligence-migrations.sql
 GEO_INTELLIGENCE_MIGRATIONS.sql

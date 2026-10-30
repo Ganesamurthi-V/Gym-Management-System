@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, Menu, Lock } from 'lucide-react'
+import { X, Menu, Lock, RefreshCw } from 'lucide-react'
 import { navTourAttr, tourAttr } from '@/lib/tours/anchors'
 import { subscribeTourNav } from '@/lib/tours/tour-state'
 import { LockedAddMember, useMemberCapped } from './MemberCap'
@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Members',    href: '/owner/members',      icon: UsersIcon },
   { label: 'Payments',   href: '/owner/payments',     icon: RupeeIcon },
   { label: 'Dues',       href: '/owner/dues',         icon: AlertIcon },
+  { label: 'Renewals',   href: '/owner/renewals',     icon: RefreshCw },
   { label: 'Attendance', href: '/owner/attendance',   icon: CalendarIcon },
   { label: 'Inventory',  href: '/owner/inventory',    icon: BoxIcon },
   { label: 'Programs',   href: '/owner/programs',    icon: ActivityIcon },

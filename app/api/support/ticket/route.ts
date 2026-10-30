@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { passesCsrf } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 
 export async function POST(req: NextRequest) {
   const log = apiLogger('SUPPORT_TICKET')
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest) {
 
     if (insertError) throw insertError
 
+    recordOwnerAction(supabase, req, 'SUPPORT_TICKET')
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
     log.error('Unhandled exception in POST /api/support/ticket', error)

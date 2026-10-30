@@ -4,29 +4,28 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Plus, TrendingUp, FileText, IndianRupee, CalendarCheck, ClipboardList, Lock } from 'lucide-react'
+import { Users, Clock, AlertTriangle, CheckSquare, MessageCircle, Megaphone, TrendingUp, FileText, IndianRupee, CalendarCheck, ClipboardList } from 'lucide-react'
 import { buildWhatsAppLink, formatCurrency, isValidPhone } from '@/lib/utils'
 import { generateDailyReportPDF } from '@/lib/pdf'
 import type { DashboardStats, MemberWithStatus } from '@/types'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 import { tourAttr } from '@/lib/tours/anchors'
-import { LockedAddMember, useMemberCapped } from '@/components/layout/MemberCap'
 
 interface Props {
   gymName: string
   stats: DashboardStats
   expiringMembers: MemberWithStatus[]
   gymId: string
+  pendingRenewals: number
 }
 
-export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Props) {
+export function DashboardClient({ gymName, stats, expiringMembers, gymId, pendingRenewals }: Props) {
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [expiringFilter, setExpiringFilter] = useState<'week' | 'month'>('week')
   const [monthMembers, setMonthMembers] = useState<MemberWithStatus[] | null>(null)
   const [fetchingMonth, setFetchingMonth] = useState(false)
 
   // Auto-refresh dashboard when memberships or attendance changes.
-  const memberCapped = useMemberCapped()
   useGymRealtime(gymId, ['members', 'memberships', 'attendance'])
 
   useEffect(() => {
@@ -73,6 +72,12 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
         </div>
       </div>
+
+      {pendingRenewals > 0 && (
+        <Link href="/owner/renewals" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
+          {pendingRenewals} payment {pendingRenewals === 1 ? 'request' : 'requests'} waiting
+        </Link>
+      )}
 
       {/* Stats Grid — 2 cols mobile, 3 cols tablet, 6 cols desktop */}
       <div {...tourAttr('dashStats')} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
@@ -132,17 +137,10 @@ export function DashboardClient({ gymName, stats, expiringMembers, gymId }: Prop
             Quick Actions
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-2.5 flex-1 lg:justify-center">
-            {memberCapped ? (
-              <LockedAddMember {...tourAttr('dashAddMember')} className="flex items-center gap-2 rounded-xl p-3 font-bold text-sm">
-                <Lock className="w-4 h-4 flex-shrink-0" />
-                <span className="text-xs sm:text-sm">Add New Member</span>
-              </LockedAddMember>
-            ) : (
-              <QuickAction
-                href="/owner/members/new" anchor="dashAddMember"
-                Icon={Plus} tone="brand" label="Add New Member"
-              />
-            )}
+            <QuickAction
+              href="/owner/notices" anchor="dashNotices"
+              Icon={Megaphone} tone="brand" label="Gym Notices"
+            />
             <QuickAction
               href="/owner/attendance" anchor="dashMarkAttendance"
               Icon={CalendarCheck} tone="cyan" label="Mark Attendance"

@@ -262,7 +262,7 @@ update app_config set value = 'https://<your-admin-host>/api/push/dispatch' wher
 Both are optional and documented in their own READMEs:
 
 - [gymflow-mobile/README.md](gymflow-mobile/README.md): React Native app for the operator.
-- [landing-page-1/README.md](landing-page-1/README.md): the public marketing site.
+- [landing-page/README.md](landing-page/README.md): the public marketing site.
 
 ## 9. Things that are specific to gymflow.sbs
 
@@ -274,7 +274,7 @@ These are in the code, not in environment variables. Search for `gymflow.sbs` to
 | What | Where | Why it matters |
 |---|---|---|
 | Your UPI ID and business name | `platform_settings` table (step 4 of section 2) | There is no hard-coded fallback: until `upi_id` is set, owners cannot pay. |
-| Subscription prices | `platform_settings` table; also quoted in `landing-page-1/` and `gymflow-admin/lib/support-knowledge.ts` | Keep the three in step. |
+| Subscription prices | `platform_settings` table; also quoted in `landing-page/` and `gymflow-admin/lib/support-knowledge.ts` | Keep the three in step. |
 
 **Change for your own domain**
 
@@ -286,17 +286,17 @@ These are in the code, not in environment variables. Search for `gymflow.sbs` to
 | Support address, sender name, reply email design and logo | `gymflow-admin/lib/email.ts`, `gymflow-admin/lib/email-html.ts` (logo URL; override with `SUPPORT_EMAIL_LOGO_URL`) |
 | What the AI reply drafts are allowed to say | `gymflow-admin/lib/support-knowledge.ts`, and the allowed link hosts in `gymflow-admin/lib/ai-draft.ts` |
 | Mobile app's production API host and Supabase project fallback | `gymflow-mobile/lib/api/client.ts`, `gymflow-mobile/lib/supabase-realtime.ts` |
-| App links, contact details, legal pages, SEO files | `landing-page-1/src/components/*`, `landing-page-1/index.html`, `landing-page-1/public/` |
+| App links, contact details, legal pages, SEO files | `landing-page/src/components/*`, `landing-page/index.html`, `landing-page/public/` |
 
 **Analytics on the marketing site**
 
-`landing-page-1/index.html` loads Google Analytics with a measurement ID that belongs to
+`landing-page/index.html` loads Google Analytics with a measurement ID that belongs to
 gymflow.sbs. It only runs when the page is served from `gymflow.sbs`, so a fork does not report
 to it, but replace the ID (and the hostname check) with your own. Microsoft Clarity is set by
 `VITE_CLARITY_PROJECT_ID`.
 
 **Branding**
 
-The name "GymFlow", the logo and the files in `public/` and `landing-page-1/public/` identify
+The name "GymFlow", the logo and the files in `public/` and `landing-page/public/` identify
 the original project. The license covers the code; please use your own name and logo for a
 service you run.

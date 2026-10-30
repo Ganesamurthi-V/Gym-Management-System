@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
@@ -177,6 +178,7 @@ export async function POST(req: NextRequest) {
     ])
 
     log.summary(201)
+    recordOwnerAction(supabase, req, 'PAYMENTS_COLLECT')
     return NextResponse.json({ success: true, data, meta: { request_id: log.requestId } })
   } catch (err: unknown) {
     log.error('Unhandled exception in POST /api/payments', err)

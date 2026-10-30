@@ -10,6 +10,7 @@ import { memberCapReached, MEMBER_CAP_MESSAGE } from '@/lib/subscription-utils'
 export const dynamic = 'force-dynamic'
 
 import { claimIdempotencyKey } from '@/lib/api/idempotency'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
@@ -233,6 +234,7 @@ export async function POST(req: NextRequest) {
     await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
     log.summary(201)
+    recordOwnerAction(supabase, req, 'MEMBERS_CREATE')
     return NextResponse.json({ success: true, data, meta: { request_id: log.requestId } })
   } catch (err: unknown) {
     log.error('Unhandled exception in POST /api/members', err)

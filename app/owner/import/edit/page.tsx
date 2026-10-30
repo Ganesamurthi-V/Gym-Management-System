@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, AlertTriangle, Search, Loader2, MapPin, Trash2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { monthsForPlan, parseStartDate, resolveImportedMembership } from "@/lib/import/membershipDates";
+import { todayIST } from "@/lib/utils";
 import { clearImportStorage } from "@/lib/import/storage";
 import { importErrorMessage, messageForApiError, readImportResponse } from "@/lib/import/api-errors";
 import type { ImportedRow } from "../page";
@@ -34,6 +37,9 @@ export default function ImportEditPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  // Owner has accepted that rows without a start date get a full plan from today.
+  const [startAck, setStartAck] = useState(false);
+  const today = todayIST();
   const [error, setError] = useState("");
   // Set when the server says the plan's member cap is reached, so the upgrade notice replaces the generic error.
   const [planLimit, setPlanLimit] = useState(false);
@@ -196,7 +202,25 @@ export default function ImportEditPage() {
   }
 
   function updateRow(idx: number, field: keyof ImportedRow, value: string) {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value, _status: undefined, _error: undefined } : r));
+    setRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const next: ImportedRow = { ...r, [field]: value, _status: undefined, _error: undefined };
+      // A new plan label means its standard length, not the length the sheet stated for the old one.
+      if (field === "plan") { next.duration_months = undefined; next.plan_name = undefined; }
+      if (field === "start_date") {
+        next._start_defaulted = false;
+        const parsed = parseStartDate(value, today);
+        next._start_invalid = !parsed.ok;
+        if (!parsed.ok) { next._status = "error"; next._error = parsed.message; }
+      }
+      return next;
+    }));
+  }
+
+  function membershipOf(row: ImportedRow) {
+    const parsed = parseStartDate(row.start_date, today);
+    if (!parsed.ok) return null;
+    return resolveImportedMembership({ startDate: parsed.date, durationMonths: monthsForPlan(row.plan, row.duration_months), today });
   }
 
   function validateId(idx: number, value: string) {
@@ -240,6 +264,8 @@ export default function ImportEditPage() {
     });
   }
   const importRows = rows.filter((r, i) => !overCapIdx.has(i) && r._status !== "error" && r._status !== "duplicate");
+  const noStartCount = importRows.filter(r => r._start_defaulted).length;
+  const expiredCount = importRows.filter(r => membershipOf(r)?.status === "expired").length;
   const editedCount = rows.reduce((count, row) => count + (isRowChanged(row) ? 1 : 0), 0);
 
   const anyOriginallySkipped = originalRows.some(o => o._status === "error" || o._status === "duplicate");
@@ -272,6 +298,7 @@ export default function ImportEditPage() {
   }
 
   function handlePreview() {
+    if (noStartCount > 0 && !startAck) { setError("Confirm the start date notice below before importing"); return; }
     if (missingIdCount > 0) { setError(`${missingIdCount} member${missingIdCount !== 1 ? 's are' : ' is'} missing a Member ID — fix them before importing`); return; }
     if (conflictCount > 0) { setError(`${conflictCount} member${conflictCount !== 1 ? 's have' : ' has'} a conflicting Member ID — fix them before importing`); return; }
     setError("");
@@ -427,7 +454,7 @@ export default function ImportEditPage() {
               {editedCount} edited
             </span>
           )}
-          <button onClick={() => { setConfirmed(true); handleSave(); }} disabled={conflictCount > 0 || missingIdCount > 0 || loading}
+          <button onClick={() => { setConfirmed(true); handleSave(); }} disabled={conflictCount > 0 || missingIdCount > 0 || (noStartCount > 0 && !startAck) || loading}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all disabled:opacity-40"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -440,7 +467,23 @@ export default function ImportEditPage() {
         <span className="text-emerald-600 font-semibold">{importRows.length} valid</span>
         <span>·</span>
         <span className="text-red-500 font-semibold">{skippedRows.length} will be skipped</span>
+        {expiredCount > 0 && (<><span>·</span><span className="text-amber-600 font-semibold">{expiredCount} already expired</span></>)}
       </div>
+
+      {noStartCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm font-semibold text-amber-800">
+              Your file has no start date column, so every member gets a full plan starting today. Members who joined earlier will show more days than they really have. Add a Start Date column to your file, or set the date on each row below.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-amber-900 cursor-pointer">
+            <input type="checkbox" checked={startAck} onChange={e => setStartAck(e.target.checked)} className="w-4 h-4 rounded accent-brand-500" />
+            Import anyway, start every plan today
+          </label>
+        </div>
+      )}
 
       {overCapIdx.size > 0 && (
         <PlanNotice
@@ -519,6 +562,7 @@ export default function ImportEditPage() {
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Plan</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Category</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Start Date</th>
+                <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Ends / Days left</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Amount</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Mode</th>
                 <th className="text-left px-3 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Gender</th>
@@ -599,9 +643,15 @@ export default function ImportEditPage() {
                         <option value="quarterly">Quarterly</option>
                         <option value="annual">Annual</option>
                       </select>
+                      {row.plan_name && (
+                        <p className="text-[10px] font-bold text-brand-600 mt-0.5 truncate max-w-[9rem]" title={row.plan_name}>{row.plan_name}</p>
+                      )}
+                      {row.duration_months !== undefined && (
+                        <p className="text-[10px] text-slate-500 mt-0.5">{Number.isInteger(row.duration_months) ? `${row.duration_months} months` : `${Math.round(row.duration_months * 30)} days`}</p>
+                      )}
                     </td>
                     <td className="px-3 py-2">
-                      <select value={row.category || 'both'}
+                      <select value={row.category || 'both'} disabled={!!row.plan_name}
                         onChange={e => updateRow(idx, "category", e.target.value)}
                         className={cls}>
                         <option value="both">Strength + Cardio</option>
@@ -612,7 +662,22 @@ export default function ImportEditPage() {
                     <td className="px-3 py-2">
                       <input type="date" value={row.start_date}
                         onChange={e => updateRow(idx, "start_date", e.target.value)}
-                        className={`w-36 ${cls}`} />
+                        className={`w-36 ${cls} ${row._start_invalid ? 'border-red-400 bg-red-50' : ''}`} />
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {(() => {
+                        const m = membershipOf(row);
+                        if (!m) return <span className="text-xs font-semibold text-red-500">Fix start date</span>;
+                        return (
+                          <div className="text-xs leading-tight">
+                            <p className="text-slate-700 font-semibold">{format(parseISO(m.endDate), "dd MMM yyyy")}</p>
+                            <p className={m.status === "expired" ? "text-red-500 font-semibold" : m.status === "expiring" ? "text-amber-600 font-semibold" : "text-emerald-600 font-semibold"}>
+                              {m.status === "expired" ? "Expired" : m.daysLeft === 0 ? "Ends today" : `${m.daysLeft} days left`}
+                              {m.startsInFuture ? " (starts later)" : ""}
+                            </p>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2">
                       <input type="number" value={row.amount}
@@ -684,7 +749,7 @@ export default function ImportEditPage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-6 py-16 text-center">
+                  <td colSpan={13} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       {search ? (
                         <>

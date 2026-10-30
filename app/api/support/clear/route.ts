@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { passesCsrf, UUID_RE } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 
 export async function POST(req: NextRequest) {
   const log = apiLogger('SUPPORT_CLEAR')
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
     }
 
 
+    recordOwnerAction(supabase, req, 'SUPPORT_CLEAR')
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
     log.error('Unhandled exception in POST /api/support/clear', error)

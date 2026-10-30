@@ -4,6 +4,7 @@ import { checkRateLimit, ROUTE_LIMITS } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { deleteCache } from '@/lib/cache'
 import { passesCsrf, UUID_RE } from '@/app/api/_guard'
+import { recordOwnerAction } from '@/lib/activity/record'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 export async function POST(req: NextRequest) {
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
       deleteCache(`inventory:${gym.id}`),
     ])
 
+    recordOwnerAction(supabase, req, 'INVENTORY_DELETE')
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     log.error('Unhandled exception in POST /api/inventory/delete', err)

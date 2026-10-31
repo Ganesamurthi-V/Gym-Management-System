@@ -1,7 +1,10 @@
+import { Suspense } from 'react'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import { getMemberStatus, getDaysRemaining, todayIST } from '@/lib/utils'
 import { DashboardClient } from './DashboardClient'
+import { DashboardSkeleton } from './DashboardSkeleton'
 import { addDays } from '@/lib/gamification/periods'
 import { isImportedMembership } from '@/lib/payments/import-membership'
 
@@ -74,34 +77,16 @@ async function getDashboardData(gymId: string, logger: RequestLogger) {
   })
 }
 
-export default async function DashboardPage() {
+async function DashboardData({ gym }: { gym: { id: string; name: string } }) {
   const logger = apiLogger('DASHBOARD')
-  
   try {
-    logger.start('AUTH')
-    const { user } = await getAuthUser()
-    logger.end('AUTH')
-    logger.info('AFTER AUTH')
-    
-    if (!user) return null
-
-    logger.start('QUERY gyms')
-    const { gym } = await getGym(user.id)
-    logger.end('QUERY gyms')
-
-    if (!gym) {
-      return (
-        <div className="card p-6 text-center">
-          <p className="text-slate-500">No gym found. Please contact support.</p>
-        </div>
-      )
-    }
-
     logger.start('CACHE')
-    const dashboardData = await getDashboardData(gym.id, logger)
+    // Independent queries: the cached stats and the fresh (never cached) pending-renewals count.
+    const [dashboardData, pendingRenewals] = await Promise.all([
+      getDashboardData(gym.id, logger),
+      countPendingRenewals(gym.id),
+    ])
     logger.end('CACHE')
-    // Fresh on purpose: never inside the cached dashboard stats.
-    const pendingRenewals = await countPendingRenewals(gym.id)
 
     logger.summary(200)
 
@@ -112,4 +97,19 @@ export default async function DashboardPage() {
     logger.error('ERROR', error)
     throw error
   }
+}
+
+export default async function DashboardPage() {
+  const { gym } = await requireOwnerAccess()
+
+  // Unreachable behind the gate; narrows the type.
+  if (!gym) redirect('/auth/add-phone')
+
+  // DashboardClient takes stats, expiring list and the renewals banner as one prop bundle, so
+  // the data sits behind a single boundary rather than one per value.
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardData gym={gym} />
+    </Suspense>
+  )
 }

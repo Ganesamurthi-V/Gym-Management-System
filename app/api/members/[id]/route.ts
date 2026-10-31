@@ -31,6 +31,10 @@ export async function GET(
     const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
 
+    // Reads are refused too: a lapsed or banned owner must not keep reading member data.
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
+
     const { data, error } = await supabase
       .from('members')
       .select('id, name, phone, age, gender, member_number, legacy_member_id, created_at')

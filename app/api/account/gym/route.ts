@@ -44,7 +44,7 @@ export const GET = withAuth('ACCOUNT_GYM_GET', async (req: NextRequest, { supaba
     { success: true, data },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
-})
+}, { allowWhenExpired: true }) // AccountMenu shows the gym name on the paywall page; PATCH stays blocked
 
 /**
  * PATCH /api/account/gym

@@ -8,22 +8,12 @@ import { startPageTimer, timed } from '@/lib/perf'
 export default async function AccountPage() {
   const done = startPageTimer('account')
 
-  const { getAuthUser, getGymCore } = await import('@/lib/dal')
-  const { user } = await getAuthUser()
-  if (!user) {
-    done()
-    return null
-  }
-
+  const { requireOwnerAccess } = await import('@/lib/owner/access')
   // ONE merged gyms query gives identity AND subscription fields. Previously
   // this page awaited getGym() and then getGymSubscription() as two separate
   // ~200ms round trips. Both are now served by the same query the root layout
   // already ran, so they cost nothing here.
-  const { gym } = await getGymCore(user.id)
-  if (!gym) {
-    done()
-    return null
-  }
+  const { user, gym } = await requireOwnerAccess()
 
   const supabase = await createClient()
 

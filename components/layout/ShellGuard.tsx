@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { Suspense, use, useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft, Lock } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
@@ -21,6 +21,7 @@ import { tourAttr } from '@/lib/tours/anchors'
 import { isTourActive, subscribeTourNav } from '@/lib/tours/tour-state'
 import TourLauncher from '@/components/tours/TourLauncher'
 import { MemberCapProvider, LockedAddMember } from './MemberCap'
+import { BLOCKED_PATH, decideShellGuard, type ShellData } from '@/lib/owner/shellGuard'
 
 const SHELL_EXCLUDED = ['/auth/', '/owner/onboarding', '/owner/subscription']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
@@ -38,37 +39,56 @@ function DumbbellIcon({ className }: { className?: string }) {
 }
 
 import type { User } from '@supabase/supabase-js'
-import type { getGym } from '@/lib/dal'
 
-type GymRow = Awaited<ReturnType<typeof getGym>>['gym']
+/**
+ * Resolves the gym promise started by AppShell and hands the value to the shell. It sits in its
+ * own <Suspense> and renders nothing, so only this leaf waits on the gym row; the chrome and
+ * `children` are never suspended behind it. A new promise (router.refresh) resyncs via the effect.
+ */
+function GymGate({ promise, onReady }: { promise: Promise<ShellData>; onReady: (d: ShellData) => void }) {
+  const data = use(promise)
+  useEffect(() => { onReady(data) }, [data, onReady])
+  return null
+}
 
 interface ShellGuardProps {
   children: React.ReactNode
   initialUser: User | null
-  initialGym: GymRow
-  initialIsActive: boolean
+  /** Started (not awaited) by AppShell so the chrome streams before the gym row arrives. */
+  shellData: Promise<ShellData>
   /** `null` when the layout deliberately did not fetch it — AccountMenu will. */
   initialUnreadCount: number | null
-  initialSubscriptionStatus: string
-  initialTrialDaysLeft: number
-  /** Trial/Free gym already at 50 members: Add Member controls render locked. */
-  memberCapped: boolean
 }
 
-export default function ShellGuard({ children, initialUser, initialGym, initialIsActive, initialUnreadCount, initialSubscriptionStatus, initialTrialDaysLeft, memberCapped }: ShellGuardProps) {
+export default function ShellGuard({ children, initialUser, shellData, initialUnreadCount }: ShellGuardProps) {
   const pathname = usePathname()
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
   const [collapsed, setCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
 
-  // Live subscription state — updated in real-time via the Realtime channel.
-  // Seeded from server-rendered initial values so the first paint is instant.
-  const [liveSubStatus, setLiveSubStatus] = useState(initialSubscriptionStatus)
-  const [liveDaysLeft, setLiveDaysLeft] = useState(initialTrialDaysLeft)
-  const [liveGymName, setLiveGymName] = useState(initialGym?.name || '')
+  // Gym state arrives after first paint (see GymGate); null until then.
+  const [resolved, setResolved] = useState<ShellData | null>(null)
+  const initialGym = resolved?.gym ?? null
+  const memberCapped = resolved?.memberCapped ?? false
+
+  // Live subscription state — updated by the 30 s status poll. Seeded from the resolved gym row.
+  const [liveSubStatus, setLiveSubStatus] = useState('unknown')
+  const [liveDaysLeft, setLiveDaysLeft] = useState(0)
+  const [liveGymName, setLiveGymName] = useState('')
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const initialCheckDone = useRef(false)
+
+  // Adjust state during render when a newly resolved row arrives (first load or router.refresh).
+  const [prevResolved, setPrevResolved] = useState<ShellData | null>(null)
+  if (resolved !== prevResolved) {
+    setPrevResolved(resolved)
+    if (resolved) {
+      setLiveSubStatus(resolved.subscriptionStatus)
+      setLiveDaysLeft(resolved.trialDaysLeft)
+      setLiveGymName(resolved.gym?.name || '')
+    }
+  }
 
   // Effect 1: Mount-time setup — restore sidebar state
   useEffect(() => {
@@ -100,7 +120,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
   // Effect 2: Auth guard — set up focus listener and 60s interval.
   // Does NOT include `pathname` so the interval is not reset on every navigation.
   useEffect(() => {
-    if (isShellless) return
+    if (pathname.startsWith('/auth/')) return
 
     if (!initialUser) {
       signOutViaApi().then(() => {
@@ -109,19 +129,26 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       return
     }
 
-    if (!initialIsActive) {
-      // check_gym_active returns false for BOTH admin-deactivated gyms and
-      // expired trials/subscriptions. Expired accounts stay logged in and go
-      // to the subscription page; only deactivated accounts are signed out.
-      if (initialSubscriptionStatus === 'expired') {
-        window.location.href = '/owner/subscription'
-      } else {
-        signOutViaApi().then(() => {
-          window.location.href = '/auth/login?error=blocked'
-        })
-      }
+    // Gym row still in flight: nothing below can be decided yet.
+    if (!resolved) return
+
+    // Same rule the server guard applies, re-evaluated on every client navigation (the layout,
+    // and so the server guard, does not re-run on soft navigation).
+    const target = decideShellGuard(resolved, pathname)
+    if (target === BLOCKED_PATH) {
+      // Deactivated gyms are signed out; expired ones (decided separately) stay logged in.
+      signOutViaApi().then(() => {
+        window.location.href = '/auth/login?error=blocked'
+      })
       return
     }
+    if (target !== 'ok') {
+      window.location.href = target
+      return
+    }
+
+    // Onboarding and the paywall render without the shell, and need no status poll.
+    if (isShellless) return
 
     const checkAuth = async () => {
       // Skip check entirely when tab is in the background.
@@ -209,7 +236,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
       window.removeEventListener('focus', checkAuth)
       clearInterval(pollInterval)
     }
-  }, [isShellless, initialUser, initialIsActive, initialSubscriptionStatus, initialGym?.id, pathname])
+  }, [isShellless, initialUser, resolved, initialGym?.id, pathname])
 
   function toggle() {
     setCollapsed(prev => {
@@ -218,11 +245,18 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
     })
   }
 
-  if (isShellless) return <><ActivityBeacon />{children}</>
+  const gate = (
+    <Suspense fallback={null}>
+      <GymGate promise={shellData} onReady={setResolved} />
+    </Suspense>
+  )
+
+  if (isShellless) return <>{gate}<ActivityBeacon />{children}</>
 
   return (
     <MemberCapProvider value={memberCapped}>
     <div className="min-h-full">
+      {gate}
 
       {/* Platform announcement — first element of the shell, full width above sidebar and
           header. It is sticky, and publishes its height as --gf-banner-h; the fixed sidebar and
@@ -381,7 +415,7 @@ export default function ShellGuard({ children, initialUser, initialGym, initialI
 
       {/* First-run guided tour. Renders nothing until it decides to start, and
           lives here so one tour instance survives every /owner/* navigation. */}
-      <TourLauncher gymCreatedAt={initialGym?.created_at} />
+      {resolved && <TourLauncher gymCreatedAt={initialGym?.created_at} />}
     </div>
     </MemberCapProvider>
   )

@@ -5,12 +5,8 @@ import { getCachedInventoryItem, getCachedInventorySales, getCachedInventorySibl
 export default async function InventoryItemPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const id = params.id;
-  const { getAuthUser, getGym } = await import('@/lib/dal')
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  const { gym } = await getGym(user.id)
-  if (!gym) return null
+  const { requireOwnerAccess } = await import('@/lib/owner/access')
+  const { gym } = await requireOwnerAccess()
 
   // Fetch product first (needed for siblings query)
   const product = await getCachedInventoryItem(gym.id, id)

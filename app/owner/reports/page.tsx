@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import { logger } from '@/lib/logger'
 import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { startPageTimer, timed } from '@/lib/perf'
@@ -21,10 +21,7 @@ import { parseTopic } from './topics'
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ topic?: string | string[] }> }) {
   const { topic } = await searchParams
   const done = startPageTimer('reports')
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  const { gym } = await getGym(user.id)
+  const { gym } = await requireOwnerAccess()
   if (!gym) {
     return (
       <div className="card p-6 text-center">

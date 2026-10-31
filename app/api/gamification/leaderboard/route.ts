@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { getAuthUser, getGym, getGymCore } from '@/lib/dal'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 import { getMemberAccessState } from '@/lib/member/member-data'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { apiError, apiSuccess } from '@/lib/api/withAuth'
@@ -95,6 +96,14 @@ export async function GET(req: NextRequest) {
     // lookup entirely: it would log an error and run extra queries for someone who is not a member.
     const { gym: ownedGym } = await getGym(user.id)
     const isMember = !ownedGym
+
+    // An owner whose gym is lapsed or banned must not keep reading member names. getGym omits the
+    // subscription columns; getGymCore is the uncached row. Members are gated by getMemberAccessState below.
+    if (ownedGym) {
+      const { gym: core } = await getGymCore(user.id)
+      const readOnly = assertGymWritable(core)
+      if (readOnly) return respond(readOnly)
+    }
 
     // A member whose gym plan has no member app must not read the board.
     if (isMember) {

@@ -35,4 +35,4 @@ export const GET = withAuth('SUBSCRIPTION_SYNC_GET', async (req: NextRequest, { 
     },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
-})
+}, { allowWhenExpired: true }) // the renewal page polls this

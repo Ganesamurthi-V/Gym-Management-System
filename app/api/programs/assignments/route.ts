@@ -43,6 +43,11 @@ export async function GET(req: NextRequest) {
   const { gym } = await getGym(user.id)
   if (!gym) return NextResponse.json({ error: 'No gym found' }, { status: 404 })
 
+  // Reads are refused too for a lapsed or banned gym; getGym omits the subscription columns.
+  const { gym: core } = await getGymCore(user.id)
+  const readOnly = assertGymWritable(core)
+  if (readOnly) return readOnly
+
   const supabase = await createClient()
 
   const { data, error } = await supabase

@@ -1,4 +1,4 @@
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import Link from 'next/link'
 import { Plus, Package } from 'lucide-react'
 import InventoryFilters from '@/components/inventory/InventoryFilters'
@@ -10,11 +10,7 @@ export default async function InventoryPage(props: { searchParams?: Promise<{ qu
   const query = searchParams?.query || '';
   const category = searchParams?.category || '';
 
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  const { gym } = await getGym(user.id)
-  if (!gym) return null
+  const { gym } = await requireOwnerAccess()
 
   let items: any[] = []
   try {

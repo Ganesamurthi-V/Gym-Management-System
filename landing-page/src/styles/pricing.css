@@ -1,0 +1,73 @@
+/* Pricing (Cobalt): a quiet white Free panel and a lifted Pro panel with a 1px accent ring and a soft header strip. Tokens only. */
+
+/* The plan copy swaps when the period switch moves; a 6px settle on transform and opacity only. */
+.plan-swap {
+  animation: plan-swap 300ms var(--ease-out) both;
+}
+@keyframes plan-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.plan-free {
+  overflow: clip;
+  box-shadow: none;
+}
+.plan-pro-wrap {
+  border-radius: 14px;
+}
+.plan-pro {
+  overflow: clip;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow-lift);
+}
+
+.plan-head {
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
+}
+.plan-head--pro {
+  background: var(--accent-soft);
+  border-bottom: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.plan-body {
+  padding: var(--space-lg);
+}
+@media (min-width: 768px) {
+  .plan-head {
+    padding: var(--space-lg) var(--space-xl) var(--space-md);
+  }
+  .plan-body {
+    padding: var(--space-lg) var(--space-xl) var(--space-xl);
+  }
+}
+
+.plan-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding-block: var(--space-sm);
+  border-top: 1px solid var(--border);
+}
+.plan-check {
+  flex: none;
+  margin-top: 4px;
+  color: var(--accent-text);
+}
+
+/* The rupee sign scales with the odometer. */
+.plan-rupee {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-swap {
+    animation: none;
+  }
+}

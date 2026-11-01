@@ -68,7 +68,7 @@ export function WhatsAppThread({
       /* The bezel stays dark in both themes. A phone frame is dark whatever the
          app on it is doing, and at 10px it is the only thing separating a light
          screen from a light page. */
-      className="rounded-[42px] bg-[#0b0b0b] p-[10px] shadow-[0_30px_60px_-25px_rgba(0,0,0,0.55)]"
+      className="rounded-[24px] bg-phone-bezel p-[10px] shadow-lift"
     >
       {/* A fixed height, not an aspect ratio: with a ratio the screen could grow when a
           taller template was shown, resizing the whole phone on every tab switch. 474px is
@@ -78,7 +78,7 @@ export function WhatsAppThread({
           600px tall and the message would sit under a slab of empty chat, which
           reads as a dead conversation. Shortening the screen is the lie worth
           telling. */}
-      <div className="relative flex h-[474px] flex-col overflow-hidden rounded-[33px] bg-[var(--wa-chat)]">
+      <div className="relative flex h-[474px] flex-col overflow-hidden rounded-[14px] bg-[var(--wa-chat)]">
         {/* Status bar and chat header share one surface, the way WhatsApp tints
             the top of the screen as a single block. */}
         <div className="shrink-0 bg-[var(--wa-bar)]">
@@ -87,7 +87,7 @@ export function WhatsAppThread({
             {/* Notch, so black in both themes like the bezel. */}
             <span
               aria-hidden
-              className="absolute left-1/2 top-[7px] h-[17px] w-[62px] -translate-x-1/2 rounded-full bg-[#0b0b0b]"
+              className="absolute left-1/2 top-[7px] h-[17px] w-[62px] -translate-x-1/2 rounded-full bg-phone-bezel"
             />
             <span className="flex items-center gap-1 text-[var(--wa-ink)]">
               <Signal className="h-[11px] w-[11px]" />
@@ -107,7 +107,7 @@ export function WhatsAppThread({
               <span className="block truncate text-[12px] font-medium text-[var(--wa-ink)]">
                 Gym Flow
               </span>
-              <span className="block text-[9px] text-[var(--wa-ink-dim)]">Business account</span>
+              <span className="block text-[11px] text-[var(--wa-ink)]">Business account</span>
             </span>
             <Phone className="h-[13px] w-[13px] shrink-0 text-[var(--wa-ink-dim)]" />
             {/* Three dots drawn rather than an icon: the overflow glyph has been
@@ -128,12 +128,12 @@ export function WhatsAppThread({
               the head of a thread. They belong here rather than being filler: a
               welcome message *is* the first message a member ever gets, so this
               is genuinely the top of the conversation. */}
-          <span className="mx-auto rounded-md bg-[var(--wa-chip)] px-2 py-[3px] text-[8px] font-semibold uppercase tracking-wider text-[var(--wa-ink-dim)]">
+          <span className="mx-auto rounded-md bg-[var(--wa-chip)] px-2 py-[3px] text-[11px] font-semibold text-[var(--wa-ink-dim)]">
             Today
           </span>
           <span className="mx-auto mb-1 flex max-w-[88%] items-center justify-center gap-1.5 rounded-md bg-[var(--wa-chip)] px-2.5 py-1.5">
             <Lock className="h-[9px] w-[9px] shrink-0 text-[var(--wa-ink-dim)]" />
-            <span className="text-[8.5px] leading-snug text-[var(--wa-ink-dim)]">
+            <span className="text-[11px] leading-snug text-[var(--wa-ink-dim)]">
               Messages are end-to-end encrypted
             </span>
           </span>
@@ -199,7 +199,7 @@ export function WhatsAppBubble({
        light mode, where a white bubble on the beige chat surface has no
        other edge; in dark it is too faint to register. */
     <div
-      className={`wa-swap relative mr-auto shrink-0 rounded-lg ${tail ? 'rounded-tl-none' : 'rounded-tl-[3px]'} bg-[var(--wa-bubble-in)] p-[3px] text-left shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${className}`}
+      className={`wa-swap relative mr-auto shrink-0 rounded-lg ${tail ? 'rounded-tl-none' : 'rounded-tl-[3px]'} bg-[var(--wa-bubble-in)] p-[3px] text-left shadow-wa-bubble ${className}`}
     >
       {tail && (
         /* The fill overlaps the bubble's own border by a pixel so no seam shows where
@@ -251,9 +251,9 @@ export function WhatsAppBubble({
 
         <p className="mt-1.5 flex items-baseline justify-between gap-3">
           {message.footer && (
-            <span className="text-[8.5px] text-[var(--wa-ink-faint)]">{message.footer}</span>
+            <span className="text-[11px] text-[var(--wa-ink-dim)]">{message.footer}</span>
           )}
-          <span className="ml-auto text-[9px] text-[var(--wa-ink-dim)]">{message.time}</span>
+          <span className="ml-auto text-[11px] text-[var(--wa-ink-dim)]">{message.time}</span>
         </p>
       </div>
     </div>

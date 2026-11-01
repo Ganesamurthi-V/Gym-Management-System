@@ -1,10 +1,9 @@
-import { ArrowRight, BadgeCheck, Check, Smartphone, Upload } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useState } from 'react';
-import { useReveal } from '../lib/useReveal';
-import { ShinyText } from './ShinyText';
-import GlowBorder from './ui/GlowBorder';
 import RubberSegment from './ui/RubberSegment';
 import Counter from './ui/Counter';
+import { Magnet, Rise, SpotlightSurface } from './fx';
+import { Section } from './layout/Section';
 import {
   FREE_MEMBER_LIMIT,
   PLANS,
@@ -12,6 +11,7 @@ import {
   perMonth,
   savingPercent,
 } from '../data/plans';
+import '../styles/pricing.css';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -19,32 +19,42 @@ const [MONTHLY, YEARLY] = PLANS;
 
 /* Counter (rolling-digit) sizing, shared by the rupee glyph and the odometer so they
    stay the same height. Fixed px because Counter measures its strip height from a number. */
-const PRICE_FONT_SIZE = 44;
+const PRICE_FONT_SIZE = 80;
 
 /* Counter renders one slot per entry in `places` and never hides a leading zero, so
-   the slots are sized to the current value's digit count (₹999 -> 3, ₹9,999 -> 4). */
+   the slots are sized to the current value's digit count (₹999 -> 3, ₹9 -> 1). */
 function placesFor(value: number): number[] {
   const digits = Math.max(1, Math.floor(Math.log10(Math.max(1, value))) + 1);
   return Array.from({ length: digits }, (_, i) => 10 ** (digits - 1 - i));
 }
 
-const ACTIVATION_STEPS = [
-  {
-    icon: Smartphone,
-    title: 'Make the payment',
-    desc: 'Pay for your chosen plan using any UPI app.',
-  },
-  {
-    icon: Upload,
-    title: 'Upload the screenshot',
-    desc: 'Open the Subscription page in the app and attach your payment screenshot.',
-  },
-  {
-    icon: BadgeCheck,
-    title: 'Get activated',
-    desc: 'We verify it and switch your account on shortly after.',
-  },
-] as const;
+/* A price from 1,000 up is two odometers around a comma (9 , 999), so the display matches
+   formatINR (₹9,999). Both odometers stay mounted across the switch so the digits roll. */
+function Price({ value }: { value: number }) {
+  const thousands = Math.floor(value / 1000);
+  const rest = thousands > 0 ? value % 1000 : value;
+  const common = {
+    fontSize: PRICE_FONT_SIZE,
+    padding: 8,
+    gap: 0,
+    horizontalPadding: 0,
+    fontWeight: 600,
+    counterStyle: { letterSpacing: '0.004em' },
+  } as const;
+  return (
+    <span className="inline-flex items-end font-display">
+      {thousands > 0 && (
+        <>
+          <Counter value={thousands} places={placesFor(thousands)} {...common} />
+          <span className="pb-2 leading-none" style={{ fontSize: PRICE_FONT_SIZE / 2 }}>
+            ,
+          </span>
+        </>
+      )}
+      <Counter value={rest} places={thousands > 0 ? [100, 10, 1] : placesFor(value)} {...common} />
+    </span>
+  );
+}
 
 type Card = {
   id: string;
@@ -114,190 +124,110 @@ const PAID_CARDS: Record<'monthly' | 'yearly', Card> = {
 };
 
 export function Pricing() {
-  const scope = useReveal<HTMLElement>({ stagger: 0.09 });
   const [term, setTerm] = useState<'monthly' | 'yearly'>('monthly');
   const cards = [FREE_CARD, PAID_CARDS[term]];
 
   return (
-    <section
-      id="pricing"
-      ref={scope}
-      aria-labelledby="pricing-title"
-      className="has-dots px-5 py-24 md:px-8 md:py-28"
-    >
-      <div className="mx-auto max-w-[1240px]">
-        <div className="mx-auto flex max-w-[900px] flex-col items-center text-center">
-          <span className="reveal eyebrow">Pricing</span>
-          <h2 id="pricing-title" className="reveal display-2 mt-4 text-balance">
-            {'Gym management software pricing: '}
-            <span className="text-muted-foreground">start free, upgrade when you grow</span>
-          </h2>
-          <p className="reveal lead mt-5 max-w-[520px]">
-            No setup fee and no modules to unlock later.{' '}
-            <ShinyText text="Start with a 14-day free trial" speed={2.8} spread={120} /> — no credit
-            card needed.
-          </p>
-        </div>
+    <Section id="pricing" labelledBy="pricing-title" tone="paper">
+      <h2 id="pricing-title" className="display-2 mx-auto max-w-[20ch] min-w-0 text-balance text-center [overflow-wrap:break-word]">
+        Simple pricing, free up to 50 members
+      </h2>
 
-        {/* Billing-term switch. Not wrapped in `reveal`: the thumb's geometry is measured on
-            mount, and an element caught mid-transform measures wrong. */}
-        <div className="mt-8 flex justify-center">
-          <RubberSegment
-            aria-label="Billing term"
-            value={term}
-            onChange={next => setTerm(next as 'monthly' | 'yearly')}
-            size="lg"
-            radius={16}
-            trackColor="var(--frame)"
-            thumbColor="var(--foreground)"
-            textColor="var(--muted-foreground)"
-            activeTextColor="var(--background)"
-            items={PLANS.map(plan => ({
-              value: plan.id,
-              label:
-                plan.id === 'yearly' ? (
-                  <span className="inline-flex items-center gap-2 font-semibold">
-                    {plan.label}
-                    <span className="rounded-pill bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink">
-                      Save {savingPercent(plan)}%
-                    </span>
+      <div className="mt-10 flex justify-center">
+        <RubberSegment
+          aria-label="Billing term"
+          value={term}
+          onChange={next => setTerm(next as 'monthly' | 'yearly')}
+          size="lg"
+          radius={12}
+          inset={4}
+          trackColor="var(--key-face)"
+          items={PLANS.map(plan => ({
+            value: plan.id,
+            label:
+              plan.id === 'yearly' ? (
+                <span className="inline-flex items-center gap-2 font-medium">
+                  {plan.label}
+                  <span className="rounded-md bg-accent-soft px-2 py-0.5 text-sm font-medium text-accent-text">
+                    Save {savingPercent(plan)}%
                   </span>
-                ) : (
-                  <span className="font-semibold">{plan.label}</span>
-                ),
-            }))}
-          />
-        </div>
-
-        <div className="mx-auto mt-12 grid max-w-[860px] gap-4 md:grid-cols-2">
-          {cards.map(card => (
-            <div
-              // Stable key for the paid slot: a key that changes with the term would
-              // remount the card and its Counter, so the digits would jump, not roll.
-              key={card.id === 'free' ? 'free' : 'paid'}
-              className={`reveal flex flex-col p-6 ${card.highlight ? 'card-accent' : 'card'} ${
-                card.id === 'free' ? 'relative ring-1 ring-inset ring-foreground/20' : ''
-              }`}
-            >
-              {card.id === 'free' && <GlowBorder />}
-              {card.id === 'free' && (
-                <span className="absolute -top-3 left-6 rounded-pill bg-accent px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
-                  Free lifetime
                 </span>
-              )}
-              {/* Fixed-height header so every price sits on the same line even when a
-                  name or tagline wraps. */}
-              <div className="min-h-[6.5rem]">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="display-3 !text-[28px]">{card.name}</h3>
-                  {card.badge && card.id !== 'yearly' && (
-                    <span className="shrink-0 rounded-pill bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink">
-                      {card.badge}
-                    </span>
-                  )}
-                </div>
-                <p
-                  className={`mt-2 text-[13.5px] ${
-                    card.highlight ? 'text-accent-ink/80' : 'text-muted-foreground'
-                  }`}
-                >
+              ) : (
+                <span className="font-medium">{plan.label}</span>
+              ),
+          }))}
+        />
+      </div>
+
+      <div className="mx-auto mt-12 grid max-w-[1040px] items-stretch gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-8">
+        {cards.map(card => {
+          const isFree = card.id === 'free';
+          const panel = (
+            <div className={`flex h-full flex-col ${isFree ? 'plan-free plastic' : 'plan-pro plastic'}`}>
+              <div className={isFree ? 'plan-head' : 'plan-head plan-head--pro'}>
+                <h3 className="display-3">{card.name}</h3>
+                <p key={isFree ? 'free' : term} className="plan-swap mt-1 text-base text-muted-foreground">
                   {card.tagline}
                 </p>
               </div>
 
-              <div className="mt-2 flex items-end gap-1.5">
-                {card.id === 'free' ? (
-                  <span className="text-[44px] font-medium leading-none tracking-[-0.04em]">
-                    {formatINR(card.price)}
-                  </span>
+              <div className="plan-body flex flex-1 flex-col">
+                <div className="flex items-end gap-2 font-display">
+                  {isFree ? (
+                    <span className="figure-xl" style={{ fontSize: PRICE_FONT_SIZE }}>{formatINR(card.price)}</span>
+                  ) : (
+                    // Stable key for the paid slot: a key that changes with the term would
+                    // remount the panel and its Counter, so the digits would jump, not roll.
+                    <span className="flex items-end figure-xl">
+                      <span className="plan-rupee pb-1 leading-none" style={{ fontSize: PRICE_FONT_SIZE }}>
+                        ₹
+                      </span>
+                      <Price value={card.price} />
+                    </span>
+                  )}
+                  <span className="pb-2 font-sans text-base font-medium text-muted-foreground">{card.unit}</span>
+                </div>
+                <p key={isFree ? 'free-note' : term} className="plan-swap mt-1 min-h-6 text-base text-muted-foreground">
+                  {card.note}
+                </p>
+
+                {isFree ? (
+                  <a href={APP_URL} className="btn btn-outline btn-lg mt-6 w-full">
+                    {card.cta}
+                  </a>
                 ) : (
-                  <>
-                    <span
-                      className="font-medium leading-none tracking-[-0.04em] text-accent-ink"
-                      style={{ fontSize: PRICE_FONT_SIZE }}
-                    >
-                      ₹
-                    </span>
-                    {/* Gradients are transparent: the default black fade would band the blue card. */}
-                    <Counter
-                      value={card.price}
-                      places={placesFor(card.price)}
-                      fontSize={PRICE_FONT_SIZE}
-                      padding={4}
-                      gap={0}
-                      horizontalPadding={0}
-                      textColor="var(--accent-ink)"
-                      fontWeight={500}
-                      gradientFrom="transparent"
-                      gradientTo="transparent"
-                      counterStyle={{ letterSpacing: '-0.04em' }}
-                    />
-                  </>
+                  <Magnet className="mt-6">
+                    <a href={APP_URL} className="btn btn-primary btn-lg w-full">
+                      {card.cta}
+                    </a>
+                  </Magnet>
                 )}
-                <span className="pb-1 text-[13px] opacity-70">{card.unit}</span>
+
+                <ul className="mt-8">
+                  {card.features.map(item => (
+                    <li key={item} className="plan-row">
+                      <Check className="plan-check h-4 w-4" strokeWidth={2.5} aria-hidden />
+                      <span className="text-base">{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="mt-1 h-4 text-[12px] opacity-70">{card.note}</p>
-
-              <a
-                href={APP_URL}
-                className={`btn btn-lg mt-5 w-full ${
-                  card.highlight
-                    ? 'border border-accent-ink bg-accent-ink text-accent hover:bg-accent-ink/90'
-                    : 'border border-foreground/30 hover:border-foreground'
-                }`}
-              >
-                {card.cta}
-                <ArrowRight className="h-4 w-4" />
-              </a>
-
-              <ul className="mt-6 flex flex-col gap-2.5 border-t border-border-subtle pt-5">
-                {card.features.map(item => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} />
-                    <span className="text-[13.5px]">{item}</span>
-                  </li>
-                ))}
-              </ul>
             </div>
-          ))}
-        </div>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          No GST is added. The price you see is the price you pay. The free plan is capped at{' '}
-          {FREE_MEMBER_LIMIT} members.
-        </p>
-
-        <div className="reveal card mx-auto mt-10 max-w-[1100px] p-6 md:p-8">
-          <h3 className="display-3">Simple 3-step activation</h3>
-          <p className="mt-3 text-[13.5px] leading-relaxed text-muted-foreground">
-            Payments are verified manually, so there is no card on file and nothing charges you
-            automatically.
-          </p>
-          <ol className="mt-6 grid gap-6 md:grid-cols-3">
-            {ACTIVATION_STEPS.map((step, index) => {
-              const Icon = step.icon;
-              return (
-                <li key={step.title} className="flex gap-4">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-border-subtle bg-subtle">
-                    <Icon className="h-4.5 w-4.5 text-accent-text" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-mono text-xs tracking-wider text-muted-foreground">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <span className="mt-1 block text-[14.5px] font-medium text-foreground">
-                      {step.title}
-                    </span>
-                    <span className="mt-1.5 block text-[13px] leading-relaxed text-muted-foreground">
-                      {step.desc}
-                    </span>
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
+          );
+          return isFree ? (
+            <Rise key="free">{panel}</Rise>
+          ) : (
+            <Rise key="paid" delay={0.08}>
+              <SpotlightSurface className="plan-pro-wrap h-full">{panel}</SpotlightSurface>
+            </Rise>
+          );
+        })}
       </div>
-    </section>
+
+      <p className="mx-auto mt-8 max-w-[1040px] text-base text-muted-foreground">
+        No GST is added. The price you see is the price you pay. The free plan is capped at{' '}
+        {FREE_MEMBER_LIMIT} members.
+      </p>
+    </Section>
   );
 }

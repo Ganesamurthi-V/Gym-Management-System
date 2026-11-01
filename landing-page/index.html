@@ -28,14 +28,13 @@
       The site always opens in the light theme, whatever the visitor's OS setting, so
       the browser chrome is light for every scheme. Matches --background in src/index.css.
     -->
-    <meta name="theme-color" content="#f5f5f5" />
+    <meta name="theme-color" content="#fafbfd" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
-      Instrument Serif is requested italic-only (ital@1) and at a single weight,
-      because the sole thing it sets is the emphasised words in the hero heading.
-      Asking for the roman too would double the payload for glyphs never drawn.
+      Three faces (DESIGN.md): Familjen Grotesk for headings, IBM Plex Sans for text, JetBrains Mono for
+      times, IDs and tickets. The latin-ext subsets carry the rupee sign.
     -->
     <!--
       Non-blocking. A plain rel="stylesheet" here stops the first paint until Google Fonts
@@ -47,49 +46,60 @@
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
       onload="this.onload=null;this.rel='stylesheet'"
-    />
-    <!--
-      The hero film's poster is the LCP element, and it is a <video poster> that React renders after the
-      first paint, so the browser only learned of it once the entry chunk had run (requested at ~1.3 s in
-      a local Lighthouse trace, Lighthouse "LCP request discovery" failing). These two hints make it
-      discoverable from the HTML. The media queries are the same 768px split HeroVideo.tsx uses to pick
-      the 9:16 or the 16:9 cut, so a phone does not fetch the laptop poster or the other way round.
-      Keep both URLs in step with FILMS in src/components/HeroVideo.tsx.
-    -->
-    <link
-      rel="preload"
-      as="image"
-      href="/video/gymflow-launch-portrait-poster.webp"
-      type="image/webp"
-      media="(max-width: 767.98px)"
-      fetchpriority="high"
-    />
-    <link
-      rel="preload"
-      as="image"
-      href="/video/gymflow-launch-poster.webp"
-      type="image/webp"
-      media="(min-width: 768px)"
-      fetchpriority="high"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
       />
     </noscript>
     <style>
-      /* Light is the only theme a visit starts in; the toggle can still switch for the current visit. */
-      html { background: #f5f5f5; color-scheme: light; }
-      html.dark { background: #141414; color-scheme: dark; }
+      /* Hallmark · shape: SaaS narrative · genre: modern-minimal · theme: cobalt (brand blue) · redesign: full
+       * paper: oklch(98.6% 0.005 250) · accent: #2563eb · display: Familjen Grotesk · body: IBM Plex Sans · hero: Settled · nav: slim bar · footer: letter close · signature: the product shown big over a dot grid with a floating WhatsApp confirmation card
+       * axes: light/grotesk/blue · posture: restrained · contrast: pass · fold: pass · v2.0.0 · draw: cee847 */
+      /* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: S, section compositions are rebuilt by the section agents in parallel */
+      /* Token block for the first paint; the same values live in src/index.css.
+         Night sits on the bare :root and paper on :root:not(.dark). */
+      :root {
+        --background: oklch(15% 0.02 262);
+        --foreground: oklch(94% 0.008 250);
+        --muted-foreground: oklch(74% 0.02 256);
+        --hero-copy: oklch(84% 0.015 255);
+        --border-strong: oklch(38% 0.035 262);
+        --accent: #2563eb;
+        --accent-ink: #ffffff;
+        --accent-text: #93c5fd;
+        --ring: #93c5fd;
+        --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-display: "Familjen Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --accent-edge: oklch(39% 0.16 260);
+        --space-sm: 12px;
+        --space-lg: 24px;
+        --space-xl: 40px;
+        --space-2xl: 64px;
+      }
+      :root:not(.dark) {
+        --background: oklch(98.6% 0.005 250);
+        --foreground: oklch(21% 0.028 262);
+        --muted-foreground: oklch(46% 0.02 258);
+        --hero-copy: oklch(36% 0.022 260);
+        --border-strong: oklch(83% 0.012 252);
+        --accent-text: #1d4ed8;
+        --ring: #1d4ed8;
+      }
+      html, body { overflow-x: clip; }
+      :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+      /* Light is the default; the toggle can still switch for the current visit. */
+      html { background: var(--background); color-scheme: dark; }
+      html:not(.dark) { background: var(--background); color-scheme: light; }
     </style>
 
-    <title>GymFlow — Gym Management Software for Indian Gyms</title>
+    <title>GymFlow: Gym Management Software for Gyms in India</title>
     <meta
       name="description"
-      content="Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. Free forever plan, paid plans from ₹999/month."
+      content="Gym management software made effortless: members, fees, attendance and WhatsApp reminders for independent gyms in India. Free for up to 50 members."
     />
 
     <!--
@@ -125,10 +135,10 @@
     <!-- Kept in step with the h1 in src/components/Hero.tsx. This previously read
          "Know who paid. Who didn't. Who's expiring.", a headline no longer on the
          page — a share card promising copy the visitor never finds reads as bait. -->
-    <meta property="og:title" content="GymFlow — Gym management, made effortless." />
+    <meta property="og:title" content="GymFlow: Gym management software made effortless" />
     <meta
       property="og:description"
-      content="The all-in-one gym management platform for independent gyms. Members, payments, attendance, dues, and unlimited WhatsApp reminders in one place."
+      content="Members, fees, attendance and WhatsApp reminders in one simple app for independent gyms in India. Free for up to 50 members."
     />
     <!-- Kept identical to <link rel="canonical"> and the sitemap <loc>. -->
     <meta property="og:url" content="https://www.gymflow.sbs/" />
@@ -152,10 +162,10 @@
 
     <!-- Twitter card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="GymFlow — Gym management, made effortless." />
+    <meta name="twitter:title" content="GymFlow: Gym management software made effortless" />
     <meta
       name="twitter:description"
-      content="Members, payments, attendance, dues, and unlimited WhatsApp reminders in one place. Built for independent gyms across India."
+      content="Members, fees, attendance and WhatsApp reminders in one simple app for independent gyms in India."
     />
     <meta name="twitter:image" content="https://www.gymflow.sbs/og-image.jpg" />
     <meta
@@ -166,9 +176,9 @@
     <!--
       ─── THEME BOOTSTRAP ────────────────────────────────────────────────────
       Runs before first paint and before the CSS applies, so the theme is already
-      on <html> when the page renders. Dark is the default, so without this the
-      page would paint light and then swap to dark a frame later — a visible white
-      flash for the majority of visits.
+      on <html> when the page renders. Light is the default; without this a visitor who
+      switched to dark earlier in the visit would see the page paint light and then swap
+      to dark a frame later.
 
       Inline and synchronous on purpose: a deferred or external script would run
       after paint and defeat the point. Kept in sync with useTheme() in
@@ -197,31 +207,24 @@
         longer blank while the 65 KB-brotli shared chunk downloads (feature pages measured 3.7 s to
         first paint on a throttled phone, 4.5 s in the audit). Styled to look like the real hero's
         first screen: same stack and sizes, centred H1, muted intro, pill buttons, and the
-        breadcrumb small and muted above the H1. Hex values mirror the tokens in src/index.css
+        breadcrumb small and muted above the H1. Colours come from the token block above, which mirrors src/index.css
         (--background, --foreground, --muted-foreground, --hero-copy, --border-strong) because
         this block loads before that file; html.dark is set by the bootstrap script above.
       */
-      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 124px 20px 48px; font: 16px/1.6 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #0a0a0a; }
-      #seo-fallback a { color: #1d4ed8; }
-      #seo-fallback nav { text-align: center; font-size: 13px; line-height: 32px; color: #6b6b6b; }
+      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 124px 20px 48px; font: 16px/1.6 var(--font-sans); color: var(--foreground); }
+      #seo-fallback a { color: var(--accent-text); }
+      #seo-fallback nav { text-align: center; font-size: 13px; line-height: 32px; color: var(--muted-foreground); }
       #seo-fallback nav a { color: inherit; text-decoration: none; }
-      #seo-fallback h1 { margin: 24px 0 0; text-align: center; text-wrap: balance; font-size: clamp(40px, 5vw, 72px); font-weight: 500; line-height: 1.1; letter-spacing: -0.025em; }
-      #root:not([data-page]) #seo-fallback h1 { margin-top: 64px; font-size: clamp(40px, 9vw, 96px); }
-      #seo-fallback h1 + p { max-width: 640px; margin: 24px auto 0; text-align: center; font-size: clamp(16px, 1.35vw, 19px); color: #3a3a3a; }
-      #seo-fallback h1 + p + p { display: flex; justify-content: center; gap: 12px; margin-top: 32px; font-size: 0; }
-      #seo-fallback h1 + p + p a { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; padding: 12px 22px; border-radius: 9999px; font-size: 14px; font-weight: 500; line-height: 1.25; white-space: nowrap; text-decoration: none; color: #0a0a0a; border: 1px solid #d4d4d4; }
-      #seo-fallback h1 + p + p a:first-child { background: #0a0a0a; color: #f5f5f5; border-color: #0a0a0a; }
+      #seo-fallback h1 { margin: var(--space-lg) 0 0; text-align: center; text-wrap: balance; font-family: var(--font-display); font-size: clamp(44px, 6vw, 88px); font-weight: 600; line-height: 1.04; letter-spacing: -0.028em; }
+      #root:not([data-page]) #seo-fallback h1 { margin-top: var(--space-2xl); font-size: clamp(52px, 7.5vw, 104px); line-height: 1.02; }
+      #seo-fallback h1 + p { max-width: 640px; margin: var(--space-lg) auto 0; text-align: center; font-size: clamp(16px, 1.35vw, 19px); color: var(--hero-copy); }
+      #seo-fallback h1 + p + p { display: flex; justify-content: center; gap: var(--space-sm); margin-top: 32px; font-size: 0; }
+      #seo-fallback h1 + p + p a { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; padding: var(--space-sm) var(--space-lg); min-height: 48px; border-radius: 10px; font-family: var(--font-display); font-size: 16px; font-weight: 500; line-height: 1; white-space: nowrap; text-decoration: none; color: var(--foreground); border: 1px solid var(--border-strong); }
+      #seo-fallback h1 + p + p a:first-child { background: var(--accent); color: var(--accent-ink); border-color: var(--accent-edge); }
       @media (min-width: 640px) { #seo-fallback h1 + p + p a { flex: none; } }
-      #seo-fallback h1 + p + p + p { margin-top: 24px; text-align: center; font-size: 13px; color: #6b6b6b; }
-      #seo-fallback h2 { font-size: 22px; margin-top: 36px; }
-      #seo-fallback h3 { font-size: 17px; margin-top: 20px; }
-      html.dark #seo-fallback { color: #fafafa; }
-      html.dark #seo-fallback a { color: #93c5fd; }
-      html.dark #seo-fallback nav a { color: inherit; }
-      html.dark #seo-fallback nav, html.dark #seo-fallback h1 + p + p + p { color: #a3a3a3; }
-      html.dark #seo-fallback h1 + p { color: #dedede; }
-      html.dark #seo-fallback h1 + p + p a { color: #fafafa; border-color: #333333; }
-      html.dark #seo-fallback h1 + p + p a:first-child { background: #fafafa; color: #141414; border-color: #fafafa; }
+      #seo-fallback h1 + p + p + p { margin-top: var(--space-lg); text-align: center; font-size: 13px; color: var(--muted-foreground); }
+      #seo-fallback h2 { font-size: 28px; line-height: 1.1; margin-top: 36px; font-weight: 600; letter-spacing: -0.02em; }
+      #seo-fallback h3 { font-size: 20px; line-height: 1.15; margin-top: 20px; font-weight: 500; }
     </style>
 
     <!--
@@ -629,90 +632,55 @@
         is the same text as the FAQPage node, and the h1 is the one Hero.tsx renders.
       -->
       <main id="seo-fallback">
-        <h1>Gym management, made effortless.</h1>
-        <p>
-          Gym management software for independent gyms across India. Members, payments,
-          attendance, dues and WhatsApp automation in one place, without the notebooks.
-          Free forever for up to 50 members, or paid plans from ₹999 per month. 14-day free trial, no credit card, and you can cancel anytime.
-        </p>
-        <p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="#pricing">See pricing</a></p>
+        <h1>Gym management software made effortless</h1>
+        <p>Members, fees, attendance and WhatsApp reminders in one simple app.</p>
+        <p>14-day free trial. No credit card. Free for up to 50 members.</p>
+        <p><a href="https://app.gymflow.sbs">Start free trial</a> <a href="#pricing">See pricing</a></p>
 
-        <h2 id="features">Everything your gym needs: members, fees, attendance, WhatsApp</h2>
+        <h2 id="dashboard">Your whole gym on one dashboard</h2>
+        <p>Active members, today's collection, memberships expiring soon and outstanding dues, on one screen.</p>
         <ul>
-          <li><a href="/members">Member management</a></li>
-          <li><a href="/fees-and-dues">Fees and dues</a></li>
-          <li><a href="/attendance">Attendance tracking</a></li>
-          <li><a href="/member-app">Member app and workouts</a></li>
-          <li><a href="/whatsapp">WhatsApp reminders</a></li>
-          <li><a href="/reports">Reports and analytics</a></li>
-          <li><a href="/import-export">Import and export</a></li>
-          <li>Direct founder support</li>
+          <li>Less chasing: reminders go out on WhatsApp by themselves and stop when you record the renewal or the payment.</li>
+          <li>Know where you stand each morning: every member is marked Active, Expiring or Expired.</li>
+          <li>Members get their own app: a digital card, workout programs and attendance streaks.</li>
         </ul>
-        <p><a href="/features">See all GymFlow features</a></p>
-        <p>
-          The owner dashboard shows active members, today's collection, memberships expiring
-          soon and total outstanding dues on one screen. Members get their own app with a digital
-          gym card on their own phone, with no app store download.
-        </p>
+        <p><a href="https://app.gymflow.sbs">Start free trial</a> <a href="/features">See all features</a></p>
 
-        <h2 id="problems">The problems GymFlow solves</h2>
-        <p>The everyday jobs that eat an owner's week, and what GymFlow does about each one.</p>
+        <h2 id="features">Built for how gyms really run</h2>
         <ul>
-          <li>Nobody noticed the plan had ended: every member shows as Active, Expiring or Expired, and expiry reminders start 18 days before the end date.</li>
-          <li>Who owes how much? Part payments stay on the member as a pending due, with a list of who owes what.</li>
-          <li>Typing the same reminder again and again: welcome, renewal, expiry, payment due and birthday messages go out on WhatsApp by themselves.</li>
-          <li>The register shows who came, not who stopped: a report lists members with a current plan who have not checked in for 7 days or more.</li>
-          <li>Messy lists and phone numbers: import an Excel or CSV file, see a preview before anything is saved, and numbers are tidied to 10 digits.</li>
-          <li>No clear picture of the month: five plain-English reports on members, money, dues, expiries and attendance, with a PDF to download.</li>
+          <li><a href="/members">Members</a>: every member, plan and expiry in one searchable list, marked Active, Expiring or Expired.</li>
+          <li><a href="/fees-and-dues">Fees and dues</a>: record cash, UPI and card payments. Part payments stay on the member as a pending due.</li>
+          <li><a href="/attendance">Attendance</a>: check members in at the front desk, or let them check in with their member ID.</li>
+          <li><a href="/member-app">Member app</a>: members see their plan, visits and digital card on their own phone, with no app store download.</li>
         </ul>
-        <p>
-          Example, not a customer: for a member whose plan ends on the 30th, the first expiry reminder goes out on the
-          12th. If you record the renewal on the 20th, a renewal confirmation goes out and the remaining reminders stop.
-          If they do not renew, messages asking them to come back continue for up to 18 days after the 30th.
-        </p>
 
-        <h2 id="benefits">How GymFlow helps you run your gym</h2>
-        <p>The repeating work done for you, a clear view of your gym, and your records always yours.</p>
+        <h2 id="whatsapp">WhatsApp reminders that send themselves</h2>
+        <p>Welcome, renewal, expiry, payment due and birthday messages go out automatically, with no per-message charge from GymFlow.</p>
         <ul>
-          <li>Less chasing: reminders go out on WhatsApp by themselves, and they stop when you record the renewal or the payment.</li>
-          <li>Know where you stand each morning: the dashboard shows active members, today's collection, memberships expiring soon and total outstanding dues on one screen.</li>
-          <li>Members get their own app: a digital card, workout programs, attendance streaks and leaderboards.</li>
-          <li>Nothing locked in: export members, payments and attendance to Excel any time. Plans are paid by hand and never renew on their own.</li>
+          <li>The first expiry reminder goes out 18 days before the plan ends.</li>
+          <li>A reminder follows every 3 days, up to 7 times, until the member renews.</li>
+          <li>Reminders stop as soon as you record the renewal.</li>
         </ul>
-        <p>Try it with your own members: 14-day free trial, every feature, no credit card.</p>
+        <p><a href="/whatsapp">More on WhatsApp reminders</a></p>
 
-        <h2 id="whatsapp">Unlimited WhatsApp reminders, built in and not billed extra</h2>
-        <p>Every GymFlow account includes fully automated WhatsApp messaging, with no per-message charge from GymFlow.</p>
-        <ul>
-          <li>Welcome message: sent the moment a member joins, with their plan and expiry.</li>
-          <li>Renewal reminder: goes out before a membership lapses, not after.</li>
-          <li>Payment due alert: nudges the members who still owe, without you asking twice.</li>
-        </ul>
-        <p>No per-message fees, no monthly caps, no third-party integrations.</p>
-
-        <h2 id="how">How to set up GymFlow for your gym</h2>
+        <h2 id="steps">Get started in three steps</h2>
         <ol>
-          <li><strong>Create your gym account.</strong> Sign up on the web; no card needed for the 14-day free trial.</li>
-          <li><strong>Import your member records.</strong> Upload your Excel, CSV or XLS member list; GymFlow normalises phone numbers and matches your plans.</li>
-          <li><strong>Configure memberships and payments.</strong> Set up plans, prices and payment details in the app.</li>
-          <li><strong>Start managing your gym.</strong> Track members, attendance, payments, reports and WhatsApp reminders from one place.</li>
+          <li><strong>Create your gym account.</strong> Sign up and set up your gym in the app.</li>
+          <li><strong>Import your members.</strong> Bring your list in from an Excel, CSV or XLS file, or add members one by one. <a href="/import-export">More on importing and exporting members</a></li>
+          <li><strong>Start managing your gym.</strong> Set up plans and payments, then run attendance and WhatsApp reminders from your phone.</li>
         </ol>
 
-        <h2 id="pricing">Gym management software pricing: start free, upgrade when you grow</h2>
+        <h2 id="pricing">Simple pricing, free up to 50 members</h2>
         <ul>
           <li>Free forever: ₹0, up to 50 members, with member management, fees and dues, attendance tracking, and member import</li>
           <li>WhatsApp add-on: ₹299 per month, for gyms on the free plan, with renewal messages, welcome messages and payment due alerts</li>
           <li>Monthly: ₹999 per month, with unlimited members, the member app and workouts, reports and analytics, and WhatsApp reminders</li>
           <li>Yearly: ₹9,999 for a year (save 17%), everything in Monthly</li>
         </ul>
-        <p>No GST is added. The price you see is the price you pay.</p>
-        <p>
-          No per-member charges, no setup fee, and no modules to unlock later. To activate: make the
-          payment by UPI, upload the payment screenshot on the Subscription page, and
-          the account is switched on after verification.
-        </p>
+        <p>No GST is added. The price you see is the price you pay. No per-member charges, no setup fee, and no modules to unlock later.</p>
 
-        <h2 id="faq">Gym software FAQ: everything you need to know</h2>
+        <h2 id="faq">Gym management software FAQ</h2>
+        <p>Straight answers about pricing, setup, WhatsApp reminders and your data.</p>
         <h3>Is there a free trial?</h3>
         <p>Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the 14-day free trial before you decide.</p>
         <h3>How much does GymFlow cost?</h3>
@@ -730,13 +698,10 @@
         <h3>Where can I check if GymFlow is working?</h3>
         <p>Our public status page at status.gymflow.sbs shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@gymflow.sbs.</p>
 
-        <h2 id="founder">Who builds GymFlow</h2>
-        <p>
-          <strong>Ganesamurthi V</strong>, founder and developer. I&#x27;m a Computer Science engineering
-          student building GymFlow to help Indian gyms replace manual record-keeping with digital
-          management. My engineering background drives my focus on building practical, affordable
-          software for gym owners.
-        </p>
+        <h2 id="cta">Start your free trial today</h2>
+        <p>Direct support from the person who builds GymFlow. We reply within 24 hours.</p>
+        <p>14-day free trial. No credit card. Cancel anytime.</p>
+        <p><a href="https://app.gymflow.sbs">Start free trial</a> <a href="#pricing">See pricing</a></p>
 
         <h2>Contact</h2>
         <p>
@@ -744,7 +709,11 @@
           <a href="tel:+919384886895">+91 93848 86895</a>. No. 126, Anbu Nagar, Achariyapuram,
           Villianur, Puducherry 605110, India. Support in English and Tamil.
         </p>
-        <p><a href="https://status.gymflow.sbs">System status</a> · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/llms.txt">Summary for AI assistants</a> · <a href="https://www.instagram.com/meetgymflow">Instagram</a></p>
+        <p><a href="https://status.gymflow.sbs">System status</a><br />
+        <a href="/privacy">Privacy Policy</a><br />
+        <a href="/terms">Terms of Service</a><br />
+        <a href="/llms.txt">Summary for AI assistants</a><br />
+        <a href="https://www.instagram.com/meetgymflow">Instagram</a></p>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

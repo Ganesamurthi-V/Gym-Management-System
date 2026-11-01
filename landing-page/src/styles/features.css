@@ -1,0 +1,147 @@
+/* Hallmark · Cobalt · features switcher */
+/* Features switcher: a keycap track of four tabs with a raised white key that slides by transform,
+   one text line per tab, and ONE large capture frame whose layers cross-fade. Tokens only. */
+.feat-scroll {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+.feat-scroll::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 768px) {
+  .feat-scroll {
+    display: inline-block;
+  }
+}
+.feat-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 460px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--border);
+  isolation: isolate;
+}
+@media (min-width: 768px) {
+  .feat-tabs {
+    min-width: 600px;
+  }
+}
+.feat-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 4);
+  z-index: 0;
+  border-radius: 9px;
+  background: var(--key-face);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 2px 0 var(--key-edge), 0 4px 10px -4px var(--key-drop);
+  pointer-events: none;
+  transition: transform var(--dur-long) var(--ease-out);
+  will-change: transform;
+}
+.feat-tab {
+  position: relative;
+  z-index: 1;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  scroll-snap-align: center;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color var(--dur-short) linear;
+}
+.feat-tab:hover {
+  color: var(--foreground);
+}
+.feat-tab[aria-selected='true'] {
+  color: var(--accent-text);
+}
+
+/* Text panels share one grid cell so the height never jumps; they cross-fade by opacity. */
+.feat-copy {
+  display: grid;
+}
+.feat-panel {
+  grid-area: 1 / 1;
+  min-width: 0;
+  opacity: 0;
+  transition: opacity var(--dur-long) linear;
+}
+.feat-panel[data-active='true'] {
+  opacity: 1;
+}
+.feat-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: var(--space-xs);
+  border-radius: 4px;
+  font-weight: 500;
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.feat-link:hover {
+  color: var(--foreground);
+}
+
+/* The one capture: a 20px frame; both layers fill the same cell and fade. */
+.feat-capture {
+  display: grid;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+  background: var(--frame);
+  box-shadow: var(--shadow-lift);
+  overflow: clip;
+}
+.feat-layer {
+  grid-area: 1 / 1;
+  min-width: 0;
+  background: var(--frame);
+  opacity: 0;
+  transition: opacity var(--dur-long) linear;
+}
+.feat-layer[data-active='true'] {
+  opacity: 1;
+}
+.feat-layer-app {
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg) var(--space-md);
+  background: var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feat-pill,
+  .feat-panel,
+  .feat-layer,
+  .feat-tab {
+    transition: none;
+  }
+}
+
+.feat-tab:focus-visible,
+.feat-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* The capture takes the height of the visible layer only, so a short layer is never padded to the
+   tall one; the hidden layer fades out in place. */
+.feat-layer[data-active='false'] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}

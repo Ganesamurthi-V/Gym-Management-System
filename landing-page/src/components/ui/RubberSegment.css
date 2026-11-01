@@ -1,24 +1,22 @@
-/*
-  RubberSegment styles — vendored from React Bits (reactbits.dev/micro/rubber-segment,
-  DavidHDev/react-bits, MIT). Kept verbatim except for this note; all theming is done
-  through the CSS custom properties the component sets inline, so the Pricing card can
-  recolour it without touching this file.
+/* Hallmark · Cobalt
+  RubberSegment, re-skinned as a white keycap segmented control (Cobalt): white track with a hairline and a
+  bottom edge, a blue pill, no rubber glow. Vendored from React Bits (reactbits.dev/micro/rubber-segment,
+  DavidHDev/react-bits, MIT); colours come from the tokens below and from the inline --rs-* props the component sets.
 */
 .rubber-segment {
-  --rs-track: #27272a;
-  --rs-thumb: #fafafa;
-  --rs-ink: #fafafa;
-  --rs-ink-active: #18181b;
-  --rs-radius: 10px;
-  --rs-inset: 3px;
-  --rs-thumb-radius: 7px;
+  --rs-track: var(--key-face);
+  --rs-thumb: var(--accent);
+  --rs-ink: var(--foreground);
+  --rs-ink-active: var(--accent-ink);
+  --rs-radius: 12px;
+  --rs-inset: 4px;
+  --rs-thumb-radius: 8px;
   --rs-h: 36px;
   --rs-font: 13px;
   --rs-pad: 14px;
   --rs-min: 44px;
-  --rs-idle: 0.7;
-  --rs-hover: 0.9;
-  --rs-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --rs-idle: 1;
+  --rs-hover: 1;
 
   position: relative;
   display: inline-grid;
@@ -28,6 +26,8 @@
   padding: var(--rs-inset);
   border-radius: var(--rs-radius);
   background: var(--rs-track);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 2px 0 var(--key-edge), 0 8px 16px -10px var(--key-drop);
   font-family: inherit;
   touch-action: pan-y;
   user-select: none;
@@ -49,7 +49,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   height: calc(var(--rs-h) - var(--rs-inset) * 2);
   min-width: var(--rs-min);
   margin: 0;
@@ -60,6 +60,7 @@
   color: var(--rs-ink);
   opacity: var(--rs-idle);
   font: inherit;
+  font-family: var(--font-display);
   font-size: var(--rs-font);
   font-weight: 500;
   line-height: 1;
@@ -67,8 +68,8 @@
   cursor: pointer;
   outline: none;
   transition:
-    opacity 160ms ease,
-    transform 160ms var(--rs-ease-out);
+    background-color 120ms linear,
+    transform 80ms linear;
 }
 
 .rubber-segment__item[aria-checked='true'] {
@@ -85,17 +86,17 @@
 }
 
 .rubber-segment__item[data-pressed] {
-  transform: scale(0.96);
+  transform: translateY(1px);
 }
 
 .rubber-segment__item:focus-visible {
-  outline: 2px solid var(--rs-thumb);
-  outline-offset: 3px;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .rubber-segment__item[aria-checked='false']:hover {
-    opacity: var(--rs-hover);
+    background: var(--subtle);
   }
 }
 
@@ -122,6 +123,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .rubber-segment__item {
-    transition: opacity 160ms ease;
+    transition: none;
   }
 }

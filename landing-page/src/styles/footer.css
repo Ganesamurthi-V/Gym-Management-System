@@ -1,0 +1,18 @@
+/* Footer (Cobalt): the page colour, a hairline above, the ASCII wordmark, plain small links. Tokens only. */
+.footer-link {
+  color: var(--muted-foreground);
+  transition: color 160ms linear, transform 120ms var(--ease-out);
+}
+.footer-link:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.footer-link:active {
+  transform: translateY(1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-link {
+    transition: none;
+  }
+}

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import '../styles/docs.css';
+import '../styles/feature.css';
 
 export interface TocItem {
   id: string;
   label: string;
 }
 
-/** "On this page" (xl and up): links to each section with the one in view highlighted. */
-export function DocsToc({ items }: { items: TocItem[] }) {
+/** "On this page" (from lg or xl up): small sentence-case links, the one in view marked with the 2px blue bar. */
+export function DocsToc({ items, from = 'xl' }: { items: TocItem[]; from?: 'lg' | 'xl' }) {
   const [active, setActive] = useState(items[0]?.id);
 
   useEffect(() => {
@@ -31,18 +34,16 @@ export function DocsToc({ items }: { items: TocItem[] }) {
 
   if (items.length < 2) return null;
   return (
-    <aside aria-label="On this page" className="hidden xl:sticky xl:top-28 xl:block xl:self-start">
-      <p className="eyebrow mb-3">On this page</p>
-      <ul className="grid gap-0.5 border-l border-border-subtle">
+    <aside aria-label="On this page" className={from === 'lg' ? 'hidden lg:sticky lg:top-28 lg:block lg:self-start' : 'hidden xl:sticky xl:top-28 xl:block xl:self-start'}>
+      <p className="mb-3 text-[15px] text-muted-foreground">On this page</p>
+      <ul className="border-l border-border-subtle">
         {items.map(item => (
           <li key={item.id}>
             <a
               href={`#${item.id}`}
               aria-current={active === item.id ? 'location' : undefined}
-              className={`-ml-px block border-l-2 py-1.5 pl-3 text-[13.5px] leading-snug transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                active === item.id
-                  ? 'border-accent font-medium text-accent-text'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              className={`doc-side-link block py-1.5 pl-4 text-[15px] leading-snug transition-colors ${
+                active === item.id ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {item.label}
@@ -51,5 +52,27 @@ export function DocsToc({ items }: { items: TocItem[] }) {
         ))}
       </ul>
     </aside>
+  );
+}
+
+/** Under xl the same anchors sit in a disclosure above the body. */
+export function TocDisclosure({ items, below = 'xl' }: { items: TocItem[]; below?: 'lg' | 'xl' }) {
+  if (items.length < 2) return null;
+  return (
+    <details className={`faq-item border-y border-border-subtle ${below === 'lg' ? 'lg:hidden' : 'xl:hidden'}`}>
+      <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-4 text-[16px] font-medium text-foreground">
+        On this page
+        <ChevronDown aria-hidden className="faq-chev h-5 w-5 shrink-0 text-muted-foreground" />
+      </summary>
+      <ul className="pb-4">
+        {items.map(item => (
+          <li key={item.id}>
+            <a href={`#${item.id}`} className="block min-h-11 py-2 text-[16px] text-muted-foreground transition-colors hover:text-foreground">
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

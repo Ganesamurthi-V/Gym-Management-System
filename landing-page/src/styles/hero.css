@@ -1,0 +1,218 @@
+/* Hero (Cobalt, premium SaaS): a centred headline over the live ASCII field, then the product BIG on a
+   20px-radius white frame that floats in from the bottom of the first screen. The film follows on a
+   quiet band. Tokens only; every animation has a reduced-motion end state; transform and opacity only. */
+
+.hero-stage {
+  isolation: isolate;
+  padding-top: 112px;
+  padding-bottom: var(--space-2xl);
+  /* a graphite stage: the GradientASCII glow reads against it, and .band-ink remaps the text and keycap tokens for everything inside */
+  background: var(--band-ink);
+}
+@media (min-width: 768px) {
+  .hero-stage {
+    padding-top: 136px;
+  }
+}
+
+/* The GradientASCII backdrop sits behind everything; its dark areas are transparent, so it dissolves into the page below the frame. */
+.hero-field {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Two balanced lines on a wide screen, three on a phone (about 44px there). */
+.hero-h1 {
+  max-width: none;
+  margin-inline: auto;
+  font-size: clamp(2.75rem, 5.9vw, 5.75rem);
+  line-height: 1.04;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--foreground);
+}
+@media (min-width: 640px) {
+  .hero-h1 {
+    max-width: 20ch;
+  }
+}
+@media (min-width: 1100px) {
+  .hero-h1 {
+    max-width: 24ch;
+  }
+}
+.hero-lead {
+  max-width: 44ch;
+  margin: var(--space-lg) auto 0;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--muted-foreground);
+}
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+@media (min-width: 640px) {
+  .hero-actions {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+  }
+}
+/* One quiet line, three short phrases separated by space only. */
+.hero-terms {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2xs) var(--space-xl);
+  margin-top: var(--space-lg);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+/* ── The product: the member list on a 20px-radius frame. ── */
+.hero-demo {
+  position: relative;
+  max-width: 1040px;
+  margin: var(--space-3xl) auto 0;
+  min-width: 0;
+}
+@media (max-width: 767px) {
+  .hero-demo {
+    margin-top: var(--space-2xl);
+  }
+}
+/* The owner console on its own 20px frame; the mock brings its own chrome and colours (--dash-*). */
+.hero-dash {
+  overflow: clip;
+  border-radius: 20px;
+  border: 1px solid var(--band-ink-line-strong);
+  box-shadow: var(--shadow-lift);
+  background: var(--dash-page);
+}
+/* Soft float-in: 700ms rise and fade, once on load. */
+.hero-float {
+  animation: hero-float 700ms var(--ease-out) 120ms both;
+}
+@keyframes hero-float {
+  from { opacity: 0; transform: translateY(32px); }
+}
+.hero-frame {
+  overflow: clip;
+  border-radius: 20px;
+  box-shadow: var(--shadow-lift);
+}
+.hero-lid {
+  background: var(--dash-surface);
+}
+/* From 900px the frame keeps a quiet side panel clear for the confirmation card, so the card never
+   covers the list's status column. */
+@media (min-width: 900px) {
+  .hero-frame {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 272px;
+  }
+  .hero-frame::after {
+    content: "";
+    grid-column: 2;
+    grid-row: 1;
+    border-left: 1px solid var(--border);
+    background: var(--subtle);
+  }
+  .hero-lid {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
+/* The WhatsApp confirmation: a small white card over the frame's right corner on a wide screen,
+   below the list on a phone. It rises 700ms after the renewal is recorded. */
+.hero-slot {
+  position: relative;
+  margin-top: var(--space-md);
+}
+@media (min-width: 900px) {
+  .hero-slot {
+    position: absolute;
+    z-index: 5;
+    right: -28px;
+    top: 24px;
+    width: 300px;
+    margin-top: 0;
+  }
+}
+.hero-slip {
+  transition:
+    transform 700ms var(--ease-out),
+    opacity 700ms var(--ease-out);
+}
+.js .hero-slip[data-on="false"] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.hero-stamp {
+  position: absolute;
+  z-index: 20;
+  top: -14px;
+  right: 12px;
+}
+
+/* The chip sits on the dark stage, where .band-ink turns --accent-text pale: a solid blue chip with white type reads in both themes. */
+.hero-stamp .stamp {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* The quiet row under the frame: it sits on the ASCII glow, so it takes the stage's full-strength text instead of the muted tone. */
+.hero-foot {
+  margin-top: var(--space-md);
+  color: var(--foreground);
+  position: relative;
+  display: inline-block;
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: 8px;
+  /* a dark chip: the line sits on the brightest part of the ASCII glow, where plain text washes out */
+  background: var(--band-ink);
+}
+
+/* ── The film: a large framed video on a quiet band. ── */
+.film-frame {
+  overflow: clip;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--frame);
+  box-shadow: var(--shadow-lift);
+}
+.film-play {
+  width: 72px;
+  height: 72px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.film-overlay:hover .film-play {
+  transform: translateY(-1px);
+}
+.film-overlay:active .film-play {
+  transform: translateY(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-float,
+  .hero-slip,
+  .film-play {
+    animation: none;
+    transition: none;
+  }
+}

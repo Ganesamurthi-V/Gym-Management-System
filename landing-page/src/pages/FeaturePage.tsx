@@ -1,29 +1,52 @@
-import { sectionIds, type FeaturePage as FeaturePageData } from '../data/featurePages';
+import type { FeaturePage as FeaturePageData } from '../data/featurePages';
 import { DocsPager } from './DocsPager';
 import { DocsShell } from './DocsShell';
-import { FeatureTitle, FeatureShell, RelatedFeatures, ScreenshotsSection, SectionView, TutorialSection } from './featureParts';
+import {
+  DocSections,
+  FeatureClose,
+  FeatureHead,
+  FeatureSections,
+  FeatureShell,
+  MoreFromGymFlow,
+  RelatedFeatures,
+  ScreenshotsSection,
+  TutorialSection,
+} from './featureParts';
 
-/** A page under /features: hero, then the docs shell (sidebar, sections, pager), related pages. */
+/**
+ * A page under /features, /pricing or a guide. Guides read in the docs shell (sidebar, 65ch article,
+ * table of contents); the feature pages and pricing are composed full width, one arrangement per section.
+ */
 export function FeaturePage({ page }: { page: FeaturePageData }) {
-  const ids = sectionIds(page);
+  const guide = page.group === 'Guides';
   return (
     <FeatureShell>
-      <div>
-        <DocsShell page={page}>
-          <FeatureTitle page={page} />
-          <div className="flex flex-col gap-10">
-            <TutorialSection page={page} />
-            <div className="min-w-0">
-              {page.sections.map((section, i) => (
-                <SectionView key={section.heading} id={ids[i]} heading={section.heading} blocks={section.blocks} index={i} />
-              ))}
+      {guide ? (
+        <>
+          <FeatureHead page={page} />
+          <DocsShell page={page}>
+            <TutorialSection page={page} inline />
+            <DocSections page={page} />
+            <ScreenshotsSection page={page} inline />
+            <DocsPager page={page} />
+          </DocsShell>
+        </>
+      ) : (
+        <>
+          <FeatureHead page={page} search />
+          <TutorialSection page={page} />
+          <FeatureSections page={page} />
+          <ScreenshotsSection page={page} />
+          <div className="px-5 md:px-8">
+            <div className="mx-auto max-w-[1200px]">
+              <DocsPager page={page} />
             </div>
-            <ScreenshotsSection page={page} />
           </div>
-          <DocsPager page={page} />
-        </DocsShell>
-        <RelatedFeatures page={page} />
-      </div>
+        </>
+      )}
+      <RelatedFeatures page={page} />
+      <MoreFromGymFlow page={page} />
+      <FeatureClose />
     </FeatureShell>
   );
 }

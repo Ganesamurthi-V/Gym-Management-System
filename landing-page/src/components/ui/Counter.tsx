@@ -10,7 +10,7 @@
 */
 import type { CSSProperties } from 'react';
 import { useEffect } from 'react';
-import { MotionValue, motion, useSpring, useTransform } from 'motion/react';
+import { MotionValue, motion, useReducedMotion, useSpring, useTransform } from 'motion/react';
 
 interface NumberProps {
   mv: MotionValue<number>;
@@ -50,11 +50,15 @@ interface DigitProps {
 
 function Digit({ place, value, height, digitStyle }: DigitProps) {
   const valueRoundedToPlace = Math.floor(value / place);
-  const animatedValue = useSpring(valueRoundedToPlace, { stiffness: 200, damping: 24 });
+  const animatedValue = useSpring(valueRoundedToPlace, { stiffness: 420, damping: 42 });
 
+  const reduce = useReducedMotion();
+
+  // Reduced motion: the digits jump to the new value instead of rolling.
   useEffect(() => {
-    animatedValue.set(valueRoundedToPlace);
-  }, [animatedValue, valueRoundedToPlace]);
+    if (reduce) animatedValue.jump(valueRoundedToPlace);
+    else animatedValue.set(valueRoundedToPlace);
+  }, [animatedValue, valueRoundedToPlace, reduce]);
 
   const defaultStyle: CSSProperties = {
     height,
@@ -85,11 +89,6 @@ interface CounterProps {
   containerStyle?: CSSProperties;
   counterStyle?: CSSProperties;
   digitStyle?: CSSProperties;
-  gradientHeight?: number;
-  gradientFrom?: string;
-  gradientTo?: string;
-  topGradientStyle?: CSSProperties;
-  bottomGradientStyle?: CSSProperties;
 }
 
 export default function Counter({
@@ -98,18 +97,13 @@ export default function Counter({
   padding = 0,
   places = [100, 10, 1],
   gap = 8,
-  borderRadius = 4,
+  borderRadius = 0,
   horizontalPadding = 8,
-  textColor = 'white',
+  textColor = 'var(--foreground)',
   fontWeight = 'bold',
   containerStyle,
   counterStyle,
   digitStyle,
-  gradientHeight = 16,
-  gradientFrom = 'black',
-  gradientTo = 'transparent',
-  topGradientStyle,
-  bottomGradientStyle,
 }: CounterProps) {
   const height = fontSize + padding;
 
@@ -131,43 +125,12 @@ export default function Counter({
     fontWeight,
   };
 
-  const gradientContainerStyle: CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-  };
-
-  const defaultTopGradientStyle: CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: gradientHeight,
-    background: `linear-gradient(to bottom, ${gradientFrom}, ${gradientTo})`,
-  };
-
-  const defaultBottomGradientStyle: CSSProperties = {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: gradientHeight,
-    background: `linear-gradient(to top, ${gradientFrom}, ${gradientTo})`,
-  };
-
   return (
     <div style={{ ...defaultContainerStyle, ...containerStyle }}>
       <div style={{ ...defaultCounterStyle, ...counterStyle }}>
         {places.map(place => (
           <Digit key={place} place={place} value={value} height={height} digitStyle={digitStyle} />
         ))}
-      </div>
-      <div style={gradientContainerStyle}>
-        <div style={topGradientStyle ? topGradientStyle : defaultTopGradientStyle} />
-        <div style={bottomGradientStyle ? bottomGradientStyle : defaultBottomGradientStyle} />
       </div>
     </div>
   );

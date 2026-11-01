@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Section, Split } from './layout/Section';
+import { Rise } from './fx';
+import '../styles/close.css';
 
 const LINK_CLASS =
   'inline-flex items-center gap-2 rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
@@ -63,41 +64,46 @@ const PROFILES = [
 /* Only the facts the owner supplied. There is no photo, so the avatar is initials. */
 export function Founder() {
   return (
-    <Section labelledBy="founder-title">
-      <Split head={<h2 id="founder-title" className="display-2 text-balance">{'Who builds GymFlow'}</h2>}>
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-        <span
-          aria-hidden
-          className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-accent text-[20px] font-semibold tracking-tight text-accent-ink"
-        >
-          GV
-        </span>
-        <div>
-          <h3 className="text-[20px] font-medium tracking-tight text-foreground">Ganesamurthi V</h3>
-          <p className="mt-1 text-[13.5px] text-muted-foreground">Founder and developer</p>
-          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-            I&rsquo;m a Computer Science engineering student building GymFlow to help Indian gyms
-            replace manual record-keeping with digital management. My engineering background
-            drives my focus on building practical, affordable software for gym owners.
-          </p>
-          <p className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[13.5px]">
-            {PROFILES.map(profile => (
-              <a
-                key={profile.href}
-                href={profile.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={profile.aria}
-                className={LINK_CLASS}
-              >
-                {profile.icon}
-                {profile.label}
-              </a>
-            ))}
-          </p>
+    /* The section ends on the paper card, which hangs half over the blue band below (CTA), so
+       the page closes as one composed moment. Not the Section primitive: it clips overflow. */
+    <section aria-labelledby="founder-title" className="close-founder contain-visible relative z-10 px-5 pt-24 md:px-8 md:pt-32">
+      <div className="mx-auto max-w-[1200px]">
+      <h2 id="founder-title" className="display-2 text-balance">{'Who builds GymFlow'}</h2>
+      <Rise className="close-letter mt-10 md:mt-12 lg:ml-auto">
+        <p className="text-[18px] leading-relaxed text-foreground">
+          I&rsquo;m a Computer Science engineering student building GymFlow to help Indian gyms
+          replace manual record-keeping with digital management. My engineering background
+          drives my focus on building practical, affordable software for gym owners.
+        </p>
+        <div className="mt-8 flex items-center gap-4">
+          <span
+            aria-hidden
+            className="grid h-16 w-16 shrink-0 place-items-center rounded-[14px] bg-accent font-display text-[20px] font-bold text-accent-ink"
+          >
+            GV
+          </span>
+          <div>
+            <h3 className="font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-foreground">Ganesamurthi V</h3>
+            <p className="text-[16px] text-muted-foreground">Founder and developer</p>
+          </div>
         </div>
-        </div>
-      </Split>
-    </Section>
+        <p className="mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[16px]">
+          {PROFILES.map(profile => (
+            <a
+              key={profile.href}
+              href={profile.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={profile.aria}
+              className={`${LINK_CLASS} min-h-[44px]`}
+            >
+              {profile.icon}
+              {profile.label}
+            </a>
+          ))}
+        </p>
+      </Rise>
+      </div>
+    </section>
   );
 }

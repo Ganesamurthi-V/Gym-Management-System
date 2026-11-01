@@ -1,75 +1,115 @@
-# GymFlow marketing site: design system
+# GymFlow marketing site: design system (Hallmark redesign 4, premium SaaS, theme "Cobalt", signal colour Royal Blue)
 
-The rules every page of this site follows. Read this before changing any component. Tokens live in
-`src/index.css`; components must use them, never raw hex.
+The rules every page of this site follows. Read this before changing any component. Tokens live in `src/index.css`
+(semantic names, two values each: light and night) and `src/tokens.css` (the shared scale); components use them, never
+raw colour. This file replaces three earlier systems on purpose (steel/Archivo, warm-paper "Dose", poster-caps "Arena"):
+the owner wants a premium SaaS landing page, not a gym-themed one. GymFlow is software; the page should look like the
+best software pages: calm, exact, spacious, product-first.
 
 ## Brief
-- **Subject:** the front desk of a small independent gym in India. The owner runs it from a phone, between
-  training clients, with a register book, a cash box, a UPI QR sticker and WhatsApp.
+- **Subject:** software that runs a small gym's front desk (members, fees, attendance, WhatsApp reminders) from a phone.
 - **Audience:** gym owners with limited tech experience, mostly on phones over 4G.
-- **Primary job:** in one screen, show what GymFlow does for that desk (renewals, dues, attendance, reminders)
-  and get the owner to start the free trial.
-- **Fixed by the owner:** light theme first, Royal Blue #2563EB as the one accent (logo, favicon and the app use it),
-  real product screens instead of icon-card grids, no claims beyond product facts (there are no customers yet).
+- **Job:** start the free trial. The action sits in the nav, in the hero (terms in one line under it) and at the close.
+- **Fixed by the owner:** the logo and Royal Blue `#2563eb` are the only colour carried over; real product screens instead
+  of icon grids; no claim beyond product facts (no customers yet; "Sample data" under any mock).
+- **Headline (owner's words):** "Gym management made effortless".
+- **No gym theme:** no fitness imagery, no sporty caps, no weights/trophies, no ink stamps. The product is the picture.
 
-## Colour
-| Name | Light | Dark | Use |
-|---|---|---|---|
-| Chalk | `#F1F4F8` | `#0D1526` | page background (a cool, steel-tinted light; the dark is a deep navy, never near-black) |
-| Paper | `#FFFFFF` | `#15203A` | raised surfaces: product screens, panels |
-| Ink | `#14213D` | `#E9EEF6` | headings and body text |
-| Steel | `#53627A` | `#9FAEC4` | secondary text (AA on Chalk and Paper) |
-| Royal | `#2563EB` | `#3B82F6` | actions and links; `#1D4ED8` / `#93C5FD` when used as text |
-| Line | `#D9E0EA` | `#26324D` | borders and dividers |
+## Look: Cobalt, premium SaaS
+Cool near-white paper ruled with 1px hairlines, a refined grotesque for headings, a quiet text face for body, large calm type,
+generous space, product screens shown big with layered soft shadows, tactile keycap buttons with a real bottom edge, one
+graphite (dark) band, and one electric blue that does every signal. Premium comes from restraint, scale, alignment and polish,
+never from decoration. It is not paper-board, not poster-loud, not neon, and not a purple-blue gradient SaaS cliche.
+**Light is the default theme** (the first-paint script opens light unless the visitor chose night this visit); night is a
+graphite theme with the same structure and the same blue, available through the toggle.
 
-WhatsApp green appears only inside WhatsApp UI (the `--wa-*` tokens). Status colours (Active / Expiring / Expired) appear only
-inside product screens, the way the app shows them.
+### Colour (tokens in `src/index.css`)
+| Role | Light (default) | Night |
+|---|---|---|
+| `--background` | `oklch(98.6% 0.005 250)` | `oklch(15% 0.02 262)` |
+| `--subtle` (second band) | `oklch(96.2% 0.008 252)` | `oklch(19% 0.024 262)` |
+| `--frame` / `--muted` (raised white surfaces) | `oklch(100% 0 0)` | `oklch(22% 0.026 262)` |
+| `--foreground` ink | `oklch(21% 0.028 262)` | `oklch(94% 0.008 250)` |
+| `--muted-foreground` | `oklch(46% 0.02 258)` (AA) | `oklch(74% 0.02 256)` (AA) |
+| `--border` hairline | `oklch(90% 0.009 252)` | `oklch(30% 0.03 262)` |
+| `--border-strong` | `oklch(83% 0.012 252)` | `oklch(38% 0.035 262)` |
+| `--accent` Royal Blue | `#2563eb` | `#2563eb` |
+| `--accent-ink` | `#ffffff` | `#ffffff` |
+| `--accent-text` / `--accent-strong` | `#1d4ed8` | `#93c5fd` / `#60a5fa` |
+| `--accent-soft` (wash) | `#eff4ff` | `#172554` |
+| `--band-ink` (the one graphite band) | `oklch(21% 0.024 262)` | `oklch(11% 0.02 262)` |
+| `--key-face` / `--key-edge` (keycap) | `oklch(99.4% 0.003 250)` / `oklch(80% 0.016 254)` | `oklch(27% 0.03 262)` / `oklch(12% 0.02 262)` |
+One signal colour: blue. No second hue anywhere outside product screens. `--p-mon .. --p-sun` remain for compatibility and hold
+quiet blue-grey steps. WhatsApp green stays inside WhatsApp UI (`--wa-*`, `--whatsapp*`); status colours only inside product
+screens; `--dash-*`, `--wa-*`, `--ma-*` depict the real apps and keep their values.
 
-## Type
-One family, **Archivo** (variable, width 62-125, weight 400-900), chosen for its condensed widths: tall, tight,
-bold sentence-case headlines read like gym signage and the stencilled numbers on plates. Body is the same family at normal width, so
-the two roles are distinct by width and weight, not by a second typeface.
+### Type
+Familjen Grotesk 600 (headings, figures; 500 for item titles; `letter-spacing -0.028em`; line-height 1.02 to 1.08; sentence case;
+tabular figures) over IBM Plex Sans 400/500 (body 16 to 18px, lead 19 to 22px, line-height 1.55). JetBrains Mono only for code-like
+machine values (IDs, times) inside product tickets, never labels. Scale: `.display-xxl` ~clamp(3.25rem,7.5vw,6.5rem) (hero),
+`.display-1` ~5rem, `.display-2` ~3.5rem, `.display-3` ~1.75rem, `.lead`. Labels, captions, table heads: Familjen Grotesk 500 a step
+smaller, sentence case, untracked, muted. No all-caps anywhere, no tracked labels, no eyebrows, no italics.
 
-| Role | Setting |
-|---|---|
-| Display (h1) | width 70, weight 800, 44-96px, line-height 0.95, letter-spacing -0.01em |
-| Heading (h2) | width 75, weight 750, 32-56px, line-height 1.0 |
-| Subheading (h3) | width 100, weight 650, 18-22px |
-| Body / lead | width 100, weight 400, 16-19px, line-height 1.6, measure under 70ch |
-| UI and numbers | width 100, weight 600, `font-variant-numeric: tabular-nums` |
+### Surfaces
+- A 1px `--border` edges every surface and splits every row. Panels: 14px radius, white `--frame`, hairline border, `--shadow-card`
+  (`0 1px 2px` ink at 6% plus `0 12px 32px -16px` ink at 14%): the layered soft shadow is the depth. Large product frames: 20px.
+- **Keycaps:** buttons are keys: 48px (44 in the nav), 10px radius, `--key-face` with a 1px border and a 3px `--key-edge` bottom edge
+  and a soft drop; the primary is Royal Blue with a `--accent-edge` bottom edge; press sinks 3px (80ms).
+- **Graphite band** (`.band-ink`): the ONE dark section per page (full-bleed, rounded 0), used for the dashboard showcase; plus the
+  closing `.band-accent` (Royal Blue, white type) once. Two bands a page at most.
+- **Ground:** the hero sits on the live ASCII field (see ASCII); `.grid-bg` (a 24px dot tile) is the static fallback for feature-page heads. No grain, no blur, no glass, no gradients, no glow.
+- Product screens (HeroDemo, DashboardMock, member app phone, WhatsApp phone) are the imagery: shown at large scale, never
+  decorated with browser chrome.
 
-No all-caps labels, no monospace labels, no one-word colour/italic accents inside headings.
+### Controls
+Primary keycap (blue), secondary keycap (white), text button. `:focus-visible`: 2px `--ring` outline, 2px offset, instant. Inputs 48px,
+10px radius, 1px `--border-strong`, blue ring on focus. Links underline on hover.
 
-## Layout system (src/components/layout/Section.tsx)
-Every section on every page is built from the same parts; a section never invents its own spacing,
-width or background.
+## Content and structure: minimal, SEO-friendly, attractive
+The owner released the copy: headings and text may be rewritten freely, shortened, and made search-friendly (a plain keyword in the
+H1 and each H2, one clear sentence under each). Facts must stay true to the product (see src/data/*.ts and the existing pages);
+no invented metrics, customers or claims. Fewer topics, fewer words: one idea per screen, about 40 visible words per section.
+**Home page structure (in order):** Hero (H1 "Gym management software made effortless") / the film / Dashboard (graphite band) /
+Features (a four-tab switcher: Members, Fees and dues, Attendance, Member app) / WhatsApp reminders / Get started in three steps /
+Pricing / FAQ / Close (blue band) / Footer. The old Facts, Purpose, Problems and Founder sections leave the home page (their
+components stay in the repo, unused; their key facts live on as the figures in the dashboard band and the bullets in the WhatsApp section).
+The 16 feature, guide and docs pages keep their content (it is already search-rich) and take the same look.
 
-- **Section** sets the tone, padding (`py-24 md:py-32`) and the 1200px column. Tones: `chalk` (page
-  colour), `paper` (white band) and `ink` (the dark band). Backgrounds are plain colour: no textures,
-  patterns or animated backgrounds.
-- **Two layouts only:**
-  - **Split**: heading on the left (sticky on wide screens), content on the right. For lists, steps,
-    questions, and one product screen beside its explanation.
-  - **Showcase**: heading on top, then one wide thing (the full console, the plan panels).
-- **RuledList** is the one list style: ruled rows, bold short title, one sentence.
-- **Product screens** appear where they prove the section's point, one per section at most: hero (the
-  renewal story), features (the full console), benefits (the dashboard), WhatsApp (the phone and the
-  morning feed). Never one per paragraph.
-- Left-aligned text everywhere except the closing CTA line. 20px side gutter on phones.
-- Radius follows hierarchy: device frames 28px, panels 16px, buttons 10px, status chips 6px.
-- Numbered markers only where the content is a sequence (setup steps, the reminder timeline).
+## ASCII (a signature of this site)
+ASCII is the premium-tech texture: used with restraint, always decorative-plus-interactive, never carrying essential text.
+- **AsciiField:** a live ASCII noise field (8x16 cell) behind the hero's top 720px in blue tints, brightening and re-rolling under the cursor.
+- **AsciiLogo:** the GymFlow logo drawn in ASCII (footer wordmark and the close band); it decodes once on entering the viewport and ripples
+  under the cursor on hover. The nav keeps the real logo image.
+- **AsciiIcon (WhatsApp):** a small ASCII WhatsApp glyph in WhatsApp green beside the WhatsApp section heading and inside reminder cards; on
+  hover/tap a pulse travels around the bubble, the handset rings and typing dots pop.
+All three: canvas or pre, tokens only, paused off screen, static under reduced motion, hidden from screen readers with a real accessible name.
 
-## Motion
-One orchestrated moment: the hero product demo plays its sequence once on load (and again on tap). No fade-up on every section,
-no hover lift on every card. Motion that answers an action (accordion, tabs, play) stays. Everything respects reduced motion.
+## Composition (product first)
+Shape: a premium SaaS narrative. Hero **Settled/centred** over the ASCII field: H1 (`.display-xxl`, two lines, centred), one lead sentence, the
+two keycaps, one quiet terms line, then the product shown BIG (the members-list demo on a 20px-radius frame with the layered shadow, the
+WhatsApp confirmation floating over its corner as a small white card with a blue chip). Nav: a slim sticky bar (1px bottom hairline).
+Sections alternate `--background` and `--subtle`, 128 to 176px apart: the film as a large framed video; ONE graphite band for the dashboard
+with four large figures; the features switcher with one big capture; WhatsApp as a Split (heading + three bullets left, ASCII icon + feed
+cards right); the three steps as three wide rows with a large light numeral; pricing as two panels (Pro lifted, blue keycap, 1px blue ring);
+FAQ as a Split accordion; the blue close band with the ASCII logo; footer on `--background`. Never the same composition in neighbours; no
+three-up grid of identical icon cards.
+
+## Motion: smooth and refined
+Entrances: 12px translate plus opacity in 500ms `cubic-bezier(.22,1,.36,1)`, once, in view, 60ms stagger. Cards: hover raises the shadow
+and shifts the border to `--accent` at 40% (120ms). A pointer spotlight (a soft radial light that follows the cursor inside a panel) on
+the feature capture and the pricing panels (fine pointers only). Figures count up once. The tab pill slides by `transform` (240ms). The
+hero product floats in with a 700ms rise. `transform` and `opacity` only, never `transition: all`. Reduced motion: the end state.
 
 ## Writing
-Plain, specific, sentence case, from the owner's side. Buttons say what happens ("Start free trial", "See pricing").
-Product facts only, as stated in `src/data/featurePages.ts`; "Sample data" under any mock that shows names or amounts.
+Plain, specific, from the owner's side; imperative verbs on buttons; numerals over words. Product facts only. No dashes in new copy,
+no middle-dot meta strings.
+
+## Never
+A second accent colour; gradients (including purple-to-blue); glow; glass or blur; grain; all-caps; eyebrows; italics; tracked labels;
+gym or fitness imagery; a literal colour or font-family outside the token blocks; `transition: all`; animating width, height, top or
+left; `overflow-x: hidden` or `100vw`; a card inside a card; identical three-up icon tiles.
 
 ## Review against generic defaults
-- Rejected warm cream with a serif display (the most common generated look) for steel-tinted chalk and one condensed sans tied to gym signage.
-- Rejected hairline broadsheet columns and dense rules; structure comes from product screens and spacing.
-- Rejected the card kit (identical rounded cards with icon tiles), tracked all-caps eyebrows, monospace labels and one-word italic accents,
-  all of which the previous version used.
-- Kept Royal Blue because the owner fixed it and the product already uses it; the boldness is spent on the hero type and the product demo.
+- Rejected warm-paper plastic, and the poster-caps gym look: both read as themes, not as software.
+- Rejected the usual purple-to-blue gradient hero: the premium signal here is scale, space and a precise single blue.
+- Kept the product mocks (the real app's screens) as the evidence; the polish goes into type, spacing, edges and shadows.

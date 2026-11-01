@@ -8,13 +8,15 @@
   user-selected canonical". Static hosts (Vercel, Cloudflare Pages) serve a top-level
   404.html with the correct status for paths that match no file.
 
-  Self-contained on purpose: no bundle, no fonts, so it renders even if the app's
-  assets are what failed to load.
+  Self-contained on purpose: no bundle, so it renders even if the app's assets are what
+  failed to load. The only outside request is the font stylesheet, which falls back to
+  system fonts if it does not arrive.
 -->
 <html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fafbfd" />
     <title>Page not found — GymFlow</title>
     <meta name="robots" content="noindex, follow" />
     <link rel="icon" href="/favicon.ico?v=4" sizes="48x48" />
@@ -22,29 +24,474 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=4" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=4" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Same three faces as the site (Familjen Grotesk headings, IBM Plex Sans text, JetBrains Mono for small
+      facts), loaded non-blocking the way src/feature-head.html does: preload, swap to a stylesheet on
+      load, and a noscript copy.
+    -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" />
+    </noscript>
+
+    <!--
+      Theme bootstrap: every new visit opens in the light theme, like the marketing site. A choice
+      made with the site's toggle earlier in the same visit is kept (sessionStorage).
+    -->
+    <script>
+      (function () {
+        var dark = false;
+        try { dark = sessionStorage.getItem('gf-theme') === 'dark'; } catch (e) {}
+        document.documentElement.classList.toggle('dark', dark);
+      })();
+    </script>
+
     <style>
-      :root { color-scheme: light; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f5f5f5; color: #141414; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
-      main { max-width: 520px; padding: 32px 20px; text-align: center; }
-      p.code { font: 500 12px ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: #525252; }
-      h1 { font-size: 34px; line-height: 1.15; font-weight: 500; letter-spacing: -.03em; margin: 12px 0; }
-      p { color: #404040; }
-      a.btn { display: inline-block; margin-top: 20px; padding: 12px 22px; border-radius: 9999px; background: #141414; color: #f5f5f5; font-weight: 500; text-decoration: none; }
-      nav { margin-top: 24px; font-size: 14px; }
-      nav a { color: #1d4ed8; margin: 0 8px; }
+      /* Hallmark · genre: editorial · theme: cobalt (brand blue) · redesign: static legal and error pages · v2.0.0 */
+      /*
+        Self-contained styles for a static file served outside the React/Tailwind build, so it
+        cannot use src/index.css. The Cobalt tokens below are COPIED from src/index.css (night on
+        the bare :root, light on :root:not(.dark)), the same cascade the site uses, and
+        everything after this block reads var(--token) only. Keep in step with src/index.css.
+        html.dark is set by the bootstrap script above from sessionStorage "gf-theme", like the site.
+      */
+      :root {
+        --background: oklch(15% 0.02 262);
+        --foreground: oklch(94% 0.008 250);
+        --muted-foreground: oklch(74% 0.02 256);
+        --frame: oklch(22% 0.026 262);
+        --subtle: oklch(19% 0.024 262);
+        --border: oklch(30% 0.03 262);
+        --border-strong: oklch(38% 0.035 262);
+        --ring: #93c5fd;
+        --accent: #2563eb;
+        --accent-ink: #ffffff;
+        --accent-text: #93c5fd;
+        --accent-soft: #172554;
+        --accent-edge: oklch(39% 0.16 260);
+        --key-accent-drop: oklch(30% 0.12 260 / 0.55);
+        --key-hi: oklch(100% 0 0 / 0.22);
+        --key-press: oklch(8% 0.02 262 / 0.5);
+        --shadow-card: 0 0 0 1px oklch(30% 0.03 262), 0 12px 32px -16px oklch(5% 0.02 262 / 0.7);
+        --logo-filter: brightness(0) invert(1);
+        --dur-micro: 80ms;
+        --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-display: "Familjen Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        --space-2xs: 4px;
+        --space-xs: 8px;
+        --space-sm: 12px;
+        --space-md: 16px;
+        --space-lg: 24px;
+        --space-xl: 40px;
+        --space-2xl: 64px;
+      }
+      :root:not(.dark) {
+        --background: oklch(98.6% 0.005 250);
+        --foreground: oklch(21% 0.028 262);
+        --muted-foreground: oklch(46% 0.02 258);
+        --frame: oklch(100% 0 0);
+        --subtle: oklch(96.2% 0.008 252);
+        --border: oklch(90% 0.009 252);
+        --border-strong: oklch(83% 0.012 252);
+        --ring: #1d4ed8;
+        --accent-text: #1d4ed8;
+        --accent-soft: #eff4ff;
+        --shadow-card: 0 1px 2px oklch(21% 0.028 262 / 0.06), 0 12px 32px -16px oklch(21% 0.028 262 / 0.14);
+        --logo-filter: none;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        overflow-x: clip;
+      }
+      html {
+        background: var(--background);
+        color-scheme: light;
+      }
+      html.dark {
+        color-scheme: dark;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        html {
+          scroll-behavior: smooth;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 0 var(--space-lg) var(--space-2xl);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+
+      /* Plain top bar: logo home, one keycap button. */
+      header.top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-md);
+        padding: var(--space-lg) 0;
+        margin-bottom: var(--space-xl);
+        border-bottom: 1px solid var(--border);
+      }
+      header.top img {
+        display: block;
+        height: 48px;
+        width: auto;
+        filter: var(--logo-filter);
+      }
+      header.top > a:first-child {
+        border-radius: 0;
+      }
+
+      /* Keycap button, same recipe as .btn-primary / .btn-nav in src/index.css. */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 var(--space-md);
+        border: 1px solid var(--accent-edge);
+        border-radius: 10px;
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 500;
+        line-height: 1;
+        white-space: nowrap;
+        text-decoration: none;
+        cursor: pointer;
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow:
+          0 3px 0 0 var(--accent-edge),
+          0 6px 8px -4px var(--key-accent-drop),
+          inset 0 1px 0 var(--key-hi);
+        transition:
+          transform var(--dur-micro) var(--ease-out),
+          box-shadow var(--dur-micro) var(--ease-out);
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow:
+          0 4px 0 0 var(--accent-edge),
+          0 8px 10px -4px var(--key-accent-drop),
+          inset 0 1px 0 var(--key-hi);
+        text-decoration: none;
+      }
+      .btn:active {
+        transform: translateY(3px);
+        box-shadow:
+          0 0 0 0 var(--accent-edge),
+          inset 0 1px 2px var(--key-press);
+      }
+      .btn-lg {
+        min-height: 56px;
+        padding: 0 32px;
+        font-size: 18px;
+      }
+
+      main {
+        max-width: 65ch;
+        margin: 0 auto;
+      }
+      /* Running text stays under 75 characters a line; headings, the contents tray and the
+         contact card use the full 65ch column. */
+      main > p,
+      main > ul {
+        max-width: 54ch;
+      }
+
+      h1,
+      h2 {
+        font-family: var(--font-display);
+        font-weight: 600;
+        color: var(--foreground);
+        overflow-wrap: break-word;
+        min-width: 0;
+        text-wrap: balance;
+      }
+      h1 {
+        font-size: clamp(40px, 6vw, 72px);
+        letter-spacing: -0.028em;
+        line-height: 1.04;
+        margin: 0 0 var(--space-md);
+      }
+      h2 {
+        font-size: clamp(28px, 3.8vw, 40px);
+        letter-spacing: -0.028em;
+        line-height: 1.1;
+        margin: var(--space-2xl) 0 var(--space-sm);
+        scroll-margin-top: var(--space-lg);
+      }
+      p {
+        color: var(--foreground);
+        margin: 0 0 var(--space-md);
+        text-wrap: pretty;
+      }
+      ul {
+        margin: 0 0 var(--space-md);
+        padding-left: var(--space-lg);
+      }
+      li {
+        margin-bottom: var(--space-xs);
+      }
+      strong {
+        font-weight: 600;
+      }
+      main a {
+        color: var(--accent-text);
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+        border-radius: 2px;
+        transition: color var(--dur-micro) linear;
+      }
+      main a:hover {
+        text-decoration-thickness: 2px;
+      }
+
+      /* Slip for the "last updated" line: a small white card, JetBrains Mono. */
+      .slip {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        margin: 0 0 var(--space-xl);
+        padding: var(--space-sm) var(--space-md);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background-color: var(--frame);
+        color: var(--foreground);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        line-height: 1.4;
+        font-variant-numeric: tabular-nums;
+        box-shadow: var(--shadow-card);
+      }
+
+      .lead {
+        color: var(--muted-foreground);
+        font-size: 18px;
+      }
+
+      .contact {
+        margin-top: var(--space-sm);
+        padding: var(--space-lg);
+        background: var(--frame);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow-card);
+      }
+      .contact dl {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr);
+        gap: var(--space-xs) var(--space-md);
+        margin: 0;
+      }
+      .contact dt {
+        color: var(--muted-foreground);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-weight: 500;
+        padding-top: 2px;
+      }
+      .contact dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      @media (max-width: 520px) {
+        .contact dl {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+        }
+        .contact dt {
+          margin-top: var(--space-sm);
+        }
+        .contact dt:first-child {
+          margin-top: 0;
+        }
+      }
+
+      /* Contents: a raised white panel, 1px hairline, 14px corners, the layered soft shadow; a calm two-column list on wide screens. */
+      .toc {
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: var(--space-md) var(--space-lg) var(--space-lg);
+        margin: 0 0 var(--space-xl);
+        background: var(--frame);
+        box-shadow: var(--shadow-card);
+      }
+      .toc p {
+        margin: 0 0 var(--space-xs);
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 14px;
+        color: var(--foreground);
+      }
+      .toc ol {
+        margin: 0;
+        padding-left: var(--space-lg);
+        columns: 2;
+        column-gap: var(--space-lg);
+        font-size: 16px;
+        line-height: 1.4;
+      }
+      .toc li {
+        margin-bottom: var(--space-xs);
+        break-inside: avoid;
+        text-wrap: balance;
+      }
+      .toc a {
+        color: var(--foreground);
+        text-decoration: underline;
+        text-decoration-color: var(--border-strong);
+        text-underline-offset: 3px;
+        border-radius: 2px;
+        transition: text-decoration-color var(--dur-micro) linear;
+      }
+      .toc a:hover {
+        text-decoration-color: var(--accent);
+      }
+      @media (max-width: 640px) {
+        .toc ol {
+          columns: 1;
+        }
+      }
+      /* The links were 19px tall. Padding on the anchor grows the tap area to 44px on touch
+         screens without changing the type; the row gap moves into the padding. */
+      @media (max-width: 640px), (pointer: coarse) {
+        .toc li {
+          margin-bottom: 0;
+        }
+        .toc a {
+          display: inline-block;
+          padding: var(--space-sm) 0;
+        }
+      }
+
+      footer.foot {
+        margin-top: var(--space-2xl);
+        padding-top: var(--space-lg);
+        border-top: 1px solid var(--border);
+        color: var(--muted-foreground);
+        font-size: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs) var(--space-lg);
+        justify-content: space-between;
+      }
+      footer.foot a {
+        color: var(--foreground);
+        text-underline-offset: 3px;
+        border-radius: 2px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .btn,
+        main a,
+        .toc a {
+          transition: none;
+        }
+        .btn:active {
+          transform: none;
+        }
+      }
+
+      /* 404 only: a centred message under the same top bar. */
+      .wrap {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      main.notfound {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding-bottom: var(--space-2xl);
+        text-align: center;
+      }
+      main.notfound > p {
+        max-width: 54ch;
+      }
+      .code {
+        display: inline-block;
+        margin: 0 0 var(--space-md);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--muted-foreground);
+      }
+      main.notfound .btn {
+        margin-top: var(--space-md);
+        min-height: 52px;
+      }
+      main.notfound .btn:hover {
+        text-decoration: none;
+      }
+      nav.links {
+        margin-top: var(--space-lg);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0 var(--space-md);
+      }
+      nav.links a {
+        display: inline-block;
+        padding: var(--space-sm) var(--space-xs);
+      }
     </style>
   </head>
   <body>
-    <main>
-      <p class="code">Error 404</p>
-      <h1>This page does not exist.</h1>
-      <p>The link may be old or mistyped. GymFlow's website is a single page, so everything is one click away.</p>
-      <a class="btn" href="/">Go to the GymFlow home page</a>
-      <nav>
-        <a href="/#pricing">Pricing</a>
-        <a href="/#faq">FAQ</a>
-        <a href="https://app.gymflow.sbs">Sign in</a>
-      </nav>
-    </main>
+    <div class="wrap">
+      <header class="top">
+        <a href="/" aria-label="GymFlow home">
+          <img src="/logo_landspace_without_bg.webp" alt="GymFlow" width="400" height="178" />
+        </a>
+        <a class="btn" href="https://app.gymflow.sbs">Start free trial</a>
+      </header>
+
+      <main class="notfound">
+        <p class="code">Error 404</p>
+        <h1>This page does not exist.</h1>
+        <p>The link may be old or mistyped. GymFlow's website is a single page, so everything is one click away.</p>
+        <a class="btn btn-lg" href="/">Go to the GymFlow home page</a>
+        <nav class="links">
+          <a href="/#pricing">Pricing</a>
+          <a href="/#faq">FAQ</a>
+          <a href="https://app.gymflow.sbs">Sign in</a>
+        </nav>
+      </main>
+    </div>
   </body>
 </html>

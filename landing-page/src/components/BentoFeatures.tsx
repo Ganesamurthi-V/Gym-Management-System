@@ -1,111 +1,131 @@
-import { DashboardMock } from './dashboard/DashboardMock';
+import { useRef, useState, type KeyboardEvent } from 'react';
+import { SpotlightSurface } from './fx';
+import { MembersVisual, DuesVisual, AttendanceVisual } from './FeatureVisuals';
 import { MemberAppCard } from './MemberAppCard';
-import { RuledList, Section, SectionHead, Showcase, Split } from './layout/Section';
+import { Section } from './layout/Section';
+import '../styles/features.css';
 
-const LINK_CLASS =
-  'rounded font-medium text-accent-text underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
-
-// Facts as stated in src/data/featurePages.ts.
-const POINTS = [
+// Facts as stated in src/data/featurePages.ts. Each tab has its own illustration (FeatureVisuals.tsx) so the section never repeats the
+// dashboard mock of the band above it; the last tab is the member app phone.
+const TABS = [
   {
-    title: 'See who needs a call',
-    text: 'Every member is marked Active, Expiring (7 days or fewer left) or Expired.',
+    title: 'Members',
+    text: 'Every member, plan and expiry in one searchable list, marked Active, Expiring or Expired.',
     href: '/members',
-    link: 'More on member management',
   },
   {
-    title: 'Part payments stay on record',
-    text: 'Take part of a fee now. What is left stays as a pending due until it is paid.',
+    title: 'Fees and dues',
+    text: 'Record cash, UPI and card payments. Part payments stay on the member as a pending due.',
     href: '/fees-and-dues',
-    link: 'More on fees and dues',
   },
   {
-    title: 'Check-in at the front desk',
-    text: 'Members type their member ID on a kiosk page and the visit is recorded.',
+    title: 'Attendance',
+    text: 'Check members in at the front desk, or let them check in with their member ID.',
     href: '/attendance',
-    link: 'More on attendance tracking',
+  },
+  {
+    title: 'Member app',
+    text: 'Members see their plan, visits and digital card on their own phone, with no app store download.',
+    href: '/member-app',
   },
 ] as const;
 
+const MEMBER_APP = 3;
+
+// One visual per tab, in tab order, each with the text a screen reader gets in place of the decorative picture.
+const VISUALS = [
+  { Visual: MembersVisual, label: 'A searchable member list with one member record open: plan, status and expiry.' },
+  { Visual: DuesVisual, label: 'Recording a cash, UPI or card payment, and the list of members who still owe.' },
+  { Visual: AttendanceVisual, label: 'The front-desk check-in: a member ID keypad and the member who has just checked in.' },
+  { Visual: MemberAppCard, label: 'The member app on a phone: plan, visits and digital card.' },
+] as const;
+
 export function BentoFeatures() {
+  const [active, setActive] = useState(0);
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const select = (i: number, focus = false) => {
+    setActive(i);
+    const el = tabs.current[i];
+    if (focus) el?.focus();
+    el?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const last = TABS.length - 1;
+    let next = active;
+    if (e.key === 'ArrowRight') next = active === last ? 0 : active + 1;
+    else if (e.key === 'ArrowLeft') next = active === 0 ? last : active - 1;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = last;
+    else return;
+    e.preventDefault();
+    select(next, true);
+  };
+
   return (
-    <Section id="features" labelledBy="features-title">
-      <Showcase
-        head={
-          <SectionHead
-            title={
-              <h2 id="features-title" className="display-2 text-balance">
-                {'Everything your gym needs: members, fees, attendance, WhatsApp'}
-              </h2>
-            }
-            lead={
-              <>
-                Members, payments, attendance and WhatsApp reminders in one place, with a member app
-                included.{' '}
-                <a href="/features" className={LINK_CLASS}>
-                  See all GymFlow features
-                </a>
-              </>
-            }
-          />
-        }
-      >
-      {/* Browser-window frame around the console mock. The canvas inside is decorative
-          (aria-hidden), so the sentence below carries what it shows. */}
-      <div className="w-full overflow-hidden rounded-card-lg border border-border-subtle bg-frame">
-        <div className="flex items-center gap-1.5 border-b border-border-subtle px-4 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
-          <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
-          <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
-          <span className="ml-3 rounded-full border border-border-subtle bg-subtle px-3 py-0.5 text-[12px] text-muted-foreground">
-            app.gymflow.sbs
-          </span>
-        </div>
-        <div className="p-1.5">
-          <p className="sr-only">
-            The GymFlow console showing active, expiring and expired members, today&apos;s
-            collection and total dues. The sidebar covers members, payments, dues, attendance,
-            inventory and programs.
-          </p>
-          <DashboardMock />
+    <Section id="features" labelledBy="features-title" tone="paper">
+      <h2 id="features-title" className="display-2 min-w-0 max-w-[20ch] break-words">
+        Built for how gyms really run
+      </h2>
+
+      <div className="feat-scroll mt-10 md:mt-14">
+        <div role="tablist" aria-label="GymFlow features" onKeyDown={onKeyDown} className="feat-tabs">
+          <span aria-hidden className="feat-pill" style={{ transform: `translateX(${active * 100}%)` }} />
+          {TABS.map((t, i) => (
+            <button
+              key={t.href}
+              ref={el => {
+                tabs.current[i] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`feature-tab-${i}`}
+              aria-selected={active === i}
+              aria-controls={`feature-panel-${i}`}
+              tabIndex={active === i ? 0 : -1}
+              onClick={() => select(i)}
+              className="feat-tab"
+            >
+              {t.title}
+            </button>
+          ))}
         </div>
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground">
-        Sample data. Click around the sidebar to try it.
-      </p>
 
-        <div className="mt-12 max-w-[760px]">
-          <RuledList
-            items={POINTS.map(p => ({
-              title: p.title,
-              text: (
-                <>
-                  {p.text}{' '}
-                  <a href={p.href} className={LINK_CLASS}>
-                    {p.link}
-                  </a>
-                </>
-              ),
-            }))}
-          />
-        </div>
-      </Showcase>
-
-      <div className="mt-24">
-        <Split
-          head={
-            <div className="max-w-[560px]">
-              <h3 className="display-3">Your members get their own app</h3>
-              <p className="mt-4 text-[16px] leading-relaxed text-muted-foreground">
-                Included with GymFlow: members see their plan, visits, workout and digital card on
-                their own phone.
-              </p>
-            </div>
-          }
-        >
-          <MemberAppCard />
-        </Split>
+      <div className="feat-copy mt-8">
+        {TABS.map((t, i) => (
+          <div
+            key={t.href}
+            role="tabpanel"
+            id={`feature-panel-${i}`}
+            aria-labelledby={`feature-tab-${i}`}
+            data-active={active === i}
+            inert={active !== i}
+            className="feat-panel"
+          >
+            <p className="lead max-w-[52ch]">{t.text}</p>
+            <a href={t.href} className="feat-link">
+              Learn more
+            </a>
+          </div>
+        ))}
       </div>
+
+      <SpotlightSurface className="feat-capture mt-10">
+        {VISUALS.map(({ Visual, label }, i) => (
+          <div
+            key={label}
+            className={`feat-layer${i === MEMBER_APP ? ' feat-layer-app' : ''}`}
+            data-active={active === i}
+            inert={active !== i}
+          >
+            <p className="sr-only">{label}</p>
+            <Visual />
+          </div>
+        ))}
+      </SpotlightSurface>
+      <p className="mt-4 text-[14px] text-muted-foreground">Sample data</p>
     </Section>
   );
 }

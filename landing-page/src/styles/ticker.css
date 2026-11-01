@@ -1,0 +1,23 @@
+/* Tape: the .tape strip (index.css) carries the phrases; the wrapper gives the tilt room and
+   clips the overshoot so the page never scrolls sideways. */
+.ticker-wrap {
+  position: relative;
+  padding-block: var(--space-xl);
+  overflow: clip;
+  background: var(--background);
+}
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding-right: var(--space-lg);
+  letter-spacing: 0.04em;
+}
+/* A solid ink square between phrases: hard, not a dot. */
+.ticker-mark {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  flex: none;
+  background: var(--ink);
+}

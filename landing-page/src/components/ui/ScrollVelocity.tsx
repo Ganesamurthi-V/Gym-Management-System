@@ -4,6 +4,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import {
   motion,
   useAnimationFrame,
+  useInView,
   useMotionValue,
   useReducedMotion,
   useScroll,
@@ -68,15 +69,6 @@ interface ScrollVelocityProps {
   color?: string;
   draggable?: boolean;
 }
-
-const smootherstep = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
-
-const FADE_STEPS = Array.from({ length: 9 }, (_, i) => i / 8);
-
-const FADE_MASK = `linear-gradient(to right, ${[
-  ...FADE_STEPS.map(t => `rgba(0, 0, 0, ${smootherstep(t).toFixed(3)}) ${(t * 12).toFixed(1)}%`),
-  ...FADE_STEPS.map(t => `rgba(0, 0, 0, ${smootherstep(1 - t).toFixed(3)}) ${(88 + t * 12).toFixed(1)}%`)
-].join(', ')})`;
 
 const OUTLINE_STYLE: React.CSSProperties = {
   WebkitTextFillColor: 'transparent',
@@ -152,6 +144,9 @@ function VelocityText({
     { clamp: false }
   );
   const reduceMotion = useReducedMotion();
+  // Off-screen the loop would still tick every frame; it only needs to run while the band shows.
+  const bandRef = useRef<HTMLDivElement>(null);
+  const onScreen = useInView(bandRef);
 
   const copyRef = useRef<HTMLSpanElement>(null);
   const copyWidth = useElementWidth(copyRef);
@@ -167,7 +162,7 @@ function VelocityText({
   const drag = useRef({ active: false, pointerId: -1, lastX: 0, lastTime: 0, velocity: 0, travel: 0 });
 
   useAnimationFrame((_t, delta) => {
-    if (reduceMotion) return;
+    if (reduceMotion || !onScreen) return;
 
     const grab = drag.current;
     const seconds = Math.min(delta, 64) / 1000;
@@ -287,6 +282,7 @@ function VelocityText({
 
   return (
     <div
+      ref={bandRef}
       className={`${parallaxClassName} relative overflow-hidden`}
       style={{
         ...(draggable ? { cursor: 'grab', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'pan-y' } : {}),
@@ -299,7 +295,7 @@ function VelocityText({
       onClickCapture={draggable ? handleClickCapture : undefined}
     >
       <motion.div
-        className={`${scrollerClassName} flex whitespace-nowrap text-center font-sans text-4xl font-bold tracking-[-0.02em] drop-shadow md:text-[5rem] md:leading-[5rem]`}
+        className={`${scrollerClassName} flex whitespace-nowrap items-center text-center font-display text-4xl font-normal md:text-[5rem] md:leading-[5rem]`}
         style={{ x, skewX, scaleY, ...typeStyle, ...scrollerStyle }}
       >
         {spans}
@@ -323,7 +319,6 @@ export const ScrollVelocity: React.FC<ScrollVelocityProps> = ({
   scrollerStyle,
   separator = '',
   pauseOnHover = false,
-  fadeEdges = false,
   skewWithVelocity = 0,
   scaleWithVelocity = 0,
   outlineAlternate = false,
@@ -338,7 +333,6 @@ export const ScrollVelocity: React.FC<ScrollVelocityProps> = ({
   return (
     <section
       className="w-full"
-      style={fadeEdges ? { WebkitMaskImage: FADE_MASK, maskImage: FADE_MASK } : undefined}
       onPointerEnter={() => {
         hoveredRef.current = true;
       }}

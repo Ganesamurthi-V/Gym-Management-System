@@ -8,12 +8,18 @@ import type { ReactNode } from 'react';
   scripts/check-copy-sync.mjs reads it from there.
 */
 
-type Tone = 'chalk' | 'paper' | 'ink';
+type Tone = 'chalk' | 'paper' | 'ink' | 'accent';
+type Cut = 'top' | 'bottom' | 'both';
 
+/*
+  Tones: chalk = the page colour, paper = the second band (--subtle), ink = the one graphite band,
+  accent = the Royal Blue band. `cut` is accepted for old call sites and ignored: the diagonal cuts are gone.
+*/
 const TONE: Record<Tone, string> = {
   chalk: '',
-  paper: 'border-y border-border-subtle bg-frame',
+  paper: 'bg-subtle',
   ink: 'band-ink',
+  accent: 'band-accent',
 };
 
 /** Section shell: tone, standard padding and the 1200px column. */
@@ -27,6 +33,8 @@ export function Section({
   id?: string;
   labelledBy: string;
   tone?: Tone;
+  /** Ignored. Kept so existing call sites compile. */
+  cut?: Cut;
   className?: string;
   children: ReactNode;
 }) {
@@ -34,7 +42,7 @@ export function Section({
     <section
       id={id}
       aria-labelledby={labelledBy}
-      className={`relative scroll-mt-24 overflow-hidden px-5 py-24 md:px-8 md:py-32 ${TONE[tone]} ${className}`}
+      className={`relative scroll-mt-24 overflow-clip px-4 py-24 sm:px-6 md:py-32 lg:px-8 lg:py-40 min-[1920px]:px-16 ${TONE[tone]} ${className}`}
     >
       <div className="mx-auto max-w-[1200px]">{children}</div>
     </section>
@@ -85,7 +93,7 @@ export function RuledList({ items }: { items: readonly { title: string; text: Re
     <ul>
       {items.map(item => (
         <li key={item.title} className="border-t border-border-subtle py-7 last:border-b md:py-8">
-          <h3 className="text-[20px] font-bold leading-snug text-foreground md:text-[22px]">{item.title}</h3>
+          <h3 className="font-display text-[20px] font-medium leading-snug tracking-[-0.02em] text-foreground md:text-[22px]">{item.title}</h3>
           <p className="mt-2 max-w-[58ch] text-[16px] leading-relaxed text-muted-foreground">{item.text}</p>
         </li>
       ))}

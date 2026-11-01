@@ -1,0 +1,49 @@
+/* Cookie panel: a compact white panel bottom-left (14px radius, hairline, card shadow); a short bottom
+   sheet on a phone. The safe-area inset keeps it clear of the home indicator. Tokens only. */
+.cookie-slip {
+  position: fixed;
+  z-index: 90;
+  inset-inline: 0;
+  bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--border-strong);
+  border-radius: 14px 14px 0 0;
+  background: var(--frame);
+  box-shadow: var(--shadow-card);
+  animation: cookie-in 320ms var(--ease-out) both;
+}
+@media (min-width: 640px) {
+  .cookie-slip {
+    inset-inline: auto;
+    left: var(--space-lg);
+    bottom: var(--space-lg);
+    width: 360px;
+    max-width: calc(100% - 48px);
+    padding-bottom: 0;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+}
+@keyframes cookie-in {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+/* Small keycaps: the same key, one size down. */
+.cookie-btn {
+  min-height: 36px;
+  padding: 0 var(--space-sm);
+  border-radius: 8px;
+  font-size: 14px;
+  flex: 1;
+}
+@media (min-width: 640px) {
+  .cookie-btn {
+    flex: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cookie-slip {
+    animation: none;
+  }
+}

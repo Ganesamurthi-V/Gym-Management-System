@@ -111,8 +111,10 @@ export function withAuth(
   handler: HandlerFn,
   options?: {
     rateLimit?: number
-    /** Billing, account, support and logout routes stay writable for a lapsed gym so it can renew or leave. */
+    /** Billing, account, support and logout routes stay reachable (reads and writes) for a lapsed gym so it can renew or leave. Everything else is refused for every method. */
     allowWhenExpired?: boolean
+    /** Only /api/account/status: the client must learn a deactivated gym is blocked so it can sign out. A banned gym is refused everywhere else, including the allowWhenExpired set. */
+    allowWhenBanned?: boolean
   }
 ) {
   return async (req: NextRequest) => {
@@ -170,9 +172,14 @@ export function withAuth(
 
       alertGymId = gym.id
 
-      // A lapsed or deactivated gym is read-only on the server, not only behind the UI paywall
-      // (which a direct API call skips). Runs after auth so an anonymous caller still gets 401.
-      if (!SAFE_METHODS.has(req.method) && !options?.allowWhenExpired && !gymIsWritable(gym)) {
+      // A lapsed or deactivated gym is locked out on the server, not only behind the UI paywall
+      // (which a direct API call skips). Reads are refused too: GET endpoints return every member
+      // and payment, so an expired or banned owner (or a stolen session) could otherwise keep
+      // exporting tenant data. Runs after auth so an anonymous caller still gets 401.
+      // allowWhenExpired only waives LAPSED billing; a deactivated gym (is_active=false, an admin
+      // ban) stays refused on every route except the one that tells the client to sign out.
+      const banned = gym.is_active === false
+      if (banned ? !options?.allowWhenBanned : (!options?.allowWhenExpired && !gymIsWritable(gym))) {
         log.summary(403)
         return apiError(403, 'SUBSCRIPTION_REQUIRED', 'Your subscription has ended. Renew to make changes.')
       }

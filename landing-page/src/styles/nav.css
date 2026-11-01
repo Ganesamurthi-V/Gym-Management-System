@@ -1,0 +1,108 @@
+/* Nav: a slim sticky bar, 64px, on the page colour with a 1px hairline (.nav-island in index.css holds
+   the surface). Tokens only; transform and opacity for motion; reduced-motion end state below. */
+.nav-bar.nav-island {
+  height: 64px;
+}
+
+/* Link: Familjen Grotesk 500. The 2px blue underline scales in from the left (scaleX, 160ms); the
+   current section keeps it drawn, so the scroll-spy state is visible without a fill. */
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--muted-foreground);
+  transition: color 160ms var(--ease-out);
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  inset-inline: var(--space-sm);
+  bottom: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 160ms var(--ease-out);
+}
+.nav-link:hover,
+.nav-link[aria-current] {
+  color: var(--foreground);
+}
+.nav-link:hover::after,
+.nav-link[aria-current]::after {
+  transform: scaleX(1);
+}
+
+/* Icon buttons (theme toggle, menu): 44px, a soft wash on hover. */
+.nav-iconbtn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition:
+    color 120ms linear,
+    background-color 120ms linear;
+}
+.nav-iconbtn:hover {
+  color: var(--foreground);
+  background: var(--subtle);
+}
+.nav-iconbtn:active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* Mobile sheet: full width under the bar, large links separated by hairlines. */
+.nav-sheet {
+  background: var(--background);
+  animation: nav-sheet-in 240ms var(--ease-out) both;
+}
+@keyframes nav-sheet-in {
+  from { opacity: 0; transform: translateY(12px); }
+}
+.nav-sheet-link {
+  display: block;
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.1;
+  color: var(--foreground);
+  transition: color 120ms linear;
+}
+.nav-sheet-link:hover,
+.nav-sheet-link:active {
+  color: var(--accent-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link,
+  .nav-link::after,
+  .nav-iconbtn,
+  .nav-sheet-link {
+    transition: none;
+  }
+  .nav-sheet {
+    animation: none;
+  }
+}
+
+/* The menu button gives way to the inline links at lg (DESKTOP_AT in Navbar.tsx). */
+@media (min-width: 1024px) {
+  .nav-menu-btn {
+    display: none;
+  }
+}

@@ -1,0 +1,49 @@
+/* Problems: a ledger. Problem on the left in bold sans, what GymFlow does on the right, hairline
+   rows closed by a 4px bar rule; a hard blue fill on hover flips the text to white. */
+.problems-numeral {
+  position: absolute;
+  top: -0.1em;
+  right: 0;
+  z-index: 0;
+  font-size: clamp(9rem, 22vw, 240px);
+}
+.ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-xs);
+  padding: var(--space-lg) var(--space-md);
+  border-bottom: 1px solid var(--border);
+}
+.ledger-problem {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+.ledger-fix {
+  max-width: 58ch;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+@media (min-width: 768px) {
+  .ledger-row {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--space-lg);
+    padding: var(--space-lg) var(--space-md);
+  }
+  .ledger-problem {
+    font-size: 20px;
+  }
+}
+/* Snaps: no transition. Fine pointers only, so a tap does not leave a row stuck blue. */
+@media (hover: hover) {
+  .ledger-row:hover {
+    background: var(--accent);
+  }
+  .ledger-row:hover .ledger-problem,
+  .ledger-row:hover .ledger-fix {
+    color: var(--accent-ink);
+  }
+}

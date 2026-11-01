@@ -1,201 +1,107 @@
+/* Hallmark · shape: SaaS narrative · genre: modern-minimal · theme: cobalt (brand blue) · redesign: full
+ * paper: oklch(98.6% 0.005 250) · accent: #2563eb · display: Familjen Grotesk · body: IBM Plex Sans · hero: Settled · nav: slim bar · footer: letter close · signature: the product shown big over a dot grid with a floating WhatsApp confirmation card
+ * axes: light/grotesk/blue · posture: restrained · contrast: pass · fold: pass · v2.0.0 · draw: cee847 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: S, section compositions are rebuilt by the section agents in parallel */
+/* Hallmark · dropped the docs sidebar collapse toggle (onToggle, onExpand, setFocusSearch) · pages are now full width and keep the link list and search on every page */
+/* Hallmark · dropped /reports, the Founder social links (instagram, linkedin, github) and the Facts, Purpose and Problems sections from the home page · the owner released the home copy for a minimal SaaS page; the feature pages keep their links */
 @import "tailwindcss";
+@import "./tokens.css";
+@import "./base.css" layer(base);
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DARK MODE VARIANT
-
-   Tailwind v4 defaults `dark:` to prefers-color-scheme, which cannot be
-   overridden by a toggle. Rebinding it to a class lets the ThemeToggle drive it
-   while still honouring the OS default on first visit (see the bootstrap script
-   in index.html, which sets .dark before first paint).
-═══════════════════════════════════════════════════════════════════════════ */
+/* Tailwind v4 defaults `dark:` to prefers-color-scheme, which a toggle cannot override.
+   Rebinding it to a class lets ThemeToggle drive it; the bootstrap script in index.html
+   sets .dark before first paint. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SEMANTIC TOKENS
+   SEMANTIC TOKENS (DESIGN.md, theme Cobalt)
 
-   Declared as plain custom properties (not directly in @theme) because they
-   need two values — one per theme. @theme inline below maps them into Tailwind
-   utilities, so `bg-background` resolves through the variable at runtime and
-   flips with the .dark class instead of being frozen at build time.
+   Plain custom properties with two values each (light paper, night graphite).
+   @theme inline below maps them into Tailwind utilities, so `bg-background`
+   resolves through the variable at runtime and flips with the .dark class.
 ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  /* Palette from DESIGN.md: Chalk (page), Paper (raised), Ink (text), Steel (secondary
-     text), Line (borders). A steel-tinted light rather than neutral grey, and a navy ink
-     rather than near-black, both tied to the Royal Blue the product already uses. */
-  --background: #f1f4f8;
-  --foreground: #14213d;
-
-  --muted: #ffffff;
-  /* Steel. 5.6:1 on Chalk and 6.2:1 on Paper, so it carries body-size text. */
-  --muted-foreground: #53627a;
-  --subtle: #e8edf4;
-
-  --border: #d9e0ea;
-  --border-strong: #c3cddb;
-  --ring: #2563eb;
-
-  /* Elevated surfaces (panels, product screens) */
-  --frame: #ffffff;
-
-  /* ── Brand blue ─────────────────────────────────────────────────────────
-     Values come from the app's own scale in app/design-tokens.css:
-     --accent is brand-500, --accent-text and --accent-strong are brand-600,
-     --accent-soft is brand-100.
-
-     Two ink tokens, not one. A single ink cannot serve both a solid blue fill
-     and a pale blue chip — the first needs white, the second needs dark blue:
-       --accent-ink   text on a solid accent surface
-       --accent-text  accent-toned text on a neutral or pale surface. Needed
-                      because --accent itself is only 3.6:1 on the dark page
-                      background, so it cannot be used as text there.
-
-     --card-primary is deliberately one step darker than --accent. White on
-     #2563eb tops out at 5.12:1, so a second, dimmer text level on it cannot
-     reach WCAG AA at any opacity. On #1d4ed8 white is 6.66:1 and white/80 is
-     4.86:1, which leaves room for the muted subheadings these cards rely on. */
-  --accent: #2563eb;
-  --accent-ink: #ffffff;
-  --accent-text: #1d4ed8;
-  --accent-soft: #dbeafe;
-  --accent-strong: #1d4ed8;
-  /* Secondary brand hue, from the app's --color-brand-2. Used only to give the
-     hero mesh a second note; nothing else on the page reaches for it. */
-  --accent-2: #06b6d4;
-
-  /* Beams field and scrim are declared under .dark only, because the effect is
-     gated to that theme. See the note there. */
-
-  --card-primary: #1d4ed8;
-  --card-secondary: #dbeafe;
-  --card-foreground: #171717;
-  --card-foreground-muted: #525252;
-
-  /* WhatsApp green, kept out of the accent scale so it never reads as brand */
-  --whatsapp: #22c55e;
-  --whatsapp-soft: #f0fdf4;
-  --whatsapp-ink: #15803d;
-
-  /* WhatsApp's own light palette, for the phone mock's screen.
- 
-     Separate from the --whatsapp-* trio above, which is this site's green used at
-     site scale. These are the actual surface colours inside the app being
-     depicted, so they are named by role in that UI rather than by our scale, and
-     they follow .dark so the mock switches with the page instead of leaving a
-     black slab on a white section.
- 
-     --wa-green does not flip: WhatsApp's action green is the same in both of its
-     themes. */
-  --wa-chat: #efeae2;
-  --wa-bar: #f0f2f5;
-  /* Distinct from --wa-chat in light but identical to it in dark, which is how
-     WhatsApp treats the composer strip in each of its themes. */
-  --wa-composer: #f0f2f5;
-  --wa-bubble-in: #ffffff;
-  --wa-chip: #ffffff;
-  --wa-avatar: #dfe5e7;
-  --wa-ink: #111b21;
-  --wa-ink-strong: #0b141a;
-  --wa-ink-dim: #667781;
-  --wa-ink-faint: #8696a0;
-  --wa-home: #111b21;
-  --wa-green: #00a884;
-
-  /* Owner console chrome, for the interactive dashboard mock in the hero.
-
-     Same reasoning as the --wa-* block above: the mock depicts a real product
-     surface, so it is named by its role in that UI rather than by this site's
-     scale, and it follows .dark so the mock switches with the page instead of
-     leaving a white slab in the middle of a black hero.
-
-     Unlike the WhatsApp tokens, these are not this site's interpretation of
-     another app's palette — they are lifted verbatim from the console's own
-     theme (app/theme.css). The light column is Tailwind's slate ramp, which is
-     what the console uses; the dark column is the console's hue-free ramp, which
-     shares one neutral across slate/gray/zinc/neutral/stone precisely so dark
-     mode carries no blue cast. Copying the values rather than approximating them
-     is the whole point: this mock is the product screenshot, so a visitor
-     toggling the hero to dark should see what they will actually get. */
-  --dash-page: #f8fafc;
-  --dash-surface: #ffffff;
-  /* One step above --dash-surface. Elevated controls sit on this. */
-  --dash-raise: #f1f5f9;
-  --dash-border: #e2e8f0;
-  --dash-line: #f1f5f9;
-  --dash-hover: #f8fafc;
-
-  --dash-ink: #0f172a;
-  --dash-ink-soft: #1e293b;
-  --dash-ink-dim: #475569;
-  --dash-ink-muted: #64748b;
-  --dash-ink-faint: #94a3b8;
-
-  /* Three accent roles, because one value cannot serve all of them once the
-     surface goes near-black. --dash-accent is a fill and keeps brand-500 in both
-     themes, since what it needs contrast against is its own white label. The two
-     text roles have to lighten in dark: brand-500 as text measures only ~3.6:1
-     on #171717, so it cannot carry a label there. */
-  --dash-accent: #2563eb;
-  --dash-accent-text: #2563eb;
-  --dash-accent-strong: #1d4ed8;
-  --dash-accent-soft: #eff6ff;
-  --dash-accent-chip: #dbeafe;
-
-  /* --dash-stat-edge is deliberately NOT declared here, and that absence is the
-     mechanism rather than an omission.
-
-     The stat cards each carry their own tone as a border colour, which has to be
-     applied as an inline style: the `* { border-color: var(--border) }` rule further
-     down this file is unlayered, and unlayered CSS beats @layer utilities, so every
-     Tailwind border-<colour> utility in this project silently loses to it. An inline
-     style is the only declaration that outranks it.
-
-     That normally makes a theme override impossible, since nothing can outrank an
-     inline style either. So the inline style reads
-     `var(--dash-stat-edge, <the card's own tone>)`: undefined here, the fallback
-     applies and each card keeps its tone; set under .dark, the one value wins for all
-     six at once and they go neutral. One property instead of six. */
+  /* Night values sit on the bare :root and light values on :root:not(.dark). The cascade is the same as a .dark override, and it keeps every colour inside a token block. */
+  /* Kept for compatibility with older class strings; nothing in this file reads them. */
+  --plastic-top: #2563eb;
+  --plastic-bottom: #1d4ed8;
+  --rim-accent: #1e3a8a;
+  --grain: none;
+  --mask-on: #000000;
+  /* A phone screen depicts the member app, a light product, so it stays light in both themes. */
+  --device-bg: #ffffff;
+  --device-ink: #171717;
+  --device-muted: #737373;
+  /* Light-theme text roles, restored inside a .band-accent surface (white card on blue). */
+  --on-surface-ink: oklch(21% 0.028 262);
+  --on-surface-muted: oklch(46% 0.02 258);
+  --on-surface-line: oklch(90% 0.009 252);
+  --on-surface-accent: #1d4ed8;
+  /* --dash-stat-edge is deliberately NOT declared here: the stat cards read
+     `var(--dash-stat-edge, <own tone>)` in an inline style, so only .dark sets it. */
 
   --shadow-color: 0deg 0% 0%;
-}
+  --band-ink-accent: #93c5fd;
+  /* The ink, dark in both themes: text on filled surfaces. */
+  --ink: oklch(21% 0.028 262);
 
-.dark {
-  /* Deep navy rather than near-black (see DESIGN.md). */
-  --background: #0d1526;
-  --foreground: #e9eef6;
-
-  --muted: #15203a;
-  --muted-foreground: #9faec4;
-  --subtle: #1a2642;
-
-  --border: #26324d;
-  --border-strong: #33415f;
-  --ring: #60a5fa;
-
-  --frame: #15203a;
-
-  /* --accent and --card-primary hold their light-mode values: the contrast that
-     matters on a filled surface is against the fill, not the page. The tokens
-     that do move are the ones read against the dark background — brand-300 for
-     text, brand-900 for the chip fill, brand-400 for the glow's bright stop. */
+  /* Night: graphite with a blue cast. */
+  --background: oklch(15% 0.02 262);
+  --foreground: oklch(94% 0.008 250);
+  --muted: oklch(22% 0.026 262);
+  --muted-foreground: oklch(74% 0.02 256);
+  --subtle: oklch(19% 0.024 262);
+  --border: oklch(30% 0.03 262);
+  --border-strong: oklch(38% 0.035 262);
+  --ring: #93c5fd;
+  --frame: oklch(22% 0.026 262);
+  /* --accent and --card-primary hold their light values: the contrast that
+     matters on a filled surface is against the fill. The text tokens lighten. */
   --accent: #2563eb;
   --accent-ink: #ffffff;
   --accent-text: #93c5fd;
   --accent-soft: #172554;
   --accent-strong: #60a5fa;
-  --accent-2: #22d3ee;
-
+  --accent-2: oklch(76% 0.13 254);
+  --accent-edge: oklch(39% 0.16 260);
   --card-primary: #1d4ed8;
   --card-secondary: #172554;
   --card-foreground: #fafafa;
   --card-foreground-muted: #d4d4d4;
-
+  --rim: oklch(11% 0.02 262);
+  /* Kept so older class strings still resolve. */
+  --shade: oklch(8% 0.02 262);
+  --glint: oklch(100% 0 0 / 0.3);
+  --light: oklch(80% 0.04 262);
+  --hard-soft: oklch(72% 0.1 262);
+  --hard: var(--hard-soft);
+  --slab-shadow: var(--accent);
+  /* Quiet blue-grey steps (compatibility; no surface depends on them for meaning). */
+  --p-mon: oklch(22% 0.026 262);
+  --p-tue: oklch(24% 0.03 262);
+  --p-wed: oklch(26% 0.034 262);
+  --p-thu: oklch(28% 0.04 262);
+  --p-fri: oklch(23% 0.028 260);
+  --p-sat: oklch(30% 0.045 262);
+  --p-sun: oklch(25% 0.032 261);
+  /* Keycaps: face, bottom edge, soft drop, top highlight, pressed inset. */
+  --key-face: oklch(27% 0.03 262);
+  --key-edge: oklch(12% 0.02 262);
+  --key-drop: oklch(8% 0.02 262 / 0.6);
+  --key-hi: oklch(100% 0 0 / 0.08);
+  --key-press: oklch(8% 0.02 262 / 0.5);
+  --key-accent-drop: oklch(30% 0.12 260 / 0.55);
+  --key-accent-hi: oklch(100% 0 0 / 0.22);
+  /* Night: depth is a layered black shadow over a hairline. */
+  --shadow-card: 0 0 0 1px oklch(30% 0.03 262), 0 12px 32px -16px oklch(5% 0.02 262 / 0.7);
+  --shadow-lift: 0 0 0 1px oklch(38% 0.035 262), 0 24px 48px -20px oklch(5% 0.02 262 / 0.8);
+  /* Hero dot grid: a 24px tile with one 1px dot, in the strong hairline colour (a data URI cannot read var()). */
+  --grid-dot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='.8' fill='%23364058'/%3E%3C/svg%3E");
+  --spot-tint: 14%;
   --whatsapp: #22c55e;
   --whatsapp-soft: #14251a;
   --whatsapp-ink: #4ade80;
-
-  /* WhatsApp's own dark palette. The bubble matches the top bar here, which is
-     how WhatsApp does it — on the near-black chat surface the two still read as
-     separate planes. */
+  /* WhatsApp's own dark palette. */
   --wa-chat: #0b141a;
   --wa-bar: #202c33;
   --wa-composer: #0b141a;
@@ -208,75 +114,147 @@
   --wa-ink-faint: #6f7f88;
   --wa-home: #e9edef;
   --wa-green: #00a884;
-
-  /* Console chrome, dark. Verbatim from app/theme.css: --dash-page is the app's
-     --c-surface-secondary, --dash-surface its --c-surface, --dash-raise its
-     --c-surface-card, and the ink ramp is slate-900 down to slate-400 on the
-     console's shared neutral ramp.
-
-     Note the ink values are pure greys (#f5f5f5, #e8e8e8, #bebebe...) rather than
-     the slate-tinted ones light mode uses. That is not a simplification — the
-     console deliberately collapses all five of Tailwind's achromatic families to
-     one hue-free ramp in dark so nothing picks up a blue tint against the
-     near-black surfaces. */
+  /* Console chrome, dark: the console's hue-free ramp. */
   --dash-page: #0a0a0a;
   --dash-surface: #171717;
   --dash-raise: #262626;
   --dash-border: #2a2a2a;
   --dash-line: #202020;
   --dash-hover: #202020;
-
   --dash-ink: #f5f5f5;
   --dash-ink-soft: #e8e8e8;
   --dash-ink-dim: #bebebe;
   --dash-ink-muted: #a3a3a3;
   --dash-ink-faint: #828282;
-
-  /* The fill holds brand-500; the text roles step up to brand-600 and brand-700
-     from the console's dark ramp, and the two tinted surfaces step down to
-     brand-100 and brand-200, which in dark are near-black navies rather than the
-     pale blues they are in light. */
   --dash-accent: #2563eb;
   --dash-accent-text: #60a5fa;
   --dash-accent-strong: #93c5fd;
   --dash-accent-soft: #0d1533;
   --dash-accent-chip: #172554;
-
-  /* Collapses all six stat-card borders to one neutral, overriding the per-card tone
-     in their inline styles. See the note in :root for why this is a variable rather
-     than a `dark:` utility. Matches the console, which drops the tint from these
-     cards in dark and keeps the colour in the icon and the number. */
+  /* Collapses all six stat-card borders to one neutral, overriding the per-card tone. */
   --dash-stat-edge: #2a2a2a;
-
-  /* Base the Beams field sits on — deliberately blacker than --background so the
-     ribbons read against near-black rather than against the page grey.
-
-     Read in two places that must agree: the WebGL clear colour (HeroBeams.tsx)
-     and the scrim's protected core (.hero-beams-scrim). If the scrim kept
-     painting --background over a blacker canvas, the area behind the copy would
-     sit ~20 levels lighter than everything around it and read as a lit box.
-
-     Pure black, matching the reference. This was #050505 for a while, on the
-     reasoning that a little lift kept the ribbons' darkest falloff from clipping
-     flat — but that lift applies to the gaps between ribbons too, and those gaps
-     are what make the edges read. Black gaps are the whole basis of the contrast.
-
-     The scrim shares the field colour here, which is why dark mode has no visible
-     vignette: painting black over black changes nothing but ribbon strength.
-
-     Declared here and nowhere else, because the beams are gated to this theme.
-     :root carries no light-mode value: HeroBeams returns null in light mode, so
-     nothing reads these, and a light value would only invite the assumption that a
-     canvas is painted there. */
+  --hero-copy: oklch(84% 0.015 255);
+  /* The one graphite band. On night it sinks below the page. */
+  --band-ink: oklch(11% 0.02 262);
+  --band-ink-surface: oklch(19% 0.026 262);
+  --band-ink-bg: var(--band-ink);
+  --band-ink-fg: oklch(95% 0.008 250);
+  --band-ink-muted: oklch(76% 0.02 256);
+  --band-ink-line: oklch(28% 0.03 262);
+  --band-ink-line-strong: oklch(38% 0.035 262);
+  --band-ink-edge: oklch(6% 0.015 262);
+  /* Key edge on the blue band: the white key's edge. */
+  --band-accent-key-edge: oklch(80% 0.016 254);
+  /* Kept for markup that still names them. */
   --beams-base: #000000;
   --beams-scrim: #000000;
 }
 
+:root:not(.dark) {
+  /* Cool near-white paper, blue-black ink. */
+  --background: oklch(98.6% 0.005 250);
+  --foreground: oklch(21% 0.028 262);
+  --muted: oklch(100% 0 0);
+  /* AA on paper. */
+  --muted-foreground: oklch(46% 0.02 258);
+  --subtle: oklch(96.2% 0.008 252);
+  --border: oklch(90% 0.009 252);
+  --border-strong: oklch(83% 0.012 252);
+  --ring: #1d4ed8;
+  /* White surfaces (panels, product screens, slips) */
+  --frame: oklch(100% 0 0);
+  /* Brand blue, the app's own scale: --accent brand-500, --accent-text and
+     --accent-strong brand-700. --accent-ink is text on a solid accent surface;
+     --accent-text is accent-toned text on a neutral or pale surface. */
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --accent-text: #1d4ed8;
+  --accent-soft: #eff4ff;
+  --accent-strong: #1d4ed8;
+  --accent-2: oklch(76% 0.13 254);
+  --card-primary: #1d4ed8;
+  --card-secondary: #eff4ff;
+  --card-foreground: #171717;
+  --card-foreground-muted: #525252;
+  --rim: oklch(82% 0.01 250);
+  --shade: oklch(21% 0.028 262);
+  --glint: oklch(100% 0 0);
+  --light: oklch(99% 0.004 250);
+  --hard: var(--ink);
+  --slab-shadow: var(--ink);
+  /* Quiet blue-grey steps. Ink reads on every one of them. */
+  --p-mon: oklch(97.4% 0.006 250);
+  --p-tue: oklch(95.6% 0.01 252);
+  --p-wed: oklch(93.6% 0.014 254);
+  --p-thu: oklch(91.4% 0.018 255);
+  --p-fri: oklch(96.4% 0.008 251);
+  --p-sat: oklch(89.4% 0.022 256);
+  --p-sun: oklch(86.4% 0.028 257);
+  --key-face: oklch(99.4% 0.003 250);
+  --key-edge: oklch(80% 0.016 254);
+  --key-drop: oklch(21% 0.028 262 / 0.28);
+  --key-hi: oklch(100% 0 0 / 0.9);
+  --key-press: oklch(21% 0.028 262 / 0.14);
+  /* Layered soft shadow: a contact line plus a long, low spread. */
+  --shadow-card: 0 1px 2px oklch(21% 0.028 262 / 0.06), 0 12px 32px -16px oklch(21% 0.028 262 / 0.14);
+  --shadow-lift: 0 2px 4px oklch(21% 0.028 262 / 0.06), 0 24px 56px -20px oklch(21% 0.028 262 / 0.26);
+  --grid-dot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='.8' fill='%23c4ccd9'/%3E%3C/svg%3E");
+  --spot-tint: 10%;
+  /* WhatsApp green, kept out of the accent scale so it never reads as brand */
+  --whatsapp: #22c55e;
+  --whatsapp-soft: #f0fdf4;
+  --whatsapp-ink: #15803d;
+  /* WhatsApp's own light palette, for the phone mock's screen. These depict the
+     real app, so they keep their values and follow .dark with the page. */
+  --wa-chat: #efeae2;
+  --wa-bar: #f0f2f5;
+  --wa-composer: #f0f2f5;
+  --wa-bubble-in: #ffffff;
+  --wa-chip: #ffffff;
+  --wa-avatar: #dfe5e7;
+  --wa-ink: #111b21;
+  --wa-ink-strong: #0b141a;
+  --wa-ink-dim: #667781;
+  --wa-ink-faint: #8696a0;
+  --wa-home: #111b21;
+  --wa-green: #00a884;
+  /* Owner console chrome for the dashboard mock, lifted verbatim from the console's own
+     theme (app/theme.css): the light column is Tailwind's slate ramp. */
+  --dash-page: #f8fafc;
+  --dash-surface: #ffffff;
+  --dash-raise: #f1f5f9;
+  --dash-border: #e2e8f0;
+  --dash-line: #f1f5f9;
+  --dash-hover: #f8fafc;
+  --dash-ink: #0f172a;
+  --dash-ink-soft: #1e293b;
+  --dash-ink-dim: #475569;
+  --dash-ink-muted: #64748b;
+  --dash-ink-faint: #94a3b8;
+  --dash-accent: #2563eb;
+  --dash-accent-text: #2563eb;
+  --dash-accent-strong: #1d4ed8;
+  --dash-accent-soft: #eff6ff;
+  --dash-accent-chip: #dbeafe;
+  /* The hero lead is read first, so it sits between ink and the muted tone. */
+  --hero-copy: oklch(36% 0.022 260);
+  /* The graphite band: the same blue-black family as the type. */
+  --band-ink: oklch(21% 0.024 262);
+  --band-ink-surface: oklch(27% 0.03 262);
+  --band-ink-fg: oklch(95% 0.008 250);
+  --band-ink-muted: oklch(78% 0.02 256);
+  --band-ink-line: oklch(33% 0.03 262);
+  --band-ink-line-strong: oklch(42% 0.035 262);
+  --band-ink-edge: oklch(14% 0.02 262);
+  /* Unset on light: the stat cards fall back to their own tone. */
+  --dash-stat-edge: initial;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    TAILWIND THEME
-
-   `inline` keeps the var() reference in the generated utility instead of
-   inlining the resolved value — that is what makes the tokens above switchable.
+   `inline` keeps the var() reference in the generated utility, which is what
+   makes the tokens above switchable. (--shadow-card and --shadow-lift are
+   registered in tokens.css and switched by the :root / .dark values above.)
 ═══════════════════════════════════════════════════════════════════════════ */
 @theme inline {
   --color-background: var(--background);
@@ -297,6 +275,10 @@
   --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
   --color-accent-strong: var(--accent-strong);
+  --color-accent-edge: var(--accent-edge);
+
+  --color-key-face: var(--key-face);
+  --color-key-edge: var(--key-edge);
 
   --color-card-primary: var(--card-primary);
   --color-card-secondary: var(--card-secondary);
@@ -309,12 +291,19 @@
 
   --color-accent-2: var(--accent-2);
 
-  /* Dashboard-mock chrome. Mapped in so the mock's structural colours are plain
-     utilities (bg-dash-surface, text-dash-ink, divide-dash-line) that flip with
-     the class, rather than ~40 dark: variants that each have to be remembered.
-     Per-tone colours inside the mock stay as literal dark: pairs at their call
-     site, because those carry the product's exact values and are easier to audit
-     against it when both sit on one line. */
+  /* Quiet blue-grey steps: bg-p-mon, text-p-thu. bg-light and bg-glint stay for old class strings. */
+  --color-p-mon: var(--p-mon);
+  --color-p-tue: var(--p-tue);
+  --color-p-wed: var(--p-wed);
+  --color-p-thu: var(--p-thu);
+  --color-p-fri: var(--p-fri);
+  --color-p-sat: var(--p-sat);
+  --color-p-sun: var(--p-sun);
+  --color-light: var(--light);
+  --color-glint: var(--glint);
+
+  /* Dashboard-mock chrome, so the mock's structural colours are plain utilities
+     that flip with the class. */
   --color-dash-page: var(--dash-page);
   --color-dash-surface: var(--dash-surface);
   --color-dash-raise: var(--dash-raise);
@@ -334,19 +323,98 @@
   --color-dash-accent-soft: var(--dash-accent-soft);
   --color-dash-accent-chip: var(--dash-accent-chip);
 
-  /* One family (DESIGN.md): Archivo, roles told apart by width and weight. --font-mono and
-     --font-serif point at it too, so any leftover font-mono / font-serif utility renders in the
-     same family instead of falling back to a system face. */
-  --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    sans-serif;
-  --font-mono: var(--font-sans);
+  /* Three faces: IBM Plex Sans text, Familjen Grotesk display, JetBrains Mono for times,
+     member IDs and tickets. --font-serif points at the text face so a stray utility
+     does not fall back to a system serif. */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Familjen Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --font-serif: var(--font-sans);
 
-  /* Radius follows hierarchy: panels 16, free-standing bands and device frames 28,
-     buttons 10 (set on .btn), chips keep the pill. */
-  --radius-card: 16px;
-  --radius-card-lg: 28px;
-  --radius-pill: 9999px;
+  /* Radii: panels 14, large product frames 20, keys and fields 10. */
+  --radius-card: 14px;
+  --radius-card-lg: 20px;
+  --radius-pill: 999px;
+}
+
+/* Product-console colours the dashboard mock paints with: the real owner app's Tailwind
+   values, copied verbatim. They are fixed (the mock picks light or dark with dark: variants),
+   so they live in a static theme block. */
+@theme static {
+  /* The depicted phone's bezel and a WhatsApp bubble's hairline shadow: real-app values, lifted out of class strings. */
+  --color-phone-bezel: #0b0b0b;
+  --shadow-wa-bubble: 0 1px 0.5px rgb(11 20 26 / 0.13);
+  --color-dash-green-50: #f0fdf4;
+  --color-dash-green-100: #dcfce7;
+  --color-dash-green-300: #86efac;
+  --color-dash-green-400: #4ade80;
+  --color-dash-green-500: #22c55e;
+  --color-dash-green-600: #16a34a;
+  --color-dash-green-700: #15803d;
+  --color-dash-green-900: #14532d;
+  --color-dash-blue-50: #eff6ff;
+  --color-dash-blue-100: #dbeafe;
+  --color-dash-blue-300: #93c5fd;
+  --color-dash-blue-400: #60a5fa;
+  --color-dash-blue-500: #3b82f6;
+  --color-dash-blue-600: #2563eb;
+  --color-dash-blue-700: #1d4ed8;
+  --color-dash-blue-800: #1e40af;
+  --color-dash-blue-900: #1e3a8a;
+  --color-dash-blue-950: #172554;
+  --color-dash-amber-50: #fffbeb;
+  --color-dash-amber-100: #fef3c7;
+  --color-dash-amber-200: #fde68a;
+  --color-dash-amber-300: #fcd34d;
+  --color-dash-amber-400: #fbbf24;
+  --color-dash-amber-500: #f59e0b;
+  --color-dash-amber-600: #d97706;
+  --color-dash-amber-700: #b45309;
+  --color-dash-amber-900: #78350f;
+  --color-dash-amber-950: #451a03;
+  --color-dash-red-50: #fef2f2;
+  --color-dash-red-100: #fee2e2;
+  --color-dash-red-200: #fecaca;
+  --color-dash-red-300: #fca5a5;
+  --color-dash-red-400: #f87171;
+  --color-dash-red-500: #ef4444;
+  --color-dash-red-600: #dc2626;
+  --color-dash-red-700: #b91c1c;
+  --color-dash-red-900: #7f1d1d;
+  --color-dash-red-950: #450a0a;
+  --color-dash-cyan-50: #ecfeff;
+  --color-dash-cyan-100: #cffafe;
+  --color-dash-cyan-300: #67e8f9;
+  --color-dash-cyan-400: #22d3ee;
+  --color-dash-cyan-500: #06b6d4;
+  --color-dash-cyan-600: #0891b2;
+  --color-dash-cyan-700: #0e7490;
+  --color-dash-cyan-900: #164e63;
+  --color-dash-orange-50: #fff7ed;
+  --color-dash-orange-100: #ffedd5;
+  --color-dash-orange-400: #fb923c;
+  --color-dash-orange-500: #f97316;
+  --color-dash-orange-600: #ea580c;
+  --color-dash-orange-900: #7c2d12;
+  --color-dash-emerald-50: #ecfdf5;
+  --color-dash-emerald-200: #a7f3d0;
+  --color-dash-emerald-300: #6ee7b7;
+  --color-dash-emerald-400: #34d399;
+  --color-dash-emerald-500: #10b981;
+  --color-dash-emerald-600: #059669;
+  --color-dash-emerald-700: #047857;
+  --color-dash-emerald-800: #065f46;
+  --color-dash-emerald-900: #064e3b;
+  --color-dash-emerald-950: #022c22;
+  --color-dash-indigo-400: #818cf8;
+  --color-dash-indigo-600: #4f46e5;
+  --color-dash-night-100: #f5f5f5;
+  --color-dash-night-600: #525252;
+  --color-dash-night-700: #404040;
+  --color-dash-night-950: #0a0a0a;
+  --color-dash-night-hover: #2a2a2a;
+  --color-dash-night-field: #333333;
+  --shadow-dash-card: 0 1px 2px 0 rgb(15 23 42 / 5%);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -356,23 +424,27 @@
   border-color: var(--border);
 }
 
+html, body {
+  overflow-x: clip;
+}
+
 html {
-  /* No scroll-behavior: smooth — Lenis owns scrolling and the two fight,
-     producing a stutter on anchor jumps. Lenis handles anchors in main.tsx. */
+  /* No scroll-behavior: smooth. Lenis owns scrolling and the two fight. */
   scroll-padding-top: 96px;
   -webkit-text-size-adjust: 100%;
 }
 
+/* The theme flips in one frame, no colour fade. */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-stretch: 100%;
-  overflow-x: hidden;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 ::selection {
@@ -380,20 +452,17 @@ body {
   color: var(--accent-ink);
 }
 
-/* Visible focus ring for keyboard users only — mouse users never see it, so the
-   pill buttons stay clean without sacrificing keyboard navigability.
-
-   No border-radius here. It used to set 4px, which squared off every pill button
-   the moment it took keyboard focus; browsers now draw the outline along the
-   element's own radius, so each control keeps its shape. */
+/* Keyboard focus: 2px ring, 2px off the edge, instant (no transition). */
 :focus-visible {
   outline: 2px solid var(--ring);
-  outline-offset: 3px;
+  outline-offset: 2px;
+  transition: none;
 }
 
-/* Headings break evenly instead of leaving one word alone on the last line, and body
-   copy avoids a single-word last line too. */
-h1, h2, h3, .display-1, .display-2, .display-3 {
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+}
+h1, h2, h3, .display-1, .display-2, .display-3, .display-xxl {
   text-wrap: balance;
 }
 p, blockquote, figcaption, li {
@@ -401,133 +470,205 @@ p, blockquote, figcaption, li {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DISPLAY TYPOGRAPHY
-
-   Tight tracking at large sizes, loosening as the size drops — letter-spacing
-   that flatters a 96px headline makes 32px text look cramped, so it scales with
-   the clamp rather than being a fixed value.
+   TYPE: Familjen Grotesk 600 (500 for item titles) over IBM Plex Sans.
+   Sentence case, tight tracking, calm scale. No text-transform anywhere.
 ═══════════════════════════════════════════════════════════════════════════ */
-/* Condensed, heavy, tight: Archivo's narrow widths read like gym signage (DESIGN.md).
-   Condensing lets a large size fit a phone: at width 70 the hero's longest line still
-   fits a 320px column at the 44px floor. Sentence case always. */
+.display-1,
+.display-2,
+.display-3,
+.display-xxl {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  overflow-wrap: break-word;
+  min-width: 0;
+  /* lining only: tabular figures widen the colon and comma in heads. Use .num for columns of figures. */
+  font-variant-numeric: lining-nums;
+}
+
+.display-xxl {
+  font-size: clamp(3.25rem, 7.5vw, 6.5rem);
+  line-height: 1.02;
+}
+
 .display-1 {
-  font-size: clamp(44px, 9vw, 96px);
-  font-stretch: 70%;
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -0.01em;
+  font-size: clamp(2.75rem, 5.5vw, 5rem);
+  line-height: 1.04;
 }
 
 /* Feature-page headline. The keyword-bearing H1s are longer than the homepage's, so the
    ceiling is lower; the doubled selector outranks .display-1. */
 .display-1.feature-h1 {
-  font-size: clamp(40px, 5.4vw, 72px);
+  font-size: clamp(2.5rem, 5vw, 4.25rem);
+  line-height: 1.06;
 }
 
 .display-2 {
-  font-size: clamp(32px, 4.6vw, 56px);
-  font-stretch: 75%;
-  font-weight: 750;
-  line-height: 1;
-  letter-spacing: -0.005em;
+  font-size: clamp(2.25rem, 3.8vw, 3.5rem);
+  line-height: 1.06;
 }
 
 .display-3 {
-  font-size: clamp(24px, 2.8vw, 34px);
-  font-stretch: 80%;
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: 0;
+  font-size: clamp(1.5rem, 2.2vw, 1.875rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .lead {
-  font-size: clamp(16px, 1.35vw, 19px);
-  line-height: 1.6;
+  font-family: var(--font-sans);
+  font-size: clamp(1.125rem, 1rem + 0.4vw, 1.25rem);
+  line-height: 1.5;
   color: var(--muted-foreground);
 }
 
-/* Small label, only where it says something the heading does not (DESIGN.md). Sentence case,
-   same family; never tracked-out capitals. */
+/* A plain small label, sentence case, untracked. */
 .eyebrow {
+  font-family: var(--font-display);
   font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.num {
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* A statement figure: the display face, tabular, set large. */
+.figure-xl {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5.5rem);
   font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--accent-text);
+  line-height: 1;
+  letter-spacing: -0.028em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Retired: kept so old markup renders nothing instead of breaking. */
+.outline-text {
+  color: inherit;
+  -webkit-text-stroke: 0;
+  user-select: auto;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Floating nav island ──────────────────────────────────────────────────────
-   The collapsed state itself is driven by inline styles from the scroll handler
-   in Navbar.tsx; only the timing lives here, so that a reduced-motion preference
-   can switch the resize off. A header that silently changes width and height by
-   ~10% is exactly the kind of unrequested motion that setting exists for, but
-   the surface still needs to appear or the text loses its background — so the
-   colour fade is kept and only the geometry snaps. */
+/* Slim sticky bar: the page colour, a 1px hairline under it. No radius, no shadow, no blur.
+   Navbar.tsx may still set geometry inline; this holds only the look. */
 .nav-island {
-  transition:
-    max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.4s ease,
-    border-color 0.4s ease,
-    box-shadow 0.4s ease;
-}
-@media (prefers-reduced-motion: reduce) {
-  .nav-island {
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
+  background-color: var(--background);
+  border-radius: 0;
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
 }
 
-/* Flat page colour: the redesign has no hero wash or backdrop effect (DESIGN.md). */
 .hero-surface {
-  background: var(--background);
-}
-/* The hero lead is read first, so it sits between Ink and Steel. */
-:root {
-  --hero-copy: #34435e;
-}
-.dark {
-  --hero-copy: #c9d3e3;
+  background: transparent;
 }
 .hero-sub {
   color: var(--hero-copy);
 }
 
-/* Full-bleed Ink band (DESIGN.md: the one dark band, used for the benefits section). In dark mode it
-   steps one shade lighter than the page so it still reads as a band. Text inside uses the band's own
-   pair; .lead and text-muted-foreground are remapped so a component needs no special classes. */
-:root {
-  --band-ink-bg: #14213d;
-  --band-ink-fg: #f1f4f8;
-  --band-ink-muted: #b8c4d8;
-  --band-ink-line: #2b3a5c;
+/* Hero ground: a 24px dot grid that ends at 720px. A data-URI tile (--grid-dot), no gradient, no mask:
+   the layer is simply 720px tall and sits behind the content. */
+.grid-bg {
+  position: relative;
+  isolation: isolate;
 }
-.dark {
-  --band-ink-bg: #1a2642;
-  --band-ink-fg: #e9eef6;
-  --band-ink-muted: #a9b6cb;
-  --band-ink-line: #33415f;
+.grid-bg::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: min(720px, 100%);
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--grid-dot);
+  background-size: 24px 24px;
+  background-position: top center;
 }
+
+/* Graphite band: the one dark section, full-bleed, in both themes. Text inside uses the band's own
+   pair; --foreground, --muted-foreground, --border and the white surfaces are remapped so a
+   component needs no special classes. */
 .band-ink {
-  background: var(--band-ink-bg);
+  background: var(--band-ink);
   color: var(--band-ink-fg);
   --foreground: var(--band-ink-fg);
   --muted-foreground: var(--band-ink-muted);
   --border: var(--band-ink-line);
-  --accent-text: #93c5fd;
+  --border-strong: var(--band-ink-line-strong);
+  --frame: var(--band-ink-surface);
+  --muted: var(--band-ink-surface);
+  --subtle: var(--band-ink-surface);
+  --accent-text: var(--band-ink-accent);
+  --ring: var(--band-ink-accent);
+  --key-face: var(--band-ink-surface);
+  --key-edge: var(--band-ink-edge);
+  --key-drop: var(--band-ink-edge);
+  --key-hi: var(--band-ink-line);
+  --shadow-card: 0 0 0 1px var(--band-ink-line), 0 12px 32px -16px var(--band-ink-edge);
+  --shadow-lift: 0 0 0 1px var(--band-ink-line-strong), 0 24px 48px -20px var(--band-ink-edge);
+}
+
+/* Blue band: accent drench, white ink, for the closing call. Surfaces inside it are white
+   and get the light-theme text roles back. */
+.band-accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+  --foreground: var(--accent-ink);
+  --muted-foreground: color-mix(in oklab, var(--accent-ink) 86%, transparent);
+  --border: color-mix(in oklab, var(--accent-ink) 32%, transparent);
+  --border-strong: color-mix(in oklab, var(--accent-ink) 60%, transparent);
+  --accent-text: var(--accent-ink);
+  --ring: var(--accent-ink);
+  --shadow-card: 0 1px 2px var(--accent-edge), 0 12px 32px -16px var(--accent-edge);
+  --shadow-lift: 0 2px 4px var(--accent-edge), 0 24px 48px -20px var(--accent-edge);
+}
+.band-accent :is(.card, .plastic, .slip, .device-screen, .input-field, .bg-frame) {
+  --foreground: var(--on-surface-ink);
+  --muted-foreground: var(--on-surface-muted);
+  --border: var(--on-surface-line);
+  --border-strong: var(--on-surface-line);
+  --accent-text: var(--on-surface-accent);
+  --ring: var(--accent);
+  --frame: var(--device-bg);
+  color: var(--on-surface-ink);
+}
+/* On the blue band the primary key turns white with a blue label. */
+.band-accent .btn-primary,
+.band-accent .btn-accent {
+  --_edge: var(--band-accent-key-edge);
+  --_drop: var(--accent-edge);
+  background: var(--device-bg);
+  color: var(--on-surface-accent);
+  border-color: var(--band-accent-key-edge);
+}
+.band-accent .btn-outline {
+  --_edge: var(--accent-edge);
+  --_drop: var(--accent-edge);
+  background: color-mix(in oklab, var(--accent-ink) 10%, transparent);
+  color: var(--accent-ink);
+  border-color: color-mix(in oklab, var(--accent-ink) 50%, transparent);
+}
+.band-accent .btn-ghost {
+  color: var(--accent-ink);
+}
+.band-accent .btn-ghost:hover {
+  background: color-mix(in oklab, var(--accent-ink) 12%, transparent);
 }
 
 /* ReminderFeed: the newest entry slides in from above; the rest are simply re-keyed into place. */
 .feed-item-new {
-  animation: feed-in 0.45s cubic-bezier(0.215, 0.61, 0.355, 1);
+  animation: feed-in 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes feed-in {
   from {
     opacity: 0;
-    transform: translateY(-14px);
+    transform: translateY(-12px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -538,14 +679,6 @@ p, blockquote, figcaption, li {
 
 /* Member status chips inside product screens (HeroDemo), in the console's own colours. */
 :root {
-  --status-active-bg: #dcfce7;
-  --status-active-fg: #166534;
-  --status-expiring-bg: #fef3c7;
-  --status-expiring-fg: #92400e;
-  --status-expired-bg: #fee2e2;
-  --status-expired-fg: #991b1b;
-}
-.dark {
   --status-active-bg: #0f2e1e;
   --status-active-fg: #86efac;
   --status-expiring-bg: #3a2a0b;
@@ -553,11 +686,19 @@ p, blockquote, figcaption, li {
   --status-expired-bg: #3b1215;
   --status-expired-fg: #fca5a5;
 }
+:root:not(.dark) {
+  --status-active-bg: #dcfce7;
+  --status-active-fg: #166534;
+  --status-expiring-bg: #fef3c7;
+  --status-expiring-fg: #92400e;
+  --status-expired-bg: #fee2e2;
+  --status-expired-fg: #991b1b;
+}
 .status-chip {
   display: inline-flex;
   align-items: center;
   border-radius: 6px;
-  padding: 2px 8px;
+  padding: var(--space-3xs) var(--space-xs);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
@@ -579,203 +720,6 @@ p, blockquote, figcaption, li {
   .status-chip {
     transition: none;
   }
-}
-
-
-/* ── Beams backdrop ───────────────────────────────────────────────────────────
-   Dark mode only. HeroBeams returns null in light mode, so none of the three
-   layers below exist there and none of these rules apply.
-
-   HeroBeams renders both of these ahead of .hero-mesh in the section, so the
-   sibling selector below is also the switch: no beams in the DOM means the mesh
-   keeps its full strength, and nothing has to thread a flag through props to say
-   so. That is what hands the hero over to the light wash above without either side
-   knowing about the other.
-
-   At 0.5 the mesh's blue and cyan stops sit on top of the ribbons and turn the
-   whole area into one soft wash — the beams stop reading as separate shapes.
-   Dimmed, the hue survives as a tint over them, which is the point of keeping it
-   at all. */
-.hero-beams ~ .hero-mesh {
-  opacity: 0.26;
-}
-
-.hero-beams-scrim {
-  /* How opaque the protective core and the band outside it are. Split out as
-     variables because the right strength depends on two things at once — theme and
-     breakpoint — while the geometry below depends only on breakpoint. Four
-     combinations in one gradient, without four copies of the gradient.
-
-     These are the dark desktop values. Every override is measured, not nudged:
-     see the light-mode block and the phone block for what each is answering.
-
-     The stop positions are variables too, not just the strengths, because light
-     mode needs a different falloff shape rather than a different level. Dark mode
-     can protect the copy gently and let the gradient trail off slowly; light mode
-     has to hold the copy area almost solid and then get out of the way fast, or
-     the ribbons never appear anywhere. */
-  /* Opacity at the very centre. Full here; the phone lowers it deliberately, and
-     that stop is a variable because it turned out to be the real ceiling on light
-     mode's contrast — --scrim-core cannot raise coverage above whatever this is. */
-  --scrim-peak: 100%;
-  --scrim-core: 92%;
-  --scrim-mid: 60%;
-  --scrim-mid-at: 70%;
-  /* A fourth stop purely to shape the shoulder. Going straight from the mid value
-     to transparent over a short span puts a visible elliptical halo around the
-     copy — the gradient stops being a gradient and starts being an edge. This
-     splits that span so the ramp reads as falloff instead of as a shape. */
-  --scrim-tail: 25%;
-  --scrim-tail-at: 80%;
-  --scrim-end-at: 92%;
-
-  background:
-    /* Behind the copy: hold the page colour so muted body text keeps its ratio
-       whatever the ribbons are doing underneath.
-
-       The geometry is measured, not guessed. The vertical radius is a percentage
-       of the layer height set by COVER_H in HeroBeams.tsx, so the two have to move
-       together. The copy block runs roughly y=120 to y=624; centred at 35% (378px)
-       with a 54% radius (583px), the near-solid core reaches 46% of that — 268px —
-       covering y=110 to y=646.
-
-       The horizontal radius is an absolute length, and that is the point. As a
-       percentage it tracked the viewport while the thing it protects does not: the
-       copy is capped at max-w-[900px], so on a wide screen 70% was generous and at
-       768px it collapsed to a ±247px core under text running the full 768. Body
-       text measured 3.34:1 there against 6.04:1 at 1440 — the same class of
-       failure as the first version of this gradient, just hiding in a viewport
-       range never swept. 1080px puts the core at ±497px against a ±454px
-       worst-case copy half-width, so every width from 360 up is covered, and wide
-       screens get more visible ribbons as a side effect because the protected area
-       no longer grows with them.
-
-       An earlier pass centred it at 22% with a 46% vertical radius, which faded to
-       nothing by y=460 and left the subhead unprotected at 3.83:1. */
-    radial-gradient(
-      1080px 54% at 50% 35%,
-      color-mix(in srgb, var(--beams-scrim) var(--scrim-peak), transparent) 0%,
-      color-mix(in srgb, var(--beams-scrim) var(--scrim-core), transparent) 46%,
-      color-mix(in srgb, var(--beams-scrim) var(--scrim-mid), transparent) var(--scrim-mid-at),
-      color-mix(in srgb, var(--beams-scrim) var(--scrim-tail), transparent) var(--scrim-tail-at),
-      transparent var(--scrim-end-at)
-    ),
-    /* Bottom fade. The canvas is opaque, so without this its lower edge is a
-       straight line across the page. Held off until 68% (734px) so the ribbons
-       keep full strength down either side of the product frame — that open margin
-       is most of what makes the effect visible at all, once the copy above it is
-       protected. */
-    linear-gradient(
-      to bottom,
-      transparent 0%,
-      transparent 68%,
-      color-mix(in srgb, var(--background) 60%, transparent) 86%,
-      var(--background) 100%
-    );
-}
-
-/* Static monochrome dither over the beams field.
-   feTurbulence rasterised once by the UA and tiled — no canvas, no second frame
-   loop, nothing per-frame. Film grain has no reason to move, and animating a
-   full-width layer to make it shimmer would cost real paint time for an effect
-   nobody consciously registers.
-   saturate 0 keeps it neutral: fractalNoise is coloured by default, and coloured
-   speckle would fight the brand blue coming off the ribbons.
-   Faded out at the bottom on the same schedule as the scrim, or the grain would
-   carry on past the ribbons and put visible texture on the plain page below. */
-.hero-beams-grain {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 180px 180px;
-  /* Up from 0.28. This is the grain that actually reads on screen, so it is the
-     right place to add texture — the shader's own noise only dithers lit ribbons.
-
-     It does cost a little edge definition: the dither lifts the black between
-     ribbons, and that black is what their edges are measured against. Grain is
-     per-pixel while the edges are broad, so the eye separates them, but the trade
-     is real and this is why it is not higher. */
-  opacity: 0.38;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 64%, transparent 94%);
-}
-
-/* The canvas mounts on idle rather than with the hero, so without this it would
-   appear as a hard cut a second or two in. Fading only the canvas layer, not the
-   scrim or grain, keeps the copy's backdrop stable from first paint. */
-.hero-beams {
-  /* Explicit resting opacity and no fill mode, for the reason recorded on
-     .hero-pixels: with `both`, an animation that never starts leaves the element
-     pinned at its from keyframe, which for a fade-in means permanently invisible. */
-  opacity: 1;
-  animation: beams-in 700ms ease-out;
-}
-@keyframes beams-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-beams {
-    animation: none;
-  }
-}
-
-/* ── Phone-fitted scrim ───────────────────────────────────────────────────────
-   The desktop ellipse is fitted to a copy block 900px wide sitting in a 1440px
-   layer. A phone inverts that: the copy is effectively full-bleed (x=20 to 355 of
-   390) inside a portrait layer, so the same gradient leaves the left and right
-   edges of every line outside the protected core — measured at ~77% coverage
-   where desktop gets 92-100%.
-
-   Refitted against measured layout in the 880px phone layer: copy runs y=124 to
-   y=565 at the narrowest width tested (360px), so the ellipse centres at 39%
-   (343px) with a 62% vertical radius (546px). Same absolute 1080px horizontal
-   radius as desktop — on a 390px screen that makes the falloff effectively
-   vertical, which is right when the text is full-bleed, and it leaves the whole
-   vertical budget for covering the taller wrapped copy.
-
-   The consequence is deliberate: on a phone the copy block covers nearly all the
-   area above the product card, so protecting it properly leaves the ribbons
-   reading as a glow around and above the text rather than as bold diagonals.
-   Loosening this to expose more of them is exactly the trade that put body text
-   under 4.5:1. */
-@media (max-width: 767px) {
-  .hero-beams-scrim {
-    /* Weaker than desktop's 92/60 on purpose. A 1080px radius on a 375px screen is
-       effectively a full-width slab, so unlike desktop there is no horizontal
-       falloff for the ribbons to show through — at 92% the field was smothered end
-       to end and the effect was invisible rather than subtle.
-
-       The slack to do this was measured: dark body text sat at 7.45:1 against a 4.5
-       floor here, roughly a sixfold luminance margin. */
-    --scrim-peak: 88%;
-    --scrim-core: 80%;
-    --scrim-mid: 45%;
-    --scrim-tail: 18%;
-    --scrim-tail-at: 80%;
-    --scrim-end-at: 92%;
-
-    background:
-      radial-gradient(
-        1080px 62% at 50% 39%,
-        color-mix(in srgb, var(--beams-scrim) var(--scrim-peak), transparent) 0%,
-        color-mix(in srgb, var(--beams-scrim) var(--scrim-core), transparent) 46%,
-        color-mix(in srgb, var(--beams-scrim) var(--scrim-mid), transparent) var(--scrim-mid-at),
-        color-mix(in srgb, var(--beams-scrim) var(--scrim-tail), transparent) var(--scrim-tail-at),
-        transparent var(--scrim-end-at)
-      ),
-      linear-gradient(
-        to bottom,
-        transparent 0%,
-        transparent 68%,
-        color-mix(in srgb, var(--background) 60%, transparent) 86%,
-        var(--background) 100%
-      );
-  }
-
 }
 
 /* ── Interactive dashboard mock ───────────────────────────────────────────────
@@ -800,169 +744,300 @@ p, blockquote, figcaption, li {
   transform-origin: top left;
 }
 
-/* Pill badge — hero "Now available", section tags */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROLS: keycaps. 48px, 10px radius, a 1px border and a 3px bottom edge (box-shadow) with a
+   soft drop. Hover lifts the key 1px; press sinks it 3px onto no edge. 80ms. Transitions name
+   their properties; the focus outline is global and instant.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Chip: small status or tag. */
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
+  gap: var(--space-xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--frame);
-  font-size: 12.5px;
+  font-family: var(--font-display);
+  font-size: 14px;
   font-weight: 500;
+  line-height: 1.4;
   color: var(--foreground);
   white-space: nowrap;
 }
 
-/* Buttons: squared-off rectangles (10px), not pills, to sit with the condensed signage type. */
 .btn {
+  --_face: var(--key-face);
+  --_edge: var(--key-edge);
+  --_drop: var(--key-drop);
+  --_hi: var(--key-hi);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 22px;
+  gap: var(--space-xs);
+  min-height: 48px;
+  padding: 0 var(--space-lg);
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.25;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1;
   white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
-  transition: transform 0.18s ease, background-color 0.18s ease,
-    border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+  color: var(--foreground);
+  background: var(--_face);
+  box-shadow:
+    0 3px 0 0 var(--_edge),
+    0 6px 8px -4px var(--_drop),
+    inset 0 1px 0 var(--_hi);
+  transition:
+    transform var(--dur-micro) var(--ease-out),
+    box-shadow var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) linear,
+    border-color var(--dur-micro) linear,
+    color var(--dur-micro) linear;
+}
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 0 0 var(--_edge),
+    0 8px 10px -4px var(--_drop),
+    inset 0 1px 0 var(--_hi);
 }
 .btn:active {
-  transform: scale(0.98);
+  transform: translateY(3px);
+  box-shadow:
+    0 0 0 0 var(--_edge),
+    inset 0 1px 2px var(--key-press);
 }
 
-/* Inverted-ink primary: near-black pill in light, near-white in dark */
-.btn-primary {
-  background: var(--foreground);
-  color: var(--background);
-  border: 1px solid var(--foreground);
-}
-.btn-primary:hover {
-  background: color-mix(in srgb, var(--foreground) 86%, var(--background));
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--foreground) 40%, transparent);
-}
-
+/* Royal Blue key, white label, a deep-blue edge. */
+.btn-primary,
 .btn-accent {
+  --_edge: var(--accent-edge);
+  --_drop: var(--key-accent-drop);
+  --_hi: var(--key-accent-hi);
   background: var(--accent);
   color: var(--accent-ink);
-  border: 1px solid var(--accent);
-}
-.btn-accent:hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--accent) 60%, transparent);
+  border-color: var(--accent-edge);
 }
 
+/* White key: the default face with a hairline (alias, so markup can name it). */
 .btn-outline {
-  background: var(--frame);
+  background: var(--_face);
   color: var(--foreground);
-  border: 1px solid var(--border);
-}
-.btn-outline:hover {
-  border-color: var(--border-strong);
-  background: var(--subtle);
-  transform: translateY(-1px);
 }
 
+/* Text button: no face, no edge. */
 .btn-ghost {
   background: transparent;
   color: var(--muted-foreground);
-  border: 1px solid transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 .btn-ghost:hover {
   color: var(--foreground);
   background: var(--subtle);
+  transform: none;
+  box-shadow: none;
+}
+.btn-ghost:active {
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-lg {
-  padding: 15px 30px;
+  min-height: 56px;
+  padding: 0 32px;
+  font-size: 18px;
+}
+
+/* Compact key for the nav strip. A dedicated class rather than Tailwind utilities,
+   because .btn sets its own padding and size and is authored after Tailwind's layer. */
+.btn-nav {
+  min-height: 44px;
+  padding: 0 var(--space-md);
   font-size: 15px;
 }
 
-/* Compact primary CTA for the nav strip. A dedicated class rather than Tailwind
-   px/py/text utilities on the element, because .btn sets padding and font-size
-   as its own declarations and — being authored later in this file than Tailwind
-   emits its utilities — wins the cascade over them. This rule is later still, so
-   it takes. */
-.btn-nav {
-  padding: 8px 12px;
-  font-size: 13px;
-}
-/* Was 34px tall; 44px on touch-sized widths (the 76px / 64px island has room), back to the
-   compact pill once the inline desktop menu takes over at lg. */
-@media (max-width: 1023px) {
-  .btn-nav {
-    min-height: 36px;
-  }
-}
-
-/* Cards */
-.card {
-  background: var(--frame);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-}
-
-.card-hover {
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-}
-/* No lift: a hover that moves every card is a generated-page default (DESIGN.md). The border
-   alone says the card is interactive. */
-.card-hover:hover {
-  border-color: var(--border-strong);
-}
-
-.card-accent-soft {
-  background: var(--card-secondary);
-  color: var(--card-foreground);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: var(--radius-card);
-}
-
-/* Phone mock screen. Deliberately stays light in both themes: it depicts the
-   member app, which is a light-themed product, and it sits on a filled accent
-   card where a dark screen would fight the card. */
-.device-screen {
-  --dev-muted: #737373;
-  background: #fff;
-  color: #171717;
-}
-
+/* Inputs: 48px, 10px radius, a 1px strong hairline, a blue edge on focus. */
 .input-field {
   width: 100%;
-  padding: 13px 18px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
+  min-height: 48px;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 10px;
+  border: 1px solid var(--muted-foreground);
   background: var(--frame);
   color: var(--foreground);
-  font-size: 14px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  transition: border-color var(--dur-short) var(--ease-out);
+}
+.input-field:hover {
+  border-color: var(--muted-foreground);
 }
 .input-field::placeholder {
   color: var(--muted-foreground);
 }
-.input-field:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SURFACES
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* A card: white on paper, a hairline edge, 14px corners. Depth comes from the shadow tokens
+   where a surface asks for it. */
+.card {
+  background: var(--frame);
+  border: 1px solid var(--border);
+  border-radius: 14px;
 }
 
-/* Hairline divider that fades at both ends */
-.rule {
+.card-hover {
+  transition:
+    border-color var(--dur-short) var(--ease-out),
+    box-shadow var(--dur-short) var(--ease-out),
+    transform var(--dur-short) var(--ease-out);
+}
+/* The border warms to the accent and the shadow deepens: the card reads as pressable. */
+.card-hover:hover {
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
+}
+
+.card-accent-soft {
+  background: var(--accent-soft);
+  color: var(--foreground);
+  border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+  border-radius: 14px;
+}
+
+/* Phone mock screen. Stays light in both themes: it depicts the member app. */
+.device-screen {
+  --dev-muted: var(--device-muted);
+  background: var(--device-bg);
+  color: var(--device-ink);
+}
+
+/* Hairline: 1px divides rows and sections. */
+.rule,
+.bar-rule {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--border) 15%,
-    var(--border) 85%,
-    transparent
+  background: var(--border);
+}
+
+/* Panel: a raised white surface. A hairline, 14px corners, the layered soft shadow. It ignores --t. */
+.plastic {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--frame);
+  color: var(--foreground);
+  box-shadow: var(--shadow-card);
+}
+
+/* Slip: a small white card with mono content (times, IDs, tickets). */
+.slip {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: var(--frame);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-card);
+}
+
+/* Stamp: a small blue status chip, sentence case. "Not yet" is the same in grey, never red. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
+}
+.stamp--grey {
+  background: var(--subtle);
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+
+/* Retired: the paper grain and the window light are gone. The classes stay so old markup
+   renders nothing instead of breaking. */
+.grain {
+  background: none;
+}
+.window-light {
+  display: none;
+}
+
+/* Retired: the diagonal cuts are gone. No clip, no overlap, no extra padding. */
+:root {
+  --cut: 0px;
+}
+.cut-bottom,
+.cut-top,
+.cut-top.cut-bottom {
+  clip-path: none;
+  margin: 0;
+}
+
+/* Tape: a quiet marquee strip between two hairlines. Muted text, no skew, no fill. */
+.tape {
+  position: relative;
+  display: block;
+  padding-block: var(--space-md);
+  overflow: clip;
+  border-block: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.tape--ink {
+  color: var(--band-ink-muted);
+  border-block-color: var(--band-ink-line);
+}
+
+/* Pointer spotlight (SpotlightSurface): a soft light that follows the cursor inside a panel.
+   The glow only exists on fine pointers; --mx and --my are set by the component. */
+.spot-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+  background: radial-gradient(
+    360px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in oklab, var(--accent) var(--spot-tint), transparent),
+    transparent 70%
   );
+}
+.spot:hover > .spot-glow {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spot-glow {
+    transition: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -981,7 +1056,7 @@ p, blockquote, figcaption, li {
 }
 
 .wa-swap {
-  animation: fadeInUp 320ms ease-out both;
+  animation: fadeInUp 320ms var(--ease-out) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .wa-swap {
@@ -1028,7 +1103,7 @@ p, blockquote, figcaption, li {
   animation: pulseDot 1.8s ease-in-out infinite;
 }
 .animate-fade-in-up {
-  animation: fadeInUp 0.25s ease-out both;
+  animation: fadeInUp 0.25s var(--ease-out) both;
 }
 
 
@@ -1064,10 +1139,8 @@ footer {
 }
 
 /* Opt-out for sections whose children paint outside their own box. `contain:
-   paint` clips to the padding box, which would cut a straight edge through the
-   BorderGlow halo wherever a card sits flush against the section's padding —
-   visible at 1-column widths, where every card is full-bleed. layout + style
-   keep most of the containment win without clipping. */
+   paint` clips to the padding box. layout + style keep most of the containment
+   win without clipping. */
 .contain-visible {
   contain: layout style;
 }
@@ -1093,6 +1166,11 @@ footer {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .btn:hover,
+  .btn:active,
+  .card-hover:hover {
+    transform: none;
   }
 }
 

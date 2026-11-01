@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Section, SectionHead, Split } from './layout/Section';
+import { Section } from './layout/Section';
+import '../styles/faq.css';
 import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, savingPercent } from '../data/plans';
 
 const [MONTHLY, YEARLY] = PLANS;
@@ -58,13 +58,16 @@ export function FAQ() {
 
   return (
     <Section id="faq" labelledBy="faq-title">
-      <Split
-        head={
-          <SectionHead
-            title={<h2 id="faq-title" className="display-2 text-balance">{'Gym software FAQ: everything you need to know'}</h2>}
-            lead="Straight answers on pricing, WhatsApp messages and moving your members over."
-          >
-            <div className="flex flex-wrap items-center gap-3">
+      <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
+        <div className="min-w-0 lg:col-span-5">
+          <div className="lg:sticky lg:top-28">
+            <h2 id="faq-title" className="display-2 min-w-0 text-balance [overflow-wrap:break-word]">
+              Gym management software FAQ
+            </h2>
+            <p className="lead mt-5 max-w-[40ch]">
+              Straight answers about pricing, setup, WhatsApp reminders and your data.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
               <a href={APP_URL} className="btn btn-primary">
                 Get Started
               </a>
@@ -72,11 +75,11 @@ export function FAQ() {
                 Contact Support
               </a>
             </div>
-          </SectionHead>
-        }
-      >
-        {/* ── Accordion ─────────────────────────────────────────────────── */}
-        <ul className="flex flex-col border-b border-border-subtle">
+          </div>
+        </div>
+
+        {/* Accordion: 1px ruled rows. */}
+        <ul className="min-w-0 border-b border-border-subtle lg:col-span-7">
           {FAQS.map((item, index) => {
             const expanded = open === index;
             const panelId = `faq-panel-${index}`;
@@ -88,81 +91,44 @@ export function FAQ() {
                 onMouseEnter={() => {
                   if (canHover()) setOpen(index);
                 }}
-                className="border-t border-border-subtle"
+                data-open={expanded || undefined}
+                className="faq-row border-t border-border-subtle"
               >
                 <h3>
-                  {/*
-                    A real button inside the heading, keeping aria-expanded and
-                    aria-controls. The reference puts role="button" tabindex="0" on the
-                    card div instead, which gives up the native Enter and Space
-                    handling and the implicit role for no visual gain. The padding
-                    lives on the button rather than the card so the whole top of the
-                    card is the hit area, which is what makes it feel like the card is
-                    the control.
-                  */}
+                  {/* A real button inside the heading, keeping aria-expanded and aria-controls.
+                      The padding lives on the button so the whole row is the hit area. */}
                   <button
                     type="button"
                     id={buttonId}
                     aria-expanded={expanded}
                     aria-controls={panelId}
-                    // With a mouse, hover has already opened the card, so a click must not
+                    // With a mouse, hover has already opened the row, so a click must not
                     // close it again; it still toggles on touch and for keyboard users.
                     onClick={() => setOpen(expanded && !canHover() ? null : index)}
-                    className="flex w-full items-center justify-between gap-4 py-5 text-left"
+                    className="faq-trigger flex w-full items-center justify-between gap-6 py-6 text-left"
                   >
-                    <span className="text-[15.5px] font-medium tracking-tight text-foreground sm:text-[16.5px]">
+                    <span className="min-w-0 font-display text-[18px] font-medium leading-snug text-foreground md:text-[20px]">
                       {item.q}
                     </span>
-                    {/*
-                      Chevron rotating a half turn, where this used to be a plus
-                      rotating 45 degrees into a cross. 300ms to match the measured
-                      reference, which took about 260ms to travel 0 to 180.
-                    */}
-                    <ChevronDown
-                      aria-hidden
-                      className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ease-out ${
-                        expanded ? 'rotate-180' : ''
-                      }`}
-                    />
+                    {/* A plus that turns into a minus on open (transform only, see faq.css). */}
+                    <span aria-hidden className="faq-glyph" />
                   </button>
                 </h3>
 
-                {/*
-                  Collapsed with grid-template-rows 0fr -> 1fr rather than
-                  max-height, so the row animates to the answer's real height
-                  without hard-coding a guess that clips longer copy.
-
-                  The answer stays in the DOM when collapsed. The reference unmounts
-                  it and animates height 0 -> auto through Framer Motion, which looks
-                  the same but cannot be copied here: the FAQPage JSON-LD in
-                  index.html quotes every answer, and structured data describing text
-                  a visitor cannot find on the page is treated as spam. Nothing inside
-                  is focusable, so leaving it mounted traps no keyboard user.
-
-                  300ms, down from 400. Measured on the reference, open and close both
-                  took about 250 to 260ms.
-                */}
-                <div
-                  id={panelId}
-                  role="region"
-                  aria-labelledby={buttonId}
-                  className="grid transition-all duration-300 ease-out"
-                  style={{
-                    gridTemplateRows: expanded ? '1fr' : '0fr',
-                    opacity: expanded ? 1 : 0,
-                  }}
-                >
-                  <div className="overflow-hidden">
-                    <p className="pb-5 text-[14.5px] leading-relaxed text-muted-foreground">
-                      {item.a}
-                    </p>
-                  </div>
+                {/* The answer stays in the DOM when collapsed: the FAQPage JSON-LD in index.html
+                    quotes every answer, and structured data describing text a visitor cannot find
+                    on the page is treated as spam. `hidden` collapses it (height snaps); on open
+                    the paragraph fades in over a 6px drop (opacity + transform, faq.css). */}
+                <div id={panelId} role="region" aria-labelledby={buttonId} hidden={!expanded}>
+                  <p className="faq-answer max-w-[58ch] pb-6 text-base leading-relaxed text-muted-foreground">
+                    {item.a}
+                  </p>
                 </div>
               </li>
             );
           })}
         </ul>
-      </Split>
+      </div>
     </Section>
   );
 }

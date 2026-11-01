@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import '../styles/cookie.css';
 import { getConsent, setConsent, OPEN_SETTINGS_EVENT, type Consent } from '@/lib/analytics';
 
 type View = 'closed' | 'banner' | 'details';
@@ -7,7 +8,7 @@ const NONE: Consent = { ga: false, clarity: false };
 const ALL: Consent = { ga: true, clarity: true };
 
 /**
- * Cookie choices. First visit: a small banner in the corner (shown after the page has
+ * Cookie choices. First visit: a compact white panel in the bottom-left corner (a short bottom sheet on a phone) (shown after the page has
  * loaded, so it is never the largest paint). "Choose", or the footer's "Cookie settings" at
  * any later time, opens a card in the middle of the screen with the full detail of each
  * group and its own switch.
@@ -69,36 +70,27 @@ export function CookieBanner() {
 
   if (view === 'closed') return null;
 
-  const outline =
-    'rounded-pill border border-border-strong px-4 py-2 text-sm font-medium text-foreground hover:bg-subtle';
-  const solid =
-    'rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90';
+  const outline = 'btn btn-nav btn-outline';
+  const solid = 'btn btn-nav btn-primary';
 
   if (view === 'banner') {
     // Compact on every screen: one short line and one row of buttons. "Essential only" and
     // "Accept all" share size and weight, so declining is as easy as accepting.
-    const pill =
-      'min-h-9 flex-1 rounded-pill bg-foreground px-3 text-[13px] font-medium text-background hover:opacity-90 sm:flex-none sm:px-4';
     return (
-      <div
-        ref={bar}
-        role="dialog"
-        aria-label="Cookie preferences"
-        className="fixed inset-x-0 bottom-0 z-[90] overflow-hidden rounded-t-2xl border border-border-strong bg-background shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-96 sm:rounded-2xl"
-      >
+      <div ref={bar} role="dialog" aria-label="Cookie preferences" className="cookie-slip">
         <div className="px-4 py-3">
-          <p className="text-[13px] leading-snug text-muted-foreground">
+          <p className="text-[14px] leading-snug text-muted-foreground">
             We use cookies to improve your experience on our website. Learn more about our{' '}
             <a href="/privacy#analytics" className="text-foreground underline underline-offset-2">
               privacy policy
             </a>
             .
           </p>
-          <div className="mt-2.5 flex items-center gap-2">
-            <button type="button" onClick={() => save(NONE)} className={pill}>
+          <div className="mt-2 flex items-center gap-2 sm:mt-2.5">
+            <button type="button" onClick={() => save(NONE)} className="btn btn-outline cookie-btn">
               Essential only
             </button>
-            <button type="button" onClick={() => save(ALL)} className={pill}>
+            <button type="button" onClick={() => save(ALL)} className="btn btn-primary cookie-btn">
               Accept all
             </button>
             <button
@@ -107,7 +99,7 @@ export function CookieBanner() {
                 setDraft(getConsent() ?? NONE);
                 setView('details');
               }}
-              className="ml-auto min-h-9 shrink-0 px-2 text-[13px] font-medium text-foreground underline underline-offset-2"
+              className="ml-auto min-h-8 shrink-0 px-2 text-[14px] font-medium text-foreground underline underline-offset-2 transition-colors hover:text-accent-text"
             >
               Choose
             </button>
@@ -121,7 +113,7 @@ export function CookieBanner() {
     <div className="fixed inset-0 z-[100] grid place-items-center p-3 sm:p-6">
       <div
         aria-hidden
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-foreground/60"
         onClick={() => setView(getConsent() === null ? 'banner' : 'closed')}
       />
       <div
@@ -129,9 +121,9 @@ export function CookieBanner() {
         aria-modal="true"
         aria-labelledby="cookie-title"
         data-lenis-prevent
-        className="relative max-h-[88vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-border-strong bg-background p-5 shadow-2xl sm:p-7"
+        className="relative max-h-[88vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[14px] border border-border-strong bg-frame p-5 shadow-lift sm:p-7"
       >
-        <h2 id="cookie-title" className="text-xl font-medium tracking-tight text-foreground">
+        <h2 id="cookie-title" className="display-3 text-foreground">
           Cookie preferences
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -209,7 +201,7 @@ function Group({
   onChange?: (v: boolean) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border-subtle bg-subtle p-4">
+    <section className="rounded-[10px] border border-border-subtle bg-subtle p-4">
       <label className="flex items-center justify-between gap-3">
         <span>
           <span className="block text-sm font-medium text-foreground">{title}</span>
@@ -217,7 +209,7 @@ function Group({
         </span>
         <input
           type="checkbox"
-          className="h-5 w-5 shrink-0 accent-current"
+          className="h-5 w-5 shrink-0 accent-accent"
           checked={checked}
           disabled={disabled}
           aria-label={`Allow ${title}`}

@@ -1,22 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check } from 'lucide-react';
 import { prefersReducedMotion } from '../lib/prefersReducedMotion';
+import '../styles/whatsapp.css';
 
 /* The automatic messages from the morning run (about 9 AM India time, featurePages.ts), as a short
    feed that adds one entry at a time while it is on screen. Types and wording are the real message
-   types; names and amounts are sample data. */
+   types; names, IDs and amounts are sample data. */
 const POOL = [
-  { name: 'Priya Sharma', type: 'Expiry reminder', detail: '5 days left' },
-  { name: 'Fathima R.', type: 'Payment due', detail: '₹500 pending' },
-  { name: 'Karan Singh', type: 'Welcome', detail: 'New member, Monthly' },
-  { name: 'Ravi Kumar', type: 'Membership expired', detail: 'Ended 24 Oct' },
-  { name: 'Neha Gupta', type: 'Birthday wishes', detail: 'Date of birth saved' },
-  { name: 'Arjun Menon', type: 'Renewal confirmation', detail: 'Annual, till Oct 2027' },
-  { name: 'Imran Khan', type: 'Expiry reminder', detail: '2 days left' },
-  { name: 'Divya M.', type: 'Payment due', detail: '₹1,200 pending' },
+  { name: 'Priya Sharma', type: 'Expiry reminder', detail: '5 days left', id: 'GF0012' },
+  { name: 'Fathima R.', type: 'Payment due', detail: '₹500 pending', id: 'GF0031' },
+  { name: 'Karan Singh', type: 'Welcome', detail: 'New member, Monthly', id: 'GF0086' },
+  { name: 'Ravi Kumar', type: 'Membership expired', detail: 'Ended 24 Oct', id: 'GF0044' },
+  { name: 'Neha Gupta', type: 'Birthday wishes', detail: 'Date of birth saved', id: 'GF0057' },
+  { name: 'Arjun Menon', type: 'Renewal confirmation', detail: 'Annual, till Oct 2027', id: 'GF0003' },
+  { name: 'Imran Khan', type: 'Expiry reminder', detail: '2 days left', id: 'GF0070' },
+  { name: 'Divya M.', type: 'Payment due', detail: '₹1,200 pending', id: 'GF0022' },
 ] as const;
 
-const VISIBLE = 4;
+const VISIBLE = 3;
+/* Slip height plus the gap between slips, in px. */
+const STEP = 88;
 
 export function ReminderFeed() {
   const root = useRef<HTMLDivElement>(null);
@@ -30,7 +32,7 @@ export function ReminderFeed() {
     let timer: number | undefined;
     const io = new IntersectionObserver(([entry]) => {
       window.clearInterval(timer);
-      if (entry.isIntersecting) timer = window.setInterval(() => setHead(h => h + 1), 2400);
+      if (entry.isIntersecting) timer = window.setInterval(() => setHead(h => h + 1), 2800);
     });
     io.observe(el);
     return () => {
@@ -46,31 +48,25 @@ export function ReminderFeed() {
 
   return (
     <div ref={root}>
-      <div aria-hidden className="overflow-hidden rounded-[14px] border border-dash-border bg-dash-surface">
-        <div className="flex items-center justify-between border-b border-dash-line px-4 py-3">
-          <p className="text-[14px] font-semibold text-dash-ink">Sent today at 9:00 AM</p>
-          <span className="flex items-center gap-1.5 text-[12px] font-medium text-dash-ink-muted">
-            <span className="h-2 w-2 rounded-full bg-[var(--wa-green)]" />
-            WhatsApp
-          </span>
-        </div>
-        <ul className="relative h-[264px]">
+      <div aria-hidden>
+        <p className="mb-4 font-display text-[18px] font-medium text-foreground">Sent today at 9:00 AM</p>
+        <ul className="relative" style={{ height: VISIBLE * STEP }}>
           {items.map((item, i) => (
             <li
               key={item.key}
-              className={`feed-item absolute inset-x-0 flex items-center gap-3 border-b border-dash-line px-4 last:border-b-0 ${i === 0 && head > VISIBLE ? 'feed-item-new' : ''}`}
-              style={{ top: i * 66, height: 66 }}
+              className={`absolute inset-x-0 top-0 transition-transform duration-500 ease-out motion-reduce:transition-none ${i === 0 && head > VISIBLE ? 'wa-slip-new' : ''}`}
+              style={{ height: STEP - 12, transform: `translateY(${i * STEP}px)` }}
             >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--wa-green)] text-white">
-                <Check className="h-4 w-4" strokeWidth={3} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold text-dash-ink">{item.name}</span>
-                <span className="block truncate text-[12px] text-dash-ink-muted">
-                  {item.type}, {item.detail}
+              <div className="slip wa-slip h-full">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-sans text-[16px] font-medium">{item.name}</span>
+                  <span className="block truncate font-sans text-[14px] leading-snug text-muted-foreground">
+                    {item.type}, {item.detail}
+                  </span>
                 </span>
-              </span>
-              <span className="text-[12px] tabular-nums text-dash-ink-muted">9:00</span>
+                <span className="hidden shrink-0 text-[12px] text-muted-foreground sm:block">{item.id}</span>
+                <span className="stamp shrink-0 whitespace-nowrap">Sent 9:00</span>
+              </div>
             </li>
           ))}
         </ul>
@@ -80,7 +76,7 @@ export function ReminderFeed() {
         payment due reminders, welcome messages, expired-membership messages, birthday wishes and renewal
         confirmations.
       </p>
-      <p className="mt-2 text-[12px] text-muted-foreground">Sample data</p>
+      <p className="mt-2 text-[14px] text-muted-foreground">Sample data</p>
     </div>
   );
 }

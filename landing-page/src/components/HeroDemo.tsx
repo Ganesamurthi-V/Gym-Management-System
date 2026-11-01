@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { WhatsAppBubble, type ThreadMessage } from './WhatsAppThread';
 import { prefersReducedMotion } from '../lib/prefersReducedMotion';
+import { SpotlightSurface, StampIn, TiltFrame } from './fx';
+import '../styles/hero.css';
 
 /**
  * The hero's product moment, and the page's one piece of unprompted motion (DESIGN.md).
@@ -16,7 +18,8 @@ import { prefersReducedMotion } from '../lib/prefersReducedMotion';
  * the renewal confirmation is shown only as a notice, because its template text is not reproduced
  * on this site. Names, IDs and dates are sample data and labelled so.
  *
- * Plays once when it comes into view, never loops, and can be replayed with a button. Under
+ * It sits on a white frame: the WhatsApp message is a small card over the frame's right corner, and the
+ * renewal is a chip that settles on it. Plays once when it comes into view, never loops, and can be replayed with a button. Under
  * reduced motion it shows the final state with nothing moving.
  */
 
@@ -69,7 +72,7 @@ export function HeroDemo() {
         timers.push(window.setTimeout(() => setStep(1), 900));
         timers.push(window.setTimeout(() => setStep(2), 3600));
       },
-      { threshold: 0.5 },
+      { threshold: 0.15 },
     );
     io.observe(el);
     return () => {
@@ -87,93 +90,89 @@ export function HeroDemo() {
   const ravi = step === 2 ? 'active' : 'expired';
 
   return (
-    <div ref={root} className="relative">
-      <div role="img" aria-label={LABEL} className="relative lg:pb-[150px]">
-        {/* The owner console's member list, in the console's own colours (--dash-*). */}
-        <div className="hero-demo-panel overflow-hidden rounded-[16px] border border-dash-border bg-dash-surface">
-          <div className="flex items-center justify-between gap-3 border-b border-dash-line px-4 py-3 sm:px-5">
-            <p className="text-[15px] font-semibold text-dash-ink">Members</p>
-            <div className="flex gap-1 text-[12px] font-medium">
-              {['All', 'Active', 'Expiring', 'Expired'].map((tab, i) => (
-                <span
-                  key={tab}
-                  className={`rounded-md px-2 py-1 ${i === 0 ? 'bg-dash-accent-chip text-dash-accent-strong' : 'text-dash-ink-muted'}`}
-                >
-                  {tab}
-                </span>
-              ))}
+    <div ref={root} className="hero-demo">
+      <div className="hero-float">
+        <TiltFrame max={1.5}>
+          <SpotlightSurface className="rounded-[20px]">
+            <div role="img" aria-label={LABEL} className="hero-frame plastic">
+              {/* The owner console's member list, in the console's own colours (--dash-*). */}
+              <div className="hero-lid">
+                <div className="flex items-center justify-between gap-3 border-b border-dash-line px-4 py-3 sm:px-6 sm:py-4">
+                  <p className="text-[16px] font-semibold text-dash-ink">Members</p>
+                  <div className="flex gap-1 text-[13px] font-medium">
+                    {['All', 'Active', 'Expiring', 'Expired'].map((tab, i) => (
+                      <span
+                        key={tab}
+                        className={`rounded-md px-2.5 py-1 ${i === 0 ? 'bg-dash-accent-chip text-dash-accent-strong' : 'text-dash-ink-muted'}`}
+                      >
+                        {tab}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <ul>
+                  {MEMBERS.map(member => {
+                    const isRavi = member.id === 'GF0012';
+                    const status = isRavi ? ravi : member.status;
+                    const note = isRavi && step === 2 ? 'Renewed till 26 Nov' : member.note;
+                    return (
+                      <li
+                        key={member.id}
+                        className={`flex items-center gap-3 border-b border-dash-line px-4 py-3.5 last:border-b-0 sm:gap-4 sm:px-6 sm:py-4 ${
+                          isRavi && step === 1 ? 'bg-dash-accent-soft' : ''
+                        } motion-safe:transition-colors motion-safe:duration-300`}
+                      >
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-dash-raise text-[13px] font-semibold text-dash-ink-dim">
+                          {member.name
+                            .split(' ')
+                            .map(part => part[0])
+                            .join('')}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-semibold text-dash-ink">{member.name}</span>
+                          <span className="block text-[13px] tabular-nums text-dash-ink-muted">
+                            {member.id}, {member.plan}
+                          </span>
+                        </span>
+                        <span className="flex flex-col items-end gap-1">
+                          <span className={`status-chip status-${status}`}>{STATUS_LABEL[status]}</span>
+                          {note && <span className="text-[12px] tabular-nums text-dash-ink-muted">{note}</span>}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
-          </div>
 
-          <ul>
-            {MEMBERS.map(member => {
-              const isRavi = member.id === 'GF0012';
-              const status = isRavi ? ravi : member.status;
-              const note = isRavi && step === 2 ? 'Renewed till 26 Nov' : member.note;
-              return (
-                <li
-                  key={member.id}
-                  className={`flex items-center gap-3 border-b border-dash-line px-4 py-3 last:border-b-0 sm:px-5 ${
-                    isRavi && step === 1 ? 'bg-dash-accent-soft' : ''
-                  } motion-safe:transition-colors motion-safe:duration-500`}
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-dash-raise text-[12px] font-semibold text-dash-ink-dim">
-                    {member.name
-                      .split(' ')
-                      .map(part => part[0])
-                      .join('')}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] font-semibold text-dash-ink">{member.name}</span>
-                    <span className="block text-[12px] tabular-nums text-dash-ink-muted">
-                      {member.id}, {member.plan}
-                    </span>
-                  </span>
-                  <span className="flex flex-col items-end gap-1">
-                    <span className={`status-chip status-${status}`}>{STATUS_LABEL[status]}</span>
-                    {note && <span className="text-[11px] tabular-nums text-dash-ink-muted">{note}</span>}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {/* The message GymFlow sends. It overlaps the lower rows on the name side, so Ravi's row and every
-            status chip stay visible: the chip changing is the point of the story. Below lg it sits in the
-            flow under the panel instead. */}
-        <div
-          className={`relative z-10 -mt-3 ml-auto mr-2 w-[88%] sm:w-[320px] lg:absolute lg:bottom-0 lg:left-[-32px] lg:mr-0 lg:mt-0 lg:w-[300px] ${
-            step >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-          } motion-safe:transition-all motion-safe:duration-500`}
-        >
-          <div className="rounded-[12px] bg-[var(--wa-chat)] p-2.5 shadow-[0_18px_40px_-18px_rgb(20_33_61/0.45)]">
-            <p className="mb-2 text-center">
-              <span className="rounded-md bg-[var(--wa-chip)] px-2 py-[3px] text-[10px] font-semibold text-[var(--wa-ink-dim)]">
-                Ravi’s WhatsApp, 9:00 AM
-              </span>
-            </p>
-            <WhatsAppBubble message={MESSAGE} className="w-full" />
-          </div>
-        </div>
-
-        {/* Renewal recorded. A notice rather than the message itself; see the note at the top. */}
-        <div
-          className={`absolute left-4 top-[-18px] flex items-center gap-2 rounded-[10px] bg-foreground px-3 py-2 text-[12px] font-medium text-background shadow-[0_12px_28px_-14px_rgb(20_33_61/0.6)] ${
-            step === 2 ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
-          } motion-safe:transition-all motion-safe:duration-500`}
-        >
-          <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={3} />
-          Renewal recorded. Confirmation sent on WhatsApp.
-        </div>
+            {/* The message GymFlow sends, as a small white card over the frame's right corner. The chip
+                mounts when the renewal is recorded, so it settles then. */}
+            <div className="hero-slot">
+              <div data-on={step >= 1} className="hero-slip slip relative z-10 p-3 pt-4">
+                <p className="mb-2 font-sans text-[13px] text-muted-foreground">
+                  {step === 2 ? 'Renewal recorded. Confirmation sent on WhatsApp.' : 'Ravi’s WhatsApp, 9:00 AM'}
+                </p>
+                <div className="rounded-[8px] bg-[var(--wa-chat)] p-2 font-sans">
+                  <WhatsAppBubble message={MESSAGE} className="w-full" />
+                </div>
+              </div>
+              {step === 2 && (
+                <StampIn delay={0.1} className="hero-stamp">
+                  <span className="stamp">Renewed till 26 Nov</span>
+                </StampIn>
+              )}
+            </div>
+          </SpotlightSurface>
+        </TiltFrame>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-4 text-[12px] text-muted-foreground">
+      <div className="hero-foot flex items-center gap-4 text-[14px] text-muted-foreground">
         <span>Sample data</span>
         <button
           type="button"
           onClick={replay}
-          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-2 font-medium text-accent-text hover:text-foreground"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-1 font-medium text-accent-text transition-colors hover:text-foreground active:text-accent-strong"
         >
           <RotateCcw aria-hidden className="h-3.5 w-3.5" />
           Play again

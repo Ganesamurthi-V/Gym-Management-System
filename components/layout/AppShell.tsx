@@ -1,14 +1,63 @@
 // Server component — passes children to the client shell guard
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import ShellGuard from './ShellGuard'
-import { getAuthUser, getGymCore, getSubscriptionState } from '@/lib/dal'
-import { PATHNAME_HEADER, needsSubscriptionGuard } from '@/lib/protected-routes'
+import { getAuthUser, getGymCore } from '@/lib/dal'
+import { shellDataFromCore } from '@/lib/owner/access'
+import GenericPageSkeleton from './GenericPageSkeleton'
+import { OWNER_HOME, PATHNAME_HEADER } from '@/lib/protected-routes'
+import { EMPTY_SHELL_DATA, decideShellGuard, type ShellData } from '@/lib/owner/shellGuard'
 import { roleFromClaims } from '@/lib/auth/roles'
 import { MEMBER_HOME } from '@/lib/member/redirect'
 import { startPageTimer } from '@/lib/perf'
 import { createClient } from '@/lib/supabase/server'
 import { memberCapReached } from '@/lib/subscription-utils'
+
+/**
+ * ONE merged `gyms` query supplies identity + subscription + is_active (replacing three
+ * separate SELECTs). getGymCore is React cache()-wrapped and deliberately uncached across
+ * requests, so pages below reuse this query for free and access-control state is never stale.
+ */
+async function loadShellData(userId: string): Promise<ShellData> {
+  const { gym: core } = await getGymCore(userId)
+  if (!core) return EMPTY_SHELL_DATA
+
+  // Add-member lock. plan_type is already loaded, so paid gyms (the hot path) skip the count
+  // query entirely; trial/free gyms pay one head-only count scoped to the server-resolved gym.
+  let memberCapped = false
+  if (core.plan_type === 'trial' || core.plan_type === 'free') {
+    const supabase = await createClient()
+    const { count } = await supabase
+      .from('members')
+      .select('id', { count: 'exact', head: true })
+      .eq('gym_id', core.id)
+    // A failed count leaves the control unlocked; the API and DB trigger still refuse.
+    memberCapped = memberCapReached(core.plan_type, count ?? 0)
+  }
+
+  return shellDataFromCore(core, memberCapped)
+}
+
+/**
+ * Server-side access gate. It awaits the gym row and redirects BEFORE returning `children`.
+ * `children` is only an unrendered element here: React Flight serialises a server component's
+ * props only after the component returns them, so while this suspends no page byte (not even
+ * its loading.tsx) is emitted, and a redirecting owner never receives tenant data. The chrome
+ * around it streams at once and the Suspense fallback is a neutral skeleton. The same
+ * decideShellGuard runs in ShellGuard on client navigations (the layout does not re-run then).
+ */
+async function AccessGate({ shellData, children }: { shellData: Promise<ShellData>; children: React.ReactNode }) {
+  const [data, pathname] = await Promise.all([
+    shellData,
+    // Always set by middleware for /owner/*; the fallback keeps a missing header failing closed
+    // (decided as a normal owner page) instead of silently passing.
+    headers().then(h => h.get(PATHNAME_HEADER) || OWNER_HOME),
+  ])
+  const target = decideShellGuard(data, pathname)
+  if (target !== 'ok') redirect(target)
+  return <>{children}</>
+}
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const done = startPageTimer('AppShell')
@@ -29,115 +78,23 @@ export default async function AppShell({ children }: { children: React.ReactNode
     redirect(MEMBER_HOME)
   }
 
-  let gym = null
-  let isActive = true
-  let subscriptionStatus = 'unknown'
-  let trialDaysLeft = 0
-  let memberCapped = false
-
-  if (user) {
-    // ONE merged `gyms` query supplies identity + subscription + is_active.
-    // This replaced three separate single-row SELECTs (getGym, getGymSubscription,
-    // getGymIsActive) that ran on every navigation. Measured on the live
-    // project, selecting all of these columns costs the same ~205ms as
-    // selecting one, so the round trips were pure waste.
-    //
-    // Because getGymCore is React cache()-wrapped, every page below this layout
-    // that calls getGym()/getGymSubscription()/getGymIsActive() reuses this
-    // exact query for free.
-    //
-    // ─── WHY THE UNREAD COUNT IS NO LONGER AWAITED HERE ────────────────────
-    // This used to be `Promise.all([getGymCore, getUnreadAdminMessages])`. The
-    // two run concurrently, so the shell paid the SLOWER of the pair — and
-    // measured against this project the unread count is the slower one whenever
-    // its 30s Redis entry has expired:
-    //
-    //     gyms single row .............. ~157ms
-    //     admin_messages unread count .. ~214ms   (no gym_id predicate; row
-    //                                              visibility comes from an RLS
-    //                                              EXISTS subquery against gyms)
-    //
-    // Because this is a LAYOUT, nothing downstream can be sent until it resolves
-    // — not even the `loading.tsx` skeleton. So a cosmetic notification badge was
-    // setting the time-to-first-byte for every single owner page, roughly every
-    // 30 seconds.
-    //
-    // The gym row genuinely has to block: it carries `is_active` and the
-    // subscription columns behind the paywall redirect below, and a redirect must
-    // be decided before any HTML is streamed. The badge does not. AccountMenu now
-    // fetches it on mount instead, so it costs the shell nothing.
-    const { gym: core } = await getGymCore(user.id)
-
-    if (core) {
-      gym = {
-        id: core.id,
-        name: core.name,
-        onboarding_completed: core.onboarding_completed,
-        owner_id: core.owner_id,
-        created_at: core.created_at,
-        onboarding_data: core.onboarding_data,
-      }
-      isActive = core.is_active ?? true
-
-      // Add-member lock. plan_type is already loaded, so paid gyms (the hot path) skip the count
-      // query entirely; trial/free gyms pay one head-only count scoped to the server-resolved gym.
-      if (core.plan_type === 'trial' || core.plan_type === 'free') {
-        const supabase = await createClient()
-        const { count } = await supabase
-          .from('members')
-          .select('id', { count: 'exact', head: true })
-          .eq('gym_id', core.id)
-        // A failed count leaves the control unlocked; the API and DB trigger still refuse.
-        memberCapped = memberCapReached(core.plan_type, count ?? 0)
-      }
-
-      const subState = getSubscriptionState(core)
-      subscriptionStatus = subState.status
-      trialDaysLeft = subState.daysLeft ?? 0
-
-      /**
-       * ─── SUBSCRIPTION PAYWALL ─────────────────────────────────────────────
-       *
-       * Moved here from `middleware.ts`, where it cost a dedicated ~206ms
-       * `gyms` SELECT on every protected navigation. The row is already loaded
-       * above, so the guard is now free.
-       *
-       * Still enforced server-side, on every route, before any page content is
-       * streamed — so the protection is equivalent to the middleware version.
-       * The path conditions come from the same shared helper the middleware
-       * uses, so the two gates cannot drift apart.
-       */
-      const pathname = (await headers()).get(PATHNAME_HEADER) ?? ''
-      if (subState.isExpired && needsSubscriptionGuard(pathname)) {
-        redirect('/owner/subscription')
-      }
-    } else {
-      // No gym row for this owner: a gym-less session never reaches the owner pages. The owner
-      // is signed in but has not finished registration, so the next step is the mobile number step (/auth/add-phone, no code verification)
-      // which creates the gym. Sending them to /owner/subscription instead looped
-      // forever, because that page sends gym-less owners to onboarding, which came back here.
-      const pathname = (await headers()).get(PATHNAME_HEADER) ?? ''
-      if (needsSubscriptionGuard(pathname)) {
-        redirect('/auth/add-phone')
-      }
-    }
-  }
+  // ─── WHY NOTHING BELOW IS AWAITED ─────────────────────────────────────────
+  // This is a LAYOUT, so awaiting the ~200ms gym row here would hold back the sidebar and header.
+  // The row is started here (not awaited) and handed to the client shell and to AccessGate as a
+  // promise. The chrome streams at once; `children` sit inside AccessGate's <Suspense>, so the
+  // page (and its data) is released only once the access decision says the owner may see it.
+  // The unread badge is fetched by AccountMenu on mount for the same reason.
+  // No session: middleware already redirects; this is the same safety net, decided before streaming.
+  if (!user) redirect('/auth/login')
+  const shellData = loadShellData(user.id)
 
   done()
 
   return (
-    <ShellGuard
-      initialUser={user}
-      initialGym={gym}
-      initialIsActive={isActive}
-      // `null` means "not fetched" — AccountMenu resolves it on mount so the
-      // shell is not gated on a cosmetic badge. See the note above.
-      initialUnreadCount={null}
-      initialSubscriptionStatus={subscriptionStatus}
-      initialTrialDaysLeft={trialDaysLeft}
-      memberCapped={memberCapped}
-    >
-      {children}
+    <ShellGuard initialUser={user} shellData={shellData} initialUnreadCount={null}>
+      <Suspense fallback={<GenericPageSkeleton />}>
+        <AccessGate shellData={shellData}>{children}</AccessGate>
+      </Suspense>
     </ShellGuard>
   )
 }

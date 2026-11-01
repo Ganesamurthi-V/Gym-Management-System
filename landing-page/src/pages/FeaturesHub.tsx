@@ -1,22 +1,19 @@
-import { sectionIds, type FeaturePage } from '../data/featurePages';
+import type { FeaturePage } from '../data/featurePages';
 import { DocsPager } from './DocsPager';
-import { DocsShell } from './DocsShell';
-import { FeatureTitle, FeatureShell, SectionView } from './featureParts';
+import { FeatureHead, FeatureSections, FeatureShell, MoreFromGymFlow } from './featureParts';
 
-/** /features: the docs home. The first section carries the card grid, the rest read as an article. */
+/** /features: the docs home. The first section is the ruled list of features, the rest are composed like any page. */
 export function FeaturesHub({ page }: { page: FeaturePage }) {
-  const ids = sectionIds(page);
   return (
     <FeatureShell>
-      <div>
-        <DocsShell page={page}>
-          <FeatureTitle page={page} />
-          {page.sections.map((section, i) => (
-            <SectionView key={section.heading} id={ids[i]} heading={section.heading} blocks={section.blocks} index={i} />
-          ))}
+      <FeatureHead page={page} search />
+      <FeatureSections page={page} />
+      <div className="px-5 pb-16 md:px-8 md:pb-24">
+        <div className="mx-auto max-w-[1200px]">
           <DocsPager page={page} />
-        </DocsShell>
+        </div>
       </div>
+      <MoreFromGymFlow page={page} />
     </FeatureShell>
   );
 }

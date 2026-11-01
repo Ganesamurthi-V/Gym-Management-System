@@ -26,14 +26,13 @@
       The site always opens in the light theme, whatever the visitor's OS setting, so
       the browser chrome is light for every scheme. Matches --background in src/index.css.
     -->
-    <meta name="theme-color" content="#f5f5f5" />
+    <meta name="theme-color" content="#fafbfd" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
-      Instrument Serif is requested italic-only (ital@1) and at a single weight,
-      because the sole thing it sets is the emphasised words in the hero heading.
-      Asking for the roman too would double the payload for glyphs never drawn.
+      Three faces (DESIGN.md): Familjen Grotesk for headings, IBM Plex Sans for text, JetBrains Mono for
+      times, IDs and tickets. The latin-ext subsets carry the rupee sign.
     -->
     <!--
       Non-blocking. A plain rel="stylesheet" here stops the first paint until Google Fonts
@@ -45,27 +44,62 @@
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
       onload="this.onload=null;this.rel='stylesheet'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@1&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
       />
     </noscript>
     <style>
-      /* Light is the only theme a visit starts in; the toggle can still switch for the current visit. */
-      html { background: #f5f5f5; color-scheme: light; }
-      html.dark { background: #141414; color-scheme: dark; }
+      /* Hallmark · shape: SaaS narrative · genre: modern-minimal · theme: cobalt (brand blue) · redesign: full
+       * paper: oklch(98.6% 0.005 250) · accent: #2563eb · display: Familjen Grotesk · body: IBM Plex Sans · hero: Settled · nav: slim bar · footer: letter close · signature: the product shown big over a dot grid with a floating WhatsApp confirmation card
+       * axes: light/grotesk/blue · posture: restrained · contrast: pass · fold: pass · v2.0.0 · draw: cee847 */
+      /* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: S, section compositions are rebuilt by the section agents in parallel */
+      /* Token block for the first paint; the same values live in src/index.css.
+         Night sits on the bare :root and paper on :root:not(.dark). */
+      :root {
+        --background: oklch(15% 0.02 262);
+        --foreground: oklch(94% 0.008 250);
+        --muted-foreground: oklch(74% 0.02 256);
+        --hero-copy: oklch(84% 0.015 255);
+        --border-strong: oklch(38% 0.035 262);
+        --accent: #2563eb;
+        --accent-ink: #ffffff;
+        --accent-text: #93c5fd;
+        --ring: #93c5fd;
+        --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-display: "Familjen Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --accent-edge: oklch(39% 0.16 260);
+        --space-sm: 12px;
+        --space-lg: 24px;
+        --space-xl: 40px;
+        --space-2xl: 64px;
+      }
+      :root:not(.dark) {
+        --background: oklch(98.6% 0.005 250);
+        --foreground: oklch(21% 0.028 262);
+        --muted-foreground: oklch(46% 0.02 258);
+        --hero-copy: oklch(36% 0.022 260);
+        --border-strong: oklch(83% 0.012 252);
+        --accent-text: #1d4ed8;
+        --ring: #1d4ed8;
+      }
+      html, body { overflow-x: clip; }
+      :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+      /* Light is the default; the toggle can still switch for the current visit. */
+      html { background: var(--background); color-scheme: dark; }
+      html:not(.dark) { background: var(--background); color-scheme: light; }
     </style>
 <!--feature-meta-->
 <!--
       ─── THEME BOOTSTRAP ────────────────────────────────────────────────────
       Runs before first paint and before the CSS applies, so the theme is already
-      on <html> when the page renders. Dark is the default, so without this the
-      page would paint light and then swap to dark a frame later — a visible white
-      flash for the majority of visits.
+      on <html> when the page renders. Light is the default; without this a visitor who
+      switched to dark earlier in the visit would see the page paint light and then swap
+      to dark a frame later.
 
       Inline and synchronous on purpose: a deferred or external script would run
       after paint and defeat the point. Kept in sync with useTheme() in
@@ -94,31 +128,24 @@
         longer blank while the 65 KB-brotli shared chunk downloads (feature pages measured 3.7 s to
         first paint on a throttled phone, 4.5 s in the audit). Styled to look like the real hero's
         first screen: same stack and sizes, centred H1, muted intro, pill buttons, and the
-        breadcrumb small and muted above the H1. Hex values mirror the tokens in src/index.css
+        breadcrumb small and muted above the H1. Colours come from the token block above, which mirrors src/index.css
         (--background, --foreground, --muted-foreground, --hero-copy, --border-strong) because
         this block loads before that file; html.dark is set by the bootstrap script above.
       */
-      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 124px 20px 48px; font: 16px/1.6 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #0a0a0a; }
-      #seo-fallback a { color: #1d4ed8; }
-      #seo-fallback nav { text-align: center; font-size: 13px; line-height: 32px; color: #6b6b6b; }
+      #seo-fallback { max-width: 760px; margin: 0 auto; padding: 124px 20px 48px; font: 16px/1.6 var(--font-sans); color: var(--foreground); }
+      #seo-fallback a { color: var(--accent-text); }
+      #seo-fallback nav { text-align: center; font-size: 13px; line-height: 32px; color: var(--muted-foreground); }
       #seo-fallback nav a { color: inherit; text-decoration: none; }
-      #seo-fallback h1 { margin: 24px 0 0; text-align: center; text-wrap: balance; font-size: clamp(40px, 5vw, 72px); font-weight: 500; line-height: 1.1; letter-spacing: -0.025em; }
-      #root:not([data-page]) #seo-fallback h1 { margin-top: 64px; font-size: clamp(40px, 9vw, 96px); }
-      #seo-fallback h1 + p { max-width: 640px; margin: 24px auto 0; text-align: center; font-size: clamp(16px, 1.35vw, 19px); color: #3a3a3a; }
-      #seo-fallback h1 + p + p { display: flex; justify-content: center; gap: 12px; margin-top: 32px; font-size: 0; }
-      #seo-fallback h1 + p + p a { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; padding: 12px 22px; border-radius: 9999px; font-size: 14px; font-weight: 500; line-height: 1.25; white-space: nowrap; text-decoration: none; color: #0a0a0a; border: 1px solid #d4d4d4; }
-      #seo-fallback h1 + p + p a:first-child { background: #0a0a0a; color: #f5f5f5; border-color: #0a0a0a; }
+      #seo-fallback h1 { margin: var(--space-lg) 0 0; text-align: center; text-wrap: balance; font-family: var(--font-display); font-size: clamp(44px, 6vw, 88px); font-weight: 600; line-height: 1.04; letter-spacing: -0.028em; }
+      #root:not([data-page]) #seo-fallback h1 { margin-top: var(--space-2xl); font-size: clamp(52px, 7.5vw, 104px); line-height: 1.02; }
+      #seo-fallback h1 + p { max-width: 640px; margin: var(--space-lg) auto 0; text-align: center; font-size: clamp(16px, 1.35vw, 19px); color: var(--hero-copy); }
+      #seo-fallback h1 + p + p { display: flex; justify-content: center; gap: var(--space-sm); margin-top: 32px; font-size: 0; }
+      #seo-fallback h1 + p + p a { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; padding: var(--space-sm) var(--space-lg); min-height: 48px; border-radius: 10px; font-family: var(--font-display); font-size: 16px; font-weight: 500; line-height: 1; white-space: nowrap; text-decoration: none; color: var(--foreground); border: 1px solid var(--border-strong); }
+      #seo-fallback h1 + p + p a:first-child { background: var(--accent); color: var(--accent-ink); border-color: var(--accent-edge); }
       @media (min-width: 640px) { #seo-fallback h1 + p + p a { flex: none; } }
-      #seo-fallback h1 + p + p + p { margin-top: 24px; text-align: center; font-size: 13px; color: #6b6b6b; }
-      #seo-fallback h2 { font-size: 22px; margin-top: 36px; }
-      #seo-fallback h3 { font-size: 17px; margin-top: 20px; }
-      html.dark #seo-fallback { color: #fafafa; }
-      html.dark #seo-fallback a { color: #93c5fd; }
-      html.dark #seo-fallback nav a { color: inherit; }
-      html.dark #seo-fallback nav, html.dark #seo-fallback h1 + p + p + p { color: #a3a3a3; }
-      html.dark #seo-fallback h1 + p { color: #dedede; }
-      html.dark #seo-fallback h1 + p + p a { color: #fafafa; border-color: #333333; }
-      html.dark #seo-fallback h1 + p + p a:first-child { background: #fafafa; color: #141414; border-color: #fafafa; }
+      #seo-fallback h1 + p + p + p { margin-top: var(--space-lg); text-align: center; font-size: 13px; color: var(--muted-foreground); }
+      #seo-fallback h2 { font-size: 28px; line-height: 1.1; margin-top: 36px; font-weight: 600; letter-spacing: -0.02em; }
+      #seo-fallback h3 { font-size: 20px; line-height: 1.15; margin-top: 20px; font-weight: 500; }
     </style>
 <!--
       Google Analytics 4, in Consent Mode. analytics_storage starts "denied": the tag is set up

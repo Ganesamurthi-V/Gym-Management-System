@@ -1,0 +1,106 @@
+/* Facts (Arena): four giant numerals divided by 4px bar rules; the free-plan figure sits on Royal Blue.
+   Purpose: the outline word WHY behind the heading and ruled rows with a blue bar on hover.
+   Tokens only. */
+.facts-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.facts-row > div > .fact {
+  height: 100%;
+}
+.facts-row > div + div {
+  border-top: 4px solid var(--border-strong);
+}
+@media (min-width: 1024px) {
+  .facts-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .facts-row > div + div {
+    border-top: 0;
+    border-left: 4px solid var(--border-strong);
+  }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .facts-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .facts-row > div:nth-child(2) {
+    border-top: 0;
+    border-left: 4px solid var(--border-strong);
+  }
+  .facts-row > div:nth-child(4) {
+    border-left: 4px solid var(--border-strong);
+  }
+}
+
+.fact {
+  margin: 0;
+  padding: var(--space-xl) var(--space-lg) var(--space-xl);
+}
+.fact-num {
+  color: var(--foreground);
+}
+.fact-unit {
+  display: block;
+  margin-top: var(--space-md);
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--foreground);
+}
+.fact-text {
+  margin-top: var(--space-xs);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+/* The one block of blue: white type on Royal Blue, AA in both themes. */
+.fact--free {
+  background: var(--accent);
+}
+.fact--free .fact-num,
+.fact--free .fact-unit,
+.fact--free .fact-text {
+  color: var(--accent-ink);
+}
+
+/* Purpose */
+.why-word {
+  position: absolute;
+  top: -0.12em;
+  left: -0.04em;
+  z-index: 0;
+  font-size: clamp(10rem, 24vw, 240px);
+}
+.why-list {
+  border-bottom: 1px solid var(--border);
+}
+.why-row {
+  position: relative;
+  padding: var(--space-lg) 0 var(--space-lg) var(--space-md);
+  border-top: 1px solid var(--border);
+}
+/* The 4px blue left bar snaps in on hover; transform only. */
+.why-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 4px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 80ms linear;
+}
+@media (hover: hover) {
+  .why-row:hover::before {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .why-row::before {
+    transition: none;
+  }
+}

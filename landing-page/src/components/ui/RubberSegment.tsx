@@ -14,8 +14,8 @@ import { animate, motion, useMotionTemplate, useMotionValue, useReducedMotion, u
 import './RubberSegment.css';
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
-const SPRING_UI = { type: 'spring', duration: 0.3, bounce: 0 } as const;
-const SPRING_MOMENTUM = { type: 'spring', duration: 0.4, bounce: 0.2 } as const;
+const SPRING_UI = { type: 'spring', duration: 0.16, bounce: 0 } as const;
+const SPRING_MOMENTUM = { type: 'spring', duration: 0.16, bounce: 0 } as const;
 const SPRING_RELAX = { type: 'spring', duration: 0.16, bounce: 0 } as const;
 const DILATE = 0.19;
 const HANDOFF = 0.15;
@@ -27,7 +27,7 @@ const RUBBER = 0.55;
 const SIZES = {
   sm: { height: 28, font: 12, pad: 10, min: 36 },
   md: { height: 36, font: 13, pad: 14, min: 44 },
-  lg: { height: 44, font: 14, pad: 18, min: 48 }
+  lg: { height: 52, font: 16, pad: 20, min: 48 }
 } as const;
 
 type SizeKey = keyof typeof SIZES;
@@ -100,16 +100,16 @@ export default function RubberSegment({
   value,
   defaultValue,
   onChange,
-  trackColor = '#27272a',
-  thumbColor = '#fafafa',
-  textColor = '#fafafa',
-  activeTextColor = '#18181b',
+  trackColor = 'var(--frame)',
+  thumbColor = 'var(--accent)',
+  textColor = 'var(--foreground)',
+  activeTextColor = 'var(--accent-ink)',
   size = 'md',
-  radius = 10,
+  radius = 0,
   inset = 3,
   equalSlots = true,
-  stretch = 100,
-  squash = 3,
+  stretch = 0,
+  squash = 0,
   speed = 1,
   glide = 75,
   draggable = true,

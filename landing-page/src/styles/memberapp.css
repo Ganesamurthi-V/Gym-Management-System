@@ -1,0 +1,51 @@
+/* Member app phone: drawn at 256 x 520 and enlarged with a transform from md up (about 280px wide),
+   so its inner type and spacing keep the proportions of the real app. */
+.ma-stage {
+  position: relative;
+  width: 256px;
+  height: 520px;
+}
+.ma-scale {
+  width: 256px;
+  height: 520px;
+  transform-origin: 0 0;
+}
+@media (min-width: 768px) {
+  .ma-stage {
+    width: 280px;
+    height: 568px;
+  }
+  .ma-scale {
+    transform: scale(1.09375);
+  }
+}
+.ma-phone {
+  border-radius: 24px;
+  box-shadow: var(--shadow-lift);
+}
+
+/* The member app's own light-theme values. The device screen stays light in both themes because
+   it depicts the real app, so these do not flip. */
+:root {
+  --ma-bezel: #0b0b0b;
+  --ma-ink: #0f172a;
+  --ma-ink2: #334155;
+  --ma-ink3: #475569;
+  --ma-muted: #64748b;
+  --ma-faint: #5b6b82;
+  --ma-chev: #cbd5e1;
+  --ma-line: #e2e8f0;
+  --ma-bg: #f8fafc;
+  --ma-tile: #eff6ff;
+  --ma-ok: #047857;
+  --ma-okbg: #ecfdf5;
+  --ma-okline: #a7f3d0;
+  --ma-flame: #f97316;
+  --ma-blue1: #3b82f6;
+  --ma-blue2: #1d4ed8;
+  --ma-blue-ink: #dbeafe;
+}
+:root {
+  --ma-brand: #2563eb;
+  --ma-track: #f1f5f9;
+}

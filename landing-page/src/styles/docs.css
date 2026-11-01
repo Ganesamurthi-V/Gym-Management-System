@@ -1,0 +1,46 @@
+/* Docs shell for the guides: a quiet ruled reading layout. Tokens only; transform and opacity only. */
+
+/* Sidebar and ToC link: a 2px blue bar on the ruled edge marks the current page; hover shows it at 40%. */
+.doc-side-link {
+  position: relative;
+}
+.doc-side-link::before {
+  content: "";
+  position: absolute;
+  inset-block: 4px;
+  left: -1px;
+  width: 2px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 200ms var(--ease-out, ease-out);
+}
+.doc-side-link:hover::before {
+  transform: scaleY(0.4);
+}
+.doc-side-link[aria-current="page"]::before,
+.doc-side-link[aria-current="location"]::before {
+  transform: scaleY(1);
+}
+
+/* The reading column: 65ch measure (set by the shell), line-height 1.65, headings 600. */
+.doc-prose {
+  font-size: 17px;
+  line-height: 1.65;
+}
+.doc-prose h2,
+.doc-prose h3 {
+  font-weight: 600;
+}
+
+/* The search field keeps room for its glyph and the keycap hint; .input-field sets its own padding later than utilities. */
+.docs-search .input-field {
+  padding-left: 44px;
+  padding-right: 56px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-side-link::before {
+    transition: none;
+  }
+}

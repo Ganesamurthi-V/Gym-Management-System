@@ -1,0 +1,18 @@
+/* The close (Cobalt): the one blue band, centred, 160px of air above and below. Tokens only. */
+.close-cta {
+  padding-block: var(--space-3xl);
+}
+@media (min-width: 768px) {
+  .close-cta {
+    padding-block: 160px;
+  }
+}
+
+/* The ASCII kit reads its colours from the document root, so on the blue band it would draw blue
+   and dark ink on blue. The canvas is flattened to white instead and held at 60% as a quiet texture. */
+.close-ascii {
+  opacity: 0.6;
+}
+.close-ascii canvas {
+  filter: brightness(0) invert(1);
+}

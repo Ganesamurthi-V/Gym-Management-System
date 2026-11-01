@@ -101,20 +101,27 @@ const flat = (block) =>
     .replace(/\s+/g, ' ')
     .trim()
 const HEADINGS = [
+  ['Benefits', 'dashboard-title', 'dashboard'],
   ['BentoFeatures', 'features-title', 'features'],
-  ['Problems', 'problems-title', 'problems'],
-  ['Benefits', 'benefits-title', 'benefits'],
   ['WhatsAppSection', 'whatsapp-title', 'whatsapp'],
-  ['HowItWorks', 'how-title', 'how'],
+  ['HowItWorks', 'steps-title', 'steps'],
   ['Pricing', 'pricing-title', 'pricing'],
   ['FAQ', 'faq-title', 'faq'],
-  ['Founder', 'founder-title', 'founder'],
+  ['CTA', 'cta-title', 'cta'],
 ]
 for (const [component, titleId, fallbackId] of HEADINGS) {
-  const block = read(`src/components/${component}.tsx`).match(new RegExp(`<h2 id="${titleId}"[\\s\\S]*?</h2>`))
+  const block = read(`src/components/${component}.tsx`).match(new RegExp(`<h2\\s+id="${titleId}"[\\s\\S]*?</h2>`))
   const fb = html.match(new RegExp(`<h2 id="${fallbackId}">(.+?)</h2>`))
   if (!block || !fb) { errors.push(`h2 check: cannot find ${component} (${titleId}) or index.html #${fallbackId}`); continue }
   if (flat(block[0]) !== decode(fb[1])) errors.push(`h2 differs for ${component}: rendered "${flat(block[0])}" vs no-JS "${decode(fb[1])}"`)
+}
+
+// The hero's H1 is the one headline every crawler should read: the no-JS h1 must be the text Hero.tsx renders.
+{
+  const hero = read('src/components/Hero.tsx').match(/<h1[\s\S]*?<\/h1>/)
+  const fbH1 = html.match(/<h1>(.+?)<\/h1>/)
+  if (!hero || !fbH1) errors.push('h1 check: cannot find the h1 in Hero.tsx or index.html')
+  else if (flat(hero[0]) !== decode(fbH1[1])) errors.push(`h1 differs: rendered "${flat(hero[0])}" vs no-JS "${decode(fbH1[1])}"`)
 }
 
 // The feature pages' shared head (src/feature-head.html) restates index.html's inline scripts, and the

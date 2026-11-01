@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Problems } from './components/Problems';
 import { Benefits } from './components/Benefits';
 import { BentoFeatures } from './components/BentoFeatures';
 import { WhatsAppSection } from './components/WhatsAppSection';
 import { HowItWorks } from './components/HowItWorks';
 import { Pricing } from './components/Pricing';
 import { FAQ } from './components/FAQ';
-import { Founder } from './components/Founder';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 
@@ -19,15 +17,13 @@ import { Footer } from './components/Footer';
  * visible before the visitor scrolls.
  */
 const SECTIONS = [
-  { key: 'problems', Section: Problems },
-  { key: 'benefits', Section: Benefits },
+  { key: 'dashboard', Section: Benefits },
   { key: 'features', Section: BentoFeatures },
   { key: 'whatsapp', Section: WhatsAppSection },
-  { key: 'how', Section: HowItWorks },
+  { key: 'steps', Section: HowItWorks },
   { key: 'pricing', Section: Pricing },
   { key: 'faq', Section: FAQ },
-  { key: 'founder', Section: Founder },
-  { key: 'cta', Section: CTA },
+  { key: 'close', Section: CTA },
 ] as const;
 
 /**

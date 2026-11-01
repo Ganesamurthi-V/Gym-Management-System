@@ -1,0 +1,60 @@
+/* FAQ accordion (Cobalt): 1px ruled rows, a plus that turns into a minus, an answer that fades and slides 6px. */
+
+/* Two bars. The vertical one lies down when the row opens, so the plus becomes a minus by transform alone. */
+.faq-glyph {
+  position: relative;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--muted-foreground);
+  transition: color 160ms linear;
+}
+.faq-glyph::before,
+.faq-glyph::after {
+  content: "";
+  position: absolute;
+  inset-inline: 2px;
+  top: calc(50% - 1px);
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform 240ms var(--ease-out);
+}
+.faq-glyph::after {
+  transform: rotate(90deg);
+}
+.faq-trigger[aria-expanded="true"] .faq-glyph {
+  color: var(--accent-text);
+}
+.faq-trigger[aria-expanded="true"] .faq-glyph::after {
+  transform: rotate(0deg);
+}
+.faq-trigger:hover .faq-glyph {
+  color: var(--foreground);
+}
+
+/* Height snaps (the panel is display:none when closed); the answer itself fades in over 6px. */
+.faq-answer {
+  animation: faq-in 300ms var(--ease-out) both;
+}
+@keyframes faq-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-glyph,
+  .faq-glyph::before,
+  .faq-glyph::after {
+    transition: none;
+  }
+  .faq-answer {
+    animation: none;
+  }
+}

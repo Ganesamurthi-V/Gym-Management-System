@@ -1,16 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { prefersReducedMotion } from '../lib/prefersReducedMotion';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { connectionAllowsDecoration } from '../lib/decorationGates';
-import { afterFirstPaint } from '../lib/afterFirstPaint';
-
-type ScrollTriggerStatic = typeof import('gsap/ScrollTrigger').ScrollTrigger;
-
-// Set once gsap's ScrollTrigger has been fetched, which is after the first paint (see the
-// scroll effect below). gsap is not in the entry chunk: it was about 28 KiB gzipped that the hero
-// waited for, to drive one scale-on-scroll effect that cannot be seen before the visitor scrolls.
-let scrollTrigger: ScrollTriggerStatic | undefined;
+import '../styles/hero.css';
 
 // Two cuts of the same film: the 16:9 one for a laptop and the 9:16 one for a phone. A
 // portrait phone shows a 16:9 film as a thin strip with its text too small to read;
@@ -20,27 +13,14 @@ const FILMS = {
   tall: { src: '/video/gymflow-launch-portrait.mp4', poster: '/video/gymflow-launch-portrait-poster.webp', w: 720, h: 1280 },
 } as const;
 
-/** Corner radius as it should look on screen, whatever the frame's scale: [phone, wider]. */
-const RADII = [18, 32] as const;
-
 /**
- * The product film in the hero, arriving the way a window is pulled towards you:
- * it starts at half its size and grows as it is scrolled up, then holds.
- *
- * Its full size is capped two ways. By width, so there is always a margin at the
- * page edges; and by height (the calc in the className), so the frame ends about
- * where a laptop screen does while its top is parked under the navbar. The film is
- * 16:9 and is not cropped to be shorter: its headline sits near the top edge and
- * the phone near the bottom, so a wider-than-16:9 crop clips both.
- *
- * The growth is a transform, not a width. Animating width would change the hero's
- * height on every scroll frame, and every ScrollTrigger further down the page
- * caches its start position from layout — they would all fire late by however
- * much this had grown. Scaling from the top edge keeps the box the layout sees at
- * its final size from the start.
+ * The product film plate: the film in a 20px-radius frame (hairline, layered shadow) with its caption
+ * beneath, on the quiet band Hero.tsx puts it in. Its full size is capped two ways: by
+ * width, and by height (the calc in the className), so the frame ends about where a laptop screen
+ * does. The film is 16:9 and is not cropped: its headline sits near the top edge and the phone
+ * near the bottom.
  */
 export function HeroVideo() {
-  const frame = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const wide = useMediaQuery('(min-width: 768px)');
   const film = wide ? FILMS.wide : FILMS.tall;
@@ -66,90 +46,6 @@ export function HeroVideo() {
   const inView = useRef(false);
   // The icon that flashes in the centre after a click or Space, so the toggle is seen to land.
   const [flash, setFlash] = useState<{ icon: 'play' | 'pause'; n: number } | null>(null);
-
-  // Keep the film's top edge below the first screen. At load only the hero copy
-  // should be visible: a strip of the film peeking in under the trust points looks
-  // like a clipped box. The gap is measured, not guessed, because how much of the
-  // page the copy fills depends on the screen. offsetTop rather than a bounding
-  // rect so the entrance tween's transform on the wrapper does not skew it.
-  useLayoutEffect(() => {
-    const wrap = frame.current?.parentElement;
-    if (!wrap) return;
-    const place = (refresh = true) => {
-      wrap.style.marginTop = '';
-      let top = 0;
-      for (let e: HTMLElement | null = wrap; e; e = e.offsetParent as HTMLElement | null) top += e.offsetTop;
-      const base = parseFloat(getComputedStyle(wrap).marginTop) || 0;
-      // Not on a phone: the copy is short against a tall screen, so pushing the film below the
-      // fold left a blank band under the trust points. The film follows the copy instead.
-      const extra = window.innerWidth < 768 ? 0 : Math.min(640, Math.max(0, window.innerHeight + 16 - top));
-      if (extra > 0) wrap.style.marginTop = `${base + extra}px`;
-      // Skipped on the first call: no trigger exists yet (the one below is created in an effect
-      // that runs after this), and the refresh was a full pass of layout reads in front of the
-      // first paint. Later calls come from a resize, where triggers do need their positions redone.
-      if (refresh) scrollTrigger?.refresh();
-    };
-    place(false);
-    let timer: number | undefined;
-    const onResize = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(place, 150);
-    };
-    window.addEventListener('resize', onResize);
-    return () => {
-      window.removeEventListener('resize', onResize);
-      window.clearTimeout(timer);
-      wrap.style.marginTop = '';
-    };
-  }, []);
-
-  useEffect(() => {
-    const el = frame.current;
-    if (!el || prefersReducedMotion()) return;
-
-    // Half size reads as a deliberate small window on a desktop; on a phone it
-    // is a thumbnail, so the film starts nearer its full size there.
-    const from = wide ? 0.5 : 0.84;
-    const radius = RADII[wide ? 1 : 0];
-    // gsap's power1.out.
-    const ease = (t: number) => 1 - (1 - t) * (1 - t);
-    const apply = (p: number) => {
-      const s = from + (1 - from) * p;
-      el.style.transform = `scale(${s})`;
-      // The radius is scaled with the element, so divide it back out.
-      el.style.borderRadius = `${radius / s}px`;
-    };
-    // The starting pose is set now, in plain DOM, so there is no jump when the trigger arrives.
-    apply(0);
-
-    let cancelled = false;
-    let kill: (() => void) | undefined;
-    const cancelPaintWait = afterFirstPaint(() => {
-      void Promise.all([import('gsap'), import('gsap/ScrollTrigger')]).then(([{ gsap }, { ScrollTrigger }]) => {
-        if (cancelled) return;
-        gsap.registerPlugin(ScrollTrigger);
-        scrollTrigger = ScrollTrigger;
-        const trigger = ScrollTrigger.create({
-          trigger: el,
-          // From the moment its top edge enters the viewport until that edge is a
-          // third of the way down — measured on the reference this was modelled on.
-          start: 'top bottom',
-          end: 'top 34%',
-          scrub: true,
-          onUpdate: self => apply(ease(self.progress)),
-        });
-        kill = () => trigger.kill();
-      });
-    });
-
-    return () => {
-      cancelled = true;
-      cancelPaintWait();
-      kill?.();
-      el.style.transform = '';
-      el.style.borderRadius = '';
-    };
-  }, [wide]);
 
   // Play only while the film is actually in view: at least 40 % of it on screen.
   // The source is not requested before that either (preload="none").
@@ -239,23 +135,25 @@ export function HeroVideo() {
     setMuted(next);
   }
 
-  const control =
-    'flex items-center gap-2 rounded-full bg-[#0b1220]/85 px-3.5 py-2 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-[#0b1220] md:px-4 md:py-2.5 md:text-sm';
+  // Keycaps (.btn), compact; they sit on the film, so they need no scrim.
+  const control = 'btn btn-nav btn-outline';
 
   return (
-    <div
-      ref={frame}
-      className={`relative mx-auto w-full origin-top ${
+    <figure
+      className={`mx-auto w-full ${
         wide
-          ? 'aspect-video max-w-[min(1640px,calc((100svh-100px)*16/9))]'
-          : 'aspect-[9/16] max-w-[min(420px,calc((100svh-100px)*9/16))]'
-      } overflow-hidden border border-border-subtle bg-[#eef3ff] shadow-[0_50px_110px_-50px_rgba(37,99,235,0.55)] will-change-transform`}
-      style={{ borderRadius: RADII[wide ? 1 : 0] }}
-      onPointerMove={() => wake()}
-      onPointerDown={() => wake()}
-      onPointerLeave={sleep}
-      onFocus={() => wake()}
+          ? 'max-w-[min(1200px,calc((100svh-160px)*16/9))]'
+          : 'max-w-[min(420px,calc((100svh-160px)*9/16))]'
+      }`}
     >
+      <div
+        className="film-frame relative"
+        onPointerMove={() => wake()}
+        onPointerDown={() => wake()}
+        onPointerLeave={sleep}
+        onFocus={() => wake()}
+      >
+      <div className={`relative overflow-hidden bg-subtle ${wide ? 'aspect-video' : 'aspect-[9/16]'}`}>
       <video
         ref={video}
         className={`block h-full w-full object-cover ${playing && !awake ? 'cursor-none' : 'cursor-pointer'}`}
@@ -290,10 +188,10 @@ export function HeroVideo() {
           type="button"
           onClick={toggleByUser}
           aria-label="Play the film"
-          className="absolute inset-0 grid place-items-center bg-white/10 transition-colors hover:bg-white/0"
+          className="film-overlay absolute inset-0 grid place-items-center"
         >
-          <span className="grid h-16 w-16 place-items-center rounded-full bg-[#0b1220] text-white shadow-[0_20px_40px_-14px_rgba(37,99,235,0.8)] md:h-20 md:w-20">
-            <Play className="h-6 w-6 translate-x-0.5 fill-current md:h-7 md:w-7" />
+          <span className="btn btn-primary btn-lg film-play">
+            <Play className="h-7 w-7 translate-x-0.5 fill-current" />
           </span>
         </button>
       )}
@@ -303,7 +201,7 @@ export function HeroVideo() {
           key={flash.n}
           aria-hidden
           onAnimationEnd={() => setFlash(null)}
-          className="pointer-events-none absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0b1220]/80 text-white backdrop-blur md:h-20 md:w-20 animate-[hero-video-flash_0.7s_ease-out_forwards]"
+          className="pointer-events-none absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-border-strong bg-frame text-foreground shadow-card md:h-20 md:w-20 animate-[hero-video-flash_0.7s_ease-out_forwards]"
         >
           {flash.icon === 'play' ? <Play className="h-6 w-6 translate-x-0.5 fill-current md:h-7 md:w-7" /> : <Pause className="h-6 w-6 fill-current md:h-7 md:w-7" />}
         </span>
@@ -313,7 +211,7 @@ export function HeroVideo() {
         <button
           type="button"
           onClick={toggleByUser}
-          className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-full bg-[#0b1220] px-5 py-3 text-sm font-medium text-white shadow-[0_20px_40px_-14px_rgba(37,99,235,0.8)] transition-transform hover:scale-105 md:px-7 md:py-4 md:text-base"
+          className="btn btn-primary absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         >
           <RotateCcw className="h-4 w-4 md:h-5 md:w-5" />
           Watch again
@@ -326,7 +224,7 @@ export function HeroVideo() {
           invisible button can never be clicked by accident. */}
       {started && (
         <div
-          className={`absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-[#0b1220]/45 to-transparent px-3 pb-3 pt-14 transition-opacity duration-300 md:px-5 md:pb-5 ${playing && !awake ? 'pointer-events-none opacity-0' : 'opacity-100'
+          className={`absolute inset-x-0 bottom-0 flex items-center justify-between px-3 pb-3 transition-opacity duration-300 md:px-5 md:pb-5 ${playing && !awake ? 'pointer-events-none opacity-0' : 'opacity-100'
             }`}
         >
           <button type="button" onClick={toggleByUser} className={control}>
@@ -339,6 +237,11 @@ export function HeroVideo() {
           </button>
         </div>
       )}
-    </div>
+      </div>
+      </div>
+      <figcaption className="pt-6 text-center font-display text-xl font-medium text-foreground">
+        See GymFlow in one minute.
+      </figcaption>
+    </figure>
   );
 }

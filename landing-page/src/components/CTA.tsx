@@ -1,7 +1,8 @@
-import { ArrowRight } from 'lucide-react';
-import { useReveal } from '../lib/useReveal';
+import { Check } from 'lucide-react';
 import { SUPPORT_PROMISE } from '../data/support';
-import GradientWaves from './ui/GradientWaves';
+import { AsciiLogo } from './ascii';
+import { Magnet, Rise } from './fx';
+import '../styles/close.css';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -12,91 +13,47 @@ const TRUST_CHIPS = [
 ] as const;
 
 /**
- * Closing call to action, sized and stacked to straddle the footer panel.
- *
- * The section carries no bottom padding: the card's lower edge is the section's
- * lower edge, and the footer is pulled up over it with a negative margin. z-10
- * keeps the card above the panel, since the footer comes later in the document
- * and would otherwise paint on top.
+ * Closing call to action: the one blue band on the page, white ink, centred. The primary key is white
+ * with blue ink (the band-accent rules in index.css), magnetic toward a fine pointer. The ASCII logo
+ * sits below the actions as a quiet texture (close.css turns the canvas white).
  */
 export function CTA() {
-  const scope = useReveal<HTMLElement>({ stagger: 0.09 });
-
   return (
-    <section ref={scope} aria-labelledby="cta-title" className="relative z-10 px-5 md:px-8">
-      {/* Narrower than the footer panel below it, so the accent shows on both
-          sides of the overlap rather than the card covering the panel's full
-          width. */}
-      <div className="relative mx-auto max-w-[920px] overflow-hidden rounded-card-lg border border-border-subtle bg-frame px-6 py-16 text-center shadow-[0_28px_70px_-32px_color-mix(in_srgb,var(--foreground)_28%,transparent)] md:px-14 md:py-20">
-        {/* Accent wash rising from the bottom edge, which is the edge that sits
-            on the footer panel — it ties the two together instead of the card
-            reading as a separate slab. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[70%]"
-          style={{
-            background:
-              'radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 70%)',
-          }}
-        />
-        <div
-          aria-hidden
-          className="dot-grid pointer-events-none absolute inset-0 opacity-[0.05]"
-        />
-        {/* WebGL waves rolling in from the bottom edge, in the brand blue. Light mode
-            draws them as soft ink so the dark heading and trust chips stay readable;
-            the accent wash above is the fallback where WebGL2 is unavailable. */}
-        <div aria-hidden className="pointer-events-none absolute -inset-x-[25%] bottom-0 h-[65%]">
-          <GradientWaves
-            lightMode
-            horizonColor="#2563EB"
-            waveColor="#60A5FA"
-            crestColor="#FFFFFF"
-            speed={0.3}
-            amplitude={2.2}
-            relief={1}
-            lightAngle={120}
-            grain={0.1}
-            quality="medium"
-          />
-        </div>
-
-        <div className="relative">
+    <section aria-labelledby="cta-title" className="band-accent close-cta relative overflow-clip px-5 md:px-8">
+      <div className="mx-auto flex max-w-[1200px] flex-col items-center text-center">
+        <Rise>
           <h2
             id="cta-title"
-            className="reveal mx-auto max-w-[680px] text-balance font-medium leading-[1.08] tracking-[-0.03em] text-foreground"
-            style={{ fontSize: 'clamp(30px, 4.2vw, 52px)' }}
+            className="display-1 mx-auto max-w-[16ch] min-w-0 text-balance text-foreground [overflow-wrap:break-word]"
           >
-            {'Stop managing members. Start '}
-            <em className="display-accent">growing</em>
-            {' your gym.'}
+            Start your free trial today
           </h2>
+        </Rise>
 
-          <p className="reveal mx-auto mt-5 max-w-[500px] text-[15.5px] leading-relaxed text-muted-foreground">
-            {SUPPORT_PROMISE}
-          </p>
+        <p className="lead mx-auto mt-6 max-w-[48ch]">{SUPPORT_PROMISE}</p>
 
-          <div className="reveal mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
-            <a href={APP_URL} className="btn btn-accent btn-lg">
+        <div className="mt-10 flex flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center">
+          <Magnet>
+            <a href={APP_URL} className="btn btn-primary btn-lg w-full sm:w-auto">
               Start free trial
-              <ArrowRight className="h-4 w-4" />
             </a>
-            <a href="/pricing" className="btn btn-outline btn-lg">
-              See pricing
-            </a>
-          </div>
+          </Magnet>
+          <a href="/pricing" className="btn btn-outline btn-lg">
+            See pricing
+          </a>
+        </div>
 
-          <ul className="reveal mt-9 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5">
-            {TRUST_CHIPS.map(chip => (
-              <li
-                key={chip}
-                className="flex items-center gap-2 text-[12.5px] font-medium text-muted-foreground"
-              >
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
-                {chip}
-              </li>
-            ))}
-          </ul>
+        <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
+          {TRUST_CHIPS.map(chip => (
+            <li key={chip} className="flex items-center gap-2 text-[16px] font-medium">
+              <Check className="h-4 w-4 shrink-0" aria-hidden />
+              {chip}
+            </li>
+          ))}
+        </ul>
+
+        <div className="close-ascii mt-20 w-full max-w-[960px]">
+          <AsciiLogo cols={120} />
         </div>
       </div>
     </section>

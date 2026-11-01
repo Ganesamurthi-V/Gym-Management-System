@@ -1,0 +1,114 @@
+/* Hallmark · Cobalt · WhatsApp section (Cobalt): quiet ruled bullets, a white keycap segmented control with a sliding blue pill,
+   a phone lifting over an accent-soft panel, white slip cards that settle in from above. Tokens only. */
+
+.wa-badge {
+  display: inline-grid;
+  place-items: center;
+  padding: var(--space-sm);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--key-face);
+  box-shadow: 0 2px 0 var(--key-edge), 0 4px 10px -4px var(--key-drop);
+}
+
+/* Bullets: hairline-ruled rows, no markers. */
+.wa-points > li {
+  border-top: 1px solid var(--border);
+  padding-block: var(--space-sm);
+}
+.wa-points > li:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Segmented keycap: white track with a bottom edge, the blue pill slides under the active tab (transform only). */
+.wa-seg {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--key-face);
+  box-shadow: 0 2px 0 var(--key-edge), 0 6px 14px -8px var(--key-drop);
+}
+.wa-seg-track {
+  position: relative;
+}
+.wa-seg-thumb {
+  padding: 0;
+}
+.wa-seg-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: var(--accent);
+}
+.wa-tab {
+  border-radius: 8px;
+  transition: color 160ms var(--ease-out), transform 80ms linear;
+}
+.wa-tab:active {
+  transform: translateY(1px);
+}
+
+/* The selected message type: one quiet line, no bar. */
+.wa-copy {
+  padding-top: var(--space-xs);
+}
+
+/* The panel the feed lives in. On md+ the phone hangs over its upper edge, so the feed starts below it. */
+.wa-panel {
+  position: relative;
+  padding: var(--space-lg);
+  border-radius: 20px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in oklab, var(--accent) 16%, transparent);
+}
+.wa-phone {
+  position: relative;
+  z-index: 2;
+}
+@media (min-width: 768px) {
+  .wa-phone {
+    margin-bottom: -232px;
+  }
+  .wa-panel {
+    margin-top: 0;
+    padding: 256px var(--space-xl) var(--space-xl);
+  }
+  .wa-panel-wrap {
+    padding-top: 0;
+  }
+}
+
+/* Reminder slips: the newest settles in from above, transform and opacity only. */
+.wa-slip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  min-height: 72px;
+}
+.wa-slip-new {
+  animation: wa-slip-in 500ms var(--ease-out) both;
+}
+@keyframes wa-slip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wa-tab,
+  .wa-seg-thumb {
+    transition: none;
+  }
+  .wa-slip-new {
+    animation: none;
+  }
+}

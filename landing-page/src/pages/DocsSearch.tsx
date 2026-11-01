@@ -1,12 +1,21 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { searchDocs } from '../lib/docsSearch';
+import '../styles/docs.css';
 
 /**
  * Documentation search box with a results list (combobox + listbox). `/` focuses the visible
  * box when the visitor is not typing elsewhere. Results are real links to /slug#section-id.
  */
-export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: () => void; focusOnMount?: boolean }) {
+export function DocsSearch({
+  onNavigate,
+  focusOnMount = false,
+  align = 'left',
+}: {
+  onNavigate?: () => void;
+  focusOnMount?: boolean;
+  align?: 'left' | 'right';
+}) {
   const id = useId();
   const listId = `${id}-results`;
   const input = useRef<HTMLInputElement>(null);
@@ -63,12 +72,12 @@ export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: 
   };
 
   return (
-    <div role="search" className="relative">
+    <div role="search" className="docs-search relative">
       <label htmlFor={`${id}-input`} className="sr-only">
         Search the documentation
       </label>
       <div className="relative">
-        <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           ref={input}
           id={`${id}-input`}
@@ -92,11 +101,11 @@ export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: 
             if (!e.relatedTarget || !e.currentTarget.closest('[role=search]')?.contains(e.relatedTarget as Node)) setOpen(false);
           }}
           onKeyDown={onKeyDown}
-          className="h-11 w-full rounded-xl border border-border-subtle bg-surface pl-9 pr-9 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="input-field"
         />
         <kbd
           aria-hidden
-          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border-subtle px-1.5 font-mono text-[11px] text-muted-foreground lg:block"
+          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-b-2 border-border-strong bg-[var(--key-face)] px-2 py-0.5 font-mono text-[14px] text-muted-foreground lg:block"
         >
           /
         </kbd>
@@ -106,10 +115,10 @@ export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: 
           id={listId}
           role="listbox"
           aria-label="Search results"
-          className="mt-2 max-h-[60vh] overflow-y-auto rounded-xl border border-border-subtle bg-surface p-1.5 shadow-lg lg:absolute lg:left-0 lg:top-full lg:z-30 lg:w-[380px]"
+          className={`card mt-2 max-h-[60vh] overflow-y-auto p-0 shadow-lift lg:absolute lg:top-full lg:z-30 lg:w-[380px] ${align === 'right' ? 'lg:right-0' : 'lg:left-0'}`}
         >
           {results.length === 0 && (
-            <li role="option" aria-selected="false" aria-disabled="true" className="px-3 py-3 text-[14px] text-muted-foreground">
+            <li role="option" aria-selected="false" aria-disabled="true" className="px-3 py-3 text-[16px] text-muted-foreground">
               No results
             </li>
           )}
@@ -123,14 +132,14 @@ export function DocsSearch({ onNavigate, focusOnMount = false }: { onNavigate?: 
                   onNavigate?.();
                   setOpen(false);
                 }}
-                className={`block rounded-lg px-3 py-2.5 ${i === active ? 'bg-accent-soft' : ''}`}
+                className={`block px-3 py-2.5 transition-colors ${i === active ? 'bg-accent-soft' : ''}`}
               >
-                <span className="block text-[12px] font-medium uppercase tracking-wide text-accent-text">{r.pageLabel}</span>
+                <span className="block text-[15px] font-medium text-accent-text">{r.pageLabel}</span>
                 <span className="mt-0.5 block text-[15px] font-medium text-foreground">{r.heading}</span>
-                <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">
+                <span className="mt-0.5 block text-[15px] leading-snug text-muted-foreground">
                   {r.snippet.map((part, k) =>
                     part.hit ? (
-                      <mark key={k} className="rounded-sm bg-accent-soft px-0.5 text-foreground">
+                      <mark key={k} className="bg-accent-soft px-0.5 text-foreground">
                         {part.text}
                       </mark>
                     ) : (

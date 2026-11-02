@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGymCore } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import PlanNotice from '@/components/subscription/PlanNotice'
 import { PLAN_MEMBER_LIMIT, isFreePlan, planAllowsWhatsApp } from '@/lib/subscription-utils'
 import { getPlatformPrices } from '@/lib/platformPrices'
@@ -115,16 +115,8 @@ export default async function MembersPage() {
   
   try {
     logger.start('AUTH')
-    const { user } = await getAuthUser()
+    const { gym } = await requireOwnerAccess()
     logger.end('AUTH')
-    
-    if (!user) return null
-
-    logger.start('QUERY gyms')
-    const { gym } = await getGymCore(user.id)
-    logger.end('QUERY gyms')
-
-    if (!gym) return null
 
     logger.start('FETCH')
     const { result, count } = await getMembersData(gym.id, logger)

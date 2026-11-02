@@ -38,6 +38,7 @@ vi.mock('@/lib/supabase/admin', () => ({
 vi.mock('@/lib/dal', () => ({
   getAuthUser: async () => ({ user: state.user }),
   getGym: async () => ({ gym: state.ownsGym ? { id: 'g1' } : null, error: null }),
+  getGymCore: async () => ({ gym: state.ownsGym ? { id: 'g1', is_active: true, subscription_status: 'active', subscription_ends_at: null } : null, error: null }),
 }))
 vi.mock('@/lib/auth/roles', () => ({ roleFromClaims: () => state.role }))
 vi.mock('@/lib/rateLimit', () => ({ checkRateLimit: async () => ({ allowed: true }) }))

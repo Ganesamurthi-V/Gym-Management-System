@@ -1,6 +1,5 @@
 import { Suspense } from 'react'
-import { redirect } from 'next/navigation'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import { apiLogger } from '@/lib/logger'
 import { getMemberAppData } from '@/features/member-app/services/memberAppService'
 import MemberAppClient from './MemberAppClient'
@@ -18,14 +17,8 @@ export default async function MemberAppPage() {
   const logger = apiLogger('MEMBER_APP')
 
   logger.start('AUTH')
-  const { user } = await getAuthUser()
+  const { gym } = await requireOwnerAccess()
   logger.end('AUTH')
-  if (!user) redirect('/auth/login')
-
-  logger.start('QUERY gyms')
-  const { gym } = await getGym(user.id)
-  logger.end('QUERY gyms')
-  if (!gym) redirect('/owner/onboarding')
 
   logger.start('LOAD_MEMBER_APP_DATA')
   const data = await getMemberAppData(gym.id, gym.name)

@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import EditProgramClient from './EditProgramClient'
 import type { WorkoutProgram } from '@/types'
 
@@ -14,11 +14,7 @@ export default async function EditProgramPage(props: { params: Promise<{ id: str
   // A malformed UUID would surface as a Postgres 22P02 error, so reject early.
   if (!UUID_RE.test(id)) notFound()
 
-  const { user } = await getAuthUser()
-  if (!user) redirect('/auth/login')
-
-  const { gym } = await getGym(user.id)
-  if (!gym) redirect('/owner/onboarding')
+  const { gym } = await requireOwnerAccess()
 
   const supabase = await createClient()
 

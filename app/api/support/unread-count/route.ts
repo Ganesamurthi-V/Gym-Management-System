@@ -19,4 +19,4 @@ export const GET = withAuth('SUPPORT_UNREAD_COUNT', async (req: NextRequest, { s
     { success: true, data: { count: count ?? 0 } },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
-})
+}, { allowWhenExpired: true }) // support badge in the account menu

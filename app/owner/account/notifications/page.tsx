@@ -9,12 +9,8 @@ import { startPageTimer, timed } from '@/lib/perf'
 export default async function NotificationsPage() {
   const done = startPageTimer('account/notifications')
 
-  const { getAuthUser, getGym } = await import('@/lib/dal')
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  // Served from the shared getGymCore query the root layout already ran — free.
-  const { gym } = await getGym(user.id)
+  const { requireOwnerAccess } = await import('@/lib/owner/access')
+  const { gym } = await requireOwnerAccess()
   if (!gym) {
     done()
     return <div className="p-8 text-center text-slate-500">No gym found</div>

@@ -1,14 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import { DuesClient } from './DuesClient'
 import { getMemberStatus } from '@/lib/utils'
 
 export default async function DuesPage() {
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  const { gym } = await getGym(user.id)
-  if (!gym) return null
+  const { gym } = await requireOwnerAccess()
 
   const supabase = await createClient()
 

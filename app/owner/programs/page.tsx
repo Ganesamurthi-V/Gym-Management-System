@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import ProgramsList from '@/components/programs/ProgramsList'
 import { apiLogger } from '@/lib/logger'
 import type { WorkoutProgramSummary } from '@/types'
@@ -14,11 +14,7 @@ const PAGE_SIZE = 200
 export default async function ProgramsPage() {
   const log = apiLogger('PROGRAMS_PAGE')
 
-  const { user } = await getAuthUser()
-  if (!user) redirect('/auth/login')
-
-  const { gym } = await getGym(user.id)
-  if (!gym) redirect('/owner/onboarding')
+  const { gym } = await requireOwnerAccess()
 
   const supabase = await createClient()
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym, getGymCore } from '@/lib/dal'
+import { getAuthUser, getGymCore } from '@/lib/dal'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
 import { getMemberAccessState } from '@/lib/member/member-data'
 import { checkRateLimit } from '@/lib/rateLimit'
@@ -92,16 +92,15 @@ export async function GET(req: NextRequest) {
 
     // Decided by whether the caller OWNS a gym (owner_id, RLS), never by the user-editable role
     // claim: a member claiming to be an owner owns no gym and falls into the member check below.
-    // getGym shares the request-cached gyms query the owner pages use. Owners skip the member
+    // getGymCore shares the request-cached gyms query the owner pages use. Owners skip the member
     // lookup entirely: it would log an error and run extra queries for someone who is not a member.
-    const { gym: ownedGym } = await getGym(user.id)
+    const { gym: ownedGym } = await getGymCore(user.id)
     const isMember = !ownedGym
 
-    // An owner whose gym is lapsed or banned must not keep reading member names. getGym omits the
-    // subscription columns; getGymCore is the uncached row. Members are gated by getMemberAccessState below.
+    // An owner whose gym is lapsed or banned must not keep reading member names. The core row carries
+    // the subscription columns. Members are gated by getMemberAccessState below.
     if (ownedGym) {
-      const { gym: core } = await getGymCore(user.id)
-      const readOnly = assertGymWritable(core)
+      const readOnly = assertGymWritable(ownedGym)
       if (readOnly) return respond(readOnly)
     }
 

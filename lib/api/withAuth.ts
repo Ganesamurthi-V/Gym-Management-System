@@ -181,6 +181,8 @@ export function withAuth(
       const banned = gym.is_active === false
       if (banned ? !options?.allowWhenBanned : (!options?.allowWhenExpired && !gymIsWritable(gym))) {
         log.summary(403)
+        // A banned gym is not offered renewal: it is disabled by the platform, not lapsed for billing.
+        if (banned) return apiError(403, 'GYM_DISABLED', 'This gym account has been disabled. Contact support.')
         return apiError(403, 'SUBSCRIPTION_REQUIRED', 'Your subscription has ended. Renew to make changes.')
       }
 

@@ -22,21 +22,24 @@ import { memberCapReached } from '@/lib/subscription-utils'
 async function loadShellData(userId: string): Promise<ShellData> {
   const { gym: core } = await getGymCore(userId)
   if (!core) return EMPTY_SHELL_DATA
+  return shellDataFromCore(core, false)
+}
 
-  // Add-member lock. plan_type is already loaded, so paid gyms (the hot path) skip the count
-  // query entirely; trial/free gyms pay one head-only count scoped to the server-resolved gym.
-  let memberCapped = false
-  if (core.plan_type === 'trial' || core.plan_type === 'free') {
-    const supabase = await createClient()
-    const { count } = await supabase
-      .from('members')
-      .select('id', { count: 'exact', head: true })
-      .eq('gym_id', core.id)
-    // A failed count leaves the control unlocked; the API and DB trigger still refuse.
-    memberCapped = memberCapReached(core.plan_type, count ?? 0)
-  }
-
-  return shellDataFromCore(core, memberCapped)
+/**
+ * Add-member lock, resolved separately so the access gate never waits on the member count.
+ * plan_type is already loaded, so paid gyms (the hot path) skip the count query entirely;
+ * trial/free gyms pay one head-only count scoped to the server-resolved gym.
+ */
+async function loadMemberCapped(userId: string): Promise<boolean> {
+  const { gym: core } = await getGymCore(userId)
+  if (!core || (core.plan_type !== 'trial' && core.plan_type !== 'free')) return false
+  const supabase = await createClient()
+  const { count } = await supabase
+    .from('members')
+    .select('id', { count: 'exact', head: true })
+    .eq('gym_id', core.id)
+  // A failed count leaves the control unlocked; the API and DB trigger still refuse.
+  return memberCapReached(core.plan_type, count ?? 0)
 }
 
 /**
@@ -87,11 +90,12 @@ export default async function AppShell({ children }: { children: React.ReactNode
   // No session: middleware already redirects; this is the same safety net, decided before streaming.
   if (!user) redirect('/auth/login')
   const shellData = loadShellData(user.id)
+  const memberCappedPromise = loadMemberCapped(user.id)
 
   done()
 
   return (
-    <ShellGuard initialUser={user} shellData={shellData} initialUnreadCount={null}>
+    <ShellGuard initialUser={user} shellData={shellData} memberCappedPromise={memberCappedPromise} initialUnreadCount={null}>
       <Suspense fallback={<GenericPageSkeleton />}>
         <AccessGate shellData={shellData}>{children}</AccessGate>
       </Suspense>

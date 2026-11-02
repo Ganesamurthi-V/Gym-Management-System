@@ -51,16 +51,25 @@ function GymGate({ promise, onReady }: { promise: Promise<ShellData>; onReady: (
   return null
 }
 
+/** Resolves the add-member lock on its own, so the access gate never waits on the member count. */
+function MemberCapGate({ promise, onReady }: { promise: Promise<boolean>; onReady: (capped: boolean) => void }) {
+  const capped = use(promise)
+  useEffect(() => { onReady(capped) }, [capped, onReady])
+  return null
+}
+
 interface ShellGuardProps {
   children: React.ReactNode
   initialUser: User | null
   /** Started (not awaited) by AppShell so the chrome streams before the gym row arrives. */
   shellData: Promise<ShellData>
+  /** Started (not awaited) by AppShell; trial/free gyms at the member cap lock Add Member. */
+  memberCappedPromise: Promise<boolean>
   /** `null` when the layout deliberately did not fetch it — AccountMenu will. */
   initialUnreadCount: number | null
 }
 
-export default function ShellGuard({ children, initialUser, shellData, initialUnreadCount }: ShellGuardProps) {
+export default function ShellGuard({ children, initialUser, shellData, memberCappedPromise, initialUnreadCount }: ShellGuardProps) {
   const pathname = usePathname()
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
@@ -70,7 +79,7 @@ export default function ShellGuard({ children, initialUser, shellData, initialUn
   // Gym state arrives after first paint (see GymGate); null until then.
   const [resolved, setResolved] = useState<ShellData | null>(null)
   const initialGym = resolved?.gym ?? null
-  const memberCapped = resolved?.memberCapped ?? false
+  const [memberCapped, setMemberCapped] = useState(false)
 
   // Live subscription state — updated by the 30 s status poll. Seeded from the resolved gym row.
   const [liveSubStatus, setLiveSubStatus] = useState('unknown')
@@ -246,9 +255,14 @@ export default function ShellGuard({ children, initialUser, shellData, initialUn
   }
 
   const gate = (
-    <Suspense fallback={null}>
-      <GymGate promise={shellData} onReady={setResolved} />
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        <GymGate promise={shellData} onReady={setResolved} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <MemberCapGate promise={memberCappedPromise} onReady={setMemberCapped} />
+      </Suspense>
+    </>
   )
 
   if (isShellless) return <>{gate}<ActivityBeacon />{children}</>

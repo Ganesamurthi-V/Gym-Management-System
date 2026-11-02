@@ -45,12 +45,13 @@ describe('withAuth locks out expired and deactivated gyms for every method', () 
       expect((await withAuth('T', ok)(req(method))).status).toBe(200)
     })
 
+    const expectedCode = { expired: 'SUBSCRIPTION_REQUIRED', inactive: 'GYM_DISABLED' } as const
     for (const state of ['expired', 'inactive'] as const) {
-      it(`${method}: ${state} gym gets 403 SUBSCRIPTION_REQUIRED`, async () => {
+      it(`${method}: ${state} gym gets 403 ${expectedCode[state]}`, async () => {
         m.gym = GYMS[state]
         const res = await withAuth('T', ok)(req(method))
         expect(res.status).toBe(403)
-        expect((await res.json()).error.code).toBe('SUBSCRIPTION_REQUIRED')
+        expect((await res.json()).error.code).toBe(expectedCode[state])
       })
     }
   }

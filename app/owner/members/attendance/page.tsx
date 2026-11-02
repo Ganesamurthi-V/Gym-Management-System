@@ -21,7 +21,7 @@ async function getAttendanceLogs(gymId: string, logger: RequestLogger) {
     .from('attendance')
     .select(`
       id, member_id, gym_id, date, created_at, check_out_time, session,
-      members ( id, name, member_number, phone )
+      members!fk_attendance_member_same_gym ( id, name, member_number, phone )
     `)
     .eq('gym_id', gymId)
     .gte('date', sevenDaysAgo.toISOString().split('T')[0])

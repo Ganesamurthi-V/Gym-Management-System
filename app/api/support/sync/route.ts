@@ -35,4 +35,4 @@ export const GET = withAuth('SUPPORT_SYNC', async (req: NextRequest, { supabase,
     },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
-})
+}, { allowWhenExpired: true }) // support stays reachable

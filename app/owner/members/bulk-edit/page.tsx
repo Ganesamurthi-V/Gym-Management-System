@@ -3,12 +3,8 @@ import { EditMembersClient } from './BulkEditClient'
 import { redirect } from 'next/navigation'
 
 export default async function EditMembersPage() {
-  const { getAuthUser, getGym } = await import('@/lib/dal')
-  const { user } = await getAuthUser()
-  if (!user) redirect('/auth/login')
-
-  const { gym } = await getGym(user.id)
-  if (!gym) redirect('/owner/dashboard')
+  const { requireOwnerAccess } = await import('@/lib/owner/access')
+  const { gym } = await requireOwnerAccess()
 
   const supabase = await createClient()
 

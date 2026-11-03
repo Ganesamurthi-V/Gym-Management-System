@@ -1,14 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import { PlansClient } from './PlansClient'
 import { readSavedPlans } from '@/lib/plans/validate'
 
 export default async function PlansPage() {
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  const { gym } = await getGym(user.id)
-  if (!gym) return null
+  const { gym } = await requireOwnerAccess()
 
   const supabase = await createClient()
   const { data, error } = await supabase

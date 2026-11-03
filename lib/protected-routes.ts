@@ -30,7 +30,7 @@ export const AUTH_PREFIX = '/auth'
  * `/auth/add-phone` is the step before the gym exists: a signed-in owner with no gym
  * yet must be able to stay on it (sending them to OWNER_HOME would hit AppShell and loop).
  */
-export const AUTH_SETUP_PATHS = ['/auth/setup-password', '/auth/add-phone'] as const
+export const AUTH_SETUP_PATHS = ['/auth/setup-password', '/auth/add-phone', '/auth/blocked'] as const
 
 /** Header the middleware uses to forward the current path to Server Components. */
 export const PATHNAME_HEADER = 'x-pathname'
@@ -53,6 +53,16 @@ export function isProtectedPath(pathname: string) {
  * There is no admin area in this app: the platform admin is the separate gymflow-admin project.
  */
 const SUBSCRIPTION_EXEMPT_PREFIXES = ['/owner/subscription'] as const
+
+/** The renewal page: the only owner page an expired owner may stay on. */
+export function isPaywallPath(pathname: string) {
+  return SUBSCRIPTION_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
+}
+
+/** The first-run setup page: the only page an owner with onboarding unfinished may stay on. */
+export function isOnboardingPath(pathname: string) {
+  return pathname.startsWith('/owner/onboarding')
+}
 
 /**
  * True when the subscription paywall should be enforced for this path.

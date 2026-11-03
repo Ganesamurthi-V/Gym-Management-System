@@ -60,11 +60,9 @@ async function authorize(log: RequestLogger, req: NextRequest): Promise<Authoriz
 
   if (!gym) return fail(log, 404, 'NOT_FOUND', 'Gym not found')
 
-  // Reads stay open on a lapsed gym; every write is refused.
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    const readOnly = assertGymWritable(gym)
-    if (readOnly) return readOnly
-  }
+  // Reads are refused too: a lapsed or banned owner must not keep reading program data.
+  const readOnly = assertGymWritable(gym)
+  if (readOnly) return readOnly
 
   log.info('Scope resolved', { userId: user.id, gymId: gym.id })
   return { supabase, gymId: gym.id }

@@ -1,16 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import { AttendanceClient } from './AttendanceClient'
 import { todayIST } from '@/lib/utils'
 
 export const revalidate = 0
 
 export default async function AttendancePage() {
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  const { gym } = await getGym(user.id)
-  if (!gym) return null
+  const { gym } = await requireOwnerAccess()
 
   const today = todayIST()
   const supabase = await createClient()

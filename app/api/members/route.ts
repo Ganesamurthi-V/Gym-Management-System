@@ -51,6 +51,10 @@ export async function GET(req: NextRequest) {
     }
     log.info('Gym Info', { gymId: gym.id })
 
+    // Reads are refused too: a lapsed or banned owner must not keep exporting member data.
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) { log.summary(403); return readOnly }
+
     const { searchParams } = req.nextUrl
     const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50') || 50, 1), 100)
     const offset = Math.min(Math.max(parseInt(searchParams.get('offset') ?? '0') || 0, 0), 1_000_000)

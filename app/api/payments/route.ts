@@ -41,6 +41,10 @@ export async function GET(req: NextRequest) {
     }
     log.info('Gym Info', { gymId: gym.id })
 
+    // Reads are refused too: a lapsed or banned owner must not keep reading payment data.
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) { log.summary(403); return readOnly }
+
     log.start('DB_QUERY')
     const { data, error } = await supabase
       .from('memberships')

@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGymForUser } from '@/lib/supabase/queries'
+import { assertGymWritable } from '@/lib/subscriptionGuard'
 import { apiLogger } from '@/lib/logger'
 import { MAX_IMPORT_ROWS } from '@/lib/import/schema'
 
@@ -39,6 +40,10 @@ export async function GET(req: NextRequest) {
     if (!gym) {
       return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
     }
+
+    // Reads are refused too for a lapsed or banned gym (it reveals member numbering).
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     // Parse query params
     const rawRequested = req.nextUrl.searchParams.get('requested') ?? ''

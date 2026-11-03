@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireOwnerAccess } from '@/lib/owner/access'
 import ProgramsList from '@/components/programs/ProgramsList'

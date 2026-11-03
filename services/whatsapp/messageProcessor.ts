@@ -203,7 +203,7 @@ export async function handleMessageByType(
   }
 }
 
-async function handleTextMessage(message: ProcessedMessage, gymId: string): Promise<void> {
+async function handleTextMessage(_message: ProcessedMessage, _gymId: string): Promise<void> {
   // TODO: Implement text message handling
   // - Parse commands
   // - Trigger auto-replies
@@ -211,20 +211,20 @@ async function handleTextMessage(message: ProcessedMessage, gymId: string): Prom
   // etc.
 }
 
-async function handleMediaMessage(message: ProcessedMessage, gymId: string): Promise<void> {
+async function handleMediaMessage(_message: ProcessedMessage, _gymId: string): Promise<void> {
   // TODO: Implement media message handling
   // - Download media from WhatsApp
   // - Store in your storage (S3, Supabase Storage, etc.)
   // - Update database with media URL
 }
 
-async function handleLocationMessage(message: ProcessedMessage, gymId: string): Promise<void> {
+async function handleLocationMessage(_message: ProcessedMessage, _gymId: string): Promise<void> {
   // TODO: Implement location message handling
   // - Save location to member profile
   // - Trigger location-based features
 }
 
-async function handleInteractiveMessage(message: ProcessedMessage, gymId: string): Promise<void> {
+async function handleInteractiveMessage(_message: ProcessedMessage, _gymId: string): Promise<void> {
   // TODO: Implement interactive message handling
   // - Handle button clicks
   // - Handle list selections

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, RefreshCw, FolderOpen, Search, Hash, CheckCircle2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, ArrowLeft, Check, AlertTriangle, Shuffle, FileSpreadsheet, Zap, X, FolderOpen, Search, Hash, CheckCircle2 } from "lucide-react";
 import { clearImportStorage, removeImportKeys } from "@/lib/import/storage";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -432,12 +432,6 @@ function getCol(row: any, colMap: Record<string, number>, field: string): string
 }
 
 
-const FIELD_LABELS: Record<string, string> = {
-  member_number: "Member #", name: "Name", phone: "Phone", plan: "Plan", category: "Category",
-  start_date: "Start Date", amount: "Amount", payment_mode: "Payment Mode",
-  gender: "Gender", age: "Age", date_of_birth: "Date of Birth", area: "Area",
-};
-
 const STAGES = [
   { id: 1, Icon: FolderOpen, label: "Reading file" },
   { id: 2, Icon: Search, label: "Detecting columns" },
@@ -455,7 +449,6 @@ let heldFile: File | null = null;
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 export default function ImportPage() {
-  const [detectedColumns, setDetectedColumns] = useState<Record<string, string>>({});
   const [parsing, setParsing] = useState(false);
   const [parseStage, setParseStage] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -788,7 +781,6 @@ export default function ImportPage() {
           summaryMapping[field] = header;
         }
       }
-      setDetectedColumns(summaryMapping);
       sessionStorage.setItem("import_file_name", file.name);
       sessionStorage.setItem("import_file_headers", JSON.stringify(headers));
       sessionStorage.setItem("import_column_mapping", JSON.stringify(userMapping));
@@ -974,7 +966,6 @@ export default function ImportPage() {
 
   function resetUpload() {
     clearImportStorage();
-    setDetectedColumns({});
     setFileName("");
     setParseStage(0);
     setUnmappedPlans([]);
@@ -1016,7 +1007,6 @@ export default function ImportPage() {
             {STAGES.map(stage => {
               const done = parseStage > stage.id;
               const active = parseStage === stage.id;
-              const pending = parseStage < stage.id;
               return (
                 <div key={stage.id} className={`flex items-center gap-4 p-3.5 rounded-xl transition-all ${active ? "bg-brand-50 border border-brand-200" : done ? "opacity-70" : "opacity-40"}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${done ? "bg-emerald-100" : active ? "bg-brand-100" : "bg-slate-200"}`}>

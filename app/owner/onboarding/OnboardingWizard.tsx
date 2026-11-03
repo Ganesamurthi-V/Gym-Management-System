@@ -575,7 +575,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <StepMembershipPlans plans={data.plans} onUpdate={updatePlan} onAdd={addPlan} onRemove={removePlan} />
               )}
               {currentStep === 2 && (
-                <StepPaymentSettings gymId={gymId} />
+                <StepPaymentSettings />
               )}
             </div>
 
@@ -968,7 +968,7 @@ function StepMembershipPlans({
 
 // --- Step 3: Payment Settings (UPI QR Upload) ---------------------------------
 
-function StepPaymentSettings({ gymId }: { gymId: string | null }) {
+function StepPaymentSettings() {
   return (
     <div className="space-y-4">
       <div className="card p-5 space-y-4">

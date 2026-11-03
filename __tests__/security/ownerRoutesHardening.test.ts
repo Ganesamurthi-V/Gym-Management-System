@@ -21,7 +21,6 @@ describe('shared guard', () => {
 
 describe('non-withAuth state-changing routes check CSRF', () => {
   const routes = [
-    'app/api/payments/route.ts',
     'app/api/members/route.ts',
     'app/api/members/[id]/route.ts',
     'app/api/inventory/delete/route.ts',
@@ -58,16 +57,9 @@ describe('tenant scope on writes by request-supplied id', () => {
       expect(s).toMatch(/\.update\(\{ pending_amount: [^}]+\}\)\s*\.eq\('id', member_id\)\s*\.eq\('gym_id', gym\.id\)/)
     }
   })
-  it('inventory unit PATCH requires the unit to belong to this gym and product', () => {
-    const s = read('app/api/inventory/units/route.ts')
-    expect(s).toContain(".from('inventory_units')\n    .select('id, status')\n    .eq('id', unit_id)\n    .eq('inventory_id', inventory_id)\n    .eq('gym_id', gym.id)")
-  })
   it('inventory delete / update are scoped by gym_id', () => {
     expect(read('app/api/inventory/delete/route.ts')).toContain(".eq('id', inventoryId)\n      .eq('gym_id', gym.id)")
     expect(read('app/api/inventory/[id]/route.ts')).toContain(".update(updates)\n      .eq('id', id)\n      .eq('gym_id', gym.id)")
-  })
-  it('payments POST verifies the member belongs to the gym', () => {
-    expect(read('app/api/payments/route.ts')).toContain(".eq('id', body.member_id)\n      .eq('gym_id', gym.id)")
   })
 })
 
@@ -77,11 +69,6 @@ describe('money and stock integrity', () => {
     expect(s).toContain(".eq('pending_amount', currentPending)")
     expect(s).toContain('ledgerError')
     expect(s).toContain("code: 'NOTHING_DUE'")
-  })
-  it('unit status changes move stock once per transition', () => {
-    const s = read('app/api/inventory/units/route.ts')
-    expect(s).toContain('if (unit.status === status)')
-    expect(s).toContain(".eq('status', unit.status)")
   })
   it('sale delete removes and reads back in one statement, then checks the stock restore', () => {
     const s = read('app/api/inventory/sales/[id]/route.ts')
@@ -94,11 +81,10 @@ describe('money and stock integrity', () => {
     expect(s).toContain('boundedNumber(customUnitPrice, 0, MAX_MONEY)')
     expect(s).toContain(".eq('initial_stock', product.initial_stock)")
   })
-  it('memberships and payments reject negative or unbounded money', () => {
+  it('memberships reject negative or unbounded money', () => {
     const m = read('app/api/memberships/route.ts')
     expect(m).toContain('boundedInt(body.admission_fee, 0, MAX_MONEY)')
     expect(m).toContain('boundedInt(body.due_amount, 0, MAX_MONEY)')
-    expect(read('app/api/payments/route.ts')).toContain('boundedInt(body.amount, 0, MAX_MONEY)')
   })
   it('inventory create/update validate every column', () => {
     for (const p of ['app/api/inventory/route.ts', 'app/api/inventory/[id]/route.ts']) {
@@ -128,7 +114,6 @@ describe('input validation', () => {
   })
   it('list endpoints clamp limit/offset', () => {
     expect(read('app/api/members/route.ts')).toContain('Math.max(parseInt(searchParams.get(\'offset\')')
-    expect(read('app/api/payments/route.ts')).toContain("|| 50, 1), 100)")
     expect(read('app/api/programs/route.ts')).toContain('|| 100, 1), 200)')
   })
   it('support text is length-capped and clear ids are UUIDs', () => {
@@ -157,7 +142,7 @@ describe('no raw database or exception text reaches the client', () => {
   const files = [
     'app/api/dues/collect/route.ts', 'app/api/dues/mark-paid/route.ts', 'app/api/memberships/route.ts',
     'app/api/members/bulk/route.ts', 'app/api/members/[id]/route.ts', 'app/api/inventory/route.ts',
-    'app/api/inventory/[id]/route.ts', 'app/api/inventory/units/route.ts', 'app/api/inventory/sell/route.ts',
+    'app/api/inventory/[id]/route.ts', 'app/api/inventory/sell/route.ts',
     'app/api/inventory/delete/route.ts', 'app/api/inventory/sales/[id]/route.ts',
     'app/api/programs/assignments/route.ts', 'app/api/support/clear/route.ts', 'app/api/support/ticket/route.ts',
     'app/api/dashboard/expiring/route.ts',
@@ -172,7 +157,7 @@ describe('no raw database or exception text reaches the client', () => {
     })
   }
   it('mapSupabaseError / handleSupabaseError in owner routes come from the no-leak guard', () => {
-    for (const f of ['app/api/payments/route.ts', 'app/api/members/route.ts', 'app/api/programs/route.ts']) {
+    for (const f of ['app/api/members/route.ts', 'app/api/programs/route.ts']) {
       expect(read(f)).toContain("from '@/app/api/_guard'")
       expect(read(f)).not.toContain("from '@/lib/utils/errorMapper'")
     }

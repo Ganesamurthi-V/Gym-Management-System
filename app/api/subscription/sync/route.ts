@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * Returns the latest subscription request and gym subscription fields
  * for the authenticated user's gym. Used by SubscriptionClient's realtime sync.
  */
-export const GET = withAuth('SUBSCRIPTION_SYNC_GET', async (req: NextRequest, { supabase, gym }) => {
+export const GET = withAuth('SUBSCRIPTION_SYNC_GET', async (_req: NextRequest, { supabase, gym }) => {
   const [requestResult, gymResult] = await Promise.all([
     supabase
       .from('subscription_requests')

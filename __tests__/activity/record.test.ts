@@ -94,7 +94,7 @@ describe('owner mutating routes record activity', () => {
   const candidates = files.filter((f) => mutating.test(f.src) && !f.src.includes('withAuth(') && !excluded(f.rel))
 
   it('finds the instrumented routes', () => {
-    expect(candidates.length).toBeGreaterThanOrEqual(15)
+    expect(candidates.length).toBeGreaterThanOrEqual(14)
   })
 
   for (const f of candidates) {

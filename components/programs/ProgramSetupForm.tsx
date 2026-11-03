@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Check, Activity, Target, Users, Dumbbell, ArrowRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Activity, Target, Users, Dumbbell, ArrowRight } from 'lucide-react'
 
 export interface ProgramSetupData {
   name: string;

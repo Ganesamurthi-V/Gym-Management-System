@@ -505,10 +505,6 @@ export const OWNER_BOARD_LIMIT = 50
 export const PRIZE_BOARDS = ['week', 'month'] as const
 export type PrizeBoard = (typeof PRIZE_BOARDS)[number]
 
-export function isPrizeBoard(value: unknown): value is PrizeBoard {
-  return value === 'week' || value === 'month'
-}
-
 export function prizeFor(
   settings: Pick<GamificationSettings, 'weeklyPrize' | 'monthlyPrize'>,
   board: PrizeBoard,

@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { addDays, addMonths, addYears, differenceInDays, format, isAfter, isBefore, parseISO } from 'date-fns'
+import { addMonths, differenceInDays, format, parseISO } from 'date-fns'
 import type { MemberStatus, Plan } from '@/types'
 import { istToday } from '@/lib/gamification/periods'
 

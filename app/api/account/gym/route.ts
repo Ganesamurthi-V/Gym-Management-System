@@ -25,7 +25,7 @@ function isMissingContactColumn(error: DatabaseError | null): boolean {
  *
  * Returns the authenticated user's gym info including onboarding_data.
  */
-export const GET = withAuth('ACCOUNT_GYM_GET', async (req: NextRequest, { supabase, gym, user }) => {
+export const GET = withAuth('ACCOUNT_GYM_GET', async (_req: NextRequest, { supabase, gym }) => {
   // Fetch the full gym row with onboarding_data
   const { data, error } = await supabase
     .from('gyms')
@@ -51,7 +51,7 @@ export const GET = withAuth('ACCOUNT_GYM_GET', async (req: NextRequest, { supaba
  *
  * Update gym fields (name, onboarding_data).
  */
-export const PATCH = withAuth('ACCOUNT_GYM_PATCH', async (req: NextRequest, { supabase, gym, user }) => {
+export const PATCH = withAuth('ACCOUNT_GYM_PATCH', async (req: NextRequest, { supabase, gym }) => {
   let body: Record<string, unknown>
   try {
     const parsed: unknown = await req.json()

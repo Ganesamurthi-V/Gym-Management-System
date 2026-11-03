@@ -13,16 +13,13 @@ import { GAMIFICATION_SETTINGS_COLUMNS, normalizeSettings } from '@/lib/gamifica
 import type { GamificationSettings, LeaderboardBoard, LeaderboardRow } from '@/lib/gamification/types'
 import { OWNER_BOARD_LIMIT, awardPeriodLabel, mapAward } from '@/features/member-app/utils/gamificationConfig'
 import type {
-  ActionResult,
   GamificationAward,
   GamificationSummary,
   InvitationActivity,
   InvitationStatus,
   MemberAppData,
   MemberAppOverview,
-  MemberBulkAction,
   MemberPortalRow,
-  MemberRowAction,
   Paginated,
 } from '@/types/member-app'
 

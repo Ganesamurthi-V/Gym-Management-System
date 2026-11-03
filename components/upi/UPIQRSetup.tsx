@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { Upload, Camera, CheckCircle2, XCircle, Loader2, QrCode, Trash2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Upload, Camera, CheckCircle2, XCircle, Loader2, Trash2 } from 'lucide-react'
 import { parseUPIQRCode } from '@/lib/upi'
 import type { UPIParsedData } from '@/lib/upi'
 import { saveUPIConfig, deleteUPIConfig } from '@/app/owner/account/upi-actions'

@@ -936,8 +936,8 @@ function MembersContent({ members, gymId, totalCount, importBlocked }: Props) {
               </div>
             </div>
             <div className="p-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-              <button onClick={() => setShowExportModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Cancel</button>
-              <button onClick={() => { setShowExportModal(false); exportExcel(); }} className="px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-700 rounded-lg transition-colors flex items-center gap-2"><Download className="w-4 h-4"/> Download Excel</button>
+              <button onClick={() => setShowExportModal(false)} disabled={exporting} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50">Cancel</button>
+              <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"><Download className="w-4 h-4"/> {exporting ? 'Generating...' : 'Download Excel'}</button>
             </div>
           </div>
         </div>

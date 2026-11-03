@@ -30,7 +30,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
 import { isWhatsAppEnabledForGym } from './gymGate'
-import type { TemplateId, TemplateContext, SendResult } from './sender'
+import type { TemplateId, TemplateContext } from './sender'
 import { enqueueSend, kickDrain } from './queue'
 import { finalizeSendRow } from './finalize'
 import { reportAlert } from '@/lib/monitoring/alert'
@@ -134,13 +134,6 @@ function newStats(): Stats {
     gamification: { gyms: 0, queued: 0, streakAtRisk: 0, weeklyGoalReached: 0, rankUp: 0, skipped: 0, failed: 0 },
   }
 }
-
-/** The three cyclic reminder templates managed by the scheduler. */
-const CYCLIC_TEMPLATES = [
-  'membership_expiry_reminder',
-  'membership_expired',
-  'payment_due_reminder',
-] as const
 
 // ─── Cycle state helpers ───────────────────────────────────────────────────────
 

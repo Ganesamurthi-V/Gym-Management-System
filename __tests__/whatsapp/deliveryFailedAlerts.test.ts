@@ -203,13 +203,8 @@ function makeFakeClient() {
 // Import AFTER mocks are registered.
 import {
   runDailyWhatsAppAutomation,
-  runImportBatchAutomation,
-  cancelReminderCycles,
   sendWelcomeMessage,
-  sendPrizeAwardedMessage,
 } from '@/lib/whatsapp/automation'
-import { drainSendQueue } from '@/lib/whatsapp/queue'
-import type { TemplateId, TemplateContext, SendResult } from '@/types/whatsapp'
 
 const DAY = 86_400_000
 const START = Date.UTC(2026, 6, 6, 12, 0, 0) // 2026-07-06 12:00 UTC

@@ -357,7 +357,7 @@ async function handleDeletedStatus(
  * Get status statistics for monitoring
  */
 export async function getStatusStatistics(
-  timeRangeMinutes: number = 60
+  _timeRangeMinutes: number = 60
 ): Promise<Record<string, number>> {
   // TODO: Implement statistics gathering
   // Query database for status counts in time range

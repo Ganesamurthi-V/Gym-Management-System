@@ -71,9 +71,26 @@ export function EditMembersClient({ members }: Props) {
   // Area field is plain text — no normalization needed
   useEffect(() => {}, [])
 
-  const handleAreaSearch = useCallback((_memberId: string, _query: string) => {
-    // Area suggestions removed — plain text input only
-  }, [])
+  // Suggest areas this gym already uses, so one spelling is reused across members.
+  // Local on purpose: no extra request per keystroke on a 4G connection.
+  const handleAreaSearch = useCallback((memberId: string, query: string) => {
+    const q = query.trim().toLowerCase()
+    if (!q) {
+      setAreaSuggestions(prev => ({ ...prev, [memberId]: [] }))
+      return
+    }
+    const seen = new Set<string>()
+    const matches: Array<{ id: string; name: string; district: string }> = []
+    for (const m of members) {
+      const name = m.area?.trim()
+      const key = name?.toLowerCase()
+      if (!name || !key || key === q || !key.includes(q) || seen.has(key)) continue
+      seen.add(key)
+      matches.push({ id: key, name, district: '' })
+    }
+    matches.sort((a, b) => Number(b.id.startsWith(q)) - Number(a.id.startsWith(q)) || a.name.localeCompare(b.name))
+    setAreaSuggestions(prev => ({ ...prev, [memberId]: matches.slice(0, 6) }))
+  }, [members])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)

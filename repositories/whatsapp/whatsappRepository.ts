@@ -10,7 +10,6 @@ import type {
   ProcessedMessage,
   ProcessedStatus,
   WhatsAppMessage,
-  WhatsAppWebhookLog,
 } from '@/lib/whatsapp/webhookTypes'
 
 /**

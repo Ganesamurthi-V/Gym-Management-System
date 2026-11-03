@@ -93,7 +93,6 @@ export default async function PaymentsPage() {
       duePayments={data.duePayments as any}
       pendingMembers={data.pendingMembers}
       gymId={gym.id}
-      gymName={gym.name}
     />
   )
 }

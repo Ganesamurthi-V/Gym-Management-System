@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, use, useState, useEffect, useRef } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { ChevronLeft, Lock } from 'lucide-react'
 import NavClient, { MobileNav } from './NavClient'
 import AccountMenu from './AccountMenu'
@@ -25,18 +25,6 @@ import { BLOCKED_PATH, decideShellGuard, type ShellData } from '@/lib/owner/shel
 
 const SHELL_EXCLUDED = ['/auth/', '/owner/onboarding', '/owner/subscription']
 const SIDEBAR_KEY = 'gymflow_sidebar_collapsed'
-
-function DumbbellIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor">
-      <rect x="1"    y="6.5" width="2.5" height="3" rx="0.5" />
-      <rect x="12.5" y="6.5" width="2.5" height="3" rx="0.5" />
-      <rect x="3.5"  y="5"   width="2"   height="6" rx="0.5" />
-      <rect x="10.5" y="5"   width="2"   height="6" rx="0.5" />
-      <rect x="5.5"  y="7"   width="5"   height="2" rx="0.5" />
-    </svg>
-  )
-}
 
 import type { User } from '@supabase/supabase-js'
 
@@ -74,7 +62,6 @@ export default function ShellGuard({ children, initialUser, shellData, memberCap
   const isShellless = SHELL_EXCLUDED.some(p => pathname.startsWith(p))
 
   const [collapsed, setCollapsed] = useState(false)
-  const [mounted, setMounted] = useState(false)
 
   // Gym state arrives after first paint (see GymGate); null until then.
   const [resolved, setResolved] = useState<ShellData | null>(null)
@@ -103,7 +90,6 @@ export default function ShellGuard({ children, initialUser, shellData, memberCap
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
-    setMounted(true)
   }, [])
 
   // The guided tour explains the navigation menu, so it expands a collapsed

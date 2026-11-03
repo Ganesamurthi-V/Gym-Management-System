@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  * Returns the authenticated user's gym subscription/active status.
  * Used by ShellGuard and SubscriptionClient for realtime sync callbacks.
  */
-export const GET = withAuth('ACCOUNT_STATUS_GET', async (req: NextRequest, { supabase, gym }) => {
+export const GET = withAuth('ACCOUNT_STATUS_GET', async (_req: NextRequest, { supabase, gym }) => {
   const { data, error } = await supabase
     .from('gyms')
     .select('name, is_active, subscription_status, plan_type, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at')

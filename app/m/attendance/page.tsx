@@ -1,6 +1,5 @@
-import { CalendarCheck, CalendarDays, Flame, TrendingUp } from 'lucide-react'
+import { CalendarDays, Flame, TrendingUp } from 'lucide-react'
 import { getAttendancePageData } from '@/lib/member/member-data'
-import { formatDateShort } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
 import AttendanceCalendar from './AttendanceCalendar'
 

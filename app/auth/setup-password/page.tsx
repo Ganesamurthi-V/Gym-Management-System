@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { fetchSession, signOutViaApi, updatePasswordViaApi } from '@/lib/auth/client-auth'
 import {
-  Eye, EyeOff, Shield, Check, AlertCircle, ArrowRight, Lock, ArrowLeft, Mail,
+  Eye, EyeOff, Check, AlertCircle, ArrowRight, Lock, ArrowLeft, Mail,
 } from 'lucide-react'
 import { AuthShell } from '@/components/auth/AuthShell'
 import {

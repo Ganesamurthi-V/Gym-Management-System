@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireOwnerAccess } from '@/lib/owner/access'
 import EditProgramClient from './EditProgramClient'

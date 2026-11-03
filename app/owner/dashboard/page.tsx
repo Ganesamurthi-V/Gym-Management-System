@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireOwnerAccess } from '@/lib/owner/access'
 import { getMemberStatus, getDaysRemaining, todayIST } from '@/lib/utils'
@@ -101,9 +100,6 @@ async function DashboardData({ gym }: { gym: { id: string; name: string } }) {
 
 export default async function DashboardPage() {
   const { gym } = await requireOwnerAccess()
-
-  // Unreachable behind the gate; narrows the type.
-  if (!gym) redirect('/auth/add-phone')
 
   // DashboardClient takes stats, expiring list and the renewals banner as one prop bundle, so
   // the data sits behind a single boundary rather than one per value.

@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { EditMembersClient } from './BulkEditClient'
-import { redirect } from 'next/navigation'
 
 export default async function EditMembersPage() {
   const { requireOwnerAccess } = await import('@/lib/owner/access')
@@ -14,5 +13,5 @@ export default async function EditMembersPage() {
     .eq('gym_id', gym.id)
     .order('member_number', { ascending: true })
 
-  return <EditMembersClient members={members ?? []} gymId={gym.id} />
+  return <EditMembersClient members={members ?? []} />
 }

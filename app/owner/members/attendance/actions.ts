@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { RequestLogger, apiLogger } from '@/lib/logger'
+import { apiLogger } from '@/lib/logger'
 
 export async function fetchAttendanceLogsAction(
   gymId: string,

@@ -37,12 +37,11 @@ interface AreaMeta {
 
 interface Props {
   members: MemberRow[]
-  gymId: string
 }
 
 const cls = 'px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 bg-surface'
 
-export function EditMembersClient({ members, gymId }: Props) {
+export function EditMembersClient({ members }: Props) {
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('edit')
@@ -54,7 +53,6 @@ export function EditMembersClient({ members, gymId }: Props) {
   const [areaSuggestions, setAreaSuggestions] = useState<Record<string, Array<{ id: string; name: string; district: string }>>>({})
   const [areaMeta, setAreaMeta] = useState<Record<string, AreaMeta>>({})
   const blurTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  const searchTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   // Wheel isolation for all data-scroll-box elements
   useEffect(() => {

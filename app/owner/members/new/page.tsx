@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Lock, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, IndianRupee, Hash, Plus } from 'lucide-react'
+import { ArrowLeft, Lock, Check, X, Edit2, User, Phone, MapPin, Calendar, CreditCard, Plus } from 'lucide-react'
 import { calcEndDate, formatDate, formatCurrency, isValidPhone } from '@/lib/utils'
 import type { Plan, PaymentMode } from '@/types'
 import { formatMemberId } from '@/types'

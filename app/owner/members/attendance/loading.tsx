@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Search, Clock } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 export default function AttendanceLogLoading() {
   return (

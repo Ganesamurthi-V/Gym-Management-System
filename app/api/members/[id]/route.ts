@@ -14,7 +14,7 @@ import { assertGymWritable } from '@/lib/subscriptionGuard'
 
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const startTime = Date.now()

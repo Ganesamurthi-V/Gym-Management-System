@@ -108,7 +108,7 @@ const nextConfig = {
     // dynamic routes. Next.js 15 defaults to 0s for dynamic routes, meaning
     // every single navigation (even back to a page just visited) triggers a
     // full RSC round-trip. 30s is conservative: all mutation paths in this app
-    // already call invalidateMembersCache() / router.refresh(), so stale
+    // already call router.refresh(), so stale
     // RSC payloads will not be served after data-mutating user actions.
     staleTimes: {
       // Raised from 30s. These pages are per-owner and read the auth cookie, so
@@ -116,7 +116,7 @@ const nextConfig = {
       // browser-scoped Router Cache is the only safe place to cache them.
       // Re-opening an already-visited tab within this window renders instantly
       // with ZERO server round trip. Mutations already call
-      // invalidateMembersCache() / router.refresh(), so writes still show up.
+      // router.refresh(), so writes still show up.
       dynamic: 180,  // cache dynamic route RSC payloads 3min client-side
       static: 300,   // cache static route RSC payloads 5min client-side
     },

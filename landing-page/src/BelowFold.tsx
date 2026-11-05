@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Features } from './components/Features';
 import { Problems } from './components/Problems';
 import { WhatsAppSection } from './components/WhatsAppSection';
+import { BuiltForIndia } from './components/BuiltForIndia';
 import { HowItWorks } from './components/HowItWorks';
 import { Pricing } from './components/Pricing';
 import { FAQ } from './components/FAQ';
@@ -16,8 +18,10 @@ import { Footer } from './components/Footer';
  * visible before the visitor scrolls.
  */
 const SECTIONS = [
+  { key: 'features', Section: Features },
   { key: 'problems', Section: Problems },
   { key: 'whatsapp', Section: WhatsAppSection },
+  { key: 'india', Section: BuiltForIndia },
   { key: 'steps', Section: HowItWorks },
   { key: 'pricing', Section: Pricing },
   { key: 'faq', Section: FAQ },

@@ -128,7 +128,7 @@ export function Pricing() {
   const cards = [FREE_CARD, PAID_CARDS[term]];
 
   return (
-    <Section id="pricing" labelledBy="pricing-title" tone="paper">
+    <Section id="pricing" labelledBy="pricing-title" tone="tint">
       <h2 id="pricing-title" className="display-2 mx-auto max-w-[20ch] min-w-0 text-balance text-center [overflow-wrap:break-word]">
         Simple pricing, free forever up to 50 members
       </h2>

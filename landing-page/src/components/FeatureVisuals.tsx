@@ -15,7 +15,7 @@ const MEMBERS: { id: string; name: string; plan: string; status: Status; note?: 
   { id: 'GF0052', name: 'Fathima R.', plan: 'Monthly', status: 'active', note: '₹500 pending' },
 ];
 
-function Initials({ name }: { name: string }) {
+function Initials({ name, small = false }: { name: string; small?: boolean }) {
   const letters = name
     .replace('.', '')
     .split(' ')
@@ -23,15 +23,18 @@ function Initials({ name }: { name: string }) {
     .join('')
     .slice(0, 2);
   return (
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-subtle text-[13px] font-semibold text-muted-foreground">
+    <span
+      className={`grid shrink-0 place-items-center rounded-full bg-subtle font-semibold text-muted-foreground ${small ? 'h-8 w-8 text-[12px]' : 'h-10 w-10 text-[13px]'}`}
+    >
       {letters}
     </span>
   );
 }
 
 /** Tab 1: the searchable member list with one record opened beside it. */
-export function MembersVisual() {
+export function MembersVisual({ compact = false }: { compact?: boolean }) {
   const open = MEMBERS[1];
+  if (compact) return <MembersCompact />;
   return (
     <div aria-hidden className="pointer-events-none grid min-h-[420px] select-none gap-6 p-5 md:grid-cols-[1.15fr_1fr] md:p-8">
       <div className={`${PANEL} p-4`}>
@@ -89,8 +92,9 @@ export function MembersVisual() {
 }
 
 /** Tab 2: recording a part payment, and the member who still owes. */
-export function DuesVisual() {
+export function DuesVisual({ compact = false }: { compact?: boolean }) {
   const modes = ['Cash', 'UPI', 'Card'];
+  if (compact) return <DuesCompact />;
   return (
     <div aria-hidden className="pointer-events-none grid min-h-[420px] select-none gap-6 p-5 md:grid-cols-[1fr_1.1fr] md:p-8">
       <div className={`${PANEL} flex flex-col p-6`}>
@@ -140,8 +144,9 @@ export function DuesVisual() {
 }
 
 /** Tab 3: the front-desk check-in, as the member-ID keypad. */
-export function AttendanceVisual() {
+export function AttendanceVisual({ compact = false }: { compact?: boolean }) {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'GF', '0'];
+  if (compact) return <AttendanceCompact />;
   return (
     <div aria-hidden className="pointer-events-none grid min-h-[420px] select-none gap-6 p-5 md:grid-cols-[1fr_1fr] md:p-8">
       <div className={`${PANEL} flex flex-col items-center p-6 text-center`}>
@@ -176,6 +181,171 @@ export function AttendanceVisual() {
         <p className="mt-auto max-w-[36ch] pt-6 text-[15px] text-muted-foreground">
           Members check in at the front desk, or on their own with their member ID.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* Compact variants: the same three screens at the size of the home page's feature cards. A fixed 300px
+   picture area that clips whatever does not fit, on the page's second band so the white panes read as
+   screens. The pane count follows the card's own width (a container query), not the viewport: two panes
+   from a 512px content box, otherwise the first pane alone at full width. Type stays at real size, so
+   nothing is shrunk into illegibility on a phone. */
+const COMPACT_ROOT = '@container pointer-events-none h-[300px] select-none overflow-clip bg-subtle p-4';
+const COMPACT_GRID = 'grid gap-3';
+const COMPACT_PANE = 'rounded-[12px] border border-border-subtle bg-frame';
+const COMPACT_BUTTON = 'self-start rounded-[8px] bg-accent px-4 py-2 text-[14px] font-medium text-accent-ink';
+
+function MembersCompact() {
+  const open = MEMBERS[1];
+  return (
+    <div aria-hidden className={COMPACT_ROOT}>
+      <div className={`${COMPACT_GRID} @lg:grid-cols-[1.15fr_1fr]`}>
+        <div className={`${COMPACT_PANE} p-3`}>
+          <div className="flex items-center gap-2 rounded-[8px] border border-border-strong bg-background px-3 py-2 text-[14px] text-muted-foreground">
+            <Search className="h-4 w-4 shrink-0" strokeWidth={2} />
+            <span className="truncate">Search by name or member ID</span>
+          </div>
+          <ul className="mt-2">
+            {MEMBERS.map(m => (
+              <li
+                key={m.id}
+                className={`flex items-center gap-2.5 border-t border-border-subtle py-2 first:border-t-0 ${m.id === open.id ? 'rounded-[8px] bg-accent-soft px-2' : ''}`}
+              >
+                <Initials name={m.name} small />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-display text-[15px] font-medium leading-tight text-foreground">{m.name}</span>
+                  <span className="block truncate text-[12px] text-muted-foreground">
+                    {m.id}, {m.plan}
+                  </span>
+                </span>
+                <span className={`status-chip status-${m.status}`}>{STATUS_LABEL[m.status]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className={`${COMPACT_PANE} hidden flex-col p-4 @lg:flex`}>
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-accent text-[15px] font-semibold text-accent-ink">PS</span>
+            <span>
+              <span className="block font-display text-[18px] font-semibold leading-tight text-foreground">{open.name}</span>
+              <span className="block text-[13px] text-muted-foreground">{open.id}</span>
+            </span>
+          </div>
+          <dl className="mt-3 divide-y divide-border-subtle text-[14px]">
+            <div className="flex justify-between py-2">
+              <dt className="text-muted-foreground">Plan</dt>
+              <dd className="font-medium text-foreground">{open.plan}</dd>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <dt className="text-muted-foreground">Status</dt>
+              <dd>
+                <span className={`status-chip status-${open.status}`}>{STATUS_LABEL[open.status]}</span>
+              </dd>
+            </div>
+            <div className="flex justify-between py-2">
+              <dt className="text-muted-foreground">Expires</dt>
+              <dd className="font-medium text-foreground">{open.note}</dd>
+            </div>
+          </dl>
+          <span className={`${COMPACT_BUTTON} mt-auto`}>Renew plan</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DuesCompact() {
+  const modes = ['Cash', 'UPI', 'Card'];
+  return (
+    <div aria-hidden className={COMPACT_ROOT}>
+      <div className={`${COMPACT_GRID} @lg:grid-cols-[1fr_1.1fr]`}>
+        <div className={`${COMPACT_PANE} flex flex-col p-4`}>
+          <p className="font-display text-[17px] font-semibold leading-tight text-foreground">Record a payment</p>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">Fathima R., GF0052, Monthly</p>
+
+          <p className="mt-3 text-[13px] text-muted-foreground">Amount received</p>
+          <div className="mt-1 rounded-[8px] border border-border-strong bg-background px-3 py-1.5 font-display text-[22px] font-semibold leading-tight text-foreground">
+            ₹500
+          </div>
+
+          <p className="mt-3 text-[13px] text-muted-foreground">Paid by</p>
+          <div className="mt-1 flex gap-1.5">
+            {modes.map(mode => (
+              <span
+                key={mode}
+                className={`flex-1 rounded-[8px] border py-1.5 text-center text-[13px] font-medium ${mode === 'UPI' ? 'border-accent bg-accent text-accent-ink' : 'border-border-strong bg-background text-foreground'}`}
+              >
+                {mode}
+              </span>
+            ))}
+          </div>
+          <span className={`${COMPACT_BUTTON} mt-3`}>Record payment</span>
+        </div>
+
+        <div className={`${COMPACT_PANE} hidden p-4 @lg:block`}>
+          <p className="font-display text-[17px] font-semibold leading-tight text-foreground">Who owes what</p>
+          <div className="mt-3 flex items-center gap-2.5 rounded-[8px] bg-accent-soft px-2 py-2">
+            <Initials name="Fathima R." small />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-display text-[15px] font-medium leading-tight text-foreground">Fathima R.</span>
+              <span className="block text-[12px] text-muted-foreground">GF0052, Monthly</span>
+            </span>
+            <span className="font-display text-[16px] font-semibold text-foreground">₹500</span>
+          </div>
+          <p className="mt-3 text-[14px] leading-snug text-muted-foreground">
+            A part payment stays on the member as a pending due, until the rest is recorded.
+          </p>
+          <span className="mt-3 inline-flex items-center gap-2 rounded-[8px] bg-subtle px-3 py-1.5 text-[13px] text-muted-foreground">
+            <Check className="h-4 w-4 shrink-0 text-accent-text" strokeWidth={2.5} />
+            Cash, UPI and card
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AttendanceCompact() {
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'GF', '0'];
+  const keyClass = 'grid h-[30px] place-items-center rounded-[8px] border border-border-strong bg-background text-[14px] font-medium text-foreground';
+  return (
+    <div aria-hidden className={COMPACT_ROOT}>
+      <div className={`${COMPACT_GRID} @lg:grid-cols-2`}>
+        <div className={`${COMPACT_PANE} flex flex-col items-center p-4 text-center`}>
+          <p className="font-display text-[17px] font-semibold leading-tight text-foreground">Enter your member ID</p>
+          <div className="mt-2.5 w-full max-w-[240px] rounded-[8px] border border-border-strong bg-background px-3 py-1.5 font-mono text-[20px] font-medium tracking-wide text-foreground">
+            GF0047
+          </div>
+          <div className="mt-2.5 grid w-full max-w-[240px] grid-cols-3 gap-1.5">
+            {keys.map(key => (
+              <span key={key} className={keyClass}>
+                {key}
+              </span>
+            ))}
+            <span className={keyClass}>
+              <Delete className="h-4 w-4" strokeWidth={2} />
+            </span>
+          </div>
+        </div>
+
+        <div className={`${COMPACT_PANE} hidden flex-col p-4 @lg:flex`}>
+          <p className="font-display text-[17px] font-semibold leading-tight text-foreground">Checked in</p>
+          <div className="mt-3 flex items-center gap-3 rounded-[8px] bg-accent-soft p-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-ink">
+              <Check className="h-5 w-5" strokeWidth={2.5} />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-display text-[17px] font-semibold leading-tight text-foreground">Arjun Menon</span>
+              <span className="block text-[13px] text-muted-foreground">GF0047, Annual</span>
+            </span>
+          </div>
+          <span className="status-chip status-active mt-3 self-start">Active</span>
+          <p className="mt-auto pt-3 text-[14px] leading-snug text-muted-foreground">
+            Members check in at the front desk, or on their own with their member ID.
+          </p>
+        </div>
       </div>
     </div>
   );

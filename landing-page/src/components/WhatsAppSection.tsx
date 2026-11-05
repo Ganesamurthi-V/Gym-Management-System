@@ -1,152 +1,123 @@
-import { useEffect, useState } from 'react';
-import { WhatsAppBubble, WhatsAppThread } from './WhatsAppThread';
+import { useState } from 'react';
+import { WhatsAppThread } from './WhatsAppThread';
 import { MESSAGE_TYPES } from './whatsappMessages';
-import { Section } from './layout/Section';
-import { ReminderFeed } from './ReminderFeed';
-import { AsciiIcon } from './ascii';
-import { Rise, SlideIndicator, TiltFrame } from './fx';
+import { CenterHead, CheckList, Section } from './layout/Section';
+import { Rise } from './fx';
+import { FREE_MEMBER_LIMIT, WHATSAPP_ADDON_PRICE, formatINR } from '../data/plans';
 import '../styles/whatsapp.css';
 
-const CYCLE_MS = 3000;
+/* Every line below matches featurePages.ts ('whatsapp' and 'fees-and-dues' entries): first expiry reminder
+   18 days out, come-back messages for up to 18 days, payment and expiry reminders every 3 days up to 7
+   times, checked once a day at about 9 AM India time. Nothing here is a number the product does not state. */
+const SCHEDULE = [
+  {
+    title: 'Welcome',
+    text: 'Sent once when you add a member, with their plan, start date and member ID.',
+  },
+  {
+    title: 'Payment due',
+    text: 'Sent while a member has an amount pending. It names the amount and repeats until the due is paid in full.',
+  },
+  {
+    title: 'Expiry reminders',
+    text: 'Start 18 days before the plan ends and tell the member how many days are left.',
+  },
+  {
+    title: 'Renewal confirmation',
+    text: 'Sent when you record the renewal, with the plan and the date it is valid until. The remaining expiry reminders stop.',
+  },
+  {
+    title: 'Membership expired',
+    text: 'If the member has not renewed, messages after the end date ask them to come back, for up to 18 days.',
+  },
+  {
+    title: 'Birthday wishes',
+    text: 'Sent on the member’s birthday, if you saved their date of birth.',
+  },
+] as const;
 
-/* Copy deck wording (the facts match featurePages.ts: first reminder 18 days out, then every 3 days, up to 7). */
-const POINTS = [
-  'The first expiry reminder goes out 18 days before the plan ends.',
-  'A reminder follows every 3 days, up to 7 times, until the member renews.',
-  'Reminders stop as soon as you record the renewal.',
+const SCHEDULE_FACTS = [
+  'Reminders are checked once a day, in the morning, about 9 AM India time.',
+  'Expiry, expired and payment due messages repeat every 3 days, up to 7 times, then stop.',
+  'Only members with a valid 10-digit mobile number receive messages.',
+  'Messages go out from GymFlow’s WhatsApp Business number, so there is nothing for you to connect.',
+] as const;
+
+const PLAN_FACTS = [
+  'Monthly and yearly plans send unlimited WhatsApp messages.',
+  `The free plan, for up to ${FREE_MEMBER_LIMIT} members, gets WhatsApp messages with the ${formatINR(WHATSAPP_ADDON_PRICE)} a month add-on.`,
 ] as const;
 
 export function WhatsAppSection() {
   const [index, setIndex] = useState(0);
-  const [auto, setAuto] = useState(true);
-
-  /* Cycles until the visitor picks a tab themselves, after that the choice is
-     theirs and it must not move under them. Skipped for reduced-motion users. */
-  useEffect(() => {
-    if (!auto) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = window.setInterval(
-      () => setIndex(i => (i + 1) % MESSAGE_TYPES.length),
-      CYCLE_MS
-    );
-    return () => window.clearInterval(timer);
-  }, [auto]);
-
   const active = MESSAGE_TYPES[index];
 
   return (
-    <Section id="whatsapp" labelledBy="whatsapp-title" tone="paper">
-      <div className="grid gap-14 lg:grid-cols-12 lg:gap-16">
-        <div className="min-w-0 lg:col-span-6">
-          <div className="lg:sticky lg:top-28">
-            <span className="wa-badge">
-              <AsciiIcon name="whatsapp" size={3} />
-            </span>
-            <h2 id="whatsapp-title" className="display-1 mt-6 min-w-0 text-balance [overflow-wrap:break-word]">
-              WhatsApp reminders that send themselves
-            </h2>
-            <p className="lead mt-6 max-w-[52ch]">
-              Welcome, renewal, expiry, payment due and birthday messages go out automatically, with no per-message charge from GymFlow.
-            </p>
+    <Section id="whatsapp" labelledBy="whatsapp-title" tone="tint">
+      <CenterHead
+        title={
+          <h2 id="whatsapp-title" className="display-2 text-balance">
+            WhatsApp reminders that send automatically
+          </h2>
+        }
+        lead="Welcome, payment due, expiry, renewal, expired and birthday messages go out on their own, with no per-message charge from GymFlow on paid plans."
+      />
 
-            <ul className="wa-points mt-8 max-w-[52ch]">
-              {POINTS.map(point => (
-                <li key={point} className="text-[16px] leading-relaxed text-foreground">
-                  {point}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-6">
-              <a
-                href="/whatsapp"
-                className="inline-flex min-h-[44px] items-center text-[16px] font-medium text-accent-text underline-offset-2 hover:underline"
-              >
-                More on WhatsApp reminders
-              </a>
-            </p>
-
-            {/* Three tabs in one white keycap; the blue pill slides under the active one on transform only. */}
-            <div className="wa-seg mt-6">
-              <div role="tablist" aria-label="Automated WhatsApp messages" className="wa-seg-track grid grid-cols-3">
-                <SlideIndicator index={index} count={MESSAGE_TYPES.length} className="wa-seg-thumb" />
-                {MESSAGE_TYPES.map((type, i) => {
-                  const selected = i === index;
-                  return (
-                    <button
-                      key={type.id}
-                      type="button"
-                      role="tab"
-                      id={`wa-tab-${type.id}`}
-                      aria-selected={selected}
-                      aria-controls="wa-panel"
-                      tabIndex={selected ? 0 : -1}
-                      onClick={() => {
-                        setAuto(false);
-                        setIndex(i);
-                      }}
-                      onKeyDown={e => {
-                        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-                        e.preventDefault();
-                        const step = e.key === 'ArrowRight' ? 1 : -1;
-                        const next = (i + step + MESSAGE_TYPES.length) % MESSAGE_TYPES.length;
-                        setAuto(false);
-                        setIndex(next);
-                        document.getElementById(`wa-tab-${MESSAGE_TYPES[next].id}`)?.focus();
-                      }}
-                      className={`wa-tab relative z-10 inline-flex min-h-[44px] items-center justify-center whitespace-nowrap px-3 py-2 font-display text-[16px] font-medium sm:px-5 ${
-                        selected ? 'text-accent-ink' : 'text-foreground hover:text-accent-text'
-                      }`}
-                    >
-                      {type.title}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div
-              id="wa-panel"
-              role="tabpanel"
-              aria-labelledby={`wa-tab-${active.id}`}
-              aria-live={auto ? 'off' : 'polite'}
-              className="mt-4 md:min-h-[72px]"
-            >
-              <div key={active.id} className="wa-swap">
-                <div className="wa-copy">
-                  <p className="text-[14px] font-medium text-accent-text">{active.when}</p>
-                  <p className="mt-1 max-w-[460px] text-[16px] leading-relaxed text-foreground">{active.desc}</p>
-                </div>
-                {/* The phone is hidden below md, so on mobile only the message shows: no
-                    chat surface and no header image, just the bubble. The minimum
-                    height stops the page jumping between templates. */}
-                <div className="mt-5 min-h-[200px] md:hidden">
-                  <WhatsAppBubble
-                    message={{ ...active.message, banner: false }}
-                    large
-                    tail
-                    className="ml-2 w-[calc(100%-0.5rem)] border border-border-subtle"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* The phone lifts over the upper edge of the accent-soft panel; the reminder slips sit inside it.
-            Below md the phone is hidden and the bubble above carries the message. */}
-        <div className="min-w-0 lg:col-span-6">
-          <div className="mx-auto max-w-[560px]">
-            <div className="wa-phone mx-auto hidden w-full max-w-[300px] md:block">
-              <TiltFrame max={2}>
-                <WhatsAppThread messages={[active.message]} label={active.label} />
-              </TiltFrame>
-            </div>
-            <Rise className="wa-panel">
-              <ReminderFeed />
-            </Rise>
-          </div>
-        </div>
+      <div className="mx-auto mt-8 w-fit max-w-full">
+        <CheckList items={PLAN_FACTS} />
       </div>
+
+      <div className="mt-14 grid gap-14 md:mt-20 lg:grid-cols-12 lg:gap-16">
+        <div className="min-w-0 lg:col-span-7">
+          <h3 className="display-3 text-balance">The message schedule</h3>
+
+          <ol className="wa-line mt-8">
+            {SCHEDULE.map((item, i) => (
+              <Rise as="li" key={item.title} delay={i * 0.06} className="wa-step">
+                <h4 className="font-display text-[20px] font-medium leading-[28px] tracking-[-0.02em] text-foreground">{item.title}</h4>
+                <p className="mt-1 max-w-[52ch] text-[16px] leading-relaxed text-muted-foreground">{item.text}</p>
+              </Rise>
+            ))}
+          </ol>
+
+          <div className="mt-10 border-t border-border-subtle pt-8">
+            <CheckList items={SCHEDULE_FACTS} />
+          </div>
+        </div>
+
+        {/* The phone sits inside one white frame with nothing behind or over it. The picker swaps the
+            sample message; the phone keeps its size, so the page does not jump. */}
+        <Rise delay={0.08} className="mx-auto w-full min-w-0 max-w-[460px] lg:sticky lg:top-28 lg:col-span-5 lg:max-w-none lg:self-start">
+          <h3 className="display-3 text-balance">What a member sees</h3>
+          <div className="panel panel-lg mt-6 p-3 sm:p-6">
+            <div role="group" aria-label="Choose a sample message" className="wa-pick">
+              {MESSAGE_TYPES.map((type, i) => (
+                <button
+                  key={type.id}
+                  type="button"
+                  aria-pressed={i === index}
+                  onClick={() => setIndex(i)}
+                  className="wa-pick-btn"
+                >
+                  {type.title}
+                </button>
+              ))}
+            </div>
+            <div className="mx-auto mt-5 w-full max-w-[300px]">
+              <WhatsAppThread messages={[active.message]} label={active.label} />
+            </div>
+          </div>
+        </Rise>
+      </div>
+
+      <p className="mt-12 text-center">
+        <a
+          href="/whatsapp"
+          className="inline-flex min-h-[44px] items-center text-[16px] font-medium text-accent-text underline-offset-2 hover:underline"
+        >
+          How WhatsApp reminders work
+        </a>
+      </p>
     </Section>
   );
 }

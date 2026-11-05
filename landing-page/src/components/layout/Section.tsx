@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Check } from 'lucide-react';
 
 /*
   The layout system every section on every page uses (DESIGN.md, "Layout system"). A section picks a
@@ -8,16 +9,17 @@ import type { ReactNode } from 'react';
   scripts/check-copy-sync.mjs reads it from there.
 */
 
-type Tone = 'chalk' | 'paper' | 'ink' | 'accent';
+type Tone = 'chalk' | 'paper' | 'tint' | 'ink' | 'accent';
 type Cut = 'top' | 'bottom' | 'both';
 
 /*
   Tones: chalk = the page colour, paper = the second band (--subtle), ink = the one graphite band,
-  accent = the Royal Blue band. `cut` is accepted for old call sites and ignored: the diagonal cuts are gone.
+  tint = a pale blue wash of the brand colour, accent = the Royal Blue band. `cut` is accepted for old call sites and ignored: the diagonal cuts are gone.
 */
 const TONE: Record<Tone, string> = {
   chalk: '',
   paper: 'bg-subtle',
+  tint: 'band-tint',
   ink: 'band-ink',
   accent: 'band-accent',
 };
@@ -57,6 +59,35 @@ export function SectionHead({ title, lead, children }: { title: ReactNode; lead?
       {lead && <p className="lead mt-5">{lead}</p>}
       {children && <div className="mt-7">{children}</div>}
     </div>
+  );
+}
+
+/**
+ * The hero's own heading rhythm, reused below it (DESIGN.md, "Section kit"): the H2 centred, one
+ * centred lead under it, optional actions. Every home section after the hero opens with this, so the
+ * page reads as one piece; the body under it is what changes from section to section.
+ */
+export function CenterHead({ title, lead, children }: { title: ReactNode; lead?: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="mx-auto max-w-[760px] text-center">
+      {title}
+      {lead && <p className="lead mx-auto mt-5 max-w-[60ch] text-balance">{lead}</p>}
+      {children && <div className="mt-8 flex flex-wrap justify-center gap-3">{children}</div>}
+    </div>
+  );
+}
+
+/** The one fact list: a blue check and one short sentence per line. */
+export function CheckList({ items, className = '' }: { items: readonly ReactNode[]; className?: string }) {
+  return (
+    <ul className={`space-y-2.5 ${className}`}>
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2.5 text-[15px] leading-relaxed text-muted-foreground">
+          <Check aria-hidden className="mt-[3px] size-4 shrink-0 text-accent-text" strokeWidth={2.5} />
+          <span className="min-w-0">{item}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

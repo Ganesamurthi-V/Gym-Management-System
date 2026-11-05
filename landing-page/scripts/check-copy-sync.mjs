@@ -102,8 +102,10 @@ const flat = (block) =>
     .replace(/\s+/g, ' ')
     .trim()
 const HEADINGS = [
-  ['Benefits', 'dashboard-title', 'dashboard'],
+  ['Features', 'features-title', 'features'],
+  ['Problems', 'problems-title', 'problems'],
   ['WhatsAppSection', 'whatsapp-title', 'whatsapp'],
+  ['BuiltForIndia', 'india-title', 'india'],
   ['HowItWorks', 'steps-title', 'steps'],
   ['Pricing', 'pricing-title', 'pricing'],
   ['FAQ', 'faq-title', 'faq'],

@@ -11,7 +11,19 @@ const QUICK_ACTIONS = [
 ] as const;
 
 /** Member app: just the phone visual (the switcher in BentoFeatures carries the words). */
-export function MemberAppCard() {
+export function MemberAppCard({ compact = false }: { compact?: boolean }) {
+  /* Compact (the home page's feature card): the top of the phone rising from the bottom edge of a fixed
+     300px picture area, at its drawn 256px size, no tilt. The cut-off shows the greeting, the active
+     membership with days left, the streak and the weekly goal. */
+  if (compact) {
+    return (
+      <div aria-hidden className="pointer-events-none h-[300px] select-none overflow-clip bg-subtle pt-6">
+        <div className="ma-phone mx-auto h-[520px] w-[256px]">
+          <PhoneMock />
+        </div>
+      </div>
+    );
+  }
   return (
     <TiltFrame max={2} className="ma-stage mx-auto">
       <div className="ma-scale">

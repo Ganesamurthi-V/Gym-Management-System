@@ -614,6 +614,11 @@ p, blockquote, figcaption, li {
   --shadow-lift: 0 0 0 1px var(--band-ink-line-strong), 0 24px 48px -20px var(--band-ink-edge);
 }
 
+/* Pale blue wash: the brand blue mixed into the page colour, so it follows light and dark. Text tokens are untouched. */
+.band-tint {
+  background: color-mix(in oklab, var(--accent) 9%, var(--background));
+}
+
 /* Blue band: accent drench, white ink, for the closing call. Surfaces inside it are white
    and get the light-theme text roles back. */
 .band-accent {
@@ -908,6 +913,18 @@ p, blockquote, figcaption, li {
   border-color: color-mix(in oklab, var(--accent) 40%, transparent);
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
+}
+
+/* Section kit (DESIGN.md): a raised white panel, the hero frame's depth at panel scale. One radius per
+   level: 14px panels, 20px product frames. Never nest a panel inside a panel. */
+.panel {
+  background: var(--frame);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.panel-lg {
+  border-radius: var(--radius-card-lg);
 }
 
 .card-accent-soft {

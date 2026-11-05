@@ -68,12 +68,30 @@ Primary keycap (blue), secondary keycap (white), text button. `:focus-visible`: 
 ## Content and structure: minimal, SEO-friendly, attractive
 The owner released the copy: headings and text may be rewritten freely, shortened, and made search-friendly (a plain keyword in the
 H1 and each H2, one clear sentence under each). Facts must stay true to the product (see src/data/*.ts and the existing pages);
-no invented metrics, customers or claims. Fewer topics, fewer words: one idea per screen, about 40 visible words per section.
-**Home page structure (in order):** Hero (H1 "Gym management software made effortless") / the film / Dashboard (graphite band) /
-Features (a four-tab switcher: Members, Fees and dues, Attendance, Member app) / WhatsApp reminders / Get started in three steps /
-Pricing / FAQ / Close (blue band) / Footer. The old Facts, Purpose, Problems and Founder sections leave the home page (their
-components stay in the repo, unused; their key facts live on as the figures in the dashboard band and the bullets in the WhatsApp section).
+no invented metrics, customers or claims.
+**Detail rule (redesign 5, owner's request: "contain all the important things in an easily understandable way"):** one idea per
+section, but enough detail to decide. Every item a visitor might ask about gets a title, one plain sentence and two to four checked
+facts (`CheckList`), and a link to its feature page for the rest. Short words, numerals, no jargon. Scannable beats short.
+**Home page structure (in order):** Hero (H1 "Gym management software made effortless", unchanged) / the film / Features (`#features`,
+every module with a real product screen and its facts) / Register and Excel vs GymFlow (a two-column comparison) / WhatsApp reminders
+(`#whatsapp`, the automatic message schedule beside the phone) / Built for gyms in India (rupees, UPI, WhatsApp, any phone, your data) /
+Get started in three steps / Pricing / FAQ / Close (blue band) / Footer. Facts, Purpose and Founder stay off the home page.
 The 16 feature, guide and docs pages keep their content (it is already search-rich) and take the same look.
+
+## Section kit (redesign 5: everything below the hero speaks the hero's language)
+The hero is the reference. Below it, every home section is built from these pieces only (`src/components/layout/Section.tsx`,
+`src/index.css`), so no section invents its own look:
+- **`Section`** (tone chalk / paper / accent, standard padding, 1200px column). Tones alternate chalk and paper; never two paper in a row.
+- **`CenterHead`**: the hero's rhythm. H2 `.display-2` centred, `text-balance`, plain keyword in it; one centred `.lead` sentence
+  (max 60ch); optional keycaps. Every home section after the hero opens with it, except FAQ (a Split) so the end of the page breathes.
+- **`.panel`** (white `--frame`, hairline, 14px, `--shadow-card`) and **`.panel .panel-lg`** (20px) for product frames. One level only:
+  never a panel in a panel. Inside a panel, divide with hairlines.
+- **`CheckList`**: the one fact list (blue check, 15px muted text, one short sentence each).
+- **Real product screens** are the pictures (`FeatureVisuals`, `MemberAppCard`, `ReminderFeed`, `WhatsAppThread`, `DashboardMock`), with
+  "Sample data" under any group of them. Never an icon standing in for a screen; a 20px lucide icon may sit beside a fact's title.
+- **Labels**: Familjen Grotesk 500, sentence case, muted. No mono labels, no all-caps, no tracked text outside product screens.
+Body compositions differ between neighbours: feature grid, comparison table, schedule beside phone, fact columns, steps, plan panels,
+accordion. Section heading copy is written inline in each section file (check-copy-sync reads the FAQ from there).
 
 ## ASCII (a signature of this site)
 ASCII is the premium-tech texture: used with restraint, always decorative-plus-interactive, never carrying essential text.
@@ -88,11 +106,12 @@ All three: canvas or pre, tokens only, paused off screen, static under reduced m
 Shape: a premium SaaS narrative. Hero **Settled/centred** over the ASCII field: H1 (`.display-xxl`, two lines, centred), one lead sentence, the
 two keycaps, one quiet terms line, then the product shown BIG (the members-list demo on a 20px-radius frame with the layered shadow, the
 WhatsApp confirmation floating over its corner as a small white card with a blue chip). Nav: a slim sticky bar (1px bottom hairline).
-Sections alternate `--background` and `--subtle`, 128 to 176px apart: the film as a large framed video; ONE graphite band for the dashboard
-with four large figures; the features switcher with one big capture; WhatsApp as a Split (heading + three bullets left, ASCII icon + feed
-cards right); the three steps as three wide rows with a large light numeral; pricing as two panels (Pro lifted, blue keycap, 1px blue ring);
-FAQ as a Split accordion; the blue close band with the ASCII logo; footer on `--background`. Never the same composition in neighbours; no
-three-up grid of identical icon cards.
+Sections alternate `--background` and `--subtle`, 128 to 176px apart: the film as a large framed video; Features as an uneven grid of
+panels (the four core modules large, each with its product screen and facts, then a row of smaller modules); the comparison as one
+panel holding a two-column table; WhatsApp as a centred head over the message schedule (left) and the phone (right); India facts as
+three ruled columns; the three steps as three columns joined by one hairline, each with a large light numeral (the numeral once, never
+also in the title); pricing as two panels (Pro lifted, blue keycap, 1px blue ring); FAQ as a Split accordion; the blue close band; footer
+on `--background`. Never the same composition in neighbours; no three-up grid of identical icon cards.
 
 ## Motion: smooth and refined
 Entrances: 12px translate plus opacity in 500ms `cubic-bezier(.22,1,.36,1)`, once, in view, 60ms stagger. Cards: hover raises the shadow

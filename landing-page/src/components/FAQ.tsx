@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { Section } from './layout/Section';
-import '../styles/faq.css';
 import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, savingPercent } from '../data/plans';
 
 const [MONTHLY, YEARLY] = PLANS;
@@ -48,87 +46,36 @@ const FAQS = [
   },
 ] as const;
 
-/* Hover only means something with a mouse. Touch screens fire a synthetic mouseenter on
-   tap, and there a tap has to toggle, so the two behaviours are told apart here. */
-const canHover = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-
+/* Every answer is open: an accordion hides the one thing a visitor came for, and the answers are also what the
+   FAQPage JSON-LD in index.html quotes, so they stay visible text. Two columns on the page's split line. */
 export function FAQ() {
-  // First item open, matching the reference — it also proves the rows expand.
-  const [open, setOpen] = useState<number | null>(0);
-
   return (
-    <Section id="faq" labelledBy="faq-title">
-      <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-        <div className="min-w-0 lg:col-span-5">
-          <div className="lg:sticky lg:top-28">
-            <h2 id="faq-title" className="display-2 min-w-0 text-balance [overflow-wrap:break-word]">
-              Gym management software FAQ
-            </h2>
-            <p className="lead mt-5 max-w-[40ch]">
-              Straight answers about pricing, setup, WhatsApp reminders and your data.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <a href={APP_URL} className="btn btn-primary">
-                Get Started
-              </a>
-              <a href="#support" className="btn btn-outline">
-                Contact Support
-              </a>
-            </div>
-          </div>
+    <Section id="faq" labelledBy="faq-title" tone="paper">
+      <div className="sec-head flex flex-col items-center gap-6">
+        <div>
+          <h2 id="faq-title" className="h2">
+            Gym management software FAQ
+          </h2>
+          <p className="lead">Straight answers about pricing, setup, WhatsApp reminders and your data.</p>
         </div>
-
-        {/* Accordion: 1px ruled rows. */}
-        <ul className="min-w-0 border-b border-border-subtle lg:col-span-7">
-          {FAQS.map((item, index) => {
-            const expanded = open === index;
-            const panelId = `faq-panel-${index}`;
-            const buttonId = `faq-button-${index}`;
-
-            return (
-              <li
-                key={item.q}
-                onMouseEnter={() => {
-                  if (canHover()) setOpen(index);
-                }}
-                data-open={expanded || undefined}
-                className="faq-row border-t border-border-subtle"
-              >
-                <h3>
-                  {/* A real button inside the heading, keeping aria-expanded and aria-controls.
-                      The padding lives on the button so the whole row is the hit area. */}
-                  <button
-                    type="button"
-                    id={buttonId}
-                    aria-expanded={expanded}
-                    aria-controls={panelId}
-                    // With a mouse, hover has already opened the row, so a click must not
-                    // close it again; it still toggles on touch and for keyboard users.
-                    onClick={() => setOpen(expanded && !canHover() ? null : index)}
-                    className="faq-trigger flex w-full items-center justify-between gap-6 py-6 text-left"
-                  >
-                    <span className="min-w-0 font-display text-[18px] font-medium leading-snug text-foreground md:text-[20px]">
-                      {item.q}
-                    </span>
-                    {/* A plus that turns into a minus on open (transform only, see faq.css). */}
-                    <span aria-hidden className="faq-glyph" />
-                  </button>
-                </h3>
-
-                {/* The answer stays in the DOM when collapsed: the FAQPage JSON-LD in index.html
-                    quotes every answer, and structured data describing text a visitor cannot find
-                    on the page is treated as spam. `hidden` collapses it (height snaps); on open
-                    the paragraph fades in over a 6px drop (opacity + transform, faq.css). */}
-                <div id={panelId} role="region" aria-labelledby={buttonId} hidden={!expanded}>
-                  <p className="faq-answer max-w-[58ch] pb-6 text-base leading-relaxed text-muted-foreground">
-                    {item.a}
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex flex-wrap justify-center gap-3">
+          <a href={APP_URL} className="btn btn-primary">
+            Start free trial
+          </a>
+          <a href="#support" className="btn btn-outline">
+            Contact support
+          </a>
+        </div>
       </div>
+
+      <ul className="faq-grid">
+        {FAQS.map(item => (
+          <li key={item.q}>
+            <h3 className="h4">{item.q}</h3>
+            <p>{item.a}</p>
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }

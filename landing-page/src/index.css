@@ -332,7 +332,7 @@
   --font-serif: var(--font-sans);
 
   /* Radii: panels 14, large product frames 20, keys and fields 10. */
-  --radius-card: 14px;
+  --radius-card: 12px;
   --radius-card-lg: 20px;
   --radius-pill: 999px;
 }
@@ -646,18 +646,16 @@ p, blockquote, figcaption, li {
 /* On the blue band the primary key turns white with a blue label. */
 .band-accent .btn-primary,
 .band-accent .btn-accent {
-  --_edge: var(--band-accent-key-edge);
-  --_drop: var(--accent-edge);
+  --_face: var(--device-bg);
   background: var(--device-bg);
   color: var(--on-surface-accent);
-  border-color: var(--band-accent-key-edge);
+  border-color: var(--device-bg);
 }
 .band-accent .btn-outline {
-  --_edge: var(--accent-edge);
-  --_drop: var(--accent-edge);
-  background: color-mix(in oklab, var(--accent-ink) 10%, transparent);
+  --_face: transparent;
+  background: transparent;
   color: var(--accent-ink);
-  border-color: color-mix(in oklab, var(--accent-ink) 50%, transparent);
+  border-color: color-mix(in oklab, var(--accent-ink) 60%, transparent);
 }
 .band-accent .btn-ghost {
   color: var(--accent-ink);
@@ -750,9 +748,8 @@ p, blockquote, figcaption, li {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CONTROLS: keycaps. 48px, 10px radius, a 1px border and a 3px bottom edge (box-shadow) with a
-   soft drop. Hover lifts the key 1px; press sinks it 3px onto no edge. 80ms. Transitions name
-   their properties; the focus outline is global and instant.
+   CONTROLS: one flat button. 44px, 8px radius, a 1px border. Hover steps the fill and lifts it 1px; press
+   sinks it 1px and scales it .985. Transitions name their properties; the focus outline is global and instant.
 ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Chip: small status or tag. */
@@ -773,18 +770,15 @@ p, blockquote, figcaption, li {
 }
 
 .btn {
-  --_face: var(--key-face);
-  --_edge: var(--key-edge);
-  --_drop: var(--key-drop);
-  --_hi: var(--key-hi);
+  --_face: var(--frame);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  min-height: 48px;
+  min-height: 44px;
   padding: 0 var(--space-lg);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  border-radius: 8px;
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 500;
@@ -795,43 +789,35 @@ p, blockquote, figcaption, li {
   cursor: pointer;
   color: var(--foreground);
   background: var(--_face);
-  box-shadow:
-    0 3px 0 0 var(--_edge),
-    0 6px 8px -4px var(--_drop),
-    inset 0 1px 0 var(--_hi);
+  /* One button: flat, a 1px border. Hover steps the fill 14% toward the ink and the box 1px up; press
+     sinks it 1px and scales it .985, so both states show a move. */
   transition:
-    transform var(--dur-micro) var(--ease-out),
-    box-shadow var(--dur-micro) var(--ease-out),
-    background-color var(--dur-micro) linear,
-    border-color var(--dur-micro) linear,
-    color var(--dur-micro) linear;
+    transform 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    color 140ms var(--ease-out);
 }
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 4px 0 0 var(--_edge),
-    0 8px 10px -4px var(--_drop),
-    inset 0 1px 0 var(--_hi);
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    transform: translateY(-1px);
+    background: color-mix(in oklab, var(--_face) 86%, var(--foreground));
+  }
 }
 .btn:active {
-  transform: translateY(3px);
-  box-shadow:
-    0 0 0 0 var(--_edge),
-    inset 0 1px 2px var(--key-press);
+  transform: translateY(1px) scale(0.985);
+  transition-duration: 90ms;
 }
 
-/* Royal Blue key, white label, a deep-blue edge. */
+/* Royal Blue button, white label. */
 .btn-primary,
 .btn-accent {
-  --_edge: var(--accent-edge);
-  --_drop: var(--key-accent-drop);
-  --_hi: var(--key-accent-hi);
+  --_face: var(--accent);
   background: var(--accent);
   color: var(--accent-ink);
-  border-color: var(--accent-edge);
+  border-color: var(--accent);
 }
 
-/* White key: the default face with a hairline (alias, so markup can name it). */
+/* White button: the default face with a hairline (alias, so markup can name it). */
 .btn-outline {
   background: var(--_face);
   color: var(--foreground);
@@ -848,25 +834,20 @@ p, blockquote, figcaption, li {
   color: var(--foreground);
   background: var(--subtle);
   transform: none;
-  box-shadow: none;
 }
 .btn-ghost:active {
   transform: none;
-  box-shadow: none;
 }
 
+/* One button size: .btn-lg stays an alias so older markup keeps rendering. */
 .btn-lg {
-  min-height: 56px;
-  padding: 0 32px;
-  font-size: 18px;
+  min-height: 44px;
 }
 
 /* Compact key for the nav strip. A dedicated class rather than Tailwind utilities,
    because .btn sets its own padding and size and is authored after Tailwind's layer. */
 .btn-nav {
   min-height: 44px;
-  padding: 0 var(--space-md);
-  font-size: 15px;
 }
 
 /* Inputs: 48px, 10px radius, a 1px strong hairline, a blue edge on focus. */
@@ -874,7 +855,7 @@ p, blockquote, figcaption, li {
   width: 100%;
   min-height: 48px;
   padding: var(--space-sm) var(--space-md);
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid var(--muted-foreground);
   background: var(--frame);
   color: var(--foreground);
@@ -899,7 +880,7 @@ p, blockquote, figcaption, li {
 .card {
   background: var(--frame);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .card-hover {
@@ -931,7 +912,7 @@ p, blockquote, figcaption, li {
   background: var(--accent-soft);
   color: var(--foreground);
   border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 /* Phone mock screen. Stays light in both themes: it depicts the member app. */
@@ -952,7 +933,7 @@ p, blockquote, figcaption, li {
 .plastic {
   position: relative;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--frame);
   color: var(--foreground);
   box-shadow: var(--shadow-card);
@@ -962,7 +943,7 @@ p, blockquote, figcaption, li {
 .slip {
   position: relative;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background-color: var(--frame);
   color: var(--foreground);
   font-family: var(--font-mono);

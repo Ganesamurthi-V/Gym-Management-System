@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { CalendarClock, IndianRupee, LifeBuoy, MessageCircle, MonitorSmartphone, ShieldCheck, type LucideIcon } from 'lucide-react';
-import { Rise } from './fx';
-import { CenterHead, Section } from './layout/Section';
+import { Section, SectionHead } from './layout/Section';
 
 /* Six facts, reworded from featurePages.ts ("Built for independent gyms in India", members, attendance
    and WhatsApp pages) and the FAQ (data safety, support). Nothing here is a metric or a customer claim. */
@@ -19,17 +18,17 @@ const FACTS: { icon: LucideIcon; title: string; text: ReactNode }[] = [
   {
     icon: MonitorSmartphone,
     title: 'Works on any phone or computer',
-    text: 'GymFlow runs in a web browser, so there is nothing to install and no equipment to buy.',
+    text: 'GymFlow runs in a web browser: nothing to install and no equipment to buy.',
   },
   {
     icon: CalendarClock,
     title: 'Follows India time',
-    text: 'Days follow India time, so a late evening visit counts for that day. Expiry and payment due reminders are checked once a day, at about 9 AM.',
+    text: 'Days follow India time, so a late evening visit counts for that day.',
   },
   {
     icon: ShieldCheck,
     title: 'Your data is yours',
-    text: "Each gym's data is kept separate and encrypted in transit. Export members, attendance and payments to Excel any time, and delete your gym's data from account settings.",
+    text: "Each gym's data is kept separate and encrypted in transit. Export it to Excel any time.",
   },
   {
     icon: LifeBuoy,
@@ -46,39 +45,72 @@ const FACTS: { icon: LucideIcon; title: string; text: ReactNode }[] = [
   },
 ];
 
+/* The fee screen of the owner console, drawn in HTML: a rupee amount and the three ways a payment is recorded,
+   UPI picked. It shows the first fact on the list instead of describing it. */
+function FeeSlip() {
+  return (
+    <div aria-hidden className="panel p-6">
+      <p className="h4">Record a fee</p>
+      <div className="mt-4 divide-y divide-border-subtle text-[16px]">
+        <div className="flex items-center justify-between py-3">
+          <span className="text-muted-foreground">Member</span>
+          <span className="font-medium">Divya Menon</span>
+        </div>
+        <div className="flex items-center justify-between py-3">
+          <span className="text-muted-foreground">Plan</span>
+          <span className="font-medium">Monthly</span>
+        </div>
+        <div className="flex items-center justify-between py-3">
+          <span className="text-muted-foreground">Amount</span>
+          <span className="font-display text-[24px] font-semibold">₹1,200</span>
+        </div>
+      </div>
+      <div className="mt-4 flex gap-2">
+        {['Cash', 'UPI', 'Card'].map(mode => (
+          <span
+            key={mode}
+            className={`flex min-h-[44px] flex-1 items-center justify-center rounded-lg border text-[16px] font-medium ${
+              mode === 'UPI' ? 'border-accent bg-accent-soft text-accent-text' : 'border-border-strong text-muted-foreground'
+            }`}
+          >
+            {mode}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function BuiltForIndia() {
   return (
     <Section id="india" labelledBy="india-title" tone="chalk">
-      <CenterHead
-        title={
-          <h2 id="india-title" className="display-2 text-balance">
-            Built for independent gyms in India
-          </h2>
-        }
-        lead="Made for gyms and fitness studios run by their owners, with rupees, UPI, WhatsApp and any phone in mind."
-      />
+      <div className="split items-center">
+        <SectionHead
+          title={
+            <h2 id="india-title" className="h2">
+              Built for independent gyms in India
+            </h2>
+          }
+          lead="Made for gyms and fitness studios run by their owners, with rupees, UPI, WhatsApp and any phone in mind."
+        />
+        <FeeSlip />
+      </div>
 
-      <ul className="mt-12 grid gap-x-10 gap-y-12 md:mt-16 md:grid-cols-2 lg:grid-cols-3 lg:gap-x-12">
-        {FACTS.map((fact, i) => (
-          <Rise as="li" key={fact.title} delay={(i % 3) * 0.06} className="flex h-full flex-col border-t border-border-subtle pt-6">
-            {/* Every card is the same stack at the same offsets: fixed icon tile, then title, then text, all on one left edge. */}
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-border-subtle text-accent-text">
-              <fact.icon aria-hidden className="size-5" strokeWidth={1.75} />
-            </span>
-            <h3 className="mt-4 font-display text-[19px] font-medium leading-snug tracking-[-0.02em] text-foreground">
-              {fact.title}
-            </h3>
-            <p className="mt-2 text-pretty text-[16px] leading-relaxed text-muted-foreground">{fact.text}</p>
-          </Rise>
+      <ul className="india-facts">
+        {FACTS.map(fact => (
+          <li key={fact.title}>
+            <fact.icon aria-hidden className="size-5 text-accent-text" strokeWidth={1.75} />
+            <h3 className="h4 mt-3">{fact.title}</h3>
+            <p>{fact.text}</p>
+          </li>
         ))}
       </ul>
 
-      <p className="mt-12 text-center text-[16px] text-muted-foreground md:mt-16">
+      <p className="mt-8 text-[16px] text-muted-foreground">
         Run a yoga, Zumba or dance studio?{' '}
-        <a href="/fitness-studio-management-software" className="font-medium text-accent-text underline-offset-2 hover:underline">
-          See how GymFlow fits a studio
+        <a href="/fitness-studio-management-software" className="link">
+          <span>See how GymFlow fits a studio</span>
         </a>
-        .
       </p>
     </Section>
   );

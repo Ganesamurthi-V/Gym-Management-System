@@ -1,0 +1,1019 @@
+/* Home page system (DESIGN.md, "Taste redesign"): one 1200px wrap, one section box, one heading scale,
+   one card, one link, one picture frame. Section components only pick a ground and fill these slots.
+   Nothing here animates on load or on scroll; the only motion is a hover or press answering the pointer. */
+
+:root {
+  --gut: 20px;
+  --padt: 96px;
+  --padb: 56px;
+  --r-md: 12px;
+  --r-lg: 20px;
+}
+@media (min-width: 640px) {
+  :root {
+    --gut: 32px;
+    --padt: 112px;
+    --padb: 64px;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --gut: 40px;
+    --padt: 120px;
+    --padb: 56px;
+  }
+}
+
+/* The one content edge, used by the header, every section and the footer: lines at x 120 and 1320 at 1440. */
+.wrap {
+  width: min(100% - 2 * var(--gut), 1200px);
+  margin-inline: auto;
+}
+
+/* A section is at least one screen at tablet and up, and its heading is the first thing in it. Under 640px it
+   is only as tall as its content: a phone screen filled with air reads as a bug, not as rhythm. */
+.sec {
+  position: relative;
+  padding: var(--padt) 0 var(--padb);
+}
+@media (min-width: 768px) {
+  .sec {
+    min-height: 100svh;
+  }
+}
+.sec--alt {
+  background: var(--subtle);
+}
+
+/* Heading scale: h1 56, h2 48 / 30, h3 28 / 24, card title 20, body 16. Weight 600 in the display face, tight tracking. */
+.h2 {
+  font-size: clamp(1.875rem, 3.3vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  max-width: 24ch;
+}
+.sec-head {
+  max-width: 62ch;
+  margin-inline: auto;
+  margin-bottom: 32px;
+  text-align: center;
+}
+@media (min-width: 768px) {
+  .sec-head {
+    margin-bottom: 48px;
+  }
+}
+.split > .sec-head {
+  margin-bottom: 0;
+}
+.sec-head .lead {
+  margin-top: 16px;
+  margin-inline: auto;
+  max-width: 64ch;
+}
+.h3 {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.1vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.h4 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+/* Two columns that share the page's split line: text left, picture right, on every split. One column under 1024
+   with the text first. */
+.split {
+  display: grid;
+  gap: 32px;
+}
+@media (min-width: 1024px) {
+  .split {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+  .split > :first-child {
+    grid-column: 1 / 7;
+  }
+  .split > :last-child {
+    grid-column: 7 / 13;
+  }
+}
+
+/* The one card: a white surface, a 1px hairline, 12px corners, no shadow. A card that leads somewhere lifts 2px. */
+.panel {
+  box-shadow: none;
+}
+.panel-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 180ms var(--ease-out),
+    border-color 140ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .panel-link:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+  }
+}
+
+/* The feature panel (FeatureArt): a blue-washed 20px card with drawn layers (glow, two rings, hairlines along the
+   edges, corner crosses) and a small product card floating on two faint sheets. The layers are drawn in by script
+   when the panel scrolls into view; this is the resting state (and what reduced motion shows). */
+.feat-art {
+  --fx-x: 30px;
+  --fx-y: 26px;
+  --fx-line: color-mix(in oklab, var(--accent) 22%, transparent);
+  --fx-mark: color-mix(in oklab, var(--accent) 55%, transparent);
+  --fx-sheet: 0.7;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-height: 456px;
+  padding: 64px 44px;
+  border-radius: 22px;
+}
+/* The panel's own colour lives on .fx-bg so the scroll can zoom it (1.3 down to 1) while the panel opens. */
+.fx-bg {
+  inset: 0;
+  background: linear-gradient(#cfe0ff 0%, #e4eeff 55%, #f4f8ff 100%);
+}
+.dark .feat-art {
+  --fx-line: color-mix(in oklab, var(--accent) 30%, transparent);
+  --fx-mark: color-mix(in oklab, #93c5fd 70%, transparent);
+  --fx-sheet: 0.18;
+}
+.dark .fx-bg {
+  background: linear-gradient(#12213f 0%, #0d1a33 55%, #0a1326 100%);
+}
+@media (max-width: 820px) {
+  .feat-art {
+    --fx-x: 16px;
+    --fx-y: 16px;
+    min-height: 0;
+    padding: 48px 20px 60px;
+  }
+}
+.fx {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.fx > *,
+.fx-rings > * {
+  position: absolute;
+  display: block;
+}
+.fx-glow {
+  top: 50%;
+  left: 50%;
+  width: 620px;
+  height: 620px;
+  margin: -310px 0 0 -310px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.28) 55%, transparent);
+}
+.dark .fx-glow {
+  background: radial-gradient(closest-side, rgb(37 99 235 / 0.42), rgb(37 99 235 / 0.14) 55%, transparent);
+}
+.fx-rings {
+  inset: 0;
+}
+.fx-ring {
+  top: 50%;
+  left: 50%;
+  width: 210px;
+  height: 210px;
+  margin: -105px 0 0 -105px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--fx-line);
+}
+.fx-ring-2 {
+  width: 372px;
+  height: 372px;
+  margin: -186px 0 0 -186px;
+}
+.fx-line {
+  background: var(--fx-line);
+}
+.fx-t {
+  top: var(--fx-y);
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform-origin: 0 50%;
+}
+.fx-b {
+  bottom: var(--fx-y);
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform-origin: 100% 50%;
+}
+.fx-l {
+  left: var(--fx-x);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform-origin: 50% 0;
+}
+.fx-r {
+  right: var(--fx-x);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform-origin: 50% 100%;
+}
+.fx-mark {
+  width: 13px;
+  height: 13px;
+  margin: -6px 0 0 -6px;
+}
+.fx-mark::before,
+.fx-mark::after {
+  content: '';
+  position: absolute;
+  background: var(--fx-mark);
+}
+.fx-mark::before {
+  top: 0;
+  left: 6px;
+  width: 1px;
+  height: 13px;
+}
+.fx-mark::after {
+  top: 6px;
+  left: 0;
+  width: 13px;
+  height: 1px;
+}
+.fx-m1 {
+  left: var(--fx-x);
+  top: var(--fx-y);
+}
+.fx-m2 {
+  left: calc(100% - var(--fx-x) - 1px);
+  top: var(--fx-y);
+}
+.fx-m3 {
+  left: var(--fx-x);
+  top: calc(100% - var(--fx-y) - 1px);
+}
+.fx-m4 {
+  left: calc(100% - var(--fx-x) - 1px);
+  top: calc(100% - var(--fx-y) - 1px);
+}
+.feat-float {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 396px;
+}
+.fx-sheet {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 16px;
+  background: var(--frame, #fff);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.fx-s1 {
+  opacity: var(--fx-sheet);
+  transform: translateY(14px) scale(0.94);
+}
+.fx-s2 {
+  opacity: calc(var(--fx-sheet) * 0.5);
+  transform: translateY(28px) scale(0.88);
+}
+.feat-frag {
+  position: relative;
+}
+.feat-frag .mini {
+  max-width: none;
+}
+.feat-frag .ma-phone {
+  margin-inline: auto;
+}
+
+/* The feature card (as on tasteskill.dev): one big rounded surface holding the animated panel and the words side
+   by side, the panel first; every other card flips. It lifts 2px on hover with a mouse. */
+.feats {
+  display: grid;
+  gap: 28px;
+}
+.feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr);
+  min-height: 468px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--frame, var(--background));
+  box-shadow: var(--shadow-card);
+}
+.feature--flip {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.14fr);
+}
+.feature--flip .feature-media {
+  order: 2;
+}
+@media (hover: hover) and (pointer: fine) {
+  .feature {
+    transition: transform 0.32s var(--ease-out), box-shadow 0.32s var(--ease-out);
+  }
+  .feature:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+.feature-media {
+  display: grid;
+}
+.feature-copy {
+  align-self: center;
+  padding: 48px 52px 48px 48px;
+}
+.feature--flip .feature-copy {
+  padding: 48px 48px 48px 52px;
+}
+.feat-label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent-text, var(--accent));
+}
+.feature-copy .h3 {
+  max-width: 15ch;
+  font-size: clamp(25px, 2.6vw, 32px);
+  line-height: 1.14;
+  letter-spacing: -0.03em;
+}
+@media (max-width: 960px) {
+  .feature-copy,
+  .feature--flip .feature-copy {
+    padding: 40px 36px;
+  }
+}
+@media (max-width: 820px) {
+  .feats {
+    gap: 20px;
+  }
+  .feature,
+  .feature--flip {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    border-radius: 24px;
+  }
+  .feature--flip .feature-media {
+    order: 0;
+  }
+  .feature-copy,
+  .feature--flip .feature-copy {
+    padding: 26px 22px 28px;
+  }
+}
+
+/* A simple product card: a title row, a few figures, a short list. No sidebar, no chrome. */
+.mini {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--frame, var(--background));
+  box-shadow: var(--shadow-card);
+}
+.mini__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+.mini__btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mini__stats {
+  display: flex;
+  gap: 24px;
+  margin-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.mini__stats b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.1;
+}
+.mini__stats span {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.mini__rows {
+  margin-top: 4px;
+}
+.mini__rows li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.mini__rows li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.mini__avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  color: var(--accent-text, var(--accent));
+  font-size: 12px;
+  font-weight: 600;
+}
+.mini__who {
+  flex: 1;
+  min-width: 0;
+}
+.mini__who b,
+.mini__who small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mini__who b {
+  font-size: 15px;
+  font-weight: 500;
+}
+.mini__who small {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.mini__pill {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mini__pill--active {
+  background: color-mix(in oklab, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+.mini__pill--expiring {
+  background: color-mix(in oklab, oklch(70% 0.16 70) 20%, transparent);
+  color: oklch(48% 0.12 65);
+}
+.dark .mini__pill--expiring {
+  color: oklch(82% 0.13 80);
+}
+.dark .mini__pill--active {
+  color: oklch(80% 0.15 150);
+}
+
+/* One link look: a faint hairline at rest, an accent line that draws left to right on hover. */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--accent-text);
+  text-decoration: none;
+}
+.link > span {
+  background:
+    linear-gradient(currentColor, currentColor) left bottom / 0 1px no-repeat,
+    linear-gradient(var(--border-strong), var(--border-strong)) left bottom / 100% 1px no-repeat;
+  padding-bottom: 2px;
+  transition: background-size 200ms var(--ease-out);
+}
+.link:hover > span {
+  background-size: 100% 1px, 100% 1px;
+}
+.link svg {
+  transition: transform 140ms var(--ease-out);
+}
+.link:hover svg {
+  transform: translateX(3px);
+}
+
+/* Fact lines: a bold noun and one short sentence per row, closed by a hairline. */
+.facts {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+}
+.facts li {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.facts li strong {
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: var(--foreground);
+  margin-right: 6px;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────────────────────────────────────────────
+   The first screen holds the hero alone: the claim, one action pair, one hard fact, and the product as live
+   HTML cut by the fold under a fade. The fade is a mask on the product, not a layer over it. */
+.hero {
+  position: relative;
+  isolation: isolate;
+  padding-top: 88px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  overflow: clip;
+}
+@media (min-width: 640px) {
+  .hero {
+    padding-top: 112px;
+  }
+}
+@media (min-width: 1024px) {
+  .hero {
+    padding-top: 120px;
+  }
+}
+/* The ColorBends shader sits under the whole hero. It is faded at the bottom so it melts into the next section,
+   and it takes no pointer events so the buttons and the dashboard stay clickable. */
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.6;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+/* Bright bands behind light text need to sit back on the dark page. */
+.dark .hero__bg {
+  opacity: 0.4;
+}
+.hero__wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+/* Centred: the claim, then the line under it, the action pair and the hard fact, then the product. */
+.hero__head {
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+  text-align: center;
+}
+.hero__h1 {
+  font-size: clamp(2.375rem, 5.2vw, 4.25rem);
+  line-height: 1.04;
+  letter-spacing: -0.032em;
+  max-width: 20ch;
+  text-wrap: balance;
+}
+.hero__lead {
+  max-width: 52ch;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.hero__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .hero__actions {
+    flex-direction: row;
+    justify-content: center;
+    width: auto;
+  }
+}
+/* The one hard fact sits on its own quiet line under the buttons. */
+.hero__terms {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 20px;
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.hero__product {
+  position: relative;
+  flex: 1;
+  /* Tall enough to read the dashboard: the centred headline above takes more of the first screen, so the
+     hero now runs a little past it and the fade, not the fold, ends the product. */
+  min-height: 560px;
+  margin-top: 40px;
+  overflow: clip;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 140px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 140px), transparent);
+}
+@media (max-width: 767px) {
+  .hero__product {
+    flex: none;
+    height: 300px;
+    min-height: 0;
+    margin-top: 32px;
+  }
+}
+.hero__frame {
+  overflow: clip;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--dash-page);
+}
+
+/* ── Product film ─────────────────────────────────────────────────────────────────────────────────────── */
+.film-frame {
+  overflow: clip;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--frame);
+}
+.film-play {
+  width: 72px;
+  height: 72px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.film-overlay:hover .film-play {
+  transform: translateY(-1px);
+}
+.film-overlay:active .film-play {
+  transform: translateY(1px) scale(0.985);
+}
+
+/* ── Comparison table ─────────────────────────────────────────────────────────────────────────────────── */
+.cmp {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.cmp th,
+.cmp td {
+  padding: 12px 24px;
+  vertical-align: top;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.cmp thead th {
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+}
+.cmp tbody tr + tr > * {
+  border-top: 1px solid var(--border);
+}
+.cmp tbody th {
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: var(--foreground);
+  width: 22%;
+}
+.cmp td {
+  color: var(--muted-foreground);
+  width: 34%;
+}
+.cmp td.cmp__fix {
+  width: 44%;
+  color: var(--foreground);
+}
+.cmp__fix span {
+  display: flex;
+  gap: 10px;
+}
+@media (max-width: 767px) {
+  .cmp thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .cmp,
+  .cmp tbody,
+  .cmp tr,
+  .cmp th,
+  .cmp td {
+    display: block;
+    width: auto !important;
+  }
+  .cmp tbody tr {
+    padding: 16px 0;
+  }
+  .cmp tbody tr + tr {
+    border-top: 1px solid var(--border);
+  }
+  .cmp tbody tr + tr > * {
+    border-top: 0;
+  }
+  .cmp th,
+  .cmp td {
+    padding: 2px 16px;
+  }
+  .cmp td::before {
+    content: attr(data-label) " ";
+    font-family: var(--font-display);
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+}
+
+/* ── WhatsApp section ─────────────────────────────────────────────────────────────────────────────────── */
+.wa-grid {
+  display: grid;
+  gap: 24px 32px;
+  margin-top: 32px;
+}
+@media (min-width: 640px) {
+  .wa-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.wa-grid p {
+  margin-top: 4px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.wa-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wa-pick-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--frame);
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out);
+}
+.wa-pick-btn:active {
+  transform: translateY(1px) scale(0.985);
+}
+.wa-pick-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+/* On the graphite band the accent tokens are lifted for text, so the chosen button is a solid accent with a white label. */
+.band-ink .wa-pick-btn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wa-pick-btn[aria-pressed="false"]:hover {
+    border-color: var(--accent);
+  }
+}
+
+/* ── Built for India ──────────────────────────────────────────────────────────────────────────────────── */
+.india-facts {
+  display: grid;
+  gap: 28px 32px;
+  margin-top: 40px;
+  list-style: none;
+  padding: 0;
+}
+@media (min-width: 768px) {
+  .india-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .india-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.india-facts li {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.india-facts p {
+  margin-top: 6px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+/* ── Steps ────────────────────────────────────────────────────────────────────────────────────────────── */
+.steps {
+  display: grid;
+  gap: 40px 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (min-width: 1024px) {
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.step-art {
+  min-height: 144px;
+  margin-bottom: 24px;
+  padding: 16px;
+  overflow: clip;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--foreground);
+}
+.step-art .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.step-art .row:first-child {
+  border-top: 0;
+}
+.step-art .field {
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--muted-foreground);
+}
+@media (min-width: 1024px) {
+  .step-art {
+    height: 160px;
+  }
+}
+.step-art .chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+/* ── Pricing ──────────────────────────────────────────────────────────────────────────────────────────── */
+.seg {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--frame);
+}
+.seg button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ease-out),
+    color 140ms var(--ease-out),
+    transform 90ms var(--ease-out);
+}
+.seg button:active {
+  transform: scale(0.985);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--emphasis, var(--foreground));
+  color: var(--background);
+}
+.plans {
+  display: grid;
+  gap: 24px;
+}
+@media (min-width: 768px) {
+  .plans {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.plan {
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
+}
+.plan--pro {
+  border-color: var(--accent);
+}
+.plan__price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 24px;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 4.4vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.plan__price small {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+}
+.plan__list {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+}
+.plan__list li {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* ── FAQ: every answer open, two columns on the page's split line ────────────────────────────────────── */
+.faq-grid {
+  display: grid;
+  gap: 32px 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (min-width: 1024px) {
+  .faq-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 24px;
+  }
+}
+.faq-grid p {
+  margin-top: 8px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+  max-width: 62ch;
+}
+
+/* ── Footer: the same wrap as everything else ─────────────────────────────────────────────────────────── */
+.foot-wrap {
+  width: min(100% - 2 * var(--gut), 1200px);
+  margin-inline: auto;
+}
+
+/* Hover and press are the only motion; under reduced motion colours still change and nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .panel-link:hover,
+  .link:hover svg {
+    transform: none;
+  }
+}

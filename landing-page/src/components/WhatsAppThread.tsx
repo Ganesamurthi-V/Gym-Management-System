@@ -168,7 +168,6 @@ export function WhatsAppThread({
         </div>
       </div>
     </div>
-    <p className="mt-2 text-center text-[11px] text-muted-foreground">Sample data</p>
     </div>
   );
 }

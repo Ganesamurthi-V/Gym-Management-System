@@ -71,7 +71,7 @@ interface NavItem {
   icon: typeof Users;
 }
 
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'members', label: 'Members', icon: Users },
   { id: 'payments', label: 'Payments', icon: CreditCard },
@@ -531,8 +531,8 @@ function DashboardView({
       label: 'Attendance Log',
       icon: ClipboardList,
       goto: 'attendance' as ViewId,
-      tone: 'bg-dash-indigo-600 dark:bg-dash-raise dark:border dark:border-dash-night-700',
-      glyph: 'dark:text-dash-indigo-400',
+      tone: 'bg-dash-blue-800 dark:bg-dash-raise dark:border dark:border-dash-night-700',
+      glyph: 'dark:text-dash-blue-400',
     },
     {
       label: 'Daily Report PDF',

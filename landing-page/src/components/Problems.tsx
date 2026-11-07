@@ -1,7 +1,5 @@
 import { Check } from 'lucide-react';
-import { Rise } from './fx';
-import { CenterHead, Section } from './layout/Section';
-import '../styles/problems.css';
+import { Section, SectionHead } from './layout/Section';
 
 /* One row per everyday job. The GymFlow side is limited to behaviour already stated on the feature
    pages (the 18 day reminder start, the 7 day absence list, the 10 digit number tidy up on import,
@@ -43,50 +41,47 @@ const ROWS: { job: string; before: string; fix: string }[] = [
 export function Problems() {
   return (
     <Section id="problems" labelledBy="problems-title" tone="paper">
-      <CenterHead
+      <SectionHead
         title={
-          <h2 id="problems-title" className="display-2 text-balance">
+          <h2 id="problems-title" className="h2">
             Gym software vs a register or Excel sheet
           </h2>
         }
         lead="Where a register or sheet starts to cost you time, and what GymFlow does about each job."
       />
 
-      <Rise className="panel panel-lg cmp-panel mt-12 md:mt-16">
-        <table className="cmp-table">
+      <div className="panel overflow-clip">
+        <table className="cmp">
           <caption className="sr-only">
             Six everyday gym jobs, done with a register or Excel sheet and done with GymFlow
           </caption>
           <thead>
             <tr>
-              <th scope="col" className="cmp-head">The everyday job</th>
-              <th scope="col" className="cmp-head">With a register or Excel</th>
-              <th scope="col" className="cmp-head">With GymFlow</th>
+              <th scope="col">The everyday job</th>
+              <th scope="col">With a register or Excel</th>
+              <th scope="col">With GymFlow</th>
             </tr>
           </thead>
           <tbody>
             {ROWS.map(row => (
-              <tr key={row.job} className="cmp-row">
-                <th scope="row" className="cmp-job">{row.job}</th>
-                <td data-label="Register or Excel:" className="cmp-before">{row.before}</td>
-                <td data-label="GymFlow:" className="cmp-after">
-                  <div className="cmp-fix">
-                    <Check aria-hidden className="mt-[3px] size-4 shrink-0 text-accent-text" strokeWidth={2.5} />
+              <tr key={row.job}>
+                <th scope="row">{row.job}</th>
+                <td data-label="Register or Excel:">{row.before}</td>
+                <td data-label="GymFlow:" className="cmp__fix">
+                  <span>
+                    <Check aria-hidden className="mt-[4px] size-4 shrink-0 text-accent-text" strokeWidth={2.5} />
                     <span className="min-w-0">{row.fix}</span>
-                  </div>
+                  </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </Rise>
+      </div>
 
-      <p className="mt-6 text-center">
-        <a
-          href="/gym-software-vs-excel"
-          className="inline-flex min-h-[44px] items-center text-[16px] font-medium text-accent-text underline-offset-2 hover:underline"
-        >
-          Read the full comparison
+      <p className="mt-6">
+        <a href="/gym-software-vs-excel" className="link">
+          <span>Read the full comparison</span>
         </a>
       </p>
     </Section>

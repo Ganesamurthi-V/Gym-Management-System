@@ -3,13 +3,14 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { initAnalytics } from './lib/analytics';
-import { initSmoothScroll } from './lib/smoothScroll';
 import { afterFirstPaint } from './lib/afterFirstPaint';
+import { initSmoothScroll } from './lib/smoothScroll';
 import { MountedFlag } from './lib/MountedFlag';
 import { FallbackBoundary } from './lib/FallbackBoundary';
 
 initAnalytics();
 
+// Lenis smooth scrolling for the whole site, started after the hero has painted (see lib/smoothScroll.ts).
 initSmoothScroll();
 
 // React mounts once the static copy in #root has painted. Mounting straight away replaced it within

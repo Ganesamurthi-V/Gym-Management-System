@@ -1,9 +1,10 @@
-/* The close (Cobalt): the one blue band, centred, 160px of air above and below. Tokens only. */
+/* The close: the one Royal Blue band, 72px of air under the heading's 120px, tall enough to stand alone on a screen. */
 .close-cta {
-  padding-block: var(--space-3xl);
+  padding-block: 96px;
 }
 @media (min-width: 768px) {
   .close-cta {
-    padding-block: 160px;
+    padding-block: 120px 96px;
+    min-height: min(100svh, 640px);
   }
 }

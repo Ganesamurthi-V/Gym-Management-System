@@ -1,30 +1,26 @@
 import type { ReactNode } from 'react';
 import { Check } from 'lucide-react';
+import '../../styles/home.css';
 
 /*
-  The layout system every section on every page uses (DESIGN.md, "Layout system"). A section picks a
-  tone and one of two layouts; nothing else decides spacing, width or background.
+  The layout system every home section uses (DESIGN.md, "Taste redesign"). A section picks a ground and
+  fills the one wrap; spacing, width and heading scale live in styles/home.css, nothing else decides them.
 
-  Write each H2 inline in the section's own file (`<h2 id="x-title" className="display-2 text-balance">`):
+  Write each H2 inline in the section's own file (`<h2 id="x-title" className="h2">`):
   scripts/check-copy-sync.mjs reads it from there.
 */
 
-type Tone = 'chalk' | 'paper' | 'tint' | 'ink' | 'accent';
-type Cut = 'top' | 'bottom' | 'both';
+/** chalk = the page colour, paper = the second band, ink = the one graphite band, accent = the Royal Blue close. */
+type Tone = 'chalk' | 'paper' | 'ink' | 'accent';
 
-/*
-  Tones: chalk = the page colour, paper = the second band (--subtle), ink = the one graphite band,
-  tint = a pale blue wash of the brand colour, accent = the Royal Blue band. `cut` is accepted for old call sites and ignored: the diagonal cuts are gone.
-*/
 const TONE: Record<Tone, string> = {
   chalk: '',
-  paper: 'bg-subtle',
-  tint: 'band-tint',
+  paper: 'sec--alt',
   ink: 'band-ink',
   accent: 'band-accent',
 };
 
-/** Section shell: tone, standard padding and the 1200px column. */
+/** Section shell: ground, standard padding and the 1200px wrap. The heading is its first child. */
 export function Section({
   id,
   labelledBy,
@@ -35,44 +31,23 @@ export function Section({
   id?: string;
   labelledBy: string;
   tone?: Tone;
-  /** Ignored. Kept so existing call sites compile. */
-  cut?: Cut;
   className?: string;
   children: ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      aria-labelledby={labelledBy}
-      className={`relative scroll-mt-24 overflow-clip px-4 py-24 sm:px-6 md:py-32 lg:px-8 lg:py-40 min-[1920px]:px-16 ${TONE[tone]} ${className}`}
-    >
-      <div className="mx-auto max-w-[1200px]">{children}</div>
+    <section id={id} aria-labelledby={labelledBy} className={`sec ${TONE[tone]} ${className}`}>
+      <div className="wrap">{children}</div>
     </section>
   );
 }
 
-/** Heading block: the H2 (passed in, written inline), an optional lead and optional actions. */
+/** Heading block, left aligned on the wrap line: the H2 (passed in, written inline), one lead line, optional actions. */
 export function SectionHead({ title, lead, children }: { title: ReactNode; lead?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="max-w-[560px]">
+    <div className="sec-head">
       {title}
-      {lead && <p className="lead mt-5">{lead}</p>}
-      {children && <div className="mt-7">{children}</div>}
-    </div>
-  );
-}
-
-/**
- * The hero's own heading rhythm, reused below it (DESIGN.md, "Section kit"): the H2 centred, one
- * centred lead under it, optional actions. Every home section after the hero opens with this, so the
- * page reads as one piece; the body under it is what changes from section to section.
- */
-export function CenterHead({ title, lead, children }: { title: ReactNode; lead?: ReactNode; children?: ReactNode }) {
-  return (
-    <div className="mx-auto max-w-[760px] text-center">
-      {title}
-      {lead && <p className="lead mx-auto mt-5 max-w-[60ch] text-balance">{lead}</p>}
-      {children && <div className="mt-8 flex flex-wrap justify-center gap-3">{children}</div>}
+      {lead && <p className="lead">{lead}</p>}
+      {children && <div className="mt-6 flex flex-wrap gap-3">{children}</div>}
     </div>
   );
 }
@@ -82,8 +57,8 @@ export function CheckList({ items, className = '' }: { items: readonly ReactNode
   return (
     <ul className={`space-y-2.5 ${className}`}>
       {items.map((item, i) => (
-        <li key={i} className="flex gap-2.5 text-[15px] leading-relaxed text-muted-foreground">
-          <Check aria-hidden className="mt-[3px] size-4 shrink-0 text-accent-text" strokeWidth={2.5} />
+        <li key={i} className="flex gap-2.5 text-[16px] leading-relaxed text-muted-foreground">
+          <Check aria-hidden className="mt-[4px] size-4 shrink-0 text-accent-text" strokeWidth={2.5} />
           <span className="min-w-0">{item}</span>
         </li>
       ))}
@@ -93,7 +68,7 @@ export function CheckList({ items, className = '' }: { items: readonly ReactNode
 
 /**
  * Layout 1, "split": the heading on the left (sticky on wide screens), the content on the right.
- * For lists, steps, questions and a single product screen beside its explanation.
+ * Used by the feature pages.
  */
 export function Split({ head, children }: { head: ReactNode; children: ReactNode }) {
   return (

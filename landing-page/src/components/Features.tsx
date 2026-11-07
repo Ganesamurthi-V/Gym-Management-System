@@ -1,59 +1,29 @@
-import { useState, type ReactNode } from 'react';
-import { ArrowRight, ChevronDown, Image as ImageIcon } from 'lucide-react';
-import { Rise } from './fx';
-import { CenterHead, Section } from './layout/Section';
+import type { ReactNode } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { FeatureArt, type FeatureStory } from './FeatureArt';
+import { InventoryCard, MembersCard } from './MiniUI';
+import { MemberAppCard } from './MemberAppCard';
+import { Section, SectionHead } from './layout/Section';
 
-/** Captures that also exist as public/feature/<name>-dark.webp. */
-const HAS_DARK = new Set(['members', 'dues', 'inventory', 'workout-programs', 'member-app-mobile']);
-
-/**
- * One capture, two files: on the light page the "-dark" screenshot shows, on the dark page the normal one,
- * so the product screen contrasts with its surface in both themes. The theme is the .dark class on <html>
- * (not the OS setting), so the swap uses Tailwind's class-based `dark:` variant. A hidden lazy image is not downloaded.
- */
-function ThemedImg({ name, alt, onError }: { name: string; alt: string; onError?: () => void }) {
-  const common = { width: 1200, height: 1200, loading: 'lazy' as const, decoding: 'async' as const, onError };
-  if (!HAS_DARK.has(name)) {
-    return <img src={`/feature/${name}.webp`} alt={alt} {...common} className="block size-full object-cover object-center" />;
-  }
+/* Each product screen is a small live card drawn in HTML (MiniUI) floating on an animated panel (FeatureArt),
+   sharp at every size and following the light and dark theme. It is decorative: aria-hidden, with one sr-only
+   sentence describing it. */
+function Screen({ describe, story, children }: { describe: string; story: FeatureStory; children: ReactNode }) {
   return (
-    <>
-      <img src={`/feature/${name}-dark.webp`} alt={alt} {...common} className="block size-full object-cover object-center dark:hidden" />
-      <img src={`/feature/${name}.webp`} alt={alt} {...common} className="hidden size-full object-cover object-center dark:block" />
-    </>
-  );
-}
-
-/** Real captures of the owner console, cropped to the page content (no sidebar) so the text stays legible. */
-function Capture({ name, alt }: { name: string; alt: string }) {
-  return <ThemedImg name={name} alt={alt} />;
-}
-
-/**
- * A screen that has no capture yet: shows a labelled placeholder. Save the screenshot as
- * public/feature/<name>.webp (1200 x 571, the page content without the sidebar, like members.webp)
- * and it replaces the placeholder with no code change.
- */
-function Shot({ name, alt, label }: { name: string; alt: string; label: string }) {
-  const [missing, setMissing] = useState(false);
-  if (!missing) return <ThemedImg name={name} alt={alt} onError={() => setMissing(true)} />;
-  return (
-    <div className="flex size-full flex-col items-center justify-center gap-1 border-2 border-dashed border-border-strong bg-subtle p-6 text-center">
-      <ImageIcon aria-hidden className="size-7 text-muted-foreground" strokeWidth={1.5} />
-      <p className="font-display text-[16px] font-medium text-foreground">{label}</p>
-      <p className="max-w-[55%] break-words text-[13px] text-muted-foreground">Screenshot goes here: save it as public/feature/{name}.webp</p>
+    <div className="feature-media">
+      <p className="sr-only">{describe}</p>
+      <FeatureArt story={story}>{children}</FeatureArt>
     </div>
   );
 }
 
 /*
-  The home page's module overview (DESIGN.md, "Section kit" and "Detail rule"): every module an owner
-  might ask about, each with its points and a link to its feature page. The four core modules are large
-  panels that open with a real product screen; the other four are smaller panels. Every fact below is
-  taken from src/data/featurePages.ts, so nothing here is a claim the feature pages do not already make.
+  The home page's module overview: the three core modules, each a heading, one sentence, a few facts, a link to
+  its feature page and the product screen on the right. Every fact is taken from src/data/featurePages.ts, so
+  nothing here is a claim the feature pages do not already make.
 */
-
 const CORE: {
+  label: string;
   title: string;
   text: string;
   facts: { title: string; text: string }[];
@@ -62,141 +32,104 @@ const CORE: {
   screen: ReactNode;
 }[] = [
   {
+    label: 'Members',
     title: 'Member management',
-    text: 'Members, attendance and fees in one place, so you know who is in, who owes and who is about to expire.',
+    text: 'Know who is in, who owes and who is about to expire.',
     facts: [
-      { title: 'Members', text: 'Every member shows as Active, Expiring or Expired, with search by name, phone number or member ID.' },
-      { title: 'Attendance', text: 'A check-in kiosk at your desk where members type their member ID, and GymFlow records the visit and how long they stayed.' },
-      { title: 'Fees and dues', text: 'Record fees by cash, UPI or card, and part payments stay as a pending due on the member.' },
+      { title: 'Members', text: 'Every member shows as Active, Expiring or Expired.' },
+      { title: 'Attendance', text: 'Members check in at a desk kiosk with their member ID.' },
+      { title: 'Fees and dues', text: 'Record cash, UPI or card; part payments stay as a due.' },
     ],
     href: '/members',
     linkLabel: 'How member management works',
-    screen: <Capture name="members" alt="The GymFlow members page: total, active, expired and overdue counts, search, filters and a list of members with plan, expiry date and status." />,
+    screen: (
+      <Screen story="members" describe="The GymFlow members page: total, active, expired and overdue counts, search, filters and a list of members with plan, expiry date and status.">
+        <MembersCard />
+      </Screen>
+    ),
   },
   {
+    label: 'Sales',
     title: 'Sales and operations',
-    text: 'Sell products and run workouts from the same app that runs your memberships.',
+    text: 'Sell products and run workouts from the app that runs your memberships.',
     facts: [
-      { title: 'Inventory', text: 'Add products with variants, each with its own SKU, cost price, selling price and stock.' },
-      { title: 'Sales', text: "Record a sale with how it was paid, and see each product's sales history, units sold and revenue." },
-      { title: 'Workout programs', text: 'Set the weeks, days per week, difficulty and goal, add exercises with sets, reps, weight and rest, then assign the program to chosen members.' },
+      { title: 'Inventory', text: 'Products with variants, each with its own SKU, price and stock.' },
+      { title: 'Sales', text: 'Record how each sale was paid; see units sold and revenue.' },
+      { title: 'Workout programs', text: 'Set weeks, days, exercises, sets and reps, then assign them to members.' },
     ],
     href: '/workout-programs',
     linkLabel: 'How workout programs work',
-    screen: <Shot name="inventory" label="Inventory page" alt="The GymFlow inventory page: products with variants, stock and prices, and a sales history for each product." />,
+    screen: (
+      <Screen story="inventory" describe="One GymFlow inventory product, a whey protein, with its variants, price and stock, and its units sold and revenue.">
+        <InventoryCard />
+      </Screen>
+    ),
   },
   {
+    label: 'Member app',
     title: 'Member app',
     text: 'Give every member their own app on their phone, with no app store download.',
     facts: [
       { title: 'No app store', text: 'Opens from a WhatsApp link and installs to the home screen.' },
-      { title: 'Membership card', text: 'A digital membership card with the plan and expiry date.' },
-      { title: 'Workouts', text: 'Workouts you assign show up in the app, with each set listed and a rest timer.' },
-      { title: 'Streaks and rewards', text: 'Streaks, leaderboards and rewards built from real attendance.' },
+      { title: 'Membership card', text: 'A digital card with the plan and expiry date.' },
+      { title: 'Workouts', text: 'Assigned workouts show each set, with a rest timer.' },
+      { title: 'Streaks and rewards', text: 'Built from real attendance.' },
     ],
     href: '/member-app',
     linkLabel: 'How the member app works',
-    screen: <Shot name="member-app-tablet" label="Member app, tablet view" alt="The GymFlow member app on a tablet: the member's plan, streak and workouts." />,
+    screen: (
+      <Screen story="app" describe="The GymFlow member app home screen on a phone: a greeting, the active membership with days left, an attendance streak, a weekly goal and quick actions.">
+        <MemberAppCard compact />
+      </Screen>
+    ),
   },
 ];
 
-/** The text link at the foot of every panel. The arrow moves by transform only. */
-function FeatureLink({ href, children }: { href: string; children: string }) {
-  const lastSpace = children.lastIndexOf(' ');
-  return (
-    <a href={href} className="group inline-block py-2.5 font-display text-[16px] font-medium text-accent-text hover:underline">
-      {children.slice(0, lastSpace + 1)}
-      <span className="whitespace-nowrap">
-      {children.slice(lastSpace + 1)}
-      <ArrowRight
-        aria-hidden
-        className="ml-1.5 inline-block size-4 align-[-3px] transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none"
-        strokeWidth={2}
-      />
-      </span>
-    </a>
-  );
-}
-
-/** A small screen floating over the corner of the main one, like the cards over the laptop in the reference. */
-function Float({ side, children, className = '' }: { side: 'left' | 'right'; children: ReactNode; className?: string }) {
-  return (
-    <div
-      aria-hidden
-      className={`absolute bottom-0 overflow-clip rounded-2xl border border-border-subtle bg-frame shadow-xl ${side === 'left' ? 'left-0' : 'right-0'} ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-const FLOAT: Record<string, { side: 'left' | 'right'; wide: boolean; node: ReactNode }> = {
-  '/member-app': { side: 'right', wide: false, node: <div className="aspect-[1240/2618] w-[110px] lg:w-[130px]"><Shot name="member-app-mobile" label="Mobile view" alt="The GymFlow member app on a phone: the member's plan, streak and workouts." /></div> },
-  '/members': { side: 'right', wide: true, node: <div className="aspect-square"><Capture name="dues" alt="" /></div> },
-  '/workout-programs': { side: 'left', wide: true, node: <div className="aspect-square"><Shot name="workout-programs" label="Programs page" alt="" /></div> },
-};
-
 /**
- * Features: one row per core module, the screen on one side and the words on the other, flipping
- * sides row by row. Each row is a heading, one sentence, the facts as ruled lines and a link. A row with no capture yet shows a Shot placeholder.
+ * Features: one row per core module, text left and the screen right on the page's split line, the same on
+ * every row. The screen is a linked frame: its image zooms 1.02 on hover and the frame never moves.
  */
 export function Features() {
   return (
     <Section id="features" labelledBy="features-title" tone="chalk">
-      <CenterHead
+      <SectionHead
         title={
-          <h2 id="features-title" className="display-2 text-balance">
+          <h2 id="features-title" className="h2">
             {"Everything your gym's front desk does, in one app"}
           </h2>
         }
         lead="Run your members, your sales and your members' phones from one app."
       />
 
-      <div className="mt-14 space-y-20 md:mt-20 md:space-y-28">
-        {CORE.map((f, i) => {
-          const fl = FLOAT[f.href];
-          const flip = i % 2 === 1;
-          return (
-            <div key={f.href} className="grid items-center gap-x-16 gap-y-8 lg:grid-cols-12">
-              <Rise className={`relative min-w-0 lg:col-span-7 lg:w-full lg:max-w-[500px] ${flip ? 'lg:order-2 lg:ml-auto' : ''}`}>
-                <div className="relative pb-6 md:pb-8">
-                  <div className="panel panel-lg overflow-clip">
-                    <div className="aspect-square">{f.screen}</div>
-                  </div>
-                  {fl && (
-                    <Float side={fl.side} className={`${fl.side === 'left' ? 'md:-left-4' : 'md:-right-4'} ${fl.wide ? 'w-[52%] min-w-[170px] md:min-w-[210px]' : ''}`}>
-                      {fl.node}
-                    </Float>
-                  )}
-                </div>
-              </Rise>
-
-              <div className={`lg:col-span-5 ${flip ? 'lg:order-1' : ''}`}>
-                <h3 className="font-display text-[28px] font-medium leading-tight tracking-[-0.02em] text-foreground md:text-[32px]">{f.title}</h3>
-                <p className="mt-3 max-w-[48ch] text-[17px] leading-relaxed text-muted-foreground">{f.text}</p>
-                <div className="mt-6 border-b border-border-subtle">
-                  {f.facts.map(fact => (
-                    <details key={fact.title} className="group border-t border-border-subtle">
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-display text-[20px] font-medium leading-tight tracking-[-0.02em] text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
-                        {fact.title}
-                        <ChevronDown aria-hidden className="size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
-                      </summary>
-                      <p className="pb-5 text-[16px] leading-relaxed text-muted-foreground">{fact.text}</p>
-                    </details>
-                  ))}
-                </div>
-                <FeatureLink href={f.href}>{f.linkLabel}</FeatureLink>
-              </div>
+      <div className="feats">
+        {CORE.map((f, i) => (
+          <article key={f.href} className={`feature ${i % 2 === 1 ? 'feature--flip' : ''}`}>
+            {f.screen}
+            <div className="feature-copy">
+              <span className="feat-label">{f.label}</span>
+              <h3 className="h3">{f.title}</h3>
+              <p className="mt-3 max-w-[40ch] text-[16px] leading-relaxed text-muted-foreground">{f.text}</p>
+              <ul className="facts mt-6">
+                {f.facts.map(fact => (
+                  <li key={fact.title}>
+                    <strong>{fact.title}</strong>
+                    {fact.text}
+                  </li>
+                ))}
+              </ul>
+              <a href={f.href} className="link mt-2">
+                <span>{f.linkLabel}</span>
+                <ArrowRight aria-hidden className="size-4" strokeWidth={2} />
+              </a>
             </div>
-          );
-        })}
+          </article>
+        ))}
       </div>
 
-      <p className="mt-16 text-center text-[14px] text-muted-foreground">Sample data in every screen.</p>
-      <p className="mt-3 text-center text-[16px] text-muted-foreground">
+      <p className="mt-12 text-[16px] text-muted-foreground">
         Both paid plans include everything on this page.{' '}
-        <a href="#pricing" className="font-medium text-accent-text hover:underline">
-          See pricing
+        <a href="#pricing" className="link">
+          <span>See pricing</span>
         </a>
       </p>
     </Section>

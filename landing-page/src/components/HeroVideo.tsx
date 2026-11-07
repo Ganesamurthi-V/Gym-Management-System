@@ -3,7 +3,7 @@ import { Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { prefersReducedMotion } from '../lib/prefersReducedMotion';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { connectionAllowsDecoration } from '../lib/decorationGates';
-import '../styles/hero.css';
+import '../styles/home.css';
 
 // Two cuts of the same film: the 16:9 one for a laptop and the 9:16 one for a phone. A
 // portrait phone shows a 16:9 film as a thin strip with its text too small to read;
@@ -140,11 +140,7 @@ export function HeroVideo() {
 
   return (
     <figure
-      className={`mx-auto w-full ${
-        wide
-          ? 'max-w-[min(1200px,calc((100svh-160px)*16/9))]'
-          : 'max-w-[min(420px,calc((100svh-160px)*9/16))]'
-      }`}
+      className={`w-full ${wide ? '' : 'max-w-[min(100%,calc((100svh-200px)*9/16))]'}`}
     >
       <div
         className="film-frame relative"

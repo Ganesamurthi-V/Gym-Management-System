@@ -1,7 +1,15 @@
 /* Nav: a slim sticky bar, 64px, on the page colour with a 1px hairline (.nav-island in index.css holds
    the surface). Tokens only; transform and opacity for motion; reduced-motion end state below. */
+:root {
+  --nav-h: 60px;
+}
+@media (min-width: 1024px) {
+  :root {
+    --nav-h: 72px;
+  }
+}
 .nav-bar.nav-island {
-  height: 64px;
+  height: var(--nav-h);
 }
 
 /* Link: Familjen Grotesk 500. The 2px blue underline scales in from the left (scaleX, 160ms); the
@@ -23,10 +31,9 @@
   content: "";
   position: absolute;
   inset-inline: var(--space-sm);
-  bottom: 6px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--accent);
+  bottom: 10px;
+  height: 1px;
+  background: currentColor;
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform 160ms var(--ease-out);

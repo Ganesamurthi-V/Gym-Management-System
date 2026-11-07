@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { initAnalytics } from './lib/analytics';
 import { afterFirstPaint } from './lib/afterFirstPaint';
+import { initSmoothScroll } from './lib/smoothScroll';
 import { MountedFlag } from './lib/MountedFlag';
 import { FallbackBoundary } from './lib/FallbackBoundary';
 import { getFeaturePage } from './data/featurePages';
@@ -13,6 +14,7 @@ import { FeaturesHub } from './pages/FeaturesHub';
 // ...) names its page in data-page on #root; the head tags and the no-JavaScript copy inside
 // #root were written into that file at build time from the same data (see vite.config.ts).
 initAnalytics();
+initSmoothScroll();
 
 const root = document.getElementById('root')!;
 const page = getFeaturePage(root.dataset.page ?? '');

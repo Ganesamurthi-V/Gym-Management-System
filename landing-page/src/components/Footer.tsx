@@ -8,6 +8,7 @@ import {
 } from '../data/support';
 import { homeAnchor } from '../lib/pageAnchors';
 import '../styles/footer.css';
+import '../styles/home.css';
 
 const APP_URL = 'https://app.gymflow.sbs';
 // The same message as a Gmail compose window. Most laptops have no mail app registered
@@ -76,10 +77,10 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
       {/* id lives here rather than on <footer> so the #support anchor lands on the visible panel. */}
       <div
         id="support"
-        className={`border-t border-border-subtle bg-background px-6 pt-20 pb-8 md:px-12 md:pt-28${reveal ? ` ${REVEAL_PANEL}` : ''}`}
+        className={`border-t border-border-subtle bg-background pt-20 pb-8 md:pt-28${reveal ? ` ${REVEAL_PANEL}` : ''}`}
       >
         {/* Link columns, one quiet ruled row. */}
-        <div className="mx-auto grid max-w-[1240px] gap-12 border-t border-border-subtle pt-10 md:grid-cols-[1fr_1fr_1.4fr]">
+        <div className="foot-wrap grid gap-12 md:grid-cols-[1fr_1fr_1.4fr]">
           {COLUMNS.map(column => (
             <nav key={column.heading} aria-label={column.heading}>
               <h3 className="text-base font-semibold text-foreground">{column.heading}</h3>
@@ -172,7 +173,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
           </div>
         </div>
 
-        <div className="mx-auto mt-12 flex max-w-[1240px] flex-col-reverse items-center justify-between gap-x-8 gap-y-2 border-t border-border-subtle pt-6 sm:flex-row">
+        <div className="foot-wrap mt-12 flex flex-col-reverse items-center justify-between gap-x-8 gap-y-2 border-t border-border-subtle pt-6 sm:flex-row">
           <p className="text-center text-sm text-muted-foreground sm:text-left">
             © 2026 GymFlow. Built for gym owners, by fitness enthusiasts. Made in India.
           </p>

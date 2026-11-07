@@ -9,6 +9,19 @@
   /* light theme: the page's own white; the blue glow fades into it */
   background: var(--background);
 }
+/* The hero artwork (public/hero-bg.svg) sits under everything else in the stage, including the ASCII field. It is a light
+   picture, so the dark theme keeps its graphite stage. */
+.hero-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: url('/hero-bg.svg') center top / cover no-repeat;
+}
+.dark .hero-stage::before {
+  display: none;
+}
 /* dark theme: the graphite stage, with the same token remap .band-ink applies (kept in step with it in index.css) */
 .dark .hero-stage {
   background: var(--band-ink);

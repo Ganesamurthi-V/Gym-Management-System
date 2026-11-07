@@ -3,19 +3,30 @@ import { ArrowRight, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import { Rise } from './fx';
 import { CenterHead, Section } from './layout/Section';
 
+/** Captures that also exist as public/feature/<name>-dark.webp. */
+const HAS_DARK = new Set(['members', 'dues', 'inventory', 'workout-programs', 'member-app-mobile']);
+
+/**
+ * One capture, two files: on the light page the "-dark" screenshot shows, on the dark page the normal one,
+ * so the product screen contrasts with its surface in both themes. The theme is the .dark class on <html>
+ * (not the OS setting), so the swap uses Tailwind's class-based `dark:` variant. A hidden lazy image is not downloaded.
+ */
+function ThemedImg({ name, alt, onError }: { name: string; alt: string; onError?: () => void }) {
+  const common = { width: 1200, height: 1200, loading: 'lazy' as const, decoding: 'async' as const, onError };
+  if (!HAS_DARK.has(name)) {
+    return <img src={`/feature/${name}.webp`} alt={alt} {...common} className="block size-full object-cover object-center" />;
+  }
+  return (
+    <>
+      <img src={`/feature/${name}-dark.webp`} alt={alt} {...common} className="block size-full object-cover object-center dark:hidden" />
+      <img src={`/feature/${name}.webp`} alt={alt} {...common} className="hidden size-full object-cover object-center dark:block" />
+    </>
+  );
+}
+
 /** Real captures of the owner console, cropped to the page content (no sidebar) so the text stays legible. */
 function Capture({ name, alt }: { name: string; alt: string }) {
-  return (
-    <img
-      src={`/feature/${name}.webp`}
-      alt={alt}
-      width={1200}
-      height={571}
-      loading="lazy"
-      decoding="async"
-      className="block size-full object-cover object-top"
-    />
-  );
+  return <ThemedImg name={name} alt={alt} />;
 }
 
 /**
@@ -25,20 +36,7 @@ function Capture({ name, alt }: { name: string; alt: string }) {
  */
 function Shot({ name, alt, label }: { name: string; alt: string; label: string }) {
   const [missing, setMissing] = useState(false);
-  if (!missing) {
-    return (
-      <img
-        src={`/feature/${name}.webp`}
-        alt={alt}
-        width={1200}
-        height={571}
-        loading="lazy"
-        decoding="async"
-        onError={() => setMissing(true)}
-        className="block size-full object-cover object-top"
-      />
-    );
-  }
+  if (!missing) return <ThemedImg name={name} alt={alt} onError={() => setMissing(true)} />;
   return (
     <div className="flex size-full flex-col items-center justify-center gap-1 border-2 border-dashed border-border-strong bg-subtle p-6 text-center">
       <ImageIcon aria-hidden className="size-7 text-muted-foreground" strokeWidth={1.5} />
@@ -133,9 +131,9 @@ function Float({ side, children, className = '' }: { side: 'left' | 'right'; chi
 }
 
 const FLOAT: Record<string, { side: 'left' | 'right'; wide: boolean; node: ReactNode }> = {
-  '/member-app': { side: 'right', wide: false, node: <div className="aspect-[9/19] w-[150px] lg:w-[200px]"><Shot name="member-app-mobile" label="Mobile view" alt="The GymFlow member app on a phone: the member's plan, streak and workouts." /></div> },
-  '/members': { side: 'right', wide: true, node: <div className="aspect-[1200/571]"><Capture name="dues" alt="" /></div> },
-  '/workout-programs': { side: 'left', wide: true, node: <div className="aspect-[1200/571]"><Shot name="workout-programs" label="Programs page" alt="" /></div> },
+  '/member-app': { side: 'right', wide: false, node: <div className="aspect-[1240/2618] w-[110px] lg:w-[130px]"><Shot name="member-app-mobile" label="Mobile view" alt="The GymFlow member app on a phone: the member's plan, streak and workouts." /></div> },
+  '/members': { side: 'right', wide: true, node: <div className="aspect-square"><Capture name="dues" alt="" /></div> },
+  '/workout-programs': { side: 'left', wide: true, node: <div className="aspect-square"><Shot name="workout-programs" label="Programs page" alt="" /></div> },
 };
 
 /**
@@ -160,13 +158,13 @@ export function Features() {
           const flip = i % 2 === 1;
           return (
             <div key={f.href} className="grid items-center gap-x-16 gap-y-8 lg:grid-cols-12">
-              <Rise className={`relative min-w-0 lg:col-span-7 ${flip ? 'lg:order-2 lg:-mr-14' : 'lg:-ml-14'}`}>
+              <Rise className={`relative min-w-0 lg:col-span-7 lg:w-full lg:max-w-[500px] ${flip ? 'lg:order-2 lg:ml-auto' : ''}`}>
                 <div className="relative pb-6 md:pb-8">
                   <div className="panel panel-lg overflow-clip">
-                    <div className="aspect-[2.1] bg-frame">{f.screen}</div>
+                    <div className="aspect-square">{f.screen}</div>
                   </div>
                   {fl && (
-                    <Float side={fl.side} className={`${fl.side === 'left' ? 'md:-left-4' : 'md:-right-4'} ${fl.wide ? 'w-[58%] min-w-[210px] md:min-w-[300px]' : ''}`}>
+                    <Float side={fl.side} className={`${fl.side === 'left' ? 'md:-left-4' : 'md:-right-4'} ${fl.wide ? 'w-[52%] min-w-[170px] md:min-w-[210px]' : ''}`}>
                       {fl.node}
                     </Float>
                   )}

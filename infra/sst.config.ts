@@ -48,12 +48,23 @@ export default $config({
       openNextVersion: '4.1.13',
       // One distribution serves every host the middleware routes by hostname. The certificate was
       // requested by hand in us-east-1 (CloudFront needs it there), and DNS stays outside AWS until cutover.
-      domain: {
-        name: 'app.gymflow.sbs',
-        aliases: ['gymflow.sbs', 'graph.gymflow.sbs', 'member.gymflow.sbs'],
-        cert: 'arn:aws:acm:us-east-1:296214943025:certificate/2b7e1129-ecab-4808-ab28-f1b4bd57e887',
-        dns: false,
-      },
+      // Only the production stage owns the domain: another stage (for example a streaming test) would
+      // otherwise claim the same aliases and fail, and with a domain set CloudFront answers 403 on its own
+      // *.cloudfront.net host, so a domain-less test stage is also the one you can open by its CloudFront URL.
+      domain:
+        $app.stage === 'production'
+          ? {
+              name: 'app.gymflow.sbs',
+              aliases: ['gymflow.sbs', 'graph.gymflow.sbs', 'member.gymflow.sbs'],
+              cert: 'arn:aws:acm:us-east-1:296214943025:certificate/2b7e1129-ecab-4808-ab28-f1b4bd57e887',
+              dns: false,
+            }
+          : undefined,
+      // Keeps 3 server Lambdas warm: SST's ssr-warmer invokes them every 5 minutes (about 26,000 invocations
+      // a month, a few hundred GB-seconds, inside the Lambda free tier). Together with the streaming wrapper
+      // in open-next.config.ts this makes a cold start rare, and cheap when it happens. It is not provisioned
+      // concurrency (billed), so a visitor after a long quiet spell can still hit one.
+      warm: 3,
       environment,
       // SST also applies this timeout as the CloudFront origin read timeout, so no transform is needed.
       server: { timeout: '60 seconds', memory: '1024 MB', architecture: 'x86_64' },

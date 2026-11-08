@@ -25,3 +25,10 @@ dist-ssr
 *.sw?
 .preview
 .hallmark/
+
+# Source screenshots (PNG) for public/feature: only the compressed .webp files are used by the site.
+public/feature/*.png
+
+# Build and tool output
+*.tsbuildinfo
+.wrangler/

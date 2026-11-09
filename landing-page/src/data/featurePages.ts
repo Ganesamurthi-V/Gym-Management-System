@@ -196,7 +196,15 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardText: 'Member records, plans, expiry dates, search and filters, renewals and one-tap WhatsApp.',
     icon: 'users',
     related: ['fees-and-dues', 'member-app', 'import-export', 'gym-membership-renewal-reminders'],
-    tutorial: tutorialSlot('members', 'How member management works in GymFlow'),
+    tutorial: {
+      ...tutorialSlot('members', 'How member management works in GymFlow'),
+      src: '/features/members/tutorial.mp4',
+      width: 1920,
+      height: 1080,
+      description: 'A walkthrough of GymFlow member management: adding members, plans, expiry dates, search and renewals.',
+      uploadDate: '2026-10-15',
+      duration: 'PT1M41S',
+    },
     screenshots: [],
     sections: [
       {

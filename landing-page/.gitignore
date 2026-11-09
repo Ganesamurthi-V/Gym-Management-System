@@ -32,3 +32,6 @@ public/feature/*.png
 # Build and tool output
 *.tsbuildinfo
 .wrangler/
+
+# Full-size tutorial recordings (4K, 100+ MB). The site serves the compressed copies in public/features/<slug>/.
+public/video/features/

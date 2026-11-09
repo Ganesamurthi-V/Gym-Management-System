@@ -25,7 +25,8 @@ never commit `.env`.
 
 ```bash
 npm install
-APP_INGEST_URL=http://localhost:9000/ingest ADMS_INGEST_SECRET=dev-secret npm run dev
+# Put APP_INGEST_URL and a throwaway ADMS_INGEST_SECRET in .env first (see .env.example), then:
+npm run dev
 npm test
 npx tsc --noEmit
 ```

@@ -90,7 +90,7 @@ describe('POST cdata ATTLOG', () => {
 
   it('forwards classic lines with the bearer header and replies OK:n', async () => {
     const res = await post(LINE + '13\t2026-11-09 09:00:00\t1\t1\t0\r\n')
-    expect(await res.text()).toBe('OK:2')
+    expect(await res.text()).toBe('OK: 2')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0]!
     expect(url).toBe(env.APP_INGEST_URL)
@@ -106,35 +106,35 @@ describe('POST cdata ATTLOG', () => {
 
   it('handles key=value bodies', async () => {
     const res = await post('pin=7\ttime=2026-11-09 08:01:02\tstatus=0\tverifytype=1\n')
-    expect(await res.text()).toBe('OK:1')
+    expect(await res.text()).toBe('OK: 1')
     expect(sent().punches[0]).toEqual({ pin: '7', time: '2026-11-09 08:01:02', status: 0, verify: 1 })
   })
 
   it('handles gzip via content-encoding and via magic bytes', async () => {
     const gz = gzipSync(Buffer.from(LINE))
-    expect(await (await post(gz, undefined, { 'content-encoding': 'gzip' })).text()).toBe('OK:1')
-    expect(await (await post(gz)).text()).toBe('OK:1')
+    expect(await (await post(gz, undefined, { 'content-encoding': 'gzip' })).text()).toBe('OK: 1')
+    expect(await (await post(gz)).text()).toBe('OK: 1')
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(sent(1).punches[0].pin).toBe('12')
   })
 
   it('skips garbage lines and does not forward an empty result', async () => {
     const res = await post('garbage\r\n\r\n')
-    expect(await res.text()).toBe('OK:0')
+    expect(await res.text()).toBe('OK: 0')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   const lines = (n: number) => Array.from({ length: n }, (_, i) => `${i + 1}\t2026-11-09 08:01:02\t0\t1`).join('\n')
 
   it('chunks more than 100 punches', async () => {
-    expect(await (await post(lines(101))).text()).toBe('OK:101')
+    expect(await (await post(lines(101))).text()).toBe('OK: 101')
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(sent(0).punches).toHaveLength(100)
     expect(sent(1).punches).toHaveLength(1)
   })
 
   it('accepts exactly 2000 punches and rejects 2001 with an empty 400', async () => {
-    expect(await (await post(lines(2000))).text()).toBe('OK:2000')
+    expect(await (await post(lines(2000))).text()).toBe('OK: 2000')
     expect(fetchMock).toHaveBeenCalledTimes(20)
     fetchMock.mockClear()
     const res = await post(lines(2001))
@@ -167,7 +167,7 @@ describe('POST cdata ATTLOG', () => {
 
   it('replies OK:n when the app says the device is unknown', async () => {
     fetchMock.mockResolvedValue(ok(false))
-    expect(await (await post(LINE)).text()).toBe('OK:1')
+    expect(await (await post(LINE)).text()).toBe('OK: 1')
   })
 
   it('replies 503 ERROR when the app returns 500', async () => {
@@ -218,7 +218,7 @@ describe('POST cdata ATTLOG', () => {
   })
 
   it('works with the .aspx suffix', async () => {
-    expect(await (await post(LINE, '/iclock/cdata.aspx?SN=S1&table=ATTLOG')).text()).toBe('OK:1')
+    expect(await (await post(LINE, '/iclock/cdata.aspx?SN=S1&table=ATTLOG')).text()).toBe('OK: 1')
   })
 
   it('ignores a bad SN without forwarding', async () => {
@@ -238,7 +238,7 @@ describe('negative cache for unregistered serials', () => {
 
   it('stops calling the app after the first known:false and answers per route', async () => {
     fetchMock.mockResolvedValue(ok(false))
-    expect(await (await post()).text()).toBe('OK:1')
+    expect(await (await post()).text()).toBe('OK: 1')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(store.get('https://unknown.invalid/S1')?.headers.get('cache-control')).toBe('max-age=120')
     expect(await (await post()).text()).toBe('OK')
@@ -254,14 +254,14 @@ describe('negative cache for unregistered serials', () => {
     await call('/iclock/getrequest?SN=S1')
     expect(store.has('https://unknown.invalid/S1')).toBe(true)
     fetchMock.mockResolvedValue(ok(true))
-    expect(await (await post('/iclock/cdata?SN=S2&table=ATTLOG')).text()).toBe('OK:1')
+    expect(await (await post('/iclock/cdata?SN=S2&table=ATTLOG')).text()).toBe('OK: 1')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('does not cache a known serial', async () => {
     await post()
     expect(store.has('https://unknown.invalid/S1')).toBe(false)
-    expect(await (await post()).text()).toBe('OK:1')
+    expect(await (await post()).text()).toBe('OK: 1')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -270,15 +270,15 @@ describe('negative cache for unregistered serials', () => {
     await post()
     store.clear()
     fetchMock.mockResolvedValue(ok(true))
-    expect(await (await post()).text()).toBe('OK:1')
+    expect(await (await post()).text()).toBe('OK: 1')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('falls through to the app when the cache throws', async () => {
     vi.stubGlobal('caches', { default: { match: async () => { throw new Error('boom') }, put: async () => { throw new Error('boom') } } })
     fetchMock.mockImplementation(async () => ok(false))
-    expect(await (await post()).text()).toBe('OK:1')
-    expect(await (await post()).text()).toBe('OK:1')
+    expect(await (await post()).text()).toBe('OK: 1')
+    expect(await (await post()).text()).toBe('OK: 1')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
@@ -301,30 +301,195 @@ describe('logging', () => {
   })
 })
 
+const cmdsRes = (commands: { id: number; line: string }[], known = true) =>
+  new Response(JSON.stringify({ success: true, data: { known, commands } }), { status: 200 })
+const parsedBody = (i: number) => JSON.parse(fetchMock.mock.calls[i]![1].body as string)
+
 describe('GET getrequest', () => {
-  it('sends one empty-punch heartbeat per minute per serial and replies OK', async () => {
+  it('asks the app for commands on every poll and replies OK when there are none', async () => {
+    fetchMock.mockImplementation(async () => cmdsRes([]))
     expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
     expect(await (await call('/iclock/getrequest.aspx?SN=S1')).text()).toBe('OK')
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(sent()).toEqual({ serial: 'S1', punches: [] })
-    await call('/iclock/getrequest?SN=S2')
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('https://app.example.com/api/devices/commands/next')
+    expect(init.redirect).toBe('manual')
+    expect(init.headers.Authorization).toBe('Bearer test-secret')
+    expect(parsedBody(0)).toEqual({ serial: 'S1' })
   })
 
-  it('still replies OK and heartbeats when the cache throws', async () => {
-    vi.stubGlobal('caches', { default: { match: async () => { throw new Error('boom') }, put: async () => {} } })
+  it('returns the command lines joined by newlines', async () => {
+    fetchMock.mockImplementation(async () =>
+      cmdsRes([
+        { id: 1, line: 'C:1:DATA UPDATE USERINFO PIN=5\tName=Asha\tPrivilege=0' },
+        { id: 2, line: 'C:2:DATA DELETE USERINFO PIN=6' },
+      ]),
+    )
+    const res = await call('/iclock/getrequest?SN=S1')
+    expect(await res.text()).toBe('C:1:DATA UPDATE USERINFO PIN=5\tName=Asha\tPrivilege=0\nC:2:DATA DELETE USERINFO PIN=6')
+  })
+
+  it('drops malformed lines from the app', async () => {
+    fetchMock.mockImplementation(async () => cmdsRes([{ id: 1, line: 'C:1:OK\nC:2:evil' }, { id: 3, line: 'junk' }]))
+    expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
+  })
+
+  it('replies OK and logs only the reason when the app fails', async () => {
+    fetchMock.mockResolvedValue(new Response('x', { status: 500 }))
+    expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
+    fetchMock.mockRejectedValue(new DOMException('timed out', 'TimeoutError'))
+    expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
+    const warns = vi.mocked(console.warn).mock.calls.map((c) => String(c[0]))
+    expect(warns[0]).toContain('app status 500')
+    expect(warns[1]).toContain('TimeoutError')
+  })
+
+  it('marks the serial unknown when the app says so, then skips the app', async () => {
+    fetchMock.mockImplementation(async () => cmdsRes([], false))
+    expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
+    expect(store.has('https://unknown.invalid/S1')).toBe(true)
     expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('replies OK even when the heartbeat fails', async () => {
-    fetchMock.mockRejectedValue(new Error('down'))
-    expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
-  })
-
-  it('does not heartbeat for a bad SN', async () => {
+  it('does not call the app for a bad SN', async () => {
     expect(await (await call('/iclock/getrequest?SN=!!')).text()).toBe('OK')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST devicecmd', () => {
+  const dc = (body: string, path = '/iclock/devicecmd?SN=S1') => call(path, { method: 'POST', body })
+  const acked = () => fetchMock.mock.calls.map((c, i) => ({ url: String(c[0]), body: parsedBody(i) }))
+
+  it('forwards a single result to /commands/ack and replies OK', async () => {
+    const res = await dc('ID=12&Return=0&CMD=DATA')
+    expect(await res.text()).toBe('OK')
+    expect(acked()).toEqual([
+      { url: 'https://app.example.com/api/devices/commands/ack', body: { serial: 'S1', results: [{ id: 12, ret: 0 }] } },
+    ])
+    expect(fetchMock.mock.calls[0]![1].headers.Authorization).toBe('Bearer test-secret')
+  })
+
+  it('parses several records, including a negative Return, on lines and joined by &', async () => {
+    await dc('ID=1&Return=0&CMD=DATA\r\nID=2&Return=-1002&CMD=DATA\nID=3&Return=0&CMD=DATA&ID=4&Return=1&CMD=DATA')
+    expect(acked()[0]!.body.results).toEqual([
+      { id: 1, ret: 0 },
+      { id: 2, ret: -1002 },
+      { id: 3, ret: 0 },
+      { id: 4, ret: 1 },
+    ])
+  })
+
+  it('ignores garbage and malformed records, and does not call the app when nothing is valid', async () => {
+    expect(await (await dc('hello\nID=x&Return=0\nID=5\nReturn=1\nID=6&Return=abc')).text()).toBe('OK')
+    expect(fetchMock).not.toHaveBeenCalled()
+    await dc('junk\nID=7&Return=0&CMD=DATA')
+    expect(acked()[0]!.body.results).toEqual([{ id: 7, ret: 0 }])
+  })
+
+  it('caps the forwarded results at 50', async () => {
+    await dc(Array.from({ length: 80 }, (_, i) => `ID=${i + 1}&Return=0`).join('\n'))
+    expect(acked()[0]!.body.results).toHaveLength(50)
+  })
+
+  it('replies OK even when the ack fails, and never logs the body', async () => {
+    fetchMock.mockRejectedValue(new Error('down'))
+    expect(await (await dc('ID=12&Return=0&CMD=SECRETCMD')).text()).toBe('OK')
+    const logs = [...vi.mocked(console.log).mock.calls, ...vi.mocked(console.warn).mock.calls].map((c) => String(c[0]))
+    for (const l of logs) expect(l).not.toContain('SECRETCMD')
+  })
+
+  it('replies OK for a bad SN without calling the app', async () => {
+    expect(await (await dc('ID=1&Return=0', '/iclock/devicecmd?SN=!!')).text()).toBe('OK')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('fdata and other tables', () => {
+  it('acknowledges /iclock/fdata without reading the body', async () => {
+    const { ctx } = makeCtx()
+    const req = new Request(`${BASE}/iclock/fdata?SN=S1`, { method: 'POST', body: 'binary' })
+    const res = await worker.fetch(req, env, ctx)
+    expect(await res.text()).toBe('OK')
+    expect(req.bodyUsed).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['USERINFO', 'FINGERTMP', 'FACE', 'rtlog', 'whatever'])('table=%s is answered OK unread', async (table) => {
+    const { ctx } = makeCtx()
+    const req = new Request(`${BASE}/iclock/cdata?SN=S1&table=${table}`, { method: 'POST', body: LINE })
+    expect(await (await worker.fetch(req, env, ctx)).text()).toBe('OK')
+    expect(req.bodyUsed).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('protocol details', () => {
+  it('config text carries the full key set in order, with defaults', async () => {
+    const { ctx } = makeCtx()
+    const e = { ...env, POLL_DELAY_SECONDS: undefined }
+    const t0 = Math.floor(Date.now() / 1000)
+    const body = await (await worker.fetch(new Request(`${BASE}/iclock/cdata?SN=A1`), e, ctx)).text()
+    const lines = body.split('\n')
+    expect(lines.map((l) => l.split('=')[0])).toEqual([
+      'GET OPTION FROM: A1', 'Stamp', 'OpStamp', 'ATTLOGStamp', 'OPERLOGStamp', 'ATTPHOTOStamp', 'ErrorDelay',
+      'Delay', 'TransTimes', 'TransInterval', 'TransFlag', 'TimeZone', 'Realtime', 'Encrypt',
+    ])
+    expect(lines).toContain('Stamp=9999')
+    expect(lines).toContain('ErrorDelay=60')
+    expect(lines).toContain('Delay=60')
+    expect(lines).toContain('TransFlag=TransData AttLog')
+    expect(lines).toContain('Encrypt=0')
+    expect(Number(lines[2]!.split('=')[1])).toBeGreaterThanOrEqual(t0)
+  })
+
+  it('TRANS_FLAG overrides the TransFlag line', async () => {
+    const { ctx } = makeCtx()
+    const body = await (await worker.fetch(new Request(`${BASE}/iclock/push?SN=A1`), { ...env, TRANS_FLAG: '1111000000' }, ctx)).text()
+    expect(body).toContain('TransFlag=1111000000')
+  })
+
+  it('parses the eSSL key=value line', async () => {
+    const res = await call('/iclock/cdata?SN=S1&table=ATTLOG', {
+      method: 'POST',
+      body: 'PIN=1001\tDateTime=2025-09-02 14:32:11\tVerified=1\tStatus=0',
+    })
+    expect(await res.text()).toBe('OK: 1')
+    expect(sent().punches[0]).toEqual({ pin: '1001', time: '2025-09-02 14:32:11', status: 0, verify: 1 })
+  })
+
+  it('converts epoch times with DEVICE_TZ_MINUTES', async () => {
+    await call('/iclock/cdata?SN=S1&table=ATTLOG', { method: 'POST', body: '9\t1767225600\t0\t1' })
+    expect(sent().punches[0].time).toBe('2026-01-01 05:30:00')
+  })
+
+  it('warns with field names only when nothing parses, and still replies OK: 0', async () => {
+    const res = await call('/iclock/cdata?SN=S1&table=ATTLOG', {
+      method: 'POST',
+      body: 'Foo=1001\tBar=SECRETVALUE\n3\tcolumns\there',
+    })
+    expect(await res.text()).toBe('OK: 0')
+    const w = vi.mocked(console.warn).mock.calls.map((c) => JSON.parse(String(c[0]))).find((j) => j.msg === 'no parsable lines')!
+    expect(w.lines).toBe(2)
+    expect(w.fields).toEqual(['Foo', 'Bar', 'cols=3'])
+    expect(w.sn).toBe(createHash('sha256').update('S1').digest('hex').slice(0, 8))
+    const raw = JSON.stringify(w)
+    for (const leak of ['1001', 'SECRETVALUE', 'S1"']) expect(raw).not.toContain(leak)
+  })
+
+  it('does not warn for a blank body', async () => {
+    await call('/iclock/cdata?SN=S1&table=ATTLOG', { method: 'POST', body: '\r\n\r\n' })
+    expect(vi.mocked(console.warn)).not.toHaveBeenCalled()
+  })
+
+  it('capture log has the table and parameter names, never values', async () => {
+    await call('/iclock/cdata?SN=SERIAL1&options=all&pushver=2.4.1&pushcommkey=TOPSECRETKEY&table=OPERLOG', { method: 'POST', body: 'x' })
+    const j = vi.mocked(console.log).mock.calls.map((c) => JSON.parse(String(c[0]))).find((x) => x.msg === 'device request')!
+    expect(j.table).toBe('OPERLOG')
+    expect(j.params).toEqual(['SN', 'options', 'pushver', 'pushcommkey', 'table'])
+    const raw = JSON.stringify(j)
+    for (const leak of ['SERIAL1', 'TOPSECRETKEY', '2.4.1']) expect(raw).not.toContain(leak)
   })
 })
 

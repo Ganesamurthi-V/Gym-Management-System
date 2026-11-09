@@ -14,6 +14,7 @@ import { recordOwnerAction } from '@/lib/activity/record'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
+import { syncMemberToDevices } from '@/lib/devices/commands'
 function planMemberLimitResponse() {
   return NextResponse.json(
     { success: false, error: { code: 'PLAN_MEMBER_LIMIT', message: MEMBER_CAP_MESSAGE } },
@@ -236,6 +237,7 @@ export async function POST(req: NextRequest) {
     }
 
     await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
+    await syncMemberToDevices(gym.id, data.id, 'add') // never throws; no-op for gyms without a device
 
     log.summary(201)
     recordOwnerAction(supabase, req, 'MEMBERS_CREATE')

@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getAuthUser, getGymCore } from '@/lib/dal'
 import { replayUnmappedPunches } from '@/lib/devices/processPunch'
 import { isValidTimeZone } from '@/lib/devices/time'
+import { enqueueDeviceCommand } from '@/lib/devices/commands'
 import { normalizeSerial, SERIAL_RE, pinToMemberNumber } from '@/lib/devices/ui'
 
 export type ActionResult<T = unknown> = { ok: boolean; error?: string; data?: T }
@@ -199,6 +200,92 @@ export async function unmapPin(mapId: string): Promise<ActionResult> {
 
   const supabase = await createClient()
   const { error } = await supabase.from('device_user_map').delete().eq('id', mapId).eq('gym_id', gymId)
+  if (error) return GENERIC
+  return done()
+}
+
+const QUEUE_FULL = 'Too many waiting commands for this device. Wait for the device to catch up, then try again.'
+
+export async function removeMemberFromDevice(mapId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(mapId).success) return GENERIC
+  const gymId = await resolveGymId()
+  if (!gymId) return NOT_SIGNED_IN
+
+  const supabase = await createClient()
+  const { data: row, error: rowErr } = await supabase
+    .from('device_user_map').select('id, device_id, pin, member_id').eq('id', mapId).eq('gym_id', gymId).maybeSingle()
+  if (rowErr) return GENERIC
+  if (!row) return { ok: false, error: 'This member is not linked to the device.' }
+
+  // Admin client only after the row was found through the session client, scoped to the session gym.
+  const res = await enqueueDeviceCommand(createAdminClient(), {
+    gymId, deviceId: row.device_id as string, memberId: (row.member_id as string | null) ?? null,
+    kind: 'remove_user', pin: row.pin as string,
+  })
+  if (res.reason === 'cap') return { ok: false, error: QUEUE_FULL }
+
+  const { error } = await supabase.from('device_user_map').delete().eq('id', mapId).eq('gym_id', gymId)
+  if (error) return GENERIC
+  return done()
+}
+
+export async function addMemberToDevice(deviceId: string, memberId: string): Promise<ActionResult<{ message: string }>> {
+  if (!uuid.safeParse(deviceId).success || !uuid.safeParse(memberId).success) return GENERIC
+  const gymId = await resolveGymId()
+  if (!gymId) return NOT_SIGNED_IN
+
+  const supabase = await createClient()
+  const [dev, mem] = await Promise.all([
+    supabase.from('attendance_devices').select('id').eq('id', deviceId).eq('gym_id', gymId).maybeSingle(),
+    supabase.from('members').select('id, name, member_number').eq('id', memberId).eq('gym_id', gymId).maybeSingle(),
+  ])
+  if (dev.error || mem.error) return GENERIC
+  if (!dev.data || !mem.data) return { ok: false, error: 'Device or member not found.' }
+  const number = mem.data.member_number as number | null
+  if (!number) return { ok: false, error: 'This member has no member number yet.' }
+  const pin = String(number)
+
+  const res = await enqueueDeviceCommand(createAdminClient(), {
+    gymId, deviceId, memberId, kind: 'add_user', pin, name: mem.data.name as string,
+  })
+  if (res.reason === 'cap') return { ok: false, error: QUEUE_FULL }
+
+  // Link now so the first punch matches automatically. A unique violation means it is already linked.
+  const { error } = await supabase.from('device_user_map').insert({ gym_id: gymId, device_id: deviceId, pin, member_id: memberId })
+  if (error && error.code !== '23505') return GENERIC
+  return done({ message: `${mem.data.name} will be added to the device. Now enrol their fingerprint or face on the device.` })
+}
+
+export async function setMemberBlocked(mapId: string, blocked: boolean): Promise<ActionResult> {
+  if (!uuid.safeParse(mapId).success || typeof blocked !== 'boolean') return GENERIC
+  const gymId = await resolveGymId()
+  if (!gymId) return NOT_SIGNED_IN
+
+  const supabase = await createClient()
+  const { data: row, error: rowErr } = await supabase
+    .from('device_user_map').select('id').eq('id', mapId).eq('gym_id', gymId).maybeSingle()
+  if (rowErr) return GENERIC
+  if (!row) return { ok: false, error: 'This member is not linked to the device.' }
+
+  const { error } = await createAdminClient().from('device_user_map').update({ blocked }).eq('id', mapId).eq('gym_id', gymId)
+  if (error) return GENERIC
+  return done()
+}
+
+export async function setCommandDialect(deviceId: string, dialect: 'privilege' | 'pri'): Promise<ActionResult> {
+  const d = z.enum(['privilege', 'pri']).safeParse(dialect)
+  if (!uuid.safeParse(deviceId).success || !d.success) return GENERIC
+  const gymId = await resolveGymId()
+  if (!gymId) return NOT_SIGNED_IN
+
+  const supabase = await createClient()
+  const { data: dev, error: devErr } = await supabase
+    .from('attendance_devices').select('id').eq('id', deviceId).eq('gym_id', gymId).maybeSingle()
+  if (devErr) return GENERIC
+  if (!dev) return { ok: false, error: 'Device not found.' }
+
+  const { error } = await createAdminClient().from('attendance_devices')
+    .update({ command_dialect: d.data }).eq('id', deviceId).eq('gym_id', gymId)
   if (error) return GENERIC
   return done()
 }

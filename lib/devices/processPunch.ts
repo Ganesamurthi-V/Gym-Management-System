@@ -8,7 +8,9 @@ export type PunchInput = { pin: string; time: string; status?: number | null; ve
 export type DeviceRow = { id: string; gym_id: string; timezone: string }
 
 type PunchRow = { id: string; pin: string; punched_at: string }
-type PunchState = 'applied' | 'unmapped' | 'duplicate' | 'stale' | 'error'
+type PunchState = 'applied' | 'unmapped' | 'duplicate' | 'stale' | 'error' | 'blocked'
+/** pin -> member, plus whether the owner blocked that pin (a blocked member's punches never become attendance). */
+type PinEntry = { memberId: string; blocked: boolean }
 
 /** A row left in 'processing' longer than this belongs to a request that died; it goes back to 'error' for a retry. */
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000
@@ -21,7 +23,7 @@ const log = apiLogger('DEVICE_PUNCHES')
  * `memberId` is passed by the replay; otherwise it comes from device_user_map.
  */
 async function processRow(
-  db: SupabaseClient, device: DeviceRow, row: PunchRow, now: Date, memberId?: string, pinMap?: Map<string, string>,
+  db: SupabaseClient, device: DeviceRow, row: PunchRow, now: Date, memberId?: string, pinMap?: Map<string, PinEntry>,
 ): Promise<PunchState> {
   const at = new Date(row.punched_at)
 
@@ -36,13 +38,16 @@ async function processRow(
   let member = memberId
   if (!member && pinMap) {
     // Batch path: the whole batch's pins were loaded in one query.
-    member = pinMap.get(row.pin)
-    if (!member) return finish('unmapped', null)
+    const entry = pinMap.get(row.pin)
+    if (!entry) return finish('unmapped', null)
+    if (entry.blocked) return finish('blocked', entry.memberId)
+    member = entry.memberId
   } else if (!member) {
     const { data: map, error } = await db
-      .from('device_user_map').select('member_id').eq('device_id', device.id).eq('pin', row.pin).maybeSingle()
+      .from('device_user_map').select('member_id, blocked').eq('device_id', device.id).eq('pin', row.pin).maybeSingle()
     if (error) { log.error('device user lookup failed', error); return 'error' }
     if (!map) return finish('unmapped', null)
+    if (map.blocked) return finish('blocked', map.member_id as string)
     member = map.member_id as string
   }
 
@@ -131,10 +136,10 @@ export async function ingestPunches(
 
   // One lookup for the whole batch instead of one per punch.
   const { data: maps, error: mapError } = await db
-    .from('device_user_map').select('pin, member_id')
+    .from('device_user_map').select('pin, member_id, blocked')
     .eq('device_id', device.id).in('pin', [...new Set(work.map(r => r.pin))])
   if (mapError) { log.error('device user lookup failed', mapError); return release(db, work) }
-  const pinMap = new Map((maps ?? []).map(m => [m.pin as string, m.member_id as string]))
+  const pinMap = new Map<string, PinEntry>((maps ?? []).map(m => [m.pin as string, { memberId: m.member_id as string, blocked: m.blocked === true }]))
 
   let failed = false
   // Sequential, in time order: each punch depends on the attendance row the previous one wrote.

@@ -68,6 +68,7 @@ const EXCLUDED: Record<string, string> = {
   'auth/': 'public / pre-login auth flow',
   'cron/': 'cron worker, CRON_SECRET',
   'devices/punches/': 'ADMS receiver, ADMS_INGEST_SECRET bearer',
+  'devices/commands/': 'ADMS receiver, ADMS_INGEST_SECRET bearer',
   'graph/': 'Graph API reverse proxy',
   'sentry/webhook/': 'Sentry webhook',
   'webhook/': 'payment provider webhook',

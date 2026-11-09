@@ -145,3 +145,16 @@ describe('ingestPunches hardening', () => {
     expect(db.tables.device_punches[0].punched_at).toBe('2026-11-09T03:30:00.000Z')
   })
 })
+
+describe('blocked members', () => {
+  it('records a blocked pin as blocked with the member and writes no attendance (batch path)', async () => {
+    const { db, client } = setup(false)
+    db.tables.device_user_map.push({ device_id: 'dev1', pin: '7', member_id: 'mem1', blocked: true })
+    db.tables.device_user_map.push({ device_id: 'dev1', pin: '8', member_id: 'mem2', blocked: false })
+    await ingestPunches(client, device, [punch('2026-11-09 09:00:00'), punch('2026-11-09 09:05:00', '8')], NOW)
+    expect(states(db)).toEqual(['blocked', 'applied'])
+    expect(db.tables.device_punches[0].member_id).toBe('mem1')
+    expect(db.tables.attendance).toHaveLength(1)
+    expect(db.tables.attendance[0].member_id).toBe('mem2')
+  })
+})

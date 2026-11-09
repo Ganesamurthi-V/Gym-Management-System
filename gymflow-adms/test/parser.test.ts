@@ -40,3 +40,28 @@ describe('parseAttlog', () => {
     expect(r.skipped).toBe(3)
   })
 })
+
+describe('parseAttlog dialects', () => {
+  it('parses the eSSL key=value line with aliases and mixed case', () => {
+    const r = parseAttlog('PIN=1001\tDateTime=2025-09-02 14:32:11\tVerified=1\tStatus=0')
+    expect(r.punches).toEqual([{ pin: '1001', time: '2025-09-02 14:32:11', status: 0, verify: 1 }])
+  })
+
+  it('accepts userid/badgenumber, checktime, checktype and verifymode aliases', () => {
+    expect(parseAttlog('UserID=5\tCheckTime=2025-09-02 14:32:11\tCheckType=1\tVerifyMode=15').punches).toEqual([
+      { pin: '5', time: '2025-09-02 14:32:11', status: 1, verify: 15 },
+    ])
+    expect(parseAttlog('BadgeNumber=6\ttime=2025-09-02 14:32:11').punches[0]!.pin).toBe('6')
+  })
+
+  it('converts a 10-digit epoch using the offset (default 330)', () => {
+    // 1767225600 = 2026-01-01 00:00:00 UTC
+    expect(parseAttlog('9\t1767225600\t0\t1').punches[0]!.time).toBe('2026-01-01 05:30:00')
+    expect(parseAttlog('9\t1767225600\t0\t1', { epochOffsetMinutes: 0 }).punches[0]!.time).toBe('2026-01-01 00:00:00')
+    expect(parseAttlog('pin=9\ttime=1767225600', { epochOffsetMinutes: -60 }).punches[0]!.time).toBe('2025-12-31 23:00:00')
+  })
+
+  it('does not treat other digit strings as epochs', () => {
+    expect(parseAttlog('9\t17672256\t0\t1').punches).toHaveLength(0)
+  })
+})

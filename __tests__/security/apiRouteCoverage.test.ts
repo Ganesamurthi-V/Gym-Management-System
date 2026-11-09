@@ -24,6 +24,8 @@ const EXCEPTIONS: Record<string, string> = {
   'auth/phone/save/route.ts': 'requirePhoneRouteUser, before the gym exists',
   'cron/subscription/route.ts': 'CRON_SECRET',
   'devices/punches/route.ts': 'ADMS_INGEST_SECRET bearer (timingSafeSecretEqual), no user session',
+  'devices/commands/next/route.ts': 'ADMS_INGEST_SECRET bearer (authenticateDeviceRequest), no user session',
+  'devices/commands/ack/route.ts': 'ADMS_INGEST_SECRET bearer (authenticateDeviceRequest), no user session',
   'cron/push-evening/route.ts': 'CRON_SECRET (isAuthorized)',
   'webhook/route.ts': 'provider signature (x-hub-signature-256)',
   'health/route.ts': 'health',

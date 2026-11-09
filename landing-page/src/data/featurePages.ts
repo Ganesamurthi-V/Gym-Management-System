@@ -1863,15 +1863,15 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: 'Step 2: Enter the server address on the device',
         blocks: [
-          { type: 'p', text: 'On the device, open **Menu → Comm** (some models call it **Communication**) **→ Cloud Server Setting** and enter:' },
+          { type: 'p', text: 'On the device, open **Menu → Com** (some models call it **Comm** or **Communication**), then **ADMS** (some models call it **Cloud Server Setting**), and enter:' },
           {
             type: 'ul',
             items: [
-              '**Server address:** bio.gymflow.sbs',
-              '**Port:** 80',
+              '**Server Address:** bio.gymflow.sbs',
+              '**Server Port:** 80',
             ],
           },
-          { type: 'p', text: 'If the device has a **Domain Name** or **Enable Domain Name** option, turn it on, because the address is a name and not a set of numbers. If your device supports HTTPS, you can use port 443 instead. Save the settings.' },
+          { type: 'p', text: 'Turn **Enable Domain Name** On, because the address is a name and not a set of numbers, and set **Enable Proxy Server** to Off. If your device supports HTTPS, you can use port 443 instead. Save the settings. If the device cannot find the address, open its Ethernet settings and set the DNS to `8.8.8.8`.' },
           { type: 'p', text: 'The Biometric page shows the same address and port with copy buttons once they are available.' },
         ],
       },
@@ -1884,6 +1884,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
               'Restart the device from **Menu → System → Restart**, or switch it off and on.',
               'On the Biometric page, tap the refresh button or **Check status**.',
               'Within a minute or two the status changes to **Connected, last seen just now**.',
+              'On the device, **Device Info** (on some models, **Device Management** and then **Device Info**) shows **Online** once it is connected.',
             ],
           },
         ],
@@ -1919,7 +1920,17 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'Managing members',
         blocks: [
           { type: 'p', text: 'If you unlink a member on the Biometric page, their name is removed from the list and the ID goes back to **Needs matching**. Check-ins already recorded are not deleted.' },
-          { type: 'p', text: 'To remove or block a member on the device itself, do it at the device for now.' },
+          { type: 'p', text: 'The Biometric page also controls who is on the device:' },
+          {
+            type: 'ul',
+            items: [
+              '**Add to device** creates the member on the device. They still enrol their fingerprint or face on the device.',
+              '**Remove from device** deletes the member from the device, including their fingerprint.',
+              '**Block** keeps the member on the device, but GymFlow ignores their punches.',
+            ],
+          },
+          { type: 'p', text: 'The device picks up these changes the next time it checks in, which is about a minute. The Biometric page lists the status of each one.' },
+          { type: 'p', text: 'Members you add in GymFlow are sent to the device automatically. Members whose membership expires are removed from the device, and you can add them again when they renew.' },
         ],
       },
       {

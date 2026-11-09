@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   deviceStatus, formatLastSeen, statusLabel, isValidSerial, normalizeSerial,
-  punchStateChip, groupUnmapped, pinToMemberNumber, formatPunchTimeIST,
+  punchStateChip, groupUnmapped, pinToMemberNumber, formatPunchTimeIST, commandStateChip, commandLabel,
 } from '@/lib/devices/ui'
 
 const NOW = Date.parse('2026-11-09T10:00:00Z')
@@ -80,4 +80,20 @@ describe('formatPunchTimeIST', () => {
   it('uses IST', () => {
     expect(formatPunchTimeIST('2026-11-09T00:00:00Z')).toContain('5:30')
   })
+})
+
+describe('commandStateChip / commandLabel', () => {
+  it('maps states to plain words', () => {
+    expect(commandStateChip('queued')).toEqual({ label: 'Waiting for device', tone: 'slate' })
+    expect(commandStateChip('sent')).toEqual({ label: 'Sent', tone: 'amber' })
+    expect(commandStateChip('done')).toEqual({ label: 'Done', tone: 'emerald' })
+    expect(commandStateChip('failed')).toEqual({ label: 'Failed, try again', tone: 'red' })
+    expect(commandStateChip('weird').tone).toBe('red')
+  })
+  it('labels commands', () => {
+    expect(commandLabel('add_user', '12')).toBe('Add member 12')
+    expect(commandLabel('remove_user', '012')).toBe('Remove member 12')
+    expect(commandLabel('remove_user', 'AB1')).toBe('Remove member AB1')
+  })
+  it('keeps the blocked punch chip', () => expect(punchStateChip('blocked').label).toBe('Blocked'))
 })

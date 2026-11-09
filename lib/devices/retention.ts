@@ -30,3 +30,20 @@ export async function purgeOldDevicePunches(db: SupabaseClient, now: Date = new 
   }
   return { deleted }
 }
+
+/** Deletes finished (done / failed) device commands older than 30 days; queued and sent ones are never touched. */
+export async function purgeOldDeviceCommands(db: SupabaseClient, now: Date = new Date()): Promise<{ deleted: number }> {
+  const cutoff = new Date(now.getTime() - 30 * DAY_MS).toISOString()
+  let deleted = 0
+  for (let i = 0; i < MAX_BATCHES; i++) {
+    const { data: ids, error } = await db
+      .from('device_commands').select('id').in('state', ['done', 'failed']).lt('created_at', cutoff).limit(BATCH)
+    if (error) throw new Error(`device command retention lookup failed: ${error.message}`)
+    if (!ids || ids.length === 0) break
+    const { error: delError } = await db.from('device_commands').delete().in('id', ids.map(r => r.id as number))
+    if (delError) throw new Error(`device command retention delete failed: ${delError.message}`)
+    deleted += ids.length
+    if (ids.length < BATCH) break
+  }
+  return { deleted }
+}

@@ -114,3 +114,49 @@ The endpoint is public and the device serial is the only identity, so abuse and 
 
 Checks: `cd worker && npm test`, `npm run typecheck`, `npx wrangler deploy --dry-run`. To exercise a deployed Worker, run
 the simulator against `bio.gymflow.sbs`.
+
+## Cloudflare Worker (bio.gymflow.sbs)
+
+The live receiver is `worker/` (Worker `gymflow-bio`); the Node server above is the legacy implementation. Both share
+`src/parser.ts`.
+
+### Supported formats and sources
+
+ZKTeco does not publish the ADMS/iclock protocol. Formats follow open-source servers confirmed on real devices:
+saifulcoder/adms-server-ZKTeco (tested on an X100-C), athwari/laravel-zkteco-adms-server and
+tanemrahman/zkteco-adms.
+
+- Handshake (`GET /iclock/cdata`, `/iclock/push`): `GET OPTION FROM: <SN>` then `Stamp=9999`, `OpStamp=<unix>`,
+  `ATTLOGStamp`, `OPERLOGStamp`, `ATTPHOTOStamp`, `ErrorDelay`, `Delay`, `TransTimes`, `TransInterval`, `TransFlag`,
+  `TimeZone`, `Realtime`, `Encrypt`.
+- ATTLOG lines: tab-separated `PIN, time, status, verify, workcode` (primary), or `key=value` with
+  case-insensitive aliases (pin/userid/badgenumber, time/datetime/checktime, verifytype/verified/verifymode/verify,
+  status/checktype). A 10-digit Unix epoch time is converted to local time using `DEVICE_TZ_MINUTES`.
+- Reply to ATTLOG is `OK: <n>`; everything else (other tables, `/iclock/fdata`) is `OK`, body unread.
+- A non-blank ATTLOG body where no line parses logs one `no parsable lines` warning with field names only.
+  Requests to `cdata`/`getrequest` log the query parameter names (never values) to show what a new model sends.
+
+### Environment overrides
+
+| Var | Default | Notes |
+|-----|---------|-------|
+| `POLL_DELAY_SECONDS` | 60 | Sent as `Delay` |
+| `DEVICE_TZ_MINUTES` | 330 | Sent as `TimeZone`; also the offset for epoch times |
+| `TRANS_FLAG` | `TransData AttLog` | Older firmware may need the bit-string form such as `1111000000` |
+
+### Command relay
+
+`GET /iclock/getrequest` calls the app's `POST /api/devices/commands/next` (bearer `ADMS_INGEST_SECRET`, same origin
+as `APP_INGEST_URL`) on every poll, which also serves as the heartbeat, and returns the `C:<id>:<command>` lines
+joined by newlines, or `OK` when there are none or the app fails. `POST /iclock/devicecmd` parses
+`ID=<n>&Return=<n>&CMD=...` records (negative `Return` allowed, max 50) and forwards them to
+`POST /api/devices/commands/ack` in the background; the device always gets `OK`.
+
+Phase 2 safeguards: commands carry ids and are removed only after the device acknowledges them; users are always
+created with `Privilege=0`; names are sanitised; `Shell` commands are never used.
+
+### Unverified on real hardware
+
+No device has been tested. Unverified: whether each model accepts the handshake and `TransFlag` forms, the command
+field names (`Privilege` vs `Pri`), whether a model sends `pushcommkey`, and which firmware sends epoch times or
+the key=value dialect.

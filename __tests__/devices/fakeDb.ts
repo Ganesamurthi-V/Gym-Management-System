@@ -2,8 +2,10 @@
 type Row = Record<string, unknown>
 
 export function createFakeDb() {
-  const tables: Record<string, Row[]> = { attendance_devices: [], device_user_map: [], device_punches: [], attendance: [] }
+  const tables: Record<string, Row[]> = { attendance_devices: [], device_user_map: [], device_punches: [], attendance: [], device_commands: [], members: [], memberships: [] }
   let seq = 0
+  // Column defaults the real tables have.
+  const defaults: Record<string, Row> = { device_commands: { state: 'queued', attempts: 0, last_sent_at: null, acked_at: null, error: null } }
   const uniques: Record<string, string[]> = {
     device_punches: ['device_id', 'pin', 'punched_at'],
     attendance: ['member_id', 'date', 'session'],
@@ -38,7 +40,7 @@ export function createFakeDb() {
               if (op === 'upsert' && ignoreDuplicates) continue
               return { data: null, error: { message: 'duplicate key', code: '23505' } }
             }
-            const row = { id: `id${++seq}`, source: 'kiosk', check_out_time: null, member_id: null, ...item }
+            const row = { id: `id${++seq}`, source: 'kiosk', check_out_time: null, member_id: null, blocked: false, ...(defaults[table] ?? {}), ...item }
             rows.push(row)
             inserted.push(row)
           }
@@ -68,8 +70,8 @@ export function createFakeDb() {
         update(p: Row) { op = 'update'; payload = p; return b },
         eq(c: string, v: unknown) { filters.push(r => r[c] === v); return b },
         in(c: string, v: unknown[]) { filters.push(r => v.includes(r[c])); return b },
-        gte(c: string, v: string) { filters.push(r => String(r[c]) >= v); return b },
-        lt(c: string, v: string) { filters.push(r => String(r[c]) < v); return b },
+        gte(c: string, v: string | number) { filters.push(r => (typeof v === 'number' ? Number(r[c]) >= v : String(r[c]) >= v)); return b },
+        lt(c: string, v: string | number) { filters.push(r => (typeof v === 'number' ? Number(r[c]) < v : String(r[c]) < v)); return b },
         lte(c: string, v: string) { filters.push(r => String(r[c]) <= v); return b },
         order(col: string, o?: { ascending?: boolean }) { orderBy = { col, asc: o?.ascending !== false }; return b },
         limit(n: number) { max = n; return b },

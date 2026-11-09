@@ -11,6 +11,7 @@ import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
+import { syncMemberToDevices } from '@/lib/devices/commands'
 
 
 export async function GET(
@@ -184,6 +185,9 @@ export async function DELETE(
     if (!memberCheck) {
       return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
     }
+
+    // Queue the device removal while the member row still exists (never throws).
+    await syncMemberToDevices(gym.id, id, 'remove')
 
     // Delete attendance and memberships in parallel, then the member row
     const [a1, a2] = await Promise.all([

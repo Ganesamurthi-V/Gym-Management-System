@@ -697,6 +697,8 @@ CREATE TABLE IF NOT EXISTS attendance_devices (
   last_seen_at   TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by     UUID,
+  -- Command syntax the firmware understands: 'privilege' (Privilege=0) or 'pri' (Pri=0).
+  command_dialect TEXT       NOT NULL DEFAULT 'privilege' CONSTRAINT attendance_devices_command_dialect_check CHECK (command_dialect IN ('privilege', 'pri')),
   UNIQUE (id, gym_id)
 );
 
@@ -708,6 +710,8 @@ CREATE TABLE IF NOT EXISTS device_user_map (
   device_id   UUID        NOT NULL,
   pin         TEXT        NOT NULL,
   member_id   UUID        NOT NULL,
+  -- A blocked member's punches are recorded as 'blocked' and never become attendance (server actions only).
+  blocked     BOOLEAN     NOT NULL DEFAULT false,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (device_id, pin),
   FOREIGN KEY (device_id, gym_id) REFERENCES attendance_devices (id, gym_id) ON DELETE CASCADE
@@ -730,6 +734,26 @@ CREATE TABLE IF NOT EXISTS device_punches (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   claimed_at  TIMESTAMPTZ,
   UNIQUE (device_id, pin, punched_at),
+  FOREIGN KEY (device_id, gym_id) REFERENCES attendance_devices (id, gym_id) ON DELETE CASCADE
+);
+
+-- ── device_commands ──────────────────────────────────────────
+-- Commands the device polls for (add / remove a user). queued -> sent (offered to the device) -> done / failed.
+-- member_id is nulled when the member is deleted (see fk_device_commands_member_same_gym).
+CREATE TABLE IF NOT EXISTS device_commands (
+  id           BIGSERIAL   PRIMARY KEY,
+  gym_id       UUID        NOT NULL,
+  device_id    UUID        NOT NULL,
+  member_id    UUID,
+  kind         TEXT        NOT NULL CHECK (kind IN ('add_user', 'remove_user')),
+  pin          TEXT        NOT NULL,
+  payload      JSONB       NOT NULL DEFAULT '{}',
+  state        TEXT        NOT NULL DEFAULT 'queued' CHECK (state IN ('queued', 'sent', 'done', 'failed')),
+  attempts     INT         NOT NULL DEFAULT 0,
+  last_sent_at TIMESTAMPTZ,
+  acked_at     TIMESTAMPTZ,
+  error        TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   FOREIGN KEY (device_id, gym_id) REFERENCES attendance_devices (id, gym_id) ON DELETE CASCADE
 );
 
@@ -1124,6 +1148,7 @@ BEGIN
     ('member_push_subscriptions','fk_member_push_subscriptions_member_same_gym','member_id','members', 'CASCADE'),
     ('attendance',             'fk_attendance_member_same_gym',      'member_id',    'members', 'CASCADE'),
     ('device_user_map',        'fk_device_user_map_member_same_gym', 'member_id',    'members', 'CASCADE'),
+    ('device_commands',        'fk_device_commands_member_same_gym', 'member_id',    'members', 'SET NULL (member_id)'),
     ('due_payments',           'fk_due_payments_member_same_gym',    'member_id',    'members', 'CASCADE'),
     ('member_portal_activity', 'fk_portal_activity_member_same_gym', 'member_id',    'members', 'CASCADE'),
     ('member_achievements',    'fk_member_achievements_member_same_gym', 'member_id', 'members', 'CASCADE'),
@@ -1376,6 +1401,10 @@ CREATE INDEX IF NOT EXISTS idx_owner_activity_created
 CREATE INDEX IF NOT EXISTS idx_device_punches_device_pin_state ON device_punches (device_id, pin, state);
 CREATE INDEX IF NOT EXISTS idx_device_punches_gym_created ON device_punches (gym_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_device_punches_created ON device_punches (created_at);
+
+-- indexes on device_commands
+CREATE INDEX IF NOT EXISTS idx_device_commands_device_state ON device_commands (device_id, state);
+CREATE INDEX IF NOT EXISTS idx_device_commands_created ON device_commands (created_at);
 
 -- indexes on member_body_logs / member_workout_sessions
 -- ────────────────────────────────────────────────────────────
@@ -5783,6 +5812,7 @@ ALTER TABLE owner_activity_events    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance_devices       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE device_user_map          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE device_punches           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE device_commands          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_profile      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_workout_sessions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_push_subscriptions ENABLE ROW LEVEL SECURITY;
@@ -6443,6 +6473,10 @@ DROP POLICY IF EXISTS "Gym owners can view device punches" ON device_punches;
 CREATE POLICY "Gym owners can view device punches" ON device_punches FOR SELECT
   USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_punches.gym_id AND owner_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Gym owners can view device commands" ON device_commands;
+CREATE POLICY "Gym owners can view device commands" ON device_commands FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_commands.gym_id AND owner_id = auth.uid()));
+
 -- ────────────────────────────────────────────────────────────
 -- policies on owner_feedback_prompts
 -- ────────────────────────────────────────────────────────────
@@ -6699,6 +6733,8 @@ REVOKE ALL ON public.device_user_map FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.device_user_map TO authenticated;
 REVOKE ALL ON public.device_punches FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.device_punches TO authenticated;
+REVOKE ALL ON public.device_commands FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.device_commands TO authenticated;
 
 -- ── Gym notices ──────────────────────────────────────────────
 REVOKE ALL ON public.gym_notices FROM PUBLIC, anon, authenticated;

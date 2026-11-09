@@ -59,6 +59,24 @@ export function punchStateChip(state: string): { label: string; tone: ChipTone }
   }
 }
 
+export type CommandState = 'queued' | 'sent' | 'done' | 'failed'
+
+export function commandStateChip(state: string): { label: string; tone: ChipTone } {
+  switch (state) {
+    case 'queued': return { label: 'Waiting for device', tone: 'slate' }
+    case 'sent': return { label: 'Sent', tone: 'amber' }
+    case 'done': return { label: 'Done', tone: 'emerald' }
+    default: return { label: 'Failed, try again', tone: 'red' }
+  }
+}
+
+/** "Add member 12" / "Remove member 12"; the PIN is the member number. */
+export function commandLabel(kind: string, pin: string): string {
+  const n = pinToMemberNumber(pin)
+  const who = n !== null ? String(n) : pin
+  return `${kind === 'remove_user' ? 'Remove' : 'Add'} member ${who}`
+}
+
 export type UnmappedPin = { pin: string; count: number; lastPunchedAt: string }
 
 /** Groups unmapped punches into one row per (device, pin), newest punch first. */

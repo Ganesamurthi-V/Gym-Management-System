@@ -619,6 +619,17 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
     } catch (err) {
       console.error('[WA Automation] Device punch cleanup failed:', err instanceof Error ? err.message : String(err))
     }
+    // ── Biometric device commands: purge old ones, remove expired members from their devices ──
+    // Isolated like the steps above: a failure here must never fail the WhatsApp run.
+    try {
+      const { purgeOldDeviceCommands } = await import('@/lib/devices/retention')
+      const { queueExpiredMemberRemovals } = await import('@/lib/devices/commands')
+      const { deleted } = await purgeOldDeviceCommands(supabase)
+      const { queued } = await queueExpiredMemberRemovals(supabase)
+      console.log(`[WA Automation] Device commands: purged ${deleted}, queued ${queued} expiry removals`)
+    } catch (err) {
+      console.error('[WA Automation] Device command step failed:', err instanceof Error ? err.message : String(err))
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     stats.errors.push(`Fatal: ${msg}`)

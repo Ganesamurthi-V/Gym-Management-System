@@ -2,18 +2,23 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Fingerprint, Copy, Check, MoreVertical, ChevronDown, Wand2, RefreshCw, BookOpen } from 'lucide-react'
+import { Fingerprint, Copy, Check, MoreVertical, ChevronDown, Wand2, RefreshCw, BookOpen, Ban, UserMinus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  deviceStatus, statusLabel, punchStateChip, formatPunchTimeIST,
+  deviceStatus, statusLabel, punchStateChip, formatPunchTimeIST, commandStateChip, commandLabel,
   type DeviceStatus, type ChipTone, type UnmappedPin,
 } from '@/lib/devices/ui'
-import { addDevice, renameDevice, removeDevice, mapPin, autoMatchByMemberNumber, unmapPin } from './actions'
+import {
+  addDevice, renameDevice, removeDevice, mapPin, autoMatchByMemberNumber, unmapPin,
+  removeMemberFromDevice, addMemberToDevice, setMemberBlocked, setCommandDialect,
+} from './actions'
 import { MemberPicker } from './MemberPicker'
 
 export type MemberOption = { id: string; name: string; memberNumber: number | null }
-export type DeviceRow = { id: string; name: string; serial: string; lastSeenAt: string | null; unmapped: UnmappedPin[] }
-export type LinkedRow = { id: string; deviceId: string; pin: string; memberName: string; memberNumber: number | null }
+export type CommandDialect = 'privilege' | 'pri'
+export type DeviceRow = { id: string; name: string; serial: string; lastSeenAt: string | null; commandDialect: CommandDialect; unmapped: UnmappedPin[] }
+export type LinkedRow = { id: string; deviceId: string; pin: string; memberName: string; memberNumber: number | null; blocked: boolean }
+export type CommandRow = { id: string; deviceId: string; kind: string; pin: string; state: string; createdAt: string }
 export type PunchRow = { id: string; pin: string; punchedAt: string; state: string; memberName: string | null }
 
 const POLL_MS = 15_000
@@ -113,7 +118,7 @@ function AddDeviceForm() {
   )
 }
 
-function DeviceCard({ device, now, serverHost, serverPort }: { device: DeviceRow; now: number; serverHost: string | null; serverPort: string | null }) {
+function DeviceCard({ device, now, serverHost, serverPort, members }: { device: DeviceRow; now: number; serverHost: string | null; serverPort: string | null; members: MemberOption[] }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [menu, setMenu] = useState(false)
@@ -184,6 +189,68 @@ function DeviceCard({ device, now, serverHost, serverPort }: { device: DeviceRow
       ) : (
         <p className="text-sm text-slate-600">The device server address is not ready yet. Your device is saved; it will connect once the address is shown here.</p>
       )}
+      <ManageOnDevice device={device} members={members} />
+      {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+    </div>
+  )
+}
+
+function ManageOnDevice({ device, members }: { device: DeviceRow; members: MemberOption[] }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [memberId, setMemberId] = useState<string | null>(null)
+  const [dialect, setDialect] = useState<CommandDialect>(device.commandDialect)
+  const [prevDialect, setPrevDialect] = useState<CommandDialect>(device.commandDialect)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  // Resync local copy when router.refresh() delivers a new server value.
+  if (device.commandDialect !== prevDialect) { setPrevDialect(device.commandDialect); setDialect(device.commandDialect) }
+
+  const add = () => {
+    if (!memberId) return
+    setMessage(null); setError(null)
+    start(async () => {
+      const res = await addMemberToDevice(device.id, memberId)
+      if (!res.ok) { setError(res.error ?? 'Could not add member'); return }
+      setMessage(res.data?.message ?? 'Member will be added to the device.')
+      setMemberId(null)
+      router.refresh()
+    })
+  }
+
+  const changeDialect = (value: CommandDialect) => {
+    setError(null)
+    setDialect(value)
+    start(async () => {
+      const res = await setCommandDialect(device.id, value)
+      if (!res.ok) { setDialect(device.commandDialect); setError(res.error ?? 'Could not save'); return }
+      router.refresh()
+    })
+  }
+
+  return (
+    <div className="space-y-1">
+      <details className="text-sm">
+        <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center">Manage members on the device</summary>
+        <div className="space-y-2 pb-2">
+          <MemberPicker members={members} value={memberId} onChange={setMemberId} />
+          <button type="button" disabled={!memberId || pending} className="btn-secondary" onClick={add}>
+            <UserPlus className="w-4 h-4" /> {pending ? 'Adding...' : 'Add to device'}
+          </button>
+          <p className="text-xs text-slate-500">This creates the member on the device. Enrol their fingerprint or face on the device afterwards.</p>
+          {message && <p className="text-sm text-emerald-700" role="status">{message}</p>}
+        </div>
+      </details>
+      <details className="text-sm">
+        <summary className="cursor-pointer text-slate-600 min-h-[44px] flex items-center">Advanced</summary>
+        <div className="pb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={`dev-style-${device.id}`}>Command style</label>
+          <select id={`dev-style-${device.id}`} className="input-field" value={dialect} disabled={pending} onChange={e => changeDialect(e.target.value as CommandDialect)}>
+            <option value="privilege">Standard (recommended)</option>
+            <option value="pri">Older devices (use if adding members fails)</option>
+          </select>
+        </div>
+      </details>
       {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
     </div>
   )
@@ -239,6 +306,25 @@ function MatchSection({ devices, linked, members }: { devices: DeviceRow[]; link
     })
   }
 
+  const toggleBlock = (id: string, blocked: boolean) => {
+    setMessage(null); setError(null)
+    start(async () => {
+      const res = await setMemberBlocked(id, blocked)
+      if (!res.ok) { setError(res.error ?? 'Could not save'); return }
+      router.refresh()
+    })
+  }
+
+  const removeFromDevice = (id: string, who: string) => {
+    if (!window.confirm(`Remove ${who} from the device? Deletes this member from the device. Their fingerprint or face on the device is deleted too, so they must enrol again if you add them back.`)) return
+    setMessage(null); setError(null)
+    start(async () => {
+      const res = await removeMemberFromDevice(id)
+      if (!res.ok) { setError(res.error ?? 'Could not remove'); return }
+      router.refresh()
+    })
+  }
+
   const unlink = (id: string, who: string) => {
     if (!window.confirm(`Unlink ${who}? Their next punch will need matching again.`)) return
     setError(null)
@@ -287,11 +373,27 @@ function MatchSection({ devices, linked, members }: { devices: DeviceRow[]; link
           linked.length === 0 ? <p className="text-sm text-slate-500 pb-2">No members linked yet.</p> : (
             <ul className="divide-y divide-surface-border">
               {linked.map(l => (
-                <li key={l.id} className="flex items-center justify-between gap-2 py-2">
-                  <p className="text-sm text-slate-900 min-w-0 truncate">
-                    Device ID {l.pin} <span className="text-slate-500">linked to {l.memberName}</span>
-                  </p>
-                  <button type="button" disabled={pending} className="btn-ghost !text-red-600 shrink-0" onClick={() => unlink(l.id, l.memberName)}>Unlink</button>
+                <li key={l.id} className="py-2 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-slate-900 min-w-0 truncate">
+                      Device ID {l.pin} <span className="text-slate-500">linked to {l.memberName}</span>
+                    </p>
+                    <button type="button" disabled={pending} className="btn-ghost !text-red-600 shrink-0" onClick={() => unlink(l.id, l.memberName)}>Unlink</button>
+                  </div>
+                  {l.blocked && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn('text-xs font-medium px-2.5 py-1 rounded-full border', CHIP_TONE.red)}>Blocked</span>
+                      <span className="text-xs text-slate-500">Punches from this member are ignored.</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <button type="button" disabled={pending} className="btn-secondary !w-auto" onClick={() => toggleBlock(l.id, !l.blocked)}>
+                      <Ban className="w-4 h-4" /> {l.blocked ? 'Unblock' : 'Block'}
+                    </button>
+                    <button type="button" disabled={pending} className="btn-secondary !w-auto !text-red-600" onClick={() => removeFromDevice(l.id, l.memberName)}>
+                      <UserMinus className="w-4 h-4" /> Remove from device
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -324,27 +426,58 @@ function PunchSection({ punches }: { punches: PunchRow[] }) {
   )
 }
 
+function CommandSection({ commands, devices }: { commands: CommandRow[]; devices: DeviceRow[] }) {
+  const deviceName = new Map(devices.map(d => [d.id, d.name]))
+  return (
+    <>
+      {commands.length === 0 ? (
+        <p className="text-sm text-slate-600">Nothing yet. When you add or remove a member on the device, it shows here with its progress.</p>
+      ) : (
+        <ul className="divide-y divide-surface-border">
+          {commands.map(c => {
+            const chip = commandStateChip(c.state)
+            return (
+              <li key={c.id} className="flex items-center justify-between gap-2 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">{commandLabel(c.kind, c.pin)}</p>
+                  <p className="text-xs text-slate-500">{devices.length > 1 ? `${deviceName.get(c.deviceId) ?? 'Device'} - ` : ''}{formatPunchTimeIST(c.createdAt)}</p>
+                </div>
+                <span className={cn('shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border', CHIP_TONE[chip.tone])}>{chip.label}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <p className="text-xs text-slate-500">
+        Adding creates the member record only. The device must be online and connected to receive it. Removing deletes the fingerprint or face on the device. Blocking keeps it.
+      </p>
+    </>
+  )
+}
+
 export function BiometricClient({
-  devices, linked, punches, members, serverHost, serverPort,
+  devices, linked, punches, commands, members, serverHost, serverPort,
 }: {
-  devices: DeviceRow[]; linked: LinkedRow[]; punches: PunchRow[]; members: MemberOption[]
+  devices: DeviceRow[]; linked: LinkedRow[]; punches: PunchRow[]; commands: CommandRow[]; members: MemberOption[]
   serverHost: string | null; serverPort: string | null
 }) {
   const router = useRouter()
   const [refreshing, startRefresh] = useTransition()
   const [now, setNow] = useState(() => Date.now())
   const waiting = devices.some(d => deviceStatus(d.lastSeenAt, now) === 'waiting')
+  const commandsPending = commands.some(c => c.state === 'queued' || c.state === 'sent')
+  const polling = waiting || commandsPending
 
-  // Poll only while a device is still waiting for its first contact and the tab is visible.
+  // Poll only while a device is waiting for first contact or a command is still queued/sent, and the tab is visible.
   useEffect(() => {
     setNow(Date.now())
     const tick = setInterval(() => {
       if (document.visibilityState !== 'visible') return
       setNow(Date.now())
-      if (waiting) router.refresh()
+      if (polling) router.refresh()
     }, POLL_MS)
     return () => clearInterval(tick)
-  }, [waiting, router])
+  }, [polling, router])
 
   const serverReady = !!serverHost && !!serverPort
 
@@ -384,7 +517,7 @@ export function BiometricClient({
         {!serverReady && devices.length === 0 && (
           <p className="text-sm text-slate-600">Enter your device serial number below. The server address to type into the device appears here once it is ready.</p>
         )}
-        {devices.map(d => <DeviceCard key={d.id} device={d} now={now} serverHost={serverHost} serverPort={serverPort} />)}
+        {devices.map(d => <DeviceCard key={d.id} device={d} now={now} serverHost={serverHost} serverPort={serverPort} members={members} />)}
         {devices.length === 0 ? (
           <AddDeviceForm />
         ) : (
@@ -415,6 +548,10 @@ export function BiometricClient({
       {/* Phones and tablets: full list here. From lg up the side panel below shows the latest 10 instead. */}
       <Section n={3} title="Recent punches" className="lg:hidden">
         <PunchSection punches={punches} />
+      </Section>
+
+      <Section n={4} title="Device commands">
+        <CommandSection commands={commands} devices={devices} />
       </Section>
       </div>
 

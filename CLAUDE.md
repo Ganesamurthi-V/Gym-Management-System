@@ -238,6 +238,10 @@ the merge.
   attributes (`npm run verify:tour`).
 - Attendance kiosk: `app/owner/attendance` → `/api/attendance/check` (check in / out per session);
   `/api/attendance/undo` reverses only a recent action of the caller's gym.
+- Biometric attendance (ADMS push): devices talk to the separate `gymflow-adms/` receiver (own VPS, DB-less), which
+  forwards punches to `POST /api/devices/punches` (bearer `ADMS_INGEST_SECRET`, gym resolved from the device serial).
+  Logic in `lib/devices/`, shared kiosk toggle in `lib/attendance/toggle.ts`, owner UI `app/owner/biometric`. Never
+  commit VPS hosts, IPs or the secret; the page gets the device address from server-only `ADMS_PUBLIC_HOST`/`PORT`.
 - `lib/logger.ts` — structured request logger (pino) with redaction. Use it instead of `console.log` (stripped in
   production builds anyway).
 - `app/sw.ts` — single Serwist service worker for both PWAs; caches static assets only, never navigations or API

@@ -76,6 +76,7 @@ describe('withAuth locks out expired and deactivated gyms for every method', () 
 const API_DIR = join(process.cwd(), 'app', 'api')
 const EXEMPT_PREFIXES = [
   'activate/', 'auth/', 'cron/', 'health/', 'member/', 'graph/', 'sentry/', 'webhook/', 'whatsapp/webhook/',
+  'devices/punches/', // ADMS receiver authenticates by bearer secret, no user
   'whatsapp/queue/', // QStash / Meta / Vercel cron callers authenticate by secret or signature
   'push/send/', // QStash-signed job
   'gamification/leaderboard/', 'gamification/member-events/', // shared with members; the owner branch checks inside

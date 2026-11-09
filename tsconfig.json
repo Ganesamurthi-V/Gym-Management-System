@@ -38,6 +38,7 @@
   "exclude": [
     "node_modules",
     "gymflow-admin",
+    "gymflow-adms",
     "gymflow-mobile",
     "landing-page",
     "monitoring-worker",

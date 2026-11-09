@@ -9,6 +9,9 @@ const SECRET_NAMES = [
   'VAPID_PRIVATE_KEY', 'SENTRY_WEBHOOK_SECRET', 'HEALTH_CHECK_SECRET',
   'BETTERSTACK_HEARTBEAT_WHATSAPP', 'BETTERSTACK_HEARTBEAT_SUBSCRIPTION',
   'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID',
+  // Biometric receiver: the ingest secret, plus the device-facing host/port kept as secrets so the
+  // VPS address never lands in repo variables or the browser bundle.
+  'ADMS_INGEST_SECRET', 'ADMS_PUBLIC_HOST', 'ADMS_PUBLIC_PORT',
 ] as const
 
 // Non-secret config and NEXT_PUBLIC_* values (inlined into the browser bundle at build time,

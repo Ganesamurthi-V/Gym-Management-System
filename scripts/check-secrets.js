@@ -8,6 +8,8 @@ const SENSITIVE_PATTERNS = [
   /NEXT_PUBLIC_GOOGLE_MAPS_API_KEY\s*=\s*['"][^'"]+['"]/,
   // Google API keys (Firebase, Maps, ...) always start with "AIza" and are 39 characters long.
   /AIza[0-9A-Za-z_-]{35}/,
+  // The ADMS receiver secret, in any file including .env.example (which must stay empty).
+  /ADMS_INGEST_SECRET[ \t]*=[ \t]*['"]?[^\s'"]/,
   /-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----\s*[A-Za-z0-9+/=\n]{40,}/
 ];
 
@@ -36,6 +38,13 @@ try {
     }
     if (file === 'scripts/check-secrets.js') continue; // Skip itself
     // Templates hold placeholders on purpose (including in sibling projects).
+    // Placeholders are fine, but the ADMS secret must stay empty even here.
+    if (file.endsWith('.env.example') && /ADMS_INGEST_SECRET[ \t]*=[ \t]*['"]?[^\s'"]/.test(fs.readFileSync(file, 'utf-8'))) {
+      console.error(`
+🚨 FATAL ERROR: ${file} must leave ADMS_INGEST_SECRET empty.`);
+      hasSecrets = true;
+      continue;
+    }
     if (file.endsWith('.env.example') || file === '.env.local' || file === '.env' || file.endsWith('.md')) continue;
     
     const content = fs.readFileSync(file, 'utf-8');

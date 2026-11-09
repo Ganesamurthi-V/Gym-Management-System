@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS attendance (
   session         TEXT        CHECK (session IN ('morning', 'evening')) DEFAULT 'morning',
   check_out_time  TIMESTAMPTZ,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
+  -- 'device' rows come from a biometric reader (see attendance_devices); the kiosk writes 'kiosk'.
+  source          TEXT        NOT NULL DEFAULT 'kiosk' CHECK (source IN ('kiosk', 'device')),
   CONSTRAINT attendance_member_id_date_session_key UNIQUE (member_id, date, session)
 );
 
@@ -682,6 +684,52 @@ CREATE TABLE IF NOT EXISTS owner_activity_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ── attendance_devices ───────────────────────────────────────
+-- One row per physical biometric reader. The receiver service identifies a device by serial_number only;
+-- the gym is always taken from this row, never from the pushed payload.
+CREATE TABLE IF NOT EXISTS attendance_devices (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id         UUID        NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  serial_number  TEXT        NOT NULL UNIQUE CHECK (serial_number ~ '^[A-Za-z0-9_-]{1,64}$'),
+  name           TEXT        NOT NULL,
+  timezone       TEXT        NOT NULL DEFAULT 'Asia/Kolkata',
+  is_active      BOOLEAN     NOT NULL DEFAULT true,
+  last_seen_at   TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (id, gym_id)
+);
+
+-- ── device_user_map ──────────────────────────────────────────
+-- Which member a pin enrolled on a device belongs to.
+CREATE TABLE IF NOT EXISTS device_user_map (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id      UUID        NOT NULL,
+  device_id   UUID        NOT NULL,
+  pin         TEXT        NOT NULL,
+  member_id   UUID        NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (device_id, pin),
+  FOREIGN KEY (device_id, gym_id) REFERENCES attendance_devices (id, gym_id) ON DELETE CASCADE
+);
+
+-- ── device_punches ───────────────────────────────────────────
+-- Raw punches as pushed, with what happened to each. unique(device_id, pin, punched_at) makes a retried
+-- POST idempotent. state 'error' also means "recorded but not processed yet" and is retried.
+CREATE TABLE IF NOT EXISTS device_punches (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id      UUID        NOT NULL,
+  device_id   UUID        NOT NULL,
+  pin         TEXT        NOT NULL,
+  punched_at  TIMESTAMPTZ NOT NULL,
+  status      INT,
+  verify_type INT,
+  state       TEXT        NOT NULL CHECK (state IN ('applied', 'unmapped', 'duplicate', 'stale', 'error', 'blocked')),
+  member_id   UUID,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (device_id, pin, punched_at),
+  FOREIGN KEY (device_id, gym_id) REFERENCES attendance_devices (id, gym_id) ON DELETE CASCADE
+);
+
 -- ── member_body_logs / member_workout_sessions ───────────────
 -- Member progress. Written only by save_body_log, delete_body_log and save_workout_session
 -- (SECURITY DEFINER); clients can only SELECT. Limits mirror PROGRESS_LIMITS in types/progress.ts.
@@ -1072,6 +1120,7 @@ BEGIN
     ('member_workout_sessions','fk_member_workout_sessions_member_same_gym','member_id','members', 'CASCADE'),
     ('member_push_subscriptions','fk_member_push_subscriptions_member_same_gym','member_id','members', 'CASCADE'),
     ('attendance',             'fk_attendance_member_same_gym',      'member_id',    'members', 'CASCADE'),
+    ('device_user_map',        'fk_device_user_map_member_same_gym', 'member_id',    'members', 'CASCADE'),
     ('due_payments',           'fk_due_payments_member_same_gym',    'member_id',    'members', 'CASCADE'),
     ('member_portal_activity', 'fk_portal_activity_member_same_gym', 'member_id',    'members', 'CASCADE'),
     ('member_achievements',    'fk_member_achievements_member_same_gym', 'member_id', 'members', 'CASCADE'),
@@ -1319,6 +1368,10 @@ CREATE INDEX IF NOT EXISTS idx_owner_activity_gym_created
   ON owner_activity_events (gym_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_owner_activity_created
   ON owner_activity_events (created_at);
+
+-- indexes on device_punches
+CREATE INDEX IF NOT EXISTS idx_device_punches_device_pin_state ON device_punches (device_id, pin, state);
+CREATE INDEX IF NOT EXISTS idx_device_punches_gym_created ON device_punches (gym_id, created_at DESC);
 
 -- indexes on member_body_logs / member_workout_sessions
 -- ────────────────────────────────────────────────────────────
@@ -5723,6 +5776,9 @@ ALTER TABLE subscription_requests    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_renewal_requests   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_logs         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE owner_activity_events    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance_devices       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE device_user_map          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE device_punches           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_body_profile      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_workout_sessions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_push_subscriptions ENABLE ROW LEVEL SECURITY;
@@ -6348,6 +6404,42 @@ CREATE POLICY "Members can view their own memberships"
   );
 
 -- ────────────────────────────────────────────────────────────
+-- policies on attendance_devices / device_user_map / device_punches
+-- ────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Gym owners can view devices" ON attendance_devices;
+CREATE POLICY "Gym owners can view devices" ON attendance_devices FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+DROP POLICY IF EXISTS "Gym owners can insert devices" ON attendance_devices;
+CREATE POLICY "Gym owners can insert devices" ON attendance_devices FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+DROP POLICY IF EXISTS "Gym owners can update devices" ON attendance_devices;
+CREATE POLICY "Gym owners can update devices" ON attendance_devices FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+DROP POLICY IF EXISTS "Gym owners can delete devices" ON attendance_devices;
+CREATE POLICY "Gym owners can delete devices" ON attendance_devices FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Gym owners can view device users" ON device_user_map;
+CREATE POLICY "Gym owners can view device users" ON device_user_map FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+DROP POLICY IF EXISTS "Gym owners can insert device users" ON device_user_map;
+CREATE POLICY "Gym owners can insert device users" ON device_user_map FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+DROP POLICY IF EXISTS "Gym owners can update device users" ON device_user_map;
+CREATE POLICY "Gym owners can update device users" ON device_user_map FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+DROP POLICY IF EXISTS "Gym owners can delete device users" ON device_user_map;
+CREATE POLICY "Gym owners can delete device users" ON device_user_map FOR DELETE
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Gym owners can view device punches" ON device_punches;
+CREATE POLICY "Gym owners can view device punches" ON device_punches FOR SELECT
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_punches.gym_id AND owner_id = auth.uid()));
+
+-- ────────────────────────────────────────────────────────────
 -- policies on owner_feedback_prompts
 -- ────────────────────────────────────────────────────────────
 
@@ -6593,6 +6685,14 @@ REVOKE ALL ON public.member_achievements FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.member_achievements TO authenticated;
 REVOKE ALL ON public.gamification_awards FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON public.gamification_awards TO authenticated;
+
+-- Punches are written only by the ingest route (service role); owners read them.
+REVOKE ALL ON public.attendance_devices FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.attendance_devices TO authenticated;
+REVOKE ALL ON public.device_user_map FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.device_user_map TO authenticated;
+REVOKE ALL ON public.device_punches FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.device_punches TO authenticated;
 
 -- ── Gym notices ──────────────────────────────────────────────
 REVOKE ALL ON public.gym_notices FROM PUBLIC, anon, authenticated;

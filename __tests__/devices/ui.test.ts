@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   deviceStatus, formatLastSeen, statusLabel, isValidSerial, normalizeSerial,
-  punchStateChip, groupUnmapped, pinToMemberNumber, formatPunchTimeIST, commandStateChip, commandLabel,
+  punchStateChip, groupUnmapped, pinToMemberNumber, formatPunchTimeIST, commandStateChip, commandLabel, enrolStatus,
 } from '@/lib/devices/ui'
 
 const NOW = Date.parse('2026-11-09T10:00:00Z')
@@ -96,4 +96,37 @@ describe('commandStateChip / commandLabel', () => {
     expect(commandLabel('remove_user', 'AB1')).toBe('Remove member AB1')
   })
   it('keeps the blocked punch chip', () => expect(punchStateChip('blocked').label).toBe('Blocked'))
+})
+
+describe('enrolStatus', () => {
+  const since = '2026-11-09T10:00:00Z'
+  const cmd = (state: string, over: Partial<{ deviceId: string; kind: string; pin: string; createdAt: string }> = {}) =>
+    ({ deviceId: 'd1', kind: 'add_user', pin: '12', state, createdAt: '2026-11-09T10:00:05Z', ...over })
+  const base = { pin: '12', deviceId: 'd1', since }
+
+  it('is sending when no command exists yet', () => {
+    expect(enrolStatus({ ...base, commands: [], punches: [] })).toBe('sending')
+  })
+  it('ignores other devices, kinds, pins and commands older than since', () => {
+    const commands = [cmd('done', { deviceId: 'd2' }), cmd('done', { kind: 'remove_user' }), cmd('done', { pin: '13' }), cmd('done', { createdAt: '2026-11-09T09:59:00Z' })]
+    expect(enrolStatus({ ...base, commands, punches: [] })).toBe('sending')
+  })
+  it('is sending while queued or sent', () => {
+    expect(enrolStatus({ ...base, commands: [cmd('queued')], punches: [] })).toBe('sending')
+    expect(enrolStatus({ ...base, commands: [cmd('sent')], punches: [] })).toBe('sending')
+  })
+  it('is failed when the command failed', () => {
+    expect(enrolStatus({ ...base, commands: [cmd('failed')], punches: [] })).toBe('failed')
+  })
+  it('is waiting when done and no punch after since', () => {
+    const punches = [{ pin: '12', punchedAt: '2026-11-09T09:00:00Z' }, { pin: '99', punchedAt: '2026-11-09T10:30:00Z' }]
+    expect(enrolStatus({ ...base, commands: [cmd('done')], punches })).toBe('waiting')
+  })
+  it('is enrolled when done and the member punched after since', () => {
+    expect(enrolStatus({ ...base, commands: [cmd('done')], punches: [{ pin: '012', punchedAt: '2026-11-09T10:30:00Z' }] })).toBe('enrolled')
+  })
+  it('uses the newest matching command', () => {
+    const commands = [cmd('failed'), cmd('done', { createdAt: '2026-11-09T10:05:00Z' })]
+    expect(enrolStatus({ ...base, commands, punches: [] })).toBe('waiting')
+  })
 })

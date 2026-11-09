@@ -1893,17 +1893,18 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'Step 4: Enrol members on the device',
         blocks: [
           { type: 'p', text: 'Enrol each member\'s fingerprint or face on the device. For the user ID, use the member\'s GymFlow member number, which is the number shown for them in GymFlow. Type the digits only, without the "GF" letters. This lets GymFlow match them to the right member automatically.' },
+          { type: 'p', text: 'You can also start from GymFlow. In **Quick actions** on the Biometric page, **Enrol a new member** adds the member to the device and shows the steps to follow at the device, with live status as it goes. Then finish the fingerprint or face enrolment on the device.' },
         ],
       },
       {
         heading: 'Step 5: Match device IDs to members',
         blocks: [
-          { type: 'p', text: 'The first time an ID punches, it appears under **Match members** on the Biometric page.' },
+          { type: 'p', text: 'Open **Quick actions** on the Biometric page and choose **Assign a device ID to a member**.' },
           {
             type: 'ul',
             items: [
-              'Tap **Match automatically by member number** to link every ID that equals a member number in one go.',
-              'Or pick the member yourself and tap **Save**.',
+              'Tap **Match everyone by member number** to link every ID that equals a member number in one tap.',
+              'Otherwise, tap an ID that has punched but is not linked yet, pick the member and tap **Save**.',
             ],
           },
           { type: 'p', text: 'Punches from before the match are added to attendance once the ID is linked, if they are up to 7 days old.' },
@@ -1919,17 +1920,19 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: 'Managing members',
         blocks: [
-          { type: 'p', text: 'If you unlink a member on the Biometric page, their name is removed from the list and the ID goes back to **Needs matching**. Check-ins already recorded are not deleted.' },
-          { type: 'p', text: 'The Biometric page also controls who is on the device:' },
+          { type: 'p', text: 'Day-to-day actions are in the **Quick actions** card on the Biometric page. On wide screens it sits on the right under the **Latest punches** panel, and on phones it is at the top of the page.' },
           {
             type: 'ul',
             items: [
-              '**Add to device** creates the member on the device. They still enrol their fingerprint or face on the device.',
-              '**Remove from device** deletes the member from the device, including their fingerprint.',
-              '**Block** keeps the member on the device, but GymFlow ignores their punches.',
+              '**Enrol a new member:** pick a member and tap **Add to device**. A short panel lists the steps to follow at the device and shows the status: Sending to the device, On the device and waiting for the first punch, then Enrolled. The fingerprint or face itself is always enrolled at the device.',
+              '**Assign a device ID to a member:** link an ID that has punched to a member, as in Step 5.',
+              '**Unlink a device ID:** sends an ID back to **Needs matching**. The member stays on the device, nothing is deleted there and past attendance is kept.',
+              '**Remove a member:** deletes them from the device, including their fingerprint or face, and unlinks them. If you add them back, they must enrol again.',
+              '**Block or unblock a member:** GymFlow ignores their punches, shown as Blocked with no attendance, while they stay on the device. This only affects GymFlow and does not stop a door.',
             ],
           },
-          { type: 'p', text: 'The device picks up these changes the next time it checks in, which is about a minute. The Biometric page lists the status of each one.' },
+          { type: 'p', text: 'The device card also has **Manage members on the device**, where you pick a member and tap **Add to device**. Under **Advanced**, **Command style** can be switched from Standard to Older devices if adding members fails.' },
+          { type: 'p', text: 'The device picks up each add or remove the next time it checks in, which is about a minute. The **Device commands** list shows the status of each one: Waiting for device, Sent, Done or Failed (try again).' },
           { type: 'p', text: 'Members you add in GymFlow are sent to the device automatically. Members whose membership expires are removed from the device, and you can add them again when they renew.' },
         ],
       },
@@ -1952,7 +1955,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             type: 'ul',
             items: [
               'The status on the Biometric page is **Connected**.',
-              'The ID is not matched yet. Look under **Match members**.',
+              'The ID is not matched yet. Open **Quick actions** and use **Assign a device ID to a member**.',
               'The device clock is wrong. Set the device date and time to India time.',
               'The punch was ignored as a double tap, because the same member punched again within a minute.',
             ],

@@ -101,6 +101,34 @@ export function groupUnmapped(
   return out
 }
 
+export type EnrolStatus = 'sending' | 'waiting' | 'enrolled' | 'failed'
+
+/**
+ * Progress of "Enrol a new member": newest add_user command for this device + pin since the dialog step began,
+ * then the first punch after it. Pins match as numbers too, because the device may report "007" for "7".
+ */
+export function enrolStatus(a: {
+  pin: string; deviceId: string
+  commands: { deviceId: string; kind: string; pin: string; state: string; createdAt: string }[]
+  punches: { pin: string; punchedAt: string }[]
+  since: string
+}): EnrolStatus {
+  const since = Date.parse(a.since)
+  const samePin = (p: string) => p === a.pin || (pinToMemberNumber(p) !== null && pinToMemberNumber(p) === pinToMemberNumber(a.pin))
+  let newest: { state: string; t: number } | null = null
+  for (const c of a.commands) {
+    if (c.deviceId !== a.deviceId || c.kind !== 'add_user' || !samePin(c.pin)) continue
+    const t = Date.parse(c.createdAt)
+    if (Number.isNaN(t) || t < since) continue
+    if (!newest || t > newest.t) newest = { state: c.state, t }
+  }
+  if (!newest) return 'sending'
+  if (newest.state === 'failed') return 'failed'
+  if (newest.state !== 'done') return 'sending'
+  const punched = a.punches.some(p => samePin(p.pin) && Date.parse(p.punchedAt) > since)
+  return punched ? 'enrolled' : 'waiting'
+}
+
 /** Device pins are numeric strings; "007" and "7" are the same member number. Returns null when not numeric. */
 export function pinToMemberNumber(pin: string): number | null {
   if (!/^\d{1,9}$/.test(pin)) return null

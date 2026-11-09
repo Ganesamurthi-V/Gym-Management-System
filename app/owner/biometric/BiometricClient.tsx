@@ -2,17 +2,17 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Fingerprint, Copy, Check, MoreVertical, ChevronDown, Wand2, RefreshCw, BookOpen, Ban, UserMinus, UserPlus } from 'lucide-react'
+import { Fingerprint, Copy, Check, MoreVertical, ChevronDown, RefreshCw, BookOpen, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deviceStatus, statusLabel, punchStateChip, formatPunchTimeIST, commandStateChip, commandLabel,
   type DeviceStatus, type ChipTone, type UnmappedPin,
 } from '@/lib/devices/ui'
 import {
-  addDevice, renameDevice, removeDevice, mapPin, autoMatchByMemberNumber, unmapPin,
-  removeMemberFromDevice, addMemberToDevice, setMemberBlocked, setCommandDialect,
+  addDevice, renameDevice, removeDevice, addMemberToDevice, setCommandDialect,
 } from './actions'
 import { MemberPicker } from './MemberPicker'
+import { QuickActions } from './QuickActions'
 
 export type MemberOption = { id: string; name: string; memberNumber: number | null }
 export type CommandDialect = 'privilege' | 'pri'
@@ -105,7 +105,7 @@ function AddDeviceForm() {
         <p className="text-xs text-slate-500 mt-1">On the sticker at the back, or Menu &gt; System Info &gt; Device Info</p>
       </div>
       <details className="text-sm">
-        <summary className="cursor-pointer text-slate-600 min-h-[44px] flex items-center">Advanced</summary>
+        <summary className="cursor-pointer text-slate-600 min-h-[44px] flex items-center justify-between">Advanced<ChevronDown className="w-4 h-4 transition-transform [details[open]_&]:rotate-180" /></summary>
         <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="dev-tz">Timezone</label>
         <select id="dev-tz" className="input-field" value={tz} onChange={e => setTz(e.target.value)}>
           <option value="Asia/Kolkata">India (Asia/Kolkata)</option>
@@ -230,8 +230,9 @@ function ManageOnDevice({ device, members }: { device: DeviceRow; members: Membe
 
   return (
     <div className="space-y-1">
-      <details className="text-sm">
-        <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center">Manage members on the device</summary>
+      {/* Open by default: this is where owners add a member to the device, so it must not look like a plain label. */}
+      <details className="text-sm" open>
+        <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center justify-between">Manage members on the device<ChevronDown className="w-4 h-4 transition-transform [details[open]_&]:rotate-180" /></summary>
         <div className="space-y-2 pb-2">
           <MemberPicker members={members} value={memberId} onChange={setMemberId} />
           <button type="button" disabled={!memberId || pending} className="btn-secondary" onClick={add}>
@@ -242,7 +243,7 @@ function ManageOnDevice({ device, members }: { device: DeviceRow; members: Membe
         </div>
       </details>
       <details className="text-sm">
-        <summary className="cursor-pointer text-slate-600 min-h-[44px] flex items-center">Advanced</summary>
+        <summary className="cursor-pointer text-slate-600 min-h-[44px] flex items-center justify-between">Advanced<ChevronDown className="w-4 h-4 transition-transform [details[open]_&]:rotate-180" /></summary>
         <div className="pb-2">
           <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={`dev-style-${device.id}`}>Command style</label>
           <select id={`dev-style-${device.id}`} className="input-field" value={dialect} disabled={pending} onChange={e => changeDialect(e.target.value as CommandDialect)}>
@@ -253,154 +254,6 @@ function ManageOnDevice({ device, members }: { device: DeviceRow; members: Membe
       </details>
       {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
     </div>
-  )
-}
-
-function UnmappedRow({ deviceId, row, members }: { deviceId: string; row: UnmappedPin; members: MemberOption[] }) {
-  const router = useRouter()
-  const [pending, start] = useTransition()
-  const [memberId, setMemberId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const save = () => {
-    if (!memberId) return
-    setError(null)
-    start(async () => {
-      const res = await mapPin(deviceId, row.pin, memberId)
-      if (!res.ok) { setError(res.error ?? 'Could not save'); return }
-      router.refresh()
-    })
-  }
-
-  return (
-    <li className="py-3 space-y-2">
-      <p className="text-sm text-slate-900">
-        <span className="font-semibold">Device ID {row.pin}</span>
-        <span className="text-slate-500"> - punched {row.count} {row.count === 1 ? 'time' : 'times'}, last {formatPunchTimeIST(row.lastPunchedAt)}</span>
-      </p>
-      <div className="flex gap-2 items-start">
-        <div className="flex-1 min-w-0"><MemberPicker members={members} value={memberId} onChange={setMemberId} /></div>
-        <button type="button" disabled={!memberId || pending} className="btn-primary !w-auto" onClick={save}>{pending ? '...' : 'Save'}</button>
-      </div>
-      {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
-    </li>
-  )
-}
-
-function MatchSection({ devices, linked, members }: { devices: DeviceRow[]; linked: LinkedRow[]; members: MemberOption[] }) {
-  const router = useRouter()
-  const [pending, start] = useTransition()
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [showLinked, setShowLinked] = useState(false)
-  const totalUnmapped = devices.reduce((n, d) => n + d.unmapped.length, 0)
-
-  const auto = (deviceId: string) => {
-    setMessage(null); setError(null)
-    start(async () => {
-      const res = await autoMatchByMemberNumber(deviceId)
-      if (!res.ok) { setError(res.error ?? 'Could not match'); return }
-      const n = res.data?.matched ?? 0
-      setMessage(n === 0 ? 'No matching member numbers found.' : `Matched ${n} ${n === 1 ? 'member' : 'members'}.`)
-      router.refresh()
-    })
-  }
-
-  const toggleBlock = (id: string, blocked: boolean) => {
-    setMessage(null); setError(null)
-    start(async () => {
-      const res = await setMemberBlocked(id, blocked)
-      if (!res.ok) { setError(res.error ?? 'Could not save'); return }
-      router.refresh()
-    })
-  }
-
-  const removeFromDevice = (id: string, who: string) => {
-    if (!window.confirm(`Remove ${who} from the device? Deletes this member from the device. Their fingerprint or face on the device is deleted too, so they must enrol again if you add them back.`)) return
-    setMessage(null); setError(null)
-    start(async () => {
-      const res = await removeMemberFromDevice(id)
-      if (!res.ok) { setError(res.error ?? 'Could not remove'); return }
-      router.refresh()
-    })
-  }
-
-  const unlink = (id: string, who: string) => {
-    if (!window.confirm(`Unlink ${who}? Their next punch will need matching again.`)) return
-    setError(null)
-    start(async () => {
-      const res = await unmapPin(id)
-      if (!res.ok) { setError(res.error ?? 'Could not unlink'); return }
-      router.refresh()
-    })
-  }
-
-  return (
-    <>
-      {totalUnmapped === 0 ? (
-        <p className="text-sm text-slate-600">
-          Nothing to match yet. When a member punches on the device for the first time, their Device ID shows up here so you can pick the member.
-        </p>
-      ) : (
-        <>
-          <div className="rounded-xl border border-surface-border bg-surface-secondary p-3 space-y-2">
-            <p className="text-sm text-slate-700">If you enrolled members using their member number as the Device ID, match them all in one tap.</p>
-            {devices.filter(d => d.unmapped.length > 0).map(d => (
-              <button key={d.id} type="button" disabled={pending} className="btn-secondary" onClick={() => auto(d.id)}>
-                <Wand2 className="w-4 h-4" /> Match automatically by member number{devices.length > 1 ? ` (${d.name})` : ''}
-              </button>
-            ))}
-          </div>
-          {devices.filter(d => d.unmapped.length > 0).map(d => (
-            <div key={d.id}>
-              {devices.length > 1 && <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{d.name}</p>}
-              <ul className="divide-y divide-surface-border">
-                {d.unmapped.map(row => <UnmappedRow key={row.pin} deviceId={d.id} row={row} members={members} />)}
-              </ul>
-            </div>
-          ))}
-        </>
-      )}
-      {message && <p className="text-sm text-emerald-700" role="status">{message}</p>}
-      {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
-
-      <div className="border-t border-surface-border pt-2">
-        <button type="button" className="w-full flex items-center justify-between min-h-[44px] text-sm font-medium text-slate-700" onClick={() => setShowLinked(v => !v)} aria-expanded={showLinked}>
-          Linked IDs ({linked.length})
-          <ChevronDown className={cn('w-4 h-4 transition-transform', showLinked && 'rotate-180')} />
-        </button>
-        {showLinked && (
-          linked.length === 0 ? <p className="text-sm text-slate-500 pb-2">No members linked yet.</p> : (
-            <ul className="divide-y divide-surface-border">
-              {linked.map(l => (
-                <li key={l.id} className="py-2 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm text-slate-900 min-w-0 truncate">
-                      Device ID {l.pin} <span className="text-slate-500">linked to {l.memberName}</span>
-                    </p>
-                    <button type="button" disabled={pending} className="btn-ghost !text-red-600 shrink-0" onClick={() => unlink(l.id, l.memberName)}>Unlink</button>
-                  </div>
-                  {l.blocked && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={cn('text-xs font-medium px-2.5 py-1 rounded-full border', CHIP_TONE.red)}>Blocked</span>
-                      <span className="text-xs text-slate-500">Punches from this member are ignored.</span>
-                    </div>
-                  )}
-                  <div className="flex gap-2 flex-wrap">
-                    <button type="button" disabled={pending} className="btn-secondary !w-auto" onClick={() => toggleBlock(l.id, !l.blocked)}>
-                      <Ban className="w-4 h-4" /> {l.blocked ? 'Unblock' : 'Block'}
-                    </button>
-                    <button type="button" disabled={pending} className="btn-secondary !w-auto !text-red-600" onClick={() => removeFromDevice(l.id, l.memberName)}>
-                      <UserMinus className="w-4 h-4" /> Remove from device
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )
-        )}
-      </div>
-    </>
   )
 }
 
@@ -513,6 +366,10 @@ export function BiometricClient({
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-5 lg:items-start">
       <div className="space-y-4 md:space-y-5 min-w-0">
+      {/* Phones and tablets: shortcuts on top. From lg up they sit in the side panel instead. */}
+      <div className="lg:hidden">
+        <QuickActions devices={devices} linked={linked} punches={punches} commands={commands} members={members} />
+      </div>
       <Section n={1} title="Connect your device">
         {!serverReady && devices.length === 0 && (
           <p className="text-sm text-slate-600">Enter your device serial number below. The server address to type into the device appears here once it is ready.</p>
@@ -522,12 +379,12 @@ export function BiometricClient({
           <AddDeviceForm />
         ) : (
           <details className="text-sm">
-            <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center">Add another device</summary>
+            <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center justify-between">Add another device<ChevronDown className="w-4 h-4 transition-transform [details[open]_&]:rotate-180" /></summary>
             <AddDeviceForm />
           </details>
         )}
         <details className="text-sm">
-          <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center">Help</summary>
+          <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center justify-between">Help<ChevronDown className="w-4 h-4 transition-transform [details[open]_&]:rotate-180" /></summary>
           <ol className="list-decimal pl-5 space-y-1 text-slate-600">
             <li>On the device, open Menu &gt; Comm &gt; Cloud Server Setting.</li>
             <li>Enter the Server address and Port shown above.</li>
@@ -539,27 +396,22 @@ export function BiometricClient({
         </details>
       </Section>
 
-      <Section n={2} title="Match members">
-        {devices.length === 0
-          ? <p className="text-sm text-slate-600">Add your device first. Then match each Device ID to a member here.</p>
-          : <MatchSection devices={devices} linked={linked} members={members} />}
-      </Section>
-
       {/* Phones and tablets: full list here. From lg up the side panel below shows the latest 10 instead. */}
-      <Section n={3} title="Recent punches" className="lg:hidden">
+      <Section n={2} title="Recent punches" className="lg:hidden">
         <PunchSection punches={punches} />
       </Section>
 
-      <Section n={4} title="Device commands">
+      <Section n={3} title="Device commands">
         <CommandSection commands={commands} devices={devices} />
       </Section>
       </div>
 
-      <aside className="hidden lg:block lg:sticky lg:top-4">
+      <aside className="hidden lg:block lg:sticky lg:top-4 space-y-5">
         <section className="card bg-surface-card border-surface-border p-4 space-y-3">
           <h2 className="text-base font-semibold text-slate-900">Latest punches</h2>
           <PunchSection punches={punches.slice(0, 10)} />
         </section>
+        <QuickActions devices={devices} linked={linked} punches={punches} commands={commands} members={members} />
       </aside>
       </div>
     </div>

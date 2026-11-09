@@ -32,7 +32,8 @@ export function MemberPicker({
         aria-label="Search member"
       />
       {open && (
-        <ul className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-surface-border bg-surface-card shadow-lg">
+        // In the normal flow, not floating: a floating list is clipped by the popup and cards it sits in, which hid the results.
+        <ul className="mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-surface-border bg-surface-card shadow-sm">
           {results.length === 0 && <li className="px-3.5 py-3 text-sm text-slate-500">No member found</li>}
           {results.map(m => (
             <li key={m.id}>

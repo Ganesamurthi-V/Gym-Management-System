@@ -108,7 +108,7 @@ function AddDeviceForm() {
   )
 }
 
-function DeviceCard({ device, now, serverHost, serverPort }: { device: DeviceRow; now: number; serverHost: string; serverPort: string }) {
+function DeviceCard({ device, now, serverHost, serverPort }: { device: DeviceRow; now: number; serverHost: string | null; serverPort: string | null }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [menu, setMenu] = useState(false)
@@ -143,9 +143,12 @@ function DeviceCard({ device, now, serverHost, serverPort }: { device: DeviceRow
         </button>
       </div>
 
-      <span suppressHydrationWarning className={cn('inline-block text-xs font-medium px-2.5 py-1 rounded-full border', STATUS_TONE[status])}>
-        {statusLabel(status, device.lastSeenAt, now)}
-      </span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span suppressHydrationWarning className={cn('inline-block text-xs font-medium px-2.5 py-1 rounded-full border', STATUS_TONE[status])}>
+          {statusLabel(status, device.lastSeenAt, now)}
+        </span>
+        <button type="button" className="text-xs font-medium text-brand-500 min-h-[44px] px-1" onClick={() => router.refresh()}>Check status</button>
+      </div>
 
       {menu && (
         <div className="rounded-xl border border-surface-border bg-surface-secondary p-3 space-y-2">
@@ -167,11 +170,15 @@ function DeviceCard({ device, now, serverHost, serverPort }: { device: DeviceRow
         </div>
       )}
 
-      <div className="space-y-2">
-        <p className="text-sm text-slate-700">Type these into the device: <span className="font-medium">Menu &gt; Comm &gt; Cloud Server Setting</span></p>
-        <CopyField label="Server address" value={serverHost} />
-        <CopyField label="Port" value={serverPort} />
-      </div>
+      {serverHost && serverPort ? (
+        <div className="space-y-2">
+          <p className="text-sm text-slate-700">Type these into the device: <span className="font-medium">Menu &gt; Comm &gt; Cloud Server Setting</span></p>
+          <CopyField label="Server address" value={serverHost} />
+          <CopyField label="Port" value={serverPort} />
+        </div>
+      ) : (
+        <p className="text-sm text-slate-600">The device server address is not ready yet. Your device is saved; it will connect once the address is shown here.</p>
+      )}
       {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
     </div>
   )
@@ -343,24 +350,28 @@ export function BiometricClient({
       </div>
 
       <Section n={1} title="Connect your device">
-        {!serverReady ? (
-          <p className="text-sm text-slate-600">Device server is being set up. Contact GymFlow support.</p>
-        ) : (
-          <>
-            {devices.map(d => <DeviceCard key={d.id} device={d} now={now} serverHost={serverHost!} serverPort={serverPort!} />)}
-            {devices.length === 0 && <AddDeviceForm />}
-            <details className="text-sm">
-              <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center">Help</summary>
-              <ol className="list-decimal pl-5 space-y-1 text-slate-600">
-                <li>On the device, open Menu &gt; Comm &gt; Cloud Server Setting.</li>
-                <li>Enter the Server address and Port shown above.</li>
-                <li>If the address is a name, not numbers, turn on Domain Name.</li>
-                <li>Save, then restart the device.</li>
-                <li>This page shows Connected within a minute or two.</li>
-              </ol>
-            </details>
-          </>
+        {!serverReady && devices.length === 0 && (
+          <p className="text-sm text-slate-600">Enter your device serial number below. The server address to type into the device appears here once it is ready.</p>
         )}
+        {devices.map(d => <DeviceCard key={d.id} device={d} now={now} serverHost={serverHost} serverPort={serverPort} />)}
+        {devices.length === 0 ? (
+          <AddDeviceForm />
+        ) : (
+          <details className="text-sm">
+            <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center">Add another device</summary>
+            <AddDeviceForm />
+          </details>
+        )}
+        <details className="text-sm">
+          <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center">Help</summary>
+          <ol className="list-decimal pl-5 space-y-1 text-slate-600">
+            <li>On the device, open Menu &gt; Comm &gt; Cloud Server Setting.</li>
+            <li>Enter the Server address and Port shown above.</li>
+            <li>If the address is a name, not numbers, turn on Domain Name.</li>
+            <li>Save, then restart the device.</li>
+            <li>This page shows Connected within a minute or two.</li>
+          </ol>
+        </details>
       </Section>
 
       <Section n={2} title="Match members">

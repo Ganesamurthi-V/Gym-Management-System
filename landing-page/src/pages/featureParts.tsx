@@ -1,25 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import {
-  ArrowRight,
-  BookOpen,
-  CalendarCheck,
-  ChartColumn,
-  ChevronRight,
-  Clock,
-  Dumbbell,
-  FileSpreadsheet,
-  ImageIcon,
-  IndianRupee,
-  Info,
-  Link2,
-  MessageCircle,
-  PlayCircle,
-  Scale,
-  Smartphone,
-  Tag,
-  Users,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowRight, ChevronRight, Clock, ImageIcon, Info, Link2, PlayCircle, type LucideIcon } from 'lucide-react';
 import {
   FEATURE_DATE_MODIFIED,
   FEATURE_FINEPRINT,
@@ -521,45 +501,14 @@ export function ScreenshotsSection({ page }: { page: FeaturePage }) {
 
 /* ── Index cards (hub) ──────────────────────────────────────────────────── */
 
-/* One icon per page for the card cover. Pages not listed fall back by category: a book for a guide. */
-const COVER_ICON: Record<string, LucideIcon> = {
-  members: Users,
-  'fees-and-dues': IndianRupee,
-  attendance: CalendarCheck,
-  'member-app': Smartphone,
-  'workout-programs': Dumbbell,
-  whatsapp: MessageCircle,
-  reports: ChartColumn,
-  'import-export': FileSpreadsheet,
-  pricing: Tag,
-  'gym-software-vs-excel': Scale,
-};
-
-/** A simple generated cover in the site's own language: a tinted panel with a hairline frame, corner crosses and one
-    icon tile. Blue for features, amber for pricing, green for guides. No image file to keep in step with the page. */
-function PageCover({ page }: { page: FeaturePage }) {
-  const Icon = COVER_ICON[page.slug] ?? BookOpen;
-  const tone = categoryOf(page).toLowerCase();
-  return (
-    <div aria-hidden className={`card-cover card-cover--${tone}`}>
-      <i className="card-cover__mark card-cover__mark--tl" />
-      <i className="card-cover__mark card-cover__mark--tr" />
-      <i className="card-cover__mark card-cover__mark--bl" />
-      <i className="card-cover__mark card-cover__mark--br" />
-      <span className="card-cover__tile">
-        <Icon className="size-7" strokeWidth={1.75} />
-      </span>
-    </div>
-  );
-}
-
 export function PageCard({ page }: { page: FeaturePage }) {
   return (
     <a
       href={`/${page.slug}`}
       className="group flex h-full min-h-11 flex-col overflow-hidden rounded-xl border border-border-subtle bg-frame transition-colors hover:border-border-strong"
     >
-      <PageCover page={page} />
+      {/* Generated cover (public/cards/<slug>.png, 1200 x 400): logo, category, title and an icon, in the site's style. */}
+      <img src={`/cards/${page.slug}.png`} alt="" width={1200} height={400} loading="lazy" decoding="async" className="block h-auto w-full border-b border-border-subtle" />
       <span className="flex flex-1 flex-col p-5">
         <span className="flex items-center gap-3 text-[14px] text-muted-foreground">
           <span className="font-medium text-accent-text">{categoryOf(page)}</span>

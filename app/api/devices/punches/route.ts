@@ -6,6 +6,9 @@ import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { ingestPunches } from '@/lib/devices/processPunch'
+import { deleteCache } from '@/lib/cache'
+import { cacheKeys } from '@/lib/cache-keys'
+import { todayIST } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,5 +76,7 @@ export async function POST(req: NextRequest) {
   const { accepted, failed } = await ingestPunches(db, device, punches)
   log.info('device punches processed', { serial, received: punches.length, accepted, failed })
   if (failed) return apiError(500, 'DATABASE_ERROR', 'Database error')
+  // Same as the kiosk check-in: the dashboard caches today's attendance count, so drop it or device punches show late.
+  if (accepted > 0) await deleteCache(cacheKeys.dashboard(device.gym_id, todayIST()))
   return apiSuccess({ known: true, accepted })
 }

@@ -78,3 +78,22 @@ options only if your firmware needs them. Then register the device's serial numb
 
 Config keys come from the ZKTeco PUSH SDK and vary by firmware. The Push 3.x endpoints are best effort and
 unverified against real hardware.
+
+## Public hostname (bio.gymflow.sbs): the Cloudflare Worker
+
+`worker/` is the production receiver: one Cloudflare Worker (`gymflow-bio`) that speaks the same ADMS protocol as the
+Fastify app and forwards punches straight to the GymFlow app. There is no server to run. The Fastify server in `src/`
+and the proxy in `deploy/cloudflare/` are **legacy**; they are kept for reference and for `tools/simulate-device.ts`.
+The Worker imports `src/parser.ts`, so the punch parser stays in one place.
+
+1. `cd worker && npm install && npx wrangler deploy` (creates the proxied DNS record for the hostname).
+2. `npx wrangler secret put ADMS_INGEST_SECRET` and paste the same secret the app uses. Never commit it.
+3. Vars live in `worker/wrangler.jsonc`: `APP_INGEST_URL`, `POLL_DELAY_SECONDS` (device poll interval, default 30; every
+   poll is a Worker request, so do not lower it without checking the quota) and `DEVICE_TZ_MINUTES` (default 330).
+4. In the Cloudflare dashboard, for `bio.gymflow.sbs` only, turn OFF "Always Use HTTPS" and "Automatic HTTPS
+   Rewrites" (Rules > Configuration Rules). Older devices speak plain HTTP on port 80 and would otherwise be
+   redirected to HTTPS and fail. Also make sure no redirect rule sends `bio.gymflow.sbs` to HTTPS.
+5. Devices: Server address `bio.gymflow.sbs`, port `80` (or `443` with HTTPS enabled on the device), Domain Name on.
+
+Checks: `cd worker && npm test`, `npm run typecheck`, `npx wrangler deploy --dry-run`. To exercise a deployed Worker, run
+the simulator against `bio.gymflow.sbs`.

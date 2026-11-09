@@ -1,0 +1,15 @@
+{
+  // ADMS receiver for biometric devices. Deploy from this folder: npx wrangler deploy
+  // Then set the shared secret once (never commit it): npx wrangler secret put ADMS_INGEST_SECRET
+  "name": "gymflow-bio",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // custom_domain makes Cloudflare create the proxied DNS record for bio.gymflow.sbs itself.
+  "routes": [{ "pattern": "bio.gymflow.sbs", "custom_domain": true }],
+  "vars": {
+    "APP_INGEST_URL": "https://app.gymflow.sbs/api/devices/punches",
+    // Seconds between device polls. Each poll is one Worker request, so keep this high enough for the quota.
+    "POLL_DELAY_SECONDS": "30",
+    "DEVICE_TZ_MINUTES": "330"
+  }
+}

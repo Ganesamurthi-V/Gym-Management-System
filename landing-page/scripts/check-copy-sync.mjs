@@ -105,8 +105,6 @@ const HEADINGS = [
   ['Features', 'features-title', 'features'],
   ['Problems', 'problems-title', 'problems'],
   ['WhatsAppSection', 'whatsapp-title', 'whatsapp'],
-  ['BuiltForIndia', 'india-title', 'india'],
-  ['HowItWorks', 'steps-title', 'steps'],
   ['Pricing', 'pricing-title', 'pricing'],
   ['FAQ', 'faq-title', 'faq'],
   ['CTA', 'cta-title', 'cta'],

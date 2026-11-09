@@ -37,7 +37,6 @@ const COLUMNS = [
       { label: 'WhatsApp reminders', href: '/whatsapp' },
       { label: 'Reports and analytics', href: '/reports' },
       { label: 'Import and export', href: '/import-export' },
-      { label: 'How it works', href: '#how' },
       { label: 'Pricing', href: '#pricing' },
     ],
   },
@@ -157,7 +156,8 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
               </a>
             </address>
             <p className="mt-4 text-base text-muted-foreground">
-              Direct founder support on WhatsApp, phone and email. Support in English and Tamil.
+              Direct founder support on WhatsApp, 
+              phone and email 
             </p>
             <a href={homeAnchor('#')} aria-label="GymFlow home" className="mt-8 inline-block">
               {/* Same wordmark as the header: dark ink, lifted to white in night mode. */}

@@ -126,7 +126,7 @@ export function Pricing() {
         ))}
       </div>
 
-      <p className="mt-8 text-[16px] text-muted-foreground">
+      <p className="mt-8 text-center text-[16px] text-muted-foreground">
         No GST is added. The price you see is the price you pay. On the free plan, WhatsApp reminders are{' '}
         {formatINR(WHATSAPP_ADDON_PRICE)} a month.
       </p>

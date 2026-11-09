@@ -1,49 +1,55 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { WhatsAppThread } from './WhatsAppThread';
 import { MESSAGE_TYPES } from './whatsappMessages';
 import { Section } from './layout/Section';
 
-/* Every line below matches featurePages.ts ('whatsapp' and 'fees-and-dues' entries): first expiry reminder
-   18 days out, come-back messages for up to 18 days, payment and expiry reminders every 3 days up to 7
-   times, checked once a day at about 9 AM India time. Nothing here is a number the product does not state. */
-const SCHEDULE = [
-  { title: 'Welcome', text: 'Sent once when you add a member, with their plan, start date and member ID.' },
-  { title: 'Payment due', text: 'Names the amount and repeats until the due is paid in full.' },
-  { title: 'Expiry reminders', text: 'Start 18 days before the plan ends and say how many days are left.' },
-  { title: 'Renewal confirmation', text: 'Sent when you record the renewal, with the date it is valid until.' },
-  { title: 'Membership expired', text: 'Asks the member to come back, for up to 18 days after the end date.' },
-  { title: 'Birthday wishes', text: 'Sent on the member’s birthday, if you saved their date of birth.' },
-] as const;
+/* How long each sample message stays on the phone before the next one takes its place. */
+const CYCLE_MS = 3000;
 
-/* The one contrasting ground on the page (the graphite band): the phone is the picture, and it is light, so it
-   reads against the dark. The picker swaps the sample message; the phone keeps its size, so nothing jumps. */
+/* The one contrasting ground on the page (the graphite band): three message types on the left, one phone on the
+   right. The phone cycles through the same three messages by itself every 3 seconds, and the matching item on the
+   left lights up. The phone is a fixed height (see WhatsAppThread), so a taller message never resizes it. A
+   visitor who asks for reduced motion gets no cycling: the first message stays, and the items still switch it
+   when clicked. */
 export function WhatsAppSection() {
   const [index, setIndex] = useState(0);
   const active = MESSAGE_TYPES[index];
 
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // A new timer starts whenever the message changes, so clicking an item gives it a full 3 seconds too.
+    const timer = window.setTimeout(() => setIndex(i => (i + 1) % MESSAGE_TYPES.length), CYCLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [index]);
+
   return (
     <Section id="whatsapp" labelledBy="whatsapp-title" tone="ink">
       <div className="sec-head">
-        <h2 id="whatsapp-title" className="h2">
-          WhatsApp reminders that send automatically
-        </h2>
-        <p className="lead">
-          Welcome, payment due, expiry, renewal, expired and birthday messages go out on their own, with no per-message charge from GymFlow on paid plans.
-        </p>
+        <div className="wa-title">
+          <img src="/whatsapp-icon.webp" alt="" aria-hidden width={120} height={120} className="wa-logo" />
+          <h2 id="whatsapp-title" className="h2">
+            <span className="block">WhatsApp reminders</span>{' '}
+            <span className="block">that send automatically</span>
+          </h2>
+        </div>
+        <p className="lead wa-lead">Welcome, expiry and payment messages go out on their own, with no per-message charge on paid plans.</p>
       </div>
 
-      <div className="split">
-        <div>
-          <ol className="wa-grid">
-            {SCHEDULE.map(item => (
-              <li key={item.title}>
-                <h3 className="h4">{item.title}</h3>
-                <p>{item.text}</p>
-              </li>
-            ))}
-          </ol>
+      <div className="wa-stage">
+        <div className="wa-items">
+          {MESSAGE_TYPES.map((type, i) => (
+            <button key={type.id} type="button" aria-pressed={i === index} onClick={() => setIndex(i)} className="wa-item">
+              <span aria-hidden className="wa-item__icon">
+                <type.icon className="size-5" strokeWidth={1.75} />
+              </span>
+              <span>
+                <span className="wa-item__title">{type.title}</span>
+                <span className="wa-item__text">{type.desc}</span>
+              </span>
+            </button>
+          ))}
 
-          <p className="mt-8 text-[16px] text-muted-foreground">
+          <p className="wa-items__more">
             Checked once a day, about 9 AM India time.{' '}
             <a href="/whatsapp" className="link">
               <span>How WhatsApp reminders work</span>
@@ -51,17 +57,8 @@ export function WhatsAppSection() {
           </p>
         </div>
 
-        <div className="panel p-5 sm:p-6">
-          <div role="group" aria-label="Choose a sample message" className="wa-pick">
-            {MESSAGE_TYPES.map((type, i) => (
-              <button key={type.id} type="button" aria-pressed={i === index} onClick={() => setIndex(i)} className="wa-pick-btn">
-                {type.title}
-              </button>
-            ))}
-          </div>
-          <div className="mx-auto mt-5 w-full max-w-[300px]">
-            <WhatsAppThread messages={[active.message]} label={active.label} />
-          </div>
+        <div className="wa-phone">
+          <WhatsAppThread messages={[active.message]} label={active.label} />
         </div>
       </div>
     </Section>

@@ -1,40 +1,48 @@
-import { Check } from 'lucide-react';
+import { CalendarCheck, ChartColumn, Check, FileText, X, IndianRupee, MessageCircle, User, Users, type LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Section, SectionHead } from './layout/Section';
 
-/* One row per everyday job. The GymFlow side is limited to behaviour already stated on the feature
-   pages (the 18 day reminder start, the 7 day absence list, the 10 digit number tidy up on import,
-   five reports with a PDF); the register side is the pain described on /gym-software-vs-excel.
-   No outcome figures. */
-const ROWS: { job: string; before: string; fix: string }[] = [
+/* One row per gym management task. The GymFlow side is limited to behaviour already stated on the feature
+   pages (the 7 day absence list, the 10 digit number tidy up on import, five reports with a PDF); the
+   register side is the pain described on /gym-software-vs-excel. No outcome figures. */
+const hl = (text: string) => <b className="cmp__hl">{text}</b>;
+
+const ROWS: { job: string; icon: LucideIcon; before: string; fix: ReactNode }[] = [
   {
-    job: 'Spotting plans that are ending',
-    before: 'You sort the sheet and check it every day, or a renewal slips by.',
-    fix: 'Every member shows as Active, Expiring or Expired, and expiry reminders start 18 days before the end date.',
+    job: 'Gym membership management',
+    icon: User,
+    before: 'Manually track joining dates, membership plans and expiry dates.',
+    fix: <>Manage all gym members and track {hl('Active, Expiring and Expired')} memberships automatically.</>,
   },
   {
-    job: 'Knowing who owes how much',
-    before: 'Part payments end up in rows, notes and memory.',
-    fix: 'Part payments stay on the member as a pending due, with a list of who owes what.',
+    job: 'Gym fee and payment tracking',
+    icon: IndianRupee,
+    before: 'Maintain payment records and calculate pending fees manually.',
+    fix: 'Track gym fees, partial payments, outstanding dues and member payment history.',
   },
   {
-    job: 'Sending reminders',
-    before: 'You type every message yourself, on your own time.',
-    fix: 'Welcome, renewal, expiry, payment due and birthday messages go out on WhatsApp by themselves.',
+    job: 'WhatsApp reminders for gym members',
+    icon: MessageCircle,
+    before: 'Manually send membership renewal and payment reminders.',
+    fix: 'Automate WhatsApp welcome messages, renewal reminders, expiry alerts, payment reminders and birthday wishes.',
   },
   {
-    job: 'Noticing who stopped coming',
-    before: 'The register shows who came, not who stopped.',
-    fix: 'A report lists members with a current plan who have not checked in for 7 days or more.',
+    job: 'Gym attendance tracking',
+    icon: CalendarCheck,
+    before: 'Search through attendance registers to identify members who stopped visiting.',
+    fix: <>Track daily attendance and identify inactive members who haven&apos;t visited for {hl('7 or more days')}.</>,
   },
   {
-    job: 'Keeping lists and numbers clean',
-    before: 'Numbers typed with spaces, +91 or a leading 0 break bulk messages.',
-    fix: 'Import an Excel or CSV file, see a preview before anything is saved, and numbers are tidied to 10 digits.',
+    job: 'Gym member data management',
+    icon: Users,
+    before: 'Manually maintain member records and clean spreadsheet data.',
+    fix: 'Import existing member records using Excel or CSV with data preview and automatic phone number formatting.',
   },
   {
-    job: 'Seeing the month at a glance',
-    before: 'You build the totals and formulas yourself.',
-    fix: 'Five reports in plain English on members, money, dues, expiries and attendance, with a PDF to download.',
+    job: 'Gym reports and analytics',
+    icon: ChartColumn,
+    before: 'Calculate monthly revenue, membership and attendance totals manually.',
+    fix: <>Generate reports for members, revenue, pending dues, membership expiry and attendance, with {hl('PDF downloads')}.</>,
   },
 ];
 
@@ -44,7 +52,7 @@ export function Problems() {
       <SectionHead
         title={
           <h2 id="problems-title" className="h2">
-            Gym software vs a register or Excel sheet
+            Gym software vs register or Excel sheet
           </h2>
         }
         lead="Where a register or sheet starts to cost you time, and what GymFlow does about each job."
@@ -53,23 +61,49 @@ export function Problems() {
       <div className="panel overflow-clip">
         <table className="cmp">
           <caption className="sr-only">
-            Six everyday gym jobs, done with a register or Excel sheet and done with GymFlow
+            Six gym management tasks, done with a register or Excel sheet and done with GymFlow
           </caption>
           <thead>
             <tr>
-              <th scope="col">The everyday job</th>
-              <th scope="col">With a register or Excel</th>
-              <th scope="col">With GymFlow</th>
+              <th scope="col">Gym management task</th>
+              <th scope="col" className="cmp__head-bad">
+                <span>
+                  <FileText aria-hidden className="size-5" strokeWidth={1.75} />
+                  Register or Excel
+                </span>
+              </th>
+              <th scope="col" className="cmp__head-fix">
+                <span>
+                  <FileText aria-hidden className="size-5" strokeWidth={1.75} />
+                  GymFlow Gym Management Software
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {ROWS.map(row => (
               <tr key={row.job}>
-                <th scope="row">{row.job}</th>
-                <td data-label="Register or Excel:">{row.before}</td>
+                <th scope="row">
+                  <span className="cmp__job">
+                    <span aria-hidden className="cmp__icon">
+                      <row.icon className="size-5" strokeWidth={1.75} />
+                    </span>
+                    {row.job}
+                  </span>
+                </th>
+                <td data-label="Register or Excel:" className="cmp__bad">
+                  <span>
+                    <span aria-hidden className="cmp__x">
+                      <X className="size-3.5" strokeWidth={3} />
+                    </span>
+                    <span className="min-w-0">{row.before}</span>
+                  </span>
+                </td>
                 <td data-label="GymFlow:" className="cmp__fix">
                   <span>
-                    <Check aria-hidden className="mt-[4px] size-4 shrink-0 text-accent-text" strokeWidth={2.5} />
+                    <span aria-hidden className="cmp__tick">
+                      <Check className="size-3.5" strokeWidth={3} />
+                    </span>
                     <span className="min-w-0">{row.fix}</span>
                   </span>
                 </td>

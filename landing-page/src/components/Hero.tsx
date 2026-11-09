@@ -1,5 +1,5 @@
 import { DashboardMock } from './dashboard/DashboardMock';
-import { MemberAppCard } from './MemberAppCard';
+import { OwnerPhoneCard } from './OwnerPhoneCard';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { FREE_MEMBER_LIMIT } from '../data/plans';
 import '../styles/home.css';
@@ -52,7 +52,7 @@ export function Hero() {
             </div>
           ) : (
             <div className="hero__frame">
-              <MemberAppCard compact />
+              <OwnerPhoneCard />
             </div>
           )}
         </div>

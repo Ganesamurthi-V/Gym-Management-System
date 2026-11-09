@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Section } from './layout/Section';
 import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, savingPercent } from '../data/plans';
 
@@ -48,7 +50,12 @@ const FAQS = [
 
 /* Every answer is open: an accordion hides the one thing a visitor came for, and the answers are also what the
    FAQPage JSON-LD in index.html quotes, so they stay visible text. Two columns on the page's split line. */
+/* Each question is a drawer. With a mouse it opens while the pointer is over it; a click or tap (and Enter or Space on
+   the keyboard) holds it open or closed, which is how phones and keyboards use it. The answers stay in the page
+   text either way. */
 export function FAQ() {
+  const [open, setOpen] = useState<string | null>(null);
+
   return (
     <Section id="faq" labelledBy="faq-title" tone="paper">
       <div className="sec-head flex flex-col items-center gap-6">
@@ -68,14 +75,38 @@ export function FAQ() {
         </div>
       </div>
 
-      <ul className="faq-grid">
-        {FAQS.map(item => (
-          <li key={item.q}>
-            <h3 className="h4">{item.q}</h3>
-            <p>{item.a}</p>
-          </li>
+      <div className="faq-grid">
+        {[FAQS.slice(0, Math.ceil(FAQS.length / 2)), FAQS.slice(Math.ceil(FAQS.length / 2))].map((col, c) => (
+          <ul key={c} className="faq-col">
+            {col.map((item, j) => {
+          const i = c === 0 ? j : Math.ceil(FAQS.length / 2) + j;
+          const isOpen = open === item.q;
+          return (
+            <li key={item.q} className="faq-item" data-open={isOpen || undefined}>
+              <h3 className="h4">
+                <button
+                  type="button"
+                  id={`faq-q-${i}`}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-a-${i}`}
+                  onClick={() => setOpen(isOpen ? null : item.q)}
+                  className="faq-q"
+                >
+                  {item.q}
+                  <ChevronDown aria-hidden className="faq-chev size-5 shrink-0" strokeWidth={2} />
+                </button>
+              </h3>
+              <div id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`} className="faq-a">
+                <div>
+                  <p>{item.a}</p>
+                </div>
+              </div>
+            </li>
+          );
+            })}
+          </ul>
         ))}
-      </ul>
+      </div>
     </Section>
   );
 }

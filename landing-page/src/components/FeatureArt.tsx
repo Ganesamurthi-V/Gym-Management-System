@@ -74,7 +74,8 @@ export function FeatureArt({ story, children }: { story: FeatureStory; children:
           0,
         )
         .fromTo(q('.fx-bg'), { scale: 1.3 }, { scale: 1 }, 0);
-      gsap.fromTo(q('.feat-float'), { y: drift }, { y: -drift, ease: 'none', force3D: false, snap: { y: 1 }, scrollTrigger: scrub });
+      // The phone card stays put: only the flat product cards drift and rise with the scroll.
+      if (el.dataset.story !== 'app') gsap.fromTo(q('.feat-float'), { y: drift }, { y: -drift, ease: 'none', force3D: false, snap: { y: 1 }, scrollTrigger: scrub });
       gsap.fromTo(q('.fx-rings'), { y: -0.6 * drift }, { y: 0.6 * drift, ease: 'none', scrollTrigger: scrub });
 
       const entry = gsap
@@ -84,11 +85,12 @@ export function FeatureArt({ story, children }: { story: FeatureStory; children:
         .fromTo(q('.fx-l, .fx-r'), { scaleY: 0 }, { scaleY: 1, duration: 1.3, stagger: 0.1 }, 0.1)
         .fromTo(q('.fx-ring'), { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 1.5, stagger: 0.14 }, 0.06)
         .fromTo(q('.fx-mark'), { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 0.6, stagger: 0.06 }, 0.6)
-        .fromTo(q('.feat-frag'), { y: 56, opacity: 0 }, { y: 0, opacity: 1, duration: 1.2 }, 0.08);
+        ;
+      if (el.dataset.story !== 'app') entry.fromTo(q('.feat-frag'), { y: 56, opacity: 0 }, { y: 0, opacity: 1, duration: 1.2 }, 0.08);
       const sheets = q('.fx-sheet');
       if (sheets.length) entry.from(sheets, { y: 0, scale: 1, opacity: 0, duration: 1.3, stagger: 0.08 }, 0.4);
 
-      const story = STORIES[el.dataset.story as FeatureStory]?.(q);
+      const story = el.dataset.story === 'app' ? undefined : STORIES[el.dataset.story as FeatureStory]?.(q);
       let played = false;
       if (story) {
         entry.add(() => {

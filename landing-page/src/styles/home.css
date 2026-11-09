@@ -568,21 +568,6 @@
     padding-top: 120px;
   }
 }
-/* The ColorBends shader sits under the whole hero. It is faded at the bottom so it melts into the next section,
-   and it takes no pointer events so the buttons and the dashboard stay clickable. */
-.hero__bg {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.6;
-  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
-  mask-image: linear-gradient(to bottom, #000 55%, transparent);
-}
-/* Bright bands behind light text need to sit back on the dark page. */
-.dark .hero__bg {
-  opacity: 0.4;
-}
 .hero__wrap {
   display: flex;
   flex: 1;

@@ -132,7 +132,8 @@ export async function autoMatchByMemberNumber(deviceId: string): Promise<ActionR
   if (!dev) return { ok: false, error: 'Device not found.' }
 
   const [punches, mapped] = await Promise.all([
-    supabase.from('device_punches').select('pin').eq('device_id', deviceId).eq('gym_id', gymId).eq('state', 'unmapped').limit(5000),
+    // Any state: an unlinked ID's old punches are "applied", not "unmapped". Already-linked pins are skipped below.
+    supabase.from('device_punches').select('pin').eq('device_id', deviceId).eq('gym_id', gymId).limit(5000),
     supabase.from('device_user_map').select('pin').eq('device_id', deviceId).eq('gym_id', gymId),
   ])
   if (punches.error || mapped.error) return GENERIC

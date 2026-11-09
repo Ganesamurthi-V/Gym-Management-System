@@ -1,6 +1,6 @@
 # GymFlow monitoring worker
 
-An independent watcher that runs on a **free Cloudflare cron trigger every 5 minutes**. It checks the public site and APIs, calls the app's watchdog endpoints and sends **Telegram** messages directly when something is wrong, even if the whole Vercel app is down. It also pings a Better Stack heartbeat after every complete run, so you get an email if the Worker itself stops.
+An independent watcher that runs on a **free Cloudflare cron trigger every 5 minutes**. It checks the public site and APIs, calls the app's watchdog endpoints and sends **Telegram** messages directly when something is wrong, even if the whole app on AWS is down. It also pings a Better Stack heartbeat after every complete run, so you get an email if the Worker itself stops.
 
 Self-contained: nothing in the main app imports it. Edit URLs and thresholds in `src/config.ts`.
 
@@ -51,7 +51,7 @@ Run every command in PowerShell inside the `monitoring-worker` folder. You need 
    npx wrangler secret put HEALTH_CHECK_SECRET
    npx wrangler secret put BETTERSTACK_HEARTBEAT_URL
    ```
-   `HEALTH_CHECK_SECRET` must equal the value set on Vercel. `BETTERSTACK_HEARTBEAT_URL` is optional: in Better Stack create a heartbeat with period 10 minutes and grace 10 minutes and paste its URL. Never commit these values.
+   `HEALTH_CHECK_SECRET` must equal the `HEALTH_CHECK_SECRET` SST secret of the production stage (`npx sst secret list --stage production` in `infra`). `BETTERSTACK_HEARTBEAT_URL` is optional: in Better Stack create a heartbeat with period 10 minutes and grace 10 minutes and paste its URL. Never commit these values.
 7. `npx wrangler deploy`
 8. Test it: edit one probe URL in `src/config.ts` to a bad one (for example `https://www.gymflow.sbs/does-not-exist` for a `status: 200` probe), run `npx wrangler deploy`, wait one or two runs (5 to 10 minutes) and a Telegram message should arrive. Put the URL back and deploy again to get the `[RECOVERED]` message.
 9. Logs: `npx wrangler tail`. You can also open `https://gymflow-monitoring.<your-subdomain>.workers.dev/health` (needs the workers.dev route enabled): it returns `ok` and the last run time (refreshed hourly) and nothing else; every other URL is 404.
@@ -79,7 +79,7 @@ Never point the canary at a real gym.
 ## Troubleshooting
 
 - **No Telegram message**: run `npx wrangler tail` and look for `telegram:` lines. Check the token and chat id secrets, and that you pressed Start on the bot (or added it to the group).
-- **`api-health-deep` or `api-watchdog` failing with "HEALTH_CHECK_SECRET not set"**: set the secret (step 6). A 401 means it differs from Vercel's value; 503 `unconfigured` means Vercel has none.
+- **`api-health-deep` or `api-watchdog` failing with "HEALTH_CHECK_SECRET not set"**: set the secret (step 6). A 401 means it differs from the SST secret; 503 `unconfigured` means the app has none.
 - **Guard probe says status 200 or 500**: the guard is open or broken, which is a real problem. 404 usually means the route was renamed; edit `src/config.ts`.
 - **No heartbeat in Better Stack**: the URL secret is missing or wrong; look for `heartbeat: failed` in the logs.
 - **Warning probes alert late**: that is by design (2 failing runs).
@@ -102,12 +102,12 @@ The deep checks are not running, so database or WhatsApp problems would go unnot
 Observed: status 401, expected 200. Failing since 24 Oct 2026, 10:02 PM IST (16:32 UTC) (about 10 min).
 
 What to check
-1. Vercel dashboard > your project > Settings > Environment Variables: is HEALTH_CHECK_SECRET set for Production?
+1. In the infra folder run `npx sst secret list --stage production`: is HEALTH_CHECK_SECRET set?
 2. Was it changed or rotated recently?
 
 How to fix
 1. Set the Worker to the same value: run `npx wrangler secret put HEALTH_CHECK_SECRET` in the monitoring-worker folder.
-2. Or change it in Vercel and redeploy so both match.
+2. Or run `npx sst secret set HEALTH_CHECK_SECRET <value> --stage production` in the infra folder, then run aws-deploy so both match.
 
 24 Oct 2026, 10:12 PM IST (16:42 UTC)
 Next reminder in 60 min while this stays down.

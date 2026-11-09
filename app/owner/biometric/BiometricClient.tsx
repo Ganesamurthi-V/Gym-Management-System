@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Fingerprint, Copy, Check, MoreVertical, ChevronDown, Wand2 } from 'lucide-react'
+import { Fingerprint, Copy, Check, MoreVertical, ChevronDown, Wand2, RefreshCw, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deviceStatus, statusLabel, punchStateChip, formatPunchTimeIST,
@@ -30,9 +30,9 @@ const CHIP_TONE: Record<ChipTone, string> = {
   red: 'bg-red-50 text-red-700 border-red-200',
 }
 
-function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function Section({ n, title, children, className }: { n: number; title: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className="card bg-surface-card border-surface-border p-4 space-y-3">
+    <section className={cn('card bg-surface-card border-surface-border p-4 space-y-3', className)}>
       <h2 className="flex items-center gap-2.5 text-base font-semibold text-slate-900">
         <span className="w-6 h-6 rounded-full bg-brand-500 text-white text-xs font-bold flex items-center justify-center">{n}</span>
         {title}
@@ -326,6 +326,7 @@ export function BiometricClient({
   serverHost: string | null; serverPort: string | null
 }) {
   const router = useRouter()
+  const [refreshing, startRefresh] = useTransition()
   const [now, setNow] = useState(() => Date.now())
   const waiting = devices.some(d => deviceStatus(d.lastSeenAt, now) === 'waiting')
 
@@ -343,12 +344,37 @@ export function BiometricClient({
   const serverReady = !!serverHost && !!serverPort
 
   return (
-    <div className="space-y-4 md:space-y-5 max-w-3xl mx-auto">
-      <div className="flex items-center gap-2">
-        <Fingerprint className="w-6 h-6 text-brand-500" />
-        <h1 className="text-xl font-bold text-slate-900">Biometric</h1>
+    <div className="space-y-4 md:space-y-5 max-w-3xl lg:max-w-5xl mx-auto">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Fingerprint className="w-6 h-6 text-brand-500" />
+          <h1 className="text-xl font-bold text-slate-900">Biometric</h1>
+        </div>
+        <div className="flex items-center gap-1">
+          {/* Public guide on the marketing site; opens in a new tab so the owner keeps this page open while following the steps. */}
+          <a
+            href="https://www.gymflow.sbs/biometric-attendance-setup"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-h-[44px] px-3 flex items-center gap-1.5 rounded-lg text-sm font-medium text-brand-500 active:bg-slate-100"
+          >
+            <BookOpen className="w-4 h-4" /> Setup guide
+          </a>
+          <button
+            type="button"
+            aria-label="Refresh"
+            title="Refresh"
+            disabled={refreshing}
+            onClick={() => startRefresh(() => router.refresh())}
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-slate-500 active:bg-slate-100"
+          >
+            <RefreshCw className={cn('w-5 h-5', refreshing && 'animate-spin')} />
+          </button>
+        </div>
       </div>
 
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-5 lg:items-start">
+      <div className="space-y-4 md:space-y-5 min-w-0">
       <Section n={1} title="Connect your device">
         {!serverReady && devices.length === 0 && (
           <p className="text-sm text-slate-600">Enter your device serial number below. The server address to type into the device appears here once it is ready.</p>
@@ -380,9 +406,19 @@ export function BiometricClient({
           : <MatchSection devices={devices} linked={linked} members={members} />}
       </Section>
 
-      <Section n={3} title="Recent punches">
+      {/* Phones and tablets: full list here. From lg up the side panel below shows the latest 10 instead. */}
+      <Section n={3} title="Recent punches" className="lg:hidden">
         <PunchSection punches={punches} />
       </Section>
+      </div>
+
+      <aside className="hidden lg:block lg:sticky lg:top-4">
+        <section className="card bg-surface-card border-surface-border p-4 space-y-3">
+          <h2 className="text-base font-semibold text-slate-900">Latest punches</h2>
+          <PunchSection punches={punches.slice(0, 10)} />
+        </section>
+      </aside>
+      </div>
     </div>
   )
 }

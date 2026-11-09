@@ -101,6 +101,7 @@ One page per feature, each explaining what it does and how it works:
 - [Gym membership renewal reminders](https://www.gymflow.sbs/gym-membership-renewal-reminders): who is expiring, when to remind them, what to say and how to make renewing quick.
 - [Fitness studio management software](https://www.gymflow.sbs/fitness-studio-management-software): what GymFlow does and does not do for yoga, Zumba, dance and CrossFit-style studios.
 - [Gymnastics academy and kids club software](https://www.gymflow.sbs/gymnastics-academy-management-software): how a gymnastics academy, martial arts school or kids sports club can use GymFlow, and where it falls short.
+- [Biometric attendance setup](https://www.gymflow.sbs/biometric-attendance-setup): connect a fingerprint or face device so check-ins are recorded automatically, match members and fix common problems.
 
 ## Member app
 

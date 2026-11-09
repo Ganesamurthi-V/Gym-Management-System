@@ -11,5 +11,13 @@
     // Seconds between device polls. Each poll is one Worker request, so keep this high enough for the quota.
     "POLL_DELAY_SECONDS": "30",
     "DEVICE_TZ_MINUTES": "330"
+  },
+  // Workers Logs in the Cloudflare dashboard. The Worker's own log lines hold only the device serial, counts and
+  // the failure reason, never punch contents or secrets.
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
   }
 }

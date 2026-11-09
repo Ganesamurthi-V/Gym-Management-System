@@ -23,11 +23,6 @@ Sentry are unchanged. Vercel stays live as the rollback until cutover. `next.con
 - `open-next.config.ts` (repo root) switches the server function to OpenNext's `aws-lambda-streaming` wrapper, so the owner
   shell is sent before the page's data queries finish. `warm: 3` in `sst.config.ts` pings 3 server Lambdas every 5 minutes.
   Both stay inside the Lambda free tier; there is no provisioned concurrency (it is billed).
-- Try a change before production: run the `aws-deploy` workflow with stage `streamtest`. That stage has no custom domain, so
-  it is served on its own `*.cloudfront.net` URL (printed at the end of the deploy). Set its secrets first:
-  `npx sst secret set NAME value --stage streamtest`. Remove it afterwards with `npx sst remove --stage streamtest`.
-- Check streaming on that URL: `curl -N -o /dev/null -w "ttfb=%{time_starttransfer} total=%{time_total}
-" <url>/auth/login`.
   With streaming the first byte arrives well before the total; buffered, they are almost equal. Also look in the build log for
   `"streaming":true` in `.open-next/open-next.output.json`.
 - The production stage owns `app.gymflow.sbs` and its aliases; with a domain set CloudFront answers 403 on the

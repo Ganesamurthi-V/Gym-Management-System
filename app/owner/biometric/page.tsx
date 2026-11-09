@@ -13,12 +13,14 @@ export default async function BiometricPage() {
       .eq('gym_id', gym.id).order('created_at', { ascending: true }),
     supabase.from('device_user_map')
       .select('id, device_id, pin, member:members!fk_device_user_map_member_same_gym(name, member_number)')
-      .eq('gym_id', gym.id).order('created_at', { ascending: false }).limit(500),
+      .eq('gym_id', gym.id).order('created_at', { ascending: false }).limit(5000),
+    // Every punch, any state: an ID the owner unlinked has old "counted" punches, not "unmapped" ones, and must
+    // come back as needing a match. Linked IDs are filtered out below.
     supabase.from('device_punches')
       .select('device_id, pin, punched_at')
-      .eq('gym_id', gym.id).eq('state', 'unmapped').order('punched_at', { ascending: false }).limit(1000),
+      .eq('gym_id', gym.id).order('punched_at', { ascending: false }).limit(1000),
     supabase.from('device_punches')
-      .select('id, pin, punched_at, state, member_id')
+      .select('id, device_id, pin, punched_at, state')
       .eq('gym_id', gym.id).order('punched_at', { ascending: false }).limit(30),
     supabase.from('members')
       .select('id, name, member_number')
@@ -35,7 +37,6 @@ export default async function BiometricPage() {
   const memberList: MemberOption[] = (members.data ?? []).map(m => ({
     id: m.id as string, name: m.name as string, memberNumber: m.member_number as number | null,
   }))
-  const nameById = new Map(memberList.map(m => [m.id, m.name]))
 
   const linked: LinkedRow[] = (maps.data ?? []).map(r => {
     const raw = r.member as unknown
@@ -46,13 +47,19 @@ export default async function BiometricPage() {
     }
   })
 
+  // The name comes from the CURRENT link for that device ID, not from whoever the punch counted for: unlinking a
+  // member takes their name off past punches too, and relinking the ID to someone else shows the new name.
+  const nameByDevicePin = new Map(linked.map(l => [`${l.deviceId}:${l.pin}`, l.memberName]))
   const punches: PunchRow[] = (recent.data ?? []).map(p => ({
     id: p.id as string, pin: p.pin as string, punchedAt: p.punched_at as string, state: p.state as string,
-    memberName: p.member_id ? nameById.get(p.member_id as string) ?? null : null,
+    memberName: nameByDevicePin.get(`${p.device_id}:${p.pin}`) ?? null,
   }))
 
+  const mappedKeys = new Set((maps.data ?? []).map(r => `${r.device_id}:${r.pin}`))
   const unmappedByDevice = groupUnmapped(
-    (unmapped.data ?? []).map(p => ({ device_id: p.device_id as string, pin: p.pin as string, punched_at: p.punched_at as string })),
+    (unmapped.data ?? [])
+      .filter(p => !mappedKeys.has(`${p.device_id}:${p.pin}`))
+      .map(p => ({ device_id: p.device_id as string, pin: p.pin as string, punched_at: p.punched_at as string })),
   )
 
   const deviceRows: DeviceRow[] = (devices.data ?? []).map(d => ({

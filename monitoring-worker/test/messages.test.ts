@@ -75,7 +75,7 @@ describe('message formatting', () => {
     const t = formatMessage(alert('x<script>', { reason: '<b>bad</b> & "q"' }), NOW)
     expect(t).not.toContain('<script>')
     expect(t).toContain('&lt;b&gt;bad&lt;/b&gt; &amp;')
-    expect(t).toContain('Vercel dashboard &gt; ')
+    expect(t).toContain('AWS Console (Mumbai, ap-south-1) &gt; ')
     expect(escapeHtml('a<b')).toBe('a&lt;b')
   })
 
@@ -100,7 +100,7 @@ describe('message formatting', () => {
     const s = formatSummary([...names.map((n) => alert(n)), alert('graph-proxy', { level: 'WARNING', status: 404 })], 0, NOW)
     expect(s).toContain('Likely shared cause')
     expect(s).toContain('5 checks on app.gymflow.sbs fail the same way')
-    expect(s.match(/Vercel dashboard &gt; your project &gt; Logs/g)!.length).toBeLessThanOrEqual(2)
+    expect(s.match(/CloudWatch &gt; Log groups/g)!.length).toBeLessThanOrEqual(2)
     expect(s).toContain('<b>First step per check</b>')
     expect(s).toContain('- graph-proxy:')
     expect(s).not.toContain('- api-health:')

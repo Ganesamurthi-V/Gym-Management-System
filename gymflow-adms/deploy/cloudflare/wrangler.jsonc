@@ -7,5 +7,12 @@
   // custom_domain makes Cloudflare create the proxied DNS record for bio.gymflow.sbs itself.
   "routes": [{ "pattern": "bio.gymflow.sbs", "custom_domain": true }],
   // Keep-alive ping for the free instabox box (idle pause after 30 min). Fires at :00, :25 and :50.
-  "triggers": { "crons": ["*/25 * * * *"] }
+  "triggers": { "crons": ["*/25 * * * *"] },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  }
 }
+

@@ -1796,6 +1796,187 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       },
     ],
   },
+  {
+    slug: 'biometric-attendance-setup',
+    title: 'Biometric Attendance Setup: Connect a Fingerprint or Face Device to GymFlow',
+    description: 'Connect a fingerprint or face attendance device to GymFlow so member check-ins are recorded automatically. Step-by-step setup, matching members and troubleshooting.',
+    h1: 'Biometric attendance setup',
+    eyebrow: 'Guide',
+    intro: 'A fingerprint or face device at your door can record every visit without anyone typing at the desk. This guide shows how to connect one to GymFlow, match each device ID to a member and fix the usual problems.',
+    breadcrumb: 'Biometric attendance setup',
+    cardTitle: 'Biometric attendance setup',
+    cardText: 'Connect a fingerprint or face device so member check-ins are recorded in GymFlow automatically.',
+    icon: 'calendar-check',
+    group: 'Guides',
+    topLevel: true,
+    related: ['attendance', 'gym-attendance-tracking-guide', 'members'],
+    sections: [
+      {
+        heading: 'What this does',
+        blocks: [
+          { type: 'p', text: 'When a member punches on the device, GymFlow records their check-in. The first punch of a session is the check-in and the next punch is the check-out, the same as the [check-in kiosk](/attendance). Morning and evening sessions follow the punch time in India time, and evening starts at 2 pm.' },
+          {
+            type: 'ul',
+            items: [
+              'GymFlow receives only the **device ID**, the **punch time** and a short punch code from the device.',
+              'Fingerprints and face data stay on the device. GymFlow never receives or stores them.',
+              'The device sends its data over the internet, so you do not need router port forwarding.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Supported devices',
+        blocks: [
+          { type: 'p', text: 'GymFlow works with attendance devices that have an **ADMS** or **Cloud Server** (push) setting in their communication menu. These come from brands such as ZKTeco, eSSL and compatible makers, with a fingerprint or face reader.' },
+          { type: 'p', text: 'GymFlow uses the standard push protocol, so check before you buy. Ask the dealer to confirm that the exact model has a **Cloud Server Setting** or **ADMS** option and can reach the internet by LAN cable or Wi-Fi. A device that only saves to a USB stick, or only works with a program on a PC, will not connect.' },
+        ],
+      },
+      {
+        heading: 'Before you begin',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'The device is powered on and connected to the internet, by LAN cable or Wi-Fi.',
+              'You have the device **serial number**. It is on a sticker at the back, or in **Menu → System Info → Device Info**.',
+              'You can log in to your GymFlow owner account.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Step 1: Add the device in GymFlow',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Open the owner console and go to **Biometric**.',
+              'Enter a name for the device, for example "Front desk".',
+              'Enter the serial number exactly as it is shown on the device.',
+              'Tap **Add device**.',
+            ],
+          },
+          { type: 'p', text: 'The status shows **Waiting for device** until the device contacts GymFlow.' },
+        ],
+      },
+      {
+        heading: 'Step 2: Enter the server address on the device',
+        blocks: [
+          { type: 'p', text: 'On the device, open **Menu → Comm** (some models call it **Communication**) **→ Cloud Server Setting** and enter:' },
+          {
+            type: 'ul',
+            items: [
+              '**Server address:** bio.gymflow.sbs',
+              '**Port:** 80',
+            ],
+          },
+          { type: 'p', text: 'If the device has a **Domain Name** or **Enable Domain Name** option, turn it on, because the address is a name and not a set of numbers. If your device supports HTTPS, you can use port 443 instead. Save the settings.' },
+          { type: 'p', text: 'The Biometric page shows the same address and port with copy buttons once they are available.' },
+        ],
+      },
+      {
+        heading: 'Step 3: Restart the device and check the connection',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Restart the device from **Menu → System → Restart**, or switch it off and on.',
+              'On the Biometric page, tap the refresh button or **Check status**.',
+              'Within a minute or two the status changes to **Connected, last seen just now**.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Step 4: Enrol members on the device',
+        blocks: [
+          { type: 'p', text: 'Enrol each member\'s fingerprint or face on the device. For the user ID, use the member\'s GymFlow member number, which is the number shown for them in GymFlow. Type the digits only, without the "GF" letters. This lets GymFlow match them to the right member automatically.' },
+        ],
+      },
+      {
+        heading: 'Step 5: Match device IDs to members',
+        blocks: [
+          { type: 'p', text: 'The first time an ID punches, it appears under **Match members** on the Biometric page.' },
+          {
+            type: 'ul',
+            items: [
+              'Tap **Match automatically by member number** to link every ID that equals a member number in one go.',
+              'Or pick the member yourself and tap **Save**.',
+            ],
+          },
+          { type: 'p', text: 'Punches from before the match are added to attendance once the ID is linked, if they are up to 7 days old.' },
+        ],
+      },
+      {
+        heading: 'Step 6: Test it',
+        blocks: [
+          { type: 'p', text: 'Ask one member to punch on the device. Then open **Attendance**, or the **Latest punches** list on the Biometric page. The punch shows as **Counted** and the member has a check-in for today.' },
+          { type: 'p', text: 'A second punch by the same member within a minute is ignored on purpose, so that a double tap does not become a check-out.' },
+        ],
+      },
+      {
+        heading: 'Managing members',
+        blocks: [
+          { type: 'p', text: 'If you unlink a member on the Biometric page, their name is removed from the list and the ID goes back to **Needs matching**. Check-ins already recorded are not deleted.' },
+          { type: 'p', text: 'To remove or block a member on the device itself, do it at the device for now.' },
+        ],
+      },
+      {
+        heading: 'Troubleshooting',
+        blocks: [
+          { type: 'h3', text: 'The page stays on "Waiting for device"' },
+          {
+            type: 'ul',
+            items: [
+              'The serial number in GymFlow matches the one on the device exactly.',
+              'The device has internet. Try opening the same network on a phone.',
+              'The server address and port are right.',
+              'The Domain Name option is on.',
+              'You restarted the device after saving the settings.',
+            ],
+          },
+          { type: 'h3', text: 'A member punches but nothing appears' },
+          {
+            type: 'ul',
+            items: [
+              'The status on the Biometric page is **Connected**.',
+              'The ID is not matched yet. Look under **Match members**.',
+              'The device clock is wrong. Set the device date and time to India time.',
+              'The punch was ignored as a double tap, because the same member punched again within a minute.',
+            ],
+          },
+          { type: 'h3', text: 'The check-in shows the wrong time or day' },
+          {
+            type: 'ul',
+            items: [
+              'The device clock is wrong. Set the date and time on the device. GymFlow uses the time the device reports for each punch.',
+            ],
+          },
+          { type: 'h3', text: 'You have two devices' },
+          {
+            type: 'ul',
+            items: [
+              'The Biometric page can list more than one device. Add each one with its own serial number.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Does it work without internet?' },
+          { type: 'p', text: 'The device keeps its punches and sends them when it is back online. GymFlow then catches up.' },
+          { type: 'h3', text: 'Does GymFlow store fingerprints?' },
+          { type: 'p', text: 'No. Fingerprints and face data stay on the device. GymFlow receives only the device ID and the punch time.' },
+          { type: 'h3', text: 'Can I use the kiosk as well?' },
+          { type: 'p', text: 'Yes. Both record attendance. See [how to track gym attendance](/gym-attendance-tracking-guide) for the kiosk and the weekly routine.' },
+          { type: 'h3', text: 'Do I need a static IP or port forwarding?' },
+          { type: 'p', text: 'No. The device connects out to GymFlow, so your router needs no changes.' },
+        ],
+      },
+    ],
+  },
 ]
 
 export const FEATURE_SLUGS = FEATURE_PAGES.map(page => page.slug)

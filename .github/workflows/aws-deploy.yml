@@ -11,11 +11,6 @@ on:
         type: choice
         options: [app, admin]
         default: app
-      stage:
-        description: SST stage for the app. Use streamtest to try a change on its own CloudFront URL first; production serves app.gymflow.sbs.
-        type: choice
-        options: [production, streamtest]
-        default: production
 
 jobs:
   check:
@@ -67,7 +62,7 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: infra
-      - run: npx sst deploy --stage ${{ inputs.stage }}
+      - run: npx sst deploy --stage production
         working-directory: infra
 
   # Separate SST app (infra/sst.admin.config.ts) for the admin panel. Secrets live in that app's own

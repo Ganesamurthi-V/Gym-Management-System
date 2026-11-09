@@ -54,6 +54,7 @@ export function punchStateChip(state: string): { label: string; tone: ChipTone }
     case 'duplicate': return { label: 'Ignored', tone: 'slate' }
     case 'stale': return { label: 'Too old', tone: 'slate' }
     case 'blocked': return { label: 'Blocked', tone: 'red' }
+    case 'processing': return { label: 'Processing', tone: 'slate' }
     default: return { label: 'Error', tone: 'red' }
   }
 }

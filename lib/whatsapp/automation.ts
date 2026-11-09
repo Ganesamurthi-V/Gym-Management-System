@@ -610,6 +610,15 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
     } catch (err) {
       console.error('[WA Automation] Owner activity cleanup failed:', err instanceof Error ? err.message : String(err))
     }
+    // ── Biometric punch retention (30 days unmatched/ignored, 365 days counted) ──
+    // Isolated like the steps above: a cleanup failure must never fail the WhatsApp run.
+    try {
+      const { purgeOldDevicePunches } = await import('@/lib/devices/retention')
+      const { deleted } = await purgeOldDevicePunches(supabase)
+      console.log(`[WA Automation] Device punch cleanup deleted ${deleted} rows`)
+    } catch (err) {
+      console.error('[WA Automation] Device punch cleanup failed:', err instanceof Error ? err.message : String(err))
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     stats.errors.push(`Fatal: ${msg}`)

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAuthUser, getGymCore } from '@/lib/dal'
 import { replayUnmappedPunches } from '@/lib/devices/processPunch'
+import { isValidTimeZone } from '@/lib/devices/time'
 import { normalizeSerial, SERIAL_RE, pinToMemberNumber } from '@/lib/devices/ui'
 
 export type ActionResult<T = unknown> = { ok: boolean; error?: string; data?: T }
@@ -15,12 +16,20 @@ const nameSchema = z.string().trim().min(1, 'Enter a device name').max(60, 'Name
 const pinSchema = z.string().trim().regex(/^[A-Za-z0-9]{1,24}$/, 'Invalid device ID')
 const tzSchema = z.string().trim().min(1).max(64)
 
+// The serial is the only credential, so a gym cannot hold many devices or register them in bulk.
+const MAX_DEVICES_PER_GYM = 5
+const MAX_DEVICES_PER_HOUR = 3
+
 // The gym always comes from the verified session, never from the client.
 async function resolveGymId(): Promise<string | null> {
+  return (await resolveGymAndUser())?.gymId ?? null
+}
+
+async function resolveGymAndUser(): Promise<{ gymId: string; userId: string } | null> {
   const { user } = await getAuthUser()
   if (!user) return null
   const { gym } = await getGymCore(user.id)
-  return gym?.id ?? null
+  return gym?.id ? { gymId: gym.id, userId: user.id } : null
 }
 
 const NOT_SIGNED_IN: ActionResult<never> = { ok: false, error: 'Please sign in again.' }
@@ -39,17 +48,34 @@ export async function addDevice(name: string, serial: string, timezone?: string)
     return { ok: false, error: 'Serial number can only have letters, numbers, - and _.' }
   }
   const tz = tzSchema.safeParse(timezone || 'Asia/Kolkata')
-  if (!tz.success) return { ok: false, error: 'Invalid timezone' }
+  if (!tz.success || !isValidTimeZone(tz.data)) {
+    return { ok: false, error: 'Unknown timezone. Use a name like Asia/Kolkata.' }
+  }
 
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const ctx = await resolveGymAndUser()
+  if (!ctx) return NOT_SIGNED_IN
+  const { gymId, userId } = ctx
 
   const supabase = await createClient()
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const [total, recent] = await Promise.all([
+    supabase.from('attendance_devices').select('id', { count: 'exact', head: true }).eq('gym_id', gymId),
+    supabase.from('attendance_devices').select('id', { count: 'exact', head: true }).eq('gym_id', gymId).gte('created_at', hourAgo),
+  ])
+  if (total.error || recent.error) return GENERIC
+  if ((total.count ?? 0) >= MAX_DEVICES_PER_GYM) {
+    return { ok: false, error: 'Device limit reached. Contact support to add more.' }
+  }
+  if ((recent.count ?? 0) >= MAX_DEVICES_PER_HOUR) {
+    return { ok: false, error: 'Too many devices added recently. Please try again later.' }
+  }
+
   const { error } = await supabase.from('attendance_devices').insert({
     gym_id: gymId,
     serial_number: normalized,
     name: parsedName.data,
     timezone: tz.data,
+    created_by: userId,
   })
   if (error) {
     // Unique violation. Deliberately does not say whether it is another gym's device.

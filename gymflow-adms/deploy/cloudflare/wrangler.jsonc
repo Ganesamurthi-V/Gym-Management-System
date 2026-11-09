@@ -1,11 +1,10 @@
 {
+  // LEGACY, DO NOT DEPLOY: replaced by ../../worker
   // Front door for biometric devices. Deploy from this folder: npx wrangler deploy
   // Then set the private receiver address once (never commit it): npx wrangler secret put ORIGIN_URL
-  "name": "gymflow-bio",
+  "name": "gymflow-bio-legacy-proxy",
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
-  // custom_domain makes Cloudflare create the proxied DNS record for bio.gymflow.sbs itself.
-  "routes": [{ "pattern": "bio.gymflow.sbs", "custom_domain": true }],
   // Keep-alive ping for the free instabox box (idle pause after 30 min). Fires at :00, :25 and :50.
   "triggers": { "crons": ["*/25 * * * *"] },
   "observability": {

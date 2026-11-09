@@ -12,6 +12,8 @@ export interface ParseResult {
 
 const PIN_RE = /^[A-Za-z0-9]{1,32}$/
 const TIME_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
+// Longer lines are never real punches; skipping them keeps the regexes below away from huge inputs.
+const MAX_LINE = 512
 const KV_RE = /(\w+)=(.*?)(?=\s+\w+=|$)/g
 
 function toInt(v: string | undefined): number | null {
@@ -45,6 +47,10 @@ export function parseAttlog(body: string): ParseResult {
   const punches: Punch[] = []
   let skipped = 0
   for (const raw of body.split(/\r?\n/)) {
+    if (raw.length > MAX_LINE) {
+      skipped++
+      continue
+    }
     if (!raw.trim()) continue
     const punch = parseLine(raw)
     if (punch) punches.push(punch)

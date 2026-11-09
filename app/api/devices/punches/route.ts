@@ -15,6 +15,26 @@ export const dynamic = 'force-dynamic'
 /** One device pushes a few times a minute at most; the cap only stops a runaway or hostile caller. */
 const DEVICE_RPM = 120
 
+/** Shorter than this is a placeholder or a mistake, never a real shared secret (ours are 43 characters). */
+const MIN_SECRET_LENGTH = 16
+
+/**
+ * Per-instance fallback used only when the shared (Redis) limiter errors, so an outage does not remove
+ * the cap entirely. Per instance, so it is looser than the real limit by design.
+ */
+const FALLBACK_RPM = 300
+const fallbackHits = new Map<string, { minute: number; count: number }>()
+function fallbackAllowed(serial: string, nowMs: number = Date.now()): boolean {
+  const minute = Math.floor(nowMs / 60_000)
+  if (fallbackHits.size > 5000) {
+    for (const [k, v] of fallbackHits) if (v.minute !== minute) fallbackHits.delete(k)
+  }
+  const hit = fallbackHits.get(serial)
+  if (!hit || hit.minute !== minute) { fallbackHits.set(serial, { minute, count: 1 }); return true }
+  hit.count++
+  return hit.count <= FALLBACK_RPM
+}
+
 const bodySchema = z.object({
   serial: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   punches: z.array(z.object({
@@ -34,10 +54,18 @@ const bodySchema = z.object({
  */
 export async function POST(req: NextRequest) {
   const log = apiLogger('DEVICE_PUNCHES')
-  const secret = process.env.ADMS_INGEST_SECRET
+  // A secret that is blank, whitespace or too short counts as NOT SET. SST needs a placeholder value (a single
+  // space) for an unused secret, and that placeholder must never authenticate anyone.
+  const usable = (v: string | undefined) => (v && v.trim().length >= MIN_SECRET_LENGTH ? v.trim() : undefined)
+  const secret = usable(process.env.ADMS_INGEST_SECRET)
+  // Optional: the previous secret stays valid during a rotation. Unset or placeholder means ignored.
+  const previous = usable(process.env.ADMS_INGEST_SECRET_PREVIOUS)
   const header = req.headers.get('authorization') ?? ''
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : ''
-  if (!secret || !timingSafeSecretEqual(bearer, secret)) {
+  // Both comparisons always run so timing does not reveal which secret matched.
+  const okCurrent = !!secret && timingSafeSecretEqual(bearer, secret)
+  const okPrevious = !!previous && timingSafeSecretEqual(bearer, previous)
+  if (!okCurrent && !okPrevious) {
     return apiError(401, 'UNAUTHORIZED', 'Unauthorized')
   }
 
@@ -51,8 +79,9 @@ export async function POST(req: NextRequest) {
     const { allowed } = await checkRateLimit(serial, 'DEVICE_PUNCHES', DEVICE_RPM)
     if (!allowed) return apiError(429, 'RATE_LIMITED', 'Rate limit exceeded')
   } catch {
-    // Redis down must not drop punches; the ingest is idempotent anyway.
-    log.warn('device rate limit check failed, continuing', { serial })
+    // Redis down must not drop punches (the ingest is idempotent), but do not go unlimited either.
+    log.warn('device rate limit check failed, using in-memory fallback', { serial })
+    if (!fallbackAllowed(serial)) return apiError(429, 'RATE_LIMITED', 'Rate limit exceeded')
   }
 
   const db = createAdminClient()

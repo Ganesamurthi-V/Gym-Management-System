@@ -15,13 +15,14 @@ export function createFakeDb() {
     from(table: string) {
       type Filter = (r: Row) => boolean
       const filters: Filter[] = []
-      let op: 'select' | 'insert' | 'update' | 'upsert' = 'select'
+      let op: 'select' | 'insert' | 'update' | 'upsert' | 'delete' = 'select'
       let payload: Row | Row[] = {}
       let ignoreDuplicates = false
       let onConflict = ''
       let orderBy: { col: string; asc: boolean } | null = null
       let max = Infinity
       let single = false
+      let returning = false
 
       const finish = (list: Row[]) => (single ? { data: list[0] ?? null, error: null } : { data: list, error: null })
 
@@ -46,6 +47,10 @@ export function createFakeDb() {
         let matched = rows.filter(r => filters.every(f => f(r)))
         if (op === 'update') {
           matched.forEach(r => Object.assign(r, payload))
+          return returning ? finish(matched) : { data: null, error: null }
+        }
+        if (op === 'delete') {
+          tables[table] = rows.filter(r => !matched.includes(r))
           return { data: null, error: null }
         }
         if (orderBy) {
@@ -56,9 +61,10 @@ export function createFakeDb() {
       }
 
       const b: Record<string, unknown> = {
-        select() { return b },
+        select() { returning = true; return b },
         insert(p: Row | Row[]) { op = 'insert'; payload = p; return b },
         upsert(p: Row[], o: { onConflict: string; ignoreDuplicates?: boolean }) { op = 'upsert'; payload = p; onConflict = o.onConflict; ignoreDuplicates = !!o.ignoreDuplicates; return b },
+        delete() { op = 'delete'; return b },
         update(p: Row) { op = 'update'; payload = p; return b },
         eq(c: string, v: unknown) { filters.push(r => r[c] === v); return b },
         in(c: string, v: unknown[]) { filters.push(r => v.includes(r[c])); return b },

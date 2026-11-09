@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gzipSync } from 'node:zlib'
+import { createHash } from 'node:crypto'
 import worker, { type Env } from '../src/index.ts'
 
 const env: Env = {
@@ -62,7 +63,15 @@ describe('GET cdata', () => {
     expect(body.split('\n')[0]).toBe('GET OPTION FROM: TEST123')
     expect(body).toContain('Delay=45')
     expect(body).toContain('TimeZone=330')
+    expect(body).toContain('ATTPHOTOStamp=9999')
+    expect(body).toContain('OPERLOGStamp=9999')
     expect(res.headers.get('server')).toBeNull()
+  })
+
+  it('defaults the poll delay to 60 seconds', async () => {
+    const { ctx } = makeCtx()
+    const res = await worker.fetch(new Request(`${BASE}/iclock/cdata?SN=A1`), { ...env, POLL_DELAY_SECONDS: undefined }, ctx)
+    expect(await res.text()).toContain('Delay=60')
   })
 
   it('works with the .aspx suffix', async () => {
@@ -115,12 +124,45 @@ describe('POST cdata ATTLOG', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('chunks more than 500 punches', async () => {
-    const body = Array.from({ length: 501 }, (_, i) => `${i + 1}\t2026-11-09 08:01:02\t0\t1`).join('\n')
-    expect(await (await post(body)).text()).toBe('OK:501')
+  const lines = (n: number) => Array.from({ length: n }, (_, i) => `${i + 1}\t2026-11-09 08:01:02\t0\t1`).join('\n')
+
+  it('chunks more than 100 punches', async () => {
+    expect(await (await post(lines(101))).text()).toBe('OK:101')
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(sent(0).punches).toHaveLength(500)
+    expect(sent(0).punches).toHaveLength(100)
     expect(sent(1).punches).toHaveLength(1)
+  })
+
+  it('accepts exactly 2000 punches and rejects 2001 with an empty 400', async () => {
+    expect(await (await post(lines(2000))).text()).toBe('OK:2000')
+    expect(fetchMock).toHaveBeenCalledTimes(20)
+    fetchMock.mockClear()
+    const res = await post(lines(2001))
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a declared Content-Length over 1 MB before reading the body', async () => {
+    const res = await post(LINE, undefined, { 'content-length': String(1024 * 1024 + 1) })
+    expect(res.status).toBe(413)
+    expect(await res.text()).toBe('')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('enforces the byte cap while streaming when there is no Content-Length', async () => {
+    const chunk = new Uint8Array(600 * 1024).fill(32)
+    let pulled = 0
+    const stream = new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (++pulled > 10) return c.close()
+        c.enqueue(chunk)
+      },
+    })
+    const res = await call('/iclock/cdata?SN=S1&table=ATTLOG', { method: 'POST', body: stream, duplex: 'half' } as RequestInit)
+    expect(res.status).toBe(400)
+    expect(pulled).toBeLessThan(10) // aborted early, did not drain the whole stream
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('replies OK:n when the app says the device is unknown', async () => {
@@ -164,6 +206,17 @@ describe('POST cdata ATTLOG', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it.each(['ATTPHOTO', 'BIODATA', 'OPERLOG'])('drops table=%s without reading or forwarding the body', async (table) => {
+    const { ctx } = makeCtx()
+    const req = new Request(`${BASE}/iclock/cdata?SN=S1&table=${table}`, { method: 'POST', body: LINE })
+    const getReader = vi.spyOn(req.body!, 'getReader')
+    const res = await worker.fetch(req, env, ctx)
+    expect(await res.text()).toBe('OK')
+    expect(getReader).not.toHaveBeenCalled()
+    expect(req.bodyUsed).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('works with the .aspx suffix', async () => {
     expect(await (await post(LINE, '/iclock/cdata.aspx?SN=S1&table=ATTLOG')).text()).toBe('OK:1')
   })
@@ -177,6 +230,74 @@ describe('POST cdata ATTLOG', () => {
     const res = await post('x'.repeat(1024 * 1024 + 1))
     expect(res.status).toBe(400)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('negative cache for unregistered serials', () => {
+  const post = (path = '/iclock/cdata?SN=S1&table=ATTLOG') => call(path, { method: 'POST', body: LINE })
+
+  it('stops calling the app after the first known:false and answers per route', async () => {
+    fetchMock.mockResolvedValue(ok(false))
+    expect(await (await post()).text()).toBe('OK:1')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(store.get('https://unknown.invalid/S1')?.headers.get('cache-control')).toBe('max-age=120')
+    expect(await (await post()).text()).toBe('OK')
+    expect(await (await call('/iclock/getrequest?SN=S1')).text()).toBe('OK')
+    expect(await (await call('/iclock/cdata?SN=S1')).text()).toContain('GET OPTION FROM: S1')
+    expect(await (await call('/iclock/push?SN=S1')).text()).toContain('GET OPTION FROM: S1')
+    expect(await (await call('/iclock/registry?SN=S1', { method: 'POST' })).text()).toMatch(/^RegistryCode=/)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('records an unknown serial from a heartbeat too, and is per serial', async () => {
+    fetchMock.mockResolvedValue(ok(false))
+    await call('/iclock/getrequest?SN=S1')
+    expect(store.has('https://unknown.invalid/S1')).toBe(true)
+    fetchMock.mockResolvedValue(ok(true))
+    expect(await (await post('/iclock/cdata?SN=S2&table=ATTLOG')).text()).toBe('OK:1')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not cache a known serial', async () => {
+    await post()
+    expect(store.has('https://unknown.invalid/S1')).toBe(false)
+    expect(await (await post()).text()).toBe('OK:1')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('works again once the entry is gone (expiry)', async () => {
+    fetchMock.mockResolvedValue(ok(false))
+    await post()
+    store.clear()
+    fetchMock.mockResolvedValue(ok(true))
+    expect(await (await post()).text()).toBe('OK:1')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('falls through to the app when the cache throws', async () => {
+    vi.stubGlobal('caches', { default: { match: async () => { throw new Error('boom') }, put: async () => { throw new Error('boom') } } })
+    fetchMock.mockImplementation(async () => ok(false))
+    expect(await (await post()).text()).toBe('OK:1')
+    expect(await (await post()).text()).toBe('OK:1')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('logging', () => {
+  it('logs a short sha256 tag instead of the serial, never pins or bodies', async () => {
+    const sn = 'SERIAL99'
+    const tag = createHash('sha256').update(sn).digest('hex').slice(0, 8)
+    await call(`/iclock/cdata?SN=${sn}&table=ATTLOG`, { method: 'POST', body: LINE })
+    fetchMock.mockRejectedValue(new Error('down'))
+    await call(`/iclock/cdata?SN=${sn}&table=ATTLOG`, { method: 'POST', body: LINE })
+    await call(`/iclock/getrequest?SN=${sn}`)
+    const lines = [...vi.mocked(console.log).mock.calls, ...vi.mocked(console.warn).mock.calls].map((c) => String(c[0]))
+    expect(lines.length).toBeGreaterThanOrEqual(3)
+    for (const l of lines) {
+      expect(l).toContain(tag)
+      expect(l).not.toContain(sn)
+      expect(l).not.toContain('2026-11-09')
+    }
   })
 })
 

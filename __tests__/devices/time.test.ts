@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deviceLocalToInstant, istDateOf, sessionOf, isStale } from '@/lib/devices/time'
+import { deviceLocalToInstant, istDateOf, sessionOf, isStale, isValidTimeZone } from '@/lib/devices/time'
 
 describe('deviceLocalToInstant', () => {
   it('converts an IST device time', () => {
@@ -46,5 +46,12 @@ describe('isStale', () => {
     expect(isStale(new Date('2026-11-02T05:01:00Z'), now)).toBe(false)
     expect(isStale(new Date('2026-11-09T05:11:00Z'), now)).toBe(true)
     expect(isStale(new Date('2026-11-09T05:09:00Z'), now)).toBe(false)
+  })
+})
+
+describe('isValidTimeZone', () => {
+  it('accepts IANA names and rejects junk', () => {
+    expect(isValidTimeZone('Asia/Kolkata')).toBe(true)
+    expect(isValidTimeZone('Mars/Olympus')).toBe(false)
   })
 })

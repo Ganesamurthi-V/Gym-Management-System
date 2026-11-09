@@ -26,6 +26,14 @@ describe('parseAttlog', () => {
     expect(r.punches).toEqual([{ pin: '9', time: '2026-11-09 08:01:02', status: 0, verify: 1 }])
   })
 
+  it('skips lines over 512 chars quickly, even a 1 MB line of spaces', () => {
+    const t = Date.now()
+    const r = parseAttlog(' '.repeat(1024 * 1024) + '\n1\t2026-11-09 08:01:02\t0\t1\n' + 'pin=1 '.repeat(100))
+    expect(Date.now() - t).toBeLessThan(500)
+    expect(r.punches).toHaveLength(1)
+    expect(r.skipped).toBe(2)
+  })
+
   it('skips and counts garbage and bad pins', () => {
     const r = parseAttlog('garbage\n\t\n12\tnot-a-date\n../x\t2026-11-09 08:01:02\n1\t2026-11-09 08:01:02\t0\t1')
     expect(r.punches).toHaveLength(1)

@@ -9,6 +9,13 @@ export const DUPLICATE_WINDOW_MS = 60 * 1000
 /** Same switch point as the kiosk's default (app/owner/attendance: hour >= 14 is evening). */
 export const EVENING_STARTS_HOUR = 14
 
+export const DEFAULT_DEVICE_TZ = 'Asia/Kolkata'
+
+/** True when Intl knows the IANA zone name. */
+export function isValidTimeZone(timeZone: string): boolean {
+  try { new Intl.DateTimeFormat('en', { timeZone }); return true } catch { return false }
+}
+
 const DEVICE_TIME_RE = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/
 
 const formatters = new Map<string, Intl.DateTimeFormat>()

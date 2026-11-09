@@ -23,6 +23,11 @@ const STATUS_TONE: Record<DeviceStatus, string> = {
   waiting: 'bg-amber-50 text-amber-700 border-amber-200',
   offline: 'bg-slate-100 text-slate-600 border-slate-200',
 }
+/** The serial is the only credential, so the card shows just the last 4 characters. */
+function maskSerial(serial: string): string {
+  return serial.length <= 4 ? serial : `•••• ${serial.slice(-4)}`
+}
+
 const CHIP_TONE: Record<ChipTone, string> = {
   emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   amber: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -136,7 +141,7 @@ function DeviceCard({ device, now, serverHost, serverPort }: { device: DeviceRow
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 truncate">{device.name}</p>
-          <p className="text-xs text-slate-500 break-all">Serial {device.serial}</p>
+          <p className="text-xs text-slate-500 break-all">Serial {maskSerial(device.serial)}</p>
         </div>
         <button type="button" aria-label="Device options" className="w-11 h-11 -mr-2 -mt-2 flex items-center justify-center rounded-lg text-slate-500 active:bg-slate-100" onClick={() => setMenu(v => !v)}>
           <MoreVertical className="w-5 h-5" />
@@ -396,6 +401,7 @@ export function BiometricClient({
             <li>If the address is a name, not numbers, turn on Domain Name.</li>
             <li>Save, then restart the device.</li>
             <li>This page shows Connected within a minute or two.</li>
+            <li>If your device supports HTTPS, use port 443 instead of 80, because port 80 is not encrypted.</li>
           </ol>
         </details>
       </Section>

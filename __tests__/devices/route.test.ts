@@ -37,13 +37,30 @@ beforeEach(() => {
   db.tables.attendance_devices.push({ id: 'dev1', gym_id: 'gym1', serial_number: 'SN123', timezone: 'Asia/Kolkata', is_active: true, last_seen_at: null })
   db.tables.device_user_map.push({ device_id: 'dev1', pin: '7', member_id: 'mem1' })
 })
-afterEach(() => { vi.useRealTimers(); delete process.env[SECRET_VAR] })
+afterEach(() => { vi.useRealTimers(); delete process.env[SECRET_VAR]; delete process.env.ADMS_INGEST_SECRET_PREVIOUS })
 
 describe('POST /api/devices/punches', () => {
   it('rejects a missing or wrong secret with 401', async () => {
     expect((await post({ serial: 'SN123', punches: [] }, null)).status).toBe(401)
     expect((await post({ serial: 'SN123', punches: [] }, 'Bearer nope')).status).toBe(401)
     expect(db.tables.attendance_devices[0].last_seen_at).toBeNull()
+  })
+  it('accepts the previous secret during rotation, and ignores an empty one', async () => {
+    process.env.ADMS_INGEST_SECRET_PREVIOUS = 'old-secret-0123456789'
+    expect((await post({ serial: 'SN123', punches: [] }, 'Bearer old-secret-0123456789')).status).toBe(200)
+    expect((await post({ serial: 'SN123', punches: [] }, `Bearer ${SECRET}`)).status).toBe(200)
+    expect((await post({ serial: 'SN123', punches: [] }, 'Bearer wrong')).status).toBe(401)
+    process.env.ADMS_INGEST_SECRET_PREVIOUS = ''
+    expect((await post({ serial: 'SN123', punches: [] }, 'Bearer ')).status).toBe(401)
+  })
+  it('never lets the single-space placeholder (SST needs one for an unused secret) or a short value authenticate', async () => {
+    process.env.ADMS_INGEST_SECRET_PREVIOUS = ' '
+    expect((await post({ serial: 'SN123', punches: [] }, 'Bearer  ')).status).toBe(401)
+    expect((await post({ serial: 'SN123', punches: [] }, 'Bearer  x')).status).toBe(401)
+    process.env.ADMS_INGEST_SECRET_PREVIOUS = 'short'
+    expect((await post({ serial: 'SN123', punches: [] }, 'Bearer short')).status).toBe(401)
+    process.env[SECRET_VAR] = ' '
+    expect((await post({ serial: 'SN123', punches: [] }, 'Bearer  ')).status).toBe(401)
   })
   it('rejects everything when the secret is not configured', async () => {
     delete process.env[SECRET_VAR]

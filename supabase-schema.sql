@@ -696,6 +696,7 @@ CREATE TABLE IF NOT EXISTS attendance_devices (
   is_active      BOOLEAN     NOT NULL DEFAULT true,
   last_seen_at   TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by     UUID,
   UNIQUE (id, gym_id)
 );
 
@@ -714,7 +715,8 @@ CREATE TABLE IF NOT EXISTS device_user_map (
 
 -- ── device_punches ───────────────────────────────────────────
 -- Raw punches as pushed, with what happened to each. unique(device_id, pin, punched_at) makes a retried
--- POST idempotent. state 'error' also means "recorded but not processed yet" and is retried.
+-- POST idempotent. state 'error' also means "recorded but not processed yet" and is retried;
+-- 'processing' marks a row a request has claimed (claimed_at; stuck ones are swept back to 'error' after 5 min).
 CREATE TABLE IF NOT EXISTS device_punches (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id      UUID        NOT NULL,
@@ -723,9 +725,10 @@ CREATE TABLE IF NOT EXISTS device_punches (
   punched_at  TIMESTAMPTZ NOT NULL,
   status      INT,
   verify_type INT,
-  state       TEXT        NOT NULL CHECK (state IN ('applied', 'unmapped', 'duplicate', 'stale', 'error', 'blocked')),
+  state       TEXT        NOT NULL CONSTRAINT device_punches_state_check CHECK (state IN ('applied', 'unmapped', 'duplicate', 'stale', 'error', 'blocked', 'processing')),
   member_id   UUID,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  claimed_at  TIMESTAMPTZ,
   UNIQUE (device_id, pin, punched_at),
   FOREIGN KEY (device_id, gym_id) REFERENCES attendance_devices (id, gym_id) ON DELETE CASCADE
 );
@@ -1372,6 +1375,7 @@ CREATE INDEX IF NOT EXISTS idx_owner_activity_created
 -- indexes on device_punches
 CREATE INDEX IF NOT EXISTS idx_device_punches_device_pin_state ON device_punches (device_id, pin, state);
 CREATE INDEX IF NOT EXISTS idx_device_punches_gym_created ON device_punches (gym_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_device_punches_created ON device_punches (created_at);
 
 -- indexes on member_body_logs / member_workout_sessions
 -- ────────────────────────────────────────────────────────────
@@ -6688,7 +6692,9 @@ GRANT SELECT, INSERT, DELETE ON public.gamification_awards TO authenticated;
 
 -- Punches are written only by the ingest route (service role); owners read them.
 REVOKE ALL ON public.attendance_devices FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.attendance_devices TO authenticated;
+-- Owners may only rename a device; every other column is server-controlled.
+GRANT SELECT, INSERT, DELETE ON public.attendance_devices TO authenticated;
+GRANT UPDATE (name) ON public.attendance_devices TO authenticated;
 REVOKE ALL ON public.device_user_map FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.device_user_map TO authenticated;
 REVOKE ALL ON public.device_punches FROM PUBLIC, anon, authenticated;

@@ -98,3 +98,50 @@ describe('ingestPunches', () => {
     expect(db.tables.attendance).toHaveLength(1)
   })
 })
+
+describe('ingestPunches hardening', () => {
+  it('does not touch rows another request holds in processing, and sweeps stale claims', async () => {
+    const { db, client } = setup()
+    db.tables.device_punches.push(
+      { id: 'live', device_id: 'dev1', pin: '7', punched_at: '2026-11-09T03:30:00.000Z', state: 'processing', claimed_at: NOW.toISOString() },
+      { id: 'dead', device_id: 'dev1', pin: '7', punched_at: '2026-11-09T03:40:00.000Z', state: 'processing', claimed_at: '2026-11-09T04:00:00.000Z' },
+    )
+    // Overlapping retry of the first row plus a new one: 'live' must not be processed again.
+    const res = await ingestPunches(client, device, [punch('2026-11-09 09:00:00'), punch('2026-11-09 09:30:00')], NOW)
+    expect(res.failed).toBe(false)
+    const byId = Object.fromEntries(db.tables.device_punches.map(r => [r.id, r.state]))
+    expect(byId.live).toBe('processing')
+    expect(byId.dead).toBe('applied') // swept to error, then re-claimed and applied
+    expect(db.tables.attendance).toHaveLength(1)
+  })
+
+  it('claims a stranded error row exactly once', async () => {
+    const { db, client } = setup()
+    db.failOn = (t, op) => t === 'attendance' && op === 'insert'
+    expect((await ingestPunches(client, device, [punch('2026-11-09 09:00:00')], NOW)).failed).toBe(true)
+    expect(states(db)).toEqual(['error'])
+    db.failOn = () => false
+    const retry = await ingestPunches(client, device, [punch('2026-11-09 09:00:00')], NOW)
+    expect(retry).toEqual({ accepted: 0, failed: false })
+    expect(states(db)).toEqual(['applied'])
+    expect(db.tables.attendance).toHaveLength(1)
+  })
+
+  it('loads the pin map once for the whole batch', async () => {
+    const { db, client } = setup()
+    db.tables.device_user_map.push({ device_id: 'dev1', pin: '8', member_id: 'mem2' })
+    let mapReads = 0
+    const from = db.from.bind(db)
+    db.from = (t: string) => { if (t === 'device_user_map') mapReads++; return from(t) }
+    await ingestPunches(client, device, [punch('2026-11-09 09:00:00'), punch('2026-11-09 09:10:00', '8'), punch('2026-11-09 09:20:00', '9')], NOW)
+    expect(mapReads).toBe(1)
+    expect(states(db)).toEqual(['applied', 'applied', 'unmapped'])
+  })
+
+  it('falls back to Asia/Kolkata for an invalid stored timezone instead of dropping punches', async () => {
+    const { db, client } = setup()
+    const res = await ingestPunches(client, { ...device, timezone: 'Nowhere/Land' }, [punch('2026-11-09 09:00:00')], NOW)
+    expect(res).toEqual({ accepted: 1, failed: false })
+    expect(db.tables.device_punches[0].punched_at).toBe('2026-11-09T03:30:00.000Z')
+  })
+})

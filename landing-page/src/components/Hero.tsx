@@ -1,6 +1,4 @@
 import { DashboardMock } from './dashboard/DashboardMock';
-import { OwnerPhoneCard } from './OwnerPhoneCard';
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { FREE_MEMBER_LIMIT } from '../data/plans';
 import '../styles/home.css';
 
@@ -13,8 +11,6 @@ const APP_URL = 'https://app.gymflow.sbs';
  * shown from tablet up; on a phone it would be too small to read, so the member app Home takes its place.
  */
 export function Hero() {
-  const wide = useMediaQuery('(min-width: 768px)');
-
   return (
     <section aria-labelledby="hero-title" className="hero">
       <div className="wrap hero__wrap">
@@ -42,19 +38,13 @@ export function Hero() {
         </div>
 
         <div className="hero__product">
-          {wide ? (
-            <div className="hero__frame">
-              <p className="sr-only">
-                The GymFlow owner console: active, expiring and expired members, today&apos;s collection and total
-                dues, with a sidebar for members, payments, dues, attendance, inventory and programs.
-              </p>
-              <DashboardMock />
-            </div>
-          ) : (
-            <div className="hero__frame">
-              <OwnerPhoneCard />
-            </div>
-          )}
+          <div className="hero__frame">
+            <p className="sr-only">
+              The GymFlow owner console: active, expiring and expired members, today&apos;s collection and total
+              dues, with a sidebar for members, payments, dues, attendance, inventory and programs.
+            </p>
+            <DashboardMock />
+          </div>
         </div>
       </div>
     </section>

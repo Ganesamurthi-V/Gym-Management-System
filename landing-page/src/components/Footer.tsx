@@ -53,33 +53,19 @@ const COLUMNS = [
   },
 ] as const;
 
-// Curtain-reveal footer, used by the feature pages only (reveal prop). From lg up the footer
-// sticks to the bottom of the viewport behind the page (z-0) while <main> (relative z-10, opaque,
-// see FeatureShell) scrolls away over it, so the footer is uncovered rather than scrolled in.
-// Pure CSS: no scroll listener, nothing to keep in step with Lenis, and nothing to run on a
-// phone, where it stays an ordinary static footer. The feature pages have no CTA card to
-// overlap, so the negative margin and the 190px clearance under it are dropped at every width.
-// min-h-svh makes the footer a full screen at least (svh, so a phone's collapsing address bar
-// cannot leave a strip of page above it): at max scroll the footer is the only thing on screen
-// even when its content is shorter than the viewport; the panel stretches and centres its
-// content. motion-reduce falls back to the plain static footer, i.e. the final state with no curtain.
-const REVEAL_FOOTER =
-  'flex min-h-svh flex-col !mt-0 lg:sticky lg:bottom-0 lg:z-0 motion-reduce:lg:static';
-const REVEAL_PANEL = 'flex flex-1 flex-col justify-center !pt-20 md:!pt-24 [&>*]:w-full';
-
 /* Letter close: paper in light, night in dark (bg-background). Wordmark, one sign-off sentence, then the link
    columns in a quiet ruled row. The old negative-margin overlap under the CTA card is gone: the closing band is
    its own section now. */
-export function Footer({ reveal = false }: { reveal?: boolean }) {
+export function Footer() {
   return (
-    <footer className={reveal ? REVEAL_FOOTER : undefined}>
+    <footer>
       {/* id lives here rather than on <footer> so the #support anchor lands on the visible panel. */}
       <div
         id="support"
-        className={`border-t border-border-subtle bg-background pt-20 pb-8 md:pt-28${reveal ? ` ${REVEAL_PANEL}` : ''}`}
+        className="border-t border-border-subtle bg-background pt-14 pb-8 md:pt-28"
       >
         {/* Link columns, one quiet ruled row. */}
-        <div className="foot-wrap grid gap-12 md:grid-cols-[1fr_1fr_1.4fr]">
+        <div className="foot-wrap grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-[1fr_1fr_1.4fr] md:gap-12">
           {COLUMNS.map(column => (
             <nav key={column.heading} aria-label={column.heading}>
               <h3 className="text-base font-semibold text-foreground">{column.heading}</h3>
@@ -90,7 +76,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
                     <a
                       href={link.href.startsWith('#') ? homeAnchor(link.href) : link.href}
                       {...('external' in link && link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                      className="footer-link inline-flex min-h-[44px] items-center text-base md:min-h-0"
+                      className="footer-link inline-flex min-h-[44px] items-center py-2 text-[15px] leading-snug md:min-h-0 md:py-0 md:text-base"
                     >
                       {link.label}
                     </a>
@@ -105,7 +91,7 @@ export function Footer({ reveal = false }: { reveal?: boolean }) {
             index.html JSON-LD, so the structured data reflects content a visitor
             can actually see rather than claiming details that appear nowhere.
           */}
-          <div>
+          <div className="col-span-2 md:col-span-1">
             <h3 className="text-base font-semibold text-foreground">Contact</h3>
             <address className="mt-4 flex flex-col gap-1 text-base not-italic text-muted-foreground">
               <span className="flex items-start gap-3">

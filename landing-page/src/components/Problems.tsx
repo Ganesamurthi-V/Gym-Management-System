@@ -58,7 +58,7 @@ export function Problems() {
         lead="Where a register or sheet starts to cost you time, and what GymFlow does about each job."
       />
 
-      <div className="panel overflow-clip">
+      <div className="panel cmp-panel overflow-clip">
         <table className="cmp">
           <caption className="sr-only">
             Six gym management tasks, done with a register or Excel sheet and done with GymFlow

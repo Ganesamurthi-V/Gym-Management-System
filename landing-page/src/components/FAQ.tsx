@@ -50,9 +50,9 @@ const FAQS = [
 
 /* Every answer is open: an accordion hides the one thing a visitor came for, and the answers are also what the
    FAQPage JSON-LD in index.html quotes, so they stay visible text. Two columns on the page's split line. */
-/* Each question is a drawer. With a mouse it opens while the pointer is over it; a click or tap (and Enter or Space on
-   the keyboard) holds it open or closed, which is how phones and keyboards use it. The answers stay in the page
-   text either way. */
+/* Every question is a drawer. With a mouse it opens while the pointer is over it; a click or tap (and Enter or Space)
+   holds it open or closed. An opening drawer pushes the cards below it in its own column down; it never overlaps or
+   hides another question. All answers stay in the page text either way. */
 export function FAQ() {
   const [open, setOpen] = useState<string | null>(null);
 

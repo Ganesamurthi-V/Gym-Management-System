@@ -203,6 +203,12 @@
     })();
   </script>
   <style>
+    /* With scripts on, the static copy is never painted: the page stays blank until the bundle has loaded and the real
+       page mounts, instead of flashing a plain HTML version first. Crawlers and no-JavaScript visitors still get it
+       (no .js class), and if React ever fails (.fb, set by FallbackBoundary) it is shown again. */
+    .js:not(.fb) #seo-fallback {
+      display: none;
+    }
     .mounted #seo-fallback {
       display: none;
     }

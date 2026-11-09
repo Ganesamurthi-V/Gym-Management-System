@@ -4,8 +4,9 @@
 
 :root {
   --gut: 20px;
-  --padt: 96px;
-  --padb: 56px;
+  /* Phones: 72 / 44 instead of the tablet 112 / 64, so two sections never stack ~170px of air between content. */
+  --padt: 72px;
+  --padb: 44px;
   --r-md: 12px;
   --r-lg: 20px;
 }
@@ -163,6 +164,11 @@
     padding: 48px 20px 60px;
   }
 }
+@media (max-width: 480px) {
+  .feat-art {
+    padding-inline: 16px;
+  }
+}
 .fx {
   position: absolute;
   inset: 0;
@@ -274,6 +280,8 @@
   top: calc(100% - var(--fx-y) - 1px);
 }
 .feat-float {
+  /* min-width 0: as a grid item it would otherwise grow to its content (nowrap pills) and push the card past the panel on 360px phones. */
+  min-width: 0;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -596,10 +604,20 @@
 }
 .hero__actions {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 24px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
   width: 100%;
+}
+/* On a phone the two buttons are compact and sit side by side instead of two full-width bars. */
+@media (max-width: 639px) {
+  .hero__actions .btn {
+    min-height: 44px;
+    padding-inline: 20px;
+    font-size: 15px;
+  }
 }
 @media (min-width: 640px) {
   .hero__actions {
@@ -631,16 +649,19 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 140px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 140px), transparent);
 }
+/* On a phone the same desktop console is shown, scaled to the screen width by DashboardMock itself. */
 @media (max-width: 767px) {
-  .hero__frame {
-    padding: 24px 0 0;
-    height: 100%;
+  /* Content height only: the 100svh floor left a blank band under the dashboard preview on a phone. */
+  .hero {
+    min-height: 0;
+    padding-bottom: 40px;
   }
   .hero__product {
     flex: none;
-    height: 560px;
     min-height: 0;
     margin-top: 32px;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 }
 .hero__frame {
@@ -808,24 +829,57 @@
     display: block;
     width: auto !important;
   }
-  .cmp tbody tr {
-    padding: 16px 0;
+  /* Phone: every task is its own card (the wrapping panel drops its frame), with the task on top and the two
+     answers below, each under a small coloured label so the text lines up the same way in every card. */
+  .cmp-panel {
+    border: 0;
+    background: transparent;
+    overflow: visible;
   }
-  .cmp tbody tr + tr {
+  .cmp tbody {
+    display: grid;
+    gap: 14px;
+  }
+  .cmp tbody tr {
+    padding: 18px 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--frame);
+  }
+  .cmp tbody tr + tr,
+  .cmp tbody tr + tr > * {
     border-top: 1px solid var(--border);
   }
   .cmp tbody tr + tr > * {
     border-top: 0;
   }
-  .cmp th,
+  .cmp tbody th {
+    padding: 0 0 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
   .cmp td {
-    padding: 2px 16px;
+    padding: 0;
+  }
+  .cmp td + td {
+    margin-top: 14px;
   }
   .cmp td::before {
-    content: attr(data-label) " ";
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 6px;
     font-family: var(--font-display);
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
     color: var(--muted-foreground);
+  }
+  .cmp td.cmp__bad::before {
+    color: var(--color-error);
+  }
+  .cmp td.cmp__fix::before {
+    color: var(--color-success);
   }
 }
 
@@ -941,6 +995,13 @@
   padding-inline: 20px;
   font-size: 16px;
   color: var(--muted-foreground);
+}
+/* Stacked layout (under 1024): the note sits under the centred heading, so it centres with it. */
+@media (max-width: 1023px) {
+  .wa-items__more {
+    padding-inline: 0;
+    text-align: center;
+  }
 }
 .wa-phone {
   width: 100%;
@@ -1189,6 +1250,8 @@
   display: grid;
   align-items: start;
   gap: 16px 24px;
+  /* Room under the last card, so an opened drawer at the bottom never runs into the next section. */
+  padding-bottom: 120px;
 }
 /* Two independent columns, so opening a drawer never leaves a hole beside it. */
 .faq-col {

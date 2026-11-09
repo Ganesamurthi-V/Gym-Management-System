@@ -1,6 +1,6 @@
 /* The close: the one Royal Blue band, 72px of air under the heading's 120px, tall enough to stand alone on a screen. */
 .close-cta {
-  padding-block: 96px;
+  padding-block: 72px 64px;
 }
 @media (min-width: 768px) {
   .close-cta {

@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { initAnalytics } from './lib/analytics';
-import { afterFirstPaint } from './lib/afterFirstPaint';
 import { initSmoothScroll } from './lib/smoothScroll';
 import { MountedFlag } from './lib/MountedFlag';
 import { FallbackBoundary } from './lib/FallbackBoundary';
@@ -13,23 +12,16 @@ initAnalytics();
 // Lenis smooth scrolling for the whole site, started after the hero has painted (see lib/smoothScroll.ts).
 initSmoothScroll();
 
-// React mounts once the static copy in #root has painted. Mounting straight away replaced it within
-// the same long task, so the browser never reported it as the largest paint and LCP waited for the
-// real hero (3.0-3.7 s on a throttled phone); the 1.5 s ceiling covers a tab that never paints.
-afterFirstPaint(
-  () => {
-    const root = document.getElementById('root')!;
-    // Taken before createRoot replaces it, so FallbackBoundary can put it back after a render error.
-    const fallbackHtml = root.innerHTML;
-    createRoot(root).render(
-      <StrictMode>
-        <FallbackBoundary html={fallbackHtml}>
-          <MountedFlag />
-          <App />
-        </FallbackBoundary>
-      </StrictMode>
-    );
-  },
-  1500,
-  false
+// The page mounts as soon as the bundle runs; the static copy is never shown first (see index.html).
+const root = document.getElementById('root')!;
+// Taken before createRoot replaces it, so FallbackBoundary can put it back after a render error.
+const fallbackHtml = root.innerHTML;
+createRoot(root).render(
+  <StrictMode>
+    <FallbackBoundary html={fallbackHtml}>
+      <MountedFlag />
+      <App />
+    </FallbackBoundary>
+  </StrictMode>
 );
+

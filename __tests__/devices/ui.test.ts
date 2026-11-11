@@ -2,7 +2,59 @@ import { describe, it, expect } from 'vitest'
 import {
   deviceStatus, formatLastSeen, statusLabel, isValidSerial, normalizeSerial,
   punchStateChip, groupUnmapped, pinToMemberNumber, formatPunchTimeIST, commandStateChip, commandLabel, enrolStatus, clockSuspectDeviceIds,
+  filterPunches, filterCommands, deviceConnectionSummary, wantsDeviceSync,
 } from '@/lib/devices/ui'
+
+const PUNCHES = [
+  { id: '1', pin: '94', deviceId: 'a', state: 'applied', memberName: 'Akhil Prasad' },
+  { id: '2', pin: '12', deviceId: 'a', state: 'unmapped', memberName: null },
+  { id: '3', pin: '7', deviceId: 'b', state: 'applied', memberName: 'Meera' },
+  { id: '4', pin: '8', deviceId: 'b', state: 'processing', memberName: null },
+  { id: '5', pin: '9', deviceId: 'b', state: 'error', memberName: null },
+]
+const ids = (r: { id: string }[]) => r.map(x => x.id)
+const all = { query: '', state: 'all' as const, deviceId: 'all' }
+
+describe('filterPunches', () => {
+  it('empty query returns everything', () => {
+    expect(ids(filterPunches(PUNCHES, { ...all, query: '   ' }))).toEqual(['1', '2', '3', '4', '5'])
+  })
+  it('matches member name case-insensitively', () => {
+    expect(ids(filterPunches(PUNCHES, { ...all, query: 'AKHIL' }))).toEqual(['1'])
+  })
+  it('matches device ID by number and by "device id 94"', () => {
+    expect(ids(filterPunches(PUNCHES, { ...all, query: '94' }))).toEqual(['1'])
+    expect(ids(filterPunches(PUNCHES, { ...all, query: 'Device ID 94' }))).toEqual(['1'])
+    expect(ids(filterPunches(PUNCHES, { ...all, query: 'device id 12' }))).toEqual(['2'])
+  })
+  it('filters by state; error also covers processing', () => {
+    expect(ids(filterPunches(PUNCHES, { ...all, state: 'applied' }))).toEqual(['1', '3'])
+    expect(ids(filterPunches(PUNCHES, { ...all, state: 'error' }))).toEqual(['4', '5'])
+  })
+  it('filters by device and combines filters', () => {
+    expect(ids(filterPunches(PUNCHES, { ...all, deviceId: 'b' }))).toEqual(['3', '4', '5'])
+    expect(ids(filterPunches(PUNCHES, { query: 'meera', state: 'applied', deviceId: 'a' }))).toEqual([])
+    expect(ids(filterPunches(PUNCHES, { query: 'meera', state: 'applied', deviceId: 'b' }))).toEqual(['3'])
+  })
+})
+
+describe('filterCommands', () => {
+  const CMDS = [
+    { id: '1', kind: 'add_user', pin: '12', state: 'queued' },
+    { id: '2', kind: 'remove_user', pin: '12', state: 'done' },
+    { id: '3', kind: 'add_user', pin: '5', state: 'failed' },
+  ]
+  it('searches the command label and status label', () => {
+    expect(ids(filterCommands(CMDS, { query: 'add member 12', state: 'all' }))).toEqual(['1'])
+    expect(ids(filterCommands(CMDS, { query: 'member 12', state: 'all' }))).toEqual(['1', '2'])
+    expect(ids(filterCommands(CMDS, { query: 'waiting', state: 'all' }))).toEqual(['1'])
+  })
+  it('filters by status and combines with the query', () => {
+    expect(ids(filterCommands(CMDS, { query: '', state: 'done' }))).toEqual(['2'])
+    expect(ids(filterCommands(CMDS, { query: 'add', state: 'failed' }))).toEqual(['3'])
+    expect(ids(filterCommands(CMDS, { query: 'remove', state: 'failed' }))).toEqual([])
+  })
+})
 
 const NOW = Date.parse('2026-11-09T10:00:00Z')
 const ago = (ms: number) => new Date(NOW - ms).toISOString()
@@ -156,4 +208,23 @@ describe('enrolStatus', () => {
     const commands = [cmd('failed'), cmd('done', { createdAt: '2026-11-09T10:05:00Z' })]
     expect(enrolStatus({ ...base, commands, punches: [] })).toBe('waiting')
   })
+})
+
+describe('deviceConnectionSummary', () => {
+  const on = (lastSeenAt: string | null) => ({ lastSeenAt, isActive: true })
+  it('no devices', () => expect(deviceConnectionSummary([], NOW)).toEqual({ hasDevice: false, connected: false }))
+  it('only inactive devices count as no device', () =>
+    expect(deviceConnectionSummary([{ lastSeenAt: ago(1000), isActive: false }], NOW)).toEqual({ hasDevice: false, connected: false }))
+  it('one connected', () => expect(deviceConnectionSummary([on(ago(60_000))], NOW)).toEqual({ hasDevice: true, connected: true }))
+  it('one offline', () => expect(deviceConnectionSummary([on(ago(6 * 60_000))], NOW)).toEqual({ hasDevice: true, connected: false }))
+  it('one waiting', () => expect(deviceConnectionSummary([on(null)], NOW)).toEqual({ hasDevice: true, connected: false }))
+  it('mixed: one connected is enough, inactive connected one is ignored', () => {
+    expect(deviceConnectionSummary([on(ago(6 * 60_000)), on(ago(1000))], NOW)).toEqual({ hasDevice: true, connected: true })
+    expect(deviceConnectionSummary([on(null), { lastSeenAt: ago(1000), isActive: false }], NOW)).toEqual({ hasDevice: true, connected: false })
+  })
+})
+
+describe('wantsDeviceSync', () => {
+  it('is false only for an explicit false', () => expect(wantsDeviceSync(false)).toBe(false))
+  it.each([true, undefined, null, 0, 'false'])('is true for %s', v => expect(wantsDeviceSync(v)).toBe(true))
 })

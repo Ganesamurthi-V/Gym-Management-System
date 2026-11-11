@@ -24,6 +24,29 @@ export function deviceStatus(lastSeenAt: string | null, now: number = Date.now()
   return now - t <= CONNECTED_WINDOW_MS ? 'connected' : 'offline'
 }
 
+/**
+ * What the "Add member" screen needs to know: does the gym use a device, and can it be reached right now.
+ * Uses deviceStatus so "connected" means the same thing here as on the Biometric page.
+ */
+export function deviceConnectionSummary(
+  devices: { lastSeenAt: string | null; isActive: boolean }[],
+  now: number = Date.now(),
+): { hasDevice: boolean; connected: boolean } {
+  const active = devices.filter(d => d.isActive)
+  return {
+    hasDevice: active.length > 0,
+    connected: active.some(d => deviceStatus(d.lastSeenAt, now) === 'connected'),
+  }
+}
+
+/**
+ * Only an explicit `false` skips the device sync. Absent or unexpected values keep the old behaviour (sync), so
+ * callers that never send the field are unaffected.
+ */
+export function wantsDeviceSync(value: unknown): boolean {
+  return value !== false
+}
+
 /** "just now", "5 min ago", "3 h ago", "2 days ago". */
 export function formatLastSeen(iso: string | null, now: number = Date.now()): string {
   if (!iso) return 'never'
@@ -157,6 +180,45 @@ export function clockSuspectDeviceIds(
     counts.set(p.deviceId, (counts.get(p.deviceId) ?? 0) + 1)
   }
   return new Set([...counts].filter(([, n]) => n >= 2).map(([id]) => id))
+}
+
+export type PunchFilterState = 'all' | 'applied' | 'unmapped' | 'duplicate' | 'stale' | 'blocked' | 'error'
+const KNOWN_PUNCH_STATES = ['applied', 'unmapped', 'duplicate', 'stale', 'blocked']
+
+/**
+ * Search + filter for the "All punches" dialog. The query matches the member name or the device ID ("94" or
+ * "Device ID 94"). 'error' also takes 'processing' and any unknown state, because punchStateChip shows those as Error.
+ */
+export function filterPunches<T extends { pin: string; state: string; memberName: string | null; deviceId: string }>(
+  punches: T[],
+  f: { query: string; state: PunchFilterState; deviceId: string },
+): T[] {
+  const q = f.query.trim().toLowerCase()
+  return punches.filter(p => {
+    if (f.deviceId !== 'all' && p.deviceId !== f.deviceId) return false
+    if (f.state === 'error') { if (KNOWN_PUNCH_STATES.includes(p.state)) return false }
+    else if (f.state !== 'all' && p.state !== f.state) return false
+    if (!q) return true
+    return (p.memberName ?? '').toLowerCase().includes(q)
+      || p.pin.toLowerCase().includes(q)
+      || `device id ${p.pin}`.toLowerCase().includes(q)
+  })
+}
+
+export type CommandFilterState = 'all' | CommandState
+
+/** Search + filter for the "All device commands" dialog. The query matches the command label or the status label. */
+export function filterCommands<T extends { kind: string; pin: string; state: string }>(
+  commands: T[],
+  f: { query: string; state: CommandFilterState },
+): T[] {
+  const q = f.query.trim().toLowerCase()
+  return commands.filter(c => {
+    if (f.state !== 'all' && c.state !== f.state) return false
+    if (!q) return true
+    return commandLabel(c.kind, c.pin).toLowerCase().includes(q)
+      || commandStateChip(c.state).label.toLowerCase().includes(q)
+  })
 }
 
 export function formatPunchTimeIST(iso: string): string {

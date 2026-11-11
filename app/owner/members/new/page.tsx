@@ -128,6 +128,23 @@ function NewMemberForm({ onCapHit }: { onCapHit: () => void }) {
     fetchInitialData()
   }, [])
 
+  // Biometric status drives the "send to device" row on the confirm step. null = not loaded (or failed), so the
+  // row stays hidden instead of flickering or defaulting to a tick we cannot back up.
+  const [deviceStatus, setDeviceStatus] = useState<{ hasDevice: boolean; connected: boolean } | null>(null)
+  const [sendToDevice, setSendToDevice] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/biometric/status')
+      .then(async res => {
+        const json = await res.json()
+        if (cancelled || !res.ok || !json.data) return
+        setDeviceStatus({ hasDevice: !!json.data.hasDevice, connected: !!json.data.connected })
+        setSendToDevice(!!json.data.connected)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   useEffect(() => {
     const num = parseInt(form.member_number)
     if (!num || !gymId) { setNumError(form.member_number ? '' : 'Member ID is required'); return }
@@ -204,6 +221,8 @@ function NewMemberForm({ onCapHit }: { onCapHit: () => void }) {
         ...(form.age && { age: parseInt(form.age) }),
         ...(form.date_of_birth && { date_of_birth: form.date_of_birth }),
         ...(form.area.trim() && { area: form.area.trim() }),
+        // True only when the row was shown, enabled and ticked.
+        send_to_device: !!deviceStatus?.connected && sendToDevice,
       }
       const memberRes = await fetch('/api/members', {
         method: 'POST',
@@ -391,6 +410,28 @@ function NewMemberForm({ onCapHit }: { onCapHit: () => void }) {
             )}
           </div>
         </div>
+
+        {deviceStatus?.hasDevice && (
+          <div className="mb-4">
+            <label className={`flex items-center gap-3 min-h-[44px] ${deviceStatus.connected ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+              <input
+                type="checkbox"
+                className="w-5 h-5 shrink-0 accent-brand-500"
+                checked={deviceStatus.connected && sendToDevice}
+                disabled={!deviceStatus.connected}
+                onChange={e => setSendToDevice(e.target.checked)}
+              />
+              <span className={`text-sm font-semibold ${deviceStatus.connected ? 'text-slate-700' : 'text-slate-400'}`}>
+                {deviceStatus.connected ? "Send member's details to the biometric device" : 'Device not connected'}
+              </span>
+            </label>
+            <p className="text-xs text-slate-400 pl-8">
+              {deviceStatus.connected
+                ? 'Adds them to the device so you can enrol their fingerprint there.'
+                : 'Add them later from Biometric > Quick actions.'}
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-3">
           <Link href="/owner/members"

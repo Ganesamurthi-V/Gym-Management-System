@@ -1,3 +1,4 @@
 node_modules
 .wrangler
 .dev.vars
+security_isseus_in_db.md

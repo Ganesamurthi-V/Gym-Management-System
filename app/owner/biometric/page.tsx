@@ -21,13 +21,13 @@ export default async function BiometricPage() {
       .eq('gym_id', gym.id).order('punched_at', { ascending: false }).limit(1000),
     supabase.from('device_punches')
       .select('id, device_id, pin, punched_at, state, created_at')
-      .eq('gym_id', gym.id).order('punched_at', { ascending: false }).limit(30),
+      .eq('gym_id', gym.id).order('punched_at', { ascending: false }).limit(500), // History dialog lists all of these; the page itself shows the latest 5.
     supabase.from('members')
       .select('id, name, member_number')
       .eq('gym_id', gym.id).order('name', { ascending: true }).limit(3000),
     supabase.from('device_commands')
       .select('id, device_id, kind, pin, state, created_at')
-      .eq('gym_id', gym.id).order('created_at', { ascending: false }).limit(10),
+      .eq('gym_id', gym.id).order('created_at', { ascending: false }).limit(100),
   ])
 
   const failed = [devices, maps, unmapped, recent, members, cmds].find(r => r.error)
@@ -55,7 +55,7 @@ export default async function BiometricPage() {
   // member takes their name off past punches too, and relinking the ID to someone else shows the new name.
   const nameByDevicePin = new Map(linked.map(l => [`${l.deviceId}:${l.pin}`, l.memberName]))
   const punches: PunchRow[] = (recent.data ?? []).map(p => ({
-    id: p.id as string, pin: p.pin as string, punchedAt: p.punched_at as string, state: p.state as string,
+    id: p.id as string, deviceId: p.device_id as string, pin: p.pin as string, punchedAt: p.punched_at as string, state: p.state as string,
     memberName: nameByDevicePin.get(`${p.device_id}:${p.pin}`) ?? null,
   }))
 

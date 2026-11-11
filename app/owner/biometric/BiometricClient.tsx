@@ -1,25 +1,26 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Fingerprint, AlertTriangle, Copy, Check, MoreVertical, ChevronDown, RefreshCw, BookOpen, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deviceStatus, statusLabel, punchStateChip, formatPunchTimeIST, commandStateChip, commandLabel,
-  type DeviceStatus, type ChipTone, type UnmappedPin,
+  filterPunches, filterCommands,
+  type DeviceStatus, type ChipTone, type UnmappedPin, type PunchFilterState, type CommandFilterState,
 } from '@/lib/devices/ui'
 import {
   addDevice, renameDevice, removeDevice, addMemberToDevice, setCommandDialect,
 } from './actions'
 import { MemberPicker } from './MemberPicker'
-import { QuickActions } from './QuickActions'
+import { QuickActions, Modal } from './QuickActions'
 
 export type MemberOption = { id: string; name: string; memberNumber: number | null }
 export type CommandDialect = 'privilege' | 'pri'
 export type DeviceRow = { id: string; name: string; serial: string; lastSeenAt: string | null; commandDialect: CommandDialect; unmapped: UnmappedPin[]; clockSuspect?: boolean }
 export type LinkedRow = { id: string; deviceId: string; pin: string; memberName: string; memberNumber: number | null; blocked: boolean }
 export type CommandRow = { id: string; deviceId: string; kind: string; pin: string; state: string; createdAt: string }
-export type PunchRow = { id: string; pin: string; punchedAt: string; state: string; memberName: string | null }
+export type PunchRow = { id: string; deviceId: string; pin: string; punchedAt: string; state: string; memberName: string | null }
 
 const POLL_MS = 15_000
 
@@ -264,10 +265,7 @@ function ManageOnDevice({ device, members }: { device: DeviceRow; members: Membe
   )
 }
 
-function PunchSection({ punches }: { punches: PunchRow[] }) {
-  if (punches.length === 0) {
-    return <p className="text-sm text-slate-600">No punches yet. Ask a member to punch on the device and it will appear here within a minute.</p>
-  }
+function PunchList({ punches }: { punches: PunchRow[] }) {
   return (
     <ul className="divide-y divide-surface-border">
       {punches.map(p => {
@@ -286,28 +284,116 @@ function PunchSection({ punches }: { punches: PunchRow[] }) {
   )
 }
 
-function CommandSection({ commands, devices }: { commands: CommandRow[]; devices: DeviceRow[] }) {
+function PunchSection({ punches, devices }: { punches: PunchRow[]; devices: DeviceRow[] }) {
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  if (punches.length === 0) {
+    return <p className="text-sm text-slate-600">No punches yet. Ask a member to punch on the device and it will appear here within a minute.</p>
+  }
+  return (
+    <>
+      <PunchList punches={punches.slice(0, LATEST)} />
+      {punches.length > LATEST && <ShowMore onClick={() => setOpen(true)} />}
+      {open && <PunchHistoryDialog punches={punches} devices={devices} onClose={close} />}
+    </>
+  )
+}
+
+function CommandList({ commands, devices }: { commands: CommandRow[]; devices: DeviceRow[] }) {
   const deviceName = new Map(devices.map(d => [d.id, d.name]))
+  return (
+    <ul className="divide-y divide-surface-border">
+      {commands.map(c => {
+        const chip = commandStateChip(c.state)
+        return (
+          <li key={c.id} className="flex items-center justify-between gap-2 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-900 truncate">{commandLabel(c.kind, c.pin)}</p>
+              <p className="text-xs text-slate-500">{devices.length > 1 ? `${deviceName.get(c.deviceId) ?? 'Device'} - ` : ''}{formatPunchTimeIST(c.createdAt)}</p>
+            </div>
+            <span className={cn('shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border', CHIP_TONE[chip.tone])}>{chip.label}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+const PUNCH_FILTERS: { value: PunchFilterState; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'applied', label: punchStateChip('applied').label },
+  { value: 'unmapped', label: punchStateChip('unmapped').label },
+  { value: 'duplicate', label: punchStateChip('duplicate').label },
+  { value: 'stale', label: punchStateChip('stale').label },
+  { value: 'blocked', label: punchStateChip('blocked').label },
+  { value: 'error', label: punchStateChip('error').label },
+]
+const COMMAND_FILTERS: { value: CommandFilterState; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'queued', label: commandStateChip('queued').label },
+  { value: 'sent', label: commandStateChip('sent').label },
+  { value: 'done', label: commandStateChip('done').label },
+  { value: 'failed', label: commandStateChip('failed').label },
+]
+
+function ShowMore({ onClick }: { onClick: () => void }) {
+  return <button type="button" className="text-sm font-medium text-brand-500 min-h-[44px] px-1" onClick={onClick}>Show more</button>
+}
+
+function PunchHistoryDialog({ punches, devices, onClose }: { punches: PunchRow[]; devices: DeviceRow[]; onClose: () => void }) {
+  const [query, setQuery] = useState('')
+  const [state, setState] = useState<PunchFilterState>('all')
+  const [deviceId, setDeviceId] = useState('all')
+  const shown = filterPunches(punches, { query, state, deviceId })
+  return (
+    <Modal title="All punches" onClose={onClose}>
+      <input type="search" className="input-field" placeholder="Search name or device ID" aria-label="Search punches" value={query} onChange={e => setQuery(e.target.value)} />
+      <select className="input-field" aria-label="Filter by status" value={state} onChange={e => setState(e.target.value as PunchFilterState)}>
+        {PUNCH_FILTERS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+      </select>
+      {devices.length > 1 && (
+        <select className="input-field" aria-label="Device" value={deviceId} onChange={e => setDeviceId(e.target.value)}>
+          <option value="all">All devices</option>
+          {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      )}
+      <p className="text-xs text-slate-500" role="status">Showing {shown.length} of {punches.length} punches</p>
+      <PunchList punches={shown} />
+    </Modal>
+  )
+}
+
+function CommandHistoryDialog({ commands, devices, onClose }: { commands: CommandRow[]; devices: DeviceRow[]; onClose: () => void }) {
+  const [query, setQuery] = useState('')
+  const [state, setState] = useState<CommandFilterState>('all')
+  const shown = filterCommands(commands, { query, state })
+  return (
+    <Modal title="All device commands" onClose={onClose}>
+      <input type="search" className="input-field" placeholder="Search commands" aria-label="Search commands" value={query} onChange={e => setQuery(e.target.value)} />
+      <select className="input-field" aria-label="Filter by status" value={state} onChange={e => setState(e.target.value as CommandFilterState)}>
+        {COMMAND_FILTERS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+      </select>
+      <p className="text-xs text-slate-500" role="status">Showing {shown.length} of {commands.length} commands</p>
+      <CommandList commands={shown} devices={devices} />
+    </Modal>
+  )
+}
+
+const LATEST = 5
+
+function CommandSection({ commands, devices }: { commands: CommandRow[]; devices: DeviceRow[] }) {
+  const [open, setOpen] = useState(false)
+  // Stable so Modal's Escape/scroll-lock effect is not torn down on every keystroke in the search box.
+  const close = useCallback(() => setOpen(false), [])
   return (
     <>
       {commands.length === 0 ? (
         <p className="text-sm text-slate-600">Nothing yet. When you add or remove a member on the device, it shows here with its progress.</p>
       ) : (
-        <ul className="divide-y divide-surface-border">
-          {commands.map(c => {
-            const chip = commandStateChip(c.state)
-            return (
-              <li key={c.id} className="flex items-center justify-between gap-2 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate">{commandLabel(c.kind, c.pin)}</p>
-                  <p className="text-xs text-slate-500">{devices.length > 1 ? `${deviceName.get(c.deviceId) ?? 'Device'} - ` : ''}{formatPunchTimeIST(c.createdAt)}</p>
-                </div>
-                <span className={cn('shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border', CHIP_TONE[chip.tone])}>{chip.label}</span>
-              </li>
-            )
-          })}
-        </ul>
+        <CommandList commands={commands.slice(0, LATEST)} devices={devices} />
       )}
+      {commands.length > LATEST && <ShowMore onClick={() => setOpen(true)} />}
+      {open && <CommandHistoryDialog commands={commands} devices={devices} onClose={close} />}
       <p className="text-xs text-slate-500">
         Adding creates the member record only. The device must be online and connected to receive it. Removing deletes the fingerprint or face on the device. Blocking keeps it.
       </p>
@@ -404,9 +490,9 @@ export function BiometricClient({
         </details>
       </Section>
 
-      {/* Phones and tablets: full list here. From lg up the side panel below shows the latest 10 instead. */}
+      {/* Phones and tablets: latest 5 here. From lg up the side panel below shows them instead. */}
       <Section n={2} title="Recent punches" className="lg:hidden">
-        <PunchSection punches={punches} />
+        <PunchSection punches={punches} devices={devices} />
       </Section>
 
       <Section n={3} title="Device commands">
@@ -417,7 +503,7 @@ export function BiometricClient({
       <aside className="hidden lg:block lg:sticky lg:top-4 space-y-5">
         <section className="card bg-surface-card border-surface-border p-4 space-y-3">
           <h2 className="text-base font-semibold text-slate-900">Latest punches</h2>
-          <PunchSection punches={punches.slice(0, 10)} />
+          <PunchSection punches={punches} devices={devices} />
         </section>
         <QuickActions devices={devices} linked={linked} punches={punches} commands={commands} members={members} />
       </aside>

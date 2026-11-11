@@ -15,7 +15,7 @@ type Kind = 'enrol' | 'assign' | 'unlink' | 'remove' | 'block'
 
 const ENROL_POLL_MS = 8_000
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])

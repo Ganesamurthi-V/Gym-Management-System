@@ -1892,6 +1892,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: 'Step 4: Enrol members on the device',
         blocks: [
+          { type: 'p', text: 'Before you enrol anyone, set the device date, time and timezone correctly (India time). A wrong device clock makes punches land on the wrong time or get ignored.' },
           { type: 'p', text: 'Enrol each member\'s fingerprint or face on the device. For the user ID, use the member\'s GymFlow member number, which is the number shown for them in GymFlow. Type the digits only, without the "GF" letters. This lets GymFlow match them to the right member automatically.' },
           { type: 'p', text: 'You can also start from GymFlow. In **Quick actions** on the Biometric page, **Enrol a new member** adds the member to the device and shows the steps to follow at the device, with live status as it goes. Then finish the fingerprint or face enrolment on the device.' },
         ],
@@ -1958,6 +1959,13 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
               'The ID is not matched yet. Open **Quick actions** and use **Assign a device ID to a member**.',
               'The device clock is wrong. Set the device date and time to India time.',
               'The punch was ignored as a double tap, because the same member punched again within a minute.',
+            ],
+          },
+          { type: 'h3', text: 'Punches are missing or on the wrong time' },
+          {
+            type: 'ul',
+            items: [
+              'If the **Biometric** page shows a "Clock looks wrong" note, set the date and time on the device.',
             ],
           },
           { type: 'h3', text: 'The check-in shows the wrong time or day' },

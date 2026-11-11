@@ -1815,12 +1815,37 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'What this does',
         blocks: [
           { type: 'p', text: 'When a member punches on the device, GymFlow records their check-in. The first punch of a session is the check-in and the next punch is the check-out, the same as the [check-in kiosk](/attendance). Morning and evening sessions follow the punch time in India time, and evening starts at 2 pm.' },
+          { type: 'h3', text: 'How it works in 30 seconds' },
+          {
+            type: 'ol',
+            items: [
+              'The member puts a finger or face on the device.',
+              'The device sends the punch over the internet to GymFlow.',
+              'GymFlow matches the device ID to a member and records the attendance.',
+            ],
+          },
           {
             type: 'ul',
             items: [
               'GymFlow receives only the **device ID**, the **punch time** and a short punch code from the device.',
               'Fingerprints and face data stay on the device. GymFlow never receives or stores them.',
-              'The device sends its data over the internet, so you do not need router port forwarding.',
+              'The device connects out to GymFlow, so you do not need router port forwarding.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What you need',
+        blocks: [
+          { type: 'p', text: 'Check this list first. The whole setup takes about 15 minutes.' },
+          {
+            type: 'ul',
+            items: [
+              'A compatible attendance device. See the next section.',
+              'Internet for the device, by LAN cable or Wi-Fi.',
+              'The device **serial number**. It is on a sticker at the back, or in **Menu → System Info → Device Info**.',
+              'Your GymFlow owner login.',
+              'About 15 minutes.',
             ],
           },
         ],
@@ -1828,25 +1853,47 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: 'Supported devices',
         blocks: [
-          { type: 'p', text: 'GymFlow works with attendance devices that have an **ADMS** or **Cloud Server** (push) setting in their communication menu. These come from brands such as ZKTeco, eSSL and compatible makers, with a fingerprint or face reader.' },
-          { type: 'p', text: 'GymFlow uses the standard push protocol, so check before you buy. Ask the dealer to confirm that the exact model has a **Cloud Server Setting** or **ADMS** option and can reach the internet by LAN cable or Wi-Fi. A device that only saves to a USB stick, or only works with a program on a PC, will not connect.' },
-        ],
-      },
-      {
-        heading: 'Before you begin',
-        blocks: [
+          { type: 'p', text: 'GymFlow works with attendance devices that have an **ADMS** or **Cloud Server** (push) setting in their communication menu. This is the setting that lets a device send punches to a server on its own.' },
+          { type: 'p', text: 'ZKTeco lists these attendance (time and attendance) families as supporting it: iClock, IN, KF, MB, P, Silk, S, UA, uFace and VF series, the A, B, T, U and X series, and FaceKiosk and SpeedFace models. eSSL sells models marked ADMS, such as iFace 102, F22, MB160, uFace 302 and X990.' },
+          { type: 'p', text: 'Not every model or firmware version has this setting. Before you buy, ask your dealer to confirm in writing that the exact model supports **ADMS / Cloud Server (push)**.' },
           {
             type: 'ul',
             items: [
-              'The device is powered on and connected to the internet, by LAN cable or Wi-Fi.',
-              'You have the device **serial number**. It is on a sticker at the back, or in **Menu → System Info → Device Info**.',
-              'You can log in to your GymFlow owner account.',
+              'A device that only saves punches to a USB stick, or only works with a program on a PC, will not connect.',
+              'Access-control-only models use a different kind of push and are not covered by this guide.',
             ],
           },
         ],
       },
       {
-        heading: 'Step 1: Add the device in GymFlow',
+        heading: 'Step 1: Connect the device to your network',
+        blocks: [
+          { type: 'p', text: 'The device needs internet. A **LAN cable** plugged into your router is the most reliable choice. Use Wi-Fi only if your model has it.' },
+          { type: 'p', text: 'Most routers give the device an address automatically, so most gyms need nothing more. If the device cannot connect, or you want a fixed address, set it by hand:' },
+          {
+            type: 'ol',
+            items: [
+              'On the device, open **Menu → Comm** (some models call it **Com** or **Communication**), then **Ethernet**.',
+              'Fill in **IP Address**, **Subnet Mask**, **Gateway** and **DNS**.',
+            ],
+          },
+          { type: 'h3', text: 'Find your router address' },
+          {
+            type: 'ul',
+            items: [
+              '**Android:** Settings → Wi-Fi → tap your network → look for **Gateway**.',
+              '**iPhone:** Settings → Wi-Fi → tap the (i) next to your network → look for **Router**.',
+              '**Windows PC:** open Command Prompt, type `ipconfig` and read **Default Gateway**.',
+            ],
+          },
+          { type: 'p', text: 'For a fixed address, copy the first three numbers of the gateway and end with a high number that no other device uses. If the gateway is 192.168.1.1, you can use 192.168.1.200. Set **Subnet Mask** to the value your router shows, usually 255.255.255.0. Put the gateway in **Gateway**.' },
+          { type: 'p', text: 'If the server address in Step 3 does not connect, set **DNS** to `8.8.8.8`.' },
+          { type: 'p', text: 'You do not need to change anything on the router. The device connects out to GymFlow.' },
+          { type: 'p', text: 'To test the network, open http://bio.gymflow.sbs/healthz on a phone that is on the gym Wi-Fi. A blank page means the network can reach GymFlow.' },
+        ],
+      },
+      {
+        heading: 'Step 2: Add the device in GymFlow',
         blocks: [
           {
             type: 'ol',
@@ -1861,7 +1908,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         ],
       },
       {
-        heading: 'Step 2: Enter the server address on the device',
+        heading: 'Step 3: Enter the server address on the device',
         blocks: [
           { type: 'p', text: 'On the device, open **Menu → Com** (some models call it **Comm** or **Communication**), then **ADMS** (some models call it **Cloud Server Setting**), and enter:' },
           {
@@ -1871,12 +1918,12 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
               '**Server Port:** 80',
             ],
           },
-          { type: 'p', text: 'Turn **Enable Domain Name** On, because the address is a name and not a set of numbers, and set **Enable Proxy Server** to Off. If your device supports HTTPS, you can use port 443 instead. Save the settings. If the device cannot find the address, open its Ethernet settings and set the DNS to `8.8.8.8`.' },
+          { type: 'p', text: 'Turn **Enable Domain Name** On, because the address is a name and not a set of numbers, and set **Enable Proxy Server** to Off. If your device supports HTTPS, you can use port 443 instead. Save the settings.' },
           { type: 'p', text: 'The Biometric page shows the same address and port with copy buttons once they are available.' },
         ],
       },
       {
-        heading: 'Step 3: Restart the device and check the connection',
+        heading: 'Step 4: Restart and check the connection',
         blocks: [
           {
             type: 'ol',
@@ -1887,18 +1934,33 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
               'On the device, **Device Info** (on some models, **Device Management** and then **Device Info**) shows **Online** once it is connected.',
             ],
           },
+          { type: 'p', text: 'The status on the Biometric page means:' },
+          {
+            type: 'ul',
+            items: [
+              '**Waiting for device:** the device has not contacted GymFlow yet.',
+              '**Connected, last seen …:** the device checked in recently and is working.',
+              '**Offline since …:** the device was connected before but has not checked in for a while. Check its power and internet.',
+            ],
+          },
         ],
       },
       {
-        heading: 'Step 4: Enrol members on the device',
+        heading: 'Step 5: Set the device date, time and timezone',
         blocks: [
-          { type: 'p', text: 'Before you enrol anyone, set the device date, time and timezone correctly (India time). A wrong device clock makes punches land on the wrong time or get ignored.' },
+          { type: 'p', text: 'On the device, set the date, time and timezone to India time. Do this before you enrol anyone.' },
+          { type: 'p', text: 'A wrong device clock makes punches land on the wrong time or get ignored. If punches are dated in the future, the Biometric page shows a **Clock looks wrong** note. When you see it, correct the date and time on the device.' },
+        ],
+      },
+      {
+        heading: 'Step 6: Enrol members on the device',
+        blocks: [
           { type: 'p', text: 'Enrol each member\'s fingerprint or face on the device. For the user ID, use the member\'s GymFlow member number, which is the number shown for them in GymFlow. Type the digits only, without the "GF" letters. This lets GymFlow match them to the right member automatically.' },
           { type: 'p', text: 'You can also start from GymFlow. In **Quick actions** on the Biometric page, **Enrol a new member** adds the member to the device and shows the steps to follow at the device, with live status as it goes. Then finish the fingerprint or face enrolment on the device.' },
         ],
       },
       {
-        heading: 'Step 5: Match device IDs to members',
+        heading: 'Step 7: Match device IDs to members',
         blocks: [
           { type: 'p', text: 'Open **Quick actions** on the Biometric page and choose **Assign a device ID to a member**.' },
           {
@@ -1912,10 +1974,10 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         ],
       },
       {
-        heading: 'Step 6: Test it',
+        heading: 'Step 8: Test it',
         blocks: [
           { type: 'p', text: 'Ask one member to punch on the device. Then open **Attendance**, or the **Latest punches** list on the Biometric page. The punch shows as **Counted** and the member has a check-in for today.' },
-          { type: 'p', text: 'A second punch by the same member within a minute is ignored on purpose, so that a double tap does not become a check-out.' },
+          { type: 'p', text: 'The first punch is the check-in and the next punch is the check-out. Evening starts at 2 pm India time. A second punch by the same member within a minute is ignored on purpose, so that a double tap does not become a check-out.' },
         ],
       },
       {
@@ -1926,7 +1988,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             type: 'ul',
             items: [
               '**Enrol a new member:** pick a member and tap **Add to device**. A short panel lists the steps to follow at the device and shows the status: Sending to the device, On the device and waiting for the first punch, then Enrolled. The fingerprint or face itself is always enrolled at the device.',
-              '**Assign a device ID to a member:** link an ID that has punched to a member, as in Step 5.',
+              '**Assign a device ID to a member:** link an ID that has punched to a member, as in Step 7.',
               '**Unlink a device ID:** sends an ID back to **Needs matching**. The member stays on the device, nothing is deleted there and past attendance is kept.',
               '**Remove a member:** deletes them from the device, including their fingerprint or face, and unlinks them. If you add them back, they must enrol again.',
               '**Block or unblock a member:** GymFlow ignores their punches, shown as Blocked with no attendance, while they stay on the device. This only affects GymFlow and does not stop a door.',
@@ -1934,7 +1996,21 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           },
           { type: 'p', text: 'The device card also has **Manage members on the device**, where you pick a member and tap **Add to device**. Under **Advanced**, **Command style** can be switched from Standard to Older devices if adding members fails.' },
           { type: 'p', text: 'The device picks up each add or remove the next time it checks in, which is about a minute. The **Device commands** list shows the status of each one: Waiting for device, Sent, Done or Failed (try again).' },
-          { type: 'p', text: 'Members you add in GymFlow are sent to the device automatically. Members whose membership expires are removed from the device, and you can add them again when they renew.' },
+          { type: 'p', text: 'Members you add in GymFlow are sent to the device automatically. Members whose membership expires are removed from the device, and you can add them again when they renew. This depends on the device being online, so a member may need a few minutes, or a second try, before they can punch.' },
+        ],
+      },
+      {
+        heading: 'Keeping your device safe',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Set an **admin password** on the device. Anyone who can open its admin menu can enrol a fingerprint under any ID, so only you should be able to.',
+              'Keep the serial number private. It identifies your device to GymFlow.',
+              'A blocked member can still touch the device. GymFlow simply ignores their punches.',
+              'The device does not open doors. GymFlow records attendance only.',
+            ],
+          },
         ],
       },
       {
@@ -1945,10 +2021,10 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             type: 'ul',
             items: [
               'The serial number in GymFlow matches the one on the device exactly.',
-              'The device has internet. Try opening the same network on a phone.',
-              'The server address and port are right.',
-              'The Domain Name option is on.',
-              'You restarted the device after saving the settings.',
+              'The device has internet. Run the network test in Step 1.',
+              'The server address and port are right (Step 3).',
+              '**Enable Domain Name** is on and **Enable Proxy Server** is off.',
+              'You restarted the device after saving the settings (Step 4).',
             ],
           },
           { type: 'h3', text: 'A member punches but nothing appears' },
@@ -1956,8 +2032,8 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             type: 'ul',
             items: [
               'The status on the Biometric page is **Connected**.',
-              'The ID is not matched yet. Open **Quick actions** and use **Assign a device ID to a member**.',
-              'The device clock is wrong. Set the device date and time to India time.',
+              'The ID is not matched yet. Open **Quick actions** and use **Assign a device ID to a member** (Step 7).',
+              'The device clock is wrong. Set the device date and time to India time (Step 5).',
               'The punch was ignored as a double tap, because the same member punched again within a minute.',
             ],
           },
@@ -1966,20 +2042,39 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             type: 'ul',
             items: [
               'If the **Biometric** page shows a "Clock looks wrong" note, set the date and time on the device.',
+              'GymFlow uses the time the device reports for each punch, so the device date, time and timezone must be India time (Step 5).',
             ],
           },
-          { type: 'h3', text: 'The check-in shows the wrong time or day' },
+          { type: 'h3', text: 'A command shows "Failed, try again"' },
           {
             type: 'ul',
             items: [
-              'The device clock is wrong. Set the date and time on the device. GymFlow uses the time the device reports for each punch.',
+              'The device may be offline or not connected. Wait until the status is **Connected**, then try again.',
+              'If adding members keeps failing, open **Advanced** and switch **Command style** to Older devices.',
+            ],
+          },
+          { type: 'h3', text: 'A member was added but cannot punch' },
+          {
+            type: 'ul',
+            items: [
+              'Their fingerprint or face is not enrolled on the device yet. Finish the enrolment at the device (Step 6).',
+            ],
+          },
+          { type: 'h3', text: 'The device says verified but there is no attendance' },
+          {
+            type: 'ul',
+            items: [
+              'The member is blocked in GymFlow.',
+              'The punch was ignored as a double tap.',
+              'The ID is not linked to a member yet (Step 7).',
             ],
           },
           { type: 'h3', text: 'You have two devices' },
           {
             type: 'ul',
             items: [
-              'The Biometric page can list more than one device. Add each one with its own serial number.',
+              'Add each device with its own serial number (Step 2).',
+              '**Quick actions** has a device picker, so choose the device you want before you enrol or assign.',
             ],
           },
         ],
@@ -1994,7 +2089,31 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           { type: 'h3', text: 'Can I use the kiosk as well?' },
           { type: 'p', text: 'Yes. Both record attendance. See [how to track gym attendance](/gym-attendance-tracking-guide) for the kiosk and the weekly routine.' },
           { type: 'h3', text: 'Do I need a static IP or port forwarding?' },
-          { type: 'p', text: 'No. The device connects out to GymFlow, so your router needs no changes.' },
+          { type: 'p', text: 'No. The device connects out to GymFlow, so your router needs no changes. A fixed address is optional and only useful if the device cannot connect.' },
+          { type: 'h3', text: 'What happens if the internet is down?' },
+          { type: 'p', text: 'The device keeps the punches it takes and sends them later, once it is online again.' },
+          { type: 'h3', text: 'Do I need to buy anything from GymFlow?' },
+          { type: 'p', text: 'No. You need a compatible device from your dealer. GymFlow connects to it.' },
+          { type: 'h3', text: 'Can members use cards or PINs?' },
+          { type: 'p', text: 'GymFlow records whatever the device accepts as a punch for an enrolled ID. Card or PIN modes work only if your device sends them as punches, so confirm this on your device.' },
+          { type: 'h3', text: 'How many devices can I add?' },
+          { type: 'p', text: 'Add each device with its own serial number. Limits may apply to your plan.' },
+          { type: 'h3', text: 'Is my data safe?' },
+          { type: 'p', text: 'The device sends only the ID, the time and a short code over the internet. Plain HTTP on port 80 is not encrypted, so use port 443 if your device supports HTTPS.' },
+        ],
+      },
+      {
+        heading: 'Need help?',
+        blocks: [
+          { type: 'p', text: 'Write to [support@gymflow.sbs](mailto:support@gymflow.sbs) or message +91 93848 86895 on WhatsApp. We reply within 24 hours. Please send:' },
+          {
+            type: 'ul',
+            items: [
+              'The device model and, if you know it, the firmware version.',
+              'A short description of what the **Biometric** page shows, such as the status and any note on it.',
+            ],
+          },
+          { type: 'p', text: 'Also see [how to track gym attendance](/gym-attendance-tracking-guide) and the [attendance feature](/attendance).' },
         ],
       },
     ],

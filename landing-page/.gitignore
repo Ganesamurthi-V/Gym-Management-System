@@ -35,3 +35,4 @@ public/feature/*.png
 
 # Full-size tutorial recordings (4K, 100+ MB). The site serves the compressed copies in public/features/<slug>/.
 public/video/features/
+public/video/gymflow-attendance-tutorial.mp4

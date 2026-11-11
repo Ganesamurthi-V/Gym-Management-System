@@ -195,7 +195,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardTitle: 'Member management',
     cardText: 'Member records, plans, expiry dates, search and filters, renewals and one-tap WhatsApp.',
     icon: 'users',
-    related: ['fees-and-dues', 'member-app', 'import-export', 'gym-membership-renewal-reminders'],
+    related: ['fees-and-dues', 'attendance', 'member-app', 'import-export', 'gym-membership-renewal-reminders'],
     tutorial: {
       ...tutorialSlot('members', 'How member management works in GymFlow'),
       src: '/features/members/tutorial.mp4',
@@ -396,7 +396,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     ogImage: '/og/attendance.jpg',
     ogAlt: 'GymFlow card: Attendance tracking with a front-desk kiosk.',
     title: 'Gym Attendance Tracking Software and Kiosk — GymFlow',
-    description: 'Gym attendance software with a front-desk check-in kiosk: members enter their ID, you get check-in and check-out times, a searchable log and Excel export.',
+    description: 'Gym attendance tracker and software with a front-desk check-in kiosk: members enter their ID, you get check-in and check-out times, a searchable log and Excel export.',
     h1: 'Gym attendance tracking software with a check-in kiosk',
     eyebrow: 'Attendance tracking',
     intro: 'GymFlow tracks gym attendance with a front-desk check-in kiosk. Open the attendance page on a tablet or phone at your desk, members type their member ID, and GymFlow records the visit, the session and how long they stayed.',
@@ -405,7 +405,15 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardText: 'A check-in kiosk for your front desk, with check-out times and a full attendance log.',
     icon: 'calendar-check',
     related: ['member-app', 'reports', 'members', 'gym-attendance-tracking-guide'],
-    tutorial: tutorialSlot('attendance', 'How the attendance kiosk works in GymFlow'),
+    tutorial: {
+      ...tutorialSlot('attendance', 'How the attendance kiosk works in GymFlow'),
+      src: '/features/attendance/tutorial.mp4',
+      width: 1920,
+      height: 1080,
+      description: 'A walkthrough of the GymFlow attendance kiosk: finding it in the sidebar, the Morning and Evening sessions, and checking members in and out.',
+      uploadDate: '2026-11-11',
+      duration: 'PT1M50S',
+    },
     screenshots: [],
     sections: [
       {

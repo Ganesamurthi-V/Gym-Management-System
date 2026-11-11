@@ -62,7 +62,7 @@ describe('GET cdata', () => {
     const body = await res.text()
     expect(body.split('\n')[0]).toBe('GET OPTION FROM: TEST123')
     expect(body).toContain('Delay=45')
-    expect(body).toContain('TimeZone=330')
+    expect(body).not.toContain('TimeZone')
     expect(body).toContain('ATTPHOTOStamp=9999')
     expect(body).toContain('OPERLOGStamp=9999')
     expect(res.headers.get('server')).toBeNull()
@@ -283,6 +283,45 @@ describe('negative cache for unregistered serials', () => {
   })
 })
 
+describe('TimeZone opt-in', () => {
+  const cfg = async (e: Env) =>
+    (await (await worker.fetch(new Request(`${BASE}/iclock/cdata?SN=A1`), e, makeCtx().ctx)).text()).split('\n')
+  it('has no TimeZone line by default', async () => {
+    expect((await cfg(env)).some((l) => l.startsWith('TimeZone'))).toBe(false)
+  })
+  it('DEVICE_TZ_HOURS=5 adds TimeZone=5', async () => {
+    expect(await cfg({ ...env, DEVICE_TZ_HOURS: '5' })).toContain('TimeZone=5')
+  })
+  it.each(['abc', '5.5', '99', ''])('ignores invalid value %j', async (v) => {
+    expect((await cfg({ ...env, DEVICE_TZ_HOURS: v })).some((l) => l.startsWith('TimeZone'))).toBe(false)
+  })
+})
+
+describe('clock drift log', () => {
+  const wall = (offsetMin: number) =>
+    new Date(Date.now() + 330 * 60000 + offsetMin * 60000).toISOString().slice(0, 19).replace('T', ' ')
+  const drift = () =>
+    vi.mocked(console.log).mock.calls.map((c) => JSON.parse(String(c[0]))).find((j) => j.msg === 'attlog')!.newest_vs_now_min
+  const line = (pin: string, t: string) => `${pin}\t${t}\t0\t1\t0\r\n`
+  it('logs 0 when the newest punch equals server local now', async () => {
+    await call('/iclock/cdata?SN=A1&table=ATTLOG', { method: 'POST', body: line('77', wall(0)) })
+    expect(Math.abs(drift())).toBeLessThanOrEqual(1)
+  })
+  it('logs about 150 for a device clock 150 minutes ahead, using the newest punch', async () => {
+    const body = line('77', wall(150)) + line('78', wall(-600))
+    await call('/iclock/cdata?SN=A1&table=ATTLOG', { method: 'POST', body })
+    expect(Math.abs(drift() - 150)).toBeLessThanOrEqual(1)
+  })
+  it('never logs the punch string or the PIN', async () => {
+    const t = wall(150)
+    await call('/iclock/cdata?SN=A1&table=ATTLOG', { method: 'POST', body: line('7712', t) })
+    for (const c of vi.mocked(console.log).mock.calls) {
+      expect(String(c[0])).not.toContain(t)
+      expect(String(c[0])).not.toContain('7712')
+    }
+  })
+})
+
 describe('logging', () => {
   it('logs a short sha256 tag instead of the serial, never pins or bodies', async () => {
     const sn = 'SERIAL99'
@@ -434,7 +473,7 @@ describe('protocol details', () => {
     const lines = body.split('\n')
     expect(lines.map((l) => l.split('=')[0])).toEqual([
       'GET OPTION FROM: A1', 'Stamp', 'OpStamp', 'ATTLOGStamp', 'OPERLOGStamp', 'ATTPHOTOStamp', 'ErrorDelay',
-      'Delay', 'TransTimes', 'TransInterval', 'TransFlag', 'TimeZone', 'Realtime', 'Encrypt',
+      'Delay', 'TransTimes', 'TransInterval', 'TransFlag', 'Realtime', 'Encrypt',
     ])
     expect(lines).toContain('Stamp=9999')
     expect(lines).toContain('ErrorDelay=60')

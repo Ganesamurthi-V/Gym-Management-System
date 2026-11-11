@@ -12,6 +12,11 @@ export interface Env {
   // Value of the handshake TransFlag line. Older firmware may need the bit-string form (e.g. 1111000000) instead of
   // the word form; unverified on real hardware.
   TRANS_FLAG?: string
+  // Opt-in handshake `TimeZone=<whole hours>` line (integer -12..14). Not sent by default: the only open-source server
+  // that sends a TimeZone key uses whole hours, the hardware-tested one never sends it, and devices differ, so a wrong
+  // value could shift a device clock. Unverified on real hardware. (DEVICE_TZ_MINUTES is separate: it only converts
+  // epoch punch times.)
+  DEVICE_TZ_HOURS?: string
 }
 
 const SN_RE = /^[A-Za-z0-9_-]{1,64}$/
@@ -36,6 +41,27 @@ function deviceTz(env: Env): number {
   return Number.isInteger(t) && t >= -720 && t <= 840 ? t : 330
 }
 
+function tzLine(env: Env): string[] {
+  const raw = env.DEVICE_TZ_HOURS?.trim()
+  if (!raw || !/^-?\d+$/.test(raw)) return []
+  const h = Number(raw)
+  return h >= -12 && h <= 14 ? [`TimeZone=${h}`] : []
+}
+
+// Whole minutes the newest punch is ahead of the server's clock, both as naive IST-style wall clocks. Large positive
+// means the device clock is ahead; large negative is normal for a resent backlog. Number only, so nothing sensitive logs.
+function newestVsNowMin(punches: Punch[], env: Env): number | undefined {
+  let newest = -Infinity
+  for (const p of punches) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(p.time)
+    if (!m) continue
+    const t = Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!)
+    if (t > newest) newest = t
+  }
+  if (!Number.isFinite(newest)) return undefined
+  return Math.round((newest - (Date.now() + deviceTz(env) * 60000)) / 60000)
+}
+
 // Format follows open-source ADMS servers tested on real devices (saifulcoder/adms-server-ZKTeco on an X100-C,
 // athwari/laravel-zkteco-adms-server). ZKTeco does not publish the spec, so acceptance per model is unverified.
 function configText(sn: string, env: Env): string {
@@ -54,7 +80,7 @@ function configText(sn: string, env: Env): string {
     'TransTimes=00:00;14:05',
     'TransInterval=1',
     `TransFlag=${env.TRANS_FLAG?.trim() || 'TransData AttLog'}`,
-    `TimeZone=${deviceTz(env)}`,
+    ...tzLine(env),
     'Realtime=1',
     'Encrypt=0',
   ].join('\n')
@@ -317,7 +343,7 @@ export default {
       // A new dialect would otherwise be lost silently; the reply stays OK so the device does not retry forever.
       console.warn(JSON.stringify({ msg: 'no parsable lines', sn: await serialTag(sn), ...fieldNames(body) }))
     }
-    console.log(JSON.stringify({ msg: 'attlog', sn: await serialTag(sn), accepted: punches.length, skipped }))
+    console.log(JSON.stringify({ msg: 'attlog', sn: await serialTag(sn), accepted: punches.length, skipped, ...(punches.length > 0 ? { newest_vs_now_min: newestVsNowMin(punches, env) } : {}) }))
     return text(`OK: ${punches.length}`)
   },
 }

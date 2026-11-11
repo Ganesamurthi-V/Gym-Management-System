@@ -121,6 +121,26 @@ the simulator against `bio.gymflow.sbs`.
 The live receiver is `worker/` (Worker `gymflow-bio`); the Node server above is the legacy implementation. Both share
 `src/parser.ts`.
 
+### What is confirmed and what is not (research of 2026-11-11)
+
+Confirmed by tested open-source code and consistent across sources:
+
+- ATTLOG is tab separated: PIN, time, status, verify, workcode (extra columns allowed). The reply is `OK: <n>`.
+- Commands: `C:<id>:DATA UPDATE USERINFO ...` and `C:<id>:DATA DELETE USERINFO PIN=..` (the full word DELETE; the old
+  `USER ADD` / `USER DEL` return -1002).
+- The `devicecmd` body is `ID=<id>&Return=<code>&CMD=<name>`, batched one per line. `Return` 0 or more means success.
+
+Unverified, or sources disagree:
+
+- `Privilege` (hardware-tested project) versus `Pri` (other servers and the device's own user output). We default to
+  `Privilege` and have an "older devices" switch.
+- Handshake key families (`Stamp`/`OpStamp`/`PhotoStamp` versus `ATTLOGStamp`/`OPERLOGStamp`, and `TransFlag` as a bit
+  string versus named flags). Ours is a hybrid and unproven.
+- The `TimeZone` key. It is now opt-in through `DEVICE_TZ_HOURS`.
+- A claim that some firmware adds 8 hours from the HTTP `Date` header (single author, no capture).
+- A per-request communication key. No evidence any device sends one; do not rely on it.
+- No real captured device traffic was found anywhere.
+
 ### Supported formats and sources
 
 ZKTeco does not publish the ADMS/iclock protocol. Formats follow open-source servers confirmed on real devices:
@@ -129,7 +149,7 @@ tanemrahman/zkteco-adms.
 
 - Handshake (`GET /iclock/cdata`, `/iclock/push`): `GET OPTION FROM: <SN>` then `Stamp=9999`, `OpStamp=<unix>`,
   `ATTLOGStamp`, `OPERLOGStamp`, `ATTPHOTOStamp`, `ErrorDelay`, `Delay`, `TransTimes`, `TransInterval`, `TransFlag`,
-  `TimeZone`, `Realtime`, `Encrypt`.
+  `Realtime`, `Encrypt`. `TimeZone` is sent only when `DEVICE_TZ_HOURS` is set.
 - ATTLOG lines: tab-separated `PIN, time, status, verify, workcode` (primary), or `key=value` with
   case-insensitive aliases (pin/userid/badgenumber, time/datetime/checktime, verifytype/verified/verifymode/verify,
   status/checktype). A 10-digit Unix epoch time is converted to local time using `DEVICE_TZ_MINUTES`.
@@ -142,7 +162,8 @@ tanemrahman/zkteco-adms.
 | Var | Default | Notes |
 |-----|---------|-------|
 | `POLL_DELAY_SECONDS` | 60 | Sent as `Delay` |
-| `DEVICE_TZ_MINUTES` | 330 | Sent as `TimeZone`; also the offset for epoch times |
+| `DEVICE_TZ_MINUTES` | 330 | Offset for converting epoch punch times and for the clock-drift log; not sent to the device |
+| `DEVICE_TZ_HOURS` | unset | Opt-in. Whole hours -12 to 14 sent as `TimeZone=<n>`; no line when unset or invalid. Unverified on hardware |
 | `TRANS_FLAG` | `TransData AttLog` | Older firmware may need the bit-string form such as `1111000000` |
 
 ### Command relay

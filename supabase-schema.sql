@@ -1283,10 +1283,8 @@ CREATE INDEX IF NOT EXISTS idx_gym_upi_config_gym_id ON gym_upi_config(gym_id);
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_gym_whatsapp_config_gym_id ON gym_whatsapp_config(gym_id);
-
-CREATE INDEX IF NOT EXISTS idx_gym_whatsapp_config_phone_number_id ON gym_whatsapp_config(phone_number_id);
-
-CREATE INDEX IF NOT EXISTS idx_gym_whatsapp_config_enabled ON gym_whatsapp_config(enabled);
+-- phone_number_id is served by its UNIQUE constraint's index; an index on the
+-- boolean `enabled` was never selective on a one-row-per-gym table.
 
 -- ────────────────────────────────────────────────────────────
 -- indexes on gyms
@@ -1314,8 +1312,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_gyms_owner_id ON public.gyms(owner_id);
 -- indexes on inventory
 -- ────────────────────────────────────────────────────────────
 
--- inventory
-CREATE INDEX IF NOT EXISTS idx_inventory_gym_id ON inventory(gym_id);
+-- inventory (gym_id lookups use idx_inventory_category, which leads with gym_id)
 
 CREATE INDEX IF NOT EXISTS idx_inventory_category ON inventory(gym_id, category);
 
@@ -1361,7 +1358,7 @@ CREATE INDEX IF NOT EXISTS idx_gamification_awards_member_id ON gamification_awa
 CREATE INDEX IF NOT EXISTS idx_gym_events_gym_active ON gym_events(gym_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_gym_event_completions_gym_id    ON gym_event_completions(gym_id);
 CREATE INDEX IF NOT EXISTS idx_gym_event_completions_member_id ON gym_event_completions(member_id);
-CREATE INDEX IF NOT EXISTS idx_gym_event_completions_event_id  ON gym_event_completions(event_id);
+-- event_id lookups use the UNIQUE (event_id, member_id) constraint's index.
 
 -- ────────────────────────────────────────────────────────────
 -- indexes on gym_notices
@@ -1543,17 +1540,11 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(cre
 
 -- ── Indexes ────────────────────────────────────────────────────────────────
 
-CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_member_id
-  ON whatsapp_automation_logs(member_id);
-
+-- No single-column member_id / template_name / cycle_key indexes: every query
+-- filters member_id + template_name (+ cycle_key) or gym_id first, which
+-- idx_wa_auto_logs_member_template_sent and idx_wa_auto_logs_gym_id serve.
 CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_gym_id
   ON whatsapp_automation_logs(gym_id);
-
-CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_template
-  ON whatsapp_automation_logs(template_name);
-
-CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_cycle_key
-  ON whatsapp_automation_logs(cycle_key);
 
 -- Fast "did we already send today?" check
 CREATE INDEX IF NOT EXISTS idx_wa_auto_logs_sent_at
@@ -1621,13 +1612,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_wa_queue_active_dedup
 -- indexes on whatsapp_webhook_logs
 -- ────────────────────────────────────────────────────────────
 
--- Indexes for webhook logs
-CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_request_id ON whatsapp_webhook_logs(request_id);
-
-CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_phone_number_id ON whatsapp_webhook_logs(phone_number_id);
-
-CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_event_type ON whatsapp_webhook_logs(event_type);
-
+-- Indexes for webhook logs. Insert-only debug rows; reads filter on processed +
+-- created_at, so request_id / phone_number_id / event_type are not indexed.
 CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_created_at ON whatsapp_webhook_logs(created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_webhook_logs_processed ON whatsapp_webhook_logs(processed);
@@ -1644,6 +1630,43 @@ CREATE INDEX IF NOT EXISTS idx_workout_programs_created ON workout_programs(gym_
 
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_recipient_window_first_sent ON whatsapp_recipient_window (first_sent_at);
+
+-- ────────────────────────────────────────────────────────────
+-- Covering indexes for foreign keys
+-- ────────────────────────────────────────────────────────────
+-- One per FK, columns in FK order, so deleting a parent (member, device, gym, …)
+-- and the tenant-check joins do not scan the child table.
+CREATE INDEX IF NOT EXISTS idx_attendance_member_gym                 ON attendance (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_devices_gym_id             ON attendance_devices (gym_id);
+CREATE INDEX IF NOT EXISTS idx_device_commands_device_gym            ON device_commands (device_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_device_commands_member_gym            ON device_commands (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_device_punches_device_gym             ON device_punches (device_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_device_user_map_device_gym            ON device_user_map (device_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_device_user_map_member_gym            ON device_user_map (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_due_payments_member_gym               ON due_payments (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_email_threads_ai_draft_message_id     ON email_threads (ai_draft_message_id);
+CREATE INDEX IF NOT EXISTS idx_email_threads_gym_id                  ON email_threads (gym_id);
+CREATE INDEX IF NOT EXISTS idx_gamification_awards_member_gym        ON gamification_awards (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_gym_event_completions_event_gym       ON gym_event_completions (event_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_gym_event_completions_member_gym      ON gym_event_completions (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_sales_item_gym              ON inventory_sales (inventory_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_achievements_member_gym        ON member_achievements (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_body_logs_gym_id               ON member_body_logs (gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_body_logs_member_gym           ON member_body_logs (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_body_profile_gym_id            ON member_body_profile (gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_body_profile_member_gym        ON member_body_profile (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_portal_activity_member_gym     ON member_portal_activity (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_push_subscriptions_member_gym  ON member_push_subscriptions (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_renewal_requests_due_payment   ON member_renewal_requests (due_payment_id);
+CREATE INDEX IF NOT EXISTS idx_member_renewal_requests_member_gym    ON member_renewal_requests (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_renewal_requests_membership    ON member_renewal_requests (membership_id);
+CREATE INDEX IF NOT EXISTS idx_member_workout_sessions_gym_id        ON member_workout_sessions (gym_id);
+CREATE INDEX IF NOT EXISTS idx_member_workout_sessions_member_gym    ON member_workout_sessions (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_memberships_member_gym                ON memberships (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_gym_id                  ON notifications (gym_id);
+CREATE INDEX IF NOT EXISTS idx_program_assignments_assigned_by       ON program_assignments (assigned_by);
+CREATE INDEX IF NOT EXISTS idx_program_assignments_member_gym        ON program_assignments (member_id, gym_id);
+CREATE INDEX IF NOT EXISTS idx_program_assignments_program_gym       ON program_assignments (program_id, gym_id);
 
 
 -- ############################################################
@@ -3754,6 +3777,8 @@ $$;
 -- Owner dashboard and reports
 -- ────────────────────────────────────────────────────────────
 
+-- search_path is public, not '': the body uses unqualified table names, so '' made
+-- every query fail and the dashboard silently fell back to its slow path.
 CREATE OR REPLACE FUNCTION get_gym_dashboard(p_gym_id UUID, p_today DATE)
 RETURNS JSON AS $$
 DECLARE
@@ -3849,7 +3874,7 @@ BEGIN
     'expiringMembers', v_expiring_members
   );
 END;
-$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = '';
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp;
 
 -- get_gym_reports — everything the owner Reports page (/owner/reports) shows, in one round trip.
 --
@@ -4454,7 +4479,7 @@ BEGIN
   DELETE FROM whatsapp_webhook_logs
   WHERE created_at < NOW() - INTERVAL '7 days';
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
 
 -- ────────────────────────────────────────────────────────────
 -- Trigger functions — column guards
@@ -4810,7 +4835,7 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
 
 -- ── 6. Trigger to auto-update usage stats on membership insert ──
 
@@ -5778,10 +5803,11 @@ COMMENT ON VIEW whatsapp_conversations IS 'Aggregated view of conversations by c
 --      member-scoped read policies where the member PWA needs them.
 --   2. Platform tables (notifications, device_push_tokens, app_config,
 --      email_threads, email_messages, whatsapp_webhook_logs,
---      gym_whatsapp_config) — RLS on with NO policies, which denies anon and
---      authenticated outright. The service role bypasses RLS and is the only
---      reader and writer. Section 9 revokes their privileges as well, so the
---      denial does not depend on the absence of a policy alone.
+--      gym_whatsapp_config, and the other service-role-only tables listed at the
+--      end of this section) — RLS on with an explicit deny-all policy for anon and
+--      authenticated. The service role bypasses RLS and is the only reader and
+--      writer. Section 9 revokes their privileges as well, so the denial does not
+--      depend on RLS alone.
 --   3. platform_settings — readable by any signed-in owner (they must know
 --      where to pay), writable only by the service role.
 
@@ -5861,17 +5887,17 @@ DROP POLICY IF EXISTS "Gym owners can read their admin messages" ON admin_messag
 CREATE POLICY "Gym owners can read their admin messages"
   ON admin_messages FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can mark messages as read" ON admin_messages;
 CREATE POLICY "Gym owners can mark messages as read"
   ON admin_messages FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = (SELECT auth.uid()))
   )
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = admin_messages.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 -- ────────────────────────────────────────────────────────────
@@ -5881,26 +5907,26 @@ CREATE POLICY "Gym owners can mark messages as read"
 DROP POLICY IF EXISTS "Gym owners can view attendance" ON attendance;
 CREATE POLICY "Gym owners can view attendance"
   ON attendance FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert attendance" ON attendance;
 CREATE POLICY "Gym owners can insert attendance"
   ON attendance FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete attendance" ON attendance;
 CREATE POLICY "Gym owners can delete attendance"
   ON attendance FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can update attendance" ON attendance;
 CREATE POLICY "Gym owners can update attendance"
   ON attendance FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = (SELECT auth.uid()))
   )
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = attendance.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Members can view their own attendance" ON public.attendance;
@@ -5924,23 +5950,23 @@ CREATE POLICY "Members can view their own attendance"
 DROP POLICY IF EXISTS "Gym owners can view due payments" ON due_payments;
 CREATE POLICY "Gym owners can view due payments"
   ON due_payments FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert due payments" ON due_payments;
 CREATE POLICY "Gym owners can insert due payments"
   ON due_payments FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can update due payments" ON due_payments;
 CREATE POLICY "Gym owners can update due payments"
   ON due_payments FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete due payments" ON due_payments;
 CREATE POLICY "Gym owners can delete due payments"
   ON due_payments FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = due_payments.gym_id AND owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gamification_awards
@@ -5949,17 +5975,17 @@ CREATE POLICY "Gym owners can delete due payments"
 DROP POLICY IF EXISTS "Gym owners can view gamification awards" ON gamification_awards;
 CREATE POLICY "Gym owners can view gamification awards"
   ON gamification_awards FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gamification_awards.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gamification_awards.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert gamification awards" ON gamification_awards;
 CREATE POLICY "Gym owners can insert gamification awards"
   ON gamification_awards FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = gamification_awards.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = gamification_awards.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete gamification awards" ON gamification_awards;
 CREATE POLICY "Gym owners can delete gamification awards"
   ON gamification_awards FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gamification_awards.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = gamification_awards.gym_id AND owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_gamification_settings
@@ -5971,18 +5997,18 @@ CREATE POLICY "Gym owners can delete gamification awards"
 DROP POLICY IF EXISTS "Owner can read own gamification settings" ON gym_gamification_settings;
 CREATE POLICY "Owner can read own gamification settings"
   ON gym_gamification_settings FOR SELECT
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can insert own gamification settings" ON gym_gamification_settings;
 CREATE POLICY "Owner can insert own gamification settings"
   ON gym_gamification_settings FOR INSERT
-  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can update own gamification settings" ON gym_gamification_settings;
 CREATE POLICY "Owner can update own gamification settings"
   ON gym_gamification_settings FOR UPDATE
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()))
-  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())))
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_events
@@ -5992,23 +6018,23 @@ CREATE POLICY "Owner can update own gamification settings"
 DROP POLICY IF EXISTS "Owner can read own gym events" ON gym_events;
 CREATE POLICY "Owner can read own gym events"
   ON gym_events FOR SELECT
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can insert own gym events" ON gym_events;
 CREATE POLICY "Owner can insert own gym events"
   ON gym_events FOR INSERT
-  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can update own gym events" ON gym_events;
 CREATE POLICY "Owner can update own gym events"
   ON gym_events FOR UPDATE
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()))
-  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())))
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can delete own gym events" ON gym_events;
 CREATE POLICY "Owner can delete own gym events"
   ON gym_events FOR DELETE
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_event_completions
@@ -6019,13 +6045,13 @@ CREATE POLICY "Owner can delete own gym events"
 DROP POLICY IF EXISTS "Owner can read own event completions" ON gym_event_completions;
 CREATE POLICY "Owner can read own event completions"
   ON gym_event_completions FOR SELECT
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can update own event completions" ON gym_event_completions;
 CREATE POLICY "Owner can update own event completions"
   ON gym_event_completions FOR UPDATE
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()))
-  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())))
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_notices
@@ -6069,18 +6095,18 @@ CREATE POLICY "Members can view their gym notices"
 DROP POLICY IF EXISTS "Owner can read own plan prices" ON gym_plan_prices;
 CREATE POLICY "Owner can read own plan prices"
   ON gym_plan_prices FOR SELECT
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can upsert own plan prices" ON gym_plan_prices;
 CREATE POLICY "Owner can upsert own plan prices"
   ON gym_plan_prices FOR INSERT
-  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Owner can update own plan prices" ON gym_plan_prices;
 CREATE POLICY "Owner can update own plan prices"
   ON gym_plan_prices FOR UPDATE
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()))
-  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())))
+  WITH CHECK (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gym_upi_config
@@ -6090,31 +6116,31 @@ DROP POLICY IF EXISTS "Gym owners can view their UPI config" ON gym_upi_config;
 CREATE POLICY "Gym owners can view their UPI config"
   ON gym_upi_config FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can insert their UPI config" ON gym_upi_config;
 CREATE POLICY "Gym owners can insert their UPI config"
   ON gym_upi_config FOR INSERT
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can update their UPI config" ON gym_upi_config;
 CREATE POLICY "Gym owners can update their UPI config"
   ON gym_upi_config FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = (SELECT auth.uid()))
   )
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can delete their UPI config" ON gym_upi_config;
 CREATE POLICY "Gym owners can delete their UPI config"
   ON gym_upi_config FOR DELETE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = gym_upi_config.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 -- ────────────────────────────────────────────────────────────
@@ -6124,7 +6150,7 @@ CREATE POLICY "Gym owners can delete their UPI config"
 DROP POLICY IF EXISTS "Gym owners can view own usage stats" ON gym_usage_stats;
 CREATE POLICY "Gym owners can view own usage stats"
   ON gym_usage_stats FOR SELECT
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on gyms
@@ -6133,18 +6159,18 @@ CREATE POLICY "Gym owners can view own usage stats"
 DROP POLICY IF EXISTS "Users can view their own gym" ON gyms;
 CREATE POLICY "Users can view their own gym"
   ON gyms FOR SELECT
-  USING (owner_id = auth.uid());
+  USING (owner_id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS "Users can insert their own gym" ON gyms;
 CREATE POLICY "Users can insert their own gym"
   ON gyms FOR INSERT
-  WITH CHECK (owner_id = auth.uid());
+  WITH CHECK (owner_id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS "Users can update their own gym" ON gyms;
 CREATE POLICY "Users can update their own gym"
   ON gyms FOR UPDATE
-  USING (owner_id = auth.uid())
-  WITH CHECK (owner_id = auth.uid());
+  USING (owner_id = (SELECT auth.uid()))
+  WITH CHECK (owner_id = (SELECT auth.uid()));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on inventory
@@ -6153,23 +6179,23 @@ CREATE POLICY "Users can update their own gym"
 DROP POLICY IF EXISTS "Gym owners can view their inventory" ON inventory;
 CREATE POLICY "Gym owners can view their inventory"
   ON inventory FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert inventory" ON inventory;
 CREATE POLICY "Gym owners can insert inventory"
   ON inventory FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can update inventory" ON inventory;
 CREATE POLICY "Gym owners can update inventory"
   ON inventory FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete inventory" ON inventory;
 CREATE POLICY "Gym owners can delete inventory"
   ON inventory FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory.gym_id AND owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on inventory_sales
@@ -6178,23 +6204,23 @@ CREATE POLICY "Gym owners can delete inventory"
 DROP POLICY IF EXISTS "Gym owners can view their inventory sales" ON inventory_sales;
 CREATE POLICY "Gym owners can view their inventory sales"
   ON inventory_sales FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert inventory sales" ON inventory_sales;
 CREATE POLICY "Gym owners can insert inventory sales"
   ON inventory_sales FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete inventory sales" ON inventory_sales;
 CREATE POLICY "Gym owners can delete inventory sales"
   ON inventory_sales FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can update inventory sales" ON inventory_sales;
 CREATE POLICY "Gym owners can update inventory sales"
   ON inventory_sales FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = inventory_sales.gym_id AND owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on inventory_units
@@ -6204,31 +6230,31 @@ DROP POLICY IF EXISTS "Gym owners can view their inventory units" ON inventory_u
 CREATE POLICY "Gym owners can view their inventory units"
   ON inventory_units FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can insert inventory units" ON inventory_units;
 CREATE POLICY "Gym owners can insert inventory units"
   ON inventory_units FOR INSERT
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can update inventory units" ON inventory_units;
 CREATE POLICY "Gym owners can update inventory units"
   ON inventory_units FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = (SELECT auth.uid()))
   )
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can delete inventory units" ON inventory_units;
 CREATE POLICY "Gym owners can delete inventory units"
   ON inventory_units FOR DELETE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = inventory_units.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 -- ────────────────────────────────────────────────────────────
@@ -6254,7 +6280,7 @@ CREATE POLICY "Members can view their own achievements"
 DROP POLICY IF EXISTS "Gym owners can view member achievements" ON public.member_achievements;
 CREATE POLICY "Gym owners can view member achievements"
   ON public.member_achievements FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_achievements.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_achievements.gym_id AND owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on member_portal_activity
@@ -6263,12 +6289,12 @@ CREATE POLICY "Gym owners can view member achievements"
 DROP POLICY IF EXISTS "Gym owners can view portal activity" ON member_portal_activity;
 CREATE POLICY "Gym owners can view portal activity"
   ON member_portal_activity FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_portal_activity.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = member_portal_activity.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert portal activity" ON member_portal_activity;
 CREATE POLICY "Gym owners can insert portal activity"
   ON member_portal_activity FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = member_portal_activity.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = member_portal_activity.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Members can view their own activity" ON public.member_portal_activity;
 CREATE POLICY "Members can view their own activity"
@@ -6374,23 +6400,23 @@ CREATE POLICY "Members can view their own workout sessions"
 DROP POLICY IF EXISTS "Gym owners can view their members" ON members;
 CREATE POLICY "Gym owners can view their members"
   ON members FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert members" ON members;
 CREATE POLICY "Gym owners can insert members"
   ON members FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can update members" ON members;
 CREATE POLICY "Gym owners can update members"
   ON members FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete members" ON members;
 CREATE POLICY "Gym owners can delete members"
   ON members FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = members.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Members can view their own profile" ON public.members;
 CREATE POLICY "Members can view their own profile"
@@ -6405,23 +6431,23 @@ CREATE POLICY "Members can view their own profile"
 DROP POLICY IF EXISTS "Gym owners can view memberships" ON memberships;
 CREATE POLICY "Gym owners can view memberships"
   ON memberships FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert memberships" ON memberships;
 CREATE POLICY "Gym owners can insert memberships"
   ON memberships FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can update memberships" ON memberships;
 CREATE POLICY "Gym owners can update memberships"
   ON memberships FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete memberships" ON memberships;
 CREATE POLICY "Gym owners can delete memberships"
   ON memberships FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = memberships.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Members can view their own memberships" ON public.memberships;
 CREATE POLICY "Members can view their own memberships"
@@ -6443,39 +6469,39 @@ CREATE POLICY "Members can view their own memberships"
 
 DROP POLICY IF EXISTS "Gym owners can view devices" ON attendance_devices;
 CREATE POLICY "Gym owners can view devices" ON attendance_devices FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = (SELECT auth.uid())));
 DROP POLICY IF EXISTS "Gym owners can insert devices" ON attendance_devices;
 CREATE POLICY "Gym owners can insert devices" ON attendance_devices FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = (SELECT auth.uid())));
 DROP POLICY IF EXISTS "Gym owners can update devices" ON attendance_devices;
 CREATE POLICY "Gym owners can update devices" ON attendance_devices FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = (SELECT auth.uid())));
 DROP POLICY IF EXISTS "Gym owners can delete devices" ON attendance_devices;
 CREATE POLICY "Gym owners can delete devices" ON attendance_devices FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = attendance_devices.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can view device users" ON device_user_map;
 CREATE POLICY "Gym owners can view device users" ON device_user_map FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = (SELECT auth.uid())));
 DROP POLICY IF EXISTS "Gym owners can insert device users" ON device_user_map;
 CREATE POLICY "Gym owners can insert device users" ON device_user_map FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = (SELECT auth.uid())));
 DROP POLICY IF EXISTS "Gym owners can update device users" ON device_user_map;
 CREATE POLICY "Gym owners can update device users" ON device_user_map FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = (SELECT auth.uid())));
 DROP POLICY IF EXISTS "Gym owners can delete device users" ON device_user_map;
 CREATE POLICY "Gym owners can delete device users" ON device_user_map FOR DELETE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_user_map.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can view device punches" ON device_punches;
 CREATE POLICY "Gym owners can view device punches" ON device_punches FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_punches.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_punches.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can view device commands" ON device_commands;
 CREATE POLICY "Gym owners can view device commands" ON device_commands FOR SELECT
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_commands.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = device_commands.gym_id AND owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on owner_feedback_prompts
@@ -6502,17 +6528,17 @@ CREATE POLICY "Gym owners manage their feedback prompt state"
 DROP POLICY IF EXISTS "Gym owners can view program assignments" ON public.program_assignments;
 CREATE POLICY "Gym owners can view program assignments"
   ON public.program_assignments FOR SELECT
-  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = program_assignments.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = program_assignments.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can insert program assignments" ON public.program_assignments;
 CREATE POLICY "Gym owners can insert program assignments"
   ON public.program_assignments FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM public.gyms WHERE id = program_assignments.gym_id AND owner_id = auth.uid()));
+  WITH CHECK (EXISTS (SELECT 1 FROM public.gyms WHERE id = program_assignments.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can delete program assignments" ON public.program_assignments;
 CREATE POLICY "Gym owners can delete program assignments"
   ON public.program_assignments FOR DELETE
-  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = program_assignments.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM public.gyms WHERE id = program_assignments.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Members can view their own assignments" ON public.program_assignments;
 CREATE POLICY "Members can view their own assignments"
@@ -6520,7 +6546,7 @@ CREATE POLICY "Members can view their own assignments"
   TO authenticated
   USING (
     member_id IN (
-      SELECT id FROM public.members WHERE auth_user_id = auth.uid()
+      SELECT id FROM public.members WHERE auth_user_id = (SELECT auth.uid())
     )
     -- Blocked gyms (Free, lapsed, suspended, outside the trial's first members)
     -- lose member app data here too, not only behind the app's own gate.
@@ -6534,7 +6560,7 @@ CREATE POLICY "Members can view their own assignments"
 DROP POLICY IF EXISTS "gym owner read own requests" ON subscription_requests;
   CREATE POLICY "gym owner read own requests"
     ON subscription_requests FOR SELECT
-    USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+    USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "gym owner insert own requests" ON public.subscription_requests;
 CREATE POLICY "gym owner insert own requests"
@@ -6557,21 +6583,21 @@ CREATE POLICY "gym owner insert own requests"
 DROP POLICY IF EXISTS "Gym owners can update their support tickets" ON support_tickets;
 CREATE POLICY "Gym owners can update their support tickets"
   ON support_tickets FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = (SELECT auth.uid())));
 
 DROP POLICY IF EXISTS "Gym owners can view their support tickets" ON support_tickets;
 CREATE POLICY "Gym owners can view their support tickets"
   ON support_tickets FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can insert support tickets" ON support_tickets;
 CREATE POLICY "Gym owners can insert support tickets"
   ON support_tickets FOR INSERT
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = support_tickets.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 -- ────────────────────────────────────────────────────────────
@@ -6582,7 +6608,7 @@ DROP POLICY IF EXISTS wa_auto_logs_select ON whatsapp_automation_logs;
 CREATE POLICY wa_auto_logs_select ON whatsapp_automation_logs
   FOR SELECT
   USING (
-    gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid())
+    gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid()))
   );
 
 -- ────────────────────────────────────────────────────────────
@@ -6594,7 +6620,7 @@ CREATE POLICY whatsapp_messages_select_policy ON whatsapp_messages
   FOR SELECT
   USING (
     gym_id IN (
-      SELECT id FROM gyms WHERE owner_id = auth.uid()
+      SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())
     )
   );
 
@@ -6603,7 +6629,7 @@ CREATE POLICY whatsapp_messages_insert_policy ON whatsapp_messages
   FOR INSERT
   WITH CHECK (
     gym_id IN (
-      SELECT id FROM gyms WHERE owner_id = auth.uid()
+      SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())
     )
   );
 
@@ -6612,12 +6638,12 @@ CREATE POLICY whatsapp_messages_update_policy ON whatsapp_messages
   FOR UPDATE
   USING (
     gym_id IN (
-      SELECT id FROM gyms WHERE owner_id = auth.uid()
+      SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())
     )
   )
   WITH CHECK (
     gym_id IN (
-      SELECT id FROM gyms WHERE owner_id = auth.uid()
+      SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())
     )
   );
 
@@ -6628,7 +6654,7 @@ CREATE POLICY whatsapp_messages_update_policy ON whatsapp_messages
 DROP POLICY IF EXISTS wa_queue_select ON whatsapp_send_queue;
 CREATE POLICY wa_queue_select ON whatsapp_send_queue
   FOR SELECT
-  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = auth.uid()));
+  USING (gym_id IN (SELECT id FROM gyms WHERE owner_id = (SELECT auth.uid())));
 
 -- ────────────────────────────────────────────────────────────
 -- policies on workout_programs
@@ -6638,31 +6664,31 @@ DROP POLICY IF EXISTS "Gym owners can view their programs" ON workout_programs;
 CREATE POLICY "Gym owners can view their programs"
   ON workout_programs FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can insert programs" ON workout_programs;
 CREATE POLICY "Gym owners can insert programs"
   ON workout_programs FOR INSERT
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can update programs" ON workout_programs;
 CREATE POLICY "Gym owners can update programs"
   ON workout_programs FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = (SELECT auth.uid()))
   )
   WITH CHECK (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Gym owners can delete programs" ON workout_programs;
 CREATE POLICY "Gym owners can delete programs"
   ON workout_programs FOR DELETE
   USING (
-    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM gyms WHERE id = workout_programs.gym_id AND owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Members can view their gym programs" ON public.workout_programs;
@@ -6676,6 +6702,27 @@ CREATE POLICY "Members can view their gym programs"
     -- lose member app data here too, not only behind the app's own gate.
     AND (SELECT public.member_app_allowed())
   );
+
+-- ── Service-role-only tables: explicit deny-all ─────────────
+-- No client role may touch these; the service role bypasses RLS. The policy
+-- writes the intent down (and keeps the Supabase linter's "RLS enabled, no
+-- policy" notice quiet). Section 9 also revokes their table privileges.
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'app_config', 'device_push_tokens', 'email_messages', 'email_threads',
+    'gym_admin_notes', 'gym_whatsapp_config', 'member_push_subscriptions',
+    'notifications', 'owner_activity_events', 'owner_phone_leads',
+    'owner_verified_phones', 'subscription_audit_logs',
+    'whatsapp_recipient_window', 'whatsapp_webhook_logs'
+  ] LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "Service role only" ON public.%I', t);
+    EXECUTE format(
+      'CREATE POLICY "Service role only" ON public.%I FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',
+      t);
+  END LOOP;
+END $$;
 
 
 -- ############################################################
@@ -6750,6 +6797,10 @@ GRANT UPDATE (reward_given_at) ON public.gym_event_completions TO authenticated;
 -- ── gym_admin_notes: service role only ──────────────────────
 REVOKE ALL ON public.gym_admin_notes FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.gym_admin_notes TO service_role;
+
+-- ── subscription_audit_logs: service role only (written by log_subscription_action) ──
+REVOKE ALL ON public.subscription_audit_logs FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.subscription_audit_logs TO service_role;
 
 -- ── owner_verified_phones: service role only ────────────────
 REVOKE ALL ON public.owner_verified_phones FROM PUBLIC, anon, authenticated;

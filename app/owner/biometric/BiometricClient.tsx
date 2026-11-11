@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Fingerprint, Copy, Check, MoreVertical, ChevronDown, RefreshCw, BookOpen, UserPlus } from 'lucide-react'
+import { Fingerprint, AlertTriangle, Copy, Check, MoreVertical, ChevronDown, RefreshCw, BookOpen, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deviceStatus, statusLabel, punchStateChip, formatPunchTimeIST, commandStateChip, commandLabel,
@@ -16,7 +16,7 @@ import { QuickActions } from './QuickActions'
 
 export type MemberOption = { id: string; name: string; memberNumber: number | null }
 export type CommandDialect = 'privilege' | 'pri'
-export type DeviceRow = { id: string; name: string; serial: string; lastSeenAt: string | null; commandDialect: CommandDialect; unmapped: UnmappedPin[] }
+export type DeviceRow = { id: string; name: string; serial: string; lastSeenAt: string | null; commandDialect: CommandDialect; unmapped: UnmappedPin[]; clockSuspect?: boolean }
 export type LinkedRow = { id: string; deviceId: string; pin: string; memberName: string; memberNumber: number | null; blocked: boolean }
 export type CommandRow = { id: string; deviceId: string; kind: string; pin: string; state: string; createdAt: string }
 export type PunchRow = { id: string; pin: string; punchedAt: string; state: string; memberName: string | null }
@@ -159,6 +159,13 @@ function DeviceCard({ device, now, serverHost, serverPort, members }: { device: 
         </span>
         <button type="button" className="text-xs font-medium text-brand-500 min-h-[44px] px-1" onClick={() => router.refresh()}>Check status</button>
       </div>
+
+      {device.clockSuspect && (
+        <div className="flex items-start gap-2 rounded-xl border bg-amber-50 text-amber-700 border-amber-200 p-3 text-sm" role="status">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <p>Clock looks wrong. Set the date and time on the device. Some punches were ignored because they are dated in the future.</p>
+        </div>
+      )}
 
       {menu && (
         <div className="rounded-xl border border-surface-border bg-surface-secondary p-3 space-y-2">
@@ -386,6 +393,7 @@ export function BiometricClient({
         <details className="text-sm">
           <summary className="cursor-pointer font-medium text-slate-700 min-h-[44px] flex items-center justify-between">Help<ChevronDown className="w-4 h-4 transition-transform [details[open]_&]:rotate-180" /></summary>
           <ol className="list-decimal pl-5 space-y-1 text-slate-600">
+            <li>Set the device&apos;s date, time and timezone to India time before enrolling members.</li>
             <li>On the device, open Menu &gt; Comm &gt; Cloud Server Setting.</li>
             <li>Enter the Server address and Port shown above.</li>
             <li>If the address is a name, not numbers, turn on Domain Name.</li>

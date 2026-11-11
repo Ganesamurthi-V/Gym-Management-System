@@ -1,4 +1,5 @@
 // Pure helpers for the owner Biometric page. No framework imports so they are unit tested.
+import { FUTURE_TOLERANCE_MS } from '@/lib/devices/time'
 
 export type DeviceStatus = 'connected' | 'waiting' | 'offline'
 
@@ -134,6 +135,28 @@ export function pinToMemberNumber(pin: string): number | null {
   if (!/^\d{1,9}$/.test(pin)) return null
   const n = parseInt(pin, 10)
   return n > 0 ? n : null
+}
+
+/**
+ * Devices whose clock looks wrong: at least 2 recent punches the server ignored as "stale" because they were dated
+ * past the same future tolerance the ingest uses. Old stale punches (a backlog) are not a clock problem, so they
+ * do not count.
+ */
+export function clockSuspectDeviceIds(
+  punches: { deviceId: string; punchedAt: string; createdAt: string; state: string }[],
+  now: number = Date.now(),
+): Set<string> {
+  const counts = new Map<string, number>()
+  for (const p of punches) {
+    if (p.state !== 'stale') continue
+    const punched = Date.parse(p.punchedAt)
+    const created = Date.parse(p.createdAt)
+    if (Number.isNaN(punched) || Number.isNaN(created)) continue
+    if (punched <= created + FUTURE_TOLERANCE_MS) continue
+    if (now - created > 24 * 60 * 60 * 1000) continue
+    counts.set(p.deviceId, (counts.get(p.deviceId) ?? 0) + 1)
+  }
+  return new Set([...counts].filter(([, n]) => n >= 2).map(([id]) => id))
 }
 
 export function formatPunchTimeIST(iso: string): string {

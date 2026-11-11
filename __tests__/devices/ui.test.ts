@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   deviceStatus, formatLastSeen, statusLabel, isValidSerial, normalizeSerial,
-  punchStateChip, groupUnmapped, pinToMemberNumber, formatPunchTimeIST, commandStateChip, commandLabel, enrolStatus,
+  punchStateChip, groupUnmapped, pinToMemberNumber, formatPunchTimeIST, commandStateChip, commandLabel, enrolStatus, clockSuspectDeviceIds,
 } from '@/lib/devices/ui'
 
 const NOW = Date.parse('2026-11-09T10:00:00Z')
@@ -96,6 +96,33 @@ describe('commandStateChip / commandLabel', () => {
     expect(commandLabel('remove_user', 'AB1')).toBe('Remove member AB1')
   })
   it('keeps the blocked punch chip', () => expect(punchStateChip('blocked').label).toBe('Blocked'))
+})
+
+describe('clockSuspectDeviceIds', () => {
+  const HOUR = 3600_000
+  const future = (dev: string, createdAgo = HOUR, state = 'stale') =>
+    ({ deviceId: dev, state, createdAt: ago(createdAgo), punchedAt: new Date(NOW - createdAgo + 2 * HOUR).toISOString() })
+
+  it('flags a device with 2 future-dated stale punches within 24h', () => {
+    expect([...clockSuspectDeviceIds([future('d1'), future('d1')], NOW)]).toEqual(['d1'])
+  })
+  it('ignores a single punch', () => {
+    expect(clockSuspectDeviceIds([future('d1')], NOW).size).toBe(0)
+  })
+  it('ignores stale punches that are simply old', () => {
+    const old = { deviceId: 'd1', state: 'stale', createdAt: ago(HOUR), punchedAt: ago(10 * 24 * HOUR) }
+    expect(clockSuspectDeviceIds([old, old], NOW).size).toBe(0)
+  })
+  it('ignores future-dated punches in other states', () => {
+    expect(clockSuspectDeviceIds([future('d1', HOUR, 'applied'), future('d1', HOUR, 'error')], NOW).size).toBe(0)
+  })
+  it('ignores punches created more than 24h ago', () => {
+    expect(clockSuspectDeviceIds([future('d1', 25 * HOUR), future('d1', 30 * HOUR)], NOW).size).toBe(0)
+  })
+  it('handles multiple devices', () => {
+    const r = clockSuspectDeviceIds([future('d1'), future('d2'), future('d1'), future('d3'), future('d3')], NOW)
+    expect([...r].sort()).toEqual(['d1', 'd3'])
+  })
 })
 
 describe('enrolStatus', () => {

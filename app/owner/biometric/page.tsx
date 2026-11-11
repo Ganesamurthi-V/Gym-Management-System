@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireOwnerAccess } from '@/lib/owner/access'
-import { groupUnmapped } from '@/lib/devices/ui'
+import { groupUnmapped, clockSuspectDeviceIds } from '@/lib/devices/ui'
 import { BiometricClient, type DeviceRow, type LinkedRow, type PunchRow, type CommandRow, type MemberOption } from './BiometricClient'
 
 export default async function BiometricPage() {
@@ -20,7 +20,7 @@ export default async function BiometricPage() {
       .select('device_id, pin, punched_at')
       .eq('gym_id', gym.id).order('punched_at', { ascending: false }).limit(1000),
     supabase.from('device_punches')
-      .select('id, device_id, pin, punched_at, state')
+      .select('id, device_id, pin, punched_at, state, created_at')
       .eq('gym_id', gym.id).order('punched_at', { ascending: false }).limit(30),
     supabase.from('members')
       .select('id, name, member_number')
@@ -66,7 +66,13 @@ export default async function BiometricPage() {
       .map(p => ({ device_id: p.device_id as string, pin: p.pin as string, punched_at: p.punched_at as string })),
   )
 
+  const clockSuspects = clockSuspectDeviceIds((recent.data ?? []).map(p => ({
+    deviceId: p.device_id as string, punchedAt: p.punched_at as string,
+    createdAt: p.created_at as string, state: p.state as string,
+  })))
+
   const deviceRows: DeviceRow[] = (devices.data ?? []).map(d => ({
+    clockSuspect: clockSuspects.has(d.id as string),
     id: d.id as string, name: d.name as string, serial: d.serial_number as string,
     lastSeenAt: (d.last_seen_at as string | null) ?? null,
     commandDialect: d.command_dialect === 'pri' ? 'pri' : 'privilege',

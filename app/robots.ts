@@ -1,4 +1,6 @@
 import type { MetadataRoute } from 'next'
+import { headers } from 'next/headers'
+import { GRAPH_HOSTNAME } from '@/lib/graph-domain'
 
 /**
  * Generates https://app.gymflow.sbs/robots.txt
@@ -43,7 +45,14 @@ import type { MetadataRoute } from 'next'
  * subtree: app/owner/layout.tsx, app/m/layout.tsx, app/auth/layout.tsx and
  * app/activate/layout.tsx.
  */
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  // graph.gymflow.sbs is an API-only proxy, but the middleware matcher skips *.txt, so its
+  // /robots.txt was this file's `allow: '/'`. Google then kept fetching graph's `/` and listing
+  // the 401 in Search Console. Tell crawlers to stay off that host entirely.
+  const host = (await headers()).get('host') ?? ''
+  if (host.includes(GRAPH_HOSTNAME)) {
+    return { rules: { userAgent: '*', disallow: '/' } }
+  }
   return {
     rules: {
       userAgent: '*',

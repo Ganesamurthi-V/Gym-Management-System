@@ -23,12 +23,7 @@ const PLAIN_ENV_NAMES = [
   'GRAPH_API_BASE_URL', 'QSTASH_URL', 'VAPID_SUBJECT', 'PUSH_EVENING_ENABLED', 'ALERT_MAX_PER_HOUR',
 ] as const
 
-// Same schedules as vercel.json, in UTC. push-evening is omitted on purpose: its route documents
-// a QStash schedule (~19:00 IST), not an AWS one.
-const CRONS = [
-  { name: 'Whatsapp', path: '/api/cron/whatsapp', schedule: 'cron(30 3 * * ? *)' },
-  { name: 'Subscription', path: '/api/cron/subscription', schedule: 'cron(0 0 * * ? *)' },
-]
+// The daily crons are QStash schedules, not AWS ones: see infra/set-qstash-schedules.sh.
 
 export default $config({
   app(input) {
@@ -72,20 +67,5 @@ export default $config({
       // SST also applies this timeout as the CloudFront origin read timeout, so no transform is needed.
       server: { timeout: '60 seconds', memory: '1024 MB', architecture: 'x86_64' },
     })
-
-    // Disabled until cutover: Vercel crons still own the daily runs, and both firing would
-    // double-run WhatsApp automation.
-    for (const c of CRONS) {
-      new sst.aws.Cron(`Cron${c.name}`, {
-        schedule: c.schedule as `cron(${string})`,
-        enabled: false,
-        job: {
-          handler: 'cron/handler.handler',
-          runtime: 'nodejs22.x',
-          timeout: '60 seconds',
-          environment: { APP_URL: web.url, CRON_PATH: c.path, CRON_SECRET: secrets.CRON_SECRET.value },
-        },
-      })
-    }
   },
 })

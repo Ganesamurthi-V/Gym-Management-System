@@ -47,11 +47,13 @@ CloudFront only accepts ACM certificates from us-east-1, whatever the app region
 
 ## Crons
 
-`sst.aws.Cron` creates EventBridge schedules that run `cron/handler.ts`, which POSTs to the route with the
-`x-cron-secret` header. They are created with `enabled: false`.
+The daily crons are QStash schedules that POST to the app on AWS with the `x-cron-secret` header. There is no
+EventBridge cron. From `infra/` run `bash set-qstash-schedules.sh` (reads `QSTASH_TOKEN`, `QSTASH_URL`, `CRON_SECRET`
+from `../.env.local`); it upserts by schedule id, so re-running is safe.
 
 - `/api/cron/whatsapp` at 03:30 UTC, `/api/cron/subscription` at 00:00 UTC (same as `vercel.json`).
-- `/api/cron/push-evening` is deliberately not scheduled here: its route documents a QStash schedule (~19:00 IST).
+- `/api/cron/push-evening` at 13:30 UTC (19:00 IST). The route does nothing unless `PUSH_EVENING_ENABLED=true`.
+- Retries are 0 on purpose; a failed run shows up as a missing Better Stack heartbeat.
 
 ## Cutover order
 
@@ -60,9 +62,9 @@ CloudFront only accepts ACM certificates from us-east-1, whatever the app region
    (redeploy so the public values are rebuilt).
 3. Switch DNS to CloudFront. Watch the CloudWatch alarm and Sentry.
 4. Remove the `crons` block from `vercel.json` and deploy Vercel (or pause the project).
-5. Only then set `enabled: true` on the crons in `sst.config.ts` and redeploy. Never run both: the daily WhatsApp
-   automation would run twice.
-6. Rollback: repoint DNS to Vercel, set the cron `enabled` back to false, restore `vercel.json` crons.
+5. Only then run `bash set-qstash-schedules.sh`. Never run both: the daily WhatsApp automation would run twice.
+6. Rollback: repoint DNS to Vercel, delete the two `gymflow-cron-*` schedules in the Upstash console, restore
+   `vercel.json` crons.
 
 ## Admin panel (separate SST app)
 

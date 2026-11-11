@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": ["node", "aws-lambda"]
   },
-  "include": ["sst.config.ts", "sst.admin.config.ts","cron/**/*.ts", "sst-env.d.ts"]
+  "include": ["sst.config.ts", "sst.admin.config.ts","sst-env.d.ts"]
 }

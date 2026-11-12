@@ -123,7 +123,7 @@ export function PushHeaderButton({ publicKey }: { publicKey: string }) {
       </button>
 
       {sheet && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-end bg-ink-900/50" onClick={() => setSheet(null)}>
+        <div className="fixed inset-0 z-[var(--z-modal)] flex items-end bg-ink-900/50" onClick={() => setSheet(null)}>
           <div
             role="dialog"
             aria-modal="true"

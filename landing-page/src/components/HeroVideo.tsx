@@ -3,7 +3,7 @@ import { Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { prefersReducedMotion } from '../lib/prefersReducedMotion';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { connectionAllowsDecoration } from '../lib/decorationGates';
-import '../styles/hero.css';
+import '../styles/home.css';
 
 // Two cuts of the same film: the 16:9 one for a laptop and the 9:16 one for a phone. A
 // portrait phone shows a 16:9 film as a thin strip with its text too small to read;
@@ -14,8 +14,8 @@ const FILMS = {
 } as const;
 
 /**
- * The product film plate: the film in a 20px-radius frame (hairline, layered shadow) with its caption
- * beneath, on the quiet band Hero.tsx puts it in. Its full size is capped two ways: by
+ * The product film plate: the film in a 20px-radius frame (hairline, layered shadow), on the quiet band
+ * Hero.tsx puts it in, under that band's heading. Its full size is capped two ways: by
  * width, and by height (the calc in the className), so the frame ends about where a laptop screen
  * does. The film is 16:9 and is not cropped: its headline sits near the top edge and the phone
  * near the bottom.
@@ -140,11 +140,7 @@ export function HeroVideo() {
 
   return (
     <figure
-      className={`mx-auto w-full ${
-        wide
-          ? 'max-w-[min(1200px,calc((100svh-160px)*16/9))]'
-          : 'max-w-[min(420px,calc((100svh-160px)*9/16))]'
-      }`}
+      className={`w-full ${wide ? '' : 'max-w-[min(100%,calc((100svh-200px)*9/16))]'}`}
     >
       <div
         className="film-frame relative"
@@ -239,9 +235,6 @@ export function HeroVideo() {
       )}
       </div>
       </div>
-      <figcaption className="pt-6 text-center font-display text-xl font-medium text-foreground">
-        See GymFlow in one minute.
-      </figcaption>
     </figure>
   );
 }

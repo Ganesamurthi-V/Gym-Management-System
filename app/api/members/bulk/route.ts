@@ -5,6 +5,7 @@ import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
 import { isValidUUID } from '@/lib/api/withAuth'
 import { boundedInt, boundedText } from '@/app/api/_guard'
+import { syncMemberToDevices } from '@/lib/devices/commands'
 
 export const dynamic = 'force-dynamic'
 
@@ -151,6 +152,9 @@ export const DELETE = withAuth('MEMBERS_BULK_DELETE', async (req: NextRequest, {
       )
     }
   }
+
+  // Queue the device removals while the member rows still exist (name / number are read from them).
+  for (const id of ids) await syncMemberToDevices(gym.id, id, 'remove')
 
   // Delete related records first, scoped to this gym so a foreign member id in
   // the list can never touch another gym's rows even if RLS were relaxed.

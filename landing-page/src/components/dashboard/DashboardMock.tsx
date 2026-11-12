@@ -3,6 +3,7 @@ import {
   Activity,
   AlertCircle,
   AlertTriangle,
+  Bell,
   Calendar,
   CalendarCheck,
   Check,
@@ -12,18 +13,27 @@ import {
   ClipboardList,
   Clock,
   CreditCard,
-  Dumbbell,
   FileText,
   IndianRupee,
   LayoutDashboard,
   MessageCircle,
   Package,
   Plus,
+  RefreshCw,
   Search,
+  Smartphone,
   Target,
   TrendingUp,
   Users,
 } from 'lucide-react';
+import { GYM_NAME, Panel, ViewTitle, initials } from './shared';
+import {
+  MemberAppView,
+  NoticesView,
+  RENEWALS,
+  RenewalsView,
+  ReportsView,
+} from './ExtraViews';
 
 /*
   A live, clickable stand-in for the product screenshot that used to sit in the
@@ -42,33 +52,36 @@ import {
   next to the canvas in Hero.
 */
 
-const GYM_NAME = 'Fit Zone Gym';
-
 type ViewId =
   | 'dashboard'
   | 'members'
   | 'payments'
   | 'dues'
   | 'attendance'
+  | 'renewals'
   | 'inventory'
-  | 'programs';
+  | 'programs'
+  | 'reports'
+  | 'memberapp'
+  | 'notices';
 
 interface NavItem {
-  id: ViewId | 'reports';
+  id: ViewId;
   label: string;
   icon: typeof Users;
-  soon?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'members', label: 'Members', icon: Users },
   { id: 'payments', label: 'Payments', icon: CreditCard },
   { id: 'dues', label: 'Dues', icon: AlertCircle },
+  { id: 'renewals', label: 'Renewals', icon: RefreshCw },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'programs', label: 'Programs', icon: Activity },
-  { id: 'reports', label: 'Reports', icon: TrendingUp, soon: true },
+  { id: 'reports', label: 'Reports', icon: TrendingUp },
+  { id: 'memberapp', label: 'Member App', icon: Smartphone },
 ];
 
 /*
@@ -166,11 +179,27 @@ const STATS = [
   },
 ];
 
-const EXPIRING = [
-  { id: 'vd', name: 'Vignesh Das', phone: '919384886895', left: 'Today' },
-  { id: 'nv', name: 'Naveen Verma', phone: '919384886895', left: '3d left' },
-  { id: 'dn', name: 'Deepa Nair', phone: '919384886895', left: '6d left' },
-];
+type ExpiringRange = 'week' | 'month';
+
+const EXPIRING_LABELS: Record<ExpiringRange, string> = {
+  week: 'Expiring This Week',
+  month: 'Expiring This Month',
+};
+
+const EXPIRING: Record<ExpiringRange, { id: string; name: string; phone: string; left: string }[]> = {
+  week: [
+    { id: 'vd', name: 'Vignesh Das', phone: '919384886895', left: 'Today' },
+    { id: 'nv', name: 'Naveen Verma', phone: '919384886895', left: '3d left' },
+    { id: 'dn', name: 'Deepa Nair', phone: '919384886895', left: '6d left' },
+  ],
+  month: [
+    { id: 'vd', name: 'Vignesh Das', phone: '919384886895', left: 'Today' },
+    { id: 'nv', name: 'Naveen Verma', phone: '919384886895', left: '3d left' },
+    { id: 'dn', name: 'Deepa Nair', phone: '919384886895', left: '6d left' },
+    { id: 'ks', name: 'Karthik Subbu', phone: '919384886895', left: '12d left' },
+    { id: 'ar', name: 'Anjali Rao', phone: '919384886895', left: '19d left' },
+  ],
+};
 
 const MEMBERS = [
   { code: 'GF0063', name: 'Vignesh Das', plan: 'Monthly', expires: '15 Jul (2d)', status: 'Expiring' },
@@ -256,15 +285,6 @@ const STATUS_STYLES: Record<string, string> = {
     'bg-dash-red-50 text-dash-red-700 border-dash-red-200 dark:bg-dash-red-950 dark:text-dash-red-300 dark:border-dash-red-900',
 };
 
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 /** The canvas is authored at this size and scaled to fit; see index.css. */
 const CANVAS_WIDTH = 1160;
 
@@ -272,7 +292,8 @@ export function DashboardMock() {
   const [view, setView] = useState<ViewId>('dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [reminded, setReminded] = useState<string[]>([]);
-  const [expiringOpen, setExpiringOpen] = useState(true);
+  const [expiringRange, setExpiringRange] = useState<ExpiringRange>('week');
+  const [decisions, setDecisions] = useState<Record<string, 'approved' | 'rejected'>>({});
   const [checkedIn, setCheckedIn] = useState(0);
   const [memberId, setMemberId] = useState('');
   const [scale, setScale] = useState(1);
@@ -344,19 +365,17 @@ export function DashboardMock() {
             <nav className="flex-1 space-y-0.5 px-2 py-3">
               {NAV_ITEMS.map(item => {
                 const Icon = item.icon;
-                const active = !item.soon && view === item.id;
+                const active = view === item.id;
                 return (
                   <button
                     key={item.id}
                     type="button"
                     tabIndex={-1}
-                    onClick={() => !item.soon && setView(item.id as ViewId)}
-                    title={item.soon ? `${item.label} — coming soon` : item.label}
+                    onClick={() => setView(item.id)}
+                    title={item.label}
                     className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${active
                       ? 'bg-dash-accent-soft text-dash-accent-text'
-                      : item.soon
-                        ? 'cursor-not-allowed text-dash-ink-muted'
-                        : 'text-dash-ink-muted hover:bg-dash-hover hover:text-dash-ink-dim'
+                      : 'text-dash-ink-muted hover:bg-dash-hover hover:text-dash-ink-dim'
                       }`}
                   >
                     <Icon
@@ -367,14 +386,8 @@ export function DashboardMock() {
                     {!collapsed && (
                       <>
                         <span className="truncate">{item.label}</span>
-                        {item.soon ? (
-                          <span className="ml-auto rounded border border-amber-200/60 bg-amber-50 px-1 py-px text-[11px] font-bold text-dash-amber-700 dark:border-dash-amber-900 dark:bg-dash-amber-950 dark:text-dash-amber-300">
-                            SOON
-                          </span>
-                        ) : (
-                          active && (
-                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-dash-accent" />
-                          )
+                        {active && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-dash-accent" />
                         )}
                       </>
                     )}
@@ -412,8 +425,9 @@ export function DashboardMock() {
                 <DashboardView
                   reminded={reminded}
                   onRemind={remind}
-                  expiringOpen={expiringOpen}
-                  onToggleExpiring={() => setExpiringOpen(o => !o)}
+                  expiringRange={expiringRange}
+                  onExpiringRange={setExpiringRange}
+                  pendingRenewals={RENEWALS.length - Object.keys(decisions).length}
                   onGoto={setView}
                 />
               )}
@@ -434,6 +448,15 @@ export function DashboardMock() {
               )}
               {view === 'inventory' && <InventoryView />}
               {view === 'programs' && <ProgramsView />}
+              {view === 'renewals' && (
+                <RenewalsView
+                  decisions={decisions}
+                  onDecide={(id, d) => setDecisions(prev => ({ ...prev, [id]: d }))}
+                />
+              )}
+              {view === 'reports' && <ReportsView />}
+              {view === 'memberapp' && <MemberAppView />}
+              {view === 'notices' && <NoticesView />}
             </div>
           </div>
         </div>
@@ -443,41 +466,6 @@ export function DashboardMock() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-
-function ViewTitle({ title, sub }: { title: string; sub?: string }) {
-  return (
-    <div className="shrink-0">
-      <div className="mb-0.5 flex items-center gap-1.5">
-        <Dumbbell className="h-3.5 w-3.5 text-dash-accent-text" />
-        <span className="text-[10.5px] font-medium text-dash-ink-muted">{GYM_NAME}</span>
-      </div>
-      {/* p, not h3. This is chrome inside a decorative product preview, so it has
-          no place in the page's heading outline — as an h3 directly after the
-          hero's h1 it created a 1 -> 3 level jump. Tailwind Preflight resets
-          margins on both elements, so nothing moves visually. */}
-      <p className="text-[19px] font-bold tracking-tight text-dash-ink">{title}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-dash-ink-muted">{sub}</p>}
-    </div>
-  );
-}
-
-function Panel({
-  children,
-  className = '',
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      // The drop shadow is dropped in dark: a dark shadow on a near-black surface does
-      // nothing but muddy the lower edge, and the border already separates the panel.
-      className={`rounded-xl border border-dash-border bg-dash-surface shadow-dash-card dark:shadow-none ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
 
 function RemindButton({
   sent,
@@ -507,25 +495,28 @@ function RemindButton({
 function DashboardView({
   reminded,
   onRemind,
-  expiringOpen,
-  onToggleExpiring,
+  expiringRange,
+  onExpiringRange,
+  pendingRenewals,
   onGoto,
 }: {
   reminded: string[];
   onRemind: (id: string) => void;
-  expiringOpen: boolean;
-  onToggleExpiring: () => void;
+  expiringRange: ExpiringRange;
+  onExpiringRange: (r: ExpiringRange) => void;
+  pendingRenewals: number;
   onGoto: (v: ViewId) => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   /*
     Solid fills in light; in dark all five drop onto one elevated neutral and keep
     the tone in the glyph, with the primary ranked by a one-pixel brand hairline.
   */
   const QUICK_ACTIONS = [
     {
-      label: 'Add New Member',
-      icon: Plus,
-      goto: 'members' as ViewId,
+      label: 'Gym Notices',
+      icon: Bell,
+      goto: 'notices' as ViewId,
       tone: 'bg-dash-blue-600 dark:bg-dash-raise dark:border dark:border-dash-accent',
       glyph: 'dark:text-dash-blue-400',
     },
@@ -540,8 +531,8 @@ function DashboardView({
       label: 'Attendance Log',
       icon: ClipboardList,
       goto: 'attendance' as ViewId,
-      tone: 'bg-dash-indigo-600 dark:bg-dash-raise dark:border dark:border-dash-night-700',
-      glyph: 'dark:text-dash-indigo-400',
+      tone: 'bg-dash-blue-800 dark:bg-dash-raise dark:border dark:border-dash-night-700',
+      glyph: 'dark:text-dash-blue-400',
     },
     {
       label: 'Daily Report PDF',
@@ -556,7 +547,20 @@ function DashboardView({
     <div className="flex h-full flex-col">
       <ViewTitle title="Dashboard" />
 
-      <div className="mt-3.5 grid shrink-0 grid-cols-6 gap-2.5">
+      {pendingRenewals > 0 && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => onGoto('renewals')}
+          className="mt-2.5 flex shrink-0 items-center gap-2 rounded-xl border border-dash-amber-200 bg-dash-amber-50 px-3 py-1.5 text-left text-[11.5px] font-semibold text-dash-amber-700 dark:border-dash-amber-900 dark:bg-dash-amber-950 dark:text-dash-amber-300"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          {pendingRenewals} payment request{pendingRenewals === 1 ? '' : 's'} waiting
+          <span className="ml-auto">Review</span>
+        </button>
+      )}
+
+      <div className="mt-3 grid shrink-0 grid-cols-6 gap-2.5">
         {STATS.map(stat => {
           const Icon = stat.icon;
           return (
@@ -591,21 +595,45 @@ function DashboardView({
       <div className="mt-3 flex min-h-0 flex-1 gap-3">
         <Panel className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center justify-between border-b border-dash-line px-4 py-2.5">
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={onToggleExpiring}
-              className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-dash-hover"
-            >
-              <Clock className="h-3.5 w-3.5 text-amber-500 dark:text-dash-amber-400" />
-              <span className="text-[12.5px] font-bold text-dash-ink">
-                Expiring This Week
-              </span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-dash-ink-muted transition-transform duration-300 ${expiringOpen ? '' : '-rotate-90'
-                  }`}
-              />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setMenuOpen(o => !o)}
+                className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-dash-hover"
+              >
+                <Clock className="h-3.5 w-3.5 text-amber-500 dark:text-dash-amber-400" />
+                <span className="text-[12.5px] font-bold text-dash-ink">
+                  {EXPIRING_LABELS[expiringRange]}
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-dash-ink-muted transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''
+                    }`}
+                />
+              </button>
+              {menuOpen && (
+                <div className="absolute left-0 top-full z-10 mt-1 w-[180px] rounded-lg border border-dash-border bg-dash-surface p-1 shadow-dash-card dark:shadow-none">
+                  {(['week', 'month'] as ExpiringRange[]).map(range => (
+                    <button
+                      key={range}
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => {
+                        onExpiringRange(range);
+                        setMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11.5px] font-semibold ${expiringRange === range
+                        ? 'bg-dash-accent-soft text-dash-accent-text'
+                        : 'text-dash-ink-dim hover:bg-dash-hover'
+                        }`}
+                    >
+                      {EXPIRING_LABELS[range]}
+                      {expiringRange === range && <Check className="h-3 w-3" strokeWidth={3} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               tabIndex={-1}
@@ -615,9 +643,8 @@ function DashboardView({
             </button>
           </div>
 
-          {expiringOpen && (
-            <div className="divide-y divide-dash-line">
-              {EXPIRING.map(member => (
+          <div className="min-h-0 flex-1 divide-y divide-dash-line overflow-hidden">
+              {EXPIRING[expiringRange].map(member => (
                 <div
                   key={member.id}
                   className="flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-dash-hover"
@@ -641,7 +668,6 @@ function DashboardView({
                 </div>
               ))}
             </div>
-          )}
         </Panel>
 
         <Panel className="flex w-[228px] shrink-0 flex-col bg-dash-surface p-3">

@@ -29,15 +29,15 @@ export default function MembershipQR({ memberCode }: Props) {
   }, [memberCode])
 
   return (
-    <section className="card mb-5 flex flex-col items-center p-6">
-      <p className="mb-4 text-sm font-semibold text-slate-600">Show this at the gym entrance</p>
+    <section className="tile flex flex-col items-center p-6">
+      <p className="mb-4 text-sm font-bold text-slate-700">Show this at the gym entrance</p>
       {/* White plate keeps the QR scannable in dark mode, where the card
           surface is near-black. */}
-      <div className="rounded-xl bg-white p-3">
+      <div className="rounded-2xl bg-white p-3">
         <canvas ref={canvasRef} className="rounded-lg" />
       </div>
       <p className="mt-3 font-mono text-sm font-bold tracking-widest text-slate-700">{memberCode}</p>
-      <p className="mt-1 text-xs text-slate-400">Scan to verify membership</p>
+      <p className="mt-1 text-xs text-slate-500">Scan to verify membership</p>
     </section>
   )
 }

@@ -1,19 +1,22 @@
 import type { FeaturePage } from '../data/featurePages';
-import { DocsPager } from './DocsPager';
-import { FeatureHead, FeatureSections, FeatureShell, MoreFromGymFlow } from './featureParts';
+import { ArticleBody, ArticleFooter, ArticleHeader, FeatureShell, PageIndex } from './featureParts';
 
-/** /features: the docs home. The first section is the ruled list of features, the rest are composed like any page. */
+/**
+ * /features: a clean index. The data's first section is the list of features, drawn here as a filterable card
+ * grid; the remaining sections read as an ordinary article beneath it.
+ */
 export function FeaturesHub({ page }: { page: FeaturePage }) {
+  const [index, ...rest] = page.sections;
   return (
     <FeatureShell>
-      <FeatureHead page={page} search />
-      <FeatureSections page={page} />
-      <div className="px-5 pb-16 md:px-8 md:pb-24">
-        <div className="mx-auto max-w-[1200px]">
-          <DocsPager page={page} />
+      <ArticleHeader page={page} />
+      <div className="px-5 pt-8 md:px-8 md:pt-10">
+        <div className="mx-auto max-w-[1200px] border-t border-border-subtle pt-8 md:pt-10">
+          <PageIndex id="what-gymflow-does" heading={index.heading} />
         </div>
       </div>
-      <MoreFromGymFlow page={page} />
+      <ArticleBody page={page} sections={rest} />
+      <ArticleFooter page={page} />
     </FeatureShell>
   );
 }

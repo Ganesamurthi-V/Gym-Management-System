@@ -5,6 +5,7 @@ import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
 import { isIsoDate, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
+import { syncMemberToDevices } from '@/lib/devices/commands'
 
 export const dynamic = 'force-dynamic'
 
@@ -147,6 +148,9 @@ export const POST = withAuth('MEMBERSHIPS_POST', async (req: NextRequest, { supa
     deleteCache(cacheKeys.paymentsAll(gym.id)),
     deleteCache(cacheKeys.dashboard(gym.id, todayIST())),
   ])
+
+  // Renewal: re-adds the member to devices that no longer know them (skips ones they are already mapped on).
+  await syncMemberToDevices(gym.id, data.member_id, 'add')
 
   return NextResponse.json(
     { success: true, data },

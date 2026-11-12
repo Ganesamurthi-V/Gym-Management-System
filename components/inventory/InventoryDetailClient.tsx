@@ -6,7 +6,7 @@ import { invalidateInventoryCache, invalidateInventoryItemCache } from '@/app/ow
 import { format } from 'date-fns'
 import {
   Package, Pencil, Trash2, ShoppingCart, X, Loader2,
-  CheckCircle2, ShieldAlert, BadgeIndianRupee, Box, Tag, ArrowLeft, Clock
+  CheckCircle2, ShieldAlert, Tag, ArrowLeft, Clock
 } from 'lucide-react'
 import Link from 'next/link'
 import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'

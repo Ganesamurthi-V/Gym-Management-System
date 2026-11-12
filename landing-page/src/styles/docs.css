@@ -23,16 +23,6 @@
   transform: scaleY(1);
 }
 
-/* The reading column: 65ch measure (set by the shell), line-height 1.65, headings 600. */
-.doc-prose {
-  font-size: 17px;
-  line-height: 1.65;
-}
-.doc-prose h2,
-.doc-prose h3 {
-  font-weight: 600;
-}
-
 /* The search field keeps room for its glyph and the keycap hint; .input-field sets its own padding later than utilities. */
 .docs-search .input-field {
   padding-left: 44px;

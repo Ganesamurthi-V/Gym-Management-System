@@ -21,8 +21,8 @@ export function PushReminderBanner({ publicKey }: { publicKey: string }) {
   if (hidden || variant === null || state === 'on') return null
 
   return (
-    <div className="mb-5 flex items-start gap-3 rounded-xl border border-surface-border bg-surface-card px-4 py-3">
-      <Bell aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+    <div className="mb-5 flex items-start gap-3 rounded-3xl border border-surface-border bg-surface-card p-4">
+      <Bell aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
       <div className="min-w-0 flex-1">
         <p className="text-sm text-slate-600">
           {variant === 'enable'
@@ -35,7 +35,7 @@ export function PushReminderBanner({ publicKey }: { publicKey: string }) {
               type="button"
               onClick={enable}
               disabled={busy}
-              className="inline-flex min-h-[44px] items-center rounded-xl bg-brand-500 px-4 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-60"
+              className="inline-flex min-h-[44px] items-center rounded-full bg-brand-500 px-5 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-60"
             >
               Enable
             </button>
@@ -43,7 +43,7 @@ export function PushReminderBanner({ publicKey }: { publicKey: string }) {
           <button
             type="button"
             onClick={() => { markDismissed(); setHidden(true) }}
-            className="inline-flex min-h-[44px] items-center rounded-xl px-4 text-sm font-semibold text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+            className="inline-flex min-h-[44px] items-center rounded-full px-4 text-sm font-semibold text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
           >
             Not now
           </button>

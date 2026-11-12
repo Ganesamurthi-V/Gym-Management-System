@@ -1,5 +1,4 @@
 import { getRedisClient } from './redis'
-import { cacheKeys } from './cache-keys'
 
 /**
  * Get a value from the Redis cache.

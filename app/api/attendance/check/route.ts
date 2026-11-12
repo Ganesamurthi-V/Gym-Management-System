@@ -4,6 +4,7 @@ import { reportAlertInBackground } from '@/lib/monitoring/alert'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
+import { toggleAttendance } from '@/lib/attendance/toggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,42 +73,37 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
   const memberships = memberData.memberships as { end_date: string }[] ?? []
   const latestEndDate = memberships.reduce((max: string, ms: { end_date: string }) => ms.end_date > max ? ms.end_date : max, '')
 
-  // 2. Check today's attendance for this session
-  const { data: attData } = await supabase
-    .from('attendance')
-    .select('id, created_at, check_out_time')
-    .eq('gym_id', gym.id)
-    .eq('member_id', memberData.id)
-    .eq('date', date)
-    .eq('session', session)
-    .maybeSingle()
-
+  // 2. Check today's attendance for this session and toggle (shared with biometric device punches)
   const now = new Date()
+  const result = await toggleAttendance(supabase, {
+    gymId: gym.id, memberId: memberData.id, date, session: session as 'morning' | 'evening', at: now,
+  })
 
-  if (!attData) {
-    // Check In
-    const { data: inserted, error: insertError } = await supabase
-      .from('attendance')
-      .insert({
-        gym_id: gym.id,
-        member_id: memberData.id,
-        date,
-        session,
-        created_at: now.toISOString(),
-      })
-      .select('id')
-      .single()
-
-    if (insertError) {
-      log.error('attendance check-in insert failed', insertError)
-      // Same key as withAuth's 5xx hook so the two alerts dedupe into one page.
-      reportAlertInBackground({ key: '5xx:ATTENDANCE_CHECK', severity: 'critical', title: 'Attendance check-in failed', body: `gymId=${gym.id} step=insert error=${insertError.message.slice(0, 300)}`, gymId: gym.id })
+  if (!result.ok) {
+    if (result.step === 'select') {
+      log.error('attendance lookup failed', result.error)
       return NextResponse.json(
-        { success: false, error: { code: 'DATABASE_ERROR', message: insertError.message } },
+        { success: false, error: { code: 'DATABASE_ERROR', message: result.error.message } },
         { status: 500 }
       )
     }
+    if (result.step === 'insert') {
+      log.error('attendance check-in insert failed', result.error)
+      // Same key as withAuth's 5xx hook so the two alerts dedupe into one page.
+      reportAlertInBackground({ key: '5xx:ATTENDANCE_CHECK', severity: 'critical', title: 'Attendance check-in failed', body: `gymId=${gym.id} step=insert error=${result.error.message.slice(0, 300)}`, gymId: gym.id })
+    } else {
+      log.error('attendance check-out update failed', result.error)
+      reportAlertInBackground({ key: '5xx:ATTENDANCE_CHECK', severity: 'critical', title: 'Attendance check-out failed', body: `gymId=${gym.id} step=update error=${result.error.message.slice(0, 300)}`, gymId: gym.id })
+    }
+    return NextResponse.json(
+      { success: false, error: { code: 'DATABASE_ERROR', message: result.error.message } },
+      { status: 500 }
+    )
+  }
 
+  const memberInfo = { id: memberData.id, name: memberData.name, member_number: memberData.member_number }
+
+  if (result.action === 'check_in') {
     // Dashboard caches today's attendance count for 5 minutes; same key it writes.
     await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
 
@@ -116,40 +112,23 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
       data: {
         action: 'check_in',
         // Lets the kiosk offer "entered the wrong number?" and undo exactly this row.
-        attendance_id: inserted?.id ?? null,
-        member: { id: memberData.id, name: memberData.name, member_number: memberData.member_number },
+        attendance_id: result.attendanceId,
+        member: memberInfo,
         expiry_date: latestEndDate || null,
         check_in_time: now.toISOString(),
       },
     })
-  } else if (!attData.check_out_time) {
-    // Check Out
-    const { error: updateError } = await supabase
-      .from('attendance')
-      .update({ check_out_time: now.toISOString() })
-      .eq('id', attData.id)
-
-    if (updateError) {
-      log.error('attendance check-out update failed', updateError)
-      reportAlertInBackground({ key: '5xx:ATTENDANCE_CHECK', severity: 'critical', title: 'Attendance check-out failed', body: `gymId=${gym.id} step=update error=${updateError.message.slice(0, 300)}`, gymId: gym.id })
-      return NextResponse.json(
-        { success: false, error: { code: 'DATABASE_ERROR', message: updateError.message } },
-        { status: 500 }
-      )
-    }
-
-    const checkInDate = new Date(attData.created_at)
-    const diffMs = now.getTime() - checkInDate.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
+  } else if (result.action === 'check_out') {
+    const diffMins = Math.floor((now.getTime() - new Date(result.checkInTime!).getTime()) / 60000)
 
     return NextResponse.json({
       success: true,
       data: {
         action: 'check_out',
-        attendance_id: attData.id,
-        member: { id: memberData.id, name: memberData.name, member_number: memberData.member_number },
+        attendance_id: result.attendanceId,
+        member: memberInfo,
         expiry_date: latestEndDate || null,
-        check_in_time: attData.created_at,
+        check_in_time: result.checkInTime,
         check_out_time: now.toISOString(),
         duration_minutes: diffMins,
       },
@@ -160,10 +139,10 @@ export const POST = withAuth('ATTENDANCE_CHECK', async (req: NextRequest, { supa
       success: true,
       data: {
         action: 'already_out',
-        member: { id: memberData.id, name: memberData.name, member_number: memberData.member_number },
+        member: memberInfo,
         expiry_date: latestEndDate || null,
-        check_in_time: attData.created_at,
-        check_out_time: attData.check_out_time,
+        check_in_time: result.checkInTime,
+        check_out_time: result.checkOutTime,
       },
     })
   }

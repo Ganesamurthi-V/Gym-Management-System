@@ -68,8 +68,14 @@ export function WhatsAppThread({
       /* The bezel stays dark in both themes. A phone frame is dark whatever the
          app on it is doing, and at 10px it is the only thing separating a light
          screen from a light page. */
-      className="rounded-[24px] bg-phone-bezel p-[10px] shadow-lift"
+      className="wa-device"
     >
+      {/* Side hardware, like an iPhone: action button and two volume keys on the left, the side button on the
+          right. Pure decoration, drawn outside the screen. */}
+      <span aria-hidden className="wa-key wa-key--action" />
+      <span aria-hidden className="wa-key wa-key--vol-up" />
+      <span aria-hidden className="wa-key wa-key--vol-down" />
+      <span aria-hidden className="wa-key wa-key--power" />
       {/* A fixed height, not an aspect ratio: with a ratio the screen could grow when a
           taller template was shown, resizing the whole phone on every tab switch. 474px is
           9/15 of the 280px screen width, and fits the tallest template. 9/15 is chosen
@@ -78,21 +84,21 @@ export function WhatsAppThread({
           600px tall and the message would sit under a slab of empty chat, which
           reads as a dead conversation. Shortening the screen is the lie worth
           telling. */}
-      <div className="relative flex h-[474px] flex-col overflow-hidden rounded-[14px] bg-[var(--wa-chat)]">
+      <div className="wa-screen relative flex h-[560px] flex-col overflow-hidden bg-[var(--wa-chat)]">
         {/* Status bar and chat header share one surface, the way WhatsApp tints
             the top of the screen as a single block. */}
         <div className="shrink-0 bg-[var(--wa-bar)]">
-          <div className="relative flex items-center justify-between px-4 pb-1 pt-2.5">
-            <span className="text-[10px] font-semibold text-[var(--wa-ink)]">9:41</span>
+          <div className="relative flex items-center justify-between px-7 pb-2 pt-[15px]">
+            <span className="text-[13px] font-semibold tracking-tight text-[var(--wa-ink)]">9:41</span>
             {/* Notch, so black in both themes like the bezel. */}
             <span
               aria-hidden
-              className="absolute left-1/2 top-[7px] h-[17px] w-[62px] -translate-x-1/2 rounded-full bg-phone-bezel"
+              className="absolute left-1/2 top-[10px] h-[26px] w-[90px] -translate-x-1/2 rounded-full bg-black"
             />
             <span className="flex items-center gap-1 text-[var(--wa-ink)]">
-              <Signal className="h-[11px] w-[11px]" />
-              <Wifi className="h-[11px] w-[11px]" />
-              <BatteryFull className="h-[13px] w-[13px]" />
+              <Signal className="h-[13px] w-[13px]" />
+              <Wifi className="h-[13px] w-[13px]" />
+              <BatteryFull className="h-[16px] w-[16px]" />
             </span>
           </div>
 
@@ -139,7 +145,7 @@ export function WhatsAppThread({
           </span>
 
           {messages.map(message => (
-            <WhatsAppBubble key={message.body} message={message} className="w-[88%]" />
+            <WhatsAppBubble key={message.body} message={message} className="wa-in w-[88%]" />
           ))}
         </div>
 
@@ -163,12 +169,13 @@ export function WhatsAppThread({
 
           <span
             aria-hidden
-            className="mx-auto my-1.5 block h-[3px] w-[84px] rounded-full bg-[var(--wa-home)] opacity-30"
+            className="mx-auto mb-2 mt-2.5 block h-[5px] w-[116px] rounded-full bg-[var(--wa-home)] opacity-90"
           />
         </div>
+        {/* A faint glass sheen across the screen. */}
+        <span aria-hidden className="wa-sheen" />
       </div>
     </div>
-    <p className="mt-2 text-center text-[11px] text-muted-foreground">Sample data</p>
     </div>
   );
 }

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo, Fragment, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import WizardHeader from "@/components/import/WizardHeader";
 import {
-  ArrowLeft, Check, AlertTriangle, MapPin, Search,
+  ArrowLeft, Check, AlertTriangle, MapPin,
   Cpu, Zap, RefreshCw, Save, ChevronDown, ChevronUp,
-  Filter, CheckSquare, Square, BookOpen, X, CheckCircle,
+  CheckSquare, Square, BookOpen, X, CheckCircle,
   Trash2,
 } from "lucide-react";
 import type { ImportedRow } from "../page";
@@ -52,15 +52,13 @@ export default function ImportReviewPage() {
   const router = useRouter();
 
   const [rows, setRows] = useState<ReviewRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterMode>("pending");
+  const [search] = useState("");
+  const [filter] = useState<FilterMode>("pending");
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
-  const [bulkValue, setBulkValue] = useState("");
   const [selectedIdxs, setSelectedIdxs] = useState<Set<number>>(new Set());
-  const [showBulkBar, setShowBulkBar] = useState(false);
   const [clusterInfo, setClusterInfo] = useState<{ top_district: string; top_state: string; confidence: number } | null>(null);
   const [acceptingAll, setAcceptingAll] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -194,18 +192,6 @@ export default function ImportReviewPage() {
 
   function toggleSaveAlias(idx: number) {
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, _save_alias: !r._save_alias } : r));
-  }
-
-  function applyBulkReplace() {
-    if (!bulkValue.trim() || selectedIdxs.size === 0) return;
-    setRows(prev => prev.map((r, i) =>
-      selectedIdxs.has(i)
-        ? { ...r, area: bulkValue.trim(), _area_override: bulkValue.trim(), _review_done: true, _area_confidence: 1.0, _area_matched_by: "manual" }
-        : r
-    ));
-    setSelectedIdxs(new Set());
-    setBulkValue("");
-    setShowBulkBar(false);
   }
 
   function toggleSelect(idx: number) {

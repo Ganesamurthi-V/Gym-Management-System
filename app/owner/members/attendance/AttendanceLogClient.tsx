@@ -2,9 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { sanitizeRow } from '@/lib/export/sanitizeCell'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Search, Filter, Sun, Moon, Calendar, Clock, Download, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Search, Sun, Moon, Calendar, Clock, Download } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { formatMemberId } from '@/types'
 import { fetchAttendanceLogsAction } from './actions'
@@ -60,7 +59,6 @@ function formatTimeOnly(dateString: string | null) {
 }
 
 export function AttendanceLogClient({ initialLogs, gymId }: Props) {
-  const router = useRouter()
   const [logs, setLogs] = useState<AttendanceLog[]>(initialLogs)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
@@ -378,10 +376,9 @@ export function AttendanceLogClient({ initialLogs, gymId }: Props) {
                 </tr>
               ) : (
                 groupedLogs.map((group) => (
-                  group.logs.map((log, idx) => {
+                  group.logs.map((log) => {
                     const mem = log.members
-                    const isFirstInGroup = idx === 0
-                    
+
                     return (
                       <tr key={log.id} className="hover:bg-slate-50/50 transition-colors border-t border-slate-100">
                         <td className="px-5 py-3.5">

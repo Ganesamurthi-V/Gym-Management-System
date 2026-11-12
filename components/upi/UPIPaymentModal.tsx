@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, QrCode, Wallet, Loader2, Clock, CheckCircle2 } from 'lucide-react'
+import { X, QrCode, Wallet, Loader2, Clock } from 'lucide-react'
 import { generateUPILink, generateQRCode } from '@/lib/upi'
 import { formatCurrency } from '@/lib/utils'
 
@@ -53,14 +53,12 @@ export default function UPIPaymentModal({
   const [step, setStep] = useState<Step>('choose')
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
-  const [upiUri, setUpiUri] = useState<string | null>(null)
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (open) {
       setStep('choose')
       setQrDataUrl(null)
-      setUpiUri(null)
     }
   }, [open])
 
@@ -78,7 +76,6 @@ export default function UPIPaymentModal({
         transactionNote: `GymFlow Membership - ${memberName}`,
         // Future: add transactionRef here for payment verification
       })
-      setUpiUri(uri)
 
       const dataUrl = await generateQRCode(uri, 280)
       setQrDataUrl(dataUrl)

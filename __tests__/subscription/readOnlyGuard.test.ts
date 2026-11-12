@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest, NextResponse } from 'next/server'
 
 // A lapsed or deactivated gym is read-only on the server: the UI paywall is skipped by a direct
-// API call, so withAuth refuses writes itself. Billing, account and support routes opt out.
+// API call, so withAuth refuses every method itself. Billing, account and support routes opt out.
 
 vi.mock('server-only', () => ({}))
 
@@ -49,9 +49,9 @@ describe('withAuth read-only mode', () => {
     expect((await withAuth('T', ok)(req('PATCH'))).status).toBe(403)
   })
 
-  it('still serves a GET on an expired gym', async () => {
+  it('refuses a GET on an expired gym too (reads leak tenant data)', async () => {
     m.gym = gym({ is_active: true, subscription_status: 'expired', plan_type: 'monthly', subscription_ends_at: PAST })
-    expect((await withAuth('T', ok)(req('GET'))).status).toBe(200)
+    expect((await withAuth('T', ok)(req('GET'))).status).toBe(403)
   })
 
   it('lets a POST through when the route opts in with allowWhenExpired', async () => {

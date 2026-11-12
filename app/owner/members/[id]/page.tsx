@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { MemberDetailClient } from './MemberDetailClient'
 import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import { notFound } from 'next/navigation'
+import { requireOwnerAccess } from '@/lib/owner/access'
 
 export default async function MemberDetailPage({
   params,
@@ -9,6 +10,7 @@ export default async function MemberDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params // ✅ FIX HERE
+  await requireOwnerAccess()
 
   const supabase = await createClient()
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { addDays, addMonths, differenceInCalendarDays, format, parseISO } from 'date-fns'
 import {
-  excelSerialToIso, monthsForPlan, parseStartDate, planForMonths, resolveImportedMembership,
+  detectDateOrder, excelSerialToIso, monthsForPlan, parseStartDate, planForMonths, resolveImportedMembership,
 } from '@/lib/import/membershipDates'
 import { excelSerialToDate, cellStr } from '@/lib/import/normalizers'
 import { recognizePlanDuration, recognizePlanMonths } from '@/lib/import/plan-matching'
@@ -119,6 +119,19 @@ describe('parseStartDate', () => {
     expect(ok('28-10-2026')).toBe('2026-10-28')
     expect(ok('28.10.2026')).toBe('2026-10-28')
     expect(ok('03/04/26')).toBe('2026-04-03')
+  })
+  it('falls back to month first when day first is impossible', () => {
+    expect(ok('02-27-2024')).toBe('2024-02-27')
+    expect(ok('01-13-2022')).toBe('2022-01-13')
+    expect(ok('13/13/2026')).toBe('unparseable')
+  })
+  it('detectDateOrder reads a whole column', () => {
+    expect(detectDateOrder(['02-27-2024', '03-04-2024'])).toBe('mdy')
+    expect(detectDateOrder(['27-02-2024', '03-04-2024'])).toBe('dmy')
+    expect(detectDateOrder(['03-04-2024'])).toBe('dmy')
+    expect(detectDateOrder(['02-27-2024', '27-02-2024'])).toBe('dmy')
+    const r = parseStartDate('03-04-2024', TODAY, 'mdy')
+    expect(r.ok && r.date).toBe('2024-03-04')
   })
   it('reads ISO, with or without a time', () => {
     expect(ok('2026-04-03')).toBe('2026-04-03')

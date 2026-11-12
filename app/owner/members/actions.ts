@@ -2,11 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeRow } from '@/lib/export/sanitizeCell'
-import { getMemberStatus, getDaysRemaining, todayIST } from '@/lib/utils'
+import { getMemberStatus, getDaysRemaining } from '@/lib/utils'
 import type { MemberWithStatus } from '@/types'
 import { formatMemberId } from '@/types'
-import { deleteCache } from '@/lib/cache'
-import { cacheKeys } from '@/lib/cache-keys'
 
 // Our own thrown messages are safe to show; anything else (e.g. a raw Postgres or
 // PostgREST error) stays in the server log so internals never reach the browser.
@@ -213,26 +211,5 @@ export async function loadMoreMembersAction(gymId: string, offset: number, limit
     return { success: true, data: result }
   } catch (err: unknown) {
     return { success: false, error: clientError(err, 'Could not load more members') }
-  }
-}
-
-
-export async function invalidateMembersCache(gymId: string) {
-  try {
-    const supabase = await createClient()
-    // Ownership is verified so a signed-in non-owner cannot flush another gym's caches.
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) throw new Error("Unauthorized")
-    const { data: gym } = await supabase.from('gyms').select('id').eq('id', gymId).eq('owner_id', session.user.id).maybeSingle()
-    if (!gym) throw new Error("Unauthorized Gym Access")
-
-    // Bust all affected caches in parallel instead of four sequential awaits.
-    await Promise.all([
-      deleteCache(cacheKeys.dashboard(gymId, todayIST())),
-      deleteCache(cacheKeys.paymentsAll(gymId)),
-    ])
-    return { success: true }
-  } catch (err: unknown) {
-    return { success: false, error: clientError(err, 'Could not refresh members') }
   }
 }

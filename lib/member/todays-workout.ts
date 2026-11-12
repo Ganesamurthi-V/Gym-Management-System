@@ -83,6 +83,59 @@ export function workoutToday(programs: readonly ProgramLike[], date: string): Wo
   return { kind: 'rest', nextDay: null }
 }
 
+export interface UpcomingWorkout {
+  /** IST YYYY-MM-DD */
+  date: string
+  weekday: Weekday
+  isToday: boolean
+  programId: string
+  programName: string
+  /** Schedule days carry no title of their own, so this is always null for now. */
+  dayName: string | null
+  exerciseCount: number
+  /** First few exercise names. */
+  exerciseNames: string[]
+}
+
+const DAY_MS = 86_400_000
+const LOOKAHEAD_DAYS = 14
+
+/** 'YYYY-MM-DD' plus `n` calendar days; UTC arithmetic on a date-only value is exact. */
+function addDays(date: string, n: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10)
+}
+
+/**
+ * Next `count` scheduled workout days starting from `today` (inclusive), skipping rest days, looking at
+ * most 14 days ahead. Like `workoutToday`, the first program with exercises on a day wins.
+ */
+export function upcomingWorkouts(programs: readonly ProgramLike[], today: string, count: number): UpcomingWorkout[] {
+  const out: UpcomingWorkout[] = []
+  for (let i = 0; i < LOOKAHEAD_DAYS && out.length < count; i++) {
+    const date = addDays(today, i)
+    const weekday = weekdayOf(date)
+    for (const program of programs) {
+      const exercises = exercisesOn(program.schedule, weekday)
+      if (exercises.length === 0) continue
+      const names = exercises
+        .map(e => (typeof e.name === 'string' ? e.name.trim() : ''))
+        .filter(Boolean)
+      out.push({
+        date,
+        weekday,
+        isToday: i === 0,
+        programId: program.id,
+        programName: program.name,
+        dayName: null,
+        exerciseCount: exercises.length,
+        exerciseNames: names.slice(0, NAMES_SHOWN),
+      })
+      break
+    }
+  }
+  return out
+}
+
 /** Cookie holding the program a member picked with "For me" when several are assigned. Read on the server for the home card. */
 export const MY_PROGRAM_COOKIE = 'gf-my-program'
 

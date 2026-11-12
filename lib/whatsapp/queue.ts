@@ -322,7 +322,8 @@ export async function kickDrain(delayMinutes = 0, opts: { continuation?: boolean
   const qstashBase = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '')
 
   try {
-    const res = await fetch(`${qstashBase}/v2/publish/` + encodeURIComponent(url), {
+    // The destination goes in the path as a raw URL: QStash answers 400 "invalid scheme" to a percent-encoded one.
+    const res = await fetch(`${qstashBase}/v2/publish/${url}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

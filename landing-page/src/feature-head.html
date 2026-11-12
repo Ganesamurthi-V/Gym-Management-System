@@ -121,7 +121,9 @@
       })();
     </script>
     <style>
-      .mounted #seo-fallback { display: none; }
+      /* Scripts on: never paint the static copy, show the page once the bundle has mounted (see index.html). */
+      .js:not(.fb) #seo-fallback, .js:not(.fb) #seo-prerender { display: none; }
+      .mounted #seo-fallback, .mounted #seo-prerender { display: none; }
       /*
         The static copy is the first paint, not just a no-JavaScript fallback: it stays visible until
         React has mounted (the .mounted class, added after the first commit), so the screen is no

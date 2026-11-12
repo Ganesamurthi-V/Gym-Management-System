@@ -10,7 +10,7 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, end
 import { getAllTimePayments } from './actions'
 import { useGymRealtime } from '@/lib/hooks/useGymRealtime'
 import { tourAttr } from '@/lib/tours/anchors'
-import { idempotencyKeyFor, isDuplicateResponse } from '@/lib/api/idempotency-client'
+import { idempotencyKeyFor } from '@/lib/api/idempotency-client'
 
 interface Payment {
   id: string
@@ -63,7 +63,6 @@ interface Props {
   duePayments?: DuePayment[]
   pendingMembers: PendingMember[]
   gymId: string
-  gymName: string
 }
 
 type Period = 'today' | 'week' | 'month' | 'all' | 'custom'
@@ -134,7 +133,7 @@ function buildTransactions(mList: Payment[], sList: ProductSale[], dList: DuePay
 
 const PAGE_SIZE = 20
 
-export function PaymentsClient({ payments, productSales = [], duePayments = [], pendingMembers, gymId, gymName }: Props) {
+export function PaymentsClient({ payments, productSales = [], duePayments = [], pendingMembers, gymId }: Props) {
   const [period, setPeriod]   = useState<Period>('month')
   const [modeFilter, setMode] = useState<ModeFilter>('all')
 

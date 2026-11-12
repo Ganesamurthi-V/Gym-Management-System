@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyGymPlans, findGymPlan, gymPlansFromOnboarding, suggestGymPlan, nearestStandard } from '@/lib/import/gymPlans'
+import { applyGymPlans, findGymPlan, gymChoiceValue, gymPlanFromChoice, gymPlanLabel, gymPlansFromOnboarding, suggestGymPlan, nearestStandard } from '@/lib/import/gymPlans'
 import { importConfirmSchema } from '@/lib/import/schema'
 import { resolveImportedMembership, monthsForPlan } from '@/lib/import/membershipDates'
 
@@ -26,12 +26,12 @@ describe('gymPlansFromOnboarding', () => {
 
 describe('suggestGymPlan', () => {
   it('matches names loosely', () => {
-    expect(suggestGymPlan('gold plan', plans)).toBe('Gold')
-    expect(suggestGymPlan('SILVER', plans)).toBe('Silver')
+    expect(suggestGymPlan('gold plan', plans)?.planName).toBe('Gold')
+    expect(suggestGymPlan('SILVER', plans)?.planName).toBe('Silver')
   })
   it('matches a stated length to the one plan of that length', () => {
-    expect(suggestGymPlan('6 months', plans)).toBe('Gold')
-    expect(suggestGymPlan('Quarterly', plans)).toBe('Silver')
+    expect(suggestGymPlan('6 months', plans)?.planName).toBe('Gold')
+    expect(suggestGymPlan('Quarterly', plans)?.planName).toBe('Silver')
   })
   it('leaves unknown names and ambiguous lengths unresolved', () => {
     expect(suggestGymPlan('Zumba', plans)).toBeNull()
@@ -42,6 +42,27 @@ describe('suggestGymPlan', () => {
     expect(suggestGymPlan('2 months', plans)).toBeNull()
     expect(nearestStandard('2 months')).toBe('quarterly')
     expect(nearestStandard('Zumba')).toBeNull()
+  })
+})
+
+describe('same plan name in several categories', () => {
+  const multi = gymPlansFromOnboarding({ plans: [
+    { planName: 'Quarterly', category: 'strength', duration: 'quarterly', price: 3000 },
+    { planName: 'Quarterly', category: 'cardio', duration: 'quarterly', price: 4000 },
+    { planName: 'Quarterly', category: 'both', duration: 'quarterly', price: 5000 },
+  ] })
+  it('does not guess between categories', () => {
+    expect(suggestGymPlan('Quarterly', multi)).toBeNull()
+  })
+  it('reads a choice back to the exact category, and the server honours it', () => {
+    const cardio = gymPlanFromChoice(multi, gymChoiceValue(multi[1]))
+    expect(cardio).toMatchObject({ category: 'cardio', price: 4000 })
+    expect(gymPlanLabel(multi[2])).toBe('Quarterly (Strength + Cardio)')
+    const r = applyGymPlans([{ plan: 'quarterly', category: 'cardio', plan_name: 'Quarterly' }], multi)
+    expect(r.ok && r.rows[0]).toMatchObject({ category: 'cardio' })
+  })
+  it('still reads an older gym:<name> choice', () => {
+    expect(gymPlanFromChoice(multi, 'gym:Quarterly')).toMatchObject({ category: 'strength' })
   })
 })
 

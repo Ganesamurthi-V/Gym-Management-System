@@ -1,0 +1,8 @@
+{
+  "name": "gymflow-infra",
+  "private": true,
+  "type": "module",
+  "scripts": { "typecheck": "tsc --noEmit -p ." },
+  "dependencies": { "sst": "4.17.2" },
+  "devDependencies": { "@types/aws-lambda": "^8.10.145", "@types/node": "^22.0.0", "typescript": "^5.6.0" }
+}

@@ -36,7 +36,7 @@ export function WeightChart({ logs }: Props) {
       : `Weight from ${fmtNum(first.value)} kg on ${shortDate(first.date)} to ${fmtNum(last.value)} kg on ${shortDate(last.date)}`
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full animate-rise-in" role="img" aria-label={label}>
       {ticks.map((t) => {
         const y = scaleY(t, min, max, T, H - B)
         return (

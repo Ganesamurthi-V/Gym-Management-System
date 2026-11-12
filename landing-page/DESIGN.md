@@ -1,4 +1,4 @@
-# GymFlow marketing site: design system (Hallmark redesign 4, premium SaaS, theme "Cobalt", signal colour Royal Blue)
+# GymFlow marketing site: design system (taste-skill redesign of the home page, theme "Cobalt", signal colour Royal Blue)
 
 The rules every page of this site follows. Read this before changing any component. Tokens live in `src/index.css`
 (semantic names, two values each: light and night) and `src/tokens.css` (the shared scale); components use them, never
@@ -17,7 +17,7 @@ best software pages: calm, exact, spacious, product-first.
 
 ## Look: Cobalt, premium SaaS
 Cool near-white paper ruled with 1px hairlines, a refined grotesque for headings, a quiet text face for body, large calm type,
-generous space, product screens shown big with layered soft shadows, tactile keycap buttons with a real bottom edge, one
+generous space, product screens shown big on hairline frames, one flat button, one
 graphite (dark) band, and one electric blue that does every signal. Premium comes from restraint, scale, alignment and polish,
 never from decoration. It is not paper-board, not poster-loud, not neon, and not a purple-blue gradient SaaS cliche.
 **Light is the default theme** (the first-paint script opens light unless the visitor chose night this visit); night is a
@@ -50,55 +50,50 @@ machine values (IDs, times) inside product tickets, never labels. Scale: `.displ
 `.display-1` ~5rem, `.display-2` ~3.5rem, `.display-3` ~1.75rem, `.lead`. Labels, captions, table heads: Familjen Grotesk 500 a step
 smaller, sentence case, untracked, muted. No all-caps anywhere, no tracked labels, no eyebrows, no italics.
 
-### Surfaces
-- A 1px `--border` edges every surface and splits every row. Panels: 14px radius, white `--frame`, hairline border, `--shadow-card`
-  (`0 1px 2px` ink at 6% plus `0 12px 32px -16px` ink at 14%): the layered soft shadow is the depth. Large product frames: 20px.
-- **Keycaps:** buttons are keys: 48px (44 in the nav), 10px radius, `--key-face` with a 1px border and a 3px `--key-edge` bottom edge
-  and a soft drop; the primary is Royal Blue with a `--accent-edge` bottom edge; press sinks 3px (80ms).
-- **Graphite band** (`.band-ink`): the ONE dark section per page (full-bleed, rounded 0), used for the dashboard showcase; plus the
-  closing `.band-accent` (Royal Blue, white type) once. Two bands a page at most.
-- **Ground:** the hero sits on the live ASCII field (see ASCII); `.grid-bg` (a 24px dot tile) is the static fallback for feature-page heads. No grain, no blur, no glass, no gradients, no glow.
-- Product screens (HeroDemo, DashboardMock, member app phone, WhatsApp phone) are the imagery: shown at large scale, never
-  decorated with browser chrome.
+### Surfaces and controls
+Superseded by "Taste redesign" below: one 12px card with a 1px hairline, 20px picture frames, one flat 44px button, no shadows, no keycap edges.
+Inputs are 48px with an 8px radius and a 1px `--border-strong` line; `:focus-visible` is a 2px `--ring` outline, 2px offset.
 
-### Controls
-Primary keycap (blue), secondary keycap (white), text button. `:focus-visible`: 2px `--ring` outline, 2px offset, instant. Inputs 48px,
-10px radius, 1px `--border-strong`, blue ring on focus. Links underline on hover.
+## Taste redesign (taste-skill 2.5, page kind: software)
+Built from the taste-skill rules; the Royal Blue brand, the circular logo, the tokens in `src/index.css` and every price in
+`src/data/plans.ts` are unchanged. Home headings, FAQ and the H1 are unchanged, so the no-JavaScript block in `index.html` still matches
+(`scripts/check-copy-sync.mjs`).
 
-## Content and structure: minimal, SEO-friendly, attractive
-The owner released the copy: headings and text may be rewritten freely, shortened, and made search-friendly (a plain keyword in the
-H1 and each H2, one clear sentence under each). Facts must stay true to the product (see src/data/*.ts and the existing pages);
-no invented metrics, customers or claims. Fewer topics, fewer words: one idea per screen, about 40 visible words per section.
-**Home page structure (in order):** Hero (H1 "Gym management software made effortless") / the film / Dashboard (graphite band) /
-Features (a four-tab switcher: Members, Fees and dues, Attendance, Member app) / WhatsApp reminders / Get started in three steps /
-Pricing / FAQ / Close (blue band) / Footer. The old Facts, Purpose, Problems and Founder sections leave the home page (their
-components stay in the repo, unused; their key facts live on as the figures in the dashboard band and the bullets in the WhatsApp section).
-The 16 feature, guide and docs pages keep their content (it is already search-rich) and take the same look.
+### Layout system (`src/styles/home.css`, `src/components/layout/Section.tsx`)
+- **One wrap:** `.wrap` = min(100% - 2 x gutter, 1200px), gutter 20 / 32 / 40 (phone / tablet / desktop). The header, every section and the
+  footer use it, so left and right edges are equal (x 120 and 1320 at 1440).
+- **One section box:** `.sec` = 120px top padding (112 / 96 smaller), 56px bottom, `min-height: 100svh` from 768px up (content height
+  under 640px). The H2 is the first child, left aligned. The hero is exactly `100svh` from 1024px up, alone on the first screen.
+- **Splits** share one line: text left on columns 1-6, picture right on 7-12; one column under 1024px with the text first.
+- **Type:** Familjen Grotesk 600 / IBM Plex Sans (unchanged). h1 56 (clamp 38-56), h2 48 (clamp 30-48), h3 28, card title 20, body 16, lead
+  20. Nothing under 13px.
+- **One of each:** button (flat, 44px, 8px radius, 1px border; hover steps the fill 14% toward ink and lifts 1px; press sinks 1px and scales .985),
+  card (`.panel`: white, hairline, 12px, no shadow; a linked card lifts 2px), picture frame (`.shot`: 20px, 3:2, cropped to the top of the
+  capture, image zooms 1.02 on hover), link (`.link`: hairline at rest, an accent line draws on hover). Radius scale 8 / 12 / 20.
+- **Grounds:** page colour and `--subtle` alternate; one graphite band (WhatsApp); one Royal Blue close. No gradient except the 140px
+  fade-out mask under the hero product.
+- **No captions** under any picture or mock ("Sample data" lines are gone). No placeholders: the member app, which has no tablet capture, is the
+  live HTML `MemberAppCard`.
 
-## ASCII (a signature of this site)
-ASCII is the premium-tech texture: used with restraint, always decorative-plus-interactive, never carrying essential text.
-- **AsciiField:** a live ASCII noise field (8x16 cell) behind the hero's top 720px in blue tints, brightening and re-rolling under the cursor.
-- **AsciiLogo:** the GymFlow logo drawn in ASCII (footer wordmark and the close band); it decodes once on entering the viewport and ripples
-  under the cursor on hover. The nav keeps the real logo image.
-- **AsciiIcon (WhatsApp):** a small ASCII WhatsApp glyph in WhatsApp green beside the WhatsApp section heading and inside reminder cards; on
-  hover/tap a pulse travels around the bubble, the handset rings and typing dots pop.
-All three: canvas or pre, tokens only, paused off screen, static under reduced motion, hidden from screen readers with a real accessible name.
+### Home page, in order
+1. **Hero:** H1 and, on the same row, the lead, the two buttons and one fact line (14-day trial, no card, free up to 50 members); under it the
+   live owner console (`DashboardMock`) cut by the fold under a fade. On phones the member app Home takes its place. No entrance animation.
+2. **Film** (`#film`): heading and one line, then the film across the wrap.
+3. **Features** (`#features`, two screens): three rows, text left (heading, sentence, ruled facts, link) and the product screen right.
+4. **Comparison** (`#problems`): one ruled table in a panel; stacked rows on phones.
+5. **WhatsApp** (`#whatsapp`, graphite band): heading, six schedule items in two columns, the phone with a message picker on the right.
+6. **Built for India** (`#india`): heading beside a live "Record a fee" slip (UPI chosen), six ruled facts under it.
+7. **Steps** (`#how`): three columns, each a small piece of the real app, a heading and two facts.
+8. **Pricing** (`#pricing`): heading and a Monthly / Yearly switch on one row, a free card and a Pro card of equal height.
+9. **FAQ** (`#faq`): every answer open, two columns on the split line.
+10. **Close:** the Royal Blue band, left aligned, the main action in the same wording as the nav and hero.
+11. **Footer:** same wrap, three columns, legal row.
 
-## Composition (product first)
-Shape: a premium SaaS narrative. Hero **Settled/centred** over the ASCII field: H1 (`.display-xxl`, two lines, centred), one lead sentence, the
-two keycaps, one quiet terms line, then the product shown BIG (the members-list demo on a 20px-radius frame with the layered shadow, the
-WhatsApp confirmation floating over its corner as a small white card with a blue chip). Nav: a slim sticky bar (1px bottom hairline).
-Sections alternate `--background` and `--subtle`, 128 to 176px apart: the film as a large framed video; ONE graphite band for the dashboard
-with four large figures; the features switcher with one big capture; WhatsApp as a Split (heading + three bullets left, ASCII icon + feed
-cards right); the three steps as three wide rows with a large light numeral; pricing as two panels (Pro lifted, blue keycap, 1px blue ring);
-FAQ as a Split accordion; the blue close band with the ASCII logo; footer on `--background`. Never the same composition in neighbours; no
-three-up grid of identical icon cards.
-
-## Motion: smooth and refined
-Entrances: 12px translate plus opacity in 500ms `cubic-bezier(.22,1,.36,1)`, once, in view, 60ms stagger. Cards: hover raises the shadow
-and shifts the border to `--accent` at 40% (120ms). A pointer spotlight (a soft radial light that follows the cursor inside a panel) on
-the feature capture and the pricing panels (fine pointers only). Figures count up once. The tab pill slides by `transform` (240ms). The
-hero product floats in with a 700ms rise. `transform` and `opacity` only, never `transition: all`. Reduced motion: the end state.
+## Motion: hover and press only
+Nothing animates on load or on scroll: no reveal, rise, tilt, magnet, spotlight, smooth-scroll library or counting number. What moves:
+buttons step and press, a linked card lifts 2px, a linked picture zooms 1.02, links and nav words draw an underline, tabs and pickers swap on
+click. The film and the message picker are the visitor's. `prefers-reduced-motion` removes the transforms and keeps the colour changes.
+The old ASCII field, ASCII logo and `Rise` / `Tilt` components are no longer used by the home page (the feature pages still import some).
 
 ## Writing
 Plain, specific, from the owner's side; imperative verbs on buttons; numerals over words. Product facts only. No dashes in new copy,

@@ -1,0 +1,29 @@
+# Replace adms.example.com with your domain. Node listens on plain HTTP at 127.0.0.1:8081.
+# Plain :80 is served WITHOUT a redirect to https on purpose: older devices cannot do TLS.
+
+(adms_routes) {
+	handle /iclock* {
+		reverse_proxy 127.0.0.1:8081
+	}
+	handle /healthz {
+		reverse_proxy 127.0.0.1:8081
+	}
+	handle {
+		respond 404
+	}
+}
+
+# Plain http by domain (an explicit http:// prefix disables the automatic https redirect).
+http://adms.example.com {
+	import adms_routes
+}
+
+# Plain http when a device is configured with the server IP instead of a domain.
+http://:80 {
+	import adms_routes
+}
+
+# https with an automatic certificate.
+adms.example.com {
+	import adms_routes
+}

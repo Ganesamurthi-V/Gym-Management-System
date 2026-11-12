@@ -16,6 +16,7 @@ import { passesCsrfCheck } from '@/lib/api/withAuth'
 import { recordOwnerAction } from '@/lib/activity/record'
 import { applyGymPlans, gymPlansFromOnboarding } from '@/lib/import/gymPlans'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
+import { syncMemberToDevices } from '@/lib/devices/commands'
 
 const GENERIC_DB_MESSAGE = 'The import could not be saved. Please try again.'
 const PLAN_LIMIT_MESSAGE = `Your plan allows ${PLAN_MEMBER_LIMIT} members, and your gym has reached that limit. Upgrade to a paid plan to import more members.`
@@ -270,6 +271,9 @@ export async function POST(req: NextRequest) {
       deleteCache(cacheKeys.paymentsAll(gym.id)),
       deleteCache(cacheKeys.dashboard(gym.id, today)),
     ])
+
+    // Queue the new members onto the gym's devices. Each device holds at most 100 pending commands, so more is pointless.
+    for (const id of memberIds.slice(0, 100)) await syncMemberToDevices(gym.id, id, 'add')
 
     recordOwnerAction(supabase, req, 'IMPORT_CONFIRM')
     return NextResponse.json({

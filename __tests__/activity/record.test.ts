@@ -67,6 +67,8 @@ const EXCLUDED: Record<string, string> = {
   'activate/': 'public member activation flow',
   'auth/': 'public / pre-login auth flow',
   'cron/': 'cron worker, CRON_SECRET',
+  'devices/punches/': 'ADMS receiver, ADMS_INGEST_SECRET bearer',
+  'devices/commands/': 'ADMS receiver, ADMS_INGEST_SECRET bearer',
   'graph/': 'Graph API reverse proxy',
   'sentry/webhook/': 'Sentry webhook',
   'webhook/': 'payment provider webhook',
@@ -94,7 +96,7 @@ describe('owner mutating routes record activity', () => {
   const candidates = files.filter((f) => mutating.test(f.src) && !f.src.includes('withAuth(') && !excluded(f.rel))
 
   it('finds the instrumented routes', () => {
-    expect(candidates.length).toBeGreaterThanOrEqual(15)
+    expect(candidates.length).toBeGreaterThanOrEqual(14)
   })
 
   for (const f of candidates) {

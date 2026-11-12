@@ -1,6 +1,8 @@
 'use client'
 
 import { Lock } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { spring } from '@/lib/motion'
 import type { Achievement, AchievementRarity } from '@/lib/member/achievements/types'
 import { formatDate } from '@/lib/member/member-utils'
 
@@ -68,6 +70,7 @@ export default function AchievementCard({
 }) {
   const { unlocked, unlockedAt, rarity, name, description, icon, badgeImage, badgeSize, progress, requirement } = achievement
   const style = BADGE_STYLES[rarity]
+  const reduce = useReducedMotion()
 
   const showProgress = !unlocked && progress !== undefined && requirement > 0
   const progressPct = showProgress ? Math.min(100, Math.round((progress! / requirement) * 100)) : 0
@@ -77,12 +80,16 @@ export default function AchievementCard({
   const size = badgeSize ?? 52
 
   return (
-    <div
+    <motion.div
+      // Earned badges pop in once with a spring; locked ones just sit there, muted.
+      initial={unlocked && !reduce ? { scale: 0.85, opacity: 0 } : false}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={spring}
       className={`
-        relative rounded-2xl border bg-surface p-3.5 transition-all
+        relative h-full rounded-3xl border bg-surface-card p-4
         ${unlocked
           ? `${style.border} ${style.glow}`
-          : 'border-slate-100 shadow-sm'
+          : 'border-surface-border opacity-80'
         }
         ${isNew ? `ring-2 ${style.ring}` : ''}
       `}
@@ -122,7 +129,7 @@ export default function AchievementCard({
           ) : (
             <div
               className={`
-                flex h-[52px] w-[52px] items-center justify-center rounded-xl text-xl
+                flex h-[52px] w-[52px] items-center justify-center rounded-2xl text-xl
                 ${unlocked ? 'bg-slate-50' : 'bg-slate-100 grayscale opacity-40'}
               `}
             >
@@ -149,9 +156,11 @@ export default function AchievementCard({
             {progress} / {requirement}
           </p>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${style.barColor}`}
-              style={{ width: `${progressPct}%` }}
+            <motion.div
+              className={`h-full origin-left rounded-full ${style.barColor}`}
+              initial={{ scaleX: reduce ? progressPct / 100 : 0 }}
+              animate={{ scaleX: progressPct / 100 }}
+              transition={reduce ? { duration: 0 } : spring}
             />
           </div>
         </div>
@@ -168,6 +177,6 @@ export default function AchievementCard({
           <span className="text-[10px] font-semibold text-slate-400">Earned on {formatDate(unlockedAt)}</span>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

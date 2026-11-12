@@ -99,7 +99,7 @@ export function CookieBanner() {
                 setDraft(getConsent() ?? NONE);
                 setView('details');
               }}
-              className="ml-auto min-h-8 shrink-0 px-2 text-[14px] font-medium text-foreground underline underline-offset-2 transition-colors hover:text-accent-text"
+              className="ml-auto min-h-[44px] shrink-0 sm:min-h-8 px-2 text-[14px] font-medium text-foreground underline underline-offset-2 transition-colors hover:text-accent-text"
             >
               Choose
             </button>

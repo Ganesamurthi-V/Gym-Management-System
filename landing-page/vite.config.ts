@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, type Plugin } from 'vite'
+import { createServer, defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import {
@@ -65,6 +65,41 @@ const abs = (path: string) => (path.startsWith('http') ? path : `${SITE_ORIGIN}$
 // Pages without their own card (no ogImage in the data) fall back to the homepage image.
 const OG_DEFAULT = '/og-image.jpg'
 const OG_ALT_DEFAULT = 'The GymFlow dashboard showing member counts, dues and expiring memberships at a glance.'
+
+// FAQPage is generated from the visible "Common questions" blocks (each h3 is a question, the
+// blocks up to the next h3 are its answer), so the structured data cannot drift from the page text.
+const plain = (text: string) => parseInline(text).map(node => node.text).join('')
+const sentence = (text: string) => (/[.!?:;]$/.test(text) ? text : `${text}.`)
+
+function faqNode(page: FeaturePage, url: string): object | undefined {
+  const mainEntity: object[] = []
+  let name: string | undefined
+  let answer: string[] = []
+  const flush = () => {
+    if (name && answer.length) {
+      mainEntity.push({ '@type': 'Question', name, acceptedAnswer: { '@type': 'Answer', text: answer.join(' ') } })
+    }
+  }
+  for (const section of page.sections) {
+    if (section.heading !== 'Common questions') continue
+    for (const block of section.blocks) {
+      if (block.type === 'h3') {
+        flush()
+        name = plain(block.text)
+        answer = []
+      } else if (block.type === 'p' || block.type === 'note') {
+        answer.push(plain(block.text))
+      } else if (block.type === 'ul' || block.type === 'ol') {
+        answer.push(block.items.map(item => sentence(plain(item))).join(' '))
+      }
+    }
+    flush()
+    name = undefined
+    answer = []
+  }
+  if (!mainEntity.length) return undefined
+  return { '@type': 'FAQPage', '@id': `${url}#faq`, isPartOf: { '@id': `${url}#webpage` }, mainEntity }
+}
 
 function metaTags(page: FeaturePage): string {
   const url = `${SITE_ORIGIN}/${page.slug}`
@@ -135,6 +170,8 @@ function metaTags(page: FeaturePage): string {
       })),
     })
   }
+  const faq = faqNode(page, url)
+  if (faq) graph.push(faq)
   // "<" escaped so no string in the data can ever close the script element early.
   const ld = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }, null, 2).replace(/</g, '\\u003c')
 
@@ -253,9 +290,105 @@ function flattenPagesOutput(): Plugin {
   }
 }
 
+/* ── Prerendered text for crawlers ─────────────────────────────────────────────
+   Everything below the hero (and the feature pages' closing call to action and footer) is drawn
+   by React after load, so GPTBot, ClaudeBot and PerplexityBot, which do not run JavaScript, never
+   saw it. After the build, render those components to static markup and put it in each HTML file
+   next to the hand-written #seo-fallback, hidden by the same CSS rule. The app still uses
+   createRoot, so JS visitors see no change. */
+function prerenderForCrawlers(): Plugin {
+  let outDir = ''
+  let root = ''
+  return {
+    name: 'prerender-for-crawlers',
+    apply: 'build',
+    enforce: 'post',
+    configResolved(config) {
+      root = config.root
+      outDir = resolve(root, config.build.outDir)
+    },
+    async closeBundle() {
+      // Runs after flattenPagesOutput's writeBundle, so every page is already at dist/<slug>.html.
+      // closeBundle can fire more than once; the marker check keeps it idempotent.
+      const server = await createServer({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        appType: 'custom',
+        server: { middlewareMode: true, hmr: false, ws: false },
+        plugins: [
+          react(),
+          {
+            // useMediaQuery and useTheme call useSyncExternalStore without a server snapshot, which React
+            // refuses to render on the server. Reading the client snapshot (matchMedia stubbed to false)
+            // is what a first client render does anyway, so swap it here instead of editing components.
+            name: 'prerender-sync-external-store',
+            enforce: 'pre',
+            transform(code, id) {
+              if (!/\/src\/.*\.tsx?$/.test(id) || !code.includes('useSyncExternalStore')) return
+              return `const __snapshotOnly = (_subscribe, getSnapshot) => getSnapshot();\n${code
+                .replace(/,?\s*\buseSyncExternalStore\b(?=[^;]*\}\s*from\s*'react')/, '')
+                .replace(/\buseSyncExternalStore\b/g, '__snapshotOnly')}`
+            },
+          },
+        ],
+        resolve: { alias: { '@': resolve(root, 'src') } },
+      })
+      // A few components read window.matchMedia while rendering; effects never run on the server.
+      const g = globalThis as Record<string, unknown>
+      g.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+      g.window = globalThis
+      // The footer's links differ on a feature page (/#pricing) and the homepage (#pricing); that is
+      // decided from #root's data-page, so give each render the same answer the real page would.
+      const onPage = (slug?: string) => {
+        g.document = { getElementById: () => ({ dataset: slug ? { page: slug } : {} }) }
+      }
+      try {
+        const mod = (await server.ssrLoadModule('/src/prerender.tsx')) as {
+          renderHomeSections(): string
+          renderFeatureExtras(slug: string): string
+        }
+        // Ids would duplicate the fallback's (features, pricing, faq), so anchors would hit the
+        // wrong one with JS off. SVG art and inline styles are only decoration. The hero's h1 becomes
+        // an h2 because the page already has one h1 in #seo-fallback (Bing's SEO check flags two), and
+        // decorative images (alt="") are dropped because Bing counts an empty alt as a missing one.
+        const clean = (html: string) =>
+          html
+            .replace(/<svg[\s\S]*?<\/svg>/g, '')
+            .replace(/<img\b[^>]*\salt=""[^>]*>/g, '')
+            .replace(/<h1\b/g, '<h2')
+            .replace(/<\/h1>/g, '</h2>')
+            .replace(/\s(?:id|style)="[^"]*"/g, '')
+        const inject = (file: string, markup: string) => {
+          const path = resolve(outDir, file)
+          if (!fs.existsSync(path)) return
+          const html = fs.readFileSync(path, 'utf8')
+          if (html.includes('id="seo-prerender"')) return
+          const start = html.indexOf('id="seo-fallback"')
+          const end = html.indexOf('</main>', start)
+          if (start < 0 || end < 0) throw new Error(`prerender: no #seo-fallback in ${file}`)
+          const at = end + '</main>'.length
+          const block = `
+<div id="seo-prerender">${clean(markup)}</div>`
+          fs.writeFileSync(path, html.slice(0, at) + block + html.slice(at))
+          console.log(`prerender: ${file} +${Buffer.byteLength(block)} bytes`)
+        }
+        onPage()
+        inject('index.html', mod.renderHomeSections())
+        for (const slug of FEATURE_SLUGS) {
+          onPage(slug)
+          inject(`${slug}.html`, mod.renderFeatureExtras(slug))
+        }
+      } finally {
+        await server.close()
+      }
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), cleanLegalUrls(), featureHead(), flattenPagesOutput()],
+  plugins: [react(), tailwindcss(), cleanLegalUrls(), featureHead(), flattenPagesOutput(), prerenderForCrawlers()],
   resolve: {
     // Must mirror the "paths" entry in tsconfig.app.json. TypeScript resolves
     // @/* for the typecheck, but Vite needs its own mapping to resolve it at

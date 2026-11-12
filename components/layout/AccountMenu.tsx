@@ -53,7 +53,7 @@ export default function AccountMenu({ initialEmail, initialGymId, initialGymName
       }
     }
 
-    async function fetchForUser(userId: string, userEmail: string) {
+    async function fetchForUser(_userId: string, userEmail: string) {
       setEmail(userEmail)
       // Fetch gym info via API
       const res = await fetch('/api/account/gym')

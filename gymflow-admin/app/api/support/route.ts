@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyRequestAuth } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
-import { sanitizeSupportMessage } from '@/lib/sanitize'
+import { sanitizeSupportMessage, sanitizeUUID } from '@/lib/sanitize'
 import { invalidatePattern } from '@/lib/cache'
 import { apiLogger } from '@/lib/logger'
 
@@ -25,22 +25,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  const sanitized = sanitizeSupportMessage(rawBody)
+  // Broadcast: `gym_ids` (array) targets several gyms in one call; the single `gym_id`
+  // form still works for existing clients. One request = one rate-limit hit.
+  const rawIds: unknown[] = Array.isArray((rawBody as any).gym_ids) ? (rawBody as any).gym_ids : [(rawBody as any).gym_id]
+  const gymIds = [...new Set(rawIds.map((id) => (typeof id === 'string' ? sanitizeUUID(id) : null)))]
+  if (gymIds.length === 0 || gymIds.length > 200 || gymIds.some((id) => !id)) {
+    log.summary(400)
+    return NextResponse.json({ error: 'Invalid gym ID' }, { status: 400 })
+  }
+
+  // Validates subject/body/type once; gym_id is checked above.
+  const sanitized = sanitizeSupportMessage({ ...(rawBody as object), gym_id: gymIds[0] })
   if ('error' in sanitized) {
     log.warn('Invalid support message input', { error: sanitized.error })
     log.summary(400)
     return NextResponse.json({ error: sanitized.error }, { status: 400 })
   }
 
-  const { gymId, subject, body, type } = sanitized
+  const { subject, body, type } = sanitized
 
   log.start('DB_GYM_CHECK')
   const supabase = createAdminClient()
-  const { data: gym } = await supabase.from('gyms').select('id').eq('id', gymId).single()
+  const { data: found, error: gymErr } = await supabase.from('gyms').select('id').in('id', gymIds as string[])
   log.end('DB_GYM_CHECK')
 
-  if (!gym) {
-    log.warn('Support message target gym not found', { gymId })
+  if (gymErr) {
+    log.error('Failed to look up target gyms', gymErr)
+    log.summary(500)
+    return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
+  }
+  if (!found || found.length !== gymIds.length) {
+    log.warn('Support message target gym not found', { requested: gymIds.length, found: found?.length ?? 0 })
     log.summary(404)
     return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
   }
@@ -48,9 +63,8 @@ export async function POST(req: NextRequest) {
   log.start('DB_INSERT')
   const { data, error } = await supabase
     .from('admin_messages')
-    .insert({ gym_id: gymId, subject, body, type, sent_by: 'super_admin' })
+    .insert(gymIds.map((gymId) => ({ gym_id: gymId, subject, body, type, sent_by: 'super_admin' })))
     .select()
-    .single()
   log.end('DB_INSERT')
 
   if (error) {
@@ -59,11 +73,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
   }
 
-  await invalidatePattern(`gym:${gymId}:admin_messages`)
+  await Promise.all(gymIds.map((gymId) => invalidatePattern(`gym:${gymId}:admin_messages`)))
 
-  log.info('Support message sent', { gymId, type })
+  log.info('Support message sent', { gyms: gymIds.length, type })
   log.summary(200)
-  return NextResponse.json({ ok: true, message: data })
+  return NextResponse.json({ ok: true, message: data[0], count: data.length })
 }
 
 // GET /api/support — get all messages with gym info

@@ -63,13 +63,41 @@ function shortYear(y: string): number {
   return y.length === 2 ? 2000 + Number(y) : Number(y)
 }
 
+export type DateOrder = 'dmy' | 'mdy'
+
 /**
- * Reads one start-date cell. India writes day first, so 03/04/2026 is 3 April.
+ * Which order a whole column uses. A cell like 27-02-2024 proves day first, 02-27-2024
+ * proves month first; 03-04-2024 alone proves nothing. If only month-first proof exists
+ * the file is US-style, so ambiguous cells in it are read month first too. Anything else
+ * (no proof, or mixed) stays day first.
+ */
+export function detectDateOrder(values: Array<string | null | undefined>): DateOrder {
+  let dayFirst = 0
+  let monthFirst = 0
+  for (const v of values) {
+    const m = (v ?? '').trim().match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})$/)
+    if (!m) continue
+    const a = Number(m[1])
+    const b = Number(m[2])
+    if (a > 12 && b <= 12) dayFirst++
+    else if (b > 12 && a <= 12) monthFirst++
+  }
+  return monthFirst > 0 && dayFirst === 0 ? 'mdy' : 'dmy'
+}
+
+/**
+ * Reads one start-date cell. India writes day first, so 03/04/2026 is 3 April (month
+ * first only when `order` says so, or when day first is not a real date).
  * Accepts yyyy-mm-dd (optionally with a time), dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy,
  * d/m/yy, dd MMM yyyy and an Excel serial number. A blank, unreadable or absurd
  * value is reported, never replaced by today.
  */
-export function parseStartDate(raw: string | null | undefined, today: string): StartDateResult {
+export function parseStartDate(
+  raw: string | null | undefined,
+  today: string,
+  /** Order for a x/y/yyyy cell. 'dmy' (default, India) still falls back to month first when day first is impossible (02-27-2024). */
+  order: DateOrder = 'dmy',
+): StartDateResult {
   const t = (raw ?? '').trim().replace(/[T\s]+\d{1,2}:\d{2}.*$/, '')
   if (!t) return { ok: false, reason: 'blank', message: 'Start date is missing' }
 
@@ -78,7 +106,12 @@ export function parseStartDate(raw: string | null | undefined, today: string): S
   if ((m = t.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/))) {
     iso = toIsoDate(Number(m[1]), Number(m[2]), Number(m[3]))
   } else if ((m = t.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})$/))) {
-    iso = toIsoDate(shortYear(m[3]), Number(m[2]), Number(m[1]))
+    const y = shortYear(m[3])
+    const a = Number(m[1])
+    const b = Number(m[2])
+    const dayFirst = toIsoDate(y, b, a)
+    const monthFirst = toIsoDate(y, a, b)
+    iso = order === 'mdy' ? (monthFirst ?? dayFirst) : (dayFirst ?? monthFirst)
   } else if ((m = t.match(/^(\d{1,2})[\s-]+([A-Za-z]{3,9})\.?,?[\s-]+(\d{4}|\d{2})$/))) {
     const mi = MONTHS.indexOf(m[2].slice(0, 3).toLowerCase())
     if (mi >= 0) iso = toIsoDate(shortYear(m[3]), mi + 1, Number(m[1]))

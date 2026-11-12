@@ -5,36 +5,42 @@
  */
 export default function LeaderboardLoading() {
   return (
-    <div className="page-container py-6" aria-busy="true" aria-live="polite">
+    <div aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading leaderboard…</span>
 
-      <div className="mb-5">
-        <div className="h-7 w-44 animate-pulse rounded bg-slate-200" />
-        <div className="mt-2 h-3 w-56 animate-pulse rounded bg-slate-100" />
+      {/* Top bar placeholder */}
+      <div className="flex h-14 items-center gap-3 px-4 xs:px-5 sm:px-6">
+        <div className="h-10 w-10 animate-pulse rounded-full bg-slate-200" />
+        <div className="h-5 w-28 animate-pulse rounded bg-slate-200" />
       </div>
+      <div className="page-container pt-2">
+
+      {/* Section switch */}
+      <div className="mb-4 h-[52px] animate-pulse rounded-full bg-slate-100" />
 
       {/* Tabs */}
-      <div className="mb-4 grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
+      <div className="mb-4 grid grid-cols-4 gap-1 rounded-full bg-slate-100 p-1">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-9 animate-pulse rounded-lg bg-slate-200" />
+          <div key={i} className="h-9 animate-pulse rounded-full bg-slate-200" />
         ))}
       </div>
 
       {/* Motivating line */}
-      <div className="mb-4 h-14 animate-pulse rounded-2xl bg-slate-100" />
+      <div className="mb-4 h-14 animate-pulse rounded-3xl bg-slate-100" />
 
       {/* Podium */}
       <div className="mb-4 grid grid-cols-3 items-end gap-2">
-        <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
-        <div className="h-36 animate-pulse rounded-2xl bg-slate-100" />
-        <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="h-28 animate-pulse rounded-3xl bg-slate-100" />
+        <div className="h-36 animate-pulse rounded-3xl bg-slate-100" />
+        <div className="h-24 animate-pulse rounded-3xl bg-slate-100" />
       </div>
 
       {/* Rows */}
       <div className="space-y-2">
         {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-14 animate-pulse rounded-2xl bg-slate-100" />
+          <div key={i} className="h-14 animate-pulse rounded-3xl bg-slate-100" />
         ))}
+      </div>
       </div>
     </div>
   )

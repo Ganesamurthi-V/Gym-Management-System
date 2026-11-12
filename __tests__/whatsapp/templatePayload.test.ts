@@ -22,10 +22,6 @@ function bodyTexts(payload: any): string[] {
   const body = payload.template.components.find((c: any) => c.type === 'body')
   return (body?.parameters ?? []).map((p: any) => p.text)
 }
-function headerTexts(payload: any): string[] {
-  const header = payload.template.components.find((c: any) => c.type === 'header')
-  return (header?.parameters ?? []).map((p: any) => p.text)
-}
 
 describe('buildTemplatePayload — common envelope', () => {
   it('normalises Indian phone numbers to include the country code', () => {

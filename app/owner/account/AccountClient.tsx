@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Settings, Copy, Lock, Trash2, AlertTriangle, Eye, EyeOff,
-  Building2, Mail, Calendar, Users, CreditCard, CalendarCheck,
-  ChevronLeft, Check, X, ShieldAlert, Hash, MapPin, Phone,
+  Mail, Calendar, Users, CreditCard, CalendarCheck,
+  ChevronLeft, Check, X, ShieldAlert, Hash, MapPin,
   Edit3, Loader2,
 } from 'lucide-react'
 import { signOutViaApi, updatePasswordViaApi } from '@/lib/auth/client-auth'

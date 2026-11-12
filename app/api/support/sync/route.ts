@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * Returns all admin_messages and support_tickets for the authenticated user's gym.
  * Used by SupportTabsClient's realtime sync callback.
  */
-export const GET = withAuth('SUPPORT_SYNC', async (req: NextRequest, { supabase, gym }) => {
+export const GET = withAuth('SUPPORT_SYNC', async (_req: NextRequest, { supabase, gym }) => {
   const [messagesResult, ticketsResult] = await Promise.all([
     supabase
       .from('admin_messages')
@@ -22,6 +22,7 @@ export const GET = withAuth('SUPPORT_SYNC', async (req: NextRequest, { supabase,
       .select('*')
       .eq('gym_id', gym.id)
       .eq('is_cleared_by_owner', false)
+      .neq('type', 'feedback') // feedback is not an issue; only the admin sees it
       .order('created_at', { ascending: false }),
   ])
 
@@ -35,4 +36,4 @@ export const GET = withAuth('SUPPORT_SYNC', async (req: NextRequest, { supabase,
     },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
-})
+}, { allowWhenExpired: true }) // support stays reachable

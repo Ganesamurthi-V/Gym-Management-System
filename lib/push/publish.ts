@@ -25,7 +25,8 @@ export async function publishPushJob(job: PushJob): Promise<void> {
     const qstashBase = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '')
     // A continuation (cursor set) is a different delivery from the first page, so the cursor is part of the id.
     const dedupeId = `push-${job.kind}-${job.ref}-${job.gymId}${job.cursor ? `-${job.cursor}` : ''}`
-    const res = await fetch(`${qstashBase}/v2/publish/` + encodeURIComponent(`${base}/api/push/send`), {
+    // Raw URL in the path: QStash answers 400 "invalid scheme" to a percent-encoded destination.
+    const res = await fetch(`${qstashBase}/v2/publish/${base}/api/push/send`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

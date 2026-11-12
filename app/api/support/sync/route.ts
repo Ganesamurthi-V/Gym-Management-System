@@ -22,6 +22,7 @@ export const GET = withAuth('SUPPORT_SYNC', async (_req: NextRequest, { supabase
       .select('*')
       .eq('gym_id', gym.id)
       .eq('is_cleared_by_owner', false)
+      .neq('type', 'feedback') // feedback is not an issue; only the admin sees it
       .order('created_at', { ascending: false }),
   ])
 

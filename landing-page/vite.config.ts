@@ -66,6 +66,41 @@ const abs = (path: string) => (path.startsWith('http') ? path : `${SITE_ORIGIN}$
 const OG_DEFAULT = '/og-image.jpg'
 const OG_ALT_DEFAULT = 'The GymFlow dashboard showing member counts, dues and expiring memberships at a glance.'
 
+// FAQPage is generated from the visible "Common questions" blocks (each h3 is a question, the
+// blocks up to the next h3 are its answer), so the structured data cannot drift from the page text.
+const plain = (text: string) => parseInline(text).map(node => node.text).join('')
+const sentence = (text: string) => (/[.!?:;]$/.test(text) ? text : `${text}.`)
+
+function faqNode(page: FeaturePage, url: string): object | undefined {
+  const mainEntity: object[] = []
+  let name: string | undefined
+  let answer: string[] = []
+  const flush = () => {
+    if (name && answer.length) {
+      mainEntity.push({ '@type': 'Question', name, acceptedAnswer: { '@type': 'Answer', text: answer.join(' ') } })
+    }
+  }
+  for (const section of page.sections) {
+    if (section.heading !== 'Common questions') continue
+    for (const block of section.blocks) {
+      if (block.type === 'h3') {
+        flush()
+        name = plain(block.text)
+        answer = []
+      } else if (block.type === 'p' || block.type === 'note') {
+        answer.push(plain(block.text))
+      } else if (block.type === 'ul' || block.type === 'ol') {
+        answer.push(block.items.map(item => sentence(plain(item))).join(' '))
+      }
+    }
+    flush()
+    name = undefined
+    answer = []
+  }
+  if (!mainEntity.length) return undefined
+  return { '@type': 'FAQPage', '@id': `${url}#faq`, isPartOf: { '@id': `${url}#webpage` }, mainEntity }
+}
+
 function metaTags(page: FeaturePage): string {
   const url = `${SITE_ORIGIN}/${page.slug}`
   const title = esc(page.title)
@@ -135,6 +170,8 @@ function metaTags(page: FeaturePage): string {
       })),
     })
   }
+  const faq = faqNode(page, url)
+  if (faq) graph.push(faq)
   // "<" escaped so no string in the data can ever close the script element early.
   const ld = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }, null, 2).replace(/</g, '\\u003c')
 

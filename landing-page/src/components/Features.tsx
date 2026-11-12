@@ -37,7 +37,7 @@ const CORE: {
     text: 'Know who is in, who owes and who is about to expire.',
     facts: [
       { title: 'Members', text: 'Every member shows as Active, Expiring or Expired.' },
-      { title: 'Attendance', text: 'Members check in at a desk kiosk with their member ID.' },
+      { title: 'Attendance', text: 'Members check in at a desk kiosk with their member ID, or on a fingerprint or face device.' },
       { title: 'Fees and dues', text: 'Record cash, UPI or card; part payments stay as a due.' },
     ],
     href: '/members',

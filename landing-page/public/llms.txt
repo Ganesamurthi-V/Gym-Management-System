@@ -13,7 +13,7 @@ phone.
 
 Site: https://www.gymflow.sbs/
 Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
-Last updated: 2026-10-26
+Last updated: 2026-11-12
 
 ## Quick answers
 
@@ -71,6 +71,8 @@ Full details: https://www.gymflow.sbs/pricing
 - Fees and dues — record cash, UPI or card payments, and see what is pending.
 - Attendance tracking — mark attendance in one tap, or let members check in
   themselves at a kiosk with their member ID, and review any member's history.
+  Fingerprint and face attendance devices with an ADMS / Cloud Server (push)
+  setting also work: punches are recorded as check-ins automatically.
 - Member app and workouts — members get their own app; see the Member app section below. Owners build and assign workout programs.
 - Reports and analytics — monthly revenue, plan distribution, joining and expiry
   trends, downloadable PDF reports.
@@ -88,7 +90,7 @@ One page per feature, each explaining what it does and how it works:
 - [All features](https://www.gymflow.sbs/features): overview of every GymFlow feature.
 - [Member management](https://www.gymflow.sbs/members): member records, plans, expiry dates, renewals, search and filters.
 - [Fees and dues](https://www.gymflow.sbs/fees-and-dues): cash, UPI and card payments, part payments, pending dues and UPI QR codes.
-- [Attendance tracking](https://www.gymflow.sbs/attendance): front-desk check-in kiosk, check-out times, attendance log and Excel export.
+- [Attendance tracking](https://www.gymflow.sbs/attendance): front-desk check-in kiosk or fingerprint and face devices, check-out times, attendance log and Excel export.
 - [Member app and workouts](https://www.gymflow.sbs/member-app): digital membership card, workout programs, streaks, leaderboards and rewards.
 - [Workout programs](https://www.gymflow.sbs/workout-programs): build day-by-day programs with sets, reps and rest, assign them to members, who follow them in the app.
 - [WhatsApp reminders](https://www.gymflow.sbs/whatsapp): automatic welcome, renewal, expiry, payment due and birthday messages.
@@ -168,7 +170,7 @@ not be inferred:
 - No published customer ratings or review scores.
 - No public API, no marketplace and no third-party integration catalogue.
 - No multi-location or franchise-specific tooling is advertised.
-- No hardware is sold or required — no turnstiles, biometric readers or scanners.
+- No hardware is sold or required. The kiosk is a web page. Fingerprint and face attendance devices (ADMS / Cloud Server push) work with GymFlow, but gyms buy them separately.
 - Currency is Indian rupees only, and the product is positioned for India.
 
 ## Links

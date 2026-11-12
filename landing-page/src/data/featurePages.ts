@@ -120,7 +120,7 @@ export const RELATED_HEADING = 'Related features'
 export const FEATURE_FINEPRINT = '14-day free trial. No credit card needed.'
 
 /** Matches the homepage's dateModified; bump it when a page's copy changes. */
-export const FEATURE_DATE_MODIFIED = '2026-10-24'
+export const FEATURE_DATE_MODIFIED = '2026-11-12'
 
 export const FEATURE_PAGES: readonly FeaturePage[] = [
   {
@@ -396,13 +396,13 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     ogImage: '/og/attendance.jpg',
     ogAlt: 'GymFlow card: Attendance tracking with a front-desk kiosk.',
     title: 'Gym Attendance Tracking Software and Kiosk — GymFlow',
-    description: 'Gym attendance tracker and software with a front-desk check-in kiosk: members enter their ID, you get check-in and check-out times, a searchable log and Excel export.',
+    description: 'Gym attendance tracker and software with a check-in kiosk or fingerprint and face devices: check-in and check-out times, a searchable log and Excel export.',
     h1: 'Gym attendance tracking software with a check-in kiosk',
     eyebrow: 'Attendance tracking',
-    intro: 'GymFlow tracks gym attendance with a front-desk check-in kiosk. Open the attendance page on a tablet or phone at your desk, members type their member ID, and GymFlow records the visit, the session and how long they stayed.',
+    intro: 'GymFlow tracks gym attendance with a front-desk check-in kiosk. Open the attendance page on a tablet or phone at your desk, members type their member ID, and GymFlow records the visit, the session and how long they stayed. GymFlow also works with fingerprint and face attendance devices, which record the same visits automatically.',
     breadcrumb: 'Attendance tracking',
     cardTitle: 'Attendance tracking',
-    cardText: 'A check-in kiosk for your front desk, with check-out times and a full attendance log.',
+    cardText: 'A check-in kiosk or fingerprint and face devices, with check-out times and a full attendance log.',
     icon: 'calendar-check',
     related: ['member-app', 'reports', 'members', 'gym-attendance-tracking-guide'],
     tutorial: {
@@ -435,7 +435,21 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: 'No hardware to buy',
         blocks: [
-          { type: 'p', text: 'The kiosk is a web page. There is no turnstile, scanner or biometric device to install, and nothing to set up beyond logging in. It records visits; it does not lock or unlock your door.' },
+          { type: 'p', text: 'The kiosk is a web page. There is no turnstile or scanner to install, and nothing to set up beyond logging in. If you want a fingerprint or face device at the door as well, you can connect one: see [biometric attendance setup](/biometric-attendance-setup). GymFlow records visits; it does not lock or unlock your door.' },
+        ],
+      },
+      {
+        heading: 'Fingerprint and face devices',
+        blocks: [
+          { type: 'p', text: 'GymFlow works with fingerprint and face attendance devices that have an **ADMS** or **Cloud Server** (push) setting. When a member punches on the device, GymFlow records the check-in or check-out automatically, with no one typing at the desk, and the visit appears in the same attendance log as kiosk check-ins.' },
+          {
+            type: 'ul',
+            items: [
+              'Fingerprints and face data stay on the device. GymFlow receives only the device ID, the punch time and a short punch code.',
+              'The device connects out to GymFlow over the internet, so you do not need router port forwarding.',
+              'Setup takes about 15 minutes. Not every model has the ADMS setting, so check with your dealer before you buy. See [biometric attendance setup](/biometric-attendance-setup) for supported devices and the steps.',
+            ],
+          },
         ],
       },
       {
@@ -465,7 +479,9 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           { type: 'h3', text: 'Do members need a smartphone to check in?' },
           { type: 'p', text: 'No. The kiosk is a page on your own phone, tablet or computer at the desk, and the member types their member ID digits there. Members do not need the member app to be counted. The kiosk works only while you are signed in on that device.' },
           { type: 'h3', text: 'Does the kiosk use QR codes, fingerprints or door access?' },
-          { type: 'p', text: 'No. Check-in takes a typed member ID. The QR code on a member\'s digital card is for showing at the entrance, and the kiosk does not scan it. There is no biometric reader, and GymFlow does not open or lock your door.' },
+          { type: 'p', text: 'No. The kiosk takes a typed member ID, not a QR code or a fingerprint. The QR code on a member\'s digital card is for showing at the entrance, and the kiosk does not scan it. A fingerprint or face device can be connected separately: see [biometric attendance setup](/biometric-attendance-setup). GymFlow does not open or lock your door.' },
+          { type: 'h3', text: 'Can I use a fingerprint or face device?' },
+          { type: 'p', text: 'Yes. GymFlow works with fingerprint and face attendance devices that have an ADMS or Cloud Server (push) setting. Punches are recorded as check-ins and check-outs automatically. See [biometric attendance setup](/biometric-attendance-setup) for supported devices and the setup steps.' },
           { type: 'h3', text: 'What happens when a member with an expired plan checks in?' },
           { type: 'p', text: 'GymFlow still records the visit and shows the plan expiry date on the result screen, or "No active plan" if there is none. It does not block the entry, so your front-desk staff can see the date and decide what to do.' },
           { type: 'h3', text: 'How do I find members who have stopped coming?' },
@@ -1166,7 +1182,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             items: [
               'You still have to record payments and check-ins when they happen. Software is only as good as the records you keep.',
               'GymFlow records payments but does not collect them. It is not a payment gateway and it does not create GST invoices.',
-              'It runs in a browser. It has no door access or biometric devices, and it is built for one gym, not a chain of branches.',
+              'It can record punches from fingerprint and face attendance devices (see [biometric attendance setup](/biometric-attendance-setup)). It runs in a browser and does not control your door, and it is built for one gym, not a chain of branches.',
               'It costs money, where Excel does not. See [pricing](/pricing).',
             ],
           },
@@ -1252,7 +1268,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           { type: 'h3', text: 'Biometric, card or turnstile hardware' },
           { type: 'p', text: 'Fingerprint readers, cards and turnstiles record visits without a person at the desk and can also control the door. They have to be bought, installed and maintained, they need power and a network connection, and a device that stops working leaves a gap in the record.' },
           { type: 'h3', text: 'A software check-in kiosk' },
-          { type: 'p', text: 'A page on a phone, tablet or computer at the front desk where each member types their member ID. There is no hardware to buy, every visit is saved as it happens and the reports are built from those records. It records visits; it does not lock or unlock a door. This is how GymFlow works.' },
+          { type: 'p', text: 'A page on a phone, tablet or computer at the front desk where each member types their member ID. There is no hardware to buy, every visit is saved as it happens and the reports are built from those records. It records visits; it does not lock or unlock a door. This is how GymFlow works, and a fingerprint or face device can be connected as well: see [biometric attendance setup](/biometric-attendance-setup).' },
           { type: 'note', text: 'Which one is right depends on the job. If the door must stay shut to non-members, hardware does something software cannot. If the aim is to know who comes and who has stopped, a kiosk is enough.' },
         ],
       },
@@ -1323,7 +1339,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           { type: 'h3', text: 'Do members need a smartphone to check in?' },
           { type: 'p', text: 'No. The kiosk is a page on your own phone, tablet or computer at the desk, and the member types their member ID digits there. Members do not need the member app to be counted.' },
           { type: 'h3', text: 'Can I track attendance without buying any hardware?' },
-          { type: 'p', text: 'Yes. The GymFlow kiosk is a web page, so there is no turnstile, scanner or biometric device to install. The trade-off is that it records visits and does not control your door.' },
+          { type: 'p', text: 'Yes. The GymFlow kiosk is a web page, so there is no turnstile or scanner to install. You can connect a fingerprint or face device later if you want one: see [biometric attendance setup](/biometric-attendance-setup). GymFlow records visits and does not control your door.' },
           { type: 'h3', text: 'Does attendance tracking cost extra?' },
           { type: 'p', text: `No. Attendance tracking is part of the free forever plan, which is ${formatINR(0)} for up to ${FREE_MEMBER_LIMIT} members, and of every paid plan. See [pricing](/pricing).` },
           { type: 'h3', text: 'What if a member forgets to check out?' },

@@ -15,28 +15,48 @@ const APP_URL = 'https://app.gymflow.sbs';
  */
 const FAQS = [
   {
-    q: 'Is there a free trial?',
-    a: 'Yes — 14 days with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the 14-day free trial before you decide.',
+    q: 'Is there free gym management software?',
+    a: 'Yes. GymFlow has a free forever plan for up to 50 members, with member management, fees and dues, attendance tracking and member import. A 14-day trial with every feature unlocked comes first, with no credit card required.',
   },
   {
-    q: 'How much does GymFlow cost?',
-    a: `Start free: the free forever plan covers up to ${FREE_MEMBER_LIMIT} members. Paid plans are ${formatINR(MONTHLY.price)} per month or ${formatINR(YEARLY.price)} for a year (save ${savingPercent(YEARLY)}%), with every feature, unlimited members, and unlimited WhatsApp messages. Gyms on the free plan can add WhatsApp reminders for ${formatINR(WHATSAPP_ADDON_PRICE)} per month. No GST, no per-member charges, and no setup fee.`,
+    q: 'Is there a free trial?',
+    a: 'Yes. GymFlow has a 14-day free trial with every feature unlocked and no credit card required. Import your members, send WhatsApp reminders, and run the trial before you decide.',
+  },
+  {
+    q: 'How much does gym management software cost in India?',
+    a: `GymFlow costs ${formatINR(MONTHLY.price)} per month or ${formatINR(YEARLY.price)} for a year (save ${savingPercent(YEARLY)}%), with every feature, unlimited members, and unlimited WhatsApp messages. A free forever plan covers up to ${FREE_MEMBER_LIMIT} members, and gyms on it can add WhatsApp reminders for ${formatINR(WHATSAPP_ADDON_PRICE)} per month. No GST, no per-member charges, and no setup fee.`,
   },
   {
     q: 'Are WhatsApp messages really unlimited?',
-    a: 'Yes, on the paid plans. Welcome messages, renewal reminders, and payment due alerts are all included, so there is no per-message charge. On the free plan, WhatsApp reminders are a ₹299 per month add-on.',
+    a: 'Yes, on the GymFlow paid plans. Welcome messages, renewal reminders, and payment due alerts are all included, so there is no per-message charge. On the free plan, WhatsApp reminders are a ₹299 per month add-on.',
+  },
+  {
+    q: 'How do I send gym membership expiry reminders on WhatsApp?',
+    a: 'GymFlow sends them automatically on WhatsApp. The first expiry reminder goes out 18 days before the plan ends, then one every 3 days, up to 7 times, until you record the renewal. On the free plan this needs the ₹299 per month WhatsApp add-on.',
   },
   {
     q: 'Can I move my existing members from Excel?',
-    a: 'Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm.',
+    a: 'Yes. Upload your CSV or Excel file and GymFlow matches your column headings to its own fields, then shows a preview so you can correct anything before saving. Nothing is written until you confirm.',
+  },
+  {
+    q: 'Does GymFlow work with biometric fingerprint and face attendance devices?',
+    a: 'Yes. GymFlow works with fingerprint and face attendance devices that have an ADMS or Cloud Server (push) setting. When a member punches on the device, GymFlow records the check-in automatically. Fingerprint and face data stay on the device and are never sent to GymFlow. Setup takes about 15 minutes.',
+  },
+  {
+    q: 'Can I track gym attendance without a biometric device?',
+    a: 'Yes. The GymFlow check-in kiosk is a web page on a phone, tablet or computer at your desk. Members type their member ID, and GymFlow records check-in and check-out times. No turnstile, scanner or fingerprint device is needed, and you can add one later.',
+  },
+  {
+    q: 'Is GymFlow suitable for a small gym?',
+    a: 'Yes. GymFlow is built for independent gyms in India, and the free plan covers up to 50 members. It is built for one gym, not a chain of branches. Start with the 14-day trial, with every feature unlocked.',
   },
   {
     q: "Is my gym's data safe?",
-    a: "Each gym's data is kept separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym's data from account settings.",
+    a: "GymFlow keeps each gym's data separate, and you sign in with your own account. Data is encrypted in transit. You can export members, attendance and payments to Excel, and delete your gym's data from account settings.",
   },
   {
     q: 'How fast does support reply?',
-    a: 'Every paid plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
+    a: 'Every GymFlow paid plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
   },
   {
     q: 'How do I reach support?',

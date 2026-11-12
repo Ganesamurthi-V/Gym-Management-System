@@ -312,10 +312,15 @@ function prerenderForCrawlers(): Plugin {
           renderFeatureExtras(slug: string): string
         }
         // Ids would duplicate the fallback's (features, pricing, faq), so anchors would hit the
-        // wrong one with JS off. SVG art and inline styles are only decoration.
+        // wrong one with JS off. SVG art and inline styles are only decoration. The hero's h1 becomes
+        // an h2 because the page already has one h1 in #seo-fallback (Bing's SEO check flags two), and
+        // decorative images (alt="") are dropped because Bing counts an empty alt as a missing one.
         const clean = (html: string) =>
           html
             .replace(/<svg[\s\S]*?<\/svg>/g, '')
+            .replace(/<img\b[^>]*\salt=""[^>]*>/g, '')
+            .replace(/<h1\b/g, '<h2')
+            .replace(/<\/h1>/g, '</h2>')
             .replace(/\s(?:id|style)="[^"]*"/g, '')
         const inject = (file: string, markup: string) => {
           const path = resolve(outDir, file)

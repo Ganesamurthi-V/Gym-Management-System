@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
 import { istToday } from '@/lib/gamification/periods'
 import { isImportedMembership } from '@/lib/payments/import-membership'
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  *
  * Returns today's memberships (payments) and new members for the daily PDF report.
  */
-export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (req: NextRequest, { supabase, gym, log }) => {
+export const GET = withAuth('DASHBOARD_DAILY_REPORT', async (_req, { supabase, gym, log }) => {
   // IST day, not the server's UTC day (Vercel runs in UTC, which would show the
   // wrong date for the first 5.5 hours of every Indian day).
   const today = istToday()

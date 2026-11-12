@@ -77,7 +77,8 @@ const collectA = (o) => {
 }
 ld.forEach((m) => collectA(JSON.parse(m[1])))
 const fallbackAnswer = {}
-for (const m of html.matchAll(/<h3>(.+?)<\/h3>\s*<p>(.+?)<\/p>/g)) fallbackAnswer[decode(m[1])] = decode(m[2])
+// Whitespace is collapsed: a formatter may re-wrap the paragraph over several lines without changing the words.
+for (const m of html.matchAll(/<h3>(.+?)<\/h3>\s*<p>([\s\S]+?)<\/p>/g)) fallbackAnswer[decode(m[1])] = decode(m[2]).replace(/\s+/g, ' ').trim()
 let pairedAnswers = 0
 for (const m of faqSrc.matchAll(/q:\s*(['"])(.+?)\1,\s*a:\s*(['"])(.+?)\3,\s*\n/g)) {
   const [q, a] = [m[2], m[4]]
@@ -101,10 +102,9 @@ const flat = (block) =>
     .replace(/\s+/g, ' ')
     .trim()
 const HEADINGS = [
-  ['Benefits', 'dashboard-title', 'dashboard'],
-  ['BentoFeatures', 'features-title', 'features'],
+  ['Features', 'features-title', 'features'],
+  ['Problems', 'problems-title', 'problems'],
   ['WhatsAppSection', 'whatsapp-title', 'whatsapp'],
-  ['HowItWorks', 'steps-title', 'steps'],
   ['Pricing', 'pricing-title', 'pricing'],
   ['FAQ', 'faq-title', 'faq'],
   ['CTA', 'cta-title', 'cta'],
@@ -125,10 +125,12 @@ for (const [component, titleId, fallbackId] of HEADINGS) {
 }
 
 // The feature pages' shared head (src/feature-head.html) restates index.html's inline scripts, and the
-// CSP in public/_headers is written around them. They must stay byte-identical.
-const featureHead = read('src/feature-head.html')
+// CSP in public/_headers is written around them. They must stay the same code; indentation and line
+// breaks differ between the two files (each is formatted on its own), so whitespace is ignored.
+const noSpace = (str) => str.replace(/\s+/g, '')
+const featureHead = noSpace(read('src/feature-head.html'))
 for (const m of html.matchAll(/<script>[\s\S]*?<\/script>/g)) {
-  if (!featureHead.includes(m[0])) errors.push('src/feature-head.html is missing an inline script from index.html (copy it over unchanged)')
+  if (!featureHead.includes(noSpace(m[0]))) errors.push('src/feature-head.html is missing an inline script from index.html (copy it over unchanged)')
 }
 
 if (errors.length) {

@@ -20,6 +20,7 @@ export class FallbackBoundary extends Component<{ html: string; children: ReactN
 
   componentDidCatch() {
     document.documentElement.classList.remove('mounted');
+    document.documentElement.classList.add('fb');
   }
 
   render() {

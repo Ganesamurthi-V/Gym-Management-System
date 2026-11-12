@@ -1,5 +1,6 @@
 node_modules
 .next
+.open-next
 .env
 .env.local
 .env.*.local
@@ -25,8 +26,7 @@ dist/
 *.generated.py
 graphify-out/
 graphify-out
-youpi-pg/
-youpi-pg
+Saas.mp4
 
 # Removing the block that ignores everything except src/ since this project uses app/ structure
 # Sentry Config File
@@ -52,3 +52,8 @@ skills-lock.json
 **/GoogleService-Info.plist
 **/*service-account*.json
 **/*firebase-adminsdk*.json
+
+UsersfosecAppDataLocalTempclaudec--Gym-Management-system-gymflow-awse082e218-c687-4735-b06e-e148b34eb96fscratchpadverifyattlog-alltime.png
+UsersfosecAppDataLocalTempclaudec--Gym-Management-system-gymflow-awse082e218-c687-4735-b06e-e148b34eb96fscratchpadverifyattlog-custom.png
+UsersfosecAppDataLocalTempclaudec--Gym-Management-system-gymflow-awse082e218-c687-4735-b06e-e148b34eb96fscratchpadverifyattlog-default.png
+UsersfosecAppDataLocalTempclaudec--Gym-Management-system-gymflow-awse082e218-c687-4735-b06e-e148b34eb96fscratchpadverifyattlog-fixed.png

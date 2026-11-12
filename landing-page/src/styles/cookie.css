@@ -30,7 +30,7 @@
 
 /* Small keycaps: the same key, one size down. */
 .cookie-btn {
-  min-height: 36px;
+  min-height: 44px; /* phone tap target; the desktop corner panel drops back to 36 below */
   padding: 0 var(--space-sm);
   border-radius: 8px;
   font-size: 14px;
@@ -38,6 +38,7 @@
 }
 @media (min-width: 640px) {
   .cookie-btn {
+    min-height: 36px;
     flex: none;
   }
 }

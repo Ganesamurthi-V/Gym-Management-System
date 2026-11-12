@@ -43,7 +43,7 @@ function TabButton({ label, active, onPress, badge }: {
 }
 
 function SendMessageTab() {
-  const [selectedGymId, setSelectedGymId] = useState('');
+  const [selectedGymIds, setSelectedGymIds] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [type, setType] = useState('info');
@@ -67,16 +67,23 @@ function SendMessageTab() {
     fetcher: fetchGyms,
   });
   const gyms = gymData ?? [];
+  const allSelected = gyms.length > 0 && selectedGymIds.length === gyms.length;
+
+  function toggleGym(id: string) {
+    setSelectedGymIds(prev => (prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]));
+  }
 
   async function handleSend() {
-    if (!selectedGymId || !subject.trim() || !body.trim()) return;
+    if (selectedGymIds.length === 0 || !subject.trim() || !body.trim()) return;
     setSending(true);
     try {
-      await sendSupportMessage({ gym_id: selectedGymId, subject: subject.trim(), body: body.trim(), type });
-      Alert.alert('✓ Sent', 'Message sent to gym owner successfully!');
+      await sendSupportMessage({ gym_ids: selectedGymIds, subject: subject.trim(), body: body.trim(), type });
+      Alert.alert('✓ Sent', selectedGymIds.length === 1
+        ? 'Message sent to gym owner successfully!'
+        : `Message sent to ${selectedGymIds.length} gym owners successfully!`);
       setSubject('');
       setBody('');
-      setSelectedGymId('');
+      setSelectedGymIds([]);
       setType('info');
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Failed to send message');
@@ -104,22 +111,37 @@ function SendMessageTab() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Select Recipient Gym</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gymPills}>
-              {loadingGyms ? (
-                <ActivityIndicator color={Colors.indigo} />
-              ) : gyms.map(gym => (
+            <Text style={styles.fieldLabel}>
+              Select Recipient Gyms{selectedGymIds.length > 0 ? ` (${selectedGymIds.length})` : ''}
+            </Text>
+            {loadingGyms ? (
+              <ActivityIndicator color={Colors.indigo} />
+            ) : (
+              <View style={styles.typePills}>
                 <TouchableOpacity
-                  key={gym.id}
-                  style={[styles.gymPill, selectedGymId === gym.id && styles.gymPillActive]}
-                  onPress={() => setSelectedGymId(gym.id)}
+                  style={[styles.gymPill, allSelected && styles.gymPillActive]}
+                  onPress={() => setSelectedGymIds(allSelected ? [] : gyms.map(g => g.id))}
                 >
-                  <Text style={[styles.gymPillText, selectedGymId === gym.id && styles.gymPillTextActive]}>
-                    {gym.name}
+                  <Text style={[styles.gymPillText, allSelected && styles.gymPillTextActive]}>
+                    {allSelected ? 'Clear all' : 'Select all'}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+                {gyms.map(gym => {
+                  const active = selectedGymIds.includes(gym.id);
+                  return (
+                    <TouchableOpacity
+                      key={gym.id}
+                      style={[styles.gymPill, active && styles.gymPillActive]}
+                      onPress={() => toggleGym(gym.id)}
+                    >
+                      <Text style={[styles.gymPillText, active && styles.gymPillTextActive]}>
+                        {gym.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           <View style={styles.field}>
@@ -164,7 +186,7 @@ function SendMessageTab() {
             label="Send Message"
             onPress={handleSend}
             loading={sending}
-            disabled={!selectedGymId || !subject.trim() || !body.trim()}
+            disabled={selectedGymIds.length === 0 || !subject.trim() || !body.trim()}
           />
         </View>
       </ScrollView>
@@ -180,6 +202,7 @@ function TicketsTab() {
   const [resolving, setResolving] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [needsHuman, setNeedsHuman] = useState(false);
+  const [view, setView] = useState<'issues' | 'feedback'>('issues');
 
   /*
     This tab was the worst offender of the set. Its loader ran `else setLoading(true)`
@@ -191,7 +214,10 @@ function TicketsTab() {
     key: CacheKeys.tickets,
     fetcher: fetchTickets,
   });
-  const tickets = data ?? [];
+  const allTickets = data ?? [];
+  const feedbackCount = allTickets.filter(t => t.type === 'feedback').length;
+  // Feedback is listed on its own so star ratings do not bury real issues.
+  const tickets = allTickets.filter(t => (t.type === 'feedback') === (view === 'feedback'));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -263,7 +289,7 @@ function TicketsTab() {
     ]);
   }
 
-  const hasResolved = tickets.some(t => t.status === 'resolved');
+  const hasResolved = allTickets.some(t => t.status === 'resolved');
 
   if (loading) {
     return <View style={styles.centered}><ActivityIndicator color={Colors.indigo} /></View>;
@@ -271,6 +297,20 @@ function TicketsTab() {
 
   return (
     <>
+      <View style={styles.viewToggle}>
+        {(['issues', 'feedback'] as const).map(v => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.typePill, view === v && styles.typePillActive]}
+            onPress={() => setView(v)}
+          >
+            <Text style={[styles.typePillText, view === v && styles.typePillTextActive]}>
+              {v === 'issues' ? `Tickets (${allTickets.length - feedbackCount})` : `Feedback (${feedbackCount})`}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {hasResolved && (
         <TouchableOpacity style={styles.clearBtn} onPress={handleClearResolved}>
           <Feather name="trash-2" size={13} color={Colors.textMuted} />
@@ -291,7 +331,7 @@ function TicketsTab() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Feather name="inbox" size={36} color={Colors.bgCardBorder} />
-            <Text style={styles.emptyText}>No support tickets found.</Text>
+            <Text style={styles.emptyText}>{view === 'feedback' ? 'No feedback yet.' : 'No support tickets found.'}</Text>
           </View>
         }
       />
@@ -408,10 +448,9 @@ const styles = StyleSheet.create({
   formCardSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   field: { gap: Spacing.xs },
   fieldLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.7 },
-  gymPills: { flexDirection: 'row' },
   gymPill: {
     paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, marginRight: Spacing.sm, backgroundColor: Colors.bgInput,
+    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgInput,
   },
   gymPillActive: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder },
   gymPillText: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
@@ -429,6 +468,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
     color: Colors.textPrimary, fontSize: 14, textAlignVertical: 'top', minHeight: 110,
   },
+  viewToggle: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg },
   ticketList: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxxl },
   clearBtn: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,

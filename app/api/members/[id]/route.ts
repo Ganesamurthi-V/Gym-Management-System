@@ -11,10 +11,11 @@ import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
+import { syncMemberToDevices } from '@/lib/devices/commands'
 
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const startTime = Date.now()
@@ -30,6 +31,10 @@ export async function GET(
 
     const gym = await getGymForUser(supabase, user.id)
     if (!gym) return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
+
+    // Reads are refused too: a lapsed or banned owner must not keep reading member data.
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) return readOnly
 
     const { data, error } = await supabase
       .from('members')
@@ -180,6 +185,9 @@ export async function DELETE(
     if (!memberCheck) {
       return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized member access' } }, { status: 403 })
     }
+
+    // Queue the device removal while the member row still exists (never throws).
+    await syncMemberToDevices(gym.id, id, 'remove')
 
     // Delete attendance and memberships in parallel, then the member row
     const [a1, a2] = await Promise.all([

@@ -435,6 +435,72 @@
           transform: none;
         }
       }
+
+      /* Wide screens: the contents become a sticky left rail with the current section marked, and the
+         article column widens to fill the page. Below 1024px nothing here applies. */
+      @media (min-width: 1024px) {
+        main {
+          max-width: none;
+          display: grid;
+          grid-template-columns: 240px minmax(0, 80ch);
+          column-gap: var(--space-xl);
+          justify-content: center;
+        }
+        main > * {
+          grid-column: 2;
+        }
+        main > p,
+        main > ul {
+          max-width: none;
+        }
+        main > .slip {
+          justify-self: start;
+        }
+        main > .toc {
+          grid-column: 1;
+          grid-row: 1 / span 400;
+          align-self: start;
+          position: sticky;
+          top: var(--space-lg);
+          max-height: calc(100vh - 2 * var(--space-lg));
+          overflow-y: auto;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          border-left: 1px solid var(--border);
+          border-radius: 0;
+          background: none;
+          box-shadow: none;
+        }
+        .toc p {
+          padding-left: var(--space-md);
+        }
+        .toc ol {
+          columns: 1;
+          padding: 0;
+          list-style: none;
+        }
+        .toc li {
+          margin: 0;
+        }
+        .toc a {
+          display: block;
+          padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md);
+          margin-left: -1px;
+          border-left: 2px solid transparent;
+          border-radius: 0;
+          color: var(--muted-foreground);
+          text-decoration: none;
+        }
+        .toc a:hover {
+          color: var(--foreground);
+        }
+        .toc a[aria-current] {
+          color: var(--accent-text);
+          font-weight: 600;
+          border-left-color: var(--accent);
+        }
+      }
     </style>
   </head>
   <body>
@@ -728,5 +794,23 @@
         <a href="/">Back to gymflow.sbs</a>
       </footer>
     </div>
+    <script>
+      // Marks the contents link of the section being read (aria-current). Without JS the links still work.
+      (function () {
+        var links = [].slice.call(document.querySelectorAll('.toc a[href^="#"]'));
+        if (!links.length || !('IntersectionObserver' in window)) return;
+        var heads = links.map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); });
+        function update() {
+          var line = window.innerHeight * 0.3, idx = 0;
+          heads.forEach(function (h, i) { if (h && h.getBoundingClientRect().top <= line) idx = i; });
+          links.forEach(function (a, i) {
+            if (i === idx) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+          });
+        }
+        var io = new IntersectionObserver(update, { rootMargin: '0px 0px -70% 0px', threshold: [0, 1] });
+        heads.forEach(function (h) { if (h) io.observe(h); });
+        update();
+      })();
+    </script>
   </body>
 </html>

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { ArrowLeft, Check, Edit2, AlertTriangle } from 'lucide-react'
 import type { Member } from '@/types'
-import { formatMemberId, parseMemberId } from '@/types'
+import { formatMemberId } from '@/types'
 
 type Step = 'form' | 'preview'
 

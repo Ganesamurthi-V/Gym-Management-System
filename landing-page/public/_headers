@@ -1,10 +1,12 @@
-# Cloudflare static-assets headers. A sitemap is a crawl aid, not a page: without
-# this, Search Console lists /sitemap.xml under "Crawled - currently not indexed".
-/sitemap.xml
-  X-Robots-Tag: noindex
+# Cloudflare static-assets headers.
+#
+# /sitemap.xml deliberately has NO X-Robots-Tag. It used to send `noindex` to keep it out of
+# Search Console's "Crawled - currently not indexed" list, but Search Console kept reporting
+# "Sitemap could not be read" (0 pages discovered) for a file that was valid, 200 and not blocked
+# by robots.txt. A noindex on the sitemap itself is the one thing that told Google not to use
+# the document, and the cosmetic "not indexed" entry is harmless. Do not add it back.
 
-# Security headers for every response. Cloudflare merges the rules that match a path,
-# so the sitemap rule above still applies on top of these.
+# Security headers for every response.
 #
 # Strict-Transport-Security has no includeSubDomains and no preload on purpose:
 # app.gymflow.sbs is a separate deployment, and a preload entry cannot be undone

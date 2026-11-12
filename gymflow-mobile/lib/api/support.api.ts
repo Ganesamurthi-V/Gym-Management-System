@@ -39,7 +39,7 @@ export async function fetchGymFeedback(gymId: string): Promise<SupportTicket[]> 
 }
 
 export async function sendSupportMessage(data: {
-  gym_id: string;
+  gym_ids: string[];
   subject: string;
   body: string;
   type: string;

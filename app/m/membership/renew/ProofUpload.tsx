@@ -58,9 +58,9 @@ export default function ProofUpload({
           type="file"
           accept="image/jpeg,image/png,application/pdf"
           onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-          className={cn('block min-h-[44px] w-full rounded-xl border border-surface-border bg-surface-card p-2 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-white', focusRing)}
+          className={cn('block min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-card p-2 text-sm text-slate-600 file:mr-3 file:rounded-full file:border-0 file:bg-brand-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-white', focusRing)}
         />
-        <p className="mt-1 text-xs text-slate-400">JPG, PNG or PDF, up to 10 MB.</p>
+        <p className="mt-1 text-xs text-slate-500">JPG, PNG or PDF, up to 10 MB.</p>
       </div>
       <div>
         <label htmlFor="proof-txn" className="mb-1 block text-sm font-semibold text-slate-700">
@@ -72,20 +72,23 @@ export default function ProofUpload({
           maxLength={100}
           value={txn}
           onChange={(e) => setTxn(e.target.value)}
-          className={cn('block min-h-[44px] w-full rounded-xl border border-surface-border bg-surface-card px-3 text-sm text-slate-900', focusRing)}
+          className={cn('block min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-card px-4 text-sm text-slate-900', focusRing)}
         />
       </div>
 
       <p aria-live="polite" className={cn('text-sm font-medium text-red-600', !error && 'hidden')}>{error}</p>
 
+      {/* Sticky so it stays reachable on a long page, offset to clear the floating bottom nav. */}
+      <div className="sticky bottom-[calc(var(--bottom-nav-height)+var(--pwa-safe-bottom)+1rem)] z-10">
       <button
         type="submit"
         disabled={!file || submitting || disabled}
-        className={cn('flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-bold text-white disabled:opacity-50', focusRing)}
+        className={cn('flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-4 text-sm font-bold text-white shadow-lg shadow-brand-900/20 disabled:opacity-50', focusRing)}
       >
         {submitting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Upload aria-hidden="true" className="h-4 w-4" />}
         {submitting ? 'Submitting…' : 'Submit for confirmation'}
       </button>
+      </div>
     </form>
   )
 }

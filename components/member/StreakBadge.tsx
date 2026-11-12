@@ -22,7 +22,7 @@ type Size = 'sm' | 'md' | 'lg'
 const SIZES: Record<Size, { number: string; flame: string; hourglass: string; label: string }> = {
   sm: { number: 'text-xs font-bold', flame: 'h-3.5 w-3.5', hourglass: 'h-3.5 w-3.5', label: 'text-[11px]' },
   md: { number: 'text-sm font-bold', flame: 'h-4 w-4', hourglass: 'h-4 w-4', label: 'text-xs' },
-  lg: { number: 'text-3xl font-black leading-none', flame: 'h-7 w-7', hourglass: 'h-5 w-5', label: 'text-xs' },
+  lg: { number: 'text-4xl font-bold tracking-tight leading-none', flame: 'h-7 w-7', hourglass: 'h-5 w-5', label: 'text-xs' },
 }
 
 interface StreakBadgeProps {

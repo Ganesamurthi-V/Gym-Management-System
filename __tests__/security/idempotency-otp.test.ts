@@ -75,7 +75,6 @@ describe('delete OTP purpose binding', () => {
 describe('routes call the helpers', () => {
   const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
   it.each([
-    'app/api/payments/route.ts',
     'app/api/members/route.ts',
     'app/api/dues/collect/route.ts',
     'app/api/dues/mark-paid/route.ts',

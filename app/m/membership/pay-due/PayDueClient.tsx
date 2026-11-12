@@ -38,7 +38,7 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
   const backLink = (
     <Link
       href="/m/membership"
-      className={cn('mt-4 inline-flex min-h-[44px] items-center rounded-xl bg-brand-500 px-4 text-sm font-bold text-white', focus)}
+      className={cn('mt-4 inline-flex min-h-[44px] items-center rounded-full bg-brand-500 px-5 text-sm font-bold text-white', focus)}
     >
       Back to membership
     </Link>
@@ -53,12 +53,12 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
     return (
       <div className="space-y-4">
         {recentlyApproved && (
-          <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-600" aria-live="polite">
+          <p className="flex items-center gap-2 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-600" aria-live="polite">
             <CheckCircle2 aria-hidden="true" className="h-5 w-5 shrink-0" />
             Your payment was confirmed.
           </p>
         )}
-        <section className="card rounded-2xl p-5">
+        <section className="tile p-5">
           <p className="text-sm font-bold text-slate-900">You have no pending dues</p>
           <p className="mt-1 text-sm text-slate-500">Nothing to pay right now.</p>
           {backLink}
@@ -69,9 +69,9 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
 
   if (latestDue?.status === 'pending') {
     return (
-      <section className="card rounded-2xl p-5" aria-live="polite">
+      <section className="tile p-5" aria-live="polite">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
             <Clock aria-hidden="true" className="h-5 w-5" />
           </span>
           <h2 className="text-base font-bold text-slate-900">
@@ -85,7 +85,7 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
 
   if (!upi) {
     return (
-      <section className="card rounded-2xl p-5">
+      <section className="tile p-5">
         <p className="text-sm font-bold text-slate-900">Please pay your dues at the front desk.</p>
         <p className="mt-1 text-sm text-slate-500">Pending dues: {formatCurrency(pendingDue)}</p>
       </section>
@@ -130,7 +130,7 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
   return (
     <div className="space-y-6">
       {latestDue?.status === 'rejected' && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4" role="status">
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4" role="status">
           <p className="flex items-center gap-2 text-sm font-bold text-amber-600">
             <AlertCircle aria-hidden="true" className="h-4 w-4" />
             Your last payment was not approved
@@ -140,14 +140,17 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
         </div>
       )}
       {recentlyApproved && (
-        <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-600" role="status">
+        <p className="flex items-center gap-2 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-600" role="status">
           <CheckCircle2 aria-hidden="true" className="h-5 w-5 shrink-0" />
           Your payment was confirmed.
         </p>
       )}
 
       <section aria-labelledby="amount-title">
-        <p className="text-sm font-bold text-red-700">Pending dues: {formatCurrency(pendingDue)}</p>
+        <div className="tile p-4">
+          <p className="text-xs text-slate-500">Pending dues</p>
+          <p className="mt-0.5 text-3xl font-bold tracking-tight text-red-700">{formatCurrency(pendingDue)}</p>
+        </div>
         <h2 id="amount-title" className={cn(stepTitle, 'mt-4')}>1. Amount to pay</h2>
         <label htmlFor="due-amount" className="mt-3 mb-1 block text-sm font-semibold text-slate-700">
           Amount in rupees. Lower it to pay part of your dues.
@@ -161,7 +164,7 @@ export default function PayDueClient({ data }: { data: RenewalPageData }) {
           onChange={(e) => setAmountText(e.target.value)}
           aria-invalid={!!amountError}
           aria-describedby={amountError ? 'due-amount-error' : undefined}
-          className={cn('block min-h-[44px] w-full rounded-xl border border-surface-border bg-surface-card px-3 text-sm text-slate-900', focus)}
+          className={cn('block min-h-[48px] w-full rounded-2xl border border-surface-border bg-surface-card px-4 text-base font-bold text-slate-900', focus)}
         />
         {amountError && (
           <p id="due-amount-error" className="mt-1 text-sm font-medium text-red-600">{amountError}</p>

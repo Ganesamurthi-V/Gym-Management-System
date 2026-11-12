@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import QRCode from 'qrcode'
 import {
-  Clock, CheckCircle, XCircle, Upload, Copy, CreditCard,
+  Clock, CheckCircle, XCircle, Upload, Copy,
   RefreshCw, MessageCircle, AlertCircle, ArrowRight, Shield,
   Calendar, Zap, Check, Circle, CheckCircle2, ArrowLeft
 } from 'lucide-react'
@@ -145,7 +145,7 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   }, [upiString])
   const [file, setFile] = useState<File | null>(null)
   const [transactionId, setTransactionId] = useState('')
-  const [notes, setNotes] = useState('')
+  const [notes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -251,7 +251,6 @@ export default function SubscriptionClient({ gym, subState, latestRequest, setti
   })
 
   const isPending  = liveRequest?.status === 'pending'
-  const isApproved = liveRequest?.status === 'approved'
   const isRejected = liveRequest?.status === 'rejected'
 
   function copyUpi() {

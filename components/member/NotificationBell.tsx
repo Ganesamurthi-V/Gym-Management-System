@@ -14,10 +14,10 @@ export function NotificationBell({ latestAt }: { latestAt: string | null }) {
     <Link
       href="/m/notifications"
       aria-label={unread ? 'Notifications, new' : 'Notifications'}
-      className="relative -mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-600 transition-all active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-slate-700 transition-transform active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
     >
       <Bell aria-hidden="true" className="h-5 w-5" />
-      {unread && <span aria-hidden="true" className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-red-500" />}
+      {unread && <span aria-hidden="true" className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-surface bg-red-500" />}
     </Link>
   )
 }

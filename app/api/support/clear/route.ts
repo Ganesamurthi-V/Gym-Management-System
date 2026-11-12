@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     if (clearAll) {
       if (type === 'admin_messages') {
-        const { error, data } = await supabase
+        const { error } = await supabase
           .from('admin_messages')
           .update({ is_cleared_by_owner: true })
           .eq('gym_id', gym.id)
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
           .select()
         if (error) throw error
       } else if (type === 'support_tickets') {
-        const { error, data } = await supabase
+        const { error } = await supabase
           .from('support_tickets')
           .update({ is_cleared_by_owner: true })
           .eq('gym_id', gym.id)

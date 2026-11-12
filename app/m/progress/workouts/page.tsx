@@ -1,6 +1,7 @@
-import Link from 'next/link'
-import { ChevronDown, ChevronLeft } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+import { MemberTopBar } from '@/components/member/MemberTopBar'
 import { getRecentSessions } from '@/lib/member/progress-data'
+import { Stagger, StaggerItem } from '@/components/ui/motion'
 import { fmtNum, formatDuration, istDateOf, longDate } from '@/lib/progress/chart'
 
 export default async function WorkoutHistoryPage() {
@@ -8,21 +9,18 @@ export default async function WorkoutHistoryPage() {
   const sessions = await getRecentSessions()
 
   return (
-    <div className="page-container py-6">
-      <Link href="/m/progress" className="mb-3 inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-brand-600">
-        <ChevronLeft className="h-4 w-4" aria-hidden="true" /> My Progress
-      </Link>
-      <h1 className="mb-4 text-2xl font-bold tracking-tight text-slate-900">Workout history</h1>
-
+    <>
+      <MemberTopBar variant="sub" title="Workout history" backHref="/m/workout" backLabel="Back to workout" />
+      <div className="page-container pb-6 pt-2">
       {sessions.length === 0 ? (
-        <p className="card p-4 text-sm text-slate-500">
+        <p className="tile p-4 text-sm text-slate-500">
           No workouts saved yet. Finish a guided workout and it appears here.
         </p>
       ) : (
-        <ul className="space-y-2">
+        <Stagger className="space-y-3">
           {sessions.map((s) => (
-            <li key={s.id}>
-              <details className="card group p-4">
+            <StaggerItem key={s.id}>
+              <details className="tile group p-4">
                 <summary className="flex min-h-[44px] cursor-pointer list-none items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-slate-400">{longDate(istDateOf(s.startedAt))}</p>
@@ -35,7 +33,7 @@ export default async function WorkoutHistoryPage() {
                       ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-secondary"><ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true" /></span>
                 </summary>
                 <div className="mt-3 space-y-3 border-t border-surface-border pt-3">
                   {s.exercises.map((ex, i) => {
@@ -48,7 +46,7 @@ export default async function WorkoutHistoryPage() {
                             <span className="text-xs text-slate-400">No sets completed</span>
                           ) : (
                             done.map((x, j) => (
-                              <span key={j} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                              <span key={j} className="rounded-full bg-surface-secondary px-2.5 py-1 text-xs font-semibold text-slate-600">
                                 {x.weightKg != null ? `${fmtNum(x.weightKg)} kg` : 'bodyweight'} x {x.reps ?? '-'}
                               </span>
                             ))
@@ -59,10 +57,11 @@ export default async function WorkoutHistoryPage() {
                   })}
                 </div>
               </details>
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </Stagger>
       )}
-    </div>
+      </div>
+    </>
   )
 }

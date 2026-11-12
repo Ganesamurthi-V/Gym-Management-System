@@ -247,19 +247,26 @@ export function computeMembershipState(memberships: Membership[]): MembershipSta
 /**
  * Returns all memberships for the logged-in member, newest first.
  *
- * No `member_id` filter is needed: the "Members can view their own
- * memberships" RLS policy already restricts rows to
- * `member_id IN (SELECT id FROM members WHERE auth_user_id = auth.uid())`.
- * Dropping the filter is what allows this to run in parallel with the member
- * query instead of waiting on it.
+ * Filtered through an inner join on members.auth_user_id (the verified JWT
+ * subject, no extra round trip) rather than by member_id, so this still runs in
+ * parallel with the member query instead of waiting on it.
+ *
+ * RLS alone returns the same rows, but cannot use an index: Postgres scanned
+ * every gym's memberships and threw away all but this member's (measured on
+ * 560 rows: 22 ms, 216 buffers; with the join: 9 ms, 109 buffers, flat as the
+ * table grows). The empty `!inner()` embed only filters; it adds no key to the
+ * returned rows.
  */
 export const getMemberMemberships = cache(async (): Promise<Membership[]> => {
+  const userId = await getVerifiedUserId()
+  if (!userId) return []
   const supabase = await getServerClient()
 
   const { data, error } = await timed('memberships', () =>
     supabase
       .from('memberships')
-      .select(MEMBERSHIP_COLUMNS)
+      .select(`${MEMBERSHIP_COLUMNS}, member:members!fk_memberships_member_same_gym!inner()`)
+      .eq('member.auth_user_id', userId)
       .order('created_at', { ascending: false }),
   )
 

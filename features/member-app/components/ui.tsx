@@ -108,19 +108,6 @@ export function Badge({
   )
 }
 
-/** Small coloured dot used by status rows. */
-export function StatusDot({ tone }: { tone: BadgeTone }) {
-  const colors: Record<BadgeTone, string> = {
-    green:  'bg-emerald-500',
-    amber:  'bg-amber-500',
-    red:    'bg-red-500',
-    blue:   'bg-brand-500',
-    slate:  'bg-slate-400',
-    violet: 'bg-violet-500',
-  }
-  return <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colors[tone]}`} />
-}
-
 // ─── Table primitives ────────────────────────────────────────────────────────
 
 export function TableWrap({ children }: { children: React.ReactNode }) {

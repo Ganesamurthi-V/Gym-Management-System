@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Building2, CreditCard, Sparkles,
   ChevronRight, ChevronLeft, Check, Plus, Trash2, X, Zap
@@ -164,7 +163,6 @@ interface OnboardingWizardProps {
 // --- Component ----------------------------------------------------------------
 
 export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
-  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
   const [data, setData] = useState<OnboardingData>(() => {
     const base = { ...DEFAULT_DATA }
@@ -359,7 +357,9 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
 
       // `?tour=welcome` starts the guided tour on arrival. Passing it explicitly makes the
       // first run deterministic rather than depending on onboarding_data being reread first.
-      setTimeout(() => { router.push('/owner/dashboard?tour=welcome'); router.refresh() }, 2800)
+      // Full navigation, not router.push: the shell's gym row (onboarding_completed) was read before
+      // this save, and a soft push would let the shell guard bounce back here on that stale row.
+      setTimeout(() => { window.location.assign('/owner/dashboard?tour=welcome') }, 2800)
     } catch (requestError: unknown) {
       if (requestError instanceof DOMException && requestError.name === 'AbortError') {
         setError('Saving is taking longer than expected. Your details are safe on this device—please try again.')
@@ -575,7 +575,7 @@ export function OnboardingWizard({ gymId, gymName }: OnboardingWizardProps) {
                 <StepMembershipPlans plans={data.plans} onUpdate={updatePlan} onAdd={addPlan} onRemove={removePlan} />
               )}
               {currentStep === 2 && (
-                <StepPaymentSettings gymId={gymId} />
+                <StepPaymentSettings />
               )}
             </div>
 
@@ -968,7 +968,7 @@ function StepMembershipPlans({
 
 // --- Step 3: Payment Settings (UPI QR Upload) ---------------------------------
 
-function StepPaymentSettings({ gymId }: { gymId: string | null }) {
+function StepPaymentSettings() {
   return (
     <div className="space-y-4">
       <div className="card p-5 space-y-4">

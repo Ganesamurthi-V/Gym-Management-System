@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
-import { Magnet } from './fx';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { homeAnchor, isFeaturePage } from '../lib/pageAnchors';
 import '../styles/nav.css';
+import '../styles/home.css';
 
 const APP_URL = 'https://app.gymflow.sbs';
 
@@ -95,11 +95,11 @@ export function Navbar() {
   }, [sheetOpen]);
 
   return (
-    // A slim bar on the page colour with a 1px hairline (.nav-island). 64px tall, fixed; the mobile
-    // sheet starts under it (top-16).
+    // A fixed bar on the page colour with a 1px hairline (.nav-island), --nav-h tall (nav.css); the mobile
+    // sheet starts under it.
     <header className="fixed inset-x-0 top-0 z-50">
       <nav aria-label="Main" className="nav-island nav-bar relative">
-        <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between gap-2 px-5 md:gap-6 md:px-8">
+        <div className="wrap flex h-full items-center justify-between gap-2 md:gap-6">
           {/* Logo */}
           <a href={homeAnchor('#')} aria-label="GymFlow home" className="flex min-h-[44px] shrink-0 items-center">
             <img
@@ -131,16 +131,17 @@ export function Navbar() {
           {/* Right cluster */}
           <div className="flex items-center gap-1 md:gap-2">
             <ThemeToggle />
-            <a href={APP_URL} className="nav-link hidden xl:inline-flex">
-              Sign in
-            </a>
-            {/* .btn-nav is the compact 44px keycap; Magnet pulls it a little toward a fine
-                pointer and rests on touch and under reduced motion. */}
-            <Magnet className="hidden sm:block" strength={0.12}>
+            {/* A wrapper hides it: .btn and .nav-link set display themselves, which a utility class cannot undo. */}
+            <span className="hidden xl:block">
+              <a href={APP_URL} className="nav-link">
+                Sign in
+              </a>
+            </span>
+            <span className="hidden sm:block">
               <a href={APP_URL} className="btn btn-primary btn-nav">
                 Start free trial
               </a>
-            </Magnet>
+            </span>
 
             {/* 44px so the menu button meets the touch-target minimum. */}
             <button
@@ -161,7 +162,7 @@ export function Navbar() {
       {sheetOpen && (
         <div
           id="nav-mobile-sheet"
-          className="nav-sheet fixed inset-x-0 bottom-0 top-16 overflow-y-auto px-5 py-6 lg:hidden"
+          className="nav-sheet fixed inset-x-0 bottom-0 top-[var(--nav-h)] overflow-y-auto px-5 py-6 lg:hidden"
           onClick={event => {
             // Any link tap closes the sheet; the delegated Lenis handler in
             // main.tsx still performs the scroll.

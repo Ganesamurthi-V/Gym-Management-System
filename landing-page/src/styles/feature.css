@@ -1,14 +1,109 @@
 /* Feature, guide and hub pages (Cobalt, premium SaaS): the few things utilities cannot say.
    Tokens only; transform and opacity only; every motion has a reduced-motion end state. */
 
-/* The keyword H1 is long: it needs a lower ceiling than the home hero, and must wrap on a phone.
-   Three classes so it outranks the shared .display-1 rule. */
-.feature-head .display-1.feature-h1 {
-  font-size: clamp(2.5rem, 6vw, 4.75rem);
-  max-width: 16em;
+/* Article type: the keyword H1 is long, so it has a lower ceiling than the home hero and must wrap on a phone. */
+.article-h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 4.4vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.028em;
   min-width: 0;
   overflow-wrap: break-word;
-  text-wrap: balance;
+}
+.article-h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 2.6vw, 1.875rem);
+  line-height: 1.2;
+  letter-spacing: -0.022em;
+}
+
+/* Heading permalink: shown on hover or focus from md up. Colour only, no motion. */
+.heading-anchor {
+  display: none;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  color: var(--muted-foreground);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+@media (min-width: 768px) {
+  .heading-anchor {
+    display: inline-flex;
+  }
+}
+.article-h2:hover .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+.heading-anchor:hover {
+  color: var(--accent-text);
+}
+
+/* Bullets: a small blue dot, hanging so wrapped lines align with the text. */
+.article-list {
+  list-style: none;
+  padding: 0;
+}
+.article-list > li {
+  position: relative;
+  padding-left: 1.5rem;
+}
+.article-list > li + li {
+  margin-top: 0.5rem;
+}
+.article-list > li::before {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.8em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Steps: numerals on a rail. The counter is CSS so the list stays a plain <ol> for readers and crawlers. */
+.article-steps {
+  list-style: none;
+  padding: 0;
+  counter-reset: step;
+}
+.article-steps > li {
+  position: relative;
+  padding: 0 0 1.25rem 3rem;
+  counter-increment: step;
+}
+.article-steps > li:last-child {
+  padding-bottom: 0;
+}
+.article-steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+.article-steps > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(1rem - 1px);
+  top: 2.4rem;
+  bottom: 0.3rem;
+  width: 2px;
+  background: var(--border);
 }
 
 /* Underline that opens from the left by scaleX on hover or focus. */
@@ -59,19 +154,19 @@ a.link-grow:focus-visible::after {
 }
 
 /* FAQ accordion on native <details>: ruled rows, a plus that lies down into a minus. */
-.faq-item > summary {
+.doc-faq > summary {
   list-style: none;
 }
-.faq-item > summary::-webkit-details-marker {
+.doc-faq > summary::-webkit-details-marker {
   display: none;
 }
-.faq-chev {
+.doc-faq-chev {
   transition: transform 200ms var(--ease-out, ease-out);
 }
-.faq-item[open] .faq-chev {
+.doc-faq[open] .doc-faq-chev {
   transform: rotate(180deg);
 }
-.faq-item > summary:hover h3 {
+.doc-faq > summary:hover h3 {
   color: var(--accent-text);
 }
 .fx-glyph {
@@ -110,6 +205,7 @@ details[open] > summary .fx-glyph::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .heading-anchor,
   .link-grow::after,
   .row-bar::before,
   .faq-chev,

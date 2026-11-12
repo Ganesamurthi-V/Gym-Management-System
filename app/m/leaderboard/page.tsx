@@ -26,7 +26,8 @@ export default async function LeaderboardPage({
   // Gate first: the layout renders in parallel with this page and is skipped on client-side
   // navigation, so a plan-blocked member must not reach the RPCs below. Shares the layout's
   // cached member lookup, so it adds no round trip.
-  if (!(await getMemberWithGym())) {
+  const data = await getMemberWithGym()
+  if (!data) {
     done()
     return null
   }
@@ -41,6 +42,7 @@ export default async function LeaderboardPage({
 
   return (
     <LeaderboardClient
+      memberName={data.member.name}
       initialBoard={board}
       initialRows={rows}
       leaderboardsEnabled={summary.leaderboardsEnabled}

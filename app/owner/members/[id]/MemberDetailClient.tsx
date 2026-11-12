@@ -56,7 +56,6 @@ export function MemberDetailClient({ member, memberships, attendance, status, da
     setLoading(true)
     setError('')
     try {
-      const gymId = member.gym_id
       const end_date = calcEndDate(renewForm.start_date, renewForm.plan, renewForm.plan === 'custom' ? parseInt(renewForm.custom_months) || 1 : undefined)
       
       const payload = {

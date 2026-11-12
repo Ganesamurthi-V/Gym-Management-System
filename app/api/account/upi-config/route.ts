@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
  *
  * Returns the UPI configuration for the authenticated user's gym.
  */
-export const GET = withAuth('ACCOUNT_UPI_CONFIG_GET', async (req: NextRequest, { supabase, gym, log }) => {
+export const GET = withAuth('ACCOUNT_UPI_CONFIG_GET', async (_req: NextRequest, { supabase, gym, log }) => {
   const { data, error } = await supabase
     .from('gym_upi_config')
     .select('upi_id, merchant_name, merchant_code, currency')

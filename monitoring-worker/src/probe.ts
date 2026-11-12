@@ -65,7 +65,7 @@ export async function runProbe(
     let retryable = false
     try {
       // redirect: manual so a 3xx is judged as-is (status page) and guards are not followed to a login page.
-      const res = await fetchFn(probe.url, { headers, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) })
+      const res = await fetchFn(probe.url, { method: probe.method ?? 'GET', headers, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) })
       const needBody = probe.expect.bodyIncludes !== undefined || probe.expect.json
       const body = needBody ? await res.text() : null
       const fail = classify(probe.expect, res.status, body)

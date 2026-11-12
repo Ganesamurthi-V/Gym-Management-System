@@ -18,6 +18,8 @@ export interface ProbeConfig {
   critical: boolean
   /** Send the x-health-secret header (secret HEALTH_CHECK_SECRET). */
   healthSecret?: boolean
+  /** HTTP method, default GET. Only for POST-only routes, which answer 405 to a GET before reaching the guard. */
+  method?: 'GET' | 'POST'
   expect: Expect
 }
 
@@ -34,7 +36,8 @@ export const PROBES: ProbeConfig[] = [
   { name: 'api-watchdog', url: `${APP}/api/health/watchdog`, critical: true, healthSecret: true, expect: { status: 200, json: true } },
   // Auth guards: without a cookie these must answer 401 (200 = guard open, 500 = broken).
   { name: 'guard-members', url: `${APP}/api/members`, critical: true, expect: { status: 401 } },
-  { name: 'guard-payments', url: `${APP}/api/payments`, critical: true, expect: { status: 401 } },
+  // /api/payments was removed from the app; dues/collect is the payment-recording route (POST only).
+  { name: 'guard-payments', url: `${APP}/api/dues/collect`, method: 'POST', critical: true, expect: { status: 401 } },
   { name: 'guard-expiring', url: `${APP}/api/dashboard/expiring`, critical: true, expect: { status: 401 } },
   { name: 'graph-proxy', url: 'https://graph.gymflow.sbs/api/health', critical: false, expect: { status: 200 } },
   { name: 'status-page', url: 'https://status.gymflow.sbs', critical: false, expect: { statusMin: 200, statusMax: 399 } },
@@ -42,16 +45,16 @@ export const PROBES: ProbeConfig[] = [
 
 export const TIMEOUT_MS = 8000
 export const RETRY_DELAY_MS = 2000
-/** Consecutive failing runs (5 min apart) before a non-critical probe alerts. */
+/** Consecutive failing runs (10 min apart) before a non-critical probe alerts. */
 export const WARNING_FAILS = 2
 export const REMINDER_MS = 60 * 60 * 1000
 /** Refresh the "last run" stamp in KV at most this often (keeps KV writes low). */
 export const LAST_RUN_REFRESH_MS = 60 * 60 * 1000
 
-export const CANARY_ENABLED = false
+export const CANARY_ENABLED = true
 export const CANARY_BASE = APP
-/** Login rate limits are 10/min per IP and 5 per 5 min per email; one login per 15 min is far below both. */
-export const CANARY_MIN_INTERVAL_MS = 14 * 60 * 1000
+/** Login rate limits are 10/min per IP and 5 per 5 min per email; one login per 10 min is far below both. */
+export const CANARY_MIN_INTERVAL_MS = 9 * 60 * 1000
 
 /** Cloudflare free plan allows 50 subrequests per invocation; stay below it. */
 export const MAX_SUBREQUESTS = 45

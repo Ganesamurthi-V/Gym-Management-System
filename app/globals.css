@@ -166,6 +166,32 @@
   .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
   .animate-slide-up { animation: slide-up 0.5s ease-out forwards; }
 
+  /* Member PWA entrance. `both` keeps the 0% state during a stagger delay. The global
+     reduced-motion block in design-tokens.css already collapses its duration. */
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-rise-in { animation: rise-in var(--duration-page, 350ms) var(--ease-standard, ease-out) both; }
+
+  /* Staggered children: 40ms step, capped after the 12th so long lists do not wait. */
+  .stagger > * { animation-delay: 480ms; }
+  .stagger > :nth-child(1)  { animation-delay: 0ms; }
+  .stagger > :nth-child(2)  { animation-delay: 40ms; }
+  .stagger > :nth-child(3)  { animation-delay: 80ms; }
+  .stagger > :nth-child(4)  { animation-delay: 120ms; }
+  .stagger > :nth-child(5)  { animation-delay: 160ms; }
+  .stagger > :nth-child(6)  { animation-delay: 200ms; }
+  .stagger > :nth-child(7)  { animation-delay: 240ms; }
+  .stagger > :nth-child(8)  { animation-delay: 280ms; }
+  .stagger > :nth-child(9)  { animation-delay: 320ms; }
+  .stagger > :nth-child(10) { animation-delay: 360ms; }
+  .stagger > :nth-child(11) { animation-delay: 400ms; }
+  .stagger > :nth-child(12) { animation-delay: 440ms; }
+
+  /* Premium member-PWA surface. */
+  .tile { @apply rounded-3xl bg-surface-card border border-surface-border; }
+
   .glass {
     /* bg-surface/80 rather than bg-white/80 so the frosted panel darkens with the theme.
        The hairline stays white/20 on purpose: it is a specular edge, and in dark mode a
@@ -219,6 +245,30 @@
   /* Member pages are a single centred phone-width column. */
   .page-container {
     @apply mx-auto w-full max-w-lg px-4 xs:px-5 sm:px-6;
+  }
+
+  /* Horizontal snap scroller that bleeds to the screen edge. The negative margin and the padding
+     both equal the .page-container gutter at each breakpoint, so the first card lines up with the
+     page content and cards scroll under the screen edge. Scrollbar rules mirror .no-scrollbar. */
+  .rail {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    scroll-padding-inline: 1rem;
+  }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail > * { scroll-snap-align: start; flex: 0 0 auto; }
+  @media (min-width: 360px) {
+    .rail { margin-inline: -1.25rem; padding-inline: 1.25rem; scroll-padding-inline: 1.25rem; }
+  }
+  @media (min-width: 640px) {
+    .rail { margin-inline: -1.5rem; padding-inline: 1.5rem; scroll-padding-inline: 1.5rem; }
   }
 
   /* Invalid form field — used by the member login + activation forms. */

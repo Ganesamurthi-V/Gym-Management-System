@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
-import { Plus, Search, Trash2, Copy, GripVertical, Settings2, PlayCircle, ChevronDown, Check, Video, X, Dumbbell } from 'lucide-react'
+import { Plus, Search, Trash2, Copy, GripVertical, Settings2, Dumbbell } from 'lucide-react'
 
 // --- Mock Data ---
 const EXERCISE_LIBRARY = [
@@ -439,8 +439,8 @@ export default function ExerciseBuilder({ programId, programData, initialSchedul
                 <div 
                   key={ex.id}
                   draggable={dragEnabledId === ex.id}
-                  onDragStart={(e) => (dragItem.current = index)}
-                  onDragEnter={(e) => (dragOverItem.current = index)}
+                  onDragStart={() => (dragItem.current = index)}
+                  onDragEnter={() => (dragOverItem.current = index)}
                   onDragEnd={() => {
                     handleSort()
                     setDragEnabledId(null)

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
 
 export const dynamic = 'force-dynamic'
 
-export const GET = withAuth('MEMBERS_NEXT_NUMBER', async (req: NextRequest, { supabase, gym }) => {
+export const GET = withAuth('MEMBERS_NEXT_NUMBER', async (_req, { supabase, gym }) => {
   const { data } = await supabase
     .from('members')
     .select('member_number')

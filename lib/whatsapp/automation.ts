@@ -30,7 +30,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { sendWhatsAppTemplate } from './sender'
 import { isWhatsAppEnabledForGym } from './gymGate'
-import type { TemplateId, TemplateContext, SendResult } from './sender'
+import type { TemplateId, TemplateContext } from './sender'
 import { enqueueSend, kickDrain } from './queue'
 import { finalizeSendRow } from './finalize'
 import { reportAlert } from '@/lib/monitoring/alert'
@@ -134,13 +134,6 @@ function newStats(): Stats {
     gamification: { gyms: 0, queued: 0, streakAtRisk: 0, weeklyGoalReached: 0, rankUp: 0, skipped: 0, failed: 0 },
   }
 }
-
-/** The three cyclic reminder templates managed by the scheduler. */
-const CYCLIC_TEMPLATES = [
-  'membership_expiry_reminder',
-  'membership_expired',
-  'payment_due_reminder',
-] as const
 
 // ─── Cycle state helpers ───────────────────────────────────────────────────────
 
@@ -616,6 +609,26 @@ export async function runDailyWhatsAppAutomation(): Promise<Stats> {
       console.log(`[WA Automation] Owner activity cleanup deleted ${deleted ?? 0} rows`)
     } catch (err) {
       console.error('[WA Automation] Owner activity cleanup failed:', err instanceof Error ? err.message : String(err))
+    }
+    // ── Biometric punch retention (30 days unmatched/ignored, 365 days counted) ──
+    // Isolated like the steps above: a cleanup failure must never fail the WhatsApp run.
+    try {
+      const { purgeOldDevicePunches } = await import('@/lib/devices/retention')
+      const { deleted } = await purgeOldDevicePunches(supabase)
+      console.log(`[WA Automation] Device punch cleanup deleted ${deleted} rows`)
+    } catch (err) {
+      console.error('[WA Automation] Device punch cleanup failed:', err instanceof Error ? err.message : String(err))
+    }
+    // ── Biometric device commands: purge old ones, remove expired members from their devices ──
+    // Isolated like the steps above: a failure here must never fail the WhatsApp run.
+    try {
+      const { purgeOldDeviceCommands } = await import('@/lib/devices/retention')
+      const { queueExpiredMemberRemovals } = await import('@/lib/devices/commands')
+      const { deleted } = await purgeOldDeviceCommands(supabase)
+      const { queued } = await queueExpiredMemberRemovals(supabase)
+      console.log(`[WA Automation] Device commands: purged ${deleted}, queued ${queued} expiry removals`)
+    } catch (err) {
+      console.error('[WA Automation] Device command step failed:', err instanceof Error ? err.message : String(err))
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

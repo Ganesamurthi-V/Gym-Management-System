@@ -15,7 +15,8 @@ describe('cache invalidation actions verify gym ownership', () => {
   it('members actions bound pagination and check ownership', () => {
     const s = read('app/owner/members/actions.ts')
     expect(s).toContain('limit > 200')
-    expect(s.match(/\.eq\('owner_id'/g)!.length).toBeGreaterThanOrEqual(3)
+    // One ownership check per action: export and load-more.
+    expect(s.match(/\.eq\('owner_id'/g)!.length).toBeGreaterThanOrEqual(2)
   })
 })
 

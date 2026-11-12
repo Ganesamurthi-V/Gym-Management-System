@@ -316,7 +316,3 @@ export function eventProgress(
       return checkinDays(rows, window, rule.sessionFilter)
   }
 }
-
-export function isEventComplete(rule: EventRule, progress: number): boolean {
-  return progress >= rule.goalTarget
-}

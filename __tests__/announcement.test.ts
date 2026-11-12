@@ -38,7 +38,7 @@ vi.mock('@/lib/api/withAuth', () => ({
       gym: { id: 'g1' },
       supabase: {
         from: () => ({
-          select: (cols: string) => ({
+          select: () => ({
             eq: () => ({ single: async () => ({ data: { name: 'G', is_active: true }, error: null }) }),
           }),
         }),

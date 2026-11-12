@@ -1,19 +1,19 @@
-/* Member app phone: drawn at 256 x 520 and enlarged with a transform from md up (about 280px wide),
+/* Member app phone: drawn at 256 x 548 and enlarged with a transform from md up (about 280px wide),
    so its inner type and spacing keep the proportions of the real app. */
 .ma-stage {
   position: relative;
   width: 256px;
-  height: 520px;
+  height: 548px;
 }
 .ma-scale {
   width: 256px;
-  height: 520px;
+  height: 548px;
   transform-origin: 0 0;
 }
 @media (min-width: 768px) {
   .ma-stage {
     width: 280px;
-    height: 568px;
+    height: 599px;
   }
   .ma-scale {
     transform: scale(1.09375);

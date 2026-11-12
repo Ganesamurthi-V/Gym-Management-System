@@ -1,113 +1,123 @@
-import { Rise, RiseGroup } from './fx';
-import { Section } from './layout/Section';
-import '../styles/problems.css';
+import { CalendarCheck, ChartColumn, Check, FileText, X, IndianRupee, MessageCircle, User, Users, type LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Section, SectionHead } from './layout/Section';
 
-/* Each row is a problem an owner has today and what GymFlow does about it. The "does" side is
-   limited to behaviour already stated on the feature pages: the 18-day reminder start, the 7-day
-   absence list, the 10-digit number tidy-up on import. No outcome figures. */
-const ROWS: { problem: string; fix: string }[] = [
-  {
-    problem: 'Nobody noticed the plan had ended',
-    fix: 'Every member shows as Active, Expiring or Expired, and expiry reminders start 18 days before the end date.',
-  },
-  {
-    problem: 'Who owes how much?',
-    fix: 'Part payments stay on the member as a pending due, with a list of who owes what.',
-  },
-  {
-    problem: 'Typing the same reminder again and again',
-    fix: 'Welcome, renewal, expiry, payment due and birthday messages go out on WhatsApp by themselves.',
-  },
-  {
-    problem: 'The register shows who came, not who stopped',
-    fix: 'A report lists members with a current plan who have not checked in for 7 days or more.',
-  },
-  {
-    problem: 'Messy lists and phone numbers',
-    fix: 'Import an Excel or CSV file, see a preview before anything is saved, and numbers are tidied to 10 digits.',
-  },
-  {
-    problem: 'No clear picture of the month',
-    fix: 'Five plain-English reports on members, money, dues, expiries and attendance, with a PDF to download.',
-  },
-];
+/* One row per gym management task. The GymFlow side is limited to behaviour already stated on the feature
+   pages (the 7 day absence list, the 10 digit number tidy up on import, five reports with a PDF); the
+   register side is the pain described on /gym-software-vs-excel. No outcome figures. */
+const hl = (text: string) => <b className="cmp__hl">{text}</b>;
 
-const STEPS = [
+const ROWS: { job: string; icon: LucideIcon; before: string; fix: ReactNode }[] = [
   {
-    when: 'The 12th',
-    text: 'the first expiry reminder goes out on WhatsApp, saying how many days are left.',
+    job: 'Gym membership management',
+    icon: User,
+    before: 'Manually track joining dates, membership plans and expiry dates.',
+    fix: <>Manage all gym members and track {hl('Active, Expiring and Expired')} memberships automatically.</>,
   },
   {
-    when: 'The 20th',
-    text: 'you record the renewal. A renewal confirmation goes out and the remaining reminders stop.',
+    job: 'Gym fee and payment tracking',
+    icon: IndianRupee,
+    before: 'Maintain payment records and calculate pending fees manually.',
+    fix: 'Track gym fees, partial payments, outstanding dues and member payment history.',
   },
   {
-    when: 'If they do not renew',
-    text: 'after the 30th, messages asking them to come back continue for up to 18 days.',
+    job: 'WhatsApp reminders for gym members',
+    icon: MessageCircle,
+    before: 'Manually send membership renewal and payment reminders.',
+    fix: 'Automate WhatsApp welcome messages, renewal reminders, expiry alerts, payment reminders and birthday wishes.',
+  },
+  {
+    job: 'Gym attendance tracking',
+    icon: CalendarCheck,
+    before: 'Search through attendance registers to identify members who stopped visiting.',
+    fix: <>Track daily attendance and identify inactive members who haven&apos;t visited for {hl('7 or more days')}.</>,
+  },
+  {
+    job: 'Gym member data management',
+    icon: Users,
+    before: 'Manually maintain member records and clean spreadsheet data.',
+    fix: 'Import existing member records using Excel or CSV with data preview and automatic phone number formatting.',
+  },
+  {
+    job: 'Gym reports and analytics',
+    icon: ChartColumn,
+    before: 'Calculate monthly revenue, membership and attendance totals manually.',
+    fix: <>Generate reports for members, revenue, pending dues, membership expiry and attendance, with {hl('PDF downloads')}.</>,
   },
 ];
 
 export function Problems() {
   return (
-    <Section id="problems" labelledBy="problems-title" tone="paper" className="overflow-clip!">
-      <div className="grid gap-12 lg:grid-cols-12 lg:gap-x-16 lg:gap-y-16">
-        <div className="relative min-w-0 lg:col-span-8 lg:row-start-1">
-          <span aria-hidden className="outline-text problems-numeral">
-            06
-          </span>
-          <div className="relative">
-            <h2 id="problems-title" className="display-2 max-w-[16ch] min-w-0 break-words">{'The problems GymFlow solves'}</h2>
-            <p className="lead mt-5 max-w-[560px]">
-              The everyday jobs that eat an owner&rsquo;s week, and what GymFlow does about each one.
-            </p>
-          </div>
-        </div>
-        <div className="min-w-0 lg:col-span-8 lg:row-start-2">
-          <div aria-hidden className="bar-rule" />
-          <div role="table" aria-label="The problems GymFlow solves">
-            <div role="rowgroup" className="sr-only">
-              <div role="row">
-                <span role="columnheader">Problem</span>
-                <span role="columnheader">What GymFlow does</span>
-              </div>
-            </div>
-            <RiseGroup role="rowgroup">
-              {ROWS.map(r => (
-                <div key={r.problem} role="row" className="ledger-row">
-                  <p role="cell" className="ledger-problem">
-                    {r.problem}
-                  </p>
-                  <p role="cell" className="ledger-fix">
-                    {r.fix}
-                  </p>
-                </div>
-              ))}
-            </RiseGroup>
-          </div>
-          <div aria-hidden className="bar-rule" />
-        </div>
+    <Section id="problems" labelledBy="problems-title" tone="paper">
+      <SectionHead
+        title={
+          <h2 id="problems-title" className="h2">
+            Gym software vs register or Excel sheet
+          </h2>
+        }
+        lead="Where a register or sheet starts to cost you time, and what GymFlow does about each job."
+      />
 
-        {/* An illustration, not a customer story: labelled as such so nobody reads it as one. It sits beside
-            the heading and stays in view while the ledger scrolls. */}
-        <aside className="min-w-0 lg:col-span-4 lg:col-start-9 lg:row-span-2 lg:row-start-1 lg:self-start lg:sticky lg:top-28">
-          <Rise className="slip p-6 pb-8">
-            <h3 className="font-sans text-[20px] font-bold leading-snug normal-case text-foreground">
-              A member whose plan ends on the 30th
-            </h3>
-            <ol className="mt-6 border-l-2 border-border-strong">
-              {STEPS.map(step => (
-                <li key={step.when} className="relative pb-6 pl-6 last:pb-0">
-                  <span aria-hidden className="absolute left-[-6px] top-[7px] h-[10px] w-[10px] bg-accent" />
-                  <p className="font-sans text-[16px] leading-relaxed text-muted-foreground">
-                    <strong className="font-mono font-medium text-foreground">{step.when}:</strong> {step.text}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </Rise>
-          <p className="mt-4 text-[14px] text-muted-foreground">Example, not a customer</p>
-        </aside>
+      <div className="panel cmp-panel overflow-clip">
+        <table className="cmp">
+          <caption className="sr-only">
+            Six gym management tasks, done with a register or Excel sheet and done with GymFlow
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Gym management task</th>
+              <th scope="col" className="cmp__head-bad">
+                <span>
+                  <FileText aria-hidden className="size-5" strokeWidth={1.75} />
+                  Register or Excel
+                </span>
+              </th>
+              <th scope="col" className="cmp__head-fix">
+                <span>
+                  <FileText aria-hidden className="size-5" strokeWidth={1.75} />
+                  GymFlow Gym Management Software
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {ROWS.map(row => (
+              <tr key={row.job}>
+                <th scope="row">
+                  <span className="cmp__job">
+                    <span aria-hidden className="cmp__icon">
+                      <row.icon className="size-5" strokeWidth={1.75} />
+                    </span>
+                    {row.job}
+                  </span>
+                </th>
+                <td data-label="Register or Excel:" className="cmp__bad">
+                  <span>
+                    <span aria-hidden className="cmp__x">
+                      <X className="size-3.5" strokeWidth={3} />
+                    </span>
+                    <span className="min-w-0">{row.before}</span>
+                  </span>
+                </td>
+                <td data-label="GymFlow:" className="cmp__fix">
+                  <span>
+                    <span aria-hidden className="cmp__tick">
+                      <Check className="size-3.5" strokeWidth={3} />
+                    </span>
+                    <span className="min-w-0">{row.fix}</span>
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <p className="mt-6">
+        <a href="/gym-software-vs-excel" className="link">
+          <span>Read the full comparison</span>
+        </a>
+      </p>
     </Section>
   );
 }

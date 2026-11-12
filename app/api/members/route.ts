@@ -14,6 +14,8 @@ import { recordOwnerAction } from '@/lib/activity/record'
 import { getGymForUser } from '@/lib/supabase/queries'
 import { mapSupabaseError, passesCsrf, csrfRejected, boundedInt, boundedText, MAX_MONEY } from '@/app/api/_guard'
 import { assertGymWritable } from '@/lib/subscriptionGuard'
+import { syncMemberToDevices } from '@/lib/devices/commands'
+import { wantsDeviceSync } from '@/lib/devices/ui'
 function planMemberLimitResponse() {
   return NextResponse.json(
     { success: false, error: { code: 'PLAN_MEMBER_LIMIT', message: MEMBER_CAP_MESSAGE } },
@@ -50,6 +52,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Gym not found' } }, { status: 404 })
     }
     log.info('Gym Info', { gymId: gym.id })
+
+    // Reads are refused too: a lapsed or banned owner must not keep exporting member data.
+    const readOnly = assertGymWritable(gym)
+    if (readOnly) { log.summary(403); return readOnly }
 
     const { searchParams } = req.nextUrl
     const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50') || 50, 1), 100)
@@ -232,6 +238,10 @@ export async function POST(req: NextRequest) {
     }
 
     await deleteCache(cacheKeys.dashboard(gym.id, todayIST()))
+    // Owner can untick "send to device" on the confirm screen; only an explicit false skips it.
+    if (wantsDeviceSync(body.send_to_device)) {
+      await syncMemberToDevices(gym.id, data.id, 'add') // never throws; no-op for gyms without a device
+    }
 
     log.summary(201)
     recordOwnerAction(supabase, req, 'MEMBERS_CREATE')

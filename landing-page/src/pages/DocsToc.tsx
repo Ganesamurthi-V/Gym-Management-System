@@ -59,10 +59,10 @@ export function DocsToc({ items, from = 'xl' }: { items: TocItem[]; from?: 'lg' 
 export function TocDisclosure({ items, below = 'xl' }: { items: TocItem[]; below?: 'lg' | 'xl' }) {
   if (items.length < 2) return null;
   return (
-    <details className={`faq-item border-y border-border-subtle ${below === 'lg' ? 'lg:hidden' : 'xl:hidden'}`}>
+    <details className={`doc-faq border-y border-border-subtle ${below === 'lg' ? 'lg:hidden' : 'xl:hidden'}`}>
       <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-4 text-[16px] font-medium text-foreground">
         On this page
-        <ChevronDown aria-hidden className="faq-chev h-5 w-5 shrink-0 text-muted-foreground" />
+        <ChevronDown aria-hidden className="doc-faq-chev h-5 w-5 shrink-0 text-muted-foreground" />
       </summary>
       <ul className="pb-4">
         {items.map(item => (

@@ -1,0 +1,107 @@
+name: aws-deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which app to deploy
+        type: choice
+        options: [app, admin]
+        default: app
+
+jobs:
+  check:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  # Manual only: start it from Actions -> aws-deploy -> Run workflow, on main. Vercel stays the live
+  # host until the cutover, so a deploy here does not change what users see yet.
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.target == 'app'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    # Public values are inlined into the browser bundle at build time, so they come from
+    # repository variables here (SST secrets are for server-only values).
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+      NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+      TRIAL_DURATION_DAYS: ${{ vars.TRIAL_DURATION_DAYS }}
+      RESEND_FROM: ${{ vars.RESEND_FROM }}
+      WHATSAPP_API_VERSION: ${{ vars.WHATSAPP_API_VERSION }}
+      WHATSAPP_BASE_URL: ${{ vars.WHATSAPP_BASE_URL }}
+      GRAPH_API_BASE_URL: ${{ vars.GRAPH_API_BASE_URL }}
+      QSTASH_URL: ${{ vars.QSTASH_URL }}
+      VAPID_SUBJECT: ${{ vars.VAPID_SUBJECT }}
+      PUSH_EVENING_ENABLED: ${{ vars.PUSH_EVENING_ENABLED }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+      - run: npm ci
+      - run: npm ci
+        working-directory: infra
+      - run: npx sst deploy --stage production
+        working-directory: infra
+
+  # Separate SST app (infra/sst.admin.config.ts) for the admin panel. Secrets live in that app's own
+  # SST stage; only public values and the ACM certificate ARN come from repository variables.
+  deploy-admin:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.target == 'admin'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      ADMIN_CERT_ARN: ${{ vars.ADMIN_CERT_ARN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_ADMIN_URL: ${{ vars.NEXT_PUBLIC_ADMIN_URL }}
+      ADMIN_SESSION_VERSION: ${{ vars.ADMIN_SESSION_VERSION }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      SUPPORT_EMAIL_ADDRESS: ${{ vars.SUPPORT_EMAIL_ADDRESS }}
+      SUPPORT_EMAIL_FROM_NAME: ${{ vars.SUPPORT_EMAIL_FROM_NAME }}
+      SUPPORT_EMAIL_LOGO_URL: ${{ vars.SUPPORT_EMAIL_LOGO_URL }}
+      AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+      AI_MODELS: ${{ vars.AI_MODELS }}
+      AI_TPM_BUDGET: ${{ vars.AI_TPM_BUDGET }}
+      AI_TPD_BUDGET: ${{ vars.AI_TPD_BUDGET }}
+      AI_DAILY_LIMIT: ${{ vars.AI_DAILY_LIMIT }}
+      LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+      - run: npm ci
+        working-directory: infra
+      - run: npm ci
+        working-directory: gymflow-admin
+      - run: npx sst deploy --stage production --config sst.admin.config.ts
+        working-directory: infra

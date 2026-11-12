@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getAuthUser, getGym } from '@/lib/dal'
+import { requireOwnerAccess } from '@/lib/owner/access'
 import { PaymentsClient } from './PaymentsClient'
 import { subMonths, format } from 'date-fns'
 import { startPageTimer, timed } from '@/lib/perf'
@@ -14,11 +14,7 @@ import { startPageTimer, timed } from '@/lib/perf'
  */
 export default async function PaymentsPage() {
   const done = startPageTimer('payments')
-  const { user } = await getAuthUser()
-  if (!user) return null
-
-  const { gym } = await getGym(user.id)
-  if (!gym) return null
+  const { gym } = await requireOwnerAccess()
 
   const data = await (async () => {
     const supabase = await createClient()
@@ -97,7 +93,6 @@ export default async function PaymentsPage() {
       duePayments={data.duePayments as any}
       pendingMembers={data.pendingMembers}
       gymId={gym.id}
-      gymName={gym.name}
     />
   )
 }

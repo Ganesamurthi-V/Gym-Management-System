@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/withAuth'
 import { istToday } from '@/lib/gamification/periods'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/dashboard/expiring?period=month
+ * GET /api/dashboard/expiring
  *
- * Returns members with memberships expiring in the specified period.
+ * Returns members whose membership ends in the current (IST) month.
  */
-export const GET = withAuth('DASHBOARD_EXPIRING', async (req: NextRequest, { supabase, gym, log }) => {
+export const GET = withAuth('DASHBOARD_EXPIRING', async (_req, { supabase, gym, log }) => {
   // IST day, not the server's UTC day.
   const todayStr = istToday()
   const currentMonth = todayStr.slice(0, 7)

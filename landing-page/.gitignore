@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.claude/
 
 # Editor directories and files
 .vscode/*
@@ -24,3 +25,14 @@ dist-ssr
 *.sw?
 .preview
 .hallmark/
+
+# Source screenshots (PNG) for public/feature: only the compressed .webp files are used by the site.
+public/feature/*.png
+
+# Build and tool output
+*.tsbuildinfo
+.wrangler/
+
+# Full-size tutorial recordings (4K, 100+ MB). The site serves the compressed copies in public/features/<slug>/.
+public/video/features/
+public/video/gymflow-attendance-tutorial.mp4

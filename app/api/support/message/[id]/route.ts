@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
  * Returns a single admin message by ID (only if it belongs to user's gym).
  */
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

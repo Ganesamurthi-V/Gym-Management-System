@@ -36,7 +36,6 @@ export default function ImportEditPage() {
   const [step, setStep] = useState<Step>("edit");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   // Owner has accepted that rows without a start date get a full plan from today.
   const [startAck, setStartAck] = useState(false);
   const today = todayIST();
@@ -58,15 +57,13 @@ export default function ImportEditPage() {
   }, []);
   const [doneResult, setDoneResult] = useState<DoneResult>({ success: 0, skipped: 0, planSkipped: 0 });
   const [activeAreaIdx, setActiveAreaIdx] = useState<number | null>(null);
-  const [areaSuggestions, setAreaSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
+  const [areaSuggestions] = useState<Record<number, Array<{ id: string; name: string; district: string }>>>({});
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const blurTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
-  const searchTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const tableInnerRef = useRef<HTMLDivElement>(null);
-  const previewScrollRef = useRef<HTMLDivElement>(null);
 
   // Track sidebar collapsed state for the fixed scrollbar left offset
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -244,13 +241,6 @@ export default function ImportEditPage() {
     return EDIT_FIELDS.some(f => row[f] !== orig[f]);
   }
 
-  function isCellChanged(row: ImportedRow, field: keyof ImportedRow): boolean {
-    const orig = originalRows.find(r => r._rowId === row._rowId);
-    if (!orig) return false;
-    return row[field] !== orig[field];
-  }
-
-  const validRows = rows.filter(r => r._status !== "error" && r._status !== "duplicate");
   const skippedRows = rows.filter(r => r._status === "error" || r._status === "duplicate");
   // Valid rows past the plan cap are hidden and never sent, so the preview shows exactly what will
   // be imported. Derived from row order, so deleting a row pulls the next one back in.
@@ -283,11 +273,6 @@ export default function ImportEditPage() {
            r.member_number.includes(search);
   });
 
-  const hi = (row: ImportedRow, field: keyof ImportedRow) =>
-    isCellChanged(row, field)
-      ? "bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.5 rounded"
-      : "";
-
   const conflictCount = rows.filter((r, i) => r._id_conflict && !overCapIdx.has(i)).length;
   const missingIdCount = importRows.filter(r => !r.member_number || !parseInt(r.member_number)).length;
 
@@ -295,15 +280,6 @@ export default function ImportEditPage() {
     // Persist current edits so they survive the round-trip
     sessionStorage.setItem("import_rows", JSON.stringify(rows));
     router.push("/owner/import/review");
-  }
-
-  function handlePreview() {
-    if (noStartCount > 0 && !startAck) { setError("Confirm the start date notice below before importing"); return; }
-    if (missingIdCount > 0) { setError(`${missingIdCount} member${missingIdCount !== 1 ? 's are' : ' is'} missing a Member ID — fix them before importing`); return; }
-    if (conflictCount > 0) { setError(`${conflictCount} member${conflictCount !== 1 ? 's have' : ' has'} a conflicting Member ID — fix them before importing`); return; }
-    setError("");
-    setConfirmed(true);
-    handleSave();
   }
 
   async function handleSave() {
@@ -454,7 +430,7 @@ export default function ImportEditPage() {
               {editedCount} edited
             </span>
           )}
-          <button onClick={() => { setConfirmed(true); handleSave(); }} disabled={conflictCount > 0 || missingIdCount > 0 || (noStartCount > 0 && !startAck) || loading}
+          <button onClick={() => { handleSave(); }} disabled={conflictCount > 0 || missingIdCount > 0 || (noStartCount > 0 && !startAck) || loading}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:from-brand-600 hover:to-brand-700 transition-all disabled:opacity-40"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}

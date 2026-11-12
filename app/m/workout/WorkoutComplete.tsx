@@ -2,7 +2,10 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, Clock, Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Check, CheckCircle2, Clock, Dumbbell, Flame, Zap } from 'lucide-react'
+import { spring } from '@/lib/motion'
+import { CountUp, ProgressRing, Stagger, StaggerItem } from '@/components/ui/motion'
 
 // ─── Types (mirrored from WorkoutSession) ────────────────────────────────────
 
@@ -69,6 +72,7 @@ function formatMins(ms: number): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function WorkoutComplete({ programName, dayLabel, log, totalElapsedMs, saveState, onRetrySave, onDone }: Props) {
+  const reduce = useReducedMotion()
   const stats = useMemo(() => {
     const totalExercises = log.length
     const totalSets = log.reduce((s, ex) => s + ex.sets.length, 0)
@@ -135,56 +139,82 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
   return (
     <div className="flex flex-col">
 
-      {/* Hero */}
-      <div className="mb-6 flex flex-col items-center text-center">
-        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-200">
-          <Trophy className="h-10 w-10 text-white" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-900">Workout Complete!</h2>
-        <p className="mt-1 text-sm text-slate-500">{programName} · {dayLabel}</p>
+      {/* Hero: the one filled element. Ring fills to sets done, check pops in with a spring */}
+      <div className="mb-5 flex flex-col items-center rounded-3xl bg-brand-500 px-5 py-7 text-center text-white shadow-lg shadow-brand-500/25">
+        <ProgressRing
+          value={stats.totalSets > 0 ? stats.completedSets / stats.totalSets : 0}
+          size={96}
+          strokeWidth={8}
+          className="text-white"
+          trackClassName="text-white/25"
+          label={`${stats.completedSets} of ${stats.totalSets} sets done`}
+        >
+          <motion.span
+            initial={{ scale: reduce ? 1 : 0.3, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 16, delay: reduce ? 0 : 0.25 }}
+            className="flex"
+          >
+            <Check className="h-10 w-10 text-white" strokeWidth={3} />
+          </motion.span>
+        </ProgressRing>
+        <h2 className="mt-4 text-3xl font-bold tracking-tight">Workout Complete!</h2>
+        <p className="mt-1 text-sm text-white/80">{programName} · {dayLabel}</p>
       </div>
 
       {/* Stats grid */}
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        <div className="card p-4 flex flex-col items-center text-center">
-          <Clock className="h-5 w-5 text-brand-500 mb-1.5" />
-          <p className="text-xl font-black text-slate-900">{formatDuration(totalElapsedMs)}</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Duration</p>
-        </div>
-        <div className="card p-4 flex flex-col items-center text-center">
-          <Dumbbell className="h-5 w-5 text-orange-500 mb-1.5" />
-          <p className="text-xl font-black text-slate-900">{stats.totalExercises}</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Exercises</p>
-        </div>
-        <div className="card p-4 flex flex-col items-center text-center">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500 mb-1.5" />
-          <p className="text-xl font-black text-slate-900">{stats.completedSets}/{stats.totalSets}</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Sets Done</p>
-        </div>
-        <div className="card p-4 flex flex-col items-center text-center">
-          <Flame className="h-5 w-5 text-red-500 mb-1.5" />
-          <p className="text-xl font-black text-slate-900">{stats.totalReps}</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Total Reps</p>
-        </div>
-      </div>
+      <Stagger className="mb-5 grid grid-cols-2 gap-3">
+        <StaggerItem>
+          <div className="tile flex flex-col items-center p-4 text-center">
+            <Clock className="mb-1.5 h-5 w-5 text-brand-500" />
+            <p className="text-2xl font-bold tracking-tight text-slate-900">{formatDuration(totalElapsedMs)}</p>
+            <p className="mt-0.5 text-xs text-slate-500">Duration</p>
+          </div>
+        </StaggerItem>
+        <StaggerItem>
+          <div className="tile flex flex-col items-center p-4 text-center">
+            <Dumbbell className="mb-1.5 h-5 w-5 text-orange-500" />
+            <CountUp value={stats.totalExercises} className="text-2xl font-bold tracking-tight text-slate-900" />
+            <p className="mt-0.5 text-xs text-slate-500">Exercises</p>
+          </div>
+        </StaggerItem>
+        <StaggerItem>
+          <div className="tile flex flex-col items-center p-4 text-center">
+            <CheckCircle2 className="mb-1.5 h-5 w-5 text-emerald-500" />
+            <p className="text-2xl font-bold tracking-tight text-slate-900">
+              <CountUp value={stats.completedSets} />/{stats.totalSets}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">Sets Done</p>
+          </div>
+        </StaggerItem>
+        <StaggerItem>
+          <div className="tile flex flex-col items-center p-4 text-center">
+            <Flame className="mb-1.5 h-5 w-5 text-red-500" />
+            <CountUp value={stats.totalReps} className="text-2xl font-bold tracking-tight text-slate-900" />
+            <p className="mt-0.5 text-xs text-slate-500">Total Reps</p>
+          </div>
+        </StaggerItem>
+      </Stagger>
 
       {/* Volume */}
       {stats.totalVolume > 0 && (
-        <div className="card mb-5 p-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50">
+        <div className="tile mb-5 flex items-center gap-3 p-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-50">
             <Zap className="h-5 w-5 text-violet-600" />
           </div>
           <div>
-            <p className="text-lg font-black text-slate-900">{stats.totalVolume.toLocaleString()} kg</p>
-            <p className="text-xs font-semibold text-slate-400">Total Volume (reps × weight)</p>
+            <p className="text-xl font-bold tracking-tight text-slate-900">
+              <CountUp value={stats.totalVolume} suffix=" kg" />
+            </p>
+            <p className="text-xs text-slate-500">Total Volume (reps × weight)</p>
           </div>
         </div>
       )}
 
       {/* Performance chart: time per exercise (horizontal bars) */}
       {stats.exerciseTimes.length > 0 && (
-        <section className="card mb-5 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+        <section className="tile mb-5 p-4">
+          <p className="mb-3 text-xs font-bold text-slate-500">
             Time Per Exercise
           </p>
           <div className="space-y-2.5">
@@ -197,9 +227,12 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
                     <p className="text-xs font-bold text-slate-500">{formatMins(ex.durationMs)}</p>
                   </div>
                   <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all duration-700"
-                      style={{ width: `${pct}%` }}
+                    {/* Full-width bar scaled with a transform (no width animation) */}
+                    <motion.div
+                      className="h-full origin-left rounded-full bg-brand-500"
+                      initial={{ scaleX: reduce ? pct / 100 : 0 }}
+                      animate={{ scaleX: pct / 100 }}
+                      transition={{ ...spring, delay: reduce ? 0 : 0.2 + i * 0.05 }}
                     />
                   </div>
                 </div>
@@ -210,12 +243,12 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
           {/* Fastest / slowest callout */}
           {stats.exerciseTimes.length >= 2 && stats.fastest && stats.slowest && (
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-3 py-2">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mb-0.5">Fastest</p>
                 <p className="text-xs font-bold text-emerald-800 truncate">{stats.fastest.name}</p>
                 <p className="text-[10px] text-emerald-600">{formatMins(stats.fastest.durationMs)}</p>
               </div>
-              <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
+              <div className="rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-amber-600 mb-0.5">Most Time</p>
                 <p className="text-xs font-bold text-amber-800 truncate">{stats.slowest.name}</p>
                 <p className="text-[10px] text-amber-600">{formatMins(stats.slowest.durationMs)}</p>
@@ -227,8 +260,8 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
 
       {/* Muscle groups hit */}
       {targetBreakdown.length > 0 && (
-        <section className="card mb-5 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+        <section className="tile mb-5 p-4">
+          <p className="mb-3 text-xs font-bold text-slate-500">
             Muscles Worked
           </p>
           <div className="flex flex-wrap gap-2">
@@ -264,14 +297,17 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
       </p>
 
       {/* Done button */}
-      <button
-        type="button"
-        onClick={onDone}
-        className="w-full flex items-center justify-center gap-2 rounded-2xl bg-brand-500 py-4 text-sm font-bold text-white shadow-lg shadow-brand-500/20 transition-all active:scale-[0.97] hover:bg-brand-600"
-      >
-        <CheckCircle2 className="h-5 w-5" />
-        Done
-      </button>
+      {/* Sticky, offset clears the floating bottom nav */}
+      <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.75rem+var(--pwa-safe-bottom)+0.75rem)] z-10">
+        <button
+          type="button"
+          onClick={onDone}
+          className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-brand-500 text-sm font-bold text-white shadow-lg shadow-brand-500/30 transition-transform active:scale-[0.97] hover:bg-brand-600"
+        >
+          <CheckCircle2 className="h-5 w-5" />
+          Done
+        </button>
+      </div>
     </div>
   )
 }

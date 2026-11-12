@@ -34,7 +34,7 @@ export function LogoutButton() {
   }
 
   return (
-    <button type="button" className="btn-secondary mt-5 text-red-700" onClick={logout} disabled={loading} aria-busy={loading}>
+    <button type="button" className="tap-target flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-red-50 px-4 text-sm font-bold text-red-700 transition-transform active:scale-[0.98] disabled:opacity-60" onClick={logout} disabled={loading} aria-busy={loading}>
       <LogOut aria-hidden="true" className="h-5 w-5" />
       {loading ? 'Signing out…' : 'Sign out'}
     </button>

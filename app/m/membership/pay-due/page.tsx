@@ -18,8 +18,8 @@ export default async function PayDuePage() {
         Membership
       </Link>
       <header className="mb-5">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pay dues</h1>
-        <p className="mt-0.5 text-xs text-slate-400">{data.options.gymName}</p>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Pay dues</h1>
+        <p className="mt-0.5 text-xs text-slate-500">{data.options.gymName}</p>
       </header>
       <PayDueClient data={data} />
     </div>

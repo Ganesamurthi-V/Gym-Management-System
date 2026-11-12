@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trophy } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { spring } from '@/lib/motion'
 import toast from 'react-hot-toast'
 import { setLeaderboardVisibility } from './actions'
 
@@ -15,6 +17,7 @@ import { setLeaderboardVisibility } from './actions'
  */
 export function LeaderboardVisibilitySwitch({ initialVisible }: { initialVisible: boolean }) {
   const router = useRouter()
+  const reduce = useReducedMotion()
   const [visible, setVisible] = useState(initialVisible)
   const [saving, setSaving] = useState(false)
   // A ref as well as state: two taps in the same frame both see `saving` as false.
@@ -55,7 +58,7 @@ export function LeaderboardVisibilitySwitch({ initialVisible }: { initialVisible
 
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
         <Trophy aria-hidden="true" className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
@@ -85,10 +88,11 @@ export function LeaderboardVisibilitySwitch({ initialVisible }: { initialVisible
           }`}
         >
           {/* `bg-white` on purpose: the knob sits on a filled control and must not flip in dark mode. */}
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-              visible ? 'translate-x-6' : 'translate-x-1'
-            }`}
+          <motion.span
+            className="inline-block h-4 w-4 rounded-full bg-white shadow"
+            initial={false}
+            animate={{ x: visible ? 24 : 4 }}
+            transition={reduce ? { duration: 0 } : spring}
           />
         </span>
       </button>

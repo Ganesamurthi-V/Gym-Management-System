@@ -150,14 +150,14 @@ export function PushHeaderButton({ publicKey }: { publicKey: string }) {
                   You will stop getting gym notices and reminders on this phone. You can turn them on again any time.
                 </p>
                 <div className="mt-5 grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setSheet(null)} className="min-h-[44px] rounded-xl bg-slate-100 text-sm font-bold text-slate-700">
+                  <button type="button" onClick={() => setSheet(null)} className="min-h-[44px] rounded-full bg-slate-100 text-sm font-bold text-slate-700">
                     Keep on
                   </button>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={async () => { await disable(); setSheet(null) }}
-                    className="min-h-[44px] rounded-xl bg-red-600 text-sm font-bold text-white disabled:opacity-60"
+                    className="min-h-[44px] rounded-full bg-red-600 text-sm font-bold text-white disabled:opacity-60"
                   >
                     Turn off
                   </button>
@@ -168,7 +168,7 @@ export function PushHeaderButton({ publicKey }: { publicKey: string }) {
             {sheet === 'error' && (
               <>
                 <p role="alert" className="mt-2 text-sm text-slate-600">{error ?? 'Something went wrong. Please try again.'}</p>
-                <button type="button" onClick={() => setSheet(null)} className="mt-5 min-h-[44px] w-full rounded-xl bg-slate-100 text-sm font-bold text-slate-700">
+                <button type="button" onClick={() => setSheet(null)} className="mt-5 min-h-[44px] w-full rounded-full bg-slate-100 text-sm font-bold text-slate-700">
                   Close
                 </button>
               </>
@@ -187,7 +187,7 @@ export function PushHeaderButton({ publicKey }: { publicKey: string }) {
                 <button
                   type="button"
                   onClick={() => void recheck()}
-                  className="mt-5 min-h-[44px] w-full rounded-xl bg-brand-500 text-sm font-bold text-white"
+                  className="mt-5 min-h-[44px] w-full rounded-full bg-brand-500 text-sm font-bold text-white"
                 >
                   I have done this. Check again
                 </button>

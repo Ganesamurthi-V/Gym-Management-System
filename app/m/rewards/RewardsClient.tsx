@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Flame } from 'lucide-react'
+import { Flame, Target } from 'lucide-react'
+import { LayoutGroup, motion, useReducedMotion } from 'framer-motion'
+import { CountUp, FadeIn, Stagger, StaggerItem } from '@/components/ui/motion'
+import { spring } from '@/lib/motion'
 import type { Achievement, AchievementRarity } from '@/lib/member/achievements/types'
 import { RARITY_ORDER } from '@/lib/member/achievements/types'
 import { StreakBadge } from '@/components/member/StreakBadge'
@@ -12,12 +15,12 @@ import MemberEvents from './MemberEvents'
 
 // ─── Rarity visual config ────────────────────────────────────────────────────
 
-const RARITY_COLORS: Record<AchievementRarity, { dot: string; text: string; icon: string }> = {
-  mythic: { dot: 'bg-pink-500', text: 'text-pink-600', icon: '💎' },
-  legendary: { dot: 'bg-amber-500', text: 'text-amber-600', icon: '👑' },
-  epic: { dot: 'bg-violet-500', text: 'text-violet-600', icon: '💜' },
-  rare: { dot: 'bg-blue-500', text: 'text-blue-600', icon: '💙' },
-  common: { dot: 'bg-slate-400', text: 'text-slate-500', icon: '⚪' },
+const RARITY_COLORS: Record<AchievementRarity, { dot: string; text: string }> = {
+  mythic: { dot: 'bg-pink-500', text: 'text-pink-600' },
+  legendary: { dot: 'bg-amber-500', text: 'text-amber-600' },
+  epic: { dot: 'bg-violet-500', text: 'text-violet-600' },
+  rare: { dot: 'bg-blue-500', text: 'text-blue-600' },
+  common: { dot: 'bg-slate-400', text: 'text-slate-500' },
 }
 
 type TabId = 'all' | 'earned' | 'locked'
@@ -72,6 +75,9 @@ export default function RewardsClient({
     setNewIds(prev => (fresh.every(id => prev.has(id)) ? prev : new Set([...prev, ...fresh])))
   }, [allAchievements])
 
+  const reduce = useReducedMotion()
+  const levelPct = Math.min(1, xpInLevel / xpForNextLevel)
+
   const displayed = tab === 'earned' ? earned : tab === 'locked' ? locked : allAchievements
 
   return (
@@ -85,56 +91,54 @@ export default function RewardsClient({
       </header>
 
       {/* ─── Level Hero Card ─────────────────────────────────────────────── */}
-      <div className="mb-5 rounded-2xl bg-gradient-to-br from-violet-50 via-surface to-brand-50 border border-violet-100 p-5">
-        <div className="flex items-center gap-4">
-          {/* Level badge — uses /public/level/level_N.webp images */}
-          <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getLevelBadge(level)}
-              alt={`Level ${level}`}
-              width={96}
-              height={96}
-              className="relative h-[96px] w-[96px] object-contain drop-shadow-md"
+      <FadeIn>
+        <div className="mb-5 rounded-3xl bg-brand-500 p-5 text-white">
+          <div className="flex items-center gap-4">
+            {/* Level badge — uses /public/level/level_N.webp images */}
+            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={getLevelBadge(level)}
+                alt={`Level ${level}`}
+                width={96}
+                height={96}
+                className="relative h-[96px] w-[96px] object-contain drop-shadow-md"
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <span className="inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white">
+                Level {level} · {levelTitle}
+              </span>
+              <p className="mt-1.5 text-3xl font-black leading-none tracking-tight tabular-nums">
+                <CountUp value={xp} /> <span className="text-base font-bold text-white/80">XP</span>
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-white/80">
+                {earnedCount} / {totalAchievements} achievements
+              </p>
+            </div>
+          </div>
+
+          {/* Scaled with a transform (not width) so it never triggers layout. */}
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/25">
+            <motion.div
+              className="h-full origin-left rounded-full bg-white"
+              initial={{ scaleX: reduce ? levelPct : 0 }}
+              animate={{ scaleX: levelPct }}
+              transition={reduce ? { duration: 0 } : { ...spring, delay: 0.15 }}
             />
           </div>
-
-          {/* Level info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-lg font-black text-slate-900">Level {level}</p>
-              <span className="rounded-full bg-brand-500 px-2.5 py-0.5 text-[10px] font-bold text-white">
-                {levelTitle}
-              </span>
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 h-2.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all duration-700"
-                  style={{ width: `${Math.min(100, (xpInLevel / xpForNextLevel) * 100)}%` }}
-                />
-              </div>
-            </div>
-            <p className="mt-1 text-[10px] font-semibold text-slate-400">
-              {xpInLevel.toLocaleString()} / {xpForNextLevel.toLocaleString()} XP
-            </p>
-          </div>
-
-          {/* XP + achievement count */}
-          <div className="text-right shrink-0">
-            <p className="text-lg font-black text-brand-600">{xp.toLocaleString()} XP</p>
-            <p className="text-[10px] font-semibold text-slate-400">Total XP</p>
-            <p className="mt-1 text-sm font-black text-emerald-600">{earnedCount} / {totalAchievements}</p>
-            <p className="text-[10px] font-semibold text-slate-400">Achievements</p>
-          </div>
+          <p className="mt-1.5 text-[11px] font-semibold text-white/80">
+            {xpInLevel.toLocaleString()} / {xpForNextLevel.toLocaleString()} XP
+          </p>
         </div>
-      </div>
+      </FadeIn>
 
       <MemberEvents />
 
       {/* ─── Streak ──────────────────────────────────────────────────────── */}
-      <div className="mb-3 flex items-center gap-3 rounded-2xl border border-slate-200 bg-surface p-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+      <div className="tile mb-3 flex items-center gap-3 p-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
           <Flame aria-hidden="true" className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -155,31 +159,38 @@ export default function RewardsClient({
       {leaderboardsEnabled && <LeaderboardEntryCard className="mb-5" />}
 
       {/* ─── Tabs ────────────────────────────────────────────────────────── */}
-      <div className="mb-4 flex border-b border-slate-200">
-        {([
-          ['all', `All (${totalAchievements})`],
-          ['earned', `Earned (${earnedCount})`],
-          ['locked', `Locked (${locked.length})`],
-        ] as [TabId, string][]).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`flex-1 py-3 text-xs font-bold text-center transition-all border-b-2 ${
-              tab === id
-                ? 'border-brand-500 text-brand-600'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <LayoutGroup id="rewards-tabs">
+        <div className="mb-5 grid grid-cols-3 gap-1 rounded-full bg-surface-secondary p-1">
+          {([
+            ['all', `All (${totalAchievements})`],
+            ['earned', `Earned (${earnedCount})`],
+            ['locked', `Locked (${locked.length})`],
+          ] as [TabId, string][]).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={`relative min-h-11 rounded-full text-xs font-bold transition-colors ${
+                tab === id ? 'text-brand-600' : 'text-slate-500'
+              }`}
+            >
+              {tab === id && (
+                <motion.span
+                  layoutId="rewards-tab-pill"
+                  transition={spring}
+                  className="absolute inset-0 rounded-full bg-surface-card shadow-sm"
+                />
+              )}
+              <span className="relative">{label}</span>
+            </button>
+          ))}
+        </div>
+      </LayoutGroup>
 
       {/* ─── Rarity-grouped grid ─────────────────────────────────────────── */}
       {displayed.length === 0 ? (
         <div className="flex flex-col items-center py-16 text-center">
-          <span className="mb-3 text-4xl">🎯</span>
+          <Target aria-hidden="true" className="mb-3 h-10 w-10 text-slate-300" />
           <p className="text-sm font-bold text-slate-700">
             {tab === 'earned' ? 'No achievements earned yet' : 'All achievements unlocked!'}
           </p>
@@ -189,11 +200,13 @@ export default function RewardsClient({
         groupByRarity(displayed).map(([rarity, achievements]) => (
           <section key={rarity} className="mb-6">
             <RarityHeader rarity={rarity} count={achievements.length} />
-            <div className="grid grid-cols-2 gap-3">
+            <Stagger className="grid grid-cols-2 gap-3">
               {achievements.map(a => (
-                <AchievementCard key={a.id} achievement={a} isNew={newIds.has(a.id)} />
+                <StaggerItem key={a.id}>
+                  <AchievementCard achievement={a} isNew={newIds.has(a.id)} />
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           </section>
         ))
       )}

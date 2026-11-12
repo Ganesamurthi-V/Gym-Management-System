@@ -108,16 +108,16 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
   return (
     <>
       {/* Attendance Overview card */}
-      <section className="card mb-5 p-4">
+      <section className="tile mb-5 p-4">
         {/* Month navigation */}
         <div className="mb-4 flex items-center justify-between">
-          <button type="button" onClick={goBack} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-100 transition-colors" aria-label="Previous month">
+          <button type="button" onClick={goBack} className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-secondary transition-transform active:scale-95" aria-label="Previous month">
             <ChevronLeft className="h-4 w-4 text-slate-600" />
           </button>
-          <button type="button" onClick={goToToday} className="text-sm font-bold text-slate-700 hover:text-brand-600 transition-colors">
+          <button type="button" onClick={goToToday} className="min-h-[44px] text-base font-bold tracking-tight text-slate-900 transition-colors hover:text-brand-600">
             {monthName}
           </button>
-          <button type="button" onClick={goForward} disabled={isCurrentMonth} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Next month">
+          <button type="button" onClick={goForward} disabled={isCurrentMonth} className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-secondary transition-transform active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Next month">
             <ChevronRight className="h-4 w-4 text-slate-600" />
           </button>
         </div>
@@ -130,7 +130,7 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
         </div>
 
         {/* Weeks grid — circles with checkmark (present) or dash (absent) */}
-        <div className="space-y-2">
+        <div key={`${year}-${month}`} className="animate-rise-in space-y-2">
           {weeks.map((week, wi) => (
             <div key={wi} className="grid grid-cols-7 gap-1">
               {week.map((cell, ci) => {
@@ -143,7 +143,8 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
                     type="button"
                     onClick={() => handleDateTap(cell.dateStr)}
                     className={`
-                      mx-auto flex h-9 w-9 items-center justify-center rounded-full transition-all cursor-pointer
+                      mx-auto flex h-10 w-10 items-center justify-center rounded-full transition-all cursor-pointer
+                      ${cell.isToday ? 'ring-2 ring-brand-500 ring-offset-2 ring-offset-surface-card' : ''}
                       ${cell.checked
                         ? isSelected
                           ? 'bg-brand-500 shadow-md shadow-brand-200 scale-110'
@@ -192,14 +193,14 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
 
       {/* Details section below */}
       {selectedDate ? (
-        <section className="card p-4">
+        <section className="tile p-4">
           <h2 className="mb-3 text-sm font-semibold text-slate-700">{formatDateFull(selectedDate)}</h2>
           {selectedRecords.length > 0 ? (
             <div className="divide-y divide-slate-100">
               {selectedRecords.map((r) => (
                 <div key={r.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600">
                       <CalendarCheck className="h-4 w-4" />
                     </span>
                     <div>
@@ -220,7 +221,7 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
             </div>
           ) : (
             <div className="flex items-center gap-3 py-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-slate-400">
                 <CalendarCheck className="h-4 w-4" />
               </span>
               <p className="text-sm text-slate-500">No check-in recorded on this day</p>
@@ -228,14 +229,14 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
           )}
         </section>
       ) : (
-        <section className="card p-4">
+        <section className="tile p-4">
           <h2 className="mb-3 text-sm font-semibold text-slate-700">Recent check-ins</h2>
           {records.length > 0 ? (
             <div className="divide-y divide-slate-100">
               {records.slice(0, 20).map((r) => (
                 <div key={r.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600">
                       <CalendarCheck className="h-4 w-4" />
                     </span>
                     <div>

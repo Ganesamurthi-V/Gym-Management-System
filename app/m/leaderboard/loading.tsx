@@ -14,26 +14,26 @@ export default function LeaderboardLoading() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-4 grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
+      <div className="mb-4 grid grid-cols-4 gap-1 rounded-full bg-slate-100 p-1">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-9 animate-pulse rounded-lg bg-slate-200" />
+          <div key={i} className="h-9 animate-pulse rounded-full bg-slate-200" />
         ))}
       </div>
 
       {/* Motivating line */}
-      <div className="mb-4 h-14 animate-pulse rounded-2xl bg-slate-100" />
+      <div className="mb-4 h-14 animate-pulse rounded-3xl bg-slate-100" />
 
       {/* Podium */}
       <div className="mb-4 grid grid-cols-3 items-end gap-2">
-        <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
-        <div className="h-36 animate-pulse rounded-2xl bg-slate-100" />
-        <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="h-28 animate-pulse rounded-3xl bg-slate-100" />
+        <div className="h-36 animate-pulse rounded-3xl bg-slate-100" />
+        <div className="h-24 animate-pulse rounded-3xl bg-slate-100" />
       </div>
 
       {/* Rows */}
       <div className="space-y-2">
         {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-14 animate-pulse rounded-2xl bg-slate-100" />
+          <div key={i} className="h-14 animate-pulse rounded-3xl bg-slate-100" />
         ))}
       </div>
     </div>

@@ -1,6 +1,8 @@
 'use client'
 
 import { Bell } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { spring } from '@/lib/motion'
 import { usePushState } from '@/lib/push/usePushState'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +16,7 @@ const STATE_TEXT = {
 /** Profile > Privacy switch. The position follows the re-read device state, so a refused permission snaps back. */
 export function PushToggle({ publicKey }: { publicKey: string }) {
   const { state, busy, error, enable, disable } = usePushState(publicKey)
+  const reduce = useReducedMotion()
   if (state === null || state === 'unsupported') return null
 
   const on = state === 'on'
@@ -22,7 +25,7 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
   return (
     <div className="mt-4 border-t border-surface-border pt-4">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
           <Bell aria-hidden="true" className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
@@ -41,7 +44,7 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
           className="tap-target -my-2 -mr-2 flex shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-50"
         >
           <span className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors', on ? 'bg-brand-500' : 'bg-slate-300')}>
-            <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform', on ? 'translate-x-6' : 'translate-x-1')} />
+            <motion.span className="inline-block h-4 w-4 rounded-full bg-white shadow" initial={false} animate={{ x: on ? 24 : 4 }} transition={reduce ? { duration: 0 } : spring} />
           </span>
         </button>
       </div>

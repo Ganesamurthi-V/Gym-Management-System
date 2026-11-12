@@ -40,17 +40,17 @@ export default function MembershipCardClient({ memberName, memberCode, gymName, 
   return (
     <div className="space-y-5">
       {/* Physical-card style */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 to-brand-900 p-6 text-white shadow-2xl shadow-brand-900/30">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 to-brand-900 p-6 pb-7 text-white shadow-2xl shadow-brand-900/30 ring-1 ring-white/10">
         {/* Background pattern */}
         <div aria-hidden="true" className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/5" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-white/5" />
 
         <div className="relative">
           <p className="text-xs font-bold uppercase tracking-widest text-brand-200">GymFlow Member</p>
-          <p className="mt-1 truncate text-xl font-bold">{memberName}</p>
+          <p className="mt-2 truncate text-2xl font-bold tracking-tight">{memberName}</p>
           <p className="text-sm text-brand-200">{gymName}</p>
 
-          <div className="mt-4 flex items-end justify-between">
+          <div className="mt-8 flex items-end justify-between border-t border-white/15 pt-4">
             <div>
               {plan && (
                 <>
@@ -73,11 +73,14 @@ export default function MembershipCardClient({ memberName, memberCode, gymName, 
       </div>
 
       {/* QR code */}
-      <div className="card flex flex-col items-center p-6">
-        <p className="mb-4 text-sm font-semibold text-slate-600">Show this at the gym entrance</p>
-        <canvas ref={canvasRef} className="rounded-xl" />
+      <div className="tile flex flex-col items-center p-6">
+        <p className="mb-4 text-sm font-bold text-slate-700">Show this at the gym entrance</p>
+        {/* White plate keeps the QR scannable in dark mode. */}
+        <div className="rounded-2xl bg-white p-3">
+          <canvas ref={canvasRef} className="rounded-lg" />
+        </div>
         <p className="mt-3 font-mono text-sm font-bold tracking-widest text-slate-700">{memberCode}</p>
-        <p className="mt-1 text-xs text-slate-400">Scan to verify membership</p>
+        <p className="mt-1 text-xs text-slate-500">Scan to verify membership</p>
       </div>
     </div>
   )

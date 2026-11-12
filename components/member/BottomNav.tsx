@@ -3,6 +3,9 @@
 import Link from 'next/link'
 import { BarChart3, Dumbbell, Home, Trophy, UserRound } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { spring } from '@/lib/motion'
+import { cn } from '@/lib/utils'
 
 /**
  * Five tabs is the limit on a 360px phone: a sixth leaves 60px per tab, which
@@ -28,8 +31,13 @@ export function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav aria-label="Primary navigation" className="fixed inset-x-0 bottom-0 z-[var(--z-sticky)] border-t border-surface-border bg-surface/90 backdrop-blur-md pb-safe-bottom">
-      <div className="mx-auto flex h-[var(--bottom-nav-height)] max-w-lg items-stretch">
+    <nav
+      aria-label="Primary navigation"
+      // Floats above the safe area; MemberShell's bottom padding adds the same 0.75rem.
+      style={{ bottom: 'calc(var(--pwa-safe-bottom, 0px) + 0.75rem)' }}
+      className="fixed inset-x-0 z-[var(--z-sticky)] mx-4"
+    >
+      <div className="mx-auto flex h-[var(--bottom-nav-height)] max-w-md items-center gap-1 rounded-full border border-surface-border bg-surface-card/90 p-1.5 shadow-lg shadow-ink-950/10 backdrop-blur-md">
         {navItems.map(({ href, label, icon: Icon, alsoActiveFor }) => {
           const active = [href, ...(alsoActiveFor ?? [])].some(
             (base) => pathname === base || pathname.startsWith(`${base}/`),
@@ -45,10 +53,22 @@ export function BottomNav() {
               // the time the user taps.
               prefetch
               aria-current={active ? 'page' : undefined}
-              className={`flex min-h-12 min-w-12 flex-1 flex-col items-center justify-center gap-1 px-1 transition-colors ${active ? 'font-semibold text-brand-600' : 'text-slate-400'}`}
+              aria-label={label}
+              // Active tab grows (flex-[2]) to fit icon + label; inactive tabs are icon only.
+              className={cn(
+                'relative flex h-full min-h-12 min-w-12 items-center justify-center gap-1.5 rounded-full px-2 transition-[flex-grow] duration-200',
+                active ? 'flex-[2.2] font-semibold text-white' : 'flex-1 text-slate-400',
+              )}
             >
-              <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
-              <span className="text-[0.6875rem] leading-none xs:text-xs">{label}</span>
+              {active && (
+                <motion.span
+                  layoutId="member-nav-blob"
+                  transition={spring}
+                  className="absolute inset-0 rounded-full bg-brand-500"
+                />
+              )}
+              <Icon aria-hidden="true" className="relative h-5 w-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
+              {active && <span className="relative truncate text-xs leading-none">{label}</span>}
             </Link>
           )
         })}

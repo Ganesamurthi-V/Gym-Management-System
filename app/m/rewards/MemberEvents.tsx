@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { CheckCircle2, Gift } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Stagger, StaggerItem } from '@/components/ui/motion'
+import { spring } from '@/lib/motion'
 import { api } from '@/lib/api/client'
 import type { MemberEvent } from '@/lib/gamification/events'
 import { daysLeftText, goalSentence, rewardSentence } from '@/lib/gamification/eventCopy'
@@ -19,6 +22,7 @@ import { istToday } from '@/lib/gamification/periods'
 export default function MemberEvents() {
   const [events, setEvents] = useState<MemberEvent[] | null>(null)
   const [today, setToday] = useState<string | null>(null)
+  const reduce = useReducedMotion()
 
   useEffect(() => {
     let alive = true
@@ -52,13 +56,13 @@ export default function MemberEvents() {
       <h2 id="events-heading" className="mb-3 text-xs font-black uppercase tracking-[0.1em] text-slate-500">
         Challenges
       </h2>
-      <ul className="space-y-3">
+      <Stagger className="space-y-3">
         {events.map(ev => {
           const upcoming = today < ev.startDate
-          const pct = ev.goalTarget > 0 ? Math.min(100, (ev.progress / ev.goalTarget) * 100) : 0
+          const pct = ev.goalTarget > 0 ? Math.min(1, ev.progress / ev.goalTarget) : 0
           const reward = rewardSentence(ev)
           return (
-            <li key={ev.id} className="rounded-2xl border border-slate-200 bg-surface p-4">
+            <StaggerItem key={ev.id} className="tile p-4">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-black text-slate-900 min-w-0 break-words">{ev.title}</p>
                 <span className="shrink-0 text-[11px] font-bold text-slate-500 tabular-nums">
@@ -78,9 +82,11 @@ export default function MemberEvents() {
                     aria-valuenow={Math.min(ev.progress, ev.goalTarget)}
                     className="h-2.5 overflow-hidden rounded-full bg-slate-100"
                   >
-                    <div
-                      className={`h-full rounded-full ${ev.completed ? 'bg-emerald-500' : 'bg-brand-500'}`}
-                      style={{ width: `${pct}%` }}
+                    <motion.div
+                      className={`h-full origin-left rounded-full ${ev.completed ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                      initial={{ scaleX: reduce ? pct : 0 }}
+                      animate={{ scaleX: pct }}
+                      transition={reduce ? { duration: 0 } : spring}
                     />
                   </div>
                   <p className="mt-1 text-[11px] font-semibold text-slate-500 tabular-nums">
@@ -90,7 +96,7 @@ export default function MemberEvents() {
               )}
 
               {ev.completed ? (
-                <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-emerald-700">
+                <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-emerald-700">
                   <p className="flex items-center gap-1.5 text-xs font-bold">
                     <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
                     {ev.rewardXp > 0 ? `Completed - ${ev.rewardXp.toLocaleString('en-IN')} XP added` : 'Completed'}
@@ -109,10 +115,10 @@ export default function MemberEvents() {
                   </p>
                 )
               )}
-            </li>
+            </StaggerItem>
           )
         })}
-      </ul>
+      </Stagger>
     </section>
   )
 }

@@ -8,6 +8,7 @@ import { LogoutButton } from '@/components/member/LogoutButton'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { LeaderboardVisibilitySwitch } from './LeaderboardVisibilitySwitch'
 import { PushToggle } from '@/components/member/PushToggle'
+import { FadeIn, Stagger, StaggerItem } from '@/components/ui/motion'
 import { isPushConfigured, vapidPublicKey } from '@/lib/push/config'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
@@ -25,11 +26,11 @@ function InfoRow({
   if (!value) return null
   return (
     <div className="flex items-start gap-3 py-3">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
         <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+        <p className="text-xs text-slate-500">{label}</p>
         <p className="mt-0.5 text-sm font-semibold text-slate-800 break-words">{value}</p>
       </div>
     </div>
@@ -56,85 +57,101 @@ export default async function ProfilePage() {
   return (
     <div className="page-container py-6">
 
-      <header className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-brand-600">GymFlow Member</p>
-          <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Profile</h1>
-        </div>
-        {/* The member app has no persistent header chrome, and Profile is where an app's
-            appearance settings are conventionally found. The full three-way group fits here
-            because the page is a settings surface rather than a dense data view. */}
-        <ThemeToggle className="mt-0.5 shrink-0" />
-      </header>
-
-      {/* Avatar + name */}
-      <section className="card mb-5 p-5">
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 text-2xl font-bold text-white shadow-md">
-            {member.name.charAt(0).toUpperCase()}
+      <FadeIn>
+        <header className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-600">GymFlow Member</p>
+            <h1 className="mt-0.5 text-3xl font-bold tracking-tight text-slate-900">Profile</h1>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-xl font-bold text-slate-900">{member.name}</p>
-            <p className="text-xs font-bold text-brand-600">{memberCode}</p>
-            <p className="mt-0.5 text-xs text-slate-500">{gym.name}</p>
-          </div>
-        </div>
+          {/* The member app has no persistent header chrome, and Profile is where an app's
+              appearance settings are conventionally found. The full three-way group fits here
+              because the page is a settings surface rather than a dense data view. */}
+          <ThemeToggle className="mt-0.5 shrink-0" />
+        </header>
+      </FadeIn>
 
-        {/* Joined */}
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
-          <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-          <p className="text-xs text-slate-500">
-            Member since <span className="font-semibold text-slate-700">{formatDate(member.created_at)}</span>
-          </p>
-        </div>
-      </section>
-
-      {/* Personal details */}
-      <section className="card mb-5 divide-y divide-slate-100 px-4">
-        <p className="py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Personal Details</p>
-        <InfoRow icon={Phone}  label="Phone"       value={member.phone} />
-        <InfoRow icon={Mail}   label="Email"       value={member.email} />
-        <InfoRow icon={User}   label="Gender"      value={member.gender ? member.gender.charAt(0).toUpperCase() + member.gender.slice(1) : null} />
-        <InfoRow icon={Calendar} label="Date of Birth" value={member.date_of_birth ? formatDate(member.date_of_birth) : null} />
-        <InfoRow icon={MapPin} label="Area"        value={member.area} />
-        <InfoRow icon={Heart}  label="Blood Group" value={member.blood_group} />
-      </section>
-
-      {/* Emergency contact */}
-      {(member.emergency_name || member.emergency_phone) && (
-        <section className="card mb-5 divide-y divide-slate-100 px-4">
-          <p className="py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Emergency Contact</p>
-          <InfoRow icon={User}  label="Contact Name"   value={member.emergency_name} />
-          <InfoRow icon={Phone} label="Contact Phone"  value={member.emergency_phone} />
-        </section>
-      )}
-
-      {/* Medical */}
-      {member.medical_notes && (
-        <section className="card mb-5 p-4">
-          <div className="flex items-start gap-3">
-            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Medical Notes</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-700">{member.medical_notes}</p>
+      <Stagger className="space-y-4">
+        {/* Avatar + name */}
+        <StaggerItem>
+          <section className="tile p-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-2xl font-bold text-white shadow-md">
+                {member.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-xl font-bold tracking-tight text-slate-900">{member.name}</p>
+                <p className="text-xs font-bold text-brand-600">{memberCode}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{gym.name}</p>
+              </div>
             </div>
-          </div>
-        </section>
-      )}
 
-      {/* Leaderboard opt-out. Seeded from the member row this page already
-          loads, so the switch costs no extra query. `!== false`: before the
-          20261012 migration the column is absent, and the default is shown. */}
-      <section className="card mb-5 p-4">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Privacy</p>
-        <LeaderboardVisibilitySwitch initialVisible={member.show_on_leaderboard !== false} />
-        {pushKey && <PushToggle publicKey={pushKey} />}
-      </section>
+            {/* Joined */}
+            <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2.5">
+              <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+              <p className="text-xs text-slate-500">
+                Member since <span className="font-semibold text-slate-700">{formatDate(member.created_at)}</span>
+              </p>
+            </div>
+          </section>
+        </StaggerItem>
 
-      {/* Sign out */}
-      <section className="card p-4">
-        <LogoutButton />
-      </section>
+        {/* Personal details */}
+        <StaggerItem>
+          <section className="tile divide-y divide-surface-border px-4">
+            <p className="py-3 text-xs font-bold uppercase tracking-widest text-slate-500">Personal Details</p>
+            <InfoRow icon={Phone}  label="Phone"       value={member.phone} />
+            <InfoRow icon={Mail}   label="Email"       value={member.email} />
+            <InfoRow icon={User}   label="Gender"      value={member.gender ? member.gender.charAt(0).toUpperCase() + member.gender.slice(1) : null} />
+            <InfoRow icon={Calendar} label="Date of Birth" value={member.date_of_birth ? formatDate(member.date_of_birth) : null} />
+            <InfoRow icon={MapPin} label="Area"        value={member.area} />
+            <InfoRow icon={Heart}  label="Blood Group" value={member.blood_group} />
+          </section>
+        </StaggerItem>
+
+        {/* Emergency contact */}
+        {(member.emergency_name || member.emergency_phone) && (
+          <StaggerItem>
+            <section className="tile divide-y divide-surface-border px-4">
+              <p className="py-3 text-xs font-bold uppercase tracking-widest text-slate-500">Emergency Contact</p>
+              <InfoRow icon={User}  label="Contact Name"   value={member.emergency_name} />
+              <InfoRow icon={Phone} label="Contact Phone"  value={member.emergency_phone} />
+            </section>
+          </StaggerItem>
+        )}
+
+        {/* Medical */}
+        {member.medical_notes && (
+          <StaggerItem>
+            <section className="tile p-4">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                  <Shield className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-xs text-slate-500">Medical Notes</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-800">{member.medical_notes}</p>
+                </div>
+              </div>
+            </section>
+          </StaggerItem>
+        )}
+
+        {/* Leaderboard opt-out. Seeded from the member row this page already
+            loads, so the switch costs no extra query. `!== false`: before the
+            20261012 migration the column is absent, and the default is shown. */}
+        <StaggerItem>
+          <section className="tile p-4">
+            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-500">Privacy</p>
+            <LeaderboardVisibilitySwitch initialVisible={member.show_on_leaderboard !== false} />
+            {pushKey && <PushToggle publicKey={pushKey} />}
+          </section>
+        </StaggerItem>
+
+        {/* Sign out */}
+        <StaggerItem>
+          <LogoutButton />
+        </StaggerItem>
+      </Stagger>
 
     </div>
   )

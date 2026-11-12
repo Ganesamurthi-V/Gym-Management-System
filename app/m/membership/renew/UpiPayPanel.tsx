@@ -85,8 +85,8 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
   ]
 
   return (
-    <div className="card mt-3 rounded-2xl p-4">
-      <div className="mx-auto flex h-[220px] w-[220px] items-center justify-center rounded-2xl bg-white p-3">
+    <div className="tile mt-3 p-4">
+      <div className="mx-auto flex h-[220px] w-[220px] items-center justify-center rounded-3xl bg-white p-3">
         {qr ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={qr} alt={`UPI QR code to pay ${formatCurrency(amount)} to ${upi.merchantName}`} className="h-full w-full" />
@@ -100,7 +100,7 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
         <button
           type="button"
           onClick={copyUpi}
-          className={cn('inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-bold text-brand-600', focusRing)}
+          className={cn('inline-flex min-h-[44px] items-center gap-1 rounded-full px-3 text-xs font-bold text-brand-600', focusRing)}
         >
           <Copy aria-hidden="true" className="h-3.5 w-3.5" />
           {copied ? 'Copied' : 'Copy UPI ID'}
@@ -113,7 +113,7 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
             key={a.name}
             href={a.href}
             onClick={() => { markUpiOpened(); setOpened(true) }}
-            className={cn('flex min-h-[44px] items-center justify-center rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-700 active:bg-slate-200', focusRing)}
+            className={cn('flex min-h-[44px] items-center justify-center rounded-full bg-slate-100 px-3 text-sm font-bold text-slate-700 active:bg-slate-200', focusRing)}
           >
             {a.name}
           </a>
@@ -123,7 +123,7 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
         On your phone, tap a UPI app above. The QR code is for paying from another device.
       </p>
       {returned && (
-        <div role="status" className="mt-3 rounded-xl border border-brand-200 bg-brand-50 p-3">
+        <div role="status" className="mt-3 rounded-2xl border border-brand-200 bg-brand-50 p-3">
           <p className="text-sm font-bold text-slate-900">Back from your UPI app?</p>
           <p className="mt-1 text-xs text-slate-600">
             If your payment went through, add the screenshot below and submit it. If you cancelled, tap a UPI app above to try again.
@@ -131,7 +131,7 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
           <button
             type="button"
             onClick={goToUpload}
-            className={cn('mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-brand-500 px-3 text-sm font-bold text-white', focusRing)}
+            className={cn('mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-brand-500 px-4 text-sm font-bold text-white', focusRing)}
           >
             <ArrowDown aria-hidden="true" className="h-4 w-4" />
             Add my screenshot

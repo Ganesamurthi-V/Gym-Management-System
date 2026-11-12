@@ -1,13 +1,14 @@
 import Link from 'next/link'
-import { Scale, Activity, Ruler, CircleDot, Flame, Zap, ChevronRight } from 'lucide-react'
-import { getBodyLogs, getBodyProfile, getRecentSessions } from '@/lib/member/progress-data'
+import { Scale, Activity, Ruler, CircleDot, Flame, ChevronRight } from 'lucide-react'
+import { getBodyLogs, getBodyProfile } from '@/lib/member/progress-data'
 import { buildReport, type MetricKey, type Tone } from '@/lib/progress/report'
-import { fmtNum, shortDate, istDateOf } from '@/lib/progress/chart'
+import { fmtNum, shortDate } from '@/lib/progress/chart'
 import { getProgressPageData, getMemberGamification } from '@/lib/member/member-data'
 import { StreakBadge } from '@/components/member/StreakBadge'
 import { formatCount } from '@/lib/gamification/leaderboardDisplay'
-import { levelFromXp } from '@/lib/gamification/xp'
+import { WeightChart } from '@/components/member/WeightChart'
 import { startPageTimer } from '@/lib/perf'
+import { CountUp, FadeIn, Pressable, Stagger, StaggerItem } from '@/components/ui/motion'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
 // route-level `revalidate` cannot be used for per-user pages.
@@ -18,8 +19,8 @@ export default async function ProgressPage() {
   // member + gym + memberships + attendance all in parallel (one round trip).
   // Previously the member query had to resolve first to supply member.id.
   // The gamification RPC needs no member id either, so it rides in the same batch.
-  const [data, game, bodyLogs, sessions, profile] = await Promise.all([
-    getProgressPageData(), getMemberGamification(), getBodyLogs(), getRecentSessions(), getBodyProfile(),
+  const [data, game, bodyLogs, profile] = await Promise.all([
+    getProgressPageData(), getMemberGamification(), getBodyLogs(), getBodyProfile(),
   ])
   if (!data) {
     done()
@@ -28,8 +29,6 @@ export default async function ProgressPage() {
   }
 
   done()
-
-  const { level } = levelFromXp(game.xp, game.xpPerLevel)
 
   // Newest first: latest weight is the first with a weight, the first entry the last.
   const weighed = bodyLogs.filter((l) => l.weightKg != null)
@@ -44,9 +43,6 @@ export default async function ProgressPage() {
       bodySummary += `, ${dir} since ${shortDate(oldest.loggedOn)}`
     }
   }
-  const workoutSummary = sessions.length === 0
-    ? 'Your finished workouts appear here'
-    : `${sessions.length} recent ${sessions.length === 1 ? 'workout' : 'workouts'}, latest ${shortDate(istDateOf(sessions[0].startedAt))}`
 
   // Body metrics replace the attendance counts here; attendance lives on the home and attendance pages.
   const report = buildReport(bodyLogs, profile)
@@ -59,73 +55,87 @@ export default async function ProgressPage() {
   const toneClass: Record<Tone, string> = { good: 'text-emerald-600', bad: 'text-amber-600', neutral: 'text-slate-400' }
   const stats = tiles.map((t) => {
     const row = report.rows.find((r) => r.key === t.key)
-    const value = row?.latest != null ? `${fmtNum(row.latest)}${row.unit === '' ? '' : ` ${row.unit}`}` : '-'
+    const latest = row?.latest ?? null
+    const unit = row?.unit ?? ''
     let note = 'Not logged yet'
     if (row?.latest != null) {
       note = row.change == null || row.change === 0
         ? 'Latest'
         : `${row.change < 0 ? 'Down' : 'Up'} ${fmtNum(Math.abs(row.change))}${row.unit === '' ? '' : ` ${row.unit}`} since start`
     }
-    return { ...t, value, note, tone: row?.tone ?? 'neutral' }
+    return { ...t, latest, unit, note, tone: row?.tone ?? 'neutral' }
   })
 
   return (
     <div className="page-container py-6">
 
-      <header className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">GymFlow Member</p>
-        <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">My Progress</h1>
-      </header>
+      <FadeIn>
+        <header className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand-600">GymFlow Member</p>
+          <h1 className="mt-0.5 text-3xl font-bold tracking-tight text-slate-900">My Progress</h1>
+        </header>
+      </FadeIn>
 
-      {/* Stats grid */}
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        {stats.map(({ label, value, note, tone, icon: Icon, colour, bg }) => (
-          <div key={label} className="card p-4">
-            <span className={`mb-2 flex h-9 w-9 items-center justify-center rounded-xl ${bg} ${colour}`}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <p className="text-2xl font-bold text-slate-900">{value}</p>
-            <p className="mt-0.5 text-xs font-semibold text-slate-400">{label}</p>
-            <p className={`mt-1 text-xs font-semibold ${toneClass[tone]}`}>{note}</p>
+      {/* Hero: the weight trend. Level/XP lives on Rewards. */}
+      <FadeIn delay={40}>
+        <section className="tile mb-3 p-5">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Weight trend</p>
+              <p className="mt-1 text-3xl font-black leading-none tracking-tight text-slate-900">{bodySummary.split(',')[0]}</p>
+            </div>
+            <Link href="/m/progress/body" className="inline-flex min-h-[44px] items-center rounded-full bg-surface-secondary px-4 text-xs font-bold text-slate-700">
+              Log weight
+            </Link>
           </div>
-        ))}
-      </div>
+          <WeightChart logs={bodyLogs} />
+        </section>
+      </FadeIn>
 
-      {/* Streak + XP. Same two tiles as the grid above, kept separate because the
-          streak is not a plain number: it carries the pending state. */}
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        <div className="card p-4">
-          <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+      {/* Streak + body stats. The streak is not a plain number: it carries the pending state. */}
+      <Stagger className="mb-5 grid grid-cols-2 gap-3">
+        <StaggerItem className="tile p-4">
+          <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-orange-500">
             <Flame aria-hidden="true" className="h-4 w-4" />
           </span>
           <StreakBadge streak={game.streak} pending={game.streakPending} size="lg" hideFlame />
-          <p className="mt-0.5 text-xs font-semibold text-slate-400">Day streak · best {formatCount(game.longestStreak)}</p>
-        </div>
-        <div className="card p-4">
-          <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-            <Zap aria-hidden="true" className="h-4 w-4" />
-          </span>
-          <p className="text-2xl font-bold tabular-nums text-slate-900">{formatCount(game.xp)}</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-400">Total XP · level {level}</p>
-        </div>
-      </div>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Day streak · best {formatCount(game.longestStreak)}</p>
+        </StaggerItem>
+        {stats.map(({ label, latest, unit, note, tone, icon: Icon, colour, bg }) => (
+          <StaggerItem key={label} className="tile p-4">
+            <span className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${bg} ${colour}`}>
+              <Icon className="h-4 w-4" />
+            </span>
+            <p className="text-3xl font-black leading-none tracking-tight text-slate-900">
+              {latest != null
+                ? <><CountUp value={latest} decimals={Number.isInteger(Math.round(latest * 10) / 10) ? 0 : 1} />{unit !== '' && <span className="ml-1 text-sm font-bold text-slate-500">{unit}</span>}</>
+                : '-'}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{label}</p>
+            <p className={`mt-1 text-xs font-semibold ${toneClass[tone]}`}>{note}</p>
+          </StaggerItem>
+        ))}
+      </Stagger>
 
-      <div className="space-y-3">
-        <Link href="/m/progress/body" className="card flex min-h-[44px] items-center justify-between gap-3 p-4">
-          <div className="min-w-0">
-            <p className="text-base font-bold text-slate-900">Body progress</p>
-            <p className="mt-0.5 text-xs text-slate-500">{bodySummary}</p>
-          </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-        </Link>
-        <Link href="/m/progress/workouts" className="card flex min-h-[44px] items-center justify-between gap-3 p-4">
-          <div className="min-w-0">
-            <p className="text-base font-bold text-slate-900">Workout history</p>
-            <p className="mt-0.5 text-xs text-slate-500">{workoutSummary}</p>
-          </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-        </Link>
-      </div>
+      <Stagger className="space-y-3">
+        {[
+          { href: '/m/progress/body', title: 'Body progress', sub: bodySummary },
+        ].map((l) => (
+          <StaggerItem key={l.href}>
+            <Pressable>
+              <Link href={l.href} className="tile flex min-h-[44px] items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-slate-900">{l.title}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{l.sub}</p>
+                </div>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary">
+                  <ChevronRight className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                </span>
+              </Link>
+            </Pressable>
+          </StaggerItem>
+        ))}
+      </Stagger>
 
     </div>
   )

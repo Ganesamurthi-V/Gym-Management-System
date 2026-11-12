@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, Check, ChevronRight, Timer } from 'lucide-react'
 import { api } from '@/lib/api/client'
+import { spring } from '@/lib/motion'
 import { PROGRESS_LIMITS, normaliseExerciseName, type LastWeights } from '@/types/progress'
 import WorkoutComplete, { type SaveState } from './WorkoutComplete'
 
@@ -96,6 +98,7 @@ function lastTimeText(weights: (number | null)[] | undefined): string | null {
 
 export default function WorkoutSession({ programName, dayLabel, exercises, lastWeights, onFinish, onBack }: Props) {
   const router = useRouter()
+  const reduce = useReducedMotion()
   // Build the full log structure on mount
   const initialLog = useMemo<ExerciseLog[]>(() =>
     exercises.map(ex => ({
@@ -173,7 +176,7 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
   const lastHint = currentExercise ? lastTimeText(lastWeights[normaliseExerciseName(currentExercise.exercise.name)]) : null
   const totalSets = log.reduce((sum, ex) => sum + ex.sets.length, 0)
   const completedSets = log.reduce((sum, ex) => sum + ex.sets.filter(s => s.completed).length, 0)
-  const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0
+  const progress = totalSets > 0 ? completedSets / totalSets : 0
 
   const completeSet = useCallback(() => {
     const now = Date.now()
@@ -279,15 +282,17 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
   // ── Completed view ──────────────────────────────────────────────────────────
   if (isComplete) {
     return (
-      <WorkoutComplete
-        programName={programName}
-        dayLabel={dayLabel}
-        log={log}
-        totalElapsedMs={elapsed}
-        saveState={saveState}
-        onRetrySave={() => void saveSession()}
-        onDone={() => { router.refresh(); onFinish() }}
-      />
+      <motion.div initial={{ opacity: 0, y: reduce ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+        <WorkoutComplete
+          programName={programName}
+          dayLabel={dayLabel}
+          log={log}
+          totalElapsedMs={elapsed}
+          saveState={saveState}
+          onRetrySave={() => void saveSession()}
+          onDone={() => { router.refresh(); onFinish() }}
+        />
+      </motion.div>
     )
   }
 
@@ -300,12 +305,12 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
+          className="flex min-h-[44px] items-center gap-1 pr-3 text-xs font-semibold text-slate-500 hover:text-slate-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Exit
         </button>
-        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+        <div className="flex items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1.5 text-xs font-bold tabular-nums text-slate-700">
           <Timer className="h-3.5 w-3.5 text-brand-500" />
           {formatTime(elapsed)}
         </div>
@@ -319,40 +324,60 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
           </p>
           <p className="text-[10px] font-bold text-brand-600">{completedSets}/{totalSets} sets</p>
         </div>
+        {/* scaleX (transform) instead of animating width: no layout work per frame */}
         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all duration-500"
-            style={{ width: `${progress}%` }}
+          <motion.div
+            className="h-full origin-left rounded-full bg-brand-500"
+            initial={false}
+            animate={{ scaleX: progress }}
+            transition={spring}
           />
         </div>
       </div>
 
       {/* Rest timer overlay */}
+      <AnimatePresence initial={false}>
       {isResting && (
-        <div className="mb-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-5 text-center">
+        <motion.div
+          key="rest"
+          initial={{ opacity: 0, scale: reduce ? 1 : 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: reduce ? 1 : 0.96 }}
+          transition={spring}
+          className="mb-5 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-center"
+        >
           <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-2">Rest</p>
           <p className="text-4xl font-black text-amber-700 tabular-nums">{restCountdown}s</p>
           <button
             type="button"
             onClick={skipRest}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-surface border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 transition-colors"
+            className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-amber-200 bg-surface px-5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-50"
           >
             <ChevronRight className="h-3.5 w-3.5" />
             Skip Rest
           </button>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Current exercise card */}
       {currentExercise && (
         <div className="flex-1">
-          <div className="card p-5 border-brand-100 border-2 mb-4">
+          <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={currentExIdx}
+            initial={{ opacity: 0, x: reduce ? 0 : 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: reduce ? 0 : -24 }}
+            transition={spring}
+            className="tile mb-4 border-2 border-brand-100 p-5"
+          >
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-brand-500 mb-1">
                   Exercise {currentExIdx + 1} of {log.length}
                 </p>
-                <h3 className="text-lg font-bold text-slate-900">{currentExercise.exercise.name}</h3>
+                <h3 className="text-2xl font-bold tracking-tight text-slate-900">{currentExercise.exercise.name}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">{currentExercise.exercise.target} · {currentExercise.exercise.type}</p>
                 {lastHint && <p className="text-xs text-slate-400 mt-0.5">Last time: {lastHint}</p>}
               </div>
@@ -370,7 +395,7 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
                 return (
                   <div
                     key={si}
-                    className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-all ${
+                    className={`flex items-center gap-3 rounded-2xl px-3.5 py-2.5 transition-colors duration-300 ${
                       setLog.completed
                         ? 'bg-emerald-50 border border-emerald-200'
                         : isCurrent
@@ -378,14 +403,24 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
                           : 'bg-slate-50 border border-slate-100'
                     }`}
                   >
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors duration-300 ${
                       setLog.completed
                         ? 'bg-emerald-500 text-white'
                         : isCurrent
                           ? 'bg-brand-500 text-white'
                           : 'bg-slate-200 text-slate-500'
                     }`}>
-                      {setLog.completed ? <Check className="h-3.5 w-3.5" /> : si + 1}
+                      {setLog.completed ? (
+                        // Spring pop when the set flips to done (reduced motion: no scale)
+                        <motion.span
+                          initial={{ scale: reduce ? 1 : 0.3 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+                          className="flex"
+                        >
+                          <Check className="h-4 w-4" />
+                        </motion.span>
+                      ) : si + 1}
                     </div>
                     <div className="flex-1 flex items-center gap-3 text-xs">
                       {planned.reps && (
@@ -400,18 +435,16 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
                         <span className="text-slate-400 ml-auto">rest {planned.rest}</span>
                       )}
                     </div>
-                    {setLog.completed && (
-                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                    )}
                   </div>
                 )
               })}
             </div>
-          </div>
+          </motion.div>
+          </AnimatePresence>
 
           {/* Weight actually used for the current set */}
           {!isResting && currentSet && !currentSet.completed && (
-            <label className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-surface-border bg-surface-card px-4 py-2">
+            <label className="mb-3 flex items-center justify-between gap-3 rounded-3xl border border-surface-border bg-surface-card px-4 py-2">
               <span className="text-xs font-bold text-slate-700">Weight used, set {currentSetIdx + 1}</span>
               <span className="flex items-center gap-2">
                 <input
@@ -427,19 +460,23 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
               </span>
             </label>
           )}
+        </div>
+      )}
 
-          {/* Complete set button */}
-          {!isResting && currentSet && !currentSet.completed && (
-            <button
-              type="button"
-              onClick={completeSet}
-              disabled={weightInvalid}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.97] hover:bg-emerald-600 disabled:opacity-50"
-            >
-              <Check className="h-5 w-5" />
-              Complete Set {currentSetIdx + 1}
-            </button>
-          )}
+      {/* Complete set button: sticky, offset clears the floating bottom nav */}
+      {currentExercise && !isResting && currentSet && !currentSet.completed && (
+        <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.75rem+var(--pwa-safe-bottom)+0.75rem)] z-10">
+          <motion.button
+            type="button"
+            onClick={completeSet}
+            disabled={weightInvalid}
+            whileTap={reduce ? undefined : { scale: 0.97 }}
+            transition={spring}
+            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-emerald-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 disabled:opacity-50"
+          >
+            <Check className="h-5 w-5" />
+            Complete Set {currentSetIdx + 1}
+          </motion.button>
         </div>
       )}
 
@@ -449,7 +486,7 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Up Next</p>
           <div className="space-y-1.5">
             {log.slice(currentExIdx + 1, currentExIdx + 4).map((exLog, i) => (
-              <div key={exLog.exercise.id} className="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2">
+              <div key={exLog.exercise.id} className="flex items-center gap-2.5 rounded-2xl bg-slate-50 px-3 py-2">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-200 text-[10px] font-bold text-slate-500">
                   {currentExIdx + 2 + i}
                 </span>

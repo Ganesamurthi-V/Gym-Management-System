@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api/client'
@@ -8,6 +9,8 @@ import { ArrowLeft, Calendar, Dumbbell, Play, Target } from 'lucide-react'
 import type { WorkoutProgram } from '@/types/member-db'
 import type { Json } from '@/types/member-db'
 import type { LastWeights } from '@/types/progress'
+import { spring } from '@/lib/motion'
+import { Stagger, StaggerItem } from '@/components/ui/motion'
 import WorkoutSession, { newClientId } from './WorkoutSession'
 
 interface ExerciseSet {
@@ -56,6 +59,7 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
   const [selfLog, setSelfLog] = useState<'idle' | 'confirm' | 'saving' | 'saved' | 'error'>('idle')
   const selfClientId = useRef<string | null>(null)
   const router = useRouter()
+  const reduce = useReducedMotion()
 
   const schedule = useMemo(() => parseSchedule(program.schedule), [program.schedule])
   const exercises = schedule[activeDay] ?? []
@@ -97,8 +101,15 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
     }
   }
 
-  if (sessionStarted && exercises.length > 0) {
-    return (
+  const slide = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 } }
+  const inSession = sessionStarted && exercises.length > 0
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      {inSession ? (
+        <motion.div key="session" {...slide} transition={spring}>
       <WorkoutSession
         programName={program.name}
         lastWeights={lastWeights}
@@ -114,16 +125,15 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
         onFinish={() => setSessionStarted(false)}
         onBack={() => setSessionStarted(false)}
       />
-    )
-  }
-
-  return (
+        </motion.div>
+      ) : (
+        <motion.div key="detail" {...slide} transition={spring}>
     <div>
       {/* Header */}
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-brand-600 transition-colors"
+        className="mb-4 flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-brand-600"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Programs
@@ -131,7 +141,7 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
 
       <div className="mb-5">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-xl font-bold text-slate-900">{program.name}</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">{program.name}</h2>
           {onChooseForMe && (isMine ? (
             <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">For me</span>
           ) : (
@@ -162,9 +172,9 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
               key={day}
               type="button"
               onClick={() => { setActiveDay(day); setSelfLog('idle'); selfClientId.current = null }}
-              className={`shrink-0 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+              className={`min-h-[44px] shrink-0 rounded-full px-4 text-xs font-bold transition-colors active:scale-95 ${
                 activeDay === day
-                  ? 'bg-brand-500 text-white shadow-sm'
+                  ? 'bg-brand-500 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               } ${day === TODAY_KEY ? 'ring-2 ring-brand-200 ring-offset-1' : ''}`}
             >
@@ -177,20 +187,22 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
 
       {/* Exercise list for the selected day */}
       {exercises.length === 0 ? (
-        <div className="card flex flex-col items-center py-10 text-center">
+        <div className="tile flex flex-col items-center py-10 text-center">
           <Dumbbell className="mb-2 h-8 w-8 text-slate-200" />
           <p className="text-sm font-bold text-slate-600">Rest Day</p>
           <p className="mt-1 text-xs text-slate-400">No exercises scheduled for {activeDay}.</p>
         </div>
       ) : (
         <>
-          <div className="space-y-3 mb-5">
+          {/* Keyed by day so the tiles re-enter when the day chip changes */}
+          <Stagger key={activeDay} className="mb-5 space-y-3">
             {exercises.map((ex, idx) => {
               const sets = getExerciseSets(ex)
               return (
-                <div key={ex.id} className="card p-4">
+                <StaggerItem key={ex.id}>
+                <div className="tile p-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 text-xs font-bold">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 text-xs font-bold">
                       {idx + 1}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -216,19 +228,23 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
                     </div>
                   </div>
                 </div>
+                </StaggerItem>
               )
             })}
-          </div>
+          </Stagger>
 
           {/* Start Workout button */}
-          <button
-            type="button"
-            onClick={() => setSessionStarted(true)}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-brand-500 py-4 text-sm font-bold text-white shadow-lg shadow-brand-500/20 transition-all active:scale-[0.97] hover:bg-brand-600"
-          >
-            <Play className="h-5 w-5" fill="currentColor" />
-            Start Workout
-          </button>
+          {/* Sticky so it stays reachable on long days; offset clears the floating bottom nav */}
+          <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.75rem+var(--pwa-safe-bottom)+0.75rem)] z-10">
+            <button
+              type="button"
+              onClick={() => setSessionStarted(true)}
+              className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-brand-500 text-sm font-bold text-white shadow-lg shadow-brand-500/30 transition-transform active:scale-[0.97] hover:bg-brand-600"
+            >
+              <Play className="h-5 w-5" fill="currentColor" />
+              Start Workout
+            </button>
+          </div>
 
           {selfLog === 'saved' ? (
             <p role="status" className="mt-3 text-center text-sm font-semibold text-emerald-600">
@@ -243,7 +259,7 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
               Do it by myself
             </button>
           ) : (
-            <div className="mt-3 rounded-2xl border border-surface-border bg-surface-card p-4">
+            <div className="tile mt-3 p-4">
               <p className="text-sm font-semibold text-slate-900">Mark {activeDay}&apos;s workout as completed?</p>
               <p className="mt-0.5 text-xs text-slate-500">
                 All sets are saved as done, without weights. Use this when you trained without the app.
@@ -256,7 +272,7 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
                   type="button"
                   disabled={selfLog === 'saving'}
                   onClick={() => setSelfLog('idle')}
-                  className="min-h-[44px] rounded-xl bg-slate-100 text-sm font-bold text-slate-700"
+                  className="min-h-[44px] rounded-full bg-slate-100 text-sm font-bold text-slate-700"
                 >
                   Cancel
                 </button>
@@ -264,7 +280,7 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
                   type="button"
                   disabled={selfLog === 'saving'}
                   onClick={() => void markDoneByMyself()}
-                  className="min-h-[44px] rounded-xl bg-emerald-600 text-sm font-bold text-white disabled:opacity-60"
+                  className="min-h-[44px] rounded-full bg-emerald-600 text-sm font-bold text-white disabled:opacity-60"
                 >
                   {selfLog === 'saving' ? 'Saving…' : 'Mark done'}
                 </button>
@@ -274,5 +290,8 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
         </>
       )}
     </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

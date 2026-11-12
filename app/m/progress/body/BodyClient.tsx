@@ -12,6 +12,7 @@ import {
 } from '@/lib/progress/plan'
 import { bmi, bmiCategory, buildReport, measurementsDue, weighInDue, type Tone } from '@/lib/progress/report'
 import { cn } from '@/lib/utils'
+import { CountUp, FadeIn, Stagger, StaggerItem } from '@/components/ui/motion'
 import type { BodyGoal, BodyLog, BodyProfile } from '@/types/progress'
 
 const GOALS: { value: BodyGoal; label: string }[] = [
@@ -74,7 +75,7 @@ function Field({ label, help, children }: { label: string; help?: string; childr
   )
 }
 
-const numberInput = 'input-field mt-1 min-h-[44px] w-full'
+const numberInput = 'input-field mt-1 min-h-[44px] w-full rounded-2xl bg-surface-secondary'
 
 function TapeFields({ value, onChange }: { value: Tape; onChange: (key: TapeKey, v: string) => void }) {
   return (
@@ -100,7 +101,7 @@ function GoalPicker({ value, onChange }: { value: BodyGoal | null; onChange: (g:
           key={g.value} type="button" role="radio" aria-checked={value === g.value}
           onClick={() => onChange(g.value)}
           className={cn(
-            'min-h-[44px] rounded-xl border px-3 text-sm font-semibold',
+            'min-h-[44px] rounded-full border px-3 text-sm font-semibold',
             value === g.value
               ? 'border-brand-500 bg-brand-50 text-brand-700'
               : 'border-surface-border bg-surface-card text-slate-600',
@@ -159,7 +160,7 @@ function TargetFields(props: {
           <button
             key={d} type="button" onClick={() => onDays(String(d))}
             className={cn(
-              'min-h-[44px] rounded-xl border px-4 text-sm font-semibold',
+              'min-h-[44px] rounded-full border px-4 text-sm font-semibold',
               days === String(d) ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-surface-border bg-surface-card text-slate-600',
             )}
           >
@@ -223,7 +224,7 @@ function Baseline({ profile, today, onSaved }: { profile: BodyProfile | null; to
   }
 
   return (
-    <form onSubmit={save} className="card mb-5 space-y-4 p-4" noValidate>
+    <form onSubmit={save} className="tile mb-5 space-y-4 p-4" noValidate>
       <div>
         <h2 className="text-base font-bold text-slate-900">Your starting point</h2>
         <p className="mt-0.5 text-sm text-slate-500">Measure in the morning, same way each time.</p>
@@ -254,7 +255,7 @@ function Baseline({ profile, today, onSaved }: { profile: BodyProfile | null; to
         <TapeFields value={tape} onChange={(k, v) => setTape((t) => ({ ...t, [k]: v }))} />
       </div>
       {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
-      <button type="submit" disabled={saving} className="btn-primary min-h-[44px] w-full">
+      <button type="submit" disabled={saving} className="btn-primary min-h-[44px] rounded-full w-full">
         {saving ? 'Saving…' : 'Save my starting point'}
       </button>
     </form>
@@ -286,7 +287,7 @@ function GoalCard({ logs, profile, today, onSetTarget }: {
   const showStatus = plan && (plan.verdict === 'safe' || plan.verdict === 'too_fast' || plan.verdict === 'very_slow')
 
   return (
-    <section className="card mb-4 p-4">
+    <section className="tile mb-4 p-4">
       <h2 className="text-base font-bold text-slate-900">Your goal: {GOAL_LABEL[profile.goal]}</h2>
       {profile.goal !== 'stay_fit' && !hasTarget && (
         <button
@@ -350,7 +351,7 @@ function PlanCard({ logs, profile, today }: { logs: BodyLog[]; profile: BodyProf
   const sign = (profile.targetWeightKg ?? current) >= current ? 1 : -1
   const heading = 'text-xs font-bold uppercase tracking-widest text-slate-400'
   return (
-    <details className="card mb-4 p-4">
+    <details className="tile mb-4 p-4">
       <summary className="min-h-[44px] cursor-pointer text-base font-bold text-slate-900">Your plan</summary>
       {plan.milestones.length > 0 && (
         <>
@@ -389,6 +390,29 @@ function PlanCard({ logs, profile, today }: { logs: BodyLog[]; profile: BodyProf
   )
 }
 
+/** Current weight and BMI as glanceable tiles; the full table stays in the report below. */
+function MetricTiles({ logs, profile }: { logs: BodyLog[]; profile: BodyProfile }) {
+  const report = buildReport(logs, profile)
+  const tiles = (['weight', 'bmi'] as const).map((k) => report.rows.find((r) => r.key === k)).filter((r) => r != null && r.latest != null)
+  if (tiles.length === 0) return null
+  return (
+    <Stagger className="mb-4 grid grid-cols-2 gap-3">
+      {tiles.map((r) => r && r.latest != null && (
+        <StaggerItem key={r.key} className="tile p-4">
+          <p className="text-xs font-semibold text-slate-500">{r.label}</p>
+          <p className="mt-1 text-3xl font-black leading-none tracking-tight text-slate-900">
+            <CountUp value={r.latest} decimals={Number.isInteger(Math.round(r.latest * 10) / 10) ? 0 : 1} />
+            {r.unit && <span className="ml-1 text-sm font-bold text-slate-500">{r.unit}</span>}
+          </p>
+          <p className={cn('mt-1 text-xs font-semibold', TONE_CLASS[r.tone])}>
+            {r.change == null || r.change === 0 ? 'Latest' : `${r.change > 0 ? '+' : ''}${fmtNum(r.change)} since start`}
+          </p>
+        </StaggerItem>
+      ))}
+    </Stagger>
+  )
+}
+
 function ReportCard({ logs, profile }: { logs: BodyLog[]; profile: BodyProfile }) {
   const report = buildReport(logs, profile)
   const rows = report.rows.filter((r) => r.latest != null)
@@ -396,7 +420,7 @@ function ReportCard({ logs, profile }: { logs: BodyLog[]; profile: BodyProfile }
   const latestBmi = bmiRow?.latest ?? null
   const fmt = (n: number | null) => (n == null ? '-' : fmtNum(n))
   return (
-    <section className="card mb-4 p-4">
+    <section className="tile mb-4 p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-bold text-slate-900">Your report</h2>
         {latestBmi != null && (
@@ -470,7 +494,7 @@ function EditProfile({ profile, basis, today, open, setOpen, onDone }: {
     )
   }
   return (
-    <form onSubmit={save} className="card mb-5 space-y-4 p-4" noValidate>
+    <form onSubmit={save} className="tile mb-5 space-y-4 p-4" noValidate>
       <Field label="Height (cm)">
         <input
           type="number" inputMode="decimal" step="0.1" min="100" max="230"
@@ -488,8 +512,8 @@ function EditProfile({ profile, basis, today, open, setOpen, onDone }: {
       />
       {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="button" onClick={() => setOpen(false)} className="btn-secondary min-h-[44px] flex-1">Cancel</button>
-        <button type="submit" disabled={saving} className="btn-primary min-h-[44px] flex-1">{saving ? 'Saving…' : 'Save'}</button>
+        <button type="button" onClick={() => setOpen(false)} className="btn-secondary min-h-[44px] rounded-full flex-1">Cancel</button>
+        <button type="submit" disabled={saving} className="btn-primary min-h-[44px] rounded-full flex-1">{saving ? 'Saving…' : 'Save'}</button>
       </div>
     </form>
   )
@@ -564,28 +588,32 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
 
   return (
     <>
+      <MetricTiles logs={logs} profile={profile} />
+
       <GoalCard logs={logs} profile={profile} today={today} onSetTarget={() => setEditOpen(true)} />
 
       <PlanCard logs={logs} profile={profile} today={today} />
 
       <ReportCard logs={logs} profile={profile} />
 
-      <section className="card mb-4 p-4">
-        <WeightChart logs={logs} />
-      </section>
+      <FadeIn>
+        <section className="tile mb-4 p-4">
+          <WeightChart logs={logs} />
+        </section>
+      </FadeIn>
 
-      <form onSubmit={save} className="card mb-2 space-y-4 p-4" noValidate>
+      <form onSubmit={save} className="tile mb-2 space-y-4 p-4" noValidate>
         <div>
           <h2 className="text-base font-bold text-slate-900">Weekly weigh-in</h2>
           {weighDue && <p className="mt-0.5 text-sm font-semibold text-brand-600">Time for your weekly weigh-in</p>}
         </div>
-        <div role="tablist" aria-label="What to update" className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+        <div role="tablist" aria-label="What to update" className="grid grid-cols-2 gap-1 rounded-full bg-surface-secondary p-1">
           {([['weight', 'Weight'], ['details', 'More details']] as const).map(([key, label]) => (
             <button
               key={key} type="button" role="tab" aria-selected={tab === key}
               onClick={() => setTab(key)}
               className={cn(
-                'relative min-h-[44px] rounded-lg text-sm font-bold transition-colors',
+                'relative min-h-[44px] rounded-full text-sm font-bold transition-colors',
                 tab === key ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500',
               )}
             >
@@ -613,7 +641,7 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
             {monthlyDue && (
               <button
                 type="button" onClick={() => setTab('details')}
-                className="min-h-[44px] w-full rounded-xl border border-brand-500 bg-brand-50 px-3 text-left text-sm font-semibold text-brand-700"
+                className="min-h-[44px] w-full rounded-2xl border border-brand-500 bg-brand-50 px-3 text-left text-sm font-semibold text-brand-700"
               >
                 Monthly check-in is due. Add your measurements
               </button>
@@ -639,7 +667,7 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
         {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
         {saved && <p role="status" className="text-sm font-semibold text-emerald-600">Saved</p>}
 
-        <button type="submit" disabled={saving} className="btn-primary min-h-[44px] w-full">
+        <button type="submit" disabled={saving} className="btn-primary min-h-[44px] rounded-full w-full">
           {saving ? 'Saving…' : 'Save'}
         </button>
       </form>
@@ -654,11 +682,11 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
       />
 
       <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Entries</h2>
-      <ul className="space-y-2">
+      <Stagger className="space-y-2">
         {logs.map((l) => {
           const extra = measurementText(l)
           return (
-            <li key={l.id} className="card flex items-center gap-3 p-3">
+            <StaggerItem key={l.id} className="tile flex items-center gap-3 p-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-slate-900">
                   {l.weightKg != null ? `${fmtNum(l.weightKg)} kg` : 'Measurements'}
@@ -669,14 +697,14 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
               <button
                 type="button" onClick={() => remove(l)} disabled={deletingId === l.id}
                 aria-label={`Delete entry for ${longDate(l.loggedOn)}`}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:text-red-600"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-red-600"
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
               </button>
-            </li>
+            </StaggerItem>
           )
         })}
-      </ul>
+      </Stagger>
     </>
   )
 }

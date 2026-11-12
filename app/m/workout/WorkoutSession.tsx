@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, Check, ChevronRight, Timer } from 'lucide-react'
+import { ProgressRing, Sheet } from '@/components/ui/motion'
 import { api } from '@/lib/api/client'
 import { spring } from '@/lib/motion'
 import { PROGRESS_LIMITS, normaliseExerciseName, type LastWeights } from '@/types/progress'
@@ -87,7 +88,7 @@ export function newClientId(): string {
 }
 
 /** Short "Last time" hint: one value if all sets match, otherwise "40 / 42.5 / 45". */
-function lastTimeText(weights: (number | null)[] | undefined): string | null {
+export function lastTimeText(weights: (number | null)[] | undefined): string | null {
   const w = (weights ?? []).filter((x): x is number => x != null)
   if (w.length === 0) return null
   const unique = [...new Set(w)]
@@ -131,6 +132,7 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
   // Rest timer state
   const [restCountdown, setRestCountdown] = useState(0)
   const [isResting, setIsResting] = useState(false)
+  const [queueOpen, setQueueOpen] = useState(false)
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Session timer
@@ -282,7 +284,12 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
   // ── Completed view ──────────────────────────────────────────────────────────
   if (isComplete) {
     return (
-      <motion.div initial={{ opacity: 0, y: reduce ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+      <motion.div
+        initial={{ opacity: 0, y: reduce ? 0 : 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={spring}
+        className="flex flex-1 flex-col"
+      >
         <WorkoutComplete
           programName={programName}
           dayLabel={dayLabel}
@@ -296,155 +303,116 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
     )
   }
 
-  // ── Active session view ─────────────────────────────────────────────────────
-  return (
-    <div className="flex flex-col min-h-[70dvh]">
+  // ── Active session view (rendered inside the full-screen FocusOverlay) ──────
+  // The rest that just ended was planned on the previous set (or the last set of the previous exercise).
+  const prevSet = currentSetIdx > 0
+    ? currentExercise?.sets[currentSetIdx - 1]
+    : log[currentExIdx - 1]?.sets[log[currentExIdx - 1].sets.length - 1]
+  const restTotal = Math.max(parseRestSeconds(prevSet?.planned.rest), restCountdown, 1)
+  const doneInExercise = currentExercise ? currentExercise.sets.filter(s => s.completed).length : 0
+  const setsInExercise = currentExercise?.sets.length ?? 0
+  const upNext = log.slice(currentExIdx + 1)
 
-      {/* Top bar */}
-      <div className="flex items-center justify-between mb-4">
+  return (
+    <div className="flex flex-1 flex-col">
+
+      {/* Top row */}
+      <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
-          className="flex min-h-[44px] items-center gap-1 pr-3 text-xs font-semibold text-slate-500 hover:text-slate-700"
+          className="flex min-h-[44px] items-center gap-1 pr-3 text-sm font-semibold text-slate-500 hover:text-slate-700"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-4 w-4" />
           Exit
         </button>
         <div className="flex items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1.5 text-xs font-bold tabular-nums text-slate-700">
           <Timer className="h-3.5 w-3.5 text-brand-500" />
           {formatTime(elapsed)}
         </div>
+        <p className="min-w-[4.5rem] text-right text-xs font-bold text-slate-500">
+          {currentExIdx + 1} of {log.length}
+        </p>
       </div>
 
-      {/* Progress bar */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            {programName} · {dayLabel}
-          </p>
-          <p className="text-[10px] font-bold text-brand-600">{completedSets}/{totalSets} sets</p>
-        </div>
-        {/* scaleX (transform) instead of animating width: no layout work per frame */}
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-          <motion.div
-            className="h-full origin-left rounded-full bg-brand-500"
-            initial={false}
-            animate={{ scaleX: progress }}
-            transition={spring}
-          />
-        </div>
-      </div>
-
-      {/* Rest timer overlay */}
-      <AnimatePresence initial={false}>
-      {isResting && (
+      {/* Overall progress: scaleX (transform) instead of animating width: no layout work per frame */}
+      <div
+        role="progressbar"
+        aria-label={`${completedSets} of ${totalSets} sets done`}
+        aria-valuemin={0}
+        aria-valuemax={totalSets}
+        aria-valuenow={completedSets}
+        className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"
+      >
         <motion.div
-          key="rest"
-          initial={{ opacity: 0, scale: reduce ? 1 : 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: reduce ? 1 : 0.96 }}
+          className="h-full origin-left rounded-full bg-brand-500"
+          initial={false}
+          animate={{ scaleX: progress }}
           transition={spring}
-          className="mb-5 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-center"
-        >
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-2">Rest</p>
-          <p className="text-4xl font-black text-amber-700 tabular-nums">{restCountdown}s</p>
-          <button
-            type="button"
-            onClick={skipRest}
-            className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-amber-200 bg-surface px-5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-50"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-            Skip Rest
-          </button>
-        </motion.div>
-      )}
-      </AnimatePresence>
+        />
+      </div>
+      <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        {programName} · {dayLabel}
+      </p>
 
-      {/* Current exercise card */}
+      {/* Centre: ring (sets done, or the rest countdown), then the exercise */}
       {currentExercise && (
-        <div className="flex-1">
+        <div className="flex flex-1 flex-col items-center justify-center py-4 text-center">
+          {isResting ? (
+            <ProgressRing
+              value={restCountdown / restTotal}
+              size={200}
+              strokeWidth={12}
+              className="text-amber-500"
+              trackClassName="text-amber-100"
+              label={`Rest, ${restCountdown} seconds left`}
+            >
+              <span className="flex flex-col items-center">
+                <span className="text-xs font-bold uppercase tracking-widest text-amber-600">Rest</span>
+                <span className="text-5xl font-black tabular-nums text-amber-700">{restCountdown}s</span>
+              </span>
+            </ProgressRing>
+          ) : (
+            <ProgressRing
+              value={setsInExercise > 0 ? doneInExercise / setsInExercise : 0}
+              size={200}
+              strokeWidth={12}
+              className="text-brand-500"
+              label={`${doneInExercise} of ${setsInExercise} sets done`}
+            >
+              <span className="flex flex-col items-center">
+                <span className="text-5xl font-black tabular-nums text-slate-900">{doneInExercise}/{setsInExercise}</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">sets</span>
+              </span>
+            </ProgressRing>
+          )}
+
           <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={currentExIdx}
-            initial={{ opacity: 0, x: reduce ? 0 : 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: reduce ? 0 : -24 }}
-            transition={spring}
-            className="tile mb-4 border-2 border-brand-100 p-5"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-brand-500 mb-1">
-                  Exercise {currentExIdx + 1} of {log.length}
-                </p>
-                <h3 className="text-2xl font-bold tracking-tight text-slate-900">{currentExercise.exercise.name}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">{currentExercise.exercise.target} · {currentExercise.exercise.type}</p>
-                {lastHint && <p className="text-xs text-slate-400 mt-0.5">Last time: {lastHint}</p>}
-              </div>
-            </div>
-
-            {currentExercise.exercise.notes && (
-              <p className="text-xs italic text-slate-400 mb-3 leading-relaxed">{currentExercise.exercise.notes}</p>
-            )}
-
-            {/* Sets overview */}
-            <div className="space-y-2">
-              {currentExercise.sets.map((setLog, si) => {
-                const isCurrent = si === currentSetIdx
-                const { planned } = setLog
-                return (
-                  <div
-                    key={si}
-                    className={`flex items-center gap-3 rounded-2xl px-3.5 py-2.5 transition-colors duration-300 ${
-                      setLog.completed
-                        ? 'bg-emerald-50 border border-emerald-200'
-                        : isCurrent
-                          ? 'bg-brand-50 border-2 border-brand-300 shadow-sm'
-                          : 'bg-slate-50 border border-slate-100'
-                    }`}
-                  >
-                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors duration-300 ${
-                      setLog.completed
-                        ? 'bg-emerald-500 text-white'
-                        : isCurrent
-                          ? 'bg-brand-500 text-white'
-                          : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      {setLog.completed ? (
-                        // Spring pop when the set flips to done (reduced motion: no scale)
-                        <motion.span
-                          initial={{ scale: reduce ? 1 : 0.3 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring', stiffness: 500, damping: 18 }}
-                          className="flex"
-                        >
-                          <Check className="h-4 w-4" />
-                        </motion.span>
-                      ) : si + 1}
-                    </div>
-                    <div className="flex-1 flex items-center gap-3 text-xs">
-                      {planned.reps && (
-                        <span className={`font-semibold ${setLog.completed ? 'text-emerald-700' : 'text-slate-700'}`}>
-                          {planned.reps} reps
-                        </span>
-                      )}
-                      {planned.weight && (
-                        <span className="text-slate-400">{planned.weight}</span>
-                      )}
-                      {planned.rest && (
-                        <span className="text-slate-400 ml-auto">rest {planned.rest}</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </motion.div>
+            <motion.div
+              key={currentExIdx}
+              initial={{ opacity: 0, x: reduce ? 0 : 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: reduce ? 0 : -24 }}
+              transition={spring}
+              className="mt-5 w-full"
+            >
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900">{currentExercise.exercise.name}</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {currentSet ? `Set ${currentSetIdx + 1}` : ''}
+                {currentSet?.planned.reps ? ` · ${currentSet.planned.reps} reps` : ''}
+                {currentSet?.planned.weight ? ` · ${currentSet.planned.weight}` : ''}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">{currentExercise.exercise.target} · {currentExercise.exercise.type}</p>
+              {lastHint && <p className="mt-0.5 text-xs text-slate-400">Last time: {lastHint}</p>}
+              {currentExercise.exercise.notes && (
+                <p className="mt-2 text-xs italic leading-relaxed text-slate-400">{currentExercise.exercise.notes}</p>
+              )}
+            </motion.div>
           </AnimatePresence>
 
           {/* Weight actually used for the current set */}
           {!isResting && currentSet && !currentSet.completed && (
-            <label className="mb-3 flex items-center justify-between gap-3 rounded-3xl border border-surface-border bg-surface-card px-4 py-2">
+            <label className="mt-4 flex w-full items-center justify-between gap-3 rounded-3xl border border-surface-border bg-surface-card px-4 py-2 text-left">
               <span className="text-xs font-bold text-slate-700">Weight used, set {currentSetIdx + 1}</span>
               <span className="flex items-center gap-2">
                 <input
@@ -460,43 +428,60 @@ export default function WorkoutSession({ programName, dayLabel, exercises, lastW
               </span>
             </label>
           )}
+
+          {upNext.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setQueueOpen(true)}
+              className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-xs font-bold text-slate-500"
+            >
+              Up next: {upNext[0].exercise.name}
+              <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       )}
 
-      {/* Complete set button: sticky, offset clears the floating bottom nav */}
-      {currentExercise && !isResting && currentSet && !currentSet.completed && (
-        <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.75rem+var(--pwa-safe-bottom)+0.75rem)] z-10">
+      {/* Primary action, pinned to the bottom of the overlay */}
+      <div className="sticky bottom-0 bg-surface pb-1 pt-3">
+        {isResting ? (
+          <button
+            type="button"
+            onClick={skipRest}
+            className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 text-base font-bold text-amber-700"
+          >
+            <ChevronRight className="h-5 w-5" />
+            Skip Rest
+          </button>
+        ) : currentExercise && currentSet && !currentSet.completed ? (
           <motion.button
             type="button"
             onClick={completeSet}
             disabled={weightInvalid}
             whileTap={reduce ? undefined : { scale: 0.97 }}
             transition={spring}
-            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-emerald-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 disabled:opacity-50"
+            className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full bg-emerald-500 text-base font-bold text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 disabled:opacity-50"
           >
             <Check className="h-5 w-5" />
-            Complete Set {currentSetIdx + 1}
+            Complete set {currentSetIdx + 1}
           </motion.button>
-        </div>
-      )}
+        ) : null}
+      </div>
 
       {/* Exercise queue */}
-      {log.length > 1 && (
-        <div className="mt-5 pt-4 border-t border-slate-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Up Next</p>
-          <div className="space-y-1.5">
-            {log.slice(currentExIdx + 1, currentExIdx + 4).map((exLog, i) => (
-              <div key={exLog.exercise.id} className="flex items-center gap-2.5 rounded-2xl bg-slate-50 px-3 py-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-200 text-[10px] font-bold text-slate-500">
-                  {currentExIdx + 2 + i}
-                </span>
-                <span className="text-xs font-semibold text-slate-600 truncate">{exLog.exercise.name}</span>
-                <span className="ml-auto text-[10px] text-slate-400">{exLog.sets.length} sets</span>
-              </div>
-            ))}
-          </div>
+      <Sheet open={queueOpen} onOpenChange={setQueueOpen} title="Up next" description={`${upNext.length} left after this one`}>
+        <div className="space-y-1.5 pb-2">
+          {upNext.map((exLog, i) => (
+            <div key={exLog.exercise.id} className="flex items-center gap-2.5 rounded-2xl bg-surface-secondary px-3 py-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-200 text-[10px] font-bold text-slate-500">
+                {currentExIdx + 2 + i}
+              </span>
+              <span className="truncate text-sm font-semibold text-slate-700">{exLog.exercise.name}</span>
+              <span className="ml-auto text-xs text-slate-400">{exLog.sets.length} sets</span>
+            </div>
+          ))}
         </div>
-      )}
+      </Sheet>
     </div>
   )
 }

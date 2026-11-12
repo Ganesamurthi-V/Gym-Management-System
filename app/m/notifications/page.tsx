@@ -1,5 +1,5 @@
-import Link from 'next/link'
-import { AlertCircle, CheckCircle2, ChevronLeft, Megaphone } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Megaphone } from 'lucide-react'
+import { MemberTopBar } from '@/components/member/MemberTopBar'
 import { getMembershipPageData } from '@/lib/member/member-data'
 import { getMemberNotifications } from '@/lib/member/notifications'
 import { MarkNotificationsSeen } from '@/components/member/MarkNotificationsSeen'
@@ -24,19 +24,16 @@ export default async function NotificationsPage() {
   const pushKey = isPushConfigured() ? vapidPublicKey() : null
 
   return (
-    <div className="page-container py-6">
+    <>
+      <MemberTopBar
+        variant="sub"
+        title="Notifications"
+        backHref="/m/home"
+        backLabel="Back to home"
+        actions={pushKey ? <PushHeaderButton publicKey={pushKey} /> : undefined}
+      />
+      <div className="page-container pb-6 pt-2">
       <MarkNotificationsSeen latestAt={items[0]?.at ?? null} />
-      <header className="mb-5 flex items-center gap-3">
-        <Link
-          href="/m/home"
-          aria-label="Back to home"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface-card text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-        >
-          <ChevronLeft aria-hidden="true" className="h-5 w-5" />
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Notifications</h1>
-        {pushKey && <div className="ml-auto"><PushHeaderButton publicKey={pushKey} /></div>}
-      </header>
 
       {failed && <p className="mb-4 text-sm text-slate-500">Could not load notifications</p>}
 
@@ -73,6 +70,7 @@ export default async function NotificationsPage() {
           })}
         </Stagger>
       )}
-    </div>
+      </div>
+    </>
   )
 }

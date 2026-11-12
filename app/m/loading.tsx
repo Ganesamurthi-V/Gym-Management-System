@@ -9,34 +9,40 @@
  * Repeat visits to an already-seen tab are served from the client Router Cache
  * (see `experimental.staleTimes` in next.config.mjs), so this skeleton is only
  * shown on a genuine first load — never on a cached tab switch.
+ *
+ * Shaped like the shared frame: top bar row, headline, week strip, wide card, tile.
  */
 export default function MemberLoading() {
   return (
-    <div className="page-container py-6" aria-busy="true" aria-live="polite">
+    <div aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading…</span>
 
-      {/* Header */}
-      <div className="mb-5">
-        <div className="h-3 w-28 animate-pulse rounded-full bg-slate-200" />
-        <div className="mt-2 h-7 w-48 animate-pulse rounded-full bg-slate-200" />
-        <div className="mt-2 h-3 w-32 animate-pulse rounded-full bg-slate-100" />
+      {/* Top bar: round avatar + title */}
+      <div className="flex h-14 items-center gap-3 px-4 xs:px-5 sm:px-6">
+        <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-slate-200" />
+        <div className="h-5 w-40 animate-pulse rounded-full bg-slate-200" />
+        <div className="ml-auto h-10 w-10 shrink-0 animate-pulse rounded-full bg-slate-100" />
       </div>
 
-      {/* Primary card */}
-      <div className="mb-5 h-32 animate-pulse rounded-3xl bg-slate-100" />
+      <div className="page-container pb-6 pt-2">
+        {/* Headline */}
+        <div className="mb-4">
+          <div className="h-3 w-32 animate-pulse rounded-full bg-slate-100" />
+          <div className="mt-2 h-8 w-64 max-w-full animate-pulse rounded-full bg-slate-200" />
+        </div>
 
-      {/* Stat grid */}
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-28 animate-pulse rounded-3xl bg-slate-100" />
-        ))}
-      </div>
+        {/* Week strip: 7 chips */}
+        <div className="mb-6 grid grid-cols-7 gap-1.5">
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-14 animate-pulse rounded-2xl bg-slate-100" />
+          ))}
+        </div>
 
-      {/* List rows */}
-      <div className="space-y-3">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-3xl bg-slate-100" />
-        ))}
+        {/* Wide card */}
+        <div className="mb-6 h-44 w-[85%] animate-pulse rounded-3xl bg-slate-100" />
+
+        {/* Tile */}
+        <div className="h-28 animate-pulse rounded-3xl bg-slate-100" />
       </div>
     </div>
   )

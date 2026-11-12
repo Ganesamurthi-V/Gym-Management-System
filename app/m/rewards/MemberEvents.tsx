@@ -56,13 +56,13 @@ export default function MemberEvents() {
       <h2 id="events-heading" className="mb-3 text-xs font-black uppercase tracking-[0.1em] text-slate-500">
         Challenges
       </h2>
-      <Stagger className="space-y-3">
+      <Stagger className={events.length > 1 ? 'rail' : undefined}>
         {events.map(ev => {
           const upcoming = today < ev.startDate
           const pct = ev.goalTarget > 0 ? Math.min(1, ev.progress / ev.goalTarget) : 0
           const reward = rewardSentence(ev)
           return (
-            <StaggerItem key={ev.id} className="tile p-4">
+            <StaggerItem key={ev.id} className={events.length > 1 ? 'tile w-[80%] max-w-[20rem] p-4' : 'tile p-4'}>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-black text-slate-900 min-w-0 break-words">{ev.title}</p>
                 <span className="shrink-0 text-[11px] font-bold text-slate-500 tabular-nums">

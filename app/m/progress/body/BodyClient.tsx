@@ -2,17 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Trash2 } from 'lucide-react'
+import { Check, Plus, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { api, GymFlowAPIError } from '@/lib/api/client'
 import { WeightChart } from '@/components/member/WeightChart'
-import { dayNumber, fmtNum, longDate, mediumDate } from '@/lib/progress/chart'
+import { dayNumber, fmtNum, longDate, mediumDate, shortDate } from '@/lib/progress/chart'
 import {
   BMI_WARNING_TEXT, NOT_MEDICAL_TEXT, TARGET_MAX_DAYS, addDaysIso, adviceFor, buildPlan, buildStructuredPlan, planMessage,
   verdictTone,
 } from '@/lib/progress/plan'
 import { bmi, bmiCategory, buildReport, measurementsDue, weighInDue, type Tone } from '@/lib/progress/report'
 import { cn } from '@/lib/utils'
-import { CountUp, FadeIn, Stagger, StaggerItem } from '@/components/ui/motion'
+import { CountUp, FadeIn, Sheet, Stagger, StaggerItem } from '@/components/ui/motion'
+import { MemberTopBar } from '@/components/member/MemberTopBar'
 import type { BodyGoal, BodyLog, BodyProfile } from '@/types/progress'
 
 const GOALS: { value: BodyGoal; label: string }[] = [
@@ -390,26 +391,64 @@ function PlanCard({ logs, profile, today }: { logs: BodyLog[]; profile: BodyProf
   )
 }
 
-/** Current weight and BMI as glanceable tiles; the full table stays in the report below. */
-function MetricTiles({ logs, profile }: { logs: BodyLog[]; profile: BodyProfile }) {
+const RAIL_METRICS = [
+  { key: 'weight', label: 'Weight' },
+  { key: 'bmi', label: 'BMI' },
+  { key: 'waist', label: 'Waist' },
+  { key: 'hips', label: 'Hips' },
+] as const
+
+/** Weight, BMI, waist and hips as a swipeable rail; ~140px cards so a third one peeks in and signals scroll. */
+function MetricRail({ logs, profile }: { logs: BodyLog[]; profile: BodyProfile }) {
   const report = buildReport(logs, profile)
-  const tiles = (['weight', 'bmi'] as const).map((k) => report.rows.find((r) => r.key === k)).filter((r) => r != null && r.latest != null)
-  if (tiles.length === 0) return null
   return (
-    <Stagger className="mb-4 grid grid-cols-2 gap-3">
-      {tiles.map((r) => r && r.latest != null && (
-        <StaggerItem key={r.key} className="tile p-4">
-          <p className="text-xs font-semibold text-slate-500">{r.label}</p>
-          <p className="mt-1 text-3xl font-black leading-none tracking-tight text-slate-900">
-            <CountUp value={r.latest} decimals={Number.isInteger(Math.round(r.latest * 10) / 10) ? 0 : 1} />
-            {r.unit && <span className="ml-1 text-sm font-bold text-slate-500">{r.unit}</span>}
-          </p>
-          <p className={cn('mt-1 text-xs font-semibold', TONE_CLASS[r.tone])}>
-            {r.change == null || r.change === 0 ? 'Latest' : `${r.change > 0 ? '+' : ''}${fmtNum(r.change)} since start`}
-          </p>
-        </StaggerItem>
-      ))}
-    </Stagger>
+    <div className="rail mb-4">
+      {RAIL_METRICS.map(({ key, label }) => {
+        const row = report.rows.find((r) => r.key === key)
+        const latest = row?.latest ?? null
+        const unit = row?.unit ?? ''
+        let note = 'Not logged yet'
+        if (row && latest != null) {
+          note = row.change == null || row.change === 0
+            ? 'Latest'
+            : `${row.change < 0 ? 'Down' : 'Up'} ${fmtNum(Math.abs(row.change))}${unit === '' ? '' : ` ${unit}`} since start`
+        }
+        return (
+          <div key={key} className="tile w-[140px] p-4">
+            <p className="text-xs font-semibold text-slate-500">{label}</p>
+            <p className="mt-1 text-2xl font-black leading-none tracking-tight text-slate-900">
+              {latest != null
+                ? <><CountUp value={latest} decimals={Number.isInteger(Math.round(latest * 10) / 10) ? 0 : 1} />{unit !== '' && <span className="ml-1 text-xs font-bold text-slate-500">{unit}</span>}</>
+                : '-'}
+            </p>
+            <p className={cn('mt-2 text-xs font-semibold', TONE_CLASS[row?.tone ?? 'neutral'])}>{note}</p>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Latest weight as the page headline, with the change since the first weigh-in under it. */
+function Headline({ logs }: { logs: BodyLog[] }) {
+  // Newest first: latest weight is the first with a weight, the first entry the last.
+  const weighed = logs.filter((l) => l.weightKg != null)
+  if (weighed.length === 0) return <p className="text-lg font-bold text-slate-900">Log your first weight</p>
+  const newest = weighed[0]
+  const oldest = weighed[weighed.length - 1]
+  let change: string | null = null
+  if (weighed.length > 1) {
+    const diff = Math.round(((newest.weightKg as number) - (oldest.weightKg as number)) * 10) / 10
+    const dir = diff === 0 ? 'No change' : `${diff < 0 ? 'Down' : 'Up'} ${fmtNum(Math.abs(diff))} kg`
+    change = `${dir} since ${shortDate(oldest.loggedOn)}`
+  }
+  return (
+    <>
+      <p className="text-5xl font-black leading-none tracking-tight text-slate-900">
+        {fmtNum(newest.weightKg as number)}<span className="ml-1.5 text-xl font-bold text-slate-500">kg</span>
+      </p>
+      {change && <p className="mt-2 text-sm font-semibold text-slate-500">{change}</p>}
+    </>
   )
 }
 
@@ -483,43 +522,37 @@ function EditProfile({ profile, basis, today, open, setOpen, onDone }: {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button" onClick={() => setOpen(true)}
-        className="mb-5 min-h-[44px] text-sm font-semibold text-brand-600"
-      >
-        Edit height, goal or target
-      </button>
-    )
-  }
   return (
-    <form onSubmit={save} className="tile mb-5 space-y-4 p-4" noValidate>
-      <Field label="Height (cm)">
-        <input
-          type="number" inputMode="decimal" step="0.1" min="100" max="230"
-          value={height} onChange={(e) => setHeight(e.target.value)} className={numberInput}
+    <Sheet open={open} onOpenChange={setOpen} title="Body profile" description="Height, goal and target weight">
+      <form onSubmit={save} className="space-y-4 pt-2" noValidate>
+        <Field label="Height (cm)">
+          <input
+            type="number" inputMode="decimal" step="0.1" min="100" max="230"
+            value={height} onChange={(e) => setHeight(e.target.value)} className={numberInput}
+          />
+        </Field>
+        <div>
+          <span className="text-xs font-semibold text-slate-500">Goal</span>
+          <div className="mt-1"><GoalPicker value={goal} onChange={setGoal} /></div>
+        </div>
+        <TargetFields
+          goal={goal} today={today} basis={{ ...basis, heightCm: Number(height) }}
+          editing passed={passed}
+          weight={targetWeight} days={targetDays} onWeight={setTargetWeight} onDays={setTargetDays}
         />
-      </Field>
-      <div>
-        <span className="text-xs font-semibold text-slate-500">Goal</span>
-        <div className="mt-1"><GoalPicker value={goal} onChange={setGoal} /></div>
-      </div>
-      <TargetFields
-        goal={goal} today={today} basis={{ ...basis, heightCm: Number(height) }}
-        editing passed={passed}
-        weight={targetWeight} days={targetDays} onWeight={setTargetWeight} onDays={setTargetDays}
-      />
-      {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
-      <div className="flex gap-2">
-        <button type="button" onClick={() => setOpen(false)} className="btn-secondary min-h-[44px] rounded-full flex-1">Cancel</button>
-        <button type="submit" disabled={saving} className="btn-primary min-h-[44px] rounded-full flex-1">{saving ? 'Saving…' : 'Save'}</button>
-      </div>
-    </form>
+        {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setOpen(false)} className="btn-secondary min-h-[44px] rounded-full flex-1">Cancel</button>
+          <button type="submit" disabled={saving} className="btn-primary min-h-[44px] rounded-full flex-1">{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </form>
+    </Sheet>
   )
 }
 
-export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile: BodyProfile | null; today: string }) {
+export function BodyClient({ logs, profile, today, memberName }: {
+  logs: BodyLog[]; profile: BodyProfile | null; today: string; memberName: string
+}) {
   const router = useRouter()
   const [weight, setWeight] = useState('')
   const [tape, setTape] = useState<Tape>(EMPTY_TAPE)
@@ -530,11 +563,19 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
   const [tab, setTab] = useState<'weight' | 'details'>('weight')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
+  const [logOpen, setLogOpen] = useState(false)
 
   const refresh = () => router.refresh()
 
   if (!profile || logs.length === 0) {
-    return <Baseline profile={profile} today={today} onSaved={refresh} />
+    return (
+      <>
+        <MemberTopBar variant="root" title="Progress" memberName={memberName} />
+        <div className="page-container py-4">
+          <Baseline profile={profile} today={today} onSaved={refresh} />
+        </div>
+      </>
+    )
   }
 
   const monthlyDue = measurementsDue(logs, today)
@@ -564,6 +605,7 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
       setWeight('')
       setTape(EMPTY_TAPE)
       setSaved(true)
+      setLogOpen(false)
       refresh()
     } catch (err) {
       setError(errText(err, 'Could not save. Try again.'))
@@ -588,89 +630,143 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
 
   return (
     <>
-      <MetricTiles logs={logs} profile={profile} />
+      <MemberTopBar
+        variant="root" title="Progress" memberName={memberName}
+        actions={
+          <button
+            type="button" onClick={() => setEditOpen(true)} aria-label="Edit body profile"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-slate-700"
+          >
+            <SlidersHorizontal aria-hidden="true" className="h-5 w-5" />
+          </button>
+        }
+      />
 
-      <GoalCard logs={logs} profile={profile} today={today} onSetTarget={() => setEditOpen(true)} />
+      {/* Bottom padding clears the floating Log button and the bottom nav. */}
+      <div className="page-container pb-40 pt-4">
+        <FadeIn>
+          <section className="mb-4"><Headline logs={logs} /></section>
+        </FadeIn>
 
-      <PlanCard logs={logs} profile={profile} today={today} />
+        <FadeIn delay={40}>
+          <section className="tile mb-4 p-4">
+            <WeightChart logs={logs} />
+          </section>
+        </FadeIn>
 
-      <ReportCard logs={logs} profile={profile} />
+        <MetricRail logs={logs} profile={profile} />
 
-      <FadeIn>
-        <section className="tile mb-4 p-4">
-          <WeightChart logs={logs} />
-        </section>
-      </FadeIn>
+        <GoalCard logs={logs} profile={profile} today={today} onSetTarget={() => setEditOpen(true)} />
 
-      <form onSubmit={save} className="tile mb-2 space-y-4 p-4" noValidate>
-        <div>
-          <h2 className="text-base font-bold text-slate-900">Weekly weigh-in</h2>
-          {weighDue && <p className="mt-0.5 text-sm font-semibold text-brand-600">Time for your weekly weigh-in</p>}
+        <PlanCard logs={logs} profile={profile} today={today} />
+
+        <ReportCard logs={logs} profile={profile} />
+
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Entries</h2>
+        <Stagger className="space-y-2">
+          {logs.map((l) => {
+            const extra = measurementText(l)
+            return (
+              <StaggerItem key={l.id} className="tile flex items-center gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-900">
+                    {l.weightKg != null ? `${fmtNum(l.weightKg)} kg` : 'Measurements'}
+                    <span className="ml-2 text-xs font-semibold text-slate-400">{longDate(l.loggedOn)}</span>
+                  </p>
+                  {extra && <p className="mt-0.5 text-xs text-slate-500">{extra}</p>}
+                </div>
+                <button
+                  type="button" onClick={() => remove(l)} disabled={deletingId === l.id}
+                  aria-label={`Delete entry for ${longDate(l.loggedOn)}`}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-red-600"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </StaggerItem>
+            )
+          })}
+        </Stagger>
+      </div>
+
+      <div className="pointer-events-none fixed inset-x-0 z-40" style={{ bottom: 'calc(var(--bottom-nav-height) + var(--pwa-safe-bottom) + 1.5rem)' }}>
+        <div className="mx-auto flex max-w-lg justify-end px-4 xs:px-5 sm:px-6">
+          <button
+            type="button" onClick={() => { setSaved(false); setLogOpen(true) }}
+            className="pointer-events-auto inline-flex min-h-[48px] items-center gap-2 rounded-full bg-brand-500 px-5 text-sm font-bold text-white shadow-lg"
+          >
+            <Plus aria-hidden="true" className="h-5 w-5" /> Log
+          </button>
         </div>
-        <div role="tablist" aria-label="What to update" className="grid grid-cols-2 gap-1 rounded-full bg-surface-secondary p-1">
-          {([['weight', 'Weight'], ['details', 'More details']] as const).map(([key, label]) => (
-            <button
-              key={key} type="button" role="tab" aria-selected={tab === key}
-              onClick={() => setTab(key)}
-              className={cn(
-                'relative min-h-[44px] rounded-full text-sm font-bold transition-colors',
-                tab === key ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500',
-              )}
-            >
-              {label}
-              {key === 'details' && monthlyDue && tab !== 'details' && (
-                <span aria-label="Due this month" className="absolute right-3 top-2.5 h-2 w-2 rounded-full bg-brand-500" />
-              )}
-            </button>
-          ))}
-        </div>
+      </div>
 
-        {tab === 'weight' ? (
-          <>
-            <Field label="Weight (kg)">
-              <input
-                type="number" inputMode="decimal" step="0.1" min="20" max="300"
-                value={weight} onChange={(e) => { setWeight(e.target.value); setSaved(false) }}
-                placeholder={latestWeight != null ? `Last: ${fmtNum(latestWeight)}` : undefined}
-                className={cn(numberInput, 'text-lg font-bold')}
-              />
-              {previewBmi != null && (
-                <span className="mt-0.5 block text-xs text-slate-500">BMI {fmtNum(previewBmi)} · {bmiCategory(previewBmi)}</span>
-              )}
-            </Field>
-            {monthlyDue && (
+      <Sheet open={logOpen} onOpenChange={setLogOpen} title="Weekly weigh-in">
+        <form onSubmit={save} className="space-y-4 pt-2" noValidate>
+          {weighDue && <p className="text-sm font-semibold text-brand-600">Time for your weekly weigh-in</p>}
+          <div role="tablist" aria-label="What to update" className="grid grid-cols-2 gap-1 rounded-full bg-surface-secondary p-1">
+            {([['weight', 'Weight'], ['details', 'More details']] as const).map(([key, label]) => (
               <button
-                type="button" onClick={() => setTab('details')}
-                className="min-h-[44px] w-full rounded-2xl border border-brand-500 bg-brand-50 px-3 text-left text-sm font-semibold text-brand-700"
+                key={key} type="button" role="tab" aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className={cn(
+                  'relative min-h-[44px] rounded-full text-sm font-bold transition-colors',
+                  tab === key ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500',
+                )}
               >
-                Monthly check-in is due. Add your measurements
+                {label}
+                {key === 'details' && monthlyDue && tab !== 'details' && (
+                  <span aria-label="Due this month" className="absolute right-3 top-2.5 h-2 w-2 rounded-full bg-brand-500" />
+                )}
               </button>
-            )}
-          </>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500">
-              {monthlyDue ? 'Monthly check-in: ' : ''}Same time of day, same way each time. Fill in only what you measured.
-            </p>
-            <TapeFields value={tape} onChange={setTapeField} />
+            ))}
           </div>
-        )}
 
-        <Field label="Date">
-          <input
-            type="date" value={date} min={yearAgo(today)} max={today}
-            onChange={(e) => setDate(e.target.value || today)}
-            className={numberInput}
-          />
-        </Field>
+          {tab === 'weight' ? (
+            <>
+              <Field label="Weight (kg)">
+                <input
+                  type="number" inputMode="decimal" step="0.1" min="20" max="300"
+                  value={weight} onChange={(e) => { setWeight(e.target.value); setSaved(false) }}
+                  placeholder={latestWeight != null ? `Last: ${fmtNum(latestWeight)}` : undefined}
+                  className={cn(numberInput, 'text-lg font-bold')}
+                />
+                {previewBmi != null && (
+                  <span className="mt-0.5 block text-xs text-slate-500">BMI {fmtNum(previewBmi)} · {bmiCategory(previewBmi)}</span>
+                )}
+              </Field>
+              {monthlyDue && (
+                <button
+                  type="button" onClick={() => setTab('details')}
+                  className="min-h-[44px] w-full rounded-2xl border border-brand-500 bg-brand-50 px-3 text-left text-sm font-semibold text-brand-700"
+                >
+                  Monthly check-in is due. Add your measurements
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500">
+                {monthlyDue ? 'Monthly check-in: ' : ''}Same time of day, same way each time. Fill in only what you measured.
+              </p>
+              <TapeFields value={tape} onChange={setTapeField} />
+            </div>
+          )}
 
-        {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
-        {saved && <p role="status" className="text-sm font-semibold text-emerald-600">Saved</p>}
+          <Field label="Date">
+            <input
+              type="date" value={date} min={yearAgo(today)} max={today}
+              onChange={(e) => setDate(e.target.value || today)}
+              className={numberInput}
+            />
+          </Field>
 
-        <button type="submit" disabled={saving} className="btn-primary min-h-[44px] rounded-full w-full">
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-      </form>
+          {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
+          {saved && <p role="status" className="text-sm font-semibold text-emerald-600">Saved</p>}
+
+          <button type="submit" disabled={saving} className="btn-primary min-h-[44px] rounded-full w-full">
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </form>
+      </Sheet>
 
       <EditProfile
         key={`${profile.heightCm}-${profile.goal}-${profile.targetWeightKg}-${profile.targetDate}`}
@@ -680,31 +776,6 @@ export function BodyClient({ logs, profile, today }: { logs: BodyLog[]; profile:
           currentWeightKg: latestWeight ?? 0,
         }}
       />
-
-      <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Entries</h2>
-      <Stagger className="space-y-2">
-        {logs.map((l) => {
-          const extra = measurementText(l)
-          return (
-            <StaggerItem key={l.id} className="tile flex items-center gap-3 p-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-900">
-                  {l.weightKg != null ? `${fmtNum(l.weightKg)} kg` : 'Measurements'}
-                  <span className="ml-2 text-xs font-semibold text-slate-400">{longDate(l.loggedOn)}</span>
-                </p>
-                {extra && <p className="mt-0.5 text-xs text-slate-500">{extra}</p>}
-              </div>
-              <button
-                type="button" onClick={() => remove(l)} disabled={deletingId === l.id}
-                aria-label={`Delete entry for ${longDate(l.loggedOn)}`}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-red-600"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </StaggerItem>
-          )
-        })}
-      </Stagger>
     </>
   )
 }

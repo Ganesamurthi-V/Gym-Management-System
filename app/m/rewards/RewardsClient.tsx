@@ -1,15 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Flame, Target } from 'lucide-react'
-import { LayoutGroup, motion, useReducedMotion } from 'framer-motion'
+import { Target } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { CountUp, FadeIn, Stagger, StaggerItem } from '@/components/ui/motion'
 import { spring } from '@/lib/motion'
+import { cn } from '@/lib/utils'
+import { SectionSwitch } from '@/components/member/SectionSwitch'
 import type { Achievement, AchievementRarity } from '@/lib/member/achievements/types'
 import { RARITY_ORDER } from '@/lib/member/achievements/types'
-import { StreakBadge } from '@/components/member/StreakBadge'
-import { LeaderboardEntryCard } from '@/components/member/LeaderboardEntryCard'
-import { formatCount } from '@/lib/gamification/leaderboardDisplay'
 import AchievementCard from './AchievementCard'
 import MemberEvents from './MemberEvents'
 
@@ -36,9 +35,6 @@ interface Props {
   earned: Achievement[]
   locked: Achievement[]
   allAchievements: Achievement[]
-  streak: number
-  streakPending: boolean
-  longestStreak: number
   /** The gym's switch; hides the leaderboard entry when off. */
   leaderboardsEnabled: boolean
 }
@@ -54,9 +50,6 @@ export default function RewardsClient({
   earned,
   locked,
   allAchievements,
-  streak,
-  streakPending,
-  longestStreak,
   leaderboardsEnabled,
 }: Props) {
   const [tab, setTab] = useState<TabId>('all')
@@ -81,86 +74,66 @@ export default function RewardsClient({
   const displayed = tab === 'earned' ? earned : tab === 'locked' ? locked : allAchievements
 
   return (
-    <div className="page-container py-6 pb-32">
-      {/* Header */}
-      <header className="mb-5 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Achievements</h1>
-          <p className="mt-0.5 text-xs text-slate-400 font-medium">Track your progress and unlock rewards</p>
-        </div>
-      </header>
+    <div className="page-container pb-32 pt-2">
+      {leaderboardsEnabled && (
+        <SectionSwitch
+          className="mb-4"
+          items={[
+            { href: '/m/rewards', label: 'Rewards' },
+            { href: '/m/leaderboard', label: 'Leaderboard' },
+          ]}
+        />
+      )}
 
-      {/* ─── Level Hero Card ─────────────────────────────────────────────── */}
+      {/* ─── Level strip ─────────────────────────────────────────────────── */}
       <FadeIn>
-        <div className="mb-5 rounded-3xl bg-brand-500 p-5 text-white">
-          <div className="flex items-center gap-4">
+        <div className="tile mb-3 p-4">
+          <div className="flex items-center gap-3">
             {/* Level badge — uses /public/level/level_N.webp images */}
-            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={getLevelBadge(level)}
-                alt={`Level ${level}`}
-                width={96}
-                height={96}
-                className="relative h-[96px] w-[96px] object-contain drop-shadow-md"
-              />
-            </div>
-
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getLevelBadge(level)}
+              alt={`Level ${level}`}
+              width={48}
+              height={48}
+              className="h-12 w-12 shrink-0 object-contain"
+            />
             <div className="min-w-0 flex-1">
-              <span className="inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white">
+              <p className="truncate text-sm font-bold text-slate-900">
                 Level {level} · {levelTitle}
-              </span>
-              <p className="mt-1.5 text-3xl font-black leading-none tracking-tight tabular-nums">
-                <CountUp value={xp} /> <span className="text-base font-bold text-white/80">XP</span>
               </p>
-              <p className="mt-1 text-[11px] font-semibold text-white/80">
-                {earnedCount} / {totalAchievements} achievements
+              <p className="text-xl font-black leading-tight tracking-tight text-slate-900 tabular-nums">
+                <CountUp value={xp} /> <span className="text-xs font-bold text-slate-500">XP</span>
               </p>
             </div>
+            <p className="shrink-0 text-right text-[11px] font-semibold leading-tight text-slate-500">
+              <span className="block text-sm font-black text-slate-900 tabular-nums">
+                {earnedCount}/{totalAchievements}
+              </span>
+              achievements
+            </p>
           </div>
 
           {/* Scaled with a transform (not width) so it never triggers layout. */}
-          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/25">
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
             <motion.div
-              className="h-full origin-left rounded-full bg-white"
+              className="h-full origin-left rounded-full bg-brand-500"
               initial={{ scaleX: reduce ? levelPct : 0 }}
               animate={{ scaleX: levelPct }}
               transition={reduce ? { duration: 0 } : { ...spring, delay: 0.15 }}
             />
           </div>
-          <p className="mt-1.5 text-[11px] font-semibold text-white/80">
-            {xpInLevel.toLocaleString()} / {xpForNextLevel.toLocaleString()} XP
+          <p className="mt-1.5 text-[11px] font-semibold text-slate-500 tabular-nums">
+            {xpInLevel.toLocaleString()} / {xpForNextLevel.toLocaleString()} XP to level {level + 1}
           </p>
         </div>
       </FadeIn>
 
       <MemberEvents />
 
-      {/* ─── Streak ──────────────────────────────────────────────────────── */}
-      <div className="tile mb-3 flex items-center gap-3 p-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
-          <Flame aria-hidden="true" className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <StreakBadge
-            streak={streak}
-            pending={streakPending}
-            size="md"
-            suffix="day streak"
-            hideFlame
-            showLabel
-          />
-          <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
-            Longest streak: {formatCount(longestStreak)} {longestStreak === 1 ? 'day' : 'days'}
-          </p>
-        </div>
-      </div>
-
-      {leaderboardsEnabled && <LeaderboardEntryCard className="mb-5" />}
-
-      {/* ─── Tabs ────────────────────────────────────────────────────────── */}
-      <LayoutGroup id="rewards-tabs">
-        <div className="mb-5 grid grid-cols-3 gap-1 rounded-full bg-surface-secondary p-1">
+      {/* ─── Badges ──────────────────────────────────────────────────────── */}
+      <h2 className="mb-3 text-xs font-black uppercase tracking-[0.1em] text-slate-500">Badges</h2>
+      <div className="mb-5 flex gap-2">
           {([
             ['all', `All (${totalAchievements})`],
             ['earned', `Earned (${earnedCount})`],
@@ -170,22 +143,16 @@ export default function RewardsClient({
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`relative min-h-11 rounded-full text-xs font-bold transition-colors ${
-                tab === id ? 'text-brand-600' : 'text-slate-500'
-              }`}
-            >
-              {tab === id && (
-                <motion.span
-                  layoutId="rewards-tab-pill"
-                  transition={spring}
-                  className="absolute inset-0 rounded-full bg-surface-card shadow-sm"
-                />
+              aria-pressed={tab === id}
+              className={cn(
+                'min-h-11 rounded-full px-4 text-xs font-bold transition-colors',
+                tab === id ? 'bg-brand-500 text-white' : 'bg-surface-secondary text-slate-600',
               )}
-              <span className="relative">{label}</span>
+            >
+              {label}
             </button>
           ))}
-        </div>
-      </LayoutGroup>
+      </div>
 
       {/* ─── Rarity-grouped grid ─────────────────────────────────────────── */}
       {displayed.length === 0 ? (

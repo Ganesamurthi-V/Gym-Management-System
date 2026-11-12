@@ -137,13 +137,13 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
   }, [log])
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-1 flex-col pt-2">
 
       {/* Hero: the one filled element. Ring fills to sets done, check pops in with a spring */}
       <div className="mb-5 flex flex-col items-center rounded-3xl bg-brand-500 px-5 py-7 text-center text-white shadow-lg shadow-brand-500/25">
         <ProgressRing
           value={stats.totalSets > 0 ? stats.completedSets / stats.totalSets : 0}
-          size={96}
+          size={120}
           strokeWidth={8}
           className="text-white"
           trackClassName="text-white/25"
@@ -297,8 +297,8 @@ export default function WorkoutComplete({ programName, dayLabel, log, totalElaps
       </p>
 
       {/* Done button */}
-      {/* Sticky, offset clears the floating bottom nav */}
-      <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.75rem+var(--pwa-safe-bottom)+0.75rem)] z-10">
+      {/* Pinned to the bottom of the full-screen overlay (no bottom nav under it) */}
+      <div className="sticky bottom-0 mt-auto bg-surface pb-1 pt-3">
         <button
           type="button"
           onClick={onDone}

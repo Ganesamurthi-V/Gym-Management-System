@@ -11,9 +11,9 @@ const UPI_PREFIX = 'upi://pay?'
 
 // Swap only the scheme/host prefix of the standard upi://pay? link for each app's deep link.
 const UPI_APPS = [
-  { name: 'Google Pay', prefix: 'tez://upi/pay?' },
-  { name: 'PhonePe', prefix: 'phonepe://pay?' },
-  { name: 'Paytm', prefix: 'paytmmp://pay?' },
+  { name: 'Google Pay', prefix: 'tez://upi/pay?', logo: '/upi/google-pay.svg' },
+  { name: 'PhonePe', prefix: 'phonepe://pay?', logo: '/upi/phonepe.svg' },
+  { name: 'Paytm', prefix: 'paytmmp://pay?', logo: '/upi/paytm.svg' },
 ]
 
 export const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
@@ -80,8 +80,8 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
   }
 
   const appLinks = [
-    ...UPI_APPS.map((a) => ({ name: a.name, href: a.prefix + upiLink.slice(UPI_PREFIX.length) })),
-    { name: 'Other UPI app', href: upiLink },
+    ...UPI_APPS.map((a) => ({ name: a.name, logo: a.logo, href: a.prefix + upiLink.slice(UPI_PREFIX.length) })),
+    { name: 'Other UPI app', logo: null, href: upiLink },
   ]
 
   return (
@@ -113,9 +113,23 @@ export default function UpiPayPanel({ upi, amount, note }: { upi: RenewalUpi; am
             key={a.name}
             href={a.href}
             onClick={() => { markUpiOpened(); setOpened(true) }}
-            className={cn('flex min-h-[44px] items-center justify-center rounded-full bg-slate-100 px-3 text-sm font-bold text-slate-700 active:bg-slate-200', focusRing)}
+            aria-label={a.logo ? a.name : undefined}
+            // The official logos are drawn for a light background, so they sit on a literal white plate (like the
+            // QR plate above) and stay readable in dark mode.
+            className={cn(
+              'flex min-h-[44px] items-center justify-center rounded-full px-3 text-sm font-bold',
+              a.logo
+                ? 'bg-white ring-1 ring-slate-200 active:bg-slate-50'
+                : 'bg-slate-100 text-slate-700 active:bg-slate-200',
+              focusRing,
+            )}
           >
-            {a.name}
+            {a.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={a.logo} alt="" className="h-6 w-auto max-w-full" />
+            ) : (
+              a.name
+            )}
           </a>
         ))}
       </div>

@@ -1,5 +1,5 @@
-import Link from 'next/link'
-import { ChevronDown, ChevronLeft } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+import { MemberTopBar } from '@/components/member/MemberTopBar'
 import { getRecentSessions } from '@/lib/member/progress-data'
 import { Stagger, StaggerItem } from '@/components/ui/motion'
 import { fmtNum, formatDuration, istDateOf, longDate } from '@/lib/progress/chart'
@@ -9,12 +9,9 @@ export default async function WorkoutHistoryPage() {
   const sessions = await getRecentSessions()
 
   return (
-    <div className="page-container py-6">
-      <Link href="/m/progress" className="mb-3 inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-brand-600">
-        <ChevronLeft className="h-4 w-4" aria-hidden="true" /> My Progress
-      </Link>
-      <h1 className="mb-4 text-3xl font-bold tracking-tight text-slate-900">Workout history</h1>
-
+    <>
+      <MemberTopBar variant="sub" title="Workout history" backHref="/m/workout" backLabel="Back to workout" />
+      <div className="page-container pb-6 pt-2">
       {sessions.length === 0 ? (
         <p className="tile p-4 text-sm text-slate-500">
           No workouts saved yet. Finish a guided workout and it appears here.
@@ -64,6 +61,7 @@ export default async function WorkoutHistoryPage() {
           ))}
         </Stagger>
       )}
-    </div>
+      </div>
+    </>
   )
 }

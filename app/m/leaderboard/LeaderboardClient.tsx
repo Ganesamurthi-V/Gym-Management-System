@@ -6,6 +6,8 @@ import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-m
 import { Crown, EyeOff, Gift, Medal, RefreshCw, Target, Trophy, type LucideIcon } from 'lucide-react'
 import { FadeIn } from '@/components/ui/motion'
 import { spring } from '@/lib/motion'
+import { MemberTopBar } from '@/components/member/MemberTopBar'
+import { SectionSwitch } from '@/components/member/SectionSwitch'
 import { StreakBadge } from '@/components/member/StreakBadge'
 import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
 import { LEADERBOARD_BOARDS, LEADERBOARD_BOARD_LABELS } from '@/lib/gamification/constants'
@@ -26,6 +28,7 @@ import type { LeaderboardBoard, LeaderboardRow } from '@/lib/gamification/types'
  */
 
 interface Props {
+  memberName: string
   initialBoard: LeaderboardBoard
   initialRows: LeaderboardRow[]
   /** The gym's switch. Off means the RPC returns no rows to members at all. */
@@ -45,6 +48,7 @@ const PIN_OWN_ROW_AFTER = 5
 const PODIUM_SIZE = 3
 
 export default function LeaderboardClient({
+  memberName,
   initialBoard,
   initialRows,
   leaderboardsEnabled,
@@ -88,19 +92,30 @@ export default function LeaderboardClient({
   const prize = board === 'week' ? weeklyPrize : board === 'month' ? monthlyPrize : null
 
   return (
-    <div className="page-container py-6">
-      <header className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Leaderboard</h1>
-          <p className="mt-0.5 text-xs font-medium text-slate-400">See how you rank at your gym</p>
-        </div>
-        {leaderboardsEnabled && (
-          <span className="mt-1.5 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700">
-            <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-            Live
-          </span>
-        )}
-      </header>
+    <>
+      <MemberTopBar
+        variant="root"
+        title="Rewards"
+        memberName={memberName}
+        actions={
+          leaderboardsEnabled ? (
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700">
+              <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Live
+            </span>
+          ) : undefined
+        }
+      />
+      <div className="page-container pb-32 pt-2">
+      {leaderboardsEnabled && (
+        <SectionSwitch
+          className="mb-4"
+          items={[
+            { href: '/m/rewards', label: 'Rewards' },
+            { href: '/m/leaderboard', label: 'Leaderboard' },
+          ]}
+        />
+      )}
 
       {!leaderboardsEnabled ? (
         <EmptyState
@@ -247,7 +262,8 @@ export default function LeaderboardClient({
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { CheckCircle2, AlertCircle, Clock, CreditCard, QrCode } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Clock, CreditCard } from 'lucide-react'
 import { getMembershipPageData } from '@/lib/member/member-data'
 import { formatDate, formatPlan, formatCurrency } from '@/lib/member/member-utils'
 import { startPageTimer } from '@/lib/perf'
-import { FadeIn, Stagger, StaggerItem, Pressable, CountUp, ProgressRing } from '@/components/ui/motion'
+import { Stagger, StaggerItem, Pressable } from '@/components/ui/motion'
+import { MemberTopBar, TopBarButton } from '@/components/member/MemberTopBar'
 import MembershipQR from './MembershipQR'
 
 // Dynamic via the auth cookie; see the note in home/page.tsx on why a
@@ -34,70 +35,31 @@ export default async function MembershipPage() {
   }
   const cfg = statusConfig[status]
 
-  // Progress bar width based on days left vs plan duration
-  let progressPct = 0
-  if (latest && status !== 'expired') {
-    const totalDays = Math.ceil(
-      (new Date(latest.end_date).getTime() - new Date(latest.start_date).getTime()) / 86400000
-    )
-    progressPct = totalDays > 0 ? Math.max(0, Math.min(100, Math.round(((daysLeft ?? 0) / totalDays) * 100))) : 0
-  }
-
   return (
-    <div className="page-container py-6">
+    <>
+      <MemberTopBar
+        variant="sub"
+        title="Membership"
+        backHref="/m/profile"
+        actions={
+          <TopBarButton href="/m/membership/card" label="Full card">
+            <CreditCard aria-hidden="true" className="h-5 w-5" />
+          </TopBarButton>
+        }
+      />
 
-      <FadeIn>
-        <header className="mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-brand-600">GymFlow Member</p>
-            <h1 className="mt-0.5 text-3xl font-bold tracking-tight text-slate-900">Membership</h1>
-          </div>
-          <Pressable>
-            <Link
-              href="/m/membership/card"
-              className="tap-target flex min-h-[44px] items-center gap-1.5 rounded-full bg-brand-50 px-4 text-xs font-bold text-brand-700"
-            >
-              <QrCode className="h-4 w-4" />
-              Full Card
-            </Link>
-          </Pressable>
-        </header>
-      </FadeIn>
-
+      <div className="page-container pb-6 pt-2">
       <Stagger className="space-y-4">
-        {/* Current membership: the one filled hero element on this screen */}
+        {/* Compact status line: the hero card now lives on Me */}
         <StaggerItem>
           {latest ? (
-            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 to-brand-700 p-5 text-white shadow-lg shadow-brand-900/20">
-              <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-widest text-brand-100">Current Plan</p>
-                  <p className="mt-1 truncate text-2xl font-bold tracking-tight">{formatPlan(latest.plan)}</p>
-                </div>
-                <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${cfg.cls}`}>
-                  {cfg.label}
-                </span>
-              </div>
-              {daysLeft !== null && daysLeft > 0 && (
-                <div className="relative mt-5 flex items-center gap-4">
-                  <ProgressRing
-                    value={progressPct / 100}
-                    size={88}
-                    strokeWidth={8}
-                    className="text-white"
-                    trackClassName="text-white/20"
-                    label={`${daysLeft} days remaining`}
-                  >
-                    <span className="text-xl font-bold tracking-tight"><CountUp value={daysLeft} /></span>
-                  </ProgressRing>
-                  <div>
-                    <p className="text-sm font-bold">{daysLeft} day{daysLeft === 1 ? '' : 's'} remaining</p>
-                    <p className="mt-0.5 text-xs text-brand-100">Expires {formatDate(latest.end_date)}</p>
-                  </div>
-                </div>
-              )}
-            </section>
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-lg font-bold tracking-tight text-slate-900">{formatPlan(latest.plan)}</p>
+              <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${cfg.cls}`}>
+                {cfg.label}
+                {daysLeft !== null && daysLeft > 0 ? ` · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : ''}
+              </span>
+            </div>
           ) : (
             <section className="tile flex flex-col items-center py-10 text-center">
               <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
@@ -126,11 +88,6 @@ export default async function MembershipPage() {
             </section>
           </StaggerItem>
         )}
-
-        {/* QR code: shown near the top so members can check in without leaving this page */}
-        <StaggerItem>
-          <MembershipQR memberCode={memberCode} />
-        </StaggerItem>
 
         {/* Pending dues */}
         {member.pending_amount > 0 && (
@@ -161,6 +118,11 @@ export default async function MembershipPage() {
           </Pressable>
         </StaggerItem>
 
+        {/* QR code: kept here too so members can check in from the details page */}
+        <StaggerItem>
+          <MembershipQR memberCode={memberCode} />
+        </StaggerItem>
+
         {/* Membership history */}
         {memberships.length > 1 && (
           <StaggerItem>
@@ -183,7 +145,7 @@ export default async function MembershipPage() {
           </StaggerItem>
         )}
       </Stagger>
-
-    </div>
+      </div>
+    </>
   )
 }

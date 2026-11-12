@@ -1,17 +1,18 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api/client'
-import { ArrowLeft, Calendar, Dumbbell, Play, Target } from 'lucide-react'
+import { Dumbbell, Play } from 'lucide-react'
 import type { WorkoutProgram } from '@/types/member-db'
 import type { Json } from '@/types/member-db'
 import type { LastWeights } from '@/types/progress'
-import { spring } from '@/lib/motion'
 import { Stagger, StaggerItem } from '@/components/ui/motion'
-import WorkoutSession, { newClientId } from './WorkoutSession'
+import { cn } from '@/lib/utils'
+import { normaliseExerciseName } from '@/types/progress'
+import FocusOverlay from './FocusOverlay'
+import WorkoutSession, { lastTimeText, newClientId } from './WorkoutSession'
 
 interface ExerciseSet {
   exerciseName?: string
@@ -32,10 +33,6 @@ interface ExerciseInstance {
 interface Props {
   program: WorkoutProgram
   lastWeights: LastWeights
-  /** Set only when the member has several programs: whether this one is their "For me" pick. */
-  isMine?: boolean
-  onChooseForMe?: () => void
-  onBack: () => void
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
@@ -52,14 +49,13 @@ function parseSchedule(raw: Json): Record<string, ExerciseInstance[]> {
   return out
 }
 
-export default function WorkoutDetail({ program, lastWeights, isMine, onChooseForMe, onBack }: Props) {
+export default function WorkoutDetail({ program, lastWeights }: Props) {
   const [activeDay, setActiveDay] = useState<string>(TODAY_KEY)
   const [sessionStarted, setSessionStarted] = useState(false)
   // "Do it by myself": the member trained without the phone, so the day is saved as done in one tap.
   const [selfLog, setSelfLog] = useState<'idle' | 'confirm' | 'saving' | 'saved' | 'error'>('idle')
   const selfClientId = useRef<string | null>(null)
   const router = useRouter()
-  const reduce = useReducedMotion()
 
   const schedule = useMemo(() => parseSchedule(program.schedule), [program.schedule])
   const exercises = schedule[activeDay] ?? []
@@ -101,91 +97,35 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
     }
   }
 
-  const slide = reduce
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 } }
   const inSession = sessionStarted && exercises.length > 0
+  const totalSets = exercises.reduce((n, ex) => n + Math.max(getExerciseSets(ex).length, 1), 0)
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      {inSession ? (
-        <motion.div key="session" {...slide} transition={spring}>
-      <WorkoutSession
-        programName={program.name}
-        lastWeights={lastWeights}
-        dayLabel={activeDay}
-        exercises={exercises.map(ex => ({
-          id: ex.id,
-          name: ex.name,
-          target: ex.target,
-          type: ex.type,
-          notes: ex.notes,
-          sets: getExerciseSets(ex),
-        }))}
-        onFinish={() => setSessionStarted(false)}
-        onBack={() => setSessionStarted(false)}
-      />
-        </motion.div>
-      ) : (
-        <motion.div key="detail" {...slide} transition={spring}>
     <div>
-      {/* Header */}
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-4 flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-brand-600"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Programs
-      </button>
-
-      <div className="mb-5">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">{program.name}</h2>
-          {onChooseForMe && (isMine ? (
-            <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">For me</span>
-          ) : (
-            <button
-              type="button"
-              onClick={onChooseForMe}
-              className="min-h-[44px] shrink-0 rounded-full border border-brand-500 px-3 text-xs font-bold text-brand-600"
-            >
-              For me
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-          <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {program.duration} weeks</span>
-          {program.frequency && <span className="flex items-center gap-1"><Dumbbell className="h-3.5 w-3.5" /> {program.frequency}×/week</span>}
-          {program.goal && <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> {program.goal}</span>}
-        </div>
-        {program.summary && (
-          <p className="mt-2 text-xs leading-relaxed text-slate-500">{program.summary}</p>
-        )}
-      </div>
-
-      {/* Day tabs */}
+      {/* Day strip: today preselected */}
       {activeDays.length > 0 && (
-        <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        <div className="rail mb-4" role="tablist" aria-label="Workout day">
           {activeDays.map(day => (
             <button
               key={day}
               type="button"
+              role="tab"
+              aria-selected={activeDay === day}
               onClick={() => { setActiveDay(day); setSelfLog('idle'); selfClientId.current = null }}
-              className={`min-h-[44px] shrink-0 rounded-full px-4 text-xs font-bold transition-colors active:scale-95 ${
-                activeDay === day
-                  ? 'bg-brand-500 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              } ${day === TODAY_KEY ? 'ring-2 ring-brand-200 ring-offset-1' : ''}`}
+              className={cn(
+                'flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-full text-xs font-bold transition-colors active:scale-95',
+                activeDay === day ? 'bg-brand-500 text-white' : 'bg-surface-secondary text-slate-600',
+                day === TODAY_KEY && activeDay !== day && 'ring-2 ring-brand-200',
+              )}
             >
               {day}
-              {day === TODAY_KEY && <span className="ml-1 text-[9px] opacity-75">Today</span>}
+              {day === TODAY_KEY && <span className="text-[9px] font-semibold opacity-80">Today</span>}
             </button>
           ))}
         </div>
       )}
 
-      {/* Exercise list for the selected day */}
+      {/* Day summary, then the exercise list for the selected day */}
       {exercises.length === 0 ? (
         <div className="tile flex flex-col items-center py-10 text-center">
           <Dumbbell className="mb-2 h-8 w-8 text-slate-200" />
@@ -194,46 +134,36 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
         </div>
       ) : (
         <>
+          <p className="mb-3 text-sm font-semibold text-slate-500">
+            {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'} · {totalSets} sets
+          </p>
+
           {/* Keyed by day so the tiles re-enter when the day chip changes */}
           <Stagger key={activeDay} className="mb-5 space-y-3">
             {exercises.map((ex, idx) => {
               const sets = getExerciseSets(ex)
+              const reps = [...new Set(sets.map(s => s.reps).filter(Boolean))].join(' / ')
+              const last = lastTimeText(lastWeights[normaliseExerciseName(ex.name)])
               return (
                 <StaggerItem key={ex.id}>
-                <div className="tile p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 text-xs font-bold">
+                  <div className="tile flex items-center gap-3 p-4">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-xs font-bold text-brand-600">
                       {idx + 1}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900">{ex.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{ex.target} · {ex.type}</p>
-
-                      {sets.length > 0 && (
-                        <div className="mt-2.5 space-y-1">
-                          {sets.map((set, si) => (
-                            <div key={si} className="flex items-center gap-2 text-xs text-slate-600">
-                              <span className="w-12 shrink-0 font-semibold text-slate-400">Set {si + 1}</span>
-                              {set.reps && <span>{set.reps} reps</span>}
-                              {set.weight && <span className="text-slate-400">· {set.weight}</span>}
-                              {set.rest && <span className="text-slate-400">· rest {set.rest}</span>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {ex.notes && (
-                        <p className="mt-2 text-[11px] italic text-slate-400">{ex.notes}</p>
-                      )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-slate-900">{ex.name}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {sets.length > 0 ? `${sets.length} x ${reps || '-'}` : ex.target}
+                        {last && <span className="text-slate-400"> · Last {last}</span>}
+                      </p>
+                      {ex.notes && <p className="mt-1 text-[11px] italic text-slate-400">{ex.notes}</p>}
                     </div>
                   </div>
-                </div>
                 </StaggerItem>
               )
             })}
           </Stagger>
 
-          {/* Start Workout button */}
           {/* Sticky so it stays reachable on long days; offset clears the floating bottom nav */}
           <div className="sticky bottom-[calc(var(--bottom-nav-height)+0.75rem+var(--pwa-safe-bottom)+0.75rem)] z-10">
             <button
@@ -242,7 +172,7 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
               className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-brand-500 text-sm font-bold text-white shadow-lg shadow-brand-500/30 transition-transform active:scale-[0.97] hover:bg-brand-600"
             >
               <Play className="h-5 w-5" fill="currentColor" />
-              Start Workout
+              Start workout
             </button>
           </div>
 
@@ -289,9 +219,27 @@ export default function WorkoutDetail({ program, lastWeights, isMine, onChooseFo
           )}
         </>
       )}
-    </div>
-        </motion.div>
+
+      {/* Live session: full-screen focus mode over the whole shell */}
+      {inSession && (
+        <FocusOverlay>
+          <WorkoutSession
+            programName={program.name}
+            lastWeights={lastWeights}
+            dayLabel={activeDay}
+            exercises={exercises.map(ex => ({
+              id: ex.id,
+              name: ex.name,
+              target: ex.target,
+              type: ex.type,
+              notes: ex.notes,
+              sets: getExerciseSets(ex),
+            }))}
+            onFinish={() => setSessionStarted(false)}
+            onBack={() => setSessionStarted(false)}
+          />
+        </FocusOverlay>
       )}
-    </AnimatePresence>
+    </div>
   )
 }

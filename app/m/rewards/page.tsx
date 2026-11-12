@@ -15,6 +15,7 @@ import {
 } from '@/lib/member/achievements/merge'
 import type { Achievement, MemberStats } from '@/lib/member/achievements/types'
 import { levelFromXp } from '@/lib/gamification/xp'
+import { MemberTopBar } from '@/components/member/MemberTopBar'
 import RewardsClient from './RewardsClient'
 
 /**
@@ -105,7 +106,9 @@ export default async function RewardsPage() {
   done()
 
   return (
-    <RewardsClient
+    <>
+      <MemberTopBar variant="root" title="Rewards" memberName={member.name} />
+      <RewardsClient
       xp={game.xp}
       level={level}
       levelTitle={levelTitle}
@@ -116,11 +119,9 @@ export default async function RewardsPage() {
       earned={earned}
       locked={locked}
       allAchievements={allAchievements}
-      streak={game.streak}
-      streakPending={game.streakPending}
-      longestStreak={game.longestStreak}
       leaderboardsEnabled={game.leaderboardsEnabled}
     />
+    </>
   )
 }
 

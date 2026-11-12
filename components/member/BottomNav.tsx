@@ -1,18 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { BarChart3, Dumbbell, Home, Trophy, UserRound } from 'lucide-react'
+import { BarChart3, Dumbbell, Home, Trophy } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { spring } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 /**
- * Five tabs is the limit on a 360px phone: a sixth leaves 60px per tab, which
- * cannot fit an 11px "Leaderboard" label and squeezes the tap targets. So the
- * leaderboard has no tab of its own; it is reached from cards on Home and
- * Rewards, and `alsoActiveFor` keeps the Rewards tab lit while it is open so
- * the member still sees where they are.
+ * Four tabs keep each target wide on a 360px phone, so the active tab has room
+ * for icon + label. Profile has no tab: it is reached from the avatar in
+ * `MemberTopBar`. The leaderboard has no tab either; it is reached from cards
+ * on Home and Rewards, and `alsoActiveFor` keeps the Rewards tab lit while it
+ * is open so the member still sees where they are.
  */
 const navItems: ReadonlyArray<{
   href: string
@@ -24,7 +24,6 @@ const navItems: ReadonlyArray<{
   { href: '/m/workout', label: 'Workout', icon: Dumbbell },
   { href: '/m/progress', label: 'Progress', icon: BarChart3 },
   { href: '/m/rewards', label: 'Rewards', icon: Trophy, alsoActiveFor: ['/m/leaderboard'] },
-  { href: '/m/profile', label: 'Profile', icon: UserRound },
 ]
 
 export function BottomNav() {

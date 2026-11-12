@@ -16,6 +16,8 @@ interface AttendanceRecord {
 interface Props {
   checkedInDates: string[]
   records: AttendanceRecord[]
+  /** Server-rendered block shown between the calendar and the day detail (the stat tile). */
+  statsSlot?: React.ReactNode
 }
 
 /**
@@ -67,7 +69,7 @@ function formatTime(isoStr: string): string {
   return new Date(isoStr).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
 }
 
-export default function AttendanceCalendar({ checkedInDates, records }: Props) {
+export default function AttendanceCalendar({ checkedInDates, records, statsSlot }: Props) {
   const now = new Date()
   const todayStr = now.toISOString().slice(0, 10)
   const [year, setYear] = useState(now.getFullYear())
@@ -108,7 +110,7 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
   return (
     <>
       {/* Attendance Overview card */}
-      <section className="tile mb-5 p-4">
+      <section className="tile mb-4 p-4">
         {/* Month navigation */}
         <div className="mb-4 flex items-center justify-between">
           <button type="button" onClick={goBack} className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-secondary transition-transform active:scale-95" aria-label="Previous month">
@@ -190,6 +192,8 @@ export default function AttendanceCalendar({ checkedInDates, records }: Props) {
           </div>
         </div>
       </section>
+
+      {statsSlot}
 
       {/* Details section below */}
       {selectedDate ? (

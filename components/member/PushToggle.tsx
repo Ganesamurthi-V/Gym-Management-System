@@ -13,7 +13,7 @@ const STATE_TEXT = {
   'ios-needs-install': 'Add GymFlow to your Home Screen first',
 } as const
 
-/** Profile > Privacy switch. The position follows the re-read device state, so a refused permission snaps back. */
+/** Me > Preferences row (sits in a divided list). The position follows the re-read device state, so a refused permission snaps back. */
 export function PushToggle({ publicKey }: { publicKey: string }) {
   const { state, busy, error, enable, disable } = usePushState(publicKey)
   const reduce = useReducedMotion()
@@ -23,7 +23,7 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
   const locked = state === 'denied' || state === 'ios-needs-install'
 
   return (
-    <div className="mt-4 border-t border-surface-border pt-4">
+    <div className="px-4 py-3">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
           <Bell aria-hidden="true" className="h-4 w-4" />

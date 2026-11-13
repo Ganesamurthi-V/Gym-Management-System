@@ -3,6 +3,9 @@ import {
   importRowsToTake,
   planAllowsWhatsApp,
   planAllowsMemberApp,
+  planAllowsBiometric,
+  biometricDeviceLimit,
+  gymMayUseBiometric,
 } from '@/lib/subscription-utils'
 
 describe('importRowsToTake', () => {
@@ -44,5 +47,30 @@ describe('planAllowsMemberApp', () => {
     expect(planAllowsMemberApp('free')).toBe(false)
     expect(planAllowsMemberApp('trial')).toBe(true)
     expect(planAllowsMemberApp('monthly')).toBe(true)
+  })
+})
+
+describe('biometric plan rules', () => {
+  const future = new Date(Date.now() + 5 * 86400000).toISOString()
+  const past = new Date(Date.now() - 86400000).toISOString()
+  it('is off for Free and on for trial and paid plans', () => {
+    expect(planAllowsBiometric('free')).toBe(false)
+    expect(planAllowsBiometric('trial')).toBe(true)
+    expect(planAllowsBiometric('monthly')).toBe(true)
+    expect(planAllowsBiometric('lifetime')).toBe(true)
+  })
+  it('gives a trial one device and paid plans five', () => {
+    expect(biometricDeviceLimit('trial')).toBe(1)
+    expect(biometricDeviceLimit('monthly')).toBe(5)
+    expect(biometricDeviceLimit('yearly')).toBe(5)
+  })
+  it('runs only for a writable gym on a plan that includes it', () => {
+    expect(gymMayUseBiometric({ plan_type: 'trial', subscription_status: 'trial', trial_ends_at: future, is_active: true })).toBe(true)
+    expect(gymMayUseBiometric({ plan_type: 'monthly', subscription_status: 'active', subscription_ends_at: future, is_active: true })).toBe(true)
+    expect(gymMayUseBiometric({ plan_type: 'free', subscription_status: 'active', is_active: true })).toBe(false)
+    expect(gymMayUseBiometric({ plan_type: 'trial', subscription_status: 'trial', trial_ends_at: past, is_active: true })).toBe(false)
+    expect(gymMayUseBiometric({ plan_type: 'monthly', subscription_status: 'active', subscription_ends_at: past, is_active: true })).toBe(false)
+    expect(gymMayUseBiometric({ plan_type: 'monthly', subscription_status: 'active', is_active: false })).toBe(false)
+    expect(gymMayUseBiometric(null)).toBe(false)
   })
 })

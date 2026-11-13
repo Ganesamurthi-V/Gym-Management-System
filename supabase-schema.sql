@@ -1734,6 +1734,20 @@ AS $$
   SELECT 50
 $$;
 
+-- ── biometric_device_limit: how many biometric devices a plan may register ──
+-- A trial gets one device, every paid plan five. Must equal biometricDeviceLimit() in
+-- lib/subscription-utils.ts (a test compares the two). Free is refused by the trigger
+-- before this is read.
+CREATE OR REPLACE FUNCTION public.biometric_device_limit(p_plan TEXT)
+RETURNS INTEGER
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+SET search_path = ''
+AS $$
+  SELECT CASE WHEN p_plan = 'trial' THEN 1 ELSE 5 END
+$$;
+
 -- ── member_app_allowed: may the signed-in member use the member app? ──
 -- The database copy of the member app gate, so a member JWT cannot read app
 -- data straight through PostgREST once the gym loses access. Mirrors
@@ -2449,6 +2463,9 @@ BEGIN
    LIMIT 1;
   IF v_member_id IS NULL THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
   END IF;
 
   DELETE FROM public.member_body_logs b
@@ -4716,6 +4733,39 @@ BEGIN
 END;
 $$;
 
+-- ── 1d-2. attendance_devices: the plan decides how many devices a gym may register ──
+-- Enforced in the database so every insert path is covered, including the service role.
+-- The gym row lock serialises concurrent inserts (otherwise two requests on a trial with no
+-- device would both pass the count) and orders them against plan changes. Free gyms cannot
+-- add a device; the ones they set up during the trial are kept, untouched, for a later
+-- upgrade. Definer so the lock and the count do not depend on the caller's grants.
+CREATE OR REPLACE FUNCTION public.enforce_biometric_device_limit()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_plan TEXT;
+BEGIN
+  SELECT plan_type INTO v_plan
+    FROM public.gyms
+   WHERE id = NEW.gym_id
+   FOR UPDATE;
+
+  IF v_plan = 'free' THEN
+    RAISE EXCEPTION 'biometric_not_in_plan' USING ERRCODE = '23514';
+  END IF;
+
+  IF (SELECT count(*) FROM public.attendance_devices WHERE gym_id = NEW.gym_id)
+     >= public.biometric_device_limit(v_plan)
+  THEN
+    RAISE EXCEPTION 'biometric_device_limit' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 -- ── 1e. gyms: login_disabled always mirrors is_active ──
 -- Two flags for one ban drifted apart (an admin re-activated a gym but the old
 -- login_disabled stayed set, or the other way round). is_active is the one the
@@ -5634,6 +5684,15 @@ DROP TRIGGER IF EXISTS trg_guard_members_gym_id ON public.members;
 CREATE TRIGGER trg_guard_members_gym_id
   BEFORE UPDATE OF gym_id ON public.members
   FOR EACH ROW EXECUTE FUNCTION public.guard_members_gym_id();
+
+-- ────────────────────────────────────────────────────────────
+-- triggers on attendance_devices
+-- ────────────────────────────────────────────────────────────
+
+DROP TRIGGER IF EXISTS trg_enforce_biometric_device_limit ON public.attendance_devices;
+CREATE TRIGGER trg_enforce_biometric_device_limit
+  BEFORE INSERT ON public.attendance_devices
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_biometric_device_limit();
 
 -- ────────────────────────────────────────────────────────────
 -- triggers on memberships
@@ -6868,6 +6927,7 @@ REVOKE ALL ON FUNCTION public.email_thread_on_message()               FROM PUBLI
 REVOKE ALL ON FUNCTION public.guard_gyms_privileged_columns()         FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_gyms_plan_downgrade()             FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.enforce_free_plan_member_cap()          FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.enforce_biometric_device_limit()        FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_support_tickets_owner_update()    FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_admin_messages_owner_update()     FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_member_leaderboard_visibility()   FROM PUBLIC, anon, authenticated;
@@ -6950,6 +7010,9 @@ GRANT EXECUTE ON FUNCTION public.member_app_allowed() TO authenticated;
 -- The Free / trial member limit; a constant, harmless to call.
 REVOKE ALL ON FUNCTION public.plan_member_limit()     FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.plan_member_limit()  TO authenticated, service_role;
+-- The per-plan biometric device limit; a constant, harmless to call.
+REVOKE ALL ON FUNCTION public.biometric_device_limit(TEXT)    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.biometric_device_limit(TEXT) TO authenticated, service_role;
 
 -- Gym leaderboard: callable by owners and members alike; the function decides
 -- which gym and how much of each row the caller gets.

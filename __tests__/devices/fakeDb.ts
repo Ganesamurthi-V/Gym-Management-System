@@ -2,7 +2,7 @@
 type Row = Record<string, unknown>
 
 export function createFakeDb() {
-  const tables: Record<string, Row[]> = { attendance_devices: [], device_user_map: [], device_punches: [], attendance: [], device_commands: [], members: [], memberships: [] }
+  const tables: Record<string, Row[]> = { attendance_devices: [], device_user_map: [], device_punches: [], attendance: [], device_commands: [], members: [], memberships: [], gyms: [] }
   let seq = 0
   // Column defaults the real tables have.
   const defaults: Record<string, Row> = { device_commands: { state: 'queued', attempts: 0, last_sent_at: null, acked_at: null, error: null } }

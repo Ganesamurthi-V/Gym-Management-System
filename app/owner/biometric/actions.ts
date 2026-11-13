@@ -9,6 +9,8 @@ import { replayUnmappedPunches } from '@/lib/devices/processPunch'
 import { isValidTimeZone } from '@/lib/devices/time'
 import { enqueueDeviceCommand } from '@/lib/devices/commands'
 import { normalizeSerial, SERIAL_RE, pinToMemberNumber } from '@/lib/devices/ui'
+import { gymIsWritable, gymMayUseBiometric, biometricDeviceLimit, BIOMETRIC_NOT_INCLUDED_MESSAGE } from '@/lib/subscription-utils'
+import { SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/subscriptionGuard'
 
 export type ActionResult<T = unknown> = { ok: boolean; error?: string; data?: T }
 
@@ -18,23 +20,25 @@ const pinSchema = z.string().trim().regex(/^[A-Za-z0-9]{1,24}$/, 'Invalid device
 const tzSchema = z.string().trim().min(1).max(64)
 
 // The serial is the only credential, so a gym cannot hold many devices or register them in bulk.
-const MAX_DEVICES_PER_GYM = 5
+// The per-gym limit comes from the plan (biometricDeviceLimit).
 const MAX_DEVICES_PER_HOUR = 3
-
-// The gym always comes from the verified session, never from the client.
-async function resolveGymId(): Promise<string | null> {
-  return (await resolveGymAndUser())?.gymId ?? null
-}
-
-async function resolveGymAndUser(): Promise<{ gymId: string; userId: string } | null> {
-  const { user } = await getAuthUser()
-  if (!user) return null
-  const { gym } = await getGymCore(user.id)
-  return gym?.id ? { gymId: gym.id, userId: user.id } : null
-}
 
 const NOT_SIGNED_IN: ActionResult<never> = { ok: false, error: 'Please sign in again.' }
 const GENERIC: ActionResult<never> = { ok: false, error: 'Something went wrong. Please try again.' }
+
+// The gym always comes from the verified session, never from the client. Every action goes through
+// this, so the plan gate is here: on Free (or a lapsed / deactivated gym) nothing can be added,
+// changed OR removed, which is also what keeps the saved devices and links intact for a later upgrade.
+// getGymCore is uncached, so the plan is read fresh.
+async function resolveGym(): Promise<{ gymId: string; userId: string; plan: string | null } | { error: ActionResult<never> }> {
+  const { user } = await getAuthUser()
+  if (!user) return { error: NOT_SIGNED_IN }
+  const { gym } = await getGymCore(user.id)
+  if (!gym?.id) return { error: NOT_SIGNED_IN }
+  if (!gymIsWritable(gym)) return { error: { ok: false, error: SUBSCRIPTION_ENDED_MESSAGE } }
+  if (!gymMayUseBiometric(gym)) return { error: { ok: false, error: BIOMETRIC_NOT_INCLUDED_MESSAGE } }
+  return { gymId: gym.id, userId: user.id, plan: gym.plan_type }
+}
 
 function done<T>(data?: T): ActionResult<T> {
   revalidatePath('/owner/biometric')
@@ -53,9 +57,10 @@ export async function addDevice(name: string, serial: string, timezone?: string)
     return { ok: false, error: 'Unknown timezone. Use a name like Asia/Kolkata.' }
   }
 
-  const ctx = await resolveGymAndUser()
-  if (!ctx) return NOT_SIGNED_IN
-  const { gymId, userId } = ctx
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId, userId, plan } = gate
+  const maxDevices = biometricDeviceLimit(plan)
 
   const supabase = await createClient()
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
@@ -64,9 +69,15 @@ export async function addDevice(name: string, serial: string, timezone?: string)
     supabase.from('attendance_devices').select('id', { count: 'exact', head: true }).eq('gym_id', gymId).gte('created_at', hourAgo),
   ])
   if (total.error || recent.error) return GENERIC
-  if ((total.count ?? 0) >= MAX_DEVICES_PER_GYM) {
-    return { ok: false, error: 'Device limit reached. Contact support to add more.' }
+  // Friendly early answer only. The database trigger (enforce_biometric_device_limit) is the real
+  // limit: it counts under the gym row lock, so two requests at once cannot both pass.
+  const limitReached: ActionResult = {
+    ok: false,
+    error: plan === 'trial'
+      ? 'The free trial includes 1 device. Upgrade to a paid plan to add more.'
+      : 'Device limit reached. Contact support to add more.',
   }
+  if ((total.count ?? 0) >= maxDevices) return limitReached
   if ((recent.count ?? 0) >= MAX_DEVICES_PER_HOUR) {
     return { ok: false, error: 'Too many devices added recently. Please try again later.' }
   }
@@ -83,6 +94,11 @@ export async function addDevice(name: string, serial: string, timezone?: string)
     if (error.code === '23505') {
       return { ok: false, error: 'This serial number is already registered. Check it and try again.' }
     }
+    // Raised by the database trigger: a concurrent add got there first, or the plan changed.
+    if (error.code === '23514' && error.message?.includes('biometric_device_limit')) return limitReached
+    if (error.code === '23514' && error.message?.includes('biometric_not_in_plan')) {
+      return { ok: false, error: BIOMETRIC_NOT_INCLUDED_MESSAGE }
+    }
     return GENERIC
   }
   return done()
@@ -92,8 +108,9 @@ export async function renameDevice(deviceId: string, name: string): Promise<Acti
   if (!uuid.safeParse(deviceId).success) return GENERIC
   const parsedName = nameSchema.safeParse(name)
   if (!parsedName.success) return { ok: false, error: parsedName.error.issues[0].message }
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -107,8 +124,9 @@ export async function renameDevice(deviceId: string, name: string): Promise<Acti
 
 export async function removeDevice(deviceId: string): Promise<ActionResult> {
   if (!uuid.safeParse(deviceId).success) return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -123,8 +141,9 @@ export async function removeDevice(deviceId: string): Promise<ActionResult> {
 export async function mapPin(deviceId: string, pin: string, memberId: string): Promise<ActionResult<{ applied: number }>> {
   const p = pinSchema.safeParse(pin)
   if (!uuid.safeParse(deviceId).success || !uuid.safeParse(memberId).success || !p.success) return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const [dev, mem] = await Promise.all([
@@ -149,8 +168,9 @@ export async function mapPin(deviceId: string, pin: string, memberId: string): P
 
 export async function autoMatchByMemberNumber(deviceId: string): Promise<ActionResult<{ matched: number }>> {
   if (!uuid.safeParse(deviceId).success) return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const { data: dev, error: devErr } = await supabase
@@ -195,8 +215,9 @@ export async function autoMatchByMemberNumber(deviceId: string): Promise<ActionR
 
 export async function unmapPin(mapId: string): Promise<ActionResult> {
   if (!uuid.safeParse(mapId).success) return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const { error } = await supabase.from('device_user_map').delete().eq('id', mapId).eq('gym_id', gymId)
@@ -208,8 +229,9 @@ const QUEUE_FULL = 'Too many waiting commands for this device. Wait for the devi
 
 export async function removeMemberFromDevice(mapId: string): Promise<ActionResult> {
   if (!uuid.safeParse(mapId).success) return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const { data: row, error: rowErr } = await supabase
@@ -231,8 +253,9 @@ export async function removeMemberFromDevice(mapId: string): Promise<ActionResul
 
 export async function addMemberToDevice(deviceId: string, memberId: string): Promise<ActionResult<{ message: string }>> {
   if (!uuid.safeParse(deviceId).success || !uuid.safeParse(memberId).success) return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const [dev, mem] = await Promise.all([
@@ -258,8 +281,9 @@ export async function addMemberToDevice(deviceId: string, memberId: string): Pro
 
 export async function setMemberBlocked(mapId: string, blocked: boolean): Promise<ActionResult> {
   if (!uuid.safeParse(mapId).success || typeof blocked !== 'boolean') return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const { data: row, error: rowErr } = await supabase
@@ -275,8 +299,9 @@ export async function setMemberBlocked(mapId: string, blocked: boolean): Promise
 export async function setCommandDialect(deviceId: string, dialect: 'privilege' | 'pri'): Promise<ActionResult> {
   const d = z.enum(['privilege', 'pri']).safeParse(dialect)
   if (!uuid.safeParse(deviceId).success || !d.success) return GENERIC
-  const gymId = await resolveGymId()
-  if (!gymId) return NOT_SIGNED_IN
+  const gate = await resolveGym()
+  if ('error' in gate) return gate.error
+  const { gymId } = gate
 
   const supabase = await createClient()
   const { data: dev, error: devErr } = await supabase

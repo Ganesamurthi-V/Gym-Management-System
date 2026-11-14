@@ -269,7 +269,7 @@ export async function addMemberToDevice(deviceId: string, memberId: string): Pro
   const pin = String(number)
 
   const res = await enqueueDeviceCommand(createAdminClient(), {
-    gymId, deviceId, memberId, kind: 'add_user', pin, name: mem.data.name as string,
+    gymId, deviceId, memberId, kind: 'add_user', pin,
   })
   if (res.reason === 'cap') return { ok: false, error: QUEUE_FULL }
 

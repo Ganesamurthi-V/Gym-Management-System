@@ -336,5 +336,10 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon\.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|json|html|txt|xml|webmanifest)$).*)',
+    // The extension skip above is for files in public/. No static file lives under these two page
+    // namespaces, so they always run middleware: otherwise `/owner/members/x.json` would reach the
+    // layout with a client-supplied `x-pathname` and skip the expired / banned redirect.
+    '/owner/:path*',
+    '/m/:path*',
   ],
 }

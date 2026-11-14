@@ -32,10 +32,14 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm test
 
-  # Manual only: start it from Actions -> aws-deploy -> Run workflow, on main. Vercel stays the live
-  # host until the cutover, so a deploy here does not change what users see yet.
+  # Every push to main deploys the app. Manual runs (Actions -> aws-deploy -> Run workflow, on main)
+  # can still pick the target. Both deploy jobs wait for the checks: they run only when check passed
+  # or was skipped (manual runs skip it), never when it failed.
   deploy:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.target == 'app'
+    needs: check
+    if: >-
+      ${{ !cancelled() && needs.check.result != 'failure' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.target == 'app')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -74,7 +78,10 @@ jobs:
   # Separate SST app (infra/sst.admin.config.ts) for the admin panel. Secrets live in that app's own
   # SST stage; only public values and the ACM certificate ARN come from repository variables.
   deploy-admin:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.target == 'admin'
+    needs: check
+    if: >-
+      ${{ !cancelled() && needs.check.result != 'failure' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.target == 'admin')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write

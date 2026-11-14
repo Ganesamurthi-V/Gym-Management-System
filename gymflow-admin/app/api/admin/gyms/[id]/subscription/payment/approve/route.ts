@@ -75,6 +75,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     // Add-on: the SQL function locks the request and only extends whatsapp_addon_until, so a Free
     // gym stays Free and a paid gym keeps its own expiry. The client plan is ignored entirely.
     if (isAddonRequest) {
+      const wasTrial = gym.plan_type === 'trial'
       const { data: addonUntil, error: addonError } = await supabase.rpc('approve_whatsapp_addon', {
         p_request_id: request_id,
         p_gym_id: id,
@@ -87,7 +88,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         if (addonError.code === 'P0001') {
           const error = addonError.message?.includes('request_not_pending')
             ? 'This request was already handled'
-            : 'Request does not match this gym or is not a WhatsApp add-on request'
+            : addonError.message?.includes('free_plan_member_limit')
+              ? 'This trial gym has more than 50 members, so it cannot move to the free plan. Reject the request or activate a paid plan.'
+              : 'Request does not match this gym or is not a WhatsApp add-on request'
           return NextResponse.json({ error }, { status: 409 })
         }
         throw addonError
@@ -97,11 +100,12 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         p_gym_id: id,
         p_action: 'Payment Approved: WhatsApp Add-on',
         p_prev_status: gym.subscription_status,
-        p_new_status: gym.subscription_status,
+        // A trial gym is moved to the free plan by the approval function.
+        p_new_status: wasTrial ? 'active' : gym.subscription_status,
         p_prev_plan: gym.plan_type,
-        p_new_plan: gym.plan_type,
+        p_new_plan: wasTrial ? 'free' : gym.plan_type,
         p_prev_expiry: gym.subscription_ends_at || gym.trial_ends_at || null,
-        p_new_expiry: gym.subscription_ends_at || gym.trial_ends_at || null,
+        p_new_expiry: wasTrial ? null : gym.subscription_ends_at || gym.trial_ends_at || null,
         p_performed_by: performed_by,
         p_notes: notes || `WhatsApp add-on until ${addonUntil}. Transaction ID: ${request.transaction_id || 'N/A'}`,
       })

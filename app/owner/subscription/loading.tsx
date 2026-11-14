@@ -1,33 +1,30 @@
 export default function Loading() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 space-y-6" aria-busy="true">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6" aria-busy="true">
       <span className="sr-only">Loading subscription…</span>
 
-      {/* Header */}
-      <div className="text-center space-y-3">
-        <div className="w-14 h-14 bg-slate-100 skeleton rounded-2xl mx-auto" />
-        <div className="w-56 h-7 bg-slate-100 skeleton rounded-lg mx-auto" />
-        <div className="w-72 h-4 bg-slate-100 skeleton rounded-md mx-auto" />
+      {/* Top row */}
+      <div className="flex items-center justify-between">
+        <div className="w-36 h-4 bg-slate-100 skeleton rounded-md" />
+        <div className="w-28 h-4 bg-slate-100 skeleton rounded-md" />
       </div>
 
-      {/* Plan cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[0, 1].map((i) => (
-          <div key={i} className="card p-5 space-y-3">
-            <div className="w-24 h-4 bg-slate-100 skeleton rounded-md" />
-            <div className="w-32 h-8 bg-slate-100 skeleton rounded-lg" />
-            <div className="w-full h-3 bg-slate-100 skeleton rounded-md" />
-            <div className="w-2/3 h-3 bg-slate-100 skeleton rounded-md" />
-            <div className="w-full h-10 bg-slate-100 skeleton rounded-xl mt-2" />
-          </div>
-        ))}
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+        {/* Checkout card: stepper + plan rows */}
+        <div className="lg:col-span-3 card p-5 space-y-4">
+          <div className="w-44 h-6 bg-slate-100 skeleton rounded-md" />
+          {[0, 1].map((i) => (
+            <div key={i} className="w-full h-16 bg-slate-100 skeleton rounded-xl" />
+          ))}
+        </div>
 
-      {/* Payment details */}
-      <div className="card p-5 space-y-3">
-        <div className="w-40 h-4 bg-slate-100 skeleton rounded-md" />
-        <div className="w-44 h-44 bg-slate-100 skeleton rounded-xl mx-auto" />
-        <div className="w-52 h-4 bg-slate-100 skeleton rounded-md mx-auto" />
+        {/* Order summary */}
+        <div className="lg:col-span-2 card p-5 space-y-3">
+          <div className="w-32 h-4 bg-slate-100 skeleton rounded-md" />
+          <div className="w-full h-4 bg-slate-100 skeleton rounded-md" />
+          <div className="w-full h-8 bg-slate-100 skeleton rounded-lg" />
+          <div className="w-full h-12 bg-slate-100 skeleton rounded-xl" />
+        </div>
       </div>
     </div>
   )

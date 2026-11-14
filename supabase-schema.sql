@@ -5101,8 +5101,10 @@ $$;
 -- Service-role only (the admin app). Request lock, gym lock and both writes are
 -- one transaction so a double click or two admins cannot approve the same
 -- request twice and stack 60 days. It runs as the definer, so the gyms column
--- guard treats the billing writes as trusted. plan_type and subscription_status
--- are deliberately left alone: the add-on is independent of the plan.
+-- guard treats the billing writes as trusted. On a Free or paid gym plan_type and
+-- subscription_status are left alone: the add-on is independent of the plan. On a
+-- trial gym, paying for the add-on ends the trial and moves the gym to the free
+-- forever plan (same end state as owner_switch_to_free), so it needs <= 50 members.
 CREATE OR REPLACE FUNCTION public.approve_whatsapp_addon(
   p_request_id  UUID,
   p_gym_id      UUID,
@@ -5116,6 +5118,7 @@ AS $$
 DECLARE
   v_req   public.subscription_requests%ROWTYPE;
   v_until TIMESTAMPTZ;
+  v_plan  TEXT;
 BEGIN
   SELECT * INTO v_req
     FROM public.subscription_requests
@@ -5135,11 +5138,17 @@ BEGIN
   END IF;
 
   -- Renewing early extends from the current end date instead of losing days.
-  SELECT greatest(now(), coalesce(whatsapp_addon_until, now())) + interval '30 days'
-    INTO v_until
+  SELECT greatest(now(), coalesce(whatsapp_addon_until, now())) + interval '30 days', plan_type
+    INTO v_until, v_plan
     FROM public.gyms
    WHERE id = p_gym_id
    FOR UPDATE;
+
+  IF v_plan = 'trial'
+     AND (SELECT count(*) FROM public.members WHERE gym_id = p_gym_id) > 50
+  THEN
+    RAISE EXCEPTION 'free_plan_member_limit' USING ERRCODE = 'P0001';
+  END IF;
 
   UPDATE public.subscription_requests
      SET status = 'approved',
@@ -5149,6 +5158,9 @@ BEGIN
 
   UPDATE public.gyms
      SET whatsapp_addon_until = v_until,
+         plan_type            = CASE WHEN v_plan = 'trial' THEN 'free' ELSE plan_type END,
+         subscription_status  = CASE WHEN v_plan = 'trial' THEN 'active' ELSE subscription_status END,
+         subscription_ends_at = CASE WHEN v_plan = 'trial' THEN NULL ELSE subscription_ends_at END,
          -- The amount stamped on the request at submit time; the current price
          -- only for legacy rows filed before expected_amount_inr existed.
          last_payment_amount  = COALESCE(

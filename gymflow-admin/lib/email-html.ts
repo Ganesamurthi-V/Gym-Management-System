@@ -8,7 +8,7 @@
  * It is a PNG on purpose: Gmail and Outlook do not render SVG in email.
  */
 const DEFAULT_LOGO_URL =
-  'https://lrzacwfypnsnjqyhidpn.supabase.co/storage/v1/object/public/assets/logo_landspace_without_bg.png'
+  'https://ckkzonqevualqeqluvrt.supabase.co/storage/v1/object/public/assets/logo_landspace_without_bg.png'
 
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

@@ -7233,6 +7233,16 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
           ARRAY['image/jpeg', 'image/png', 'application/pdf'])
   ON CONFLICT (id) DO NOTHING;
 
+-- Public bucket for files that email clients load by plain URL (the logo in transactional emails).
+-- Public buckets serve objects by URL without RLS and there are no client policies, so only the service
+-- role can upload. Uploads are read-only to the world.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES ('assets', 'assets', true, 2097152, ARRAY['image/png', 'image/jpeg'])
+  ON CONFLICT (id) DO UPDATE
+    SET public             = true,
+        file_size_limit    = 2097152,
+        allowed_mime_types = ARRAY['image/png', 'image/jpeg'];
+
 -- ############################################################
 -- 12 — SEED ROWS
 -- ############################################################

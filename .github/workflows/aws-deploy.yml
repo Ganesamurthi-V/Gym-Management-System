@@ -12,6 +12,12 @@ on:
         options: [app, admin]
         default: app
 
+# SST holds a state lock for the whole deploy; two overlapping runs fail with "Locked", and cancelling
+# one mid-deploy leaves the lock behind. Queue them, never cancel.
+concurrency:
+  group: aws-deploy-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: false
+
 jobs:
   check:
     if: github.event_name != 'workflow_dispatch'

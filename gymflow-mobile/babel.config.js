@@ -1,5 +1,8 @@
 module.exports = {
-  presets: ['module:@react-native/babel-preset'],
+  presets: [
+    ['module:@react-native/babel-preset', {jsxImportSource: 'nativewind'}],
+    'nativewind/babel',
+  ],
   plugins: [
     [
       'module-resolver',
@@ -21,5 +24,6 @@ module.exports = {
         verbose: false,
       },
     ],
+    'react-native-worklets/plugin',
   ],
 };

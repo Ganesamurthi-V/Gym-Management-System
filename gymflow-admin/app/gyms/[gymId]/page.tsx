@@ -70,17 +70,20 @@ export default async function GymDetailPage({ params }: { params: Promise<{ gymI
       {/* Stats */}
       <MetricCards
         items={[
-          { icon: User, label: 'Owner ID', value: gym.owner_id.slice(0, 8), footnote: gym.owner_id },
-          { icon: Database, label: 'Database ID (Gym)', value: gym.id.slice(0, 8), footnote: gym.id },
+          { icon: User, label: 'Owner ID', value: gym.owner_id.slice(0, 8), tone: 'blue', footnote: gym.owner_id },
+          { icon: Database, label: 'Database ID (Gym)', value: gym.id.slice(0, 8), tone: 'sky', footnote: gym.id },
           {
             icon: CalendarClock,
             label: 'Account Created',
             value: owner?.created_at ? new Date(owner.created_at).toLocaleDateString('en-IN') : 'Unknown',
+            tone: 'violet',
           },
           {
             icon: BadgeCheck,
             label: 'Email Verified',
             value: owner?.email_confirmed_at ? 'Yes, Verified' : 'Pending',
+            tone: owner?.email_confirmed_at ? 'emerald' : 'amber',
+            valueTone: owner?.email_confirmed_at ? 'emerald' : 'amber',
           },
         ]}
       />

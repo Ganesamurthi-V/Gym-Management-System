@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 
 import { ChartAreaInteractive } from '@/components/dashboard/chart-area-interactive'
-import { MetricCards, type MetricCardItem } from '@/components/dashboard/metric-cards'
+import { MetricCards, type MetricCardItem, type MetricTone } from '@/components/dashboard/metric-cards'
 import { PageToolbar } from '@/components/dashboard/page-toolbar'
 import { BreadcrumbLabel } from '@/components/layout/breadcrumb-context'
 import { StatusBadge } from '@/components/dashboard/status-badge'
@@ -34,6 +34,42 @@ const STAT_ICON: Record<string, LucideIcon> = {
   Requests: Globe, 'Data out': Activity, '4xx rate': Percent, '5xx rate': Percent,
   Items: Boxes, Size: HardDrive, Throttles: Gauge, Objects: Database,
 }
+// Problem stats turn red (or amber) only when the value is above zero; the rest keep a fixed tone by meaning.
+function statTone(label: string, value: string): MetricTone {
+  const positive = parseFloat(value.replace(/,/g, '')) > 0
+  switch (label) {
+    case 'Errors':
+    case 'Error rate':
+    case '5xx rate':
+    case 'Throttles':
+      return positive ? 'red' : 'emerald'
+    case '4xx rate':
+      return positive ? 'amber' : 'emerald'
+    case 'p95 duration':
+      return 'violet'
+    case 'Invocations':
+    case 'Requests':
+      return 'blue'
+    default:
+      return 'sky'
+  }
+}
+
+const LEVEL_RE = /(ERROR|WARN(?:ING)?|Task timed out)/i
+
+function LogMessage({ message }: { message: string }) {
+  const m = LEVEL_RE.exec(message)
+  if (!m) return <>{message}</>
+  const warn = /^warn/i.test(m[1])
+  return (
+    <>
+      {message.slice(0, m.index)}
+      <span className={warn ? 'text-warning font-semibold' : 'text-destructive font-semibold'}>{m[1]}</span>
+      {message.slice(m.index + m[1].length)}
+    </>
+  )
+}
+
 const CHART_PICK: Record<AwsResourceType, string[]> = {
   lambda: ['invocations', 'duration'],
   cloudfront: ['requests', 'errors'],
@@ -121,6 +157,7 @@ export default function ResourceDetailClient({ type, id, initialRange, initial, 
   const stats: MetricCardItem[] = useMemo(
     () => (data ? pick(data.stats, STAT_PICK[type], 4) : []).map((s) => ({
       icon: STAT_ICON[s.label] ?? Activity, label: s.label, value: s.value,
+      tone: statTone(s.label, s.value), valueTone: statTone(s.label, s.value),
     })),
     [data, type],
   )
@@ -202,7 +239,7 @@ export default function ResourceDetailClient({ type, id, initialRange, initial, 
                           <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums sm:w-40 sm:shrink-0">
                             {new Date(l.t).toLocaleString('en-IN', { hour12: false, timeZone: 'Asia/Kolkata' })}
                           </span>
-                          <span className="min-w-0 font-mono text-xs break-words whitespace-pre-wrap">{l.message}</span>
+                          <span className="min-w-0 font-mono text-xs break-words whitespace-pre-wrap"><LogMessage message={l.message} /></span>
                         </li>
                       ))}
                     </ul>

@@ -64,7 +64,7 @@ export function NavMain() {
                     </Link>
                   </SidebarMenuButton>
                   {item.url === '/support' && openTicketsCount > 0 && (
-                    <SidebarMenuBadge>{openTicketsCount > 99 ? '99+' : openTicketsCount}</SidebarMenuBadge>
+                    <SidebarMenuBadge className="bg-destructive/10 text-destructive">{openTicketsCount > 99 ? '99+' : openTicketsCount}</SidebarMenuBadge>
                   )}
                 </SidebarMenuItem>
               ))}

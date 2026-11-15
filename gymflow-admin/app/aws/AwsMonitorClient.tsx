@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Globe, Timer, Wallet } from 'lucide-react'
 
 import { ChartAreaInteractive } from '@/components/dashboard/chart-area-interactive'
-import { MetricCards, type MetricCardItem } from '@/components/dashboard/metric-cards'
+import { MetricCards, type MetricCardItem, type MetricTone } from '@/components/dashboard/metric-cards'
 import { PageToolbar } from '@/components/dashboard/page-toolbar'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import type { AwsMonitorOverview, AwsRange, AwsStatus } from '@/lib/aws/types'
@@ -148,13 +148,24 @@ function Body({ data, range }: { data: AwsMonitorOverview; range: AwsRange }) {
     .filter((f) => /server/i.test(f.name) && f.p95DurationMs != null)
     .map((f) => f.p95DurationMs as number)
 
+  // Spend bar: emerald below 80% of budget, amber 80-100%, red at or over the limit.
+  const budgetTone: MetricTone =
+    budget && budget.percentUsed >= 100 ? 'red' : budget && budget.percentUsed >= 80 ? 'amber' : 'emerald'
+  const p95Slow = p95s.length > 0 && Math.max(...p95s) > 3000
+
   const items: MetricCardItem[] = [
     {
       icon: Wallet,
       label: 'Spend this month',
       value: cost ? formatUsd(cost.monthToDateUsd) : '—',
+      tone: 'emerald',
+      valueTone: 'emerald',
+      progressTone: budgetTone,
       badge: budget
-        ? { text: budget.status === 'healthy' ? 'on track' : budget.status, variant: budget.status === 'critical' ? 'destructive' : 'secondary' }
+        ? {
+            text: budget.status === 'healthy' ? 'on track' : budget.status,
+            variant: budget.status === 'critical' ? 'destructive' : budget.status === 'healthy' ? 'success' : 'warning',
+          }
         : undefined,
       footnote: budget ? `of ${formatUsd(budget.limitUsd)} budget · ${blockLabel(budget.blockActionStatus)}` : undefined,
       progress: budget?.percentUsed,
@@ -163,18 +174,24 @@ function Body({ data, range }: { data: AwsMonitorOverview; range: AwsRange }) {
       icon: Globe,
       label: 'App requests',
       value: formatNumber(totalRequests),
+      tone: 'blue',
+      valueTone: 'blue',
       footnote: `across ${data.cloudfront.length} distribution${data.cloudfront.length === 1 ? '' : 's'}`,
     },
     {
       icon: AlertTriangle,
       label: 'Server errors',
       value: formatNumber(serverErrors),
-      badge: serverErrors === 0 ? { text: 'healthy', variant: 'secondary' } : { text: 'needs attention', variant: 'destructive' },
+      tone: serverErrors === 0 ? 'emerald' : 'red',
+      valueTone: serverErrors === 0 ? 'emerald' : 'red',
+      badge: serverErrors === 0 ? { text: 'healthy', variant: 'success' } : { text: 'needs attention', variant: 'destructive' },
     },
     {
       icon: Timer,
       label: 'p95 response time',
       value: p95s.length ? formatMs(Math.max(...p95s)) : '—',
+      tone: p95Slow ? 'amber' : 'violet',
+      valueTone: p95Slow ? 'amber' : 'violet',
       footnote: 'server functions',
     },
   ]

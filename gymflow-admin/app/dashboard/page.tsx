@@ -46,13 +46,15 @@ export default async function DashboardPage() {
       <MetricCards
         className="xl:grid-cols-3"
         items={[
-          { icon: Building2, label: 'Total Gyms', value: String(gymCount ?? '—') },
-          { icon: Users, label: 'Total Members', value: String(memberCount ?? '—') },
-          { icon: Activity, label: "Today's Attendance", value: String((attendanceToday as any)?.count ?? '—') },
+          { icon: Building2, label: 'Total Gyms', value: String(gymCount ?? '—'), tone: 'blue', valueTone: 'blue' },
+          { icon: Users, label: 'Total Members', value: String(memberCount ?? '—'), tone: 'sky', valueTone: 'sky' },
+          { icon: Activity, label: "Today's Attendance", value: String((attendanceToday as any)?.count ?? '—'), tone: 'emerald', valueTone: 'emerald' },
           {
             icon: Bug,
             label: 'Open Errors',
             value: String(errors.length),
+            tone: errors.length > 0 ? 'red' : 'emerald',
+            valueTone: errors.length > 0 ? 'red' : 'emerald',
             footnote: 'Unresolved in Sentry',
             href: '/errors',
             badge: errors.length > 0 ? { text: 'Needs attention', variant: 'destructive' } : undefined,
@@ -61,10 +63,12 @@ export default async function DashboardPage() {
             icon: AlertTriangle,
             label: 'Warnings',
             value: String(warnings.length),
+            tone: warnings.length > 0 ? 'amber' : 'neutral',
+            valueTone: warnings.length > 0 ? 'amber' : 'neutral',
             footnote: 'Unresolved in Sentry',
-            badge: warnings.length > 0 ? { text: 'Review', variant: 'secondary' } : undefined,
+            badge: warnings.length > 0 ? { text: 'Review', variant: 'warning' } : undefined,
           },
-          { icon: ShieldCheck, label: 'Messages Sent', value: String(recentMsgs.length), footnote: 'Recent support msgs', href: '/support' },
+          { icon: ShieldCheck, label: 'Messages Sent', value: String(recentMsgs.length), footnote: 'Recent support msgs', href: '/support', tone: 'violet', valueTone: 'violet' },
         ]}
       />
 

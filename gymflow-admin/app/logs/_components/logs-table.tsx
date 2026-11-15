@@ -16,6 +16,7 @@ export interface LogRow {
 function tone(level: string): StatusTone {
   if (level === 'error' || level === 'fatal') return 'error'
   if (level === 'warning') return 'warning'
+  if (level === 'info') return 'info'
   return 'neutral'
 }
 

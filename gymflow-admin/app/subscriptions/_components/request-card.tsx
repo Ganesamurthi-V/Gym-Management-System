@@ -81,7 +81,7 @@ export function RequestCard({
       {req.status === 'pending' && (
         <CardFooter className="flex flex-wrap items-center gap-2">
           {req.plan_requested === 'whatsapp_addon' ? (
-            <Badge variant="outline">
+            <Badge variant="info">
               WhatsApp add-on{req.expected_amount_inr != null ? `, ₹${req.expected_amount_inr.toLocaleString('en-IN')}` : ''} / 30 days
             </Badge>
           ) : (

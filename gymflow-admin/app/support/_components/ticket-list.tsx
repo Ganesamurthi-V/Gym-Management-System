@@ -19,7 +19,7 @@ function StarRating({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map(n => (
         <Star
           key={n}
-          className={cn('size-4', n <= rating ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground')}
+          className={cn('size-4', n <= rating ? 'fill-warning text-warning' : 'text-muted-foreground')}
         />
       ))}
       <span className="text-muted-foreground ml-1.5 text-xs font-medium">{rating}.0</span>
@@ -94,7 +94,7 @@ export function TicketList({
               <CardHeader>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge tone={typeTone(ticket.type)}>{ticket.type.replace('_', ' ')}</StatusBadge>
-                  <Badge variant="outline" className="text-muted-foreground">{ticket.status}</Badge>
+                  <Badge variant={ticket.status === 'resolved' ? 'success' : ticket.status === 'open' ? 'warning' : 'outline'}>{ticket.status}</Badge>
                   {ticket.type === 'feedback' && ticket.rating != null && <StarRating rating={ticket.rating} />}
                 </div>
                 <CardTitle className={cn(resolved && 'line-through opacity-50')}>{ticket.subject}</CardTitle>

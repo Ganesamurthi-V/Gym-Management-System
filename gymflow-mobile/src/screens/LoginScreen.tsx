@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-  StatusBar,
-  Image,
-} from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
+import { View, ScrollView, Pressable, StatusBar, Image } from 'react-native';
 import { saveToken } from '@/lib/auth';
 import { loginWithPassword } from '@/lib/api';
-import { AdminInput } from '@/components/AdminInput';
-import { AdminButton } from '@/components/AdminButton';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Text } from '@/components/ui/text';
+import { toast } from '@/components/dashboard/Toast';
 import { KeyboardSafeView } from '@/components/KeyboardSafeView';
 
 type Props = {
@@ -22,6 +17,7 @@ type Props = {
 };
 
 export default function LoginScreen({ onLoginSuccess }: Props) {
+  const { scheme } = useAppTheme();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -35,43 +31,34 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
       setPassword('');
       onLoginSuccess();
     } catch (e: any) {
-      Alert.alert('Login Failed', e.message ?? 'Invalid admin password');
+      toast.show(e.message ?? 'Invalid admin password', 'error');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <KeyboardSafeView style={styles.root}>
-      <StatusBar barStyle="light-content" />
+    <KeyboardSafeView className="bg-background flex-1">
+      <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, gap: 24 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Logo / Header */}
-        <View style={styles.logoArea}>
-          <Image source={require('../../assets/logo_only.png')} style={styles.logoImage} />
-          <Text style={styles.title}>GymFlow Admin</Text>
-          <Text style={styles.subtitle}>Super Admin Panel</Text>
-        </View>
-
-        {/* Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.lockIcon}>
-              <Feather name="lock" size={18} color={Colors.indigo} />
-            </View>
-            <View>
-              <Text style={styles.cardTitle}>Admin Access</Text>
-              <Text style={styles.cardSub}>Enter your admin panel password</Text>
-            </View>
-          </View>
-
-          <View style={styles.form}>
-            <View>
-              <Text style={styles.inputLabel}>Admin Password</Text>
-              <View style={styles.inputWrapper}>
-                <AdminInput
+        <Card className="gap-6">
+          <CardHeader className="items-center gap-2">
+            <Image
+              source={require('../../assets/logo_only.png')}
+              className="mb-2 size-16 rounded-full"
+              resizeMode="contain"
+            />
+            <CardTitle className="text-xl">GymFlow Admin</CardTitle>
+            <CardDescription>Enter your admin panel password</CardDescription>
+          </CardHeader>
+          <CardContent className="gap-4">
+            <View className="gap-2">
+              <Label nativeID="admin-password">Admin Password</Label>
+              <View className="justify-center">
+                <Input
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Enter admin password..."
@@ -79,116 +66,31 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                   autoCapitalize="none"
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
-                  style={styles.passwordInput}
+                  aria-labelledby="admin-password"
+                  className="pr-10"
                 />
-                <TouchableOpacity
-                  style={styles.eyeBtn}
+                <Pressable
+                  className="absolute right-3"
                   onPress={() => setShowPassword(v => !v)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <Feather
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={16}
-                    color={Colors.textMuted}
-                  />
-                </TouchableOpacity>
+                  <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} className="text-muted-foreground" />
+                </Pressable>
               </View>
             </View>
+            <Button onPress={handleLogin} disabled={loading || !password.trim()}>
+              <Text>{loading ? 'Signing in...' : 'Sign In to Admin Panel'}</Text>
+            </Button>
+          </CardContent>
+        </Card>
 
-            <AdminButton
-              label="Sign In to Admin Panel"
-              onPress={handleLogin}
-              loading={loading}
-              disabled={!password.trim()}
-            />
-          </View>
-        </View>
-
-        {/* Security Note */}
-        <View style={styles.secNote}>
-          <Feather name="shield" size={12} color={Colors.textMuted} />
-          <Text style={styles.secNoteText}>
-            Restricted access. All actions are logged.
-          </Text>
+        <View className="flex-row items-center justify-center gap-1">
+          <Icon name="shield" size={12} className="text-muted-foreground" />
+          <Text className="text-muted-foreground text-xs">Restricted access. All actions are logged.</Text>
         </View>
       </ScrollView>
     </KeyboardSafeView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: Spacing.xxl,
-    gap: Spacing.xxl,
-  },
-  logoArea: { alignItems: 'center', gap: Spacing.sm },
-  logoImage: {
-    width: 72,
-    height: 72,
-    marginBottom: Spacing.sm,
-    resizeMode: 'contain',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-  },
-  subtitle: { fontSize: 14, color: Colors.textMuted },
-  card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.bgCardBorder,
-    padding: Spacing.xxl,
-    gap: Spacing.xl,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingBottom: Spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.bgCardBorder,
-  },
-  lockIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.indigoBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  cardSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  form: { gap: Spacing.lg },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-    marginBottom: Spacing.xs,
-  },
-  inputWrapper: { position: 'relative' },
-  passwordInput: { paddingRight: 48 },
-  eyeBtn: {
-    position: 'absolute',
-    right: Spacing.lg,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
-  secNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-  },
-  secNoteText: { fontSize: 11, color: Colors.textMuted },
-});

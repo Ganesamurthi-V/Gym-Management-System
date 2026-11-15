@@ -91,7 +91,7 @@ export default function SubscriptionsPage() {
   return (
     <div className="space-y-6">
       <PageToolbar title="Subscription Requests" description="Review and manage gym payment proofs">
-        {pendingCount > 0 && <Badge variant="outline">{pendingCount} pending</Badge>}
+        {pendingCount > 0 && <Badge variant="warning">{pendingCount} pending</Badge>}
         <Button variant="outline" size="icon" onClick={fetchRequests} disabled={loading} aria-label="Refresh">
           <RefreshCw className={loading ? 'animate-spin' : ''} />
         </Button>

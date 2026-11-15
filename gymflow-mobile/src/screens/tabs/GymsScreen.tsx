@@ -1,17 +1,18 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, TextInput,
-  ActivityIndicator, RefreshControl, TouchableOpacity,
-} from 'react-native';
+import { View, FlatList, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Feather from 'react-native-vector-icons/Feather';
-import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchGyms, type Gym } from '@/lib/api';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { CacheKeys } from '@/lib/cache';
-import { GymRow } from '@/components/GymRow';
+import { useAppTheme } from '@/lib/theme';
+import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
+import { Text } from '@/components/ui/text';
+import { ListRow } from '@/components/dashboard/ListRow';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import type { RootStackParamList } from '../../navigation/types';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -19,8 +20,17 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 /** Module-level constant so the "no data yet" case keeps a stable identity. */
 const EMPTY_GYMS: Gym[] = [];
 
+function formatJoinDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 export default function GymsScreen() {
   const navigation = useNavigation<NavProp>();
+  const { colors } = useAppTheme();
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -54,57 +64,71 @@ export default function GymsScreen() {
   }, [gyms, search]);
 
   return (
-    <View style={styles.root}>
-      <View style={styles.statsBar}>
-        <Feather name="activity" size={14} color={Colors.indigo} />
-        <Text style={styles.statsText}>{gyms.length} total gyms</Text>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Feather name="search" size={15} color={Colors.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search gyms by name..."
-          placeholderTextColor={Colors.textMuted}
-          returnKeyType="search"
-          autoCorrect={false}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setSearch('')}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityRole="button"
-            accessibilityLabel="Clear search"
-          >
-            <Feather name="x" size={15} color={Colors.textMuted} />
-          </TouchableOpacity>
-        )}
+    <View className="bg-background flex-1">
+      <View className="gap-3 p-4 pb-2">
+        <Text className="text-muted-foreground text-sm">{gyms.length} total gyms</Text>
+        <View className="justify-center">
+          <Input
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search gyms by name..."
+            returnKeyType="search"
+            autoCorrect={false}
+            className="pr-10"
+          />
+          {search.length > 0 && (
+            <Pressable
+              onPress={() => setSearch('')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              className="absolute right-3"
+            >
+              <Icon name="x" size={16} className="text-muted-foreground" />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {error && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
+        <Card className="mx-4 mb-2 px-4 py-3">
+          <Text className="text-destructive text-sm">{error}</Text>
+        </Card>
       )}
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={Colors.indigo} size="large" />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.mutedForeground} size="large" />
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <GymRow
-              gym={item}
-              onPress={() => navigation.navigate('GymDetail', { gymId: item.id })}
-            />
+          renderItem={({ item, index }) => (
+            <View className="px-4">
+              <ListRow
+                last={index === filtered.length - 1}
+                title={item.name}
+                subtitle={`${item.memberCount} members · ${formatJoinDate(item.created_at)}`}
+                left={
+                  <View className="bg-muted border-border size-9 items-center justify-center rounded-lg border">
+                    <Icon name="activity" size={16} className="text-muted-foreground" />
+                  </View>
+                }
+                right={
+                  <View className="flex-row items-center gap-2">
+                    <StatusBadge tone={item.is_active ? 'success' : 'error'}>
+                      {item.is_active ? 'Active' : 'Banned'}
+                    </StatusBadge>
+                    <Icon name="chevron-right" size={16} className="text-muted-foreground" />
+                  </View>
+                }
+                onPress={() => navigation.navigate('GymDetail', { gymId: item.id })}
+              />
+            </View>
           )}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 32 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           // Windowing limits: the gym list grows with every signup, and the
@@ -114,12 +138,12 @@ export default function GymsScreen() {
           windowSize={7}
           removeClippedSubviews
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.mutedForeground} />
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Feather name="activity" size={36} color={Colors.bgCardBorder} />
-              <Text style={styles.emptyText}>
+            <View className="items-center justify-center gap-3 p-12">
+              <Icon name="activity" size={36} className="text-muted-foreground" />
+              <Text className="text-muted-foreground text-center text-sm">
                 {search ? `No gyms match "${search}"` : 'No gyms registered yet'}
               </Text>
             </View>
@@ -129,35 +153,3 @@ export default function GymsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  statsBar: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
-    backgroundColor: Colors.indigoBg, borderBottomWidth: 1, borderBottomColor: Colors.indigoBorder,
-  },
-  statsText: { fontSize: 12, color: Colors.indigo, fontWeight: '600' },
-  searchContainer: {
-    flexDirection: 'row', alignItems: 'center', margin: Spacing.lg,
-    backgroundColor: Colors.bgInput, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.bgCardBorder,
-    paddingHorizontal: Spacing.md, gap: Spacing.sm,
-  },
-  searchIcon: { flexShrink: 0 },
-  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: 14, paddingVertical: Spacing.md },
-  errorBanner: {
-    marginHorizontal: Spacing.lg, backgroundColor: Colors.redBg,
-    borderRadius: Radius.sm, padding: Spacing.md,
-  },
-  errorText: { fontSize: 13, color: Colors.red },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { flex: 1 },
-  listContent: {
-    backgroundColor: Colors.bgCard, marginHorizontal: Spacing.lg,
-    borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.bgCardBorder,
-    overflow: 'hidden', paddingBottom: Spacing.xxxl,
-  },
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl * 2, gap: Spacing.md },
-  emptyText: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
-});

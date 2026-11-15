@@ -1,29 +1,35 @@
 import React, { useCallback, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, Pressable,
-} from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Feather from 'react-native-vector-icons/Feather';
-import { Colors, Radius, Spacing } from '@/constants/theme';
 import type { RootStackParamList } from '@/src/navigation/types';
 import { getAwsOverview } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { CacheKeys } from '@/lib/cache';
-import { formatBytes, formatNumber, formatUsd } from '@/lib/aws-format';
-import { StatCard } from '@/components/StatCard';
-import { Badge } from '@/components/Badge';
+import { formatBytes, formatMs, formatNumber, formatUsd } from '@/lib/aws-format';
+import { useAppTheme } from '@/lib/theme';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Text } from '@/components/ui/text';
+import { MetricCards, type MetricCardItem } from '@/components/dashboard/MetricCards';
+import { SectionCard } from '@/components/dashboard/SectionCard';
+import { ListRow } from '@/components/dashboard/ListRow';
+import { StatusBadge, type StatusTone } from '@/components/dashboard/StatusBadge';
 import { LineChart } from '@/components/charts/LineChart';
-import { BarList } from '@/components/charts/BarList';
-import type { AwsMonitorOverview, AwsPoint, AwsRange, AwsResourceType, AwsSectionError, AwsStatus } from '@/types/aws';
+import type { AwsMonitorOverview, AwsPoint, AwsRange, AwsResourceType, AwsSectionError } from '@/types/aws';
+import { CHART_DOTS, ChartLegend, ErrorCard, RangeBar, ScrollTabs, statusTone } from './_aws/shared';
 
-const RANGES: AwsRange[] = ['1h', '24h', '7d'];
+type Filter = 'all' | AwsResourceType;
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'lambda', label: 'Lambda' },
+  { value: 'cloudfront', label: 'CloudFront' },
+  { value: 'dynamodb', label: 'DynamoDB' },
+  { value: 's3', label: 'S3' },
+];
 
-type Variant = 'success' | 'error' | 'warning' | 'muted';
-const statusVariant = (s: AwsStatus): Variant =>
-  s === 'healthy' ? 'success' : s === 'critical' ? 'error' : s === 'warning' ? 'warning' : 'muted';
-const statusColor = (s: AwsStatus) =>
-  s === 'healthy' ? Colors.emerald : s === 'critical' ? Colors.red : s === 'warning' ? Colors.amber : Colors.textMuted;
+type Resource = {
+  type: AwsResourceType; id: string; title: string; subtitle: string; tone: StatusTone; statusText: string;
+};
 
 /** Sums several series bucket by bucket (matched on timestamp) into one. */
 function sumSeries(all: AwsPoint[][]): AwsPoint[] {
@@ -32,115 +38,67 @@ function sumSeries(all: AwsPoint[][]): AwsPoint[] {
   return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({ t, v }));
 }
 
-function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Feather name={icon} size={14} color={Colors.indigo} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      <View style={styles.sectionBody}>{children}</View>
-    </View>
-  );
+function buildResources(data: AwsMonitorOverview): Resource[] {
+  return [
+    ...data.lambda.map((f): Resource => ({
+      type: 'lambda', id: f.name, title: f.name,
+      subtitle: `Lambda · ${formatNumber(f.invocations)} invocations`,
+      tone: statusTone(f.status), statusText: f.status,
+    })),
+    ...data.cloudfront.map((d): Resource => {
+      const name = d.aliases[0] ?? d.domain;
+      return {
+        type: 'cloudfront', id: d.id, title: name,
+        subtitle: `CloudFront · ${formatNumber(d.requests)} requests`,
+        tone: d.enabled ? statusTone(d.status) : 'neutral', statusText: d.enabled ? d.status : 'disabled',
+      };
+    }),
+    ...data.dynamodb.map((t): Resource => ({
+      type: 'dynamodb', id: t.name, title: t.name,
+      subtitle: `DynamoDB · ${formatNumber(t.throttledRequests)} throttles`,
+      tone: statusTone(t.health), statusText: t.health,
+    })),
+    ...data.s3.map((b): Resource => ({
+      type: 's3', id: b.name, title: b.name,
+      subtitle: `S3 · ${formatBytes(b.sizeBytes)}`,
+      tone: 'neutral', statusText: 'n/a',
+    })),
+  ];
 }
 
-function SectionError({ message }: { message: string }) {
-  return (
-    <View style={styles.errorCard}>
-      <Feather name="alert-triangle" size={14} color={Colors.red} />
-      <Text style={styles.errorCardText}>{message}</Text>
-    </View>
-  );
-}
-
-function Row({ title, sub, badge, onPress, children }: {
-  title: string; sub?: string; badge?: { label: string; variant: Variant }; onPress?: () => void; children?: React.ReactNode;
-}) {
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-      onPress={onPress}
-      disabled={!onPress}
-    >
-      <View style={styles.rowTop}>
-        <View style={styles.rowTitleWrap}>
-          <Text style={styles.rowTitle} numberOfLines={1} ellipsizeMode="middle">{title}</Text>
-          {sub ? <Text style={styles.rowSub} numberOfLines={1}>{sub}</Text> : null}
-        </View>
-        {badge ? <Badge label={badge.label} variant={badge.variant} /> : null}
-        {onPress ? <Feather name="chevron-right" size={16} color={Colors.textMuted} /> : null}
-      </View>
-      {children ? <View style={styles.rowMetrics}>{children}</View> : null}
-    </Pressable>
-  );
-}
-
-function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <View style={styles.metric}>
-      <Text style={[styles.metricValue, color ? { color } : null]}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function Legend({ items }: { items: { color: string; label: string }[] }) {
-  return (
-    <View style={styles.legend}>
-      {items.map(i => (
-        <View key={i.label} style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: i.color }]} />
-          <Text style={styles.legendText}>{i.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function BudgetCard({ cost }: { cost: NonNullable<AwsMonitorOverview['cost']> }) {
-  const b = cost.budget;
+function spendCard(cost: AwsMonitorOverview['cost']): MetricCardItem {
+  const b = cost?.budget;
   if (!b) {
-    return (
-      <Section title="Budget" icon="dollar-sign">
-        <Text style={styles.big}>{formatUsd(cost.monthToDateUsd)}</Text>
-        <Text style={styles.muted}>Month to date. No budget configured.</Text>
-      </Section>
-    );
+    return {
+      icon: 'dollar-sign', label: 'Spend this month', value: formatUsd(cost?.monthToDateUsd),
+      tone: 'emerald', valueTone: 'emerald',
+      footnote: cost ? 'Month to date · No budget configured' : 'No cost data',
+    };
   }
-  const color = statusColor(b.status);
   const armed = b.blockActionStatus === 'STANDBY';
-  return (
-    <Section title="Budget" icon="dollar-sign">
-      <View style={styles.budgetTop}>
-        <Text style={styles.big}>{formatUsd(b.actualUsd)}</Text>
-        <Text style={styles.muted}>of {formatUsd(b.limitUsd)} ({b.percentUsed.toFixed(0)}%)</Text>
-      </View>
-      <View style={styles.track}>
-        <View style={[styles.fill, { backgroundColor: color, width: `${Math.min(100, Math.max(1, b.percentUsed))}%` }]} />
-      </View>
-      {armed ? (
-        <View style={styles.armed}>
-          <Feather name="shield" size={13} color={Colors.emerald} />
-          <Text style={styles.armedText}>Auto-block armed</Text>
-        </View>
-      ) : (
-        <View style={styles.warn}>
-          <Feather name="alert-triangle" size={13} color={Colors.red} />
-          <Text style={styles.warnText}>
-            {b.blockActionStatus ? `Auto-block status: ${b.blockActionStatus}` : 'Auto-block is not configured'}
-          </Text>
-        </View>
-      )}
-    </Section>
-  );
+  const block = armed
+    ? 'Auto-block armed'
+    : b.blockActionStatus ? `Auto-block status: ${b.blockActionStatus}` : 'Auto-block is not configured';
+  // Progress colour by budget use: emerald under 80%, amber 80-100%, red from 100%.
+  const spendTone: MetricCardItem['tone'] = b.percentUsed >= 100 ? 'red' : b.percentUsed >= 80 ? 'amber' : 'emerald';
+  return {
+    icon: 'dollar-sign', label: 'Spend this month', value: formatUsd(b.actualUsd),
+    tone: spendTone, valueTone: 'emerald',
+    badge: {
+      text: b.status === 'healthy' ? 'On track' : b.status === 'warning' ? 'Warning' : b.status === 'critical' ? 'Over budget' : 'Unknown',
+      variant: b.status === 'critical' ? 'destructive' : b.status === 'warning' ? 'warning' : b.status === 'healthy' ? 'success' : 'outline',
+    },
+    footnote: `of ${formatUsd(b.limitUsd)} budget · ${block}`,
+    progress: b.percentUsed,
+  };
 }
 
 export default function AwsMonitorScreen() {
   const [range, setRange] = useState<AwsRange>('24h');
+  const [filter, setFilter] = useState<Filter>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const { colors } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const open = (type: AwsResourceType, id: string, title: string) => () =>
-    navigation.navigate('AwsResource', { type, id, title, range });
 
   const { data, loading, error, refresh } = useCachedQuery<AwsMonitorOverview>({
     key: CacheKeys.awsOverview(range),
@@ -154,225 +112,116 @@ export default function AwsMonitorScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={Colors.indigo} size="large" />
+      <View className="bg-background flex-1 items-center justify-center">
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
 
-  const errFor = (s: AwsSectionError['section']) => data?.errors.find(e => e.section === s);
   const updated = data
     ? new Date(data.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
     : null;
+  const sectionLabel: Record<AwsSectionError['section'], string> = {
+    lambda: 'Lambda', cloudfront: 'CloudFront', dynamodb: 'DynamoDB', s3: 'S3', cost: 'Cost',
+  };
 
-  const lambdaInv = data ? sumSeries(data.lambda.map(f => f.invocationsSeries)) : [];
-  const lambdaErr = data ? sumSeries(data.lambda.map(f => f.errorsSeries)) : [];
-  const cfReq = data ? sumSeries(data.cloudfront.map(d => d.requestsSeries)) : [];
-
-  const totalInv = data?.lambda.reduce((a, f) => a + f.invocations, 0) ?? 0;
-  const totalErr = data?.lambda.reduce((a, f) => a + f.errors, 0) ?? 0;
-  const totalReq = data?.cloudfront.reduce((a, d) => a + d.requests, 0) ?? 0;
-  const total5xx = data?.cloudfront.reduce((a, d) => a + (d.requests * d.rate5xxPct) / 100, 0) ?? 0;
-  const throttles = data?.dynamodb.reduce((a, t) => a + t.throttledRequests, 0) ?? 0;
+  let metrics: MetricCardItem[] = [];
+  let cfReq: AwsPoint[] = [];
+  let cf5xx: AwsPoint[] = [];
+  let resources: Resource[] = [];
+  if (data) {
+    const totalReq = data.cloudfront.reduce((a, d) => a + d.requests, 0);
+    const total5xx = data.cloudfront.reduce((a, d) => a + (d.requests * d.rate5xxPct) / 100, 0);
+    const lambdaErr = data.lambda.reduce((a, f) => a + f.errors, 0);
+    const p95s = data.lambda
+      .filter(f => f.name.toLowerCase().includes('server') && f.p95DurationMs != null)
+      .map(f => f.p95DurationMs as number);
+    const serverErrors = Math.round(lambdaErr + total5xx);
+    const p95 = p95s.length ? Math.max(...p95s) : null;
+    const p95Tone: MetricCardItem['tone'] = p95 != null && p95 > 3000 ? 'amber' : 'violet';
+    const nDist = data.cloudfront.length;
+    metrics = [
+      spendCard(data.cost),
+      {
+        icon: 'globe', label: 'App requests', value: formatNumber(totalReq),
+        tone: 'blue', valueTone: 'blue',
+        footnote: `across ${nDist} ${nDist === 1 ? 'distribution' : 'distributions'}`,
+      },
+      {
+        icon: 'alert-triangle', label: 'Server errors', value: formatNumber(serverErrors),
+        tone: serverErrors > 0 ? 'red' : 'emerald', valueTone: serverErrors > 0 ? 'red' : 'emerald',
+        footnote: 'Lambda errors + CloudFront 5xx',
+      },
+      {
+        icon: 'clock', label: 'p95 response time', value: p95s.length ? formatMs(Math.max(...p95s)) : '—',
+        tone: p95Tone, valueTone: p95Tone,
+        footnote: 'Server functions',
+      },
+    ];
+    cfReq = sumSeries(data.cloudfront.map(d => d.requestsSeries));
+    cf5xx = sumSeries(data.cloudfront.map(d => d.errors5xxSeries));
+    resources = buildResources(data);
+  }
+  const shown = filter === 'all' ? resources : resources.filter(r => r.type === filter);
 
   return (
     <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />}
-    >
-      <View style={styles.rangeRow}>
-        {RANGES.map(r => (
-          <TouchableOpacity
-            key={r}
-            style={[styles.chip, r === range && styles.chipActive]}
-            onPress={() => setRange(r)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.chipText, r === range && styles.chipTextActive]}>{r}</Text>
-          </TouchableOpacity>
-        ))}
-        {updated && <Text style={styles.updated}>Updated {updated}</Text>}
-      </View>
+      className="bg-background flex-1"
+      contentContainerClassName="gap-4 p-4 pb-10"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+      <RangeBar range={range} onChange={setRange} updated={updated} />
 
-      {error && (
-        <View style={styles.errorCard}>
-          <Feather name="alert-triangle" size={14} color={Colors.red} />
-          <Text style={styles.errorCardText}>{error}</Text>
-        </View>
-      )}
+      {error ? <ErrorCard message={error} /> : null}
 
-      {data && (
+      {data ? (
         <>
-          {data.cost ? <BudgetCard cost={data.cost} /> : errFor('cost') && (
-            <Section title="Budget" icon="dollar-sign"><SectionError message={errFor('cost')!.message} /></Section>
-          )}
+          {data.errors.map(e => (
+            <ErrorCard key={e.section} message={`${sectionLabel[e.section]}: ${e.message}`} />
+          ))}
 
-          <View style={styles.statsGrid}>
-            <View style={styles.statsRow}>
-              <StatCard label="Lambda invocations" value={formatNumber(totalInv)} accentColor={Colors.indigo} accentBg={Colors.indigoBg} />
-              <StatCard label="Lambda errors" value={formatNumber(totalErr)} accentColor={Colors.red} accentBg={Colors.redBg} />
-            </View>
-            <View style={styles.statsRow}>
-              <StatCard label="CloudFront requests" value={formatNumber(totalReq)} accentColor={Colors.sky} accentBg={Colors.skyBg} />
-              <StatCard label="CloudFront 5xx" value={formatNumber(total5xx)} accentColor={Colors.amber} accentBg={Colors.amberBg} />
-            </View>
-            <View style={styles.statsRow}>
-              <StatCard label="DynamoDB throttles" value={formatNumber(throttles)} accentColor={Colors.purple} accentBg={Colors.purpleBg} />
-              <StatCard label="Forecast" value={formatUsd(data.cost?.forecastUsd)} sub="This month" accentColor={Colors.emerald} accentBg={Colors.emeraldBg} />
-            </View>
-          </View>
+          <MetricCards items={metrics} />
 
-          <Section title="Lambda" icon="zap">
-            {errFor('lambda') ? <SectionError message={errFor('lambda')!.message} /> : (
-              <>
-                <LineChart
-                  height={150}
-                  formatY={formatNumber}
-                  series={[
-                    { color: Colors.indigo, points: lambdaInv },
-                    { color: Colors.red, points: lambdaErr },
-                  ]}
+          <SectionCard title="Traffic" description="CloudFront requests and 5xx responses">
+            <View className="gap-3">
+              <LineChart
+                height={150}
+                formatY={formatNumber}
+                series={[{ points: cfReq }, { points: cf5xx }]}
+              />
+              <ChartLegend items={[
+                { label: 'Requests', dotClass: CHART_DOTS[0] },
+                { label: '5xx', dotClass: CHART_DOTS[1] },
+              ]} />
+            </View>
+          </SectionCard>
+
+          <SectionCard title="Resources">
+            <View className="gap-2">
+              <ScrollTabs>
+                <Tabs value={filter} onValueChange={v => setFilter(v as Filter)}>
+                  <TabsList>
+                    {FILTERS.map(f => (
+                      <TabsTrigger key={f.value} value={f.value}><Text>{f.label}</Text></TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </ScrollTabs>
+              {shown.length === 0 ? (
+                <Text className="text-muted-foreground py-2 text-sm">No resources found</Text>
+              ) : shown.map((r, i) => (
+                <ListRow
+                  key={`${r.type}-${r.id}`}
+                  title={r.title}
+                  subtitle={r.subtitle}
+                  right={<StatusBadge tone={r.tone}>{r.statusText}</StatusBadge>}
+                  onPress={() => navigation.navigate('AwsResource', { type: r.type, id: r.id, title: r.title, range })}
+                  last={i === shown.length - 1}
                 />
-                <Legend items={[{ color: Colors.indigo, label: 'Invocations' }, { color: Colors.red, label: 'Errors' }]} />
-                {data.lambda.length === 0 && <Text style={styles.muted}>No functions found</Text>}
-                {data.lambda.map(f => (
-                  <Row key={f.name} title={f.name} badge={{ label: f.status, variant: statusVariant(f.status) }} onPress={open('lambda', f.name, f.name)}>
-                    <Metric label="Invocations" value={formatNumber(f.invocations)} />
-                    <Metric label="Error %" value={`${f.errorRatePct.toFixed(1)}%`} color={f.errors > 0 ? Colors.red : undefined} />
-                    <Metric label="p95" value={f.p95DurationMs == null ? '—' : `${Math.round(f.p95DurationMs)} ms`} />
-                  </Row>
-                ))}
-              </>
-            )}
-          </Section>
-
-          <Section title="CloudFront" icon="globe">
-            {errFor('cloudfront') ? <SectionError message={errFor('cloudfront')!.message} /> : (
-              <>
-                <LineChart height={150} filled formatY={formatNumber} series={[{ color: Colors.sky, points: cfReq }]} />
-                {data.cloudfront.length === 0 && <Text style={styles.muted}>No distributions found</Text>}
-                {data.cloudfront.map(d => (
-                  <Row
-                    key={d.id}
-                    title={d.aliases[0] ?? d.domain}
-                    onPress={open('cloudfront', d.id, d.aliases[0] ?? d.domain)}
-                    badge={{ label: d.enabled ? d.status : 'disabled', variant: d.enabled ? statusVariant(d.status) : 'muted' }}
-                  >
-                    <Metric label="Requests" value={formatNumber(d.requests)} />
-                    <Metric label="4xx" value={`${d.rate4xxPct.toFixed(1)}%`} />
-                    <Metric label="5xx" value={`${d.rate5xxPct.toFixed(1)}%`} color={d.rate5xxPct > 0 ? Colors.red : undefined} />
-                    <Metric label="Data" value={formatBytes(d.bytesDownloaded)} />
-                  </Row>
-                ))}
-              </>
-            )}
-          </Section>
-
-          <Section title="DynamoDB" icon="database">
-            {errFor('dynamodb') ? <SectionError message={errFor('dynamodb')!.message} /> : (
-              <>
-                {data.dynamodb.length === 0 && <Text style={styles.muted}>No tables found</Text>}
-                {data.dynamodb.map(t => (
-                  <Row key={t.name} title={t.name} badge={{ label: t.health, variant: statusVariant(t.health) }} onPress={open('dynamodb', t.name, t.name)}>
-                    <Metric label="Items" value={formatNumber(t.itemCount)} />
-                    <Metric label="Size" value={formatBytes(t.sizeBytes)} />
-                    <Metric label="Throttled" value={formatNumber(t.throttledRequests)} color={t.throttledRequests > 0 ? Colors.amber : undefined} />
-                  </Row>
-                ))}
-              </>
-            )}
-          </Section>
-
-          <Section title="S3" icon="hard-drive">
-            {errFor('s3') ? <SectionError message={errFor('s3')!.message} /> : (
-              <>
-                {data.s3.length === 0 && <Text style={styles.muted}>No buckets found</Text>}
-                {data.s3.map(b => (
-                  <Row key={b.name} title={b.name} onPress={open('s3', b.name, b.name)}>
-                    <Metric label="Size" value={formatBytes(b.sizeBytes)} />
-                    <Metric label="Objects" value={formatNumber(b.objectCount)} />
-                  </Row>
-                ))}
-              </>
-            )}
-          </Section>
-
-          <Section title="Cost" icon="trending-up">
-            {errFor('cost') ? <SectionError message={errFor('cost')!.message} /> : data.cost ? (
-              <>
-                <Text style={styles.subTitle}>By service (month to date)</Text>
-                <BarList
-                  items={data.cost.byService.map(s => ({ label: s.service, value: s.amountUsd }))}
-                  formatValue={formatUsd}
-                />
-                <Text style={[styles.subTitle, { marginTop: Spacing.md }]}>Daily cost</Text>
-                <LineChart height={150} filled formatY={formatUsd} series={[{ color: Colors.emerald, points: data.cost.dailySeries }]} />
-              </>
-            ) : <Text style={styles.muted}>No cost data</Text>}
-          </Section>
+              ))}
+            </View>
+          </SectionCard>
         </>
-      )}
+      ) : null}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Spacing.xxxl },
-  centered: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
-  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  chip: {
-    paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard,
-  },
-  chipActive: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder },
-  chipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  chipTextActive: { color: Colors.indigo },
-  updated: { marginLeft: 'auto', fontSize: 11, color: Colors.textMuted },
-  statsGrid: { gap: Spacing.sm },
-  statsRow: { flexDirection: 'row', gap: Spacing.sm },
-  section: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, overflow: 'hidden',
-  },
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
-  },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
-  sectionBody: { padding: Spacing.lg, gap: Spacing.md },
-  subTitle: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  muted: { fontSize: 12, color: Colors.textMuted },
-  big: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-  budgetTop: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm },
-  track: { height: 8, borderRadius: 4, backgroundColor: Colors.bgInput, overflow: 'hidden' },
-  fill: { height: 8, borderRadius: 4 },
-  armed: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  armedText: { fontSize: 12, color: Colors.emerald, fontWeight: '600' },
-  warn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, padding: Spacing.sm,
-    backgroundColor: Colors.redBg, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.redBorder,
-  },
-  warnText: { fontSize: 12, color: Colors.red, fontWeight: '600', flex: 1 },
-  errorCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md,
-    backgroundColor: Colors.redBg, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.redBorder,
-  },
-  errorCardText: { flex: 1, fontSize: 13, color: Colors.red },
-  legend: { flexDirection: 'row', gap: Spacing.lg },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: Colors.textSecondary },
-  row: { paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.bgCardBorder, gap: Spacing.sm },
-  rowPressed: { opacity: 0.6 },
-  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  rowTitleWrap: { flex: 1 },
-  rowTitle: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
-  rowSub: { fontSize: 11, color: Colors.textMuted },
-  rowMetrics: { flexDirection: 'row', gap: Spacing.lg },
-  metric: { gap: 1 },
-  metricValue: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  metricLabel: { fontSize: 10, color: Colors.textMuted },
-});

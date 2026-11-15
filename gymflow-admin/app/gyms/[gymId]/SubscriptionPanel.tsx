@@ -217,7 +217,7 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
 
             <div className="flex flex-wrap items-center gap-2 border-t pt-4">
               {isAddonRequest ? (
-                <Badge variant="secondary">
+                <Badge variant="info">
                   WhatsApp add-on{pendingRequest.expected_amount_inr != null ? `, ₹${Number(pendingRequest.expected_amount_inr).toLocaleString('en-IN')}` : ''} / 30 days
                 </Badge>
               ) : (

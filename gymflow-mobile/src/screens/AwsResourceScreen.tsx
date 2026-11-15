@@ -1,32 +1,40 @@
 import React, { useCallback, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity,
-} from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
-import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { Fonts } from '@/constants/theme';
 import { getAwsResourceDetail } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { CacheKeys } from '@/lib/cache';
 import { formatBytes, formatMs, formatNumber, formatPercent } from '@/lib/aws-format';
-import { StatCard } from '@/components/StatCard';
-import { Badge } from '@/components/Badge';
+import { useAppTheme } from '@/lib/theme';
+import { Text } from '@/components/ui/text';
+import { MetricCards, type MetricCardItem } from '@/components/dashboard/MetricCards';
+import { SectionCard } from '@/components/dashboard/SectionCard';
+import { DetailList } from '@/components/dashboard/DetailList';
+import type { Tone } from '@/components/dashboard/tone';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { LineChart } from '@/components/charts/LineChart';
 import type { RootStackScreenProps } from '@/src/navigation/types';
-import type { AwsRange, AwsResourceDetail, AwsStatus } from '@/types/aws';
+import type { AwsRange, AwsResourceDetail, AwsResourceType } from '@/types/aws';
+import { CHART_DOTS, ChartLegend, ErrorCard, RangeBar, statusTone } from './_aws/shared';
 
-const RANGES: AwsRange[] = ['1h', '24h', '7d'];
-const SERIES_COLORS = [Colors.indigo, Colors.red, Colors.sky, Colors.amber, Colors.emerald, Colors.purple];
-const STAT_ACCENTS = [
-  { c: Colors.indigo, bg: Colors.indigoBg },
-  { c: Colors.sky, bg: Colors.skyBg },
-  { c: Colors.emerald, bg: Colors.emeraldBg },
-  { c: Colors.amber, bg: Colors.amberBg },
-  { c: Colors.purple, bg: Colors.purpleBg },
-];
-
-type Variant = 'success' | 'error' | 'warning' | 'muted';
-const statusVariant = (s: AwsStatus): Variant =>
-  s === 'healthy' ? 'success' : s === 'critical' ? 'error' : s === 'warning' ? 'warning' : 'muted';
+// Which stats and charts the lean page shows per type (labels / keys come from gymflow-admin/lib/aws/detail.ts).
+const STAT_LABELS: Record<AwsResourceType, string[]> = {
+  lambda: ['Invocations', 'Errors', 'Error rate', 'p95 duration'],
+  cloudfront: ['Requests', 'Data out', '4xx rate', '5xx rate'],
+  dynamodb: ['Items', 'Size', 'Throttles'],
+  s3: ['Size', 'Objects'],
+};
+const CHART_KEYS: Record<AwsResourceType, string[]> = {
+  lambda: ['invocations', 'duration'],
+  cloudfront: ['requests', 'errors'],
+  dynamodb: ['consumed', 'throttles'],
+  s3: ['size', 'objects'],
+};
+const STAT_ICONS: Record<string, string> = {
+  Invocations: 'zap', Errors: 'alert-triangle', 'Error rate': 'percent', 'p95 duration': 'clock',
+  Requests: 'globe', 'Data out': 'download-cloud', '4xx rate': 'alert-circle', '5xx rate': 'alert-triangle',
+  Items: 'list', Size: 'hard-drive', Throttles: 'activity', Objects: 'box',
+};
 
 function unitFormatter(unit: AwsResourceDetail['charts'][number]['unit']): (v: number) => string {
   switch (unit) {
@@ -40,19 +48,42 @@ function unitFormatter(unit: AwsResourceDetail['charts'][number]['unit']): (v: n
 const time = (t: number) =>
   new Date(t).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}><Text style={styles.cardTitle}>{title}</Text></View>
-      <View style={styles.cardBody}>{children}</View>
-    </View>
-  );
+// Problem counters go red when above zero; throughput blue; latency violet; capacity sky.
+function statTone(label: string, value: string): Tone {
+  const n = parseFloat(value.replace(/,/g, ''));
+  if (['Errors', 'Throttles', 'Error rate', '5xx rate', '4xx rate'].includes(label)) {
+    return Number.isFinite(n) && n > 0 ? (label === '4xx rate' ? 'amber' : 'red') : 'emerald';
+  }
+  if (label === 'p95 duration') return 'violet';
+  if (label === 'Invocations' || label === 'Requests' || label === 'Data out') return 'blue';
+  return 'sky';
+}
+
+function logLevel(message: string): { word: string; className: string } | null {
+  const m = /(ERROR|WARN(?:ING)?)/i.exec(message);
+  if (!m) return null;
+  return { word: m[0], className: m[0].toUpperCase().startsWith('WARN') ? 'text-warning' : 'text-destructive' };
+}
+
+function pickStats(data: AwsResourceDetail): MetricCardItem[] {
+  const wanted = STAT_LABELS[data.type].map(l => data.stats.find(s => s.label === l)).filter(s => !!s);
+  const picked = wanted.length > 0 ? wanted : data.stats.slice(0, 4);
+  return picked.slice(0, 4).map(s => {
+    const tone = statTone(s.label, s.value);
+    return { icon: STAT_ICONS[s.label] ?? 'bar-chart-2', label: s.label, value: s.value, tone, valueTone: tone };
+  });
+}
+
+function pickCharts(data: AwsResourceDetail): AwsResourceDetail['charts'] {
+  const wanted = CHART_KEYS[data.type].map(k => data.charts.find(c => c.key === k)).filter(c => !!c);
+  return (wanted.length > 0 ? wanted : data.charts).slice(0, 2);
 }
 
 export default function AwsResourceScreen({ route }: RootStackScreenProps<'AwsResource'>) {
   const { type, id } = route.params;
   const [range, setRange] = useState<AwsRange>(route.params.range);
   const [refreshing, setRefreshing] = useState(false);
+  const { colors } = useAppTheme();
 
   const { data, loading, error, refresh } = useCachedQuery<AwsResourceDetail>({
     key: CacheKeys.awsResource(type, id, range),
@@ -66,8 +97,8 @@ export default function AwsResourceScreen({ route }: RootStackScreenProps<'AwsRe
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={Colors.indigo} size="large" />
+      <View className="bg-background flex-1 items-center justify-center">
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
@@ -79,153 +110,80 @@ export default function AwsResourceScreen({ route }: RootStackScreenProps<'AwsRe
 
   return (
     <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />}
-    >
-      {data && (
-        <View style={styles.head}>
-          <Text style={styles.subtitle} numberOfLines={2}>{data.subtitle}</Text>
-          <Badge label={data.status} variant={statusVariant(data.status)} />
+      className="bg-background flex-1"
+      contentContainerClassName="gap-4 p-4 pb-10"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+      {data ? (
+        <View className="flex-row items-center justify-between gap-3">
+          <Text className="text-muted-foreground flex-1 text-sm" numberOfLines={2}>{data.subtitle}</Text>
+          <StatusBadge tone={statusTone(data.status)}>{data.status}</StatusBadge>
         </View>
-      )}
+      ) : null}
 
-      <View style={styles.rangeRow}>
-        {RANGES.map(r => (
-          <TouchableOpacity
-            key={r}
-            style={[styles.chip, r === range && styles.chipActive]}
-            onPress={() => setRange(r)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.chipText, r === range && styles.chipTextActive]}>{r}</Text>
-          </TouchableOpacity>
-        ))}
-        {updated && <Text style={styles.updated}>Updated {updated}</Text>}
-      </View>
+      <RangeBar range={range} onChange={setRange} updated={updated} />
 
-      {error && (
-        <View style={styles.errorCard}>
-          <Feather name="alert-triangle" size={14} color={Colors.red} />
-          <Text style={styles.errorCardText}>{notFound ? 'This resource no longer exists' : error}</Text>
-        </View>
-      )}
+      {error ? <ErrorCard message={notFound ? 'This resource no longer exists' : error} /> : null}
 
-      {data && (
+      {data ? (
         <>
-          {data.stats.length > 0 && (
-            <View style={styles.statsGrid}>
-              {Array.from({ length: Math.ceil(data.stats.length / 2) }, (_, i) => data.stats.slice(i * 2, i * 2 + 2)).map((pair, i) => (
-                <View key={i} style={styles.statsRow}>
-                  {pair.map((s, j) => {
-                    const a = STAT_ACCENTS[(i * 2 + j) % STAT_ACCENTS.length];
-                    return <StatCard key={s.label} label={s.label} value={s.value} accentColor={a.c} accentBg={a.bg} />;
-                  })}
-                  {pair.length === 1 && <View style={styles.statSpacer} />}
-                </View>
-              ))}
-            </View>
-          )}
+          {data.stats.length > 0 ? <MetricCards items={pickStats(data)} /> : null}
 
-          {data.charts.map(ch => {
-            const fmt = unitFormatter(ch.unit);
-            const items = ch.series.map((s, i) => ({ label: s.label, color: SERIES_COLORS[i % SERIES_COLORS.length], points: s.points }));
+          {pickCharts(data).map(ch => {
+            const dots = ch.series.map((s, i) => ({ label: s.label, dotClass: CHART_DOTS[i % CHART_DOTS.length] }));
             return (
-              <Card key={ch.key} title={ch.title}>
-                <LineChart height={150} formatY={fmt} filled={items.length === 1} series={items} />
-                <View style={styles.legend}>
-                  {items.map(i => (
-                    <View key={i.label} style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: i.color }]} />
-                      <Text style={styles.legendText}>{i.label}</Text>
-                    </View>
-                  ))}
+              <SectionCard key={ch.key} title={ch.title}>
+                <View className="gap-3">
+                  <LineChart
+                    height={150}
+                    formatY={unitFormatter(ch.unit)}
+                    filled={ch.series.length === 1}
+                    series={ch.series.map(s => ({ points: s.points }))}
+                  />
+                  <ChartLegend items={dots} />
                 </View>
-              </Card>
+              </SectionCard>
             );
           })}
 
-          {data.properties.length > 0 && (
-            <Card title="Properties">
-              {data.properties.map((p, i) => (
-                <View key={`${p.label}-${i}`} style={[styles.propRow, i > 0 && styles.propDivider]}>
-                  <Text style={styles.propLabel}>{p.label}</Text>
-                  <Text style={styles.propValue}>{p.value}</Text>
-                </View>
-              ))}
-            </Card>
-          )}
+          {data.properties.length > 0 ? (
+            <SectionCard title="Details">
+              <DetailList items={data.properties.slice(0, 6)} />
+            </SectionCard>
+          ) : null}
 
-          {data.type === 'lambda' && (
-            <Card title="Recent errors and warnings">
+          {data.type === 'lambda' ? (
+            <SectionCard title="Recent errors and warnings">
               {data.recentLogs.length === 0 ? (
-                <Text style={styles.muted}>No errors or warnings in this period</Text>
-              ) : [...data.recentLogs].sort((a, b) => b.t - a.t).map((l, i) => (
-                <View key={`${l.t}-${i}`} style={[styles.logRow, i > 0 && styles.propDivider]}>
-                  <Text style={styles.logTime}>{time(l.t)}</Text>
-                  <Text style={styles.logMsg}>{l.message}</Text>
+                <Text className="text-muted-foreground text-sm">No errors or warnings in this window</Text>
+              ) : (
+                <View className="gap-3">
+                  {[...data.recentLogs].sort((a, b) => b.t - a.t).map((l, i) => (
+                    <View key={`${l.t}-${i}`} className="gap-0.5">
+                      <Text className="text-muted-foreground text-xs">{time(l.t)}</Text>
+                      <Text className="text-xs" style={{ fontFamily: Fonts.mono }}>
+                        {(() => {
+                          const lv = logLevel(l.message);
+                          if (!lv) return l.message;
+                          const at = l.message.indexOf(lv.word);
+                          return (
+                            <>
+                              {l.message.slice(0, at)}
+                              <Text className={`text-xs font-semibold ${lv.className}`} style={{ fontFamily: Fonts.mono }}>{lv.word}</Text>
+                              {l.message.slice(at + lv.word.length)}
+                            </>
+                          );
+                        })()}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </Card>
-          )}
+              )}
+            </SectionCard>
+          ) : null}
 
-          {data.errors.map((e, i) => (
-            <View key={i} style={styles.note}>
-              <Feather name="alert-circle" size={12} color={Colors.red} />
-              <Text style={styles.noteText}>{e}</Text>
-            </View>
-          ))}
+          {data.errors.map((e, i) => <ErrorCard key={i} message={e} />)}
         </>
-      )}
+      ) : null}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Spacing.xxxl },
-  centered: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  subtitle: { flex: 1, fontSize: 13, color: Colors.textSecondary },
-  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  chip: {
-    paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard,
-  },
-  chipActive: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder },
-  chipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  chipTextActive: { color: Colors.indigo },
-  updated: { marginLeft: 'auto', fontSize: 11, color: Colors.textMuted },
-  statsGrid: { gap: Spacing.sm },
-  statsRow: { flexDirection: 'row', gap: Spacing.sm },
-  statSpacer: { flex: 1 },
-  card: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, overflow: 'hidden',
-  },
-  cardHeader: {
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
-  },
-  cardTitle: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
-  cardBody: { padding: Spacing.lg, gap: Spacing.md },
-  muted: { fontSize: 12, color: Colors.textMuted },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.lg },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: Colors.textSecondary },
-  propRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.lg },
-  propDivider: { borderTopWidth: 1, borderTopColor: Colors.bgCardBorder, paddingTop: Spacing.md },
-  propLabel: { fontSize: 12, color: Colors.textMuted },
-  propValue: { flex: 1, textAlign: 'right', fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
-  logRow: { gap: 2 },
-  logTime: { fontSize: 11, color: Colors.textMuted },
-  logMsg: { fontSize: 11, color: Colors.textPrimary, fontFamily: Fonts.mono },
-  errorCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md,
-    backgroundColor: Colors.redBg, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.redBorder,
-  },
-  errorCardText: { flex: 1, fontSize: 13, color: Colors.red },
-  note: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  noteText: { flex: 1, fontSize: 11, color: Colors.red },
-});

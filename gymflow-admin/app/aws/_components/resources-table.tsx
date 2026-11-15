@@ -7,6 +7,7 @@ import { DataTable } from '@/components/dashboard/data-table'
 import { StatusBadge } from '@/components/dashboard/status-badge'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
 import type { AwsRange, AwsResourceType, AwsStatus } from '@/lib/aws/types'
 
 export interface ResourceRow {
@@ -27,6 +28,19 @@ const TYPE_LABEL: Record<AwsResourceType, string> = {
   s3: 'S3',
 }
 
+// Type tints live here (one-off palette-by-type, not a status). Each uses a semantic token.
+const TYPE_CLASS: Record<AwsResourceType, string> = {
+  lambda: 'border-violet/20 bg-violet/10 text-violet',
+  cloudfront: 'border-primary/20 bg-primary/10 text-primary',
+  dynamodb: 'border-info/20 bg-info/10 text-info',
+  s3: 'border-success/20 bg-success/10 text-success',
+}
+
+const METRIC_CLASS: Partial<Record<AwsStatus, string>> = {
+  critical: 'text-destructive font-medium',
+  warning: 'text-warning font-medium',
+}
+
 const columns: ColumnDef<ResourceRow, unknown>[] = [
   {
     accessorKey: 'name',
@@ -40,7 +54,7 @@ const columns: ColumnDef<ResourceRow, unknown>[] = [
   {
     accessorKey: 'type',
     header: 'Type',
-    cell: ({ row }) => <Badge variant="secondary">{TYPE_LABEL[row.original.type]}</Badge>,
+    cell: ({ row }) => <Badge variant="outline" className={TYPE_CLASS[row.original.type]}>{TYPE_LABEL[row.original.type]}</Badge>,
   },
   {
     id: 'metric',
@@ -48,7 +62,7 @@ const columns: ColumnDef<ResourceRow, unknown>[] = [
     cell: ({ row }) => (
       <span className="whitespace-nowrap">
         <span className="text-muted-foreground">{row.original.metricLabel} </span>
-        <span className="tabular-nums">{row.original.metricValue}</span>
+        <span className={cn('tabular-nums', METRIC_CLASS[row.original.status])}>{row.original.metricValue}</span>
       </span>
     ),
   },

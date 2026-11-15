@@ -34,7 +34,7 @@ const columns: ColumnDef<ErrorRow, unknown>[] = [
     header: 'Events',
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <Badge variant="secondary">{row.original.count}</Badge>
+        <Badge variant="destructive" className="tabular-nums">{row.original.count}</Badge>
         {row.original.userCount > 0 && <span className="text-muted-foreground text-xs">{row.original.userCount} users</span>}
       </div>
     ),

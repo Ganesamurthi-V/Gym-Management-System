@@ -125,8 +125,8 @@
   Neutral grey, deliberately. An earlier version of this ramp was slate-toned, so
   the page sat at 15 23 42 and every surface carried a blue cast. It is a common
   choice and it was the wrong one here: this app's dark theme is meant to read as
-  black, and the only colour on screen should be the brand blue and the semantic
-  states. A blue-tinted background competes with both — brand-500 on a blue-black
+  charcoal, not black, and the only colour on screen should be the brand blue and
+  the semantic states. A blue-tinted background competes with both — brand-500 on a blue-black
   card loses much of its separation.
 
   So all five achromatic families collapse onto ONE hue-free ramp in dark mode.
@@ -225,11 +225,14 @@
     Surfaces are layered so elevation reads without a bright border doing the work:
     the page is darkest, cards sit above it, raised panels above those.
   */
-  --c-surface: 23 23 23;            /* cards, modals, inputs */
-  --c-surface-secondary: 10 10 10;  /* page background, beneath cards */
+  /* Greys, never black: pure #000 reads as a hole in the screen on OLED phones and
+     flattens every elevation step. The whole stack is lifted together so the gaps
+     between page, card and raised panel stay the same. */
+  --c-surface: 28 28 28;            /* cards, modals, inputs */
+  --c-surface-secondary: 18 18 18;  /* page background, beneath cards */
   --c-surface-card: 38 38 38;       /* raised panel inside a card */
-  --c-surface-border: 38 38 38;
-  --c-surface-sunken: 10 10 10;     /* wells, table stripes */
+  --c-surface-border: 42 42 42;
+  --c-surface-sunken: 14 14 14;     /* wells, table stripes */
   /* The skeleton bar is only ~9 levels above the card (32 on 23), so the sweep is a
      faint lift rather than the near-white flash that reads as a glare on a dark UI. */
   --skeleton-shimmer: rgb(255 255 255 / 7%);

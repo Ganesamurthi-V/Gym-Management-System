@@ -1,49 +1,32 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity,
-} from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
+import { View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchDashboardStats, type DashboardStats } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { CacheKeys } from '@/lib/cache';
-import { StatCard } from '@/components/StatCard';
-import { Badge } from '@/components/Badge';
+import { useAppTheme } from '@/lib/theme';
+import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { MetricCards } from '@/components/dashboard/MetricCards';
+import { SectionCard } from '@/components/dashboard/SectionCard';
+import { ListRow } from '@/components/dashboard/ListRow';
+import { StatusBadge, type StatusTone } from '@/components/dashboard/StatusBadge';
 import type { RootStackParamList } from '../../navigation/types';
 
-function ErrorRow({ error }: { error: DashboardStats['recentErrors'][0] }) {
-  return (
-    <View style={styles.errorRow}>
-      <View style={styles.errorContent}>
-        <Text style={styles.errorTitle} numberOfLines={1}>{error.title}</Text>
-        <Text style={styles.errorCulprit} numberOfLines={1}>{error.culprit}</Text>
-        <View style={styles.errorMeta}>
-          <Text style={styles.errorMetaText}>{new Date(error.lastSeen).toLocaleString('en-IN')}</Text>
-          <Text style={styles.errorMetaDot}>·</Text>
-          <Text style={styles.errorMetaText}>{error.count} events</Text>
-        </View>
-      </View>
-    </View>
-  );
+function messageTone(type: string): StatusTone {
+  if (type === 'error') return 'error';
+  if (type === 'warning') return 'warning';
+  if (type === 'success') return 'success';
+  return 'info';
 }
 
-function MessageRow({ msg }: { msg: DashboardStats['recentMessages'][0] }) {
-  const typeVariant = (type: string): 'error' | 'warning' | 'success' | 'info' => {
-    if (type === 'error') return 'error';
-    if (type === 'warning') return 'warning';
-    if (type === 'success') return 'success';
-    return 'info';
-  };
+function EmptyState({ icon, text }: { icon?: string; text: string }) {
   return (
-    <View style={styles.msgRow}>
-      <View style={styles.msgContent}>
-        <Text style={styles.msgSubject} numberOfLines={1}>{msg.subject}</Text>
-        <Text style={styles.msgGym}>{msg.gym?.name ?? 'Unknown gym'}</Text>
-        <Text style={styles.msgTime}>{new Date(msg.created_at).toLocaleString('en-IN')}</Text>
-      </View>
-      <Badge label={msg.type} variant={typeVariant(msg.type)} />
+    <View className="items-center justify-center gap-2 py-6">
+      {icon ? <Icon name={icon} size={24} className="text-muted-foreground" /> : null}
+      <Text className="text-muted-foreground text-sm">{text}</Text>
     </View>
   );
 }
@@ -51,6 +34,7 @@ function MessageRow({ msg }: { msg: DashboardStats['recentMessages'][0] }) {
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { colors } = useAppTheme();
 
   const { data: stats, loading, error, refresh } = useCachedQuery<DashboardStats>({
     key: CacheKeys.dashboard,
@@ -73,153 +57,94 @@ export default function DashboardScreen() {
   // no longer costs a spinner.
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={Colors.indigo} size="large" />
+      <View className="bg-background flex-1 items-center justify-center">
+        <ActivityIndicator color={colors.mutedForeground} size="large" />
       </View>
     );
   }
 
+  const errorCount = stats?.errorCount ?? 0;
+  const warningCount = stats?.warningCount ?? 0;
+  const recentErrors = (stats?.recentErrors ?? []).slice(0, 5);
+  const recentMessages = stats?.recentMessages ?? [];
+
   return (
     <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.content}
+      className="bg-background flex-1"
+      contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 32 }}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.mutedForeground} />
       }
     >
-      <View style={styles.header}>
-        <Text style={styles.dateText}>{today}</Text>
-        <View style={styles.onlineBadge}>
-          <View style={styles.onlineDot} />
-          <Text style={styles.onlineText}>System Online</Text>
-        </View>
+      <View className="flex-row items-center justify-between gap-3">
+        <Text className="text-muted-foreground flex-1 text-xs">{today}</Text>
+        <StatusBadge tone="healthy">System Online</StatusBadge>
       </View>
 
       {error && (
-        <View style={styles.errorBanner}>
-          <Feather name="alert-triangle" size={14} color={Colors.amber} />
-          <Text style={styles.errorBannerText}>{error}</Text>
-        </View>
+        <Card className="flex-row items-center gap-2 px-4 py-3">
+          <Icon name="alert-triangle" size={14} className="text-warning" />
+          <Text className="flex-1 text-sm">{error}</Text>
+        </Card>
       )}
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statsRow}>
-          <StatCard label="Total Gyms" value={stats?.gymCount ?? '—'} accentColor={Colors.indigo} accentBg={Colors.indigoBg} />
-          <StatCard label="Total Members" value={stats?.memberCount ?? '—'} accentColor={Colors.sky} accentBg={Colors.skyBg} />
-        </View>
-        <View style={styles.statsRow}>
-          <StatCard label="Today's Check-ins" value={stats?.attendanceToday ?? '—'} accentColor={Colors.emerald} accentBg={Colors.emeraldBg} />
-          <StatCard label="Open Errors" value={stats?.errorCount ?? 0} sub="Sentry" accentColor={Colors.red} accentBg={Colors.redBg} />
-        </View>
-        <View style={styles.statsRow}>
-          <StatCard label="Warnings" value={stats?.warningCount ?? 0} sub="Sentry" accentColor={Colors.amber} accentBg={Colors.amberBg} />
-          <StatCard label="Msgs Sent" value={stats?.recentMessages?.length ?? 0} sub="Recent" accentColor={Colors.purple} accentBg={Colors.purpleBg} />
-        </View>
-      </View>
+      <MetricCards
+        items={[
+          { icon: 'activity', label: 'Total Gyms', value: String(stats?.gymCount ?? '—') },
+          { icon: 'users', label: 'Total Members', value: String(stats?.memberCount ?? '—') },
+          { icon: 'check-circle', label: "Today's Check-ins", value: String(stats?.attendanceToday ?? '—') },
+          { icon: 'alert-circle', label: 'Open Errors', value: String(errorCount), footnote: 'Sentry', tone: errorCount > 0 ? 'red' : 'emerald', valueTone: errorCount > 0 ? 'red' : 'emerald' },
+          { icon: 'alert-triangle', label: 'Warnings', value: String(warningCount), footnote: 'Sentry', tone: warningCount > 0 ? 'amber' : 'neutral', valueTone: warningCount > 0 ? 'amber' : 'neutral' },
+          { icon: 'send', label: 'Msgs Sent', value: String(stats?.recentMessages?.length ?? 0), footnote: 'Recent', tone: 'violet', valueTone: 'violet' },
+        ]}
+      />
 
-      <TouchableOpacity style={styles.awsCard} activeOpacity={0.7} onPress={() => navigation.navigate('AwsMonitor')}>
-        <Feather name="cloud" size={18} color={Colors.indigo} />
-        <View style={styles.awsCardText}>
-          <Text style={styles.sectionTitle}>AWS Monitor</Text>
-          <Text style={styles.errorCulprit}>Lambda, CloudFront, DynamoDB, S3 and cost</Text>
-        </View>
-        <Feather name="chevron-right" size={18} color={Colors.textMuted} />
-      </TouchableOpacity>
+      <SectionCard>
+        <ListRow
+          last
+          title="AWS Monitor"
+          subtitle="Lambda, CloudFront, DynamoDB, S3 and cost"
+          left={
+            <View className="bg-muted border-border size-8 items-center justify-center rounded-lg border">
+              <Icon name="cloud" size={16} className="text-muted-foreground" />
+            </View>
+          }
+          right={<Icon name="chevron-right" size={18} className="text-muted-foreground" />}
+          onPress={() => navigation.navigate('AwsMonitor')}
+        />
+      </SectionCard>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <Feather name="alert-circle" size={14} color={Colors.red} />
-            <Text style={styles.sectionTitle}>Recent Errors</Text>
-          </View>
-        </View>
-        {(stats?.recentErrors ?? []).length === 0 ? (
-          <View style={styles.emptyState}>
-            <Feather name="shield" size={28} color={Colors.emerald} />
-            <Text style={styles.emptyStateText}>No open errors 🎉</Text>
-          </View>
+      <SectionCard title="Recent Errors">
+        {recentErrors.length === 0 ? (
+          <EmptyState icon="shield" text="No open errors" />
         ) : (
-          (stats?.recentErrors ?? []).slice(0, 5).map(e => <ErrorRow key={e.id} error={e} />)
+          recentErrors.map((e, i) => (
+            <ListRow
+              key={e.id}
+              last={i === recentErrors.length - 1}
+              title={e.title}
+              subtitle={`${e.culprit}\n${new Date(e.lastSeen).toLocaleString('en-IN')}`}
+              right={<StatusBadge tone="error">{`${e.count} events`}</StatusBadge>}
+            />
+          ))
         )}
-      </View>
+      </SectionCard>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <Feather name="send" size={14} color={Colors.indigo} />
-            <Text style={styles.sectionTitle}>Recent Messages Sent</Text>
-          </View>
-        </View>
-        {(stats?.recentMessages ?? []).length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No messages sent yet</Text>
-          </View>
+      <SectionCard title="Recent Messages Sent">
+        {recentMessages.length === 0 ? (
+          <EmptyState text="No messages sent yet" />
         ) : (
-          (stats?.recentMessages ?? []).map(m => <MessageRow key={m.id} msg={m} />)
+          recentMessages.map((m, i) => (
+            <ListRow
+              key={m.id}
+              last={i === recentMessages.length - 1}
+              title={m.subject}
+              subtitle={`${m.gym?.name ?? 'Unknown gym'}\n${new Date(m.created_at).toLocaleString('en-IN')}`}
+              right={<StatusBadge tone={messageTone(m.type)}>{m.type}</StatusBadge>}
+            />
+          ))
         )}
-      </View>
+      </SectionCard>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.lg, gap: Spacing.xl, paddingBottom: Spacing.xxxl },
-  centered: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dateText: { fontSize: 12, color: Colors.textMuted },
-  onlineBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.emeraldBg, borderRadius: 99,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: Colors.emeraldBorder,
-  },
-  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.emerald },
-  onlineText: { fontSize: 11, color: Colors.emerald, fontWeight: '600' },
-  errorBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.amberBg, borderRadius: Radius.md,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.amberBorder,
-  },
-  errorBannerText: { fontSize: 13, color: Colors.amber, flex: 1 },
-  awsCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.lg,
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.bgCardBorder,
-  },
-  awsCardText: { flex: 1, gap: 2 },
-  statsGrid: { gap: Spacing.sm },
-  statsRow: { flexDirection: 'row', gap: Spacing.sm },
-  section: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, overflow: 'hidden',
-  },
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
-  },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl, gap: Spacing.sm },
-  emptyStateText: { fontSize: 13, color: Colors.textMuted },
-  errorRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
-  },
-  errorContent: { flex: 1, gap: 2 },
-  errorTitle: { fontSize: 12, color: Colors.red, fontWeight: '600' },
-  errorCulprit: { fontSize: 11, color: Colors.textMuted },
-  errorMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  errorMetaText: { fontSize: 10, color: Colors.textMuted },
-  errorMetaDot: { fontSize: 10, color: Colors.textMuted },
-  msgRow: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    gap: Spacing.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
-  },
-  msgContent: { flex: 1, gap: 2 },
-  msgSubject: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
-  msgGym: { fontSize: 11, color: Colors.textSecondary },
-  msgTime: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
-});

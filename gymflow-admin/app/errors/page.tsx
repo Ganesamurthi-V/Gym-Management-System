@@ -20,7 +20,7 @@ export default async function ErrorsPage() {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <PageToolbar title="Unresolved Errors" description="Track and resolve active system errors">
-        <Badge variant={issues.length > 0 ? 'destructive' : 'secondary'}>{issues.length} active</Badge>
+        <Badge variant={issues.length > 0 ? 'destructive' : 'success'}>{issues.length} active</Badge>
       </PageToolbar>
       <ErrorsTable data={rows} />
     </div>

@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert,
-} from 'react-native';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { getAnnouncement, saveAnnouncement, type SiteAnnouncement } from '@/lib/api';
-import { AdminInput } from '@/components/AdminInput';
-import { AdminButton } from '@/components/AdminButton';
+import { useAppTheme } from '@/lib/theme';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Text } from '@/components/ui/text';
+import { Textarea } from '@/components/ui/textarea';
+import { SectionCard } from '@/components/dashboard/SectionCard';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { toast } from '@/components/dashboard/Toast';
 import { AnnouncementPreview } from '@/components/AnnouncementPreview';
 import { KeyboardSafeView } from '@/components/KeyboardSafeView';
 
@@ -14,7 +19,11 @@ const MAX_LABEL = 30;
 const MAX_AFTER = 120;
 const LEVELS: SiteAnnouncement['level'][] = ['info', 'warning', 'critical'];
 
+const errMsg = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
+const levelLabel = (l: SiteAnnouncement['level']) => l.charAt(0).toUpperCase() + l.slice(1);
+
 export default function AnnouncementScreen() {
+  const { colors } = useAppTheme();
   const [current, setCurrent] = useState<SiteAnnouncement | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -39,8 +48,8 @@ export default function AnnouncementScreen() {
     setLoadError('');
     try {
       apply(await getAnnouncement());
-    } catch (e: any) {
-      setLoadError(e.message ?? 'Failed to load');
+    } catch (e) {
+      setLoadError(errMsg(e, 'Failed to load'));
     } finally {
       setLoading(false);
     }
@@ -64,24 +73,28 @@ export default function AnnouncementScreen() {
         is_active: active,
       });
       apply(saved);
-      Alert.alert(active ? 'Published' : 'Turned off', active ? 'Owners will see the banner.' : 'The banner is hidden.');
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to save');
+      toast.show(active ? 'Published. Owners will see the banner.' : 'Turned off. The banner is hidden.', 'success');
+    } catch (e) {
+      toast.show(errMsg(e, 'Failed to save'), 'error');
       // 409 means another publish changed the row first; show its current state.
-      if (/concurrent|changed|conflict/i.test(e.message ?? '')) load();
+      if (/concurrent|changed|conflict/i.test(e instanceof Error ? e.message : '')) load();
     } finally {
       setSaving(null);
     }
   }
 
   if (loading) {
-    return <View style={styles.centered}><ActivityIndicator color={Colors.indigo} /></View>;
+    return (
+      <View className="bg-background flex-1 items-center justify-center">
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   }
   if (loadError) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{loadError}</Text>
-        <AdminButton label="Retry" onPress={load} />
+      <View className="bg-background flex-1 items-center justify-center gap-4 p-8">
+        <Text className="text-destructive text-center text-sm">{loadError}</Text>
+        <Button onPress={load}><Text>Retry</Text></Button>
       </View>
     );
   }
@@ -89,91 +102,91 @@ export default function AnnouncementScreen() {
   const nearLimit = message.length >= MAX_MESSAGE - 20;
 
   return (
-    <KeyboardSafeView style={styles.flex1}>
+    <KeyboardSafeView style={{ flex: 1 }}>
       <ScrollView
-        style={styles.flex1}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.card}>
-          <Text style={[styles.status, { color: current?.is_active ? Colors.emerald : Colors.textMuted }]}>
-            {current?.is_active ? 'Currently live' : 'Currently off'}
-          </Text>
-          <Text style={styles.meta}>
-            Version {current?.version ?? 0}
-            {current?.updated_at ? ` - updated ${new Date(current.updated_at).toLocaleString()}` : ''}
-          </Text>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.field}>
-            <AdminInput
-              label="Message"
-              value={message}
-              onChangeText={t => setMessage(t.slice(0, MAX_MESSAGE))}
-              placeholder="e.g. Scheduled maintenance tonight at 11 PM"
-              multiline
-              numberOfLines={3}
-              maxLength={MAX_MESSAGE}
-              style={styles.textarea}
-            />
-            <Text style={[styles.counter, nearLimit && { color: Colors.amber }]}>
-              {message.length}/{MAX_MESSAGE}
-            </Text>
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Level</Text>
-            <View style={styles.pills}>
-              {LEVELS.map(l => (
-                <TouchableOpacity
-                  key={l}
-                  style={[styles.pill, level === l && styles.pillActive]}
-                  onPress={() => setLevel(l)}
-                >
-                  <Text style={[styles.pillText, level === l && styles.pillTextActive]}>
-                    {l.charAt(0).toUpperCase() + l.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+        className="bg-background flex-1"
+        contentContainerClassName="gap-4 p-4 pb-10"
+        keyboardShouldPersistTaps="handled">
+        <SectionCard
+          title="Site announcement"
+          description={`Version ${current?.version ?? 0}${current?.updated_at ? ` - updated ${new Date(current.updated_at).toLocaleString()}` : ''}`}
+          action={
+            <StatusBadge tone={current?.is_active ? 'success' : 'neutral'}>
+              {current?.is_active ? 'Currently live' : 'Currently off'}
+            </StatusBadge>
+          }>
+          <View className="gap-4">
+            <View className="gap-1.5">
+              <Label>Message</Label>
+              <Textarea
+                value={message}
+                onChangeText={t => setMessage(t.slice(0, MAX_MESSAGE))}
+                placeholder="e.g. Scheduled maintenance tonight at 11 PM"
+                numberOfLines={3}
+                maxLength={MAX_MESSAGE}
+                className="min-h-20"
+              />
+              <Text className={nearLimit ? 'self-end text-xs text-warning' : 'text-muted-foreground self-end text-xs'}>
+                {message.length}/{MAX_MESSAGE}
+              </Text>
             </View>
-            <Text style={styles.hint}>Critical cannot be closed by owners</Text>
-          </View>
 
-          <View style={styles.field}>
-            <AdminInput
-              label="Link URL (optional)"
-              value={linkUrl}
-              onChangeText={setLinkUrl}
-              placeholder="https://"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <Text style={[styles.hint, linkInvalid && { color: Colors.red }]}>must start with https://</Text>
-          </View>
+            <View className="gap-1.5">
+              <Label>Level</Label>
+              <Select
+                value={{ value: level, label: levelLabel(level) }}
+                onValueChange={opt => { if (opt) setLevel(opt.value as SiteAnnouncement['level']); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEVELS.map(l => (
+                    <SelectItem key={l} value={l} label={levelLabel(l)} />
+                  ))}
+                </SelectContent>
+              </Select>
+              <Text className="text-muted-foreground text-xs">Critical cannot be closed by owners</Text>
+            </View>
 
-          <AdminInput
-            label="Link label (optional)"
-            value={linkLabel}
-            onChangeText={t => setLinkLabel(t.slice(0, MAX_LABEL))}
-            placeholder="Learn more"
-            maxLength={MAX_LABEL}
-          />
+            <View className="gap-1.5">
+              <Label>Link URL (optional)</Label>
+              <Input
+                value={linkUrl}
+                onChangeText={setLinkUrl}
+                placeholder="https://"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Text className={linkInvalid ? 'text-destructive text-xs' : 'text-muted-foreground text-xs'}>
+                must start with https://
+              </Text>
+            </View>
 
-          <View style={styles.field}>
-            <AdminInput
-              label="Text after the link (optional)"
-              value={messageAfter}
-              onChangeText={t => setMessageAfter(t.slice(0, MAX_AFTER))}
-              maxLength={MAX_AFTER}
-            />
-            <Text style={[styles.counter, messageAfter.length >= MAX_AFTER - 20 && { color: Colors.amber }]}>
-              {messageAfter.length}/{MAX_AFTER}
-            </Text>
-            <Text style={styles.hint}>Shown after the link, on the same line.</Text>
+            <View className="gap-1.5">
+              <Label>Link label (optional)</Label>
+              <Input
+                value={linkLabel}
+                onChangeText={t => setLinkLabel(t.slice(0, MAX_LABEL))}
+                placeholder="Learn more"
+                maxLength={MAX_LABEL}
+              />
+            </View>
+
+            <View className="gap-1.5">
+              <Label>Text after the link (optional)</Label>
+              <Input
+                value={messageAfter}
+                onChangeText={t => setMessageAfter(t.slice(0, MAX_AFTER))}
+                maxLength={MAX_AFTER}
+              />
+              <Text className={messageAfter.length >= MAX_AFTER - 20 ? 'self-end text-xs text-warning' : 'text-muted-foreground self-end text-xs'}>
+                {messageAfter.length}/{MAX_AFTER}
+              </Text>
+              <Text className="text-muted-foreground text-xs">Shown after the link, on the same line.</Text>
+            </View>
           </View>
-        </View>
+        </SectionCard>
 
         <AnnouncementPreview
           message={message}
@@ -183,46 +196,16 @@ export default function AnnouncementScreen() {
           hasLink={url.length > 0 && !linkInvalid}
         />
 
-        <AdminButton
-          label="Publish"
-          onPress={() => submit(true)}
-          loading={saving === 'publish'}
-          disabled={!canPublish || saving !== null}
-        />
-        <AdminButton
-          label="Turn off"
-          variant="danger"
+        <Button onPress={() => submit(true)} disabled={!canPublish || saving !== null}>
+          <Text>{saving === 'publish' ? 'Publishing...' : 'Publish'}</Text>
+        </Button>
+        <Button
+          variant="destructive"
           onPress={() => submit(false)}
-          loading={saving === 'off'}
-          disabled={!current?.is_active || !message.trim() || saving !== null}
-        />
+          disabled={!current?.is_active || !message.trim() || saving !== null}>
+          <Text>{saving === 'off' ? 'Turning off...' : 'Turn off'}</Text>
+        </Button>
       </ScrollView>
     </KeyboardSafeView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex1: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Spacing.xxxl },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl, gap: Spacing.lg, backgroundColor: Colors.bg },
-  errorText: { fontSize: 14, color: Colors.red, textAlign: 'center' },
-  card: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 1,
-    borderColor: Colors.bgCardBorder, padding: Spacing.xl, gap: Spacing.lg,
-  },
-  status: { fontSize: 15, fontWeight: '700' },
-  meta: { fontSize: 12, color: Colors.textSecondary, marginTop: -Spacing.sm },
-  field: { gap: Spacing.xs },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.7 },
-  textarea: { minHeight: 80, textAlignVertical: 'top' },
-  counter: { fontSize: 11, color: Colors.textMuted, alignSelf: 'flex-end' },
-  hint: { fontSize: 11, color: Colors.textMuted },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  pill: {
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgInput,
-  },
-  pillActive: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder },
-  pillText: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-  pillTextActive: { color: Colors.indigo },
-});

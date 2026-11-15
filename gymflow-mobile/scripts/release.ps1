@@ -83,7 +83,12 @@ if (-not (Test-Path (Join-Path $android 'app\google-services.json'))) {
 
 gh auth status 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) { Fail 'GitHub CLI is not signed in. Run: gh auth login' }
-$repo = (gh repo view --json nameWithOwner --jq .nameWithOwner).Trim()
+# This clone has two GitHub remotes (origin and gm), so gh has no default repository and "gh release create" stops
+# with "No default remote repository has been set". Name the repository from origin and hand it to every gh call.
+$originUrl = (git remote get-url origin).Trim()
+if ($originUrl -notmatch 'github\.com[:/](?<repo>[^/]+/[^/]+?)(\.git)?$') { Fail "Cannot read the GitHub repository from the origin remote: $originUrl" }
+$repo = $Matches['repo']
+$env:GH_REPO = $repo
 $env:GITHUB_REPOSITORY = $repo
 
 $gradleProps = Join-Path $env:USERPROFILE '.gradle\gradle.properties'
@@ -186,6 +191,6 @@ if ($Ask) {
 Step 'Publishing to GitHub'
 Run-Native 'gh release create' {
   gh release create $tag "$apk#GymFlow Admin v$version (Android APK)" "$sumFile#SHA-256 checksum" `
-    --target $head --title "GymFlow Admin v$version" --notes-file $notesFile --latest
+    -R $repo --target $head --title "GymFlow Admin v$version" --notes-file $notesFile --latest
 }
 Write-Host "`nReleased: https://github.com/$repo/releases/tag/$tag" -ForegroundColor Green

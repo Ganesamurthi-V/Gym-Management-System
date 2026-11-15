@@ -7262,7 +7262,7 @@ INSERT INTO platform_announcement (id) VALUES (1)
 --   update app_config set value = '<CRON_SECRET>'  where key = 'push_cron_secret';
 --   update app_config set value = '<dispatch URL>' where key = 'push_dispatch_url';
 INSERT INTO app_config (key, value)
-  VALUES ('push_dispatch_url', 'https://admin.gymflow.sbs/api/push/dispatch')
+  VALUES ('push_dispatch_url', 'https://admin.thegymflow.in/api/push/dispatch')
   ON CONFLICT (key) DO NOTHING;
 INSERT INTO app_config (key, value)
   VALUES ('push_cron_secret', 'REPLACE_WITH_CRON_SECRET')

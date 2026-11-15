@@ -1,6 +1,6 @@
 # GymFlow marketing site
 
-The public landing page (the hosted one is [www.gymflow.sbs](https://www.gymflow.sbs)). A
+The public landing page (the hosted one is [www.thegymflow.in](https://www.thegymflow.in)). A
 single-page static site: Vite, React 19, Tailwind 4, GSAP and Lenis. It has no backend and
 needs no environment variables to run.
 
@@ -61,11 +61,11 @@ landing-page/
 
 ## Making it yours
 
-The content is specific to gymflow.sbs. Before deploying a fork:
+The content is specific to thegymflow.in. Before deploying a fork:
 
 | What | Where |
 |---|---|
-| Link to the app (`https://app.gymflow.sbs`) | the `APP_URL` constant at the top of several files in `src/components/` |
+| Link to the app (`https://app.thegymflow.in`) | the `APP_URL` constant at the top of several files in `src/components/` |
 | Support email, phone and WhatsApp number | `src/components/Footer.tsx` |
 | Prices and plan copy | `src/components/Pricing.tsx`, `FAQ.tsx` |
 | Title, description, canonical URL, JSON-LD, the no-JS copy | `index.html` |
@@ -76,7 +76,7 @@ The content is specific to gymflow.sbs. Before deploying a fork:
 | Apex → www redirect | `vercel.json`, or a redirect rule on your host |
 | Logo, favicons, video, social image | `public/` |
 
-The Google Analytics tag only runs when the page is served from `gymflow.sbs`, so an unchanged
+The Google Analytics tag only runs when the page is served from `thegymflow.in`, so an unchanged
 fork does not report to the original property.
 
 ## Deploying

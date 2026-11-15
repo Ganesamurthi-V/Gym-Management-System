@@ -124,7 +124,7 @@ export default function EmailComposeScreen({ route, navigation }: Props) {
   const confirmLink = () => {
     const url = normalizeUrl(linkUrl);
     if (!url) {
-      Alert.alert('That is not a web address', 'Use something like https://www.gymflow.sbs or name@example.com.');
+      Alert.alert('That is not a web address', 'Use something like https://www.thegymflow.in or name@example.com.');
       return;
     }
     setLinkOpen(false);

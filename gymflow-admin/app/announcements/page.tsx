@@ -156,7 +156,7 @@ export default function AnnouncementsPage() {
               type="url"
               value={linkUrl}
               onChange={e => setLinkUrl(e.target.value)}
-              placeholder="https://status.gymflow.sbs"
+              placeholder="https://status.thegymflow.in"
               className="admin-input"
               disabled={loading}
             />

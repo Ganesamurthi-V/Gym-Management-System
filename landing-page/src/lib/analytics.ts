@@ -48,7 +48,7 @@ function start() {
 /** Outbound intent worth a named event: these are the funnel's real steps. */
 function eventFor(link: HTMLAnchorElement): string | null {
   const href = link.href;
-  if (href.startsWith('https://app.gymflow.sbs')) return 'click_open_app';
+  if (href.startsWith('https://app.thegymflow.in')) return 'click_open_app';
   if (href.startsWith('https://wa.me') || href.includes('whatsapp.com')) return 'click_whatsapp';
   if (href.startsWith('mailto:') || href.includes('mail.google.com')) return 'click_email';
   if (href.startsWith('tel:')) return 'click_phone';

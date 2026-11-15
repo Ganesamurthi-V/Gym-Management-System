@@ -246,7 +246,7 @@ function fallbackHtml(page: FeaturePage): string {
 <nav aria-label="Breadcrumb">${crumbs}</nav>
 <h1>${esc(page.h1)}</h1>
 <p>${inlineHtml(page.intro)}</p>
-<p><a href="https://app.gymflow.sbs">Start free trial</a> · <a href="/pricing">See pricing</a></p>
+<p><a href="https://app.thegymflow.in">Start free trial</a> · <a href="/pricing">See pricing</a></p>
 <p>${esc(FEATURE_FINEPRINT)}</p>
 ${page.sections
   .map((section, i) => `<h2 id="${sectionIds(page)[i]}">${esc(section.heading)}</h2>\n${section.blocks.map(blockHtml).join('\n')}`)

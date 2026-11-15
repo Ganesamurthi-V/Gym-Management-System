@@ -12,7 +12,7 @@ declare global {
 declare const self: ServiceWorkerGlobalScope
 
 /**
- * Service worker for the unified GymFlow PWA (app.gymflow.sbs).
+ * Service worker for the unified GymFlow PWA (app.thegymflow.in).
  *
  * ONE worker serves both the owner console (/owner/*) and the member app
  * (/m/*), because after the merge they share a single origin — a browser only

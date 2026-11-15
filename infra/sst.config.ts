@@ -52,8 +52,8 @@ export default $config({
       domain:
         $app.stage === 'production'
           ? {
-              name: 'app.gymflow.sbs',
-              aliases: ['gymflow.sbs', 'graph.gymflow.sbs', 'member.gymflow.sbs'],
+              name: 'app.thegymflow.in',
+              aliases: ['thegymflow.in', 'graph.thegymflow.in', 'member.thegymflow.in'],
               cert: 'arn:aws:acm:us-east-1:296214943025:certificate/2b7e1129-ecab-4808-ab28-f1b4bd57e887',
               dns: false,
             }

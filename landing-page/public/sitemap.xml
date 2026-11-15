@@ -1,90 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   <url>
-    <loc>https://www.gymflow.sbs/</loc>
+    <loc>https://www.thegymflow.in/</loc>
     <lastmod>2026-11-12</lastmod>
     <video:video>
-      <video:thumbnail_loc>https://www.gymflow.sbs/video/gymflow-launch-portrait-poster.webp</video:thumbnail_loc>
+      <video:thumbnail_loc>https://www.thegymflow.in/video/gymflow-launch-portrait-poster.webp</video:thumbnail_loc>
       <video:title>GymFlow in one minute</video:title>
       <video:description>How independent gyms are run today, and how GymFlow's owner console and member app replace notebooks, spreadsheets and chats.</video:description>
-      <video:content_loc>https://www.gymflow.sbs/video/gymflow-launch-portrait.mp4</video:content_loc>
+      <video:content_loc>https://www.thegymflow.in/video/gymflow-launch-portrait.mp4</video:content_loc>
       <video:duration>61</video:duration>
     </video:video>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/features</loc>
+    <loc>https://www.thegymflow.in/features</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/members</loc>
+    <loc>https://www.thegymflow.in/members</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/fees-and-dues</loc>
+    <loc>https://www.thegymflow.in/fees-and-dues</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/attendance</loc>
+    <loc>https://www.thegymflow.in/attendance</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/member-app</loc>
+    <loc>https://www.thegymflow.in/member-app</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/workout-programs</loc>
+    <loc>https://www.thegymflow.in/workout-programs</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/whatsapp</loc>
+    <loc>https://www.thegymflow.in/whatsapp</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/reports</loc>
+    <loc>https://www.thegymflow.in/reports</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/import-export</loc>
+    <loc>https://www.thegymflow.in/import-export</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/pricing</loc>
+    <loc>https://www.thegymflow.in/pricing</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/gym-software-vs-excel</loc>
+    <loc>https://www.thegymflow.in/gym-software-vs-excel</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/gym-attendance-tracking-guide</loc>
+    <loc>https://www.thegymflow.in/gym-attendance-tracking-guide</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/gym-whatsapp-automation-guide</loc>
+    <loc>https://www.thegymflow.in/gym-whatsapp-automation-guide</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/gym-membership-renewal-reminders</loc>
+    <loc>https://www.thegymflow.in/gym-membership-renewal-reminders</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/fitness-studio-management-software</loc>
+    <loc>https://www.thegymflow.in/fitness-studio-management-software</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/gymnastics-academy-management-software</loc>
+    <loc>https://www.thegymflow.in/gymnastics-academy-management-software</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/biometric-attendance-setup</loc>
+    <loc>https://www.thegymflow.in/biometric-attendance-setup</loc>
     <lastmod>2026-11-12</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/privacy</loc>
+    <loc>https://www.thegymflow.in/privacy</loc>
     <lastmod>2026-10-07</lastmod>
   </url>
   <url>
-    <loc>https://www.gymflow.sbs/terms</loc>
+    <loc>https://www.thegymflow.in/terms</loc>
     <lastmod>2026-10-07</lastmod>
   </url>
 </urlset>

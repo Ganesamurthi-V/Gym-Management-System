@@ -66,7 +66,7 @@ export function renderReplyHtmlFromBody(body: string, quote?: { header: string; 
           <tr>
             <td style="padding:20px 40px 28px;color:#94A3B8;font-size:13px;line-height:20px;">
               Reply to this email and we will get back to you.<br>
-              <a href="https://www.gymflow.sbs" style="color:#1D8CFF;text-decoration:none;">www.gymflow.sbs</a> &middot; support@gymflow.sbs
+              <a href="https://www.thegymflow.in" style="color:#1D8CFF;text-decoration:none;">www.thegymflow.in</a> &middot; support@thegymflow.in
             </td>
           </tr>
         </table>

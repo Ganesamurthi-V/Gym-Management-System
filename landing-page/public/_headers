@@ -9,7 +9,7 @@
 # Security headers for every response.
 #
 # Strict-Transport-Security has no includeSubDomains and no preload on purpose:
-# app.gymflow.sbs is a separate deployment, and a preload entry cannot be undone
+# app.thegymflow.in is a separate deployment, and a preload entry cannot be undone
 # quickly if that host ever needs plain HTTP.
 #
 # Content-Security-Policy-Report-Only, not Content-Security-Policy, on purpose. There

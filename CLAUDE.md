@@ -92,7 +92,7 @@ deployed independently, and excluded from the root `tsconfig.json`:
 | `/` (root) | Unified owner console + member PWA (Next.js 15 App Router) | `npm run dev` → :3004 |
 | `gymflow-admin/` | Super-admin panel (Next.js, own JWT session, service-role DB access) | `npm run dev` → :3001 |
 | `gymflow-mobile/` | Admin mobile app (bare React Native 0.75, FCM push) | `npm run android` |
-| `landing-page/` | Marketing site www.gymflow.sbs (Vite + React, oxlint, Cloudflare Workers static assets) | `npm run dev` |
+| `landing-page/` | Marketing site www.thegymflow.in (Vite + React, oxlint, Cloudflare Workers static assets) | `npm run dev` |
 | `_archived/` | Dead code kept for reference. Do not import from it. | |
 | `output/` | Promo films and tutorial videos (HTML compositions + renders). Not app code; never import from it. | |
 | `graphify-out/` | Generated knowledge graph of the codebase, for navigation only. | |
@@ -135,7 +135,7 @@ share `.next`, so do not build while the user's dev server is running. Changes p
 
 ### One origin, two experiences
 
-`app.gymflow.sbs` serves both products, separated by URL namespace:
+`app.thegymflow.in` serves both products, separated by URL namespace:
 
 - `/owner/*` — owner console. Layout mounts `AppShell`, which is also the **subscription paywall**.
 - `/m/*` — member PWA. `app/m/layout.tsx` is the **authorization boundary** (confirms a real `members` row).
@@ -146,12 +146,12 @@ Role comes from the JWT claim `user_metadata.role` (`'member'`, otherwise owner)
 which experience renders; it is **not** the security boundary — RLS and the two layouts are.
 
 Route classification lives in `lib/protected-routes.ts` and `lib/member/redirect.ts`, shared by middleware (Edge) and
-layouts (Node). Keep these files import-free. Pre-merge URLs (`/dashboard`, `/members`, `member.gymflow.sbs/...`) are
+layouts (Node). Keep these files import-free. Pre-merge URLs (`/dashboard`, `/members`, `member.thegymflow.in/...`) are
 308-redirected by middleware; add new owner top-level routes to `LEGACY_OWNER_PREFIXES` only if they existed before
 the merge.
 
-`middleware.ts` also handles host isolation: `graph.gymflow.sbs` is an API-only WhatsApp Graph reverse proxy
-(allowlist in `lib/graph-domain.ts`) and must never render pages; the bare `gymflow.sbs` redirects to the app host.
+`middleware.ts` also handles host isolation: `graph.thegymflow.in` is an API-only WhatsApp Graph reverse proxy
+(allowlist in `lib/graph-domain.ts`) and must never render pages; the bare `thegymflow.in` redirects to the app host.
 
 ### Auth and data access
 
@@ -239,7 +239,7 @@ the merge.
 - Attendance kiosk: `app/owner/attendance` → `/api/attendance/check` (check in / out per session);
   `/api/attendance/undo` reverses only a recent action of the caller's gym.
 - Biometric attendance (ADMS push): devices talk to the Cloudflare Worker `gymflow-bio` (`gymflow-adms/worker/`,
-  bio.gymflow.sbs, HTTP and HTTPS), which forwards punches to `POST /api/devices/punches` (bearer
+  bio.thegymflow.in, HTTP and HTTPS), which forwards punches to `POST /api/devices/punches` (bearer
   `ADMS_INGEST_SECRET`, gym resolved from the device serial). Logic in `lib/devices/`, shared kiosk toggle in
   `lib/attendance/toggle.ts`, owner UI `app/owner/biometric`. The Fastify server in `gymflow-adms/src` is legacy. Never
   commit hosts, IPs or the secret; the page gets the device address from server-only `ADMS_PUBLIC_HOST`/`PORT`.

@@ -34,7 +34,7 @@ export default $config({
     const cert = process.env.ADMIN_CERT_ARN
     if (!cert) {
       throw new Error(
-        'ADMIN_CERT_ARN is not set. Request an ACM certificate for admin.gymflow.sbs in us-east-1, ' +
+        'ADMIN_CERT_ARN is not set. Request an ACM certificate for admin.thegymflow.in in us-east-1, ' +
           'validate it, then export its ARN as ADMIN_CERT_ARN before running sst.',
       )
     }
@@ -49,7 +49,7 @@ export default $config({
       // Pinned release that accepts Next 16.4.x (the default OpenNext rejects it).
       openNextVersion: '4.1.13',
       // DNS stays outside AWS: CNAME admin -> the CloudFront domain after the first deploy.
-      domain: { name: 'admin.gymflow.sbs', cert, dns: false },
+      domain: { name: 'admin.thegymflow.in', cert, dns: false },
       environment,
       server: { timeout: '60 seconds', memory: '1024 MB', architecture: 'x86_64' },
     })

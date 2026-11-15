@@ -140,7 +140,7 @@ async function issueInvitation(gym: OwnerGymRow, memberId: string): Promise<Acti
   let authUserId = memberData.auth_user_id
 
   if (!authUserId) {
-    const email = memberData.email || `member-${memberId.slice(0, 8)}@gymflow.sbs`
+    const email = memberData.email || `member-${memberId.slice(0, 8)}@thegymflow.in`
     const tempPassword = randomBytes(16).toString('base64url')
 
     const { data: authData, error: authCreateErr } = await serviceSupabase.auth.admin.createUser({

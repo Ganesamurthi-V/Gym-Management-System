@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.gymflow.sbs">Website</a> ·
+  <a href="https://www.thegymflow.in">Website</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="SELF_HOSTING.md">Self-hosting</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
@@ -29,7 +29,7 @@ with Postgres Row Level Security.
 - **Super-admin panel and mobile app**: subscriptions, support inbox, push notifications
 - **Marketing site**
 
-The hosted version runs at [gymflow.sbs](https://www.gymflow.sbs). This repository is the same
+The hosted version runs at [thegymflow.in](https://www.thegymflow.in). This repository is the same
 code.
 
 ## Contents
@@ -142,7 +142,7 @@ and parameters must match the code exactly. See [lib/whatsapp/README.md](lib/wha
 | **Push** | Firebase Cloud Messaging (`@react-native-firebase`) + Notifee, `firebase-admin` server-side |
 | **Caching** | Upstash Redis (Serverless HTTP/REST caching) |
 | **Queue** | Upstash QStash (throttled WhatsApp send queue) |
-| **WhatsApp** | Meta Cloud API via reverse proxy (`graph.gymflow.sbs`) |
+| **WhatsApp** | Meta Cloud API via reverse proxy (`graph.thegymflow.in`) |
 | **Payments** | UPI QR code generation (all apps: GPay, PhonePe, Paytm, etc.) |
 | **Animations** | Framer Motion, CSS keyframe animations |
 | **Charts** | Recharts 3, custom Tailwind bar charts |
@@ -160,14 +160,14 @@ and parameters must match the code exactly. See [lib/whatsapp/README.md](lib/wha
 
 | Domain | Purpose | Served By |
 |--------|---------|-----------|
-| `app.gymflow.sbs` | Owner console (`/owner`), member PWA (`/m`) and API | Main Next.js app |
-| `admin.gymflow.sbs` | Super-admin panel and the API the mobile app calls | `gymflow-admin/` |
-| `graph.gymflow.sbs` | WhatsApp Graph API reverse proxy (API-only) | Same Vercel project, domain-isolated |
-| `www.gymflow.sbs` | Marketing site (`landing-page/`); `gymflow.sbs` redirects here | Separate static deployment |
+| `app.thegymflow.in` | Owner console (`/owner`), member PWA (`/m`) and API | Main Next.js app |
+| `admin.thegymflow.in` | Super-admin panel and the API the mobile app calls | `gymflow-admin/` |
+| `graph.thegymflow.in` | WhatsApp Graph API reverse proxy (API-only) | Same Vercel project, domain-isolated |
+| `www.thegymflow.in` | Marketing site (`landing-page/`); `thegymflow.in` redirects here | Separate static deployment |
 
 ### Domain Isolation Security
 
-- `graph.gymflow.sbs` **never** renders HTML/React pages — only whitelisted API routes pass through
+- `graph.thegymflow.in` **never** renders HTML/React pages — only whitelisted API routes pass through
 - Endpoint whitelist: only `messages`, `media`, `uploads`, `phone_numbers`, `webhooks`, `message_templates`
 - Rate limited (120 req/min per IP via Upstash Redis)
 - Path traversal protection (`..` / `%2e` sequences blocked)
@@ -391,7 +391,7 @@ way for a person to get oriented too.
 ## Authentication & Security
 
 ### Middleware (`middleware.ts`)
-- **Domain isolation**: `graph.gymflow.sbs` → API-only mode; `gymflow.sbs` → redirect to app
+- **Domain isolation**: `graph.thegymflow.in` → API-only mode; `thegymflow.in` → redirect to app
 - **Auth guard**: Protected routes redirect to `/auth/login`
 - **Subscription guard**: Expired gyms redirect to `/subscription`
 - **Request IDs**: Every request stamped with a unique ID for tracing
@@ -449,7 +449,7 @@ running migrations set the shared secret (must equal `CRON_SECRET` above):
 ```sql
 update app_config set value = '<YOUR_CRON_SECRET>' where key = 'push_cron_secret';
 
--- only if the admin app is not at admin.gymflow.sbs
+-- only if the admin app is not at admin.thegymflow.in
 update app_config set value = 'https://YOUR-ADMIN-HOST/api/push/dispatch'
 where key = 'push_dispatch_url';
 ```
@@ -609,7 +609,7 @@ See [Setup step 5](#5-admin-mobile-app--push-notifications) — `FIREBASE_PROJEC
 ## Self-hosting
 
 GymFlow can be run by anyone, but it was written for one deployment, so a number of things are
-specific to `gymflow.sbs`: domain names in the middleware, email sender addresses, WhatsApp
+specific to `thegymflow.in`: domain names in the middleware, email sender addresses, WhatsApp
 template names, links in the marketing site. [SELF_HOSTING.md](SELF_HOSTING.md) lists
 every one of them and what to change.
 

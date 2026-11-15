@@ -165,7 +165,7 @@ export function formatSummary(messages: AlertMessage[], skipped: number, now: nu
   const recovered = messages.filter((m) => m.level === 'RECOVERED')
   const top = failing.some((m) => m.level === 'CRITICAL') ? 'CRITICAL' : failing.length ? 'WARNING' : 'RECOVERED'
 
-  // Shared cause: 3 or more app.gymflow.sbs probes failing in the same way means the app as a whole is the problem.
+  // Shared cause: 3 or more app.thegymflow.in probes failing in the same way means the app as a whole is the problem.
   const appFails = failing.filter((m) => isAppProbe(m.name))
   const variants = new Set(appFails.map((m) => variantOf(failureOf(m))))
   const sharedVariant = appFails.length >= 3 && variants.size === 1 && SHARED_VARIANTS.has([...variants][0]) ? appFails[0] : null
@@ -189,7 +189,7 @@ export function formatSummary(messages: AlertMessage[], skipped: number, now: nu
       out.push(
         '',
         '<b>Likely shared cause</b>',
-        `${appFails.length} checks on app.gymflow.sbs fail the same way, so the whole app is probably affected, not each page separately.`,
+        `${appFails.length} checks on app.thegymflow.in fail the same way, so the whole app is probably affected, not each page separately.`,
         escapeHtml(g.happening),
         '',
         '<b>What to check (app level)</b>',

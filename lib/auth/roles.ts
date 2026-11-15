@@ -1,7 +1,7 @@
 /**
  * lib/auth/roles.ts
  *
- * Role classification for the unified app at app.gymflow.sbs.
+ * Role classification for the unified app at app.thegymflow.in.
  *
  * Pure functions over JWT claims — no imports, no DB, no Node built-ins — so
  * this is safe to use from Edge middleware, Server Components, and Route

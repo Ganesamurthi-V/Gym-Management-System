@@ -3,7 +3,7 @@
 This guide takes you from a clone to a running deployment of your own. Local development only
 needs steps 1 to 3.
 
-GymFlow was written for one deployment (`gymflow.sbs`), not as a configurable product, so some
+GymFlow was written for one deployment (`thegymflow.in`), not as a configurable product, so some
 values are in the code instead of in environment variables. [Section 9](#9-things-that-are-specific-to-gymflowsbs)
 lists them. Read it before going live.
 
@@ -21,7 +21,7 @@ lists them. Read it before going live.
 6. [WhatsApp](#6-whatsapp)
 7. [Admin panel](#7-admin-panel)
 8. [Admin mobile app and marketing site](#8-admin-mobile-app-and-marketing-site)
-9. [Things that are specific to gymflow.sbs](#9-things-that-are-specific-to-gymflowsbs)
+9. [Things that are specific to thegymflow.in](#9-things-that-are-specific-to-gymflowsbs)
 
 ---
 
@@ -116,7 +116,7 @@ What each value does:
 | `platform_settings.upi_id`, `upi_name` | your own UPI ID and business name | Owners cannot pay: the subscription page shows no QR |
 | `platform_settings.price_*` | your own prices | Defaults of ₹999 / ₹9,999 apply |
 | `app_config.push_cron_secret` | a random secret you generate | Push dispatch stays off (it ignores the placeholder) |
-| `app_config.push_dispatch_url` | your admin app's URL | Pushes are sent to `admin.gymflow.sbs`, which is not yours |
+| `app_config.push_dispatch_url` | your admin app's URL | Pushes are sent to `admin.thegymflow.in`, which is not yours |
 
 Re-running `supabase-schema.sql` later will **not** overwrite these values.
 
@@ -264,9 +264,9 @@ Both are optional and documented in their own READMEs:
 - [gymflow-mobile/README.md](gymflow-mobile/README.md): React Native app for the operator.
 - [landing-page/README.md](landing-page/README.md): the public marketing site.
 
-## 9. Things that are specific to gymflow.sbs
+## 9. Things that are specific to thegymflow.in
 
-These are in the code, not in environment variables. Search for `gymflow.sbs` to find them all
+These are in the code, not in environment variables. Search for `thegymflow.in` to find them all
 (`git grep -n "gymflow\.sbs"`).
 
 **Change before you take real payments**
@@ -291,7 +291,7 @@ These are in the code, not in environment variables. Search for `gymflow.sbs` to
 **Analytics on the marketing site**
 
 `landing-page/index.html` loads Google Analytics with a measurement ID that belongs to
-gymflow.sbs. It only runs when the page is served from `gymflow.sbs`, so a fork does not report
+thegymflow.in. It only runs when the page is served from `thegymflow.in`, so a fork does not report
 to it, but replace the ID (and the hostname check) with your own. Microsoft Clarity is set by
 `VITE_CLARITY_PROJECT_ID`.
 

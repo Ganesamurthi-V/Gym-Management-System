@@ -82,11 +82,11 @@ describe('shouldShowAnnouncement', () => {
 })
 
 describe('buildAnnouncementParts', () => {
-  const link = { link_url: 'https://status.gymflow.sbs', link_label: 'status' }
+  const link = { link_url: 'https://status.thegymflow.in', link_label: 'status' }
   it('orders message, link, after-text', () => {
     expect(buildAnnouncementParts(a({ message: 'Issues.', ...link, message_after: 'Working on it.' }))).toEqual([
       { kind: 'text', text: 'Issues.' },
-      { kind: 'link', text: 'status', href: 'https://status.gymflow.sbs' },
+      { kind: 'link', text: 'status', href: 'https://status.thegymflow.in' },
       { kind: 'text', text: 'Working on it.' },
     ])
   })
@@ -104,7 +104,7 @@ describe('buildAnnouncementParts', () => {
 
 describe('safeAnnouncementLink', () => {
   it('accepts https', () => {
-    expect(safeAnnouncementLink('https://status.gymflow.sbs/x')).toBe('https://status.gymflow.sbs/x')
+    expect(safeAnnouncementLink('https://status.thegymflow.in/x')).toBe('https://status.thegymflow.in/x')
   })
   it.each(['http://a.com', 'javascript:alert(1)', 'data:text/html,x', '//x.com', '/relative', '', 123, null, undefined])(
     'rejects %s',

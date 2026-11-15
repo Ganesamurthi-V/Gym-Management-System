@@ -4,10 +4,10 @@
   "name": "gymflow-bio",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  // custom_domain makes Cloudflare create the proxied DNS record for bio.gymflow.sbs itself.
-  "routes": [{ "pattern": "bio.gymflow.sbs", "custom_domain": true }],
+  // custom_domain makes Cloudflare create the proxied DNS record for bio.thegymflow.in itself.
+  "routes": [{ "pattern": "bio.thegymflow.in", "custom_domain": true }],
   "vars": {
-    "APP_INGEST_URL": "https://app.gymflow.sbs/api/devices/punches",
+    "APP_INGEST_URL": "https://app.thegymflow.in/api/devices/punches",
     // Seconds between device polls. Each poll is one Worker request, so keep this high enough for the quota
     // (60 s is about 1,440 polls/day/device on the 100k/day free plan).
     "POLL_DELAY_SECONDS": "60",

@@ -9,7 +9,7 @@ import './globals.css'
 const sora = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap' })
 
 /**
- * Root layout for the unified app at app.gymflow.sbs.
+ * Root layout for the unified app at app.thegymflow.in.
  *
  * Deliberately shell-less. The owner chrome (sidebar / header / trial banner /
  * subscription paywall) now lives in `app/owner/layout.tsx`, and the member
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
    * Falls back to the production host so a preview build without the env var set
    * still produces valid absolute URLs rather than throwing.
    */
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.gymflow.sbs'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.thegymflow.in'),
   title: 'gymflow — Gym Management',
   description:
     'A powerful, intelligent management system for modern fitness centers in Tamil Nadu and Puducherry.',

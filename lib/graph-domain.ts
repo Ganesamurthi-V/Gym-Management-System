@@ -1,7 +1,7 @@
 /**
  * lib/graph-domain.ts
  *
- * Centralized configuration for the graph.gymflow.sbs domain isolation.
+ * Centralized configuration for the graph.thegymflow.in domain isolation.
  *
  * This file defines:
  *   - The graph API hostname
@@ -14,26 +14,26 @@
 
 // ─── Hostname ─────────────────────────────────────────────────────────────────
 
-export const GRAPH_HOSTNAME = 'graph.gymflow.sbs'
+export const GRAPH_HOSTNAME = 'graph.thegymflow.in'
 
 /** The bare domain — should redirect to the app subdomain, never serve frontend directly. */
-export const BARE_HOSTNAME = 'gymflow.sbs'
+export const BARE_HOSTNAME = 'thegymflow.in'
 
 /** The canonical app domain — serves BOTH /owner/* and /m/* after the merge. */
-export const APP_HOSTNAME = 'app.gymflow.sbs'
+export const APP_HOSTNAME = 'app.thegymflow.in'
 
 /**
  * The retired member-app domain.
  *
  * The member PWA used to be a separate deployment on this host with its routes
- * at the domain root (`/home`, `/workout`, ...). It is now `app.gymflow.sbs/m/*`.
+ * at the domain root (`/home`, `/workout`, ...). It is now `app.thegymflow.in/m/*`.
  * Activation links already delivered over WhatsApp, installed PWAs and browser
  * bookmarks still point here, so while the DNS record remains attached to this
  * project the middleware maps those URLs onto the unified app instead of 404ing.
  */
-export const LEGACY_MEMBER_HOSTNAME = 'member.gymflow.sbs'
+export const LEGACY_MEMBER_HOSTNAME = 'member.thegymflow.in'
 
-// ─── Allowed API route prefixes on graph.gymflow.sbs ──────────────────────────
+// ─── Allowed API route prefixes on graph.thegymflow.in ──────────────────────────
 // Only these routes are reachable. Everything else → 401.
 
 export const ALLOWED_ROUTES = [

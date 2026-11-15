@@ -10,7 +10,7 @@ import { homeAnchor } from '../lib/pageAnchors';
 import '../styles/footer.css';
 import '../styles/home.css';
 
-const APP_URL = 'https://app.gymflow.sbs';
+const APP_URL = 'https://app.thegymflow.in';
 // The same message as a Gmail compose window. Most laptops have no mail app registered
 // for mailto, so a click there does nothing; webmail is where those visitors actually are.
 const GMAIL_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
@@ -47,7 +47,7 @@ const COLUMNS = [
       { label: 'Privacy', href: '/privacy' },
       { label: 'Terms', href: '/terms' },
       // Public status page (Better Stack). Opens in a new tab; it is a separate host.
-      { label: 'System status', href: 'https://status.gymflow.sbs', external: true },
+      { label: 'System status', href: 'https://status.thegymflow.in', external: true },
       { label: 'Sign in', href: APP_URL },
     ],
   },
@@ -174,7 +174,7 @@ export function Footer() {
             {/* Not a hard-coded "all systems operational": that was a claim with nothing behind it.
                 The live state is on the status page, backed by real monitors. */}
             <a
-              href="https://status.gymflow.sbs"
+              href="https://status.thegymflow.in"
               target="_blank"
               rel="noopener noreferrer"
               className="footer-link inline-flex min-h-[44px] items-center text-sm underline underline-offset-2"

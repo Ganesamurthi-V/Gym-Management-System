@@ -57,7 +57,7 @@ function getFrom(): string {
   const from = process.env.RESEND_FROM
   if (!from) {
     throw new Error(
-      'RESEND_FROM is not set. Use an address on a Resend-verified domain, e.g. "GymFlow <noreply@gymflow.sbs>".',
+      'RESEND_FROM is not set. Use an address on a Resend-verified domain, e.g. "GymFlow <noreply@thegymflow.in>".',
     )
   }
   return from

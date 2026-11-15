@@ -5,10 +5,10 @@
 repo: https://github.com/Ganesamurthi-V/Gym-Management-System
 
 # REQUIRED. Who should we email our reports to, and use as the primary contact for questions.
-primary_contact: support@gymflow.sbs
+primary_contact: support@thegymflow.in
 
 # Optional. The project's home page.
-homepage: https://gymflow.sbs
+homepage: https://thegymflow.in
 
 # REQUIRED. The Dockerfile lives in the repository, as recommended.
 dockerfile: .oss-scanner/Dockerfile

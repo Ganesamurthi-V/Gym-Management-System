@@ -229,7 +229,7 @@ describe('runOnce wiring', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
     const now = 5000 * MIN
     const k = makeKv({ lastRun: now, probes: {} })
-    const A = 'https://app.gymflow.sbs'
+    const A = 'https://app.thegymflow.in'
     const mk = () => {
       const f = makeFetch({
         [`${A}/api/auth/login`]: () => {
@@ -300,7 +300,7 @@ describe('fetch handler', () => {
 })
 
 describe('subrequest budget', () => {
-  const A = 'https://app.gymflow.sbs'
+  const A = 'https://app.thegymflow.in'
   const allDown = () => {
     const o: Record<string, Handler> = {}
     for (const p of PROBES) o[p.url] = () => new Response('x', { status: 500 })

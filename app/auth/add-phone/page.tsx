@@ -143,7 +143,7 @@ export default function AddPhonePage() {
                 />
                 <span>
                   I agree to receive GymFlow updates and offers on WhatsApp.{' '}
-                  <a href="https://www.gymflow.sbs/privacy" target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline">
+                  <a href="https://www.thegymflow.in/privacy" target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline">
                     Privacy policy
                   </a>
                 </span>

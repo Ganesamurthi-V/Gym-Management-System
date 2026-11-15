@@ -6,7 +6,7 @@ import { homeAnchor, isFeaturePage } from '../lib/pageAnchors';
 import '../styles/nav.css';
 import '../styles/home.css';
 
-const APP_URL = 'https://app.gymflow.sbs';
+const APP_URL = 'https://app.thegymflow.in';
 
 /* A short flat list, used by the desktop bar
    and the mobile sheet alike. The old Product and Resources dropdowns repeated the same

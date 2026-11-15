@@ -23,7 +23,7 @@
 
 import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, perMonth, savingPercent } from './plans.ts'
 
-export const SITE_ORIGIN = 'https://www.gymflow.sbs'
+export const SITE_ORIGIN = 'https://www.thegymflow.in'
 
 // The two billing tiers, read from plans.ts so a price is never typed twice.
 const MONTHLY = PLANS[0]
@@ -177,7 +177,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: 'Built for independent gyms in India',
         blocks: [
           { type: 'p', text: 'GymFlow is made for owner-run gyms and fitness studios across India. It works in a web browser on a phone or a computer, so there is nothing to install and no equipment to buy. Fees are in rupees, payments can be taken by UPI, and members are reached on WhatsApp.' },
-          { type: 'p', text: 'Have a question that is not answered here? Read the [frequently asked questions](/#faq) or write to [support@gymflow.sbs](mailto:support@gymflow.sbs).' },
+          { type: 'p', text: 'Have a question that is not answered here? Read the [frequently asked questions](/#faq) or write to [support@thegymflow.in](mailto:support@thegymflow.in).' },
         ],
       },
     ],
@@ -1091,7 +1091,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: 'Support',
         blocks: [
-          { type: 'p', text: 'Direct support from the person who builds GymFlow. We reply within 24 hours, in English and Tamil. Write to [support@gymflow.sbs](mailto:support@gymflow.sbs) or message +91 93848 86895 on WhatsApp.' },
+          { type: 'p', text: 'Direct support from the person who builds GymFlow. We reply within 24 hours, in English and Tamil. Write to [support@thegymflow.in](mailto:support@thegymflow.in) or message +91 93848 86895 on WhatsApp.' },
         ],
       },
       {
@@ -1913,7 +1913,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           { type: 'p', text: 'For a fixed address, copy the first three numbers of the gateway and end with a high number that no other device uses. If the gateway is 192.168.1.1, you can use 192.168.1.200. Set **Subnet Mask** to the value your router shows, usually 255.255.255.0. Put the gateway in **Gateway**.' },
           { type: 'p', text: 'If the server address in Step 3 does not connect, set **DNS** to `8.8.8.8`.' },
           { type: 'p', text: 'You do not need to change anything on the router. The device connects out to GymFlow.' },
-          { type: 'p', text: 'To test the network, open http://bio.gymflow.sbs/healthz on a phone that is on the gym Wi-Fi. A blank page means the network can reach GymFlow.' },
+          { type: 'p', text: 'To test the network, open http://bio.thegymflow.in/healthz on a phone that is on the gym Wi-Fi. A blank page means the network can reach GymFlow.' },
         ],
       },
       {
@@ -1938,7 +1938,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
           {
             type: 'ul',
             items: [
-              '**Server Address:** bio.gymflow.sbs',
+              '**Server Address:** bio.thegymflow.in',
               '**Server Port:** 80',
             ],
           },
@@ -2129,7 +2129,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: 'Need help?',
         blocks: [
-          { type: 'p', text: 'Write to [support@gymflow.sbs](mailto:support@gymflow.sbs) or message +91 93848 86895 on WhatsApp. We reply within 24 hours. Please send:' },
+          { type: 'p', text: 'Write to [support@thegymflow.in](mailto:support@thegymflow.in) or message +91 93848 86895 on WhatsApp. We reply within 24 hours. Please send:' },
           {
             type: 'ul',
             items: [

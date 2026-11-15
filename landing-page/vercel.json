@@ -5,8 +5,8 @@
   "redirects": [
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "gymflow.sbs" }],
-      "destination": "https://www.gymflow.sbs/:path*",
+      "has": [{ "type": "host", "value": "thegymflow.in" }],
+      "destination": "https://www.thegymflow.in/:path*",
       "permanent": true
     }
   ],

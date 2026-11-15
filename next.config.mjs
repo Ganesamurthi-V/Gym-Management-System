@@ -81,7 +81,7 @@ const nextConfig = {
       /*
         Mark the app-host root as noindex.
 
-        app.gymflow.sbs/ only ever 307-redirects (to /auth/login or the role home),
+        app.thegymflow.in/ only ever 307-redirects (to /auth/login or the role home),
         and robots.ts allows `/` to be crawled, so Googlebot fetches it, follows the
         redirect, and reports it in Search Console as "Page with redirect". A <meta
         robots> tag cannot fix this because the page never renders — it redirects

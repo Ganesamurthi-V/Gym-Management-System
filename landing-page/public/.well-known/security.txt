@@ -1,4 +1,4 @@
-Contact: mailto:support@gymflow.sbs
+Contact: mailto:support@thegymflow.in
 Expires: 2027-10-24T00:00:00.000Z
 Preferred-Languages: en, ta
-Canonical: https://www.gymflow.sbs/.well-known/security.txt
+Canonical: https://www.thegymflow.in/.well-known/security.txt

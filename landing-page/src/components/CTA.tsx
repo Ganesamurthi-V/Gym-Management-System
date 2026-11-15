@@ -2,7 +2,7 @@ import { Check } from 'lucide-react';
 import { SUPPORT_PROMISE } from '../data/support';
 import '../styles/close.css';
 
-const APP_URL = 'https://app.gymflow.sbs';
+const APP_URL = 'https://app.thegymflow.in';
 
 const TRUST_CHIPS = ['14-day free trial', 'No credit card', 'Cancel anytime'] as const;
 

@@ -25,7 +25,7 @@ export function getWebhookSecret(): string {
 
 /** The mailbox this inbox belongs to, and the name replies are sent under. */
 export function getSupportMailbox(): { address: string; from: string } {
-  const address = (process.env.SUPPORT_EMAIL_ADDRESS ?? 'support@gymflow.sbs').toLowerCase()
+  const address = (process.env.SUPPORT_EMAIL_ADDRESS ?? 'support@thegymflow.in').toLowerCase()
   const name = process.env.SUPPORT_EMAIL_FROM_NAME ?? 'GymFlow Support'
   return { address, from: `${name} <${address}>` }
 }

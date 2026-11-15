@@ -8,7 +8,7 @@ vi.mock('@/lib/logger', () => ({
   apiLogger: () => ({ start() {}, end() {}, summary() {}, error() {}, warn() {}, info() {} }),
 }))
 
-import { buildCommandLine, sanitizeName } from '@/lib/devices/commandLines'
+import { buildCommandLine } from '@/lib/devices/commandLines'
 import {
   ackCommands, claimNextCommands, enqueueDeviceCommand, enqueueMemberDeviceSync, queueExpiredMemberRemovals,
 } from '@/lib/devices/commands'
@@ -19,22 +19,13 @@ const base = { gymId: 'gym1', deviceId: 'dev1', memberId: 'mem1' }
 
 describe('buildCommandLine', () => {
   it('builds add lines in both dialects', () => {
-    expect(buildCommandLine({ id: 5, kind: 'add_user', pin: '12', name: 'Akhil P', dialect: 'privilege' }))
-      .toBe('C:5:DATA UPDATE USERINFO PIN=12\tName=Akhil P\tPrivilege=0\tCard=')
-    expect(buildCommandLine({ id: 5, kind: 'add_user', pin: '12', name: 'Akhil P', dialect: 'pri' }))
-      .toBe('C:5:DATA UPDATE USERINFO PIN=12\tName=Akhil P\tPri=0\tCard=')
+    expect(buildCommandLine({ id: 5, kind: 'add_user', pin: '12', dialect: 'privilege' }))
+      .toBe('C:5:DATA UPDATE USERINFO PIN=12\tName=Member 12\tPrivilege=0\tCard=')
+    expect(buildCommandLine({ id: 5, kind: 'add_user', pin: '12', dialect: 'pri' }))
+      .toBe('C:5:DATA UPDATE USERINFO PIN=12\tName=Member 12\tPri=0\tCard=')
   })
   it('builds a remove line', () => {
     expect(buildCommandLine({ id: 9, kind: 'remove_user', pin: '12', dialect: 'privilege' })).toBe('C:9:DATA DELETE USERINFO PIN=12')
-  })
-  it('strips tabs, newlines, equals, NUL and controls from names, collapses spaces and caps at 24', () => {
-    expect(sanitizeName('A\tB\r\nC=D\u0000E\u0007F')).toBe('A B C D E F')
-    expect(sanitizeName('  a    b  ')).toBe('a b')
-    expect(sanitizeName('x'.repeat(40))).toHaveLength(24)
-    const line = buildCommandLine({ id: 1, kind: 'add_user', pin: '1', name: 'Bad\tPrivilege=14\nShell', dialect: 'privilege' })
-    expect(line).toBe('C:1:DATA UPDATE USERINFO PIN=1\tName=Bad Privilege 14 Shell\tPrivilege=0\tCard=')
-    expect(line.split('\t')).toHaveLength(4)
-    expect(line).not.toMatch(/[\r\n\u0000]/)
   })
   it('rejects an invalid pin', () => {
     for (const pin of ['', 'abc', '1234567890', '1;2', '-1', '1 2']) {
@@ -44,11 +35,12 @@ describe('buildCommandLine', () => {
 })
 
 describe('enqueueDeviceCommand', () => {
-  it('queues, stores a sanitized name and skips a duplicate queued or sent command', async () => {
+  it('queues without storing a member name and skips a duplicate queued or sent command', async () => {
     const db = createFakeDb()
-    expect(await enqueueDeviceCommand(asDb(db), { ...base, kind: 'add_user', pin: '7', name: 'A=B' })).toEqual({ queued: true })
-    expect(db.tables.device_commands[0]).toMatchObject({ pin: '7', state: 'queued', payload: { name: 'A B' } })
-    expect(await enqueueDeviceCommand(asDb(db), { ...base, kind: 'add_user', pin: '7', name: 'A' })).toEqual({ queued: false, reason: 'duplicate' })
+    expect(await enqueueDeviceCommand(asDb(db), { ...base, kind: 'add_user', pin: '7' })).toEqual({ queued: true })
+    expect(db.tables.device_commands[0]).toMatchObject({ pin: '7', state: 'queued' })
+    expect(db.tables.device_commands[0]).not.toHaveProperty('payload')
+    expect(await enqueueDeviceCommand(asDb(db), { ...base, kind: 'add_user', pin: '7' })).toEqual({ queued: false, reason: 'duplicate' })
     db.tables.device_commands[0].state = 'sent'
     expect(await enqueueDeviceCommand(asDb(db), { ...base, kind: 'add_user', pin: '7' })).toEqual({ queued: false, reason: 'duplicate' })
     db.tables.device_commands[0].state = 'done'
@@ -71,7 +63,8 @@ describe('claimNextCommands / ackCommands', () => {
     db.tables.device_commands.push(row({ id: 99, device_id: 'other' }))
     const out = await claimNextCommands(asDb(db), 'dev1', 'pri', NOW)
     expect(out.map(c => c.id)).toEqual([1, 2, 3, 4, 5])
-    expect(out[0].line).toBe('C:1:DATA UPDATE USERINFO PIN=7\tName=Ann\tPri=0\tCard=')
+    // The row still carries a name stored before names were dropped; it must not reach the line.
+    expect(out[0].line).toBe('C:1:DATA UPDATE USERINFO PIN=7\tName=Member 7\tPri=0\tCard=')
     expect(db.tables.device_commands[0]).toMatchObject({ state: 'sent', attempts: 1, last_sent_at: NOW.toISOString() })
     expect(db.tables.device_commands[6].state).toBe('queued')
     expect(db.tables.device_commands[7].state).toBe('queued')
@@ -120,7 +113,8 @@ describe('enqueueMemberDeviceSync', () => {
     const db = setup()
     expect(await enqueueMemberDeviceSync(asDb(db), { gymId: 'gym1', memberId: 'mem1', action: 'add' })).toEqual({ queued: 1 })
     expect(db.tables.device_commands).toHaveLength(1)
-    expect(db.tables.device_commands[0]).toMatchObject({ device_id: 'dev1', gym_id: 'gym1', kind: 'add_user', pin: '42', payload: { name: 'Ann' } })
+    expect(db.tables.device_commands[0]).toMatchObject({ device_id: 'dev1', gym_id: 'gym1', kind: 'add_user', pin: '42' })
+    expect(db.tables.device_commands[0]).not.toHaveProperty('payload')
     expect(db.tables.device_user_map[0]).toMatchObject({ device_id: 'dev1', pin: '42', member_id: 'mem1', gym_id: 'gym1' })
     // already mapped on that device: nothing more to add
     expect(await enqueueMemberDeviceSync(asDb(db), { gymId: 'gym1', memberId: 'mem1', action: 'add' })).toEqual({ queued: 0 })

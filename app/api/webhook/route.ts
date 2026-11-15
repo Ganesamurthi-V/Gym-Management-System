@@ -2,7 +2,7 @@
  * app/api/webhook/route.ts
  *
  * Meta WhatsApp Cloud API — Webhook Endpoint
- * URL: https://graph.gymflow.sbs/api/webhook
+ * URL: https://graph.thegymflow.in/api/webhook
  *
  * This is NOT a proxy. It is GymFlow's own webhook receiver.
  *

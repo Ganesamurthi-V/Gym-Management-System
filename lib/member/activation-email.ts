@@ -40,10 +40,10 @@ export const ACTIVATION_LANDING_PATH = '/activate/verifying'
  * Canonical public origin for member-facing links.
  *
  * After the unified-app migration the member experience is served from
- * `app.gymflow.sbs/m/*`, not `member.gymflow.sbs`. `NEXT_PUBLIC_APP_URL` is
+ * `app.thegymflow.in/m/*`, not `member.thegymflow.in`. `NEXT_PUBLIC_APP_URL` is
  * the single source of truth; `NEXT_PUBLIC_MEMBER_APP_URL` is still read first
  * so an existing deployment that sets it keeps working, but it should be
- * removed once `member.gymflow.sbs` is retired.
+ * removed once `member.thegymflow.in` is retired.
  */
 export function getMemberAppUrl(): string {
   return memberAppOrigin()

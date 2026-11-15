@@ -2,7 +2,7 @@ import { DashboardMock } from './dashboard/DashboardMock';
 import { FREE_MEMBER_LIMIT } from '../data/plans';
 import '../styles/home.css';
 
-const APP_URL = 'https://app.gymflow.sbs';
+const APP_URL = 'https://app.thegymflow.in';
 
 /**
  * The hero is alone on the first screen: the claim, one action pair, one hard fact (the free plan's

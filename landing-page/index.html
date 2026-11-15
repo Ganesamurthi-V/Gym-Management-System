@@ -118,18 +118,18 @@
       share link, which would otherwise look like separate pages with identical
       content and split ranking signals.
 
-      NOTE THE www. The apex returns 301 -> https://www.gymflow.sbs/, so www is
+      NOTE THE www. The apex returns 301 -> https://www.thegymflow.in/, so www is
       the live host. Pointing canonical at the apex means pointing it at a
       redirect, which is what makes Search Console report "Sitemap could not be
       read" — GSC does not follow redirects for sitemap URLs.
 
       Must stay byte-identical to the <loc> in public/sitemap.xml and to og:url.
     -->
-  <link rel="canonical" href="https://www.gymflow.sbs/" />
+  <link rel="canonical" href="https://www.thegymflow.in/" />
 
   <!--
       index,follow is already the default; spelled out so the intent is explicit
-      alongside app.gymflow.sbs, which is deliberately noindex.
+      alongside app.thegymflow.in, which is deliberately noindex.
       max-image-preview:large opts into large image thumbnails in search results.
     -->
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -150,7 +150,7 @@
   <meta property="og:description"
     content="Members, fees, attendance and WhatsApp reminders in one simple app for independent gyms in India. Free for up to 50 members." />
   <!-- Kept identical to <link rel="canonical"> and the sitemap <loc>. -->
-  <meta property="og:url" content="https://www.gymflow.sbs/" />
+  <meta property="og:url" content="https://www.thegymflow.in/" />
   <meta property="og:locale" content="en_IN" />
 
   <!--
@@ -160,7 +160,7 @@
       Declaring width/height lets platforms reserve the card layout before the
       image finishes downloading, so the preview does not reflow.
     -->
-  <meta property="og:image" content="https://www.gymflow.sbs/og-image.jpg" />
+  <meta property="og:image" content="https://www.thegymflow.in/og-image.jpg" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -172,7 +172,7 @@
   <meta name="twitter:title" content="GymFlow: Gym management software made effortless" />
   <meta name="twitter:description"
     content="Members, fees, attendance and WhatsApp reminders in one simple app for independent gyms in India." />
-  <meta name="twitter:image" content="https://www.gymflow.sbs/og-image.jpg" />
+  <meta name="twitter:image" content="https://www.thegymflow.in/og-image.jpg" />
   <meta name="twitter:image:alt"
     content="The GymFlow dashboard showing member counts, dues and expiring memberships at a glance." />
 
@@ -390,24 +390,24 @@
       "@graph": [
         {
           "@type": "Organization",
-          "@id": "https://www.gymflow.sbs/#organization",
+          "@id": "https://www.thegymflow.in/#organization",
           "name": "GymFlow",
-          "url": "https://www.gymflow.sbs/",
+          "url": "https://www.thegymflow.in/",
           "description": "Gym management software for independent gym owners across India.",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://www.gymflow.sbs/logo_landspace_without_bg.webp",
+            "url": "https://www.thegymflow.in/logo_landspace_without_bg.webp",
             "width": 400,
             "height": 178
           },
-          "image": "https://www.gymflow.sbs/og-image.jpg",
-          "email": "support@gymflow.sbs",
+          "image": "https://www.thegymflow.in/og-image.jpg",
+          "email": "support@thegymflow.in",
           "telephone": "+91-93848-86895",
           "contactPoint": {
             "@type": "ContactPoint",
             "contactType": "customer support",
             "telephone": "+91-93848-86895",
-            "email": "support@gymflow.sbs",
+            "email": "support@thegymflow.in",
             "availableLanguage": [
               "en",
               "ta"
@@ -433,7 +433,7 @@
           ],
           "founder": {
             "@type": "Person",
-            "@id": "https://www.gymflow.sbs/#founder",
+            "@id": "https://www.thegymflow.in/#founder",
             "name": "Ganesamurthi V",
             "jobTitle": "Founder and developer",
             "sameAs": [
@@ -445,84 +445,84 @@
         },
         {
           "@type": "WebSite",
-          "@id": "https://www.gymflow.sbs/#website",
-          "url": "https://www.gymflow.sbs/",
+          "@id": "https://www.thegymflow.in/#website",
+          "url": "https://www.thegymflow.in/",
           "name": "GymFlow",
           "description": "Gym management software for independent gyms across India.",
           "publisher": {
-            "@id": "https://www.gymflow.sbs/#organization"
+            "@id": "https://www.thegymflow.in/#organization"
           },
           "inLanguage": "en-IN"
         },
         {
           "@type": "WebPage",
-          "@id": "https://www.gymflow.sbs/#webpage",
-          "url": "https://www.gymflow.sbs/",
+          "@id": "https://www.thegymflow.in/#webpage",
+          "url": "https://www.thegymflow.in/",
           "name": "GymFlow — Gym Management Software for Indian Gyms",
           "description": "Gym management software for independent gyms in India: members, payments, dues, attendance and unlimited WhatsApp reminders. Free forever plan, paid plans from ₹999/month.",
           "isPartOf": {
-            "@id": "https://www.gymflow.sbs/#website"
+            "@id": "https://www.thegymflow.in/#website"
           },
           "about": {
-            "@id": "https://www.gymflow.sbs/#organization"
+            "@id": "https://www.thegymflow.in/#organization"
           },
           "mainEntity": {
-            "@id": "https://www.gymflow.sbs/#software"
+            "@id": "https://www.thegymflow.in/#software"
           },
           "primaryImageOfPage": {
             "@type": "ImageObject",
-            "url": "https://www.gymflow.sbs/og-image.jpg",
+            "url": "https://www.thegymflow.in/og-image.jpg",
             "width": 1200,
             "height": 630
           },
           "inLanguage": "en-IN",
           "dateModified": "2026-11-12",
           "video": {
-            "@id": "https://www.gymflow.sbs/#video"
+            "@id": "https://www.thegymflow.in/#video"
           }
         },
         {
           "@type": "SoftwareApplication",
-          "@id": "https://www.gymflow.sbs/#software",
+          "@id": "https://www.thegymflow.in/#software",
           "name": "GymFlow",
-          "url": "https://www.gymflow.sbs/",
+          "url": "https://www.thegymflow.in/",
           "description": "All-in-one gym management for independent gym owners: member records, payments and dues, attendance, and unlimited automated WhatsApp reminders.",
           "applicationCategory": "BusinessApplication",
           "applicationSubCategory": "Gym management software",
           "operatingSystem": "Web browser",
           "browserRequirements": "Requires a modern web browser.",
-          "image": "https://www.gymflow.sbs/og-image.jpg",
+          "image": "https://www.thegymflow.in/og-image.jpg",
           "screenshot": {
             "@type": "ImageObject",
-            "url": "https://www.gymflow.sbs/hero.webp",
+            "url": "https://www.thegymflow.in/hero.webp",
             "width": 1160,
             "height": 617,
             "caption": "The GymFlow dashboard showing active members, today's collection, memberships expiring soon and total outstanding dues."
           },
           "inLanguage": "en-IN",
           "publisher": {
-            "@id": "https://www.gymflow.sbs/#organization"
+            "@id": "https://www.thegymflow.in/#organization"
           },
           "offers": [
             {
               "@type": "Offer",
-              "@id": "https://www.gymflow.sbs/#offer-free",
+              "@id": "https://www.thegymflow.in/#offer-free",
               "name": "GymFlow free forever plan",
               "description": "GymFlow for up to 50 members at no cost, with member management, fees and dues, attendance tracking and member import. Available after the 14-day free trial.",
               "price": "0",
               "priceCurrency": "INR",
               "availability": "https://schema.org/InStock",
-              "url": "https://www.gymflow.sbs/#pricing"
+              "url": "https://www.thegymflow.in/#pricing"
             },
             {
               "@type": "Offer",
-              "@id": "https://www.gymflow.sbs/#offer-whatsapp-addon",
+              "@id": "https://www.thegymflow.in/#offer-whatsapp-addon",
               "name": "GymFlow WhatsApp add-on",
               "description": "WhatsApp reminders (welcome, renewal and payment due messages) for gyms on the free forever plan.",
               "price": "299",
               "priceCurrency": "INR",
               "availability": "https://schema.org/InStock",
-              "url": "https://www.gymflow.sbs/#pricing",
+              "url": "https://www.thegymflow.in/#pricing",
               "priceSpecification": {
                 "@type": "UnitPriceSpecification",
                 "price": "299",
@@ -536,13 +536,13 @@
             },
             {
               "@type": "Offer",
-              "@id": "https://www.gymflow.sbs/#offer-monthly",
+              "@id": "https://www.thegymflow.in/#offer-monthly",
               "name": "GymFlow monthly plan",
               "description": "GymFlow for one month, with every feature, unlimited members and unlimited WhatsApp messages. Starts with a 14-day free trial, no credit card required.",
               "price": "999",
               "priceCurrency": "INR",
               "availability": "https://schema.org/InStock",
-              "url": "https://www.gymflow.sbs/#pricing",
+              "url": "https://www.thegymflow.in/#pricing",
               "priceSpecification": {
                 "@type": "UnitPriceSpecification",
                 "price": "999",
@@ -556,13 +556,13 @@
             },
             {
               "@type": "Offer",
-              "@id": "https://www.gymflow.sbs/#offer-yearly",
+              "@id": "https://www.thegymflow.in/#offer-yearly",
               "name": "GymFlow yearly plan",
               "description": "GymFlow for a year, with every feature, unlimited members and unlimited WhatsApp messages. About 17% less than twelve monthly payments. Starts with a 14-day free trial, no credit card required.",
               "price": "9999",
               "priceCurrency": "INR",
               "availability": "https://schema.org/InStock",
-              "url": "https://www.gymflow.sbs/#pricing",
+              "url": "https://www.thegymflow.in/#pricing",
               "priceSpecification": {
                 "@type": "UnitPriceSpecification",
                 "price": "9999",
@@ -589,9 +589,9 @@
         },
         {
           "@type": "FAQPage",
-          "@id": "https://www.gymflow.sbs/#faq",
+          "@id": "https://www.thegymflow.in/#faq",
           "isPartOf": {
-            "@id": "https://www.gymflow.sbs/#webpage"
+            "@id": "https://www.thegymflow.in/#webpage"
           },
           "mainEntity": [
             {
@@ -679,7 +679,7 @@
               "name": "How fast does support reply?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Every GymFlow paid plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours."
+                "text": "Every GymFlow paid plan includes direct founder support. Message us on WhatsApp or email support@thegymflow.in and we reply within 24 hours."
               }
             },
             {
@@ -695,26 +695,26 @@
               "name": "Where can I check if GymFlow is working?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Our public status page at status.gymflow.sbs shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@gymflow.sbs."
+                "text": "Our public status page at status.thegymflow.in shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@thegymflow.in."
               }
             }
           ]
         },
         {
           "@type": "VideoObject",
-          "@id": "https://www.gymflow.sbs/#video",
+          "@id": "https://www.thegymflow.in/#video",
           "name": "GymFlow in one minute",
           "description": "How independent gyms are run today on notebooks, spreadsheets and chats, and how GymFlow's owner console and member app replace them: members, check-ins, payments, reports, WhatsApp reminders and Excel import.",
-          "thumbnailUrl": "https://www.gymflow.sbs/video/gymflow-launch-portrait-poster.webp",
-          "contentUrl": "https://www.gymflow.sbs/video/gymflow-launch-portrait.mp4",
+          "thumbnailUrl": "https://www.thegymflow.in/video/gymflow-launch-portrait-poster.webp",
+          "contentUrl": "https://www.thegymflow.in/video/gymflow-launch-portrait.mp4",
           "uploadDate": "2026-10-06T00:00:00+05:30",
           "duration": "PT1M1S",
           "inLanguage": "en-IN",
           "publisher": {
-            "@id": "https://www.gymflow.sbs/#organization"
+            "@id": "https://www.thegymflow.in/#organization"
           },
           "isPartOf": {
-            "@id": "https://www.gymflow.sbs/#webpage"
+            "@id": "https://www.thegymflow.in/#webpage"
           }
         }
       ]
@@ -787,7 +787,7 @@
       <h1>Gym management software made effortless</h1>
       <p>Members, fees, attendance and WhatsApp reminders in one simple app.</p>
       <p>14-day free trial. No credit card. Free for up to 50 members.</p>
-      <p><a href="https://app.gymflow.sbs">Start free trial</a> <a href="#pricing">See pricing</a></p>
+      <p><a href="https://app.thegymflow.in">Start free trial</a> <a href="#pricing">See pricing</a></p>
 
       <h2 id="features">Everything your gym's front desk does, in one app</h2>
       <p>Run your members, your sales and your members' phones from one app.</p>
@@ -796,7 +796,7 @@
         <li><a href="/workout-programs">Sales and operations</a>: inventory with variants, stock, prices and a sales history for each product, and workout programs you assign to members.</li>
         <li><a href="/member-app">Member app</a>: a digital card, workouts, streaks and leaderboards, opened from a WhatsApp link.</li>
       </ul>
-      <p><a href="https://app.gymflow.sbs">Start free trial</a> <a href="/features">See all features</a></p>
+      <p><a href="https://app.thegymflow.in">Start free trial</a> <a href="/features">See all features</a></p>
 
       <h2 id="problems">Gym software vs register or Excel sheet</h2>
       <p>Where a register or sheet starts to cost you time, and what GymFlow does about each job.</p>
@@ -867,27 +867,27 @@
         from account settings.</p>
       <h3>How fast does support reply?</h3>
       <p>Every GymFlow paid plan includes direct founder support. Message us on WhatsApp or email
-        support@gymflow.sbs and we reply within 24 hours.</p>
+        support@thegymflow.in and we reply within 24 hours.</p>
       <h3>How do I reach support?</h3>
       <p>Over WhatsApp, phone, or email. You talk to the person who builds GymFlow rather than a ticket queue,
         and we reply within 24 hours. Support in English and Tamil.</p>
       <h3>Where can I check if GymFlow is working?</h3>
-      <p>Our public status page at status.gymflow.sbs shows whether GymFlow is running normally and lists any
+      <p>Our public status page at status.thegymflow.in shows whether GymFlow is running normally and lists any
         issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp
-        or email support@gymflow.sbs.</p>
+        or email support@thegymflow.in.</p>
 
       <h2 id="cta">Start your free trial today</h2>
       <p>Direct support from the person who builds GymFlow. We reply within 24 hours.</p>
       <p>14-day free trial. No credit card. Cancel anytime.</p>
-      <p><a href="https://app.gymflow.sbs">Start free trial</a> <a href="#pricing">See pricing</a></p>
+      <p><a href="https://app.thegymflow.in">Start free trial</a> <a href="#pricing">See pricing</a></p>
 
       <h2>Contact</h2>
       <p>
-        Email <a href="mailto:support@gymflow.sbs">support@gymflow.sbs</a>, phone and WhatsApp
+        Email <a href="mailto:support@thegymflow.in">support@thegymflow.in</a>, phone and WhatsApp
         <a href="tel:+919384886895">+91 93848 86895</a>. No. 126, Anbu Nagar, Achariyapuram,
         Villianur, Puducherry 605110, India. Support in English and Tamil.
       </p>
-      <p><a href="https://status.gymflow.sbs">System status</a><br />
+      <p><a href="https://status.thegymflow.in">System status</a><br />
         <a href="/privacy">Privacy Policy</a><br />
         <a href="/terms">Terms of Service</a><br />
         <a href="/llms.txt">Summary for AI assistants</a><br />

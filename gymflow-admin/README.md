@@ -1,7 +1,7 @@
 # GymFlow Admin
 
 The super-admin panel for whoever operates a GymFlow deployment. It is a separate Next.js app
-with its own login, deployed on its own (the hosted version is at `admin.gymflow.sbs`).
+with its own login, deployed on its own (the hosted version is at `admin.thegymflow.in`).
 
 It is also the backend that the admin mobile app ([`../gymflow-mobile`](../gymflow-mobile))
 talks to.
@@ -104,7 +104,7 @@ Off unless `AI_API_KEY` is set. Any OpenAI-compatible endpoint works; the defaul
 free tier.
 
 - **Drafts only.** Nothing is sent without a person pressing send.
-- **It only knows `lib/support-knowledge.ts`.** That file is written for gymflow.sbs: prices,
+- **It only knows `lib/support-knowledge.ts`.** That file is written for thegymflow.in: prices,
   features, contact details. Replace it with your own facts, or the drafts will quote someone
   else's product.
 - Links in a draft are removed unless their host is in `ALLOWED_HOSTS` in `lib/ai-draft.ts`.

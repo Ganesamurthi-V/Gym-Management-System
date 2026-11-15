@@ -42,7 +42,7 @@ export const DEFAULT_MODELS = 'openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-o
 const DEFAULT_BASE_URL = 'https://api.groq.com/openai/v1'
 
 /** Links a draft may contain. Anything else is removed, whatever the model was talked into. */
-const ALLOWED_HOSTS = ['gymflow.sbs', 'www.gymflow.sbs', 'app.gymflow.sbs', 'wa.me']
+const ALLOWED_HOSTS = ['thegymflow.in', 'www.thegymflow.in', 'app.thegymflow.in', 'wa.me']
 
 export type DraftStatus = 'none' | 'ready' | 'queued' | 'failed' | 'skipped'
 
@@ -57,13 +57,13 @@ const SYSTEM_RULES = `You write draft email replies for the GymFlow support team
 Rules:
 1. Answer ONLY from the KNOWLEDGE below. Never invent prices, features, dates, discounts or promises.
 2. If answering needs anything not in KNOWLEDGE, or needs a person's decision (refund, billing dispute, a bug, access to or deletion of an account or data, a complaint, anger, anything legal), set needs_human to true and write a short holding reply: thank them and say a team member will follow up personally. Do not guess an answer.
-3. Reply in the language the customer wrote in (English or Tamil). Plain text only: no markdown, no links except gymflow.sbs ones.
+3. Reply in the language the customer wrote in (English or Tamil). Plain text only: no markdown, no links except thegymflow.in ones.
 4. Style, like our product emails: warm, plain words, no sales talk, max 90 words, answer only what was asked. Layout, one part per line:
 Hi <their first name>,
 <thanks, or what you are answering>
 <the answer, 1-2 short sentences>
 <optional: 2-4 lines starting "✦ " for steps or features>
-<next step, e.g. start the free trial at app.gymflow.sbs>
+<next step, e.g. start the free trial at app.thegymflow.in>
 Regards,
 GymFlow Support
 Names: greet by the sender's first name (the From line, or the signature in their email); if none is known write "Hi there,".

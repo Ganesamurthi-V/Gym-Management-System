@@ -196,13 +196,23 @@ export async function POST(req: NextRequest) {
     // Trial and Free gyms hold at most 50 members. Plan and count come from the DB for the
     // server-resolved gym (never the body); paid gyms skip the count query. The DB trigger is the
     // real guard, this just answers before touching the insert.
-    const { data: planRow } = await supabase.from('gyms').select('plan_type').eq('id', gym.id).single()
-    if (planRow?.plan_type === 'trial' || planRow?.plan_type === 'free') {
+    const { data: planRow, error: planErr } = await supabase.from('gyms').select('plan_type').eq('id', gym.id).single()
+    if (planErr || !planRow) {
+      log.error('plan lookup failed', planErr)
+      log.summary(500)
+      return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: 'Could not add the member. Please try again.' } }, { status: 500 })
+    }
+    if (planRow.plan_type === 'trial' || planRow.plan_type === 'free') {
       const { count, error: countErr } = await supabase
         .from('members')
         .select('id', { count: 'exact', head: true })
         .eq('gym_id', gym.id)
-      if (!countErr && memberCapReached(planRow.plan_type, count ?? 0)) {
+      if (countErr) {
+        log.error('member count failed', countErr)
+        log.summary(500)
+        return NextResponse.json({ success: false, error: { code: 'DATABASE_ERROR', message: 'Could not add the member. Please try again.' } }, { status: 500 })
+      }
+      if (memberCapReached(planRow.plan_type, count ?? 0)) {
         log.summary(403)
         return planMemberLimitResponse()
       }

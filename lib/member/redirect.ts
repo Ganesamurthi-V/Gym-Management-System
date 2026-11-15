@@ -56,8 +56,8 @@ export function safeMemberRedirect(value: string | null | undefined) {
 
   try {
     // Base origin is arbitrary; it only lets us parse a relative path safely.
-    const url = new URL(value, 'https://app.gymflow.sbs')
-    if (url.origin !== 'https://app.gymflow.sbs') return MEMBER_HOME
+    const url = new URL(value, 'https://app.thegymflow.in')
+    if (url.origin !== 'https://app.thegymflow.in') return MEMBER_HOME
     if (!isProtectedMemberPath(url.pathname)) return MEMBER_HOME
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
@@ -69,15 +69,15 @@ export function safeMemberRedirect(value: string | null | undefined) {
  * Canonical public origin for member-facing links (activation links sent over
  * WhatsApp/email, Supabase `emailRedirectTo`, etc.).
  *
- * After the unified-app migration this is `https://app.gymflow.sbs`, NOT the
- * retired `member.gymflow.sbs`. `NEXT_PUBLIC_MEMBER_APP_URL` is still honoured
+ * After the unified-app migration this is `https://app.thegymflow.in`, NOT the
+ * retired `member.thegymflow.in`. `NEXT_PUBLIC_MEMBER_APP_URL` is still honoured
  * first so an existing deployment that sets it keeps working during cutover.
  */
 export function memberAppOrigin(): string {
   return (
     process.env.NEXT_PUBLIC_MEMBER_APP_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    'https://app.gymflow.sbs'
+    'https://app.thegymflow.in'
   ).replace(/\/+$/, '')
 }
 
@@ -92,7 +92,7 @@ export function activationUrl(token: string): string {
 }
 
 /**
- * ── LEGACY member.gymflow.sbs URL MAP ───────────────────────────────────────
+ * ── LEGACY member.thegymflow.in URL MAP ───────────────────────────────────────
  *
  * The standalone member PWA served these at the domain root. Maps an incoming
  * path on the retired host onto its place in the unified app.

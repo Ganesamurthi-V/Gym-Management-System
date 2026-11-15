@@ -103,9 +103,9 @@ SUPABASE_ANON_KEY=<anon key>
 ```
 
 `lib/api/client.ts` only honours `ADMIN_API_BASE` when `__DEV__` is true — release builds
-always use `https://admin.gymflow.sbs`, so a stale localhost value cannot ship.
+always use `https://admin.thegymflow.in`, so a stale localhost value cannot ship.
 
-> **Running your own deployment?** Two values in the code point at gymflow.sbs and must be
+> **Running your own deployment?** Two values in the code point at thegymflow.in and must be
 > changed for a release build: `defaultBaseUrl` in `lib/api/client.ts` (your admin panel's
 > URL) and the fallback Supabase URL in `lib/supabase-realtime.ts`. These values are compiled
 > into the app, so keep them public ones only: never a service-role key.

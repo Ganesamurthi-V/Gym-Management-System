@@ -3,7 +3,7 @@
  *
  * Secure reverse proxy — Meta WhatsApp Graph API
  *
- * Incoming:  https://graph.gymflow.sbs/api/graph/{version}/{resource}
+ * Incoming:  https://graph.thegymflow.in/api/graph/{version}/{resource}
  * Forwards:  https://graph.facebook.com/{version}/{resource}
  *
  * Security:
@@ -25,7 +25,7 @@
  * is attached by services/whatsapp/graph.ts.
  *
  * Example:
- *   POST https://graph.gymflow.sbs/api/graph/v25.0/1234567/messages
+ *   POST https://graph.thegymflow.in/api/graph/v25.0/1234567/messages
  *   → POST https://graph.facebook.com/v25.0/1234567/messages
  */
 

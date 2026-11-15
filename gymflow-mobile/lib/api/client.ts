@@ -4,7 +4,7 @@ import { getToken, expireSession } from '../auth';
 import { ADMIN_API_BASE as ENV_ADMIN_API_BASE } from '@env';
 
 // Default to the production admin backend instead of localhost
-const defaultBaseUrl = 'https://admin.gymflow.sbs';
+const defaultBaseUrl = 'https://admin.thegymflow.in';
 // Enforce production URL in release builds to avoid cleartext/localhost Network Errors
 export const ADMIN_API_BASE = (__DEV__ && ENV_ADMIN_API_BASE) ? ENV_ADMIN_API_BASE : defaultBaseUrl;
 

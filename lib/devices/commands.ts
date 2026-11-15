@@ -2,7 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { apiLogger } from '@/lib/logger'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildCommandLine, sanitizeName, type CommandDialect, type CommandKind } from '@/lib/devices/commandLines'
+import { buildCommandLine, type CommandDialect, type CommandKind } from '@/lib/devices/commandLines'
 import { istDateOf } from '@/lib/devices/time'
 
 export type { CommandKind, CommandDialect }
@@ -18,7 +18,7 @@ const PIN_RE = /^[0-9]{1,9}$/
 
 export async function enqueueDeviceCommand(
   db: SupabaseClient,
-  a: { gymId: string; deviceId: string; memberId: string | null; kind: CommandKind; pin: string; name?: string },
+  a: { gymId: string; deviceId: string; memberId: string | null; kind: CommandKind; pin: string },
 ): Promise<{ queued: boolean; reason?: 'duplicate' | 'cap' }> {
   const { data: same, error: sameError } = await db
     .from('device_commands').select('id')
@@ -32,9 +32,8 @@ export async function enqueueDeviceCommand(
   if (pendingError) throw new Error(`device command count failed: ${pendingError.message}`)
   if ((pending?.length ?? 0) >= MAX_PENDING_PER_DEVICE) return { queued: false, reason: 'cap' }
 
-  const payload = a.kind === 'add_user' ? { name: sanitizeName(a.name ?? '') || `Member ${a.pin}` } : {}
   const { error } = await db.from('device_commands').insert({
-    gym_id: a.gymId, device_id: a.deviceId, member_id: a.memberId, kind: a.kind, pin: a.pin, payload,
+    gym_id: a.gymId, device_id: a.deviceId, member_id: a.memberId, kind: a.kind, pin: a.pin,
   })
   if (error) throw new Error(`device command insert failed: ${error.message}`)
   return { queued: true }
@@ -57,7 +56,7 @@ export async function enqueueMemberDeviceSync(
     if (!devices || devices.length === 0) return { queued: 0 }
 
     const { data: member, error: memberError } = await db
-      .from('members').select('id, name, member_number').eq('id', a.memberId).eq('gym_id', a.gymId).maybeSingle()
+      .from('members').select('id, member_number').eq('id', a.memberId).eq('gym_id', a.gymId).maybeSingle()
     if (memberError) throw new Error(memberError.message)
     if (!member) return { queued: 0 }
 
@@ -73,7 +72,7 @@ export async function enqueueMemberDeviceSync(
       if (a.action === 'add') {
         if (!numberPin || myMaps.length > 0) continue
         const r = await enqueueDeviceCommand(db, {
-          gymId: a.gymId, deviceId: device.id, memberId: a.memberId, kind: 'add_user', pin: numberPin, name: member.name as string,
+          gymId: a.gymId, deviceId: device.id, memberId: a.memberId, kind: 'add_user', pin: numberPin,
         })
         if (r.queued) queued++
         // Pre-map the pin so the member's first punch resolves; never overwrites an existing pin owner.
@@ -117,7 +116,7 @@ export async function syncMemberToDevices(gymId: string, memberId: string, actio
   }
 }
 
-type ClaimRow = { id: number; kind: CommandKind; pin: string; payload: { name?: string } | null; attempts: number }
+type ClaimRow = { id: number; kind: CommandKind; pin: string; attempts: number }
 
 export async function claimNextCommands(
   db: SupabaseClient, deviceId: string, dialect: CommandDialect, now: Date = new Date(),
@@ -131,7 +130,7 @@ export async function claimNextCommands(
     .eq('device_id', deviceId).eq('state', 'sent').gte('attempts', MAX_ATTEMPTS).lt('last_sent_at', cutoff)
   if (failError) throw new Error(`device command expiry failed: ${failError.message}`)
 
-  const cols = 'id, kind, pin, payload, attempts'
+  const cols = 'id, kind, pin, attempts'
   const claimed: ClaimRow[] = []
 
   const { data: queued, error: queuedError } = await db
@@ -168,7 +167,7 @@ export async function claimNextCommands(
   const out: { id: number; line: string }[] = []
   for (const row of claimed.sort((a, b) => a.id - b.id)) {
     try {
-      out.push({ id: row.id, line: buildCommandLine({ id: row.id, kind: row.kind, pin: row.pin, name: row.payload?.name, dialect }) })
+      out.push({ id: row.id, line: buildCommandLine({ id: row.id, kind: row.kind, pin: row.pin, dialect }) })
     } catch (err) {
       // A row that cannot be built (bad pin) must not be offered forever.
       log.error('device command could not be built', err)

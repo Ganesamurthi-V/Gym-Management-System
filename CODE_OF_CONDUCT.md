@@ -25,6 +25,6 @@ representing the project.
 
 ## Reporting
 
-If you see or experience behaviour that breaks these rules, email **support@gymflow.sbs**.
+If you see or experience behaviour that breaks these rules, email **support@thegymflow.in**.
 Reports are kept confidential. The maintainers may remove comments, close threads, or block
 someone from the project where that is needed.

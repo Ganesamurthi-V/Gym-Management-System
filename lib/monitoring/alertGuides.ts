@@ -18,7 +18,7 @@ const VERCEL = { label: 'Vercel dashboard', url: 'https://vercel.com/dashboard' 
 const SUPABASE = { label: 'Supabase dashboard', url: 'https://supabase.com/dashboard' }
 const UPSTASH = { label: 'Upstash console', url: 'https://console.upstash.com' }
 const META = { label: 'Meta Business Suite', url: 'https://business.facebook.com' }
-const HEALTH = { label: 'Health endpoint (needs the secret header)', url: 'https://app.gymflow.sbs/api/health/deep' }
+const HEALTH = { label: 'Health endpoint (needs the secret header)', url: 'https://app.thegymflow.in/api/health/deep' }
 
 const LOGS = 'Vercel > Project > Logs: filter by the route named in Details.'
 
@@ -55,7 +55,7 @@ const route5xx: AlertGuide = {
 }
 
 const cronRerun = (path: string): string =>
-  `Re-run it by hand: POST https://app.gymflow.sbs${path} with header x-cron-secret set to your CRON_SECRET.`
+  `Re-run it by hand: POST https://app.thegymflow.in${path} with header x-cron-secret set to your CRON_SECRET.`
 
 const activation = (step: string): AlertGuide => ({
   happening: `A member hit an error while activating their account (${step} step).`,
@@ -78,7 +78,7 @@ const authGuide = (what: string, impact: string): AlertGuide => ({
   check: [
     'Supabase > Project status and Authentication > Logs: any outage or rate limit?',
     LOGS,
-    'Try the same action yourself on https://app.gymflow.sbs.',
+    'Try the same action yourself on https://app.thegymflow.in.',
   ],
   fix: [
     'If Supabase Auth is degraded, wait for it to recover, then retry.',
@@ -177,7 +177,7 @@ const EXACT: Record<string, AlertGuide> = {
       'Supabase > whatsapp_send_queue: rows still pending?',
     ],
     fix: [
-      'Trigger the drain by hand: POST https://app.gymflow.sbs/api/whatsapp/queue/drain with header x-cron-secret.',
+      'Trigger the drain by hand: POST https://app.thegymflow.in/api/whatsapp/queue/drain with header x-cron-secret.',
       'Fix the QStash error shown in its logs (see wa:qstash_publish).',
     ],
     links: [VERCEL],

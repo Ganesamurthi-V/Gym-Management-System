@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { GRAPH_HOSTNAME } from '@/lib/graph-domain'
 
 /**
- * Generates https://app.gymflow.sbs/robots.txt
+ * Generates https://app.thegymflow.in/robots.txt
  *
  * ─── WHY THE DISALLOW LIST LOOKS LIKE THIS ──────────────────────────────────
  * Every path below is a real segment of this app. The obvious-looking entries
@@ -25,7 +25,7 @@ import { GRAPH_HOSTNAME } from '@/lib/graph-domain'
  *
  * ─── WHY THE SITEMAP IS EMPTY AND NOT ADVERTISED ────────────────────────────
  * This host is a pure application and all search visibility lives on
- * www.gymflow.sbs. app/sitemap.ts exists only so /sitemap.xml is a valid empty
+ * www.thegymflow.in. app/sitemap.ts exists only so /sitemap.xml is a valid empty
  * urlset instead of a 404; it is not referenced here on purpose.
  *
  * ─── WHY `/` IS CRAWLABLE BUT STILL MARKED noindex ELSEWHERE ─────────────────
@@ -46,7 +46,7 @@ import { GRAPH_HOSTNAME } from '@/lib/graph-domain'
  * app/activate/layout.tsx.
  */
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  // graph.gymflow.sbs is an API-only proxy, but the middleware matcher skips *.txt, so its
+  // graph.thegymflow.in is an API-only proxy, but the middleware matcher skips *.txt, so its
   // /robots.txt was this file's `allow: '/'`. Google then kept fetching graph's `/` and listing
   // the 401 in Search Console. Tell crawlers to stay off that host entirely.
   const host = (await headers()).get('host') ?? ''

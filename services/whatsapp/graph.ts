@@ -4,7 +4,7 @@
  * High-level WhatsApp Cloud API service layer.
  *
  * ALL outbound API calls go through the GymFlow reverse proxy:
- *   https://graph.gymflow.sbs/api/graph
+ *   https://graph.thegymflow.in/api/graph
  * which forwards them transparently to graph.facebook.com.
  *
  * Exposes:
@@ -338,7 +338,7 @@ export async function markMessageRead(messageId: string): Promise<boolean> {
  * and every template updates together, so they can never drift apart).
  */
 function headerImageComponent(): Record<string, unknown> {
-  const link = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.gymflow.sbs') + '/logo_landspace.png'
+  const link = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.thegymflow.in') + '/logo_landspace.png'
   return {
     type: 'header',
     parameters: [{ type: 'image', image: { link } }],
@@ -502,12 +502,12 @@ export function buildTemplatePayload(templateId: TemplateId, ctx: TemplateContex
         language: { code: 'en' },
         // Header: uses logo_members.png (different from the shared landscape logo).
         // Body: [gymName, memberName] → {{1}}, {{2}}.
-        // Button: dynamic URL https://member.gymflow.sbs/activate/{{1}} — only
+        // Button: dynamic URL https://member.thegymflow.in/activate/{{1}} — only
         //         the token is sent as the button parameter.
         components: [
           {
             type: 'header',
-            parameters: [{ type: 'image', image: { link: (process.env.NEXT_PUBLIC_APP_URL || 'https://app.gymflow.sbs') + '/logo_members.png' } }],
+            parameters: [{ type: 'image', image: { link: (process.env.NEXT_PUBLIC_APP_URL || 'https://app.thegymflow.in') + '/logo_members.png' } }],
           },
           {
             type: 'body',

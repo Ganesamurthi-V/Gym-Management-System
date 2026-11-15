@@ -5,7 +5,7 @@ import { FREE_MEMBER_LIMIT, PLANS, WHATSAPP_ADDON_PRICE, formatINR, savingPercen
 
 const [MONTHLY, YEARLY] = PLANS;
 
-const APP_URL = 'https://app.gymflow.sbs';
+const APP_URL = 'https://app.thegymflow.in';
 
 
 /**
@@ -56,7 +56,7 @@ const FAQS = [
   },
   {
     q: 'How fast does support reply?',
-    a: 'Every GymFlow paid plan includes direct founder support. Message us on WhatsApp or email support@gymflow.sbs and we reply within 24 hours.',
+    a: 'Every GymFlow paid plan includes direct founder support. Message us on WhatsApp or email support@thegymflow.in and we reply within 24 hours.',
   },
   {
     q: 'How do I reach support?',
@@ -64,7 +64,7 @@ const FAQS = [
   },
   {
     q: 'Where can I check if GymFlow is working?',
-    a: 'Our public status page at status.gymflow.sbs shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@gymflow.sbs.',
+    a: 'Our public status page at status.thegymflow.in shows whether GymFlow is running normally and lists any issues we are working on. If it shows all clear and something still looks wrong, message us on WhatsApp or email support@thegymflow.in.',
   },
 ] as const;
 

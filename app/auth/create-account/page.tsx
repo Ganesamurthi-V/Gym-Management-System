@@ -385,7 +385,7 @@ export default function CreateAccountPage() {
                   />
                   <span>
                     I agree to receive GymFlow updates and offers on WhatsApp.{' '}
-                    <a href="https://www.gymflow.sbs/privacy" target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline">
+                    <a href="https://www.thegymflow.in/privacy" target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline">
                       Privacy policy
                     </a>
                   </span>
@@ -421,7 +421,7 @@ export default function CreateAccountPage() {
                   <span className="text-sm leading-relaxed text-neutral-700">
                     I have read and agree to the{' '}
                     <a
-                      href="https://www.gymflow.sbs/terms.html"
+                      href="https://www.thegymflow.in/terms.html"
                       target="_blank"
                       rel="noopener noreferrer"
                       className={authLink}

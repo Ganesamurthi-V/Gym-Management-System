@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { roleFromClaims, homeForRole } from '@/lib/auth/roles'
 
 /**
- * Entry point for app.gymflow.sbs.
+ * Entry point for app.thegymflow.in.
  *
  * The middleware already resolves `/` to the correct role home, so this
  * normally never renders. It is kept as a defence-in-depth fallback for any

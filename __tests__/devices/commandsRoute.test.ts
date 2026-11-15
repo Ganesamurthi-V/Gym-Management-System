@@ -35,6 +35,7 @@ beforeEach(() => {
   db = createFakeDb()
   m.db = db
   db.tables.attendance_devices.push({ id: 'dev1', gym_id: 'gym1', serial_number: 'SN123', is_active: true, last_seen_at: null, command_dialect: 'privilege' })
+  db.tables.gyms.push({ id: 'gym1', plan_type: 'monthly', subscription_status: 'active', is_active: true, trial_ends_at: null, subscription_ends_at: null })
   db.tables.device_commands.push({ id: 1, device_id: 'dev1', kind: 'remove_user', pin: '7', payload: {}, state: 'queued', attempts: 0, last_sent_at: null })
 })
 afterEach(() => { delete process.env[SECRET_VAR]; delete process.env.ADMS_INGEST_SECRET_PREVIOUS })
@@ -55,6 +56,14 @@ describe('device command routes auth', () => {
       expect(db.tables.device_commands[0].state).toBe('queued')
     })
   }
+  it('hands out no commands for a Free gym and leaves the queue as it is', async () => {
+    db.tables.gyms[0].plan_type = 'free'
+    const res = await call(next, { serial: 'SN123' })
+    expect(res.status).toBe(200)
+    expect((await res.json()).data).toEqual({ known: false, commands: [] })
+    expect(db.tables.device_commands[0].state).toBe('queued')
+    expect(db.tables.attendance_devices[0].last_seen_at).toBeNull()
+  })
   it('rate limited answers 429', async () => {
     m.allowed = false
     expect((await call(next, { serial: 'SN123' })).status).toBe(429)

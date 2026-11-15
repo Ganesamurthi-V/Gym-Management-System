@@ -14,7 +14,7 @@ Sentry are unchanged. Vercel stays live as the rollback until cutover. `next.con
    `npx sst secret set NAME value --stage production`. Optional features you do not use still need a value
    (use a single space or `unset`); the app treats blank as off. `CRON_SECRET` must equal the one on Vercel until cutover.
 4. NEXT_PUBLIC_* and other plain values are read from the shell at deploy time (they are inlined at build), so export
-   them before deploying, for example `NEXT_PUBLIC_APP_URL=https://app.gymflow.sbs`.
+   them before deploying, for example `NEXT_PUBLIC_APP_URL=https://app.thegymflow.in`.
 5. `npx sst deploy --stage production` (or run the manual `deploy` job in the aws-deploy workflow).
    The first deploy prints the CloudFront URL; smoke-test it before touching DNS.
 
@@ -25,7 +25,7 @@ Sentry are unchanged. Vercel stays live as the rollback until cutover. `next.con
   Both stay inside the Lambda free tier; there is no provisioned concurrency (it is billed).
   With streaming the first byte arrives well before the total; buffered, they are almost equal. Also look in the build log for
   `"streaming":true` in `.open-next/open-next.output.json`.
-- The production stage owns `app.gymflow.sbs` and its aliases; with a domain set CloudFront answers 403 on the
+- The production stage owns `app.thegymflow.in` and its aliases; with a domain set CloudFront answers 403 on the
   `*.cloudfront.net` host, which is intended.
 
 ## Manual console steps
@@ -33,16 +33,16 @@ Sentry are unchanged. Vercel stays live as the rollback until cutover. `next.con
 - AWS Budget: Billing -> Budgets -> create a monthly cost budget of $5 with an email alert at 80% and 100%.
 - Error alarm: deferred. Add a CloudWatch alarm on the server Lambda's Errors metric with an SNS notification later.
 
-## DNS and certificates (app.gymflow.sbs, graph.gymflow.sbs)
+## DNS and certificates (app.thegymflow.in, graph.thegymflow.in)
 
 CloudFront only accepts ACM certificates from us-east-1, whatever the app region.
 
-1. In ACM (us-east-1) request one certificate for `app.gymflow.sbs` and `graph.gymflow.sbs`, validate it with the
+1. In ACM (us-east-1) request one certificate for `app.thegymflow.in` and `graph.thegymflow.in`, validate it with the
    DNS records ACM shows.
-2. Add `domain` to the `sst.aws.Nextjs` component (with `aliases: ['graph.gymflow.sbs']` and `dns: false` plus the
+2. Add `domain` to the `sst.aws.Nextjs` component (with `aliases: ['graph.thegymflow.in']` and `dns: false` plus the
    `cert` ARN if DNS is not on Route 53) and redeploy.
 3. Point both hostnames at the CloudFront domain with CNAME records (apex is not involved). `middleware.ts` already
-   isolates `graph.gymflow.sbs` as the API-only proxy by host header.
+   isolates `graph.thegymflow.in` as the API-only proxy by host header.
 4. Lower the TTL a day before cutover so a rollback is quick.
 
 ## Crons
@@ -72,7 +72,7 @@ from `../.env.local`); it upserts by schedule id, so re-running is safe.
 deploys never depend on admin secrets or its certificate. Every command runs from `infra/` with
 `--config sst.admin.config.ts`. Vercel stays live as the rollback.
 
-1. Certificate: request an ACM certificate for `admin.gymflow.sbs` in us-east-1 (CloudFront requires it). An earlier
+1. Certificate: request an ACM certificate for `admin.thegymflow.in` in us-east-1 (CloudFront requires it). An earlier
    request failed with CAA_ERROR: Cloudflare can add CAA records for proxied hosts, so set the admin DNS record to
    DNS only, or add a CAA record allowing `amazon.com`, before requesting. Validate with the CNAME ACM shows.
 2. In `gymflow-admin/` run `npx vercel env pull .env.local`.

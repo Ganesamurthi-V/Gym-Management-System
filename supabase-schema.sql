@@ -1734,6 +1734,20 @@ AS $$
   SELECT 50
 $$;
 
+-- ── biometric_device_limit: how many biometric devices a plan may register ──
+-- A trial gets one device, every paid plan five. Must equal biometricDeviceLimit() in
+-- lib/subscription-utils.ts (a test compares the two). Free is refused by the trigger
+-- before this is read.
+CREATE OR REPLACE FUNCTION public.biometric_device_limit(p_plan TEXT)
+RETURNS INTEGER
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+SET search_path = ''
+AS $$
+  SELECT CASE WHEN p_plan = 'trial' THEN 1 ELSE 5 END
+$$;
+
 -- ── member_app_allowed: may the signed-in member use the member app? ──
 -- The database copy of the member app gate, so a member JWT cannot read app
 -- data straight through PostgREST once the gym loses access. Mirrors
@@ -2449,6 +2463,9 @@ BEGIN
    LIMIT 1;
   IF v_member_id IS NULL THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'NOT_MEMBER';
+  END IF;
+  IF NOT public.member_app_allowed() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'MEMBER_APP_BLOCKED';
   END IF;
 
   DELETE FROM public.member_body_logs b
@@ -4716,6 +4733,39 @@ BEGIN
 END;
 $$;
 
+-- ── 1d-2. attendance_devices: the plan decides how many devices a gym may register ──
+-- Enforced in the database so every insert path is covered, including the service role.
+-- The gym row lock serialises concurrent inserts (otherwise two requests on a trial with no
+-- device would both pass the count) and orders them against plan changes. Free gyms cannot
+-- add a device; the ones they set up during the trial are kept, untouched, for a later
+-- upgrade. Definer so the lock and the count do not depend on the caller's grants.
+CREATE OR REPLACE FUNCTION public.enforce_biometric_device_limit()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_plan TEXT;
+BEGIN
+  SELECT plan_type INTO v_plan
+    FROM public.gyms
+   WHERE id = NEW.gym_id
+   FOR UPDATE;
+
+  IF v_plan = 'free' THEN
+    RAISE EXCEPTION 'biometric_not_in_plan' USING ERRCODE = '23514';
+  END IF;
+
+  IF (SELECT count(*) FROM public.attendance_devices WHERE gym_id = NEW.gym_id)
+     >= public.biometric_device_limit(v_plan)
+  THEN
+    RAISE EXCEPTION 'biometric_device_limit' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 -- ── 1e. gyms: login_disabled always mirrors is_active ──
 -- Two flags for one ban drifted apart (an admin re-activated a gym but the old
 -- login_disabled stayed set, or the other way round). is_active is the one the
@@ -5051,8 +5101,10 @@ $$;
 -- Service-role only (the admin app). Request lock, gym lock and both writes are
 -- one transaction so a double click or two admins cannot approve the same
 -- request twice and stack 60 days. It runs as the definer, so the gyms column
--- guard treats the billing writes as trusted. plan_type and subscription_status
--- are deliberately left alone: the add-on is independent of the plan.
+-- guard treats the billing writes as trusted. On a Free or paid gym plan_type and
+-- subscription_status are left alone: the add-on is independent of the plan. On a
+-- trial gym, paying for the add-on ends the trial and moves the gym to the free
+-- forever plan (same end state as owner_switch_to_free), so it needs <= 50 members.
 CREATE OR REPLACE FUNCTION public.approve_whatsapp_addon(
   p_request_id  UUID,
   p_gym_id      UUID,
@@ -5066,6 +5118,7 @@ AS $$
 DECLARE
   v_req   public.subscription_requests%ROWTYPE;
   v_until TIMESTAMPTZ;
+  v_plan  TEXT;
 BEGIN
   SELECT * INTO v_req
     FROM public.subscription_requests
@@ -5085,11 +5138,17 @@ BEGIN
   END IF;
 
   -- Renewing early extends from the current end date instead of losing days.
-  SELECT greatest(now(), coalesce(whatsapp_addon_until, now())) + interval '30 days'
-    INTO v_until
+  SELECT greatest(now(), coalesce(whatsapp_addon_until, now())) + interval '30 days', plan_type
+    INTO v_until, v_plan
     FROM public.gyms
    WHERE id = p_gym_id
    FOR UPDATE;
+
+  IF v_plan = 'trial'
+     AND (SELECT count(*) FROM public.members WHERE gym_id = p_gym_id) > 50
+  THEN
+    RAISE EXCEPTION 'free_plan_member_limit' USING ERRCODE = 'P0001';
+  END IF;
 
   UPDATE public.subscription_requests
      SET status = 'approved',
@@ -5099,6 +5158,9 @@ BEGIN
 
   UPDATE public.gyms
      SET whatsapp_addon_until = v_until,
+         plan_type            = CASE WHEN v_plan = 'trial' THEN 'free' ELSE plan_type END,
+         subscription_status  = CASE WHEN v_plan = 'trial' THEN 'active' ELSE subscription_status END,
+         subscription_ends_at = CASE WHEN v_plan = 'trial' THEN NULL ELSE subscription_ends_at END,
          -- The amount stamped on the request at submit time; the current price
          -- only for legacy rows filed before expected_amount_inr existed.
          last_payment_amount  = COALESCE(
@@ -5634,6 +5696,15 @@ DROP TRIGGER IF EXISTS trg_guard_members_gym_id ON public.members;
 CREATE TRIGGER trg_guard_members_gym_id
   BEFORE UPDATE OF gym_id ON public.members
   FOR EACH ROW EXECUTE FUNCTION public.guard_members_gym_id();
+
+-- ────────────────────────────────────────────────────────────
+-- triggers on attendance_devices
+-- ────────────────────────────────────────────────────────────
+
+DROP TRIGGER IF EXISTS trg_enforce_biometric_device_limit ON public.attendance_devices;
+CREATE TRIGGER trg_enforce_biometric_device_limit
+  BEFORE INSERT ON public.attendance_devices
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_biometric_device_limit();
 
 -- ────────────────────────────────────────────────────────────
 -- triggers on memberships
@@ -6868,6 +6939,7 @@ REVOKE ALL ON FUNCTION public.email_thread_on_message()               FROM PUBLI
 REVOKE ALL ON FUNCTION public.guard_gyms_privileged_columns()         FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_gyms_plan_downgrade()             FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.enforce_free_plan_member_cap()          FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.enforce_biometric_device_limit()        FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_support_tickets_owner_update()    FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_admin_messages_owner_update()     FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_member_leaderboard_visibility()   FROM PUBLIC, anon, authenticated;
@@ -6950,6 +7022,9 @@ GRANT EXECUTE ON FUNCTION public.member_app_allowed() TO authenticated;
 -- The Free / trial member limit; a constant, harmless to call.
 REVOKE ALL ON FUNCTION public.plan_member_limit()     FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.plan_member_limit()  TO authenticated, service_role;
+-- The per-plan biometric device limit; a constant, harmless to call.
+REVOKE ALL ON FUNCTION public.biometric_device_limit(TEXT)    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.biometric_device_limit(TEXT) TO authenticated, service_role;
 
 -- Gym leaderboard: callable by owners and members alike; the function decides
 -- which gym and how much of each row the caller gets.
@@ -7158,6 +7233,16 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
           ARRAY['image/jpeg', 'image/png', 'application/pdf'])
   ON CONFLICT (id) DO NOTHING;
 
+-- Public bucket for files that email clients load by plain URL (the logo in transactional emails).
+-- Public buckets serve objects by URL without RLS and there are no client policies, so only the service
+-- role can upload. Uploads are read-only to the world.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES ('assets', 'assets', true, 2097152, ARRAY['image/png', 'image/jpeg'])
+  ON CONFLICT (id) DO UPDATE
+    SET public             = true,
+        file_size_limit    = 2097152,
+        allowed_mime_types = ARRAY['image/png', 'image/jpeg'];
+
 -- ############################################################
 -- 12 — SEED ROWS
 -- ############################################################
@@ -7177,7 +7262,7 @@ INSERT INTO platform_announcement (id) VALUES (1)
 --   update app_config set value = '<CRON_SECRET>'  where key = 'push_cron_secret';
 --   update app_config set value = '<dispatch URL>' where key = 'push_dispatch_url';
 INSERT INTO app_config (key, value)
-  VALUES ('push_dispatch_url', 'https://admin.gymflow.sbs/api/push/dispatch')
+  VALUES ('push_dispatch_url', 'https://admin.thegymflow.in/api/push/dispatch')
   ON CONFLICT (key) DO NOTHING;
 INSERT INTO app_config (key, value)
   VALUES ('push_cron_secret', 'REPLACE_WITH_CRON_SECRET')

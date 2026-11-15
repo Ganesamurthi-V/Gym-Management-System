@@ -11,8 +11,8 @@ independent gyms still run on. Member records, payments, dues, attendance and
 member messaging live in one place, reachable from a browser on a desktop or a
 phone.
 
-Site: https://www.gymflow.sbs/
-Application (sign-in required, deliberately not indexed): https://app.gymflow.sbs
+Site: https://www.thegymflow.in/
+Application (sign-in required, deliberately not indexed): https://app.thegymflow.in
 Last updated: 2026-11-12
 
 ## Quick answers
@@ -35,17 +35,17 @@ Short, quotable answers to what people most often ask. Each matches the website.
 - **How do I pay and activate?** Pay with any UPI app using the QR code shown on
   the subscription page in the app, upload a screenshot of the payment there, and
   the account is switched on after it is verified, usually within a few hours.
-  No card is stored and nothing is charged automatically. Details: https://www.gymflow.sbs/pricing
+  No card is stored and nothing is charged automatically. Details: https://www.thegymflow.in/pricing
 - **Who is it for?** Owners of independent gyms and fitness studios in India who
   currently track members in notebooks, spreadsheets or WhatsApp groups.
 - **How fast does support reply?** Direct support from the person who builds
   GymFlow. We reply within 24 hours, in English and Tamil. Message us on WhatsApp
-  or email support@gymflow.sbs.
+  or email support@thegymflow.in.
 - **Where can I check if GymFlow is working?** The public status page at
-  https://status.gymflow.sbs shows whether GymFlow is running normally and lists
+  https://status.thegymflow.in shows whether GymFlow is running normally and lists
   any issues we are working on. If it shows all clear and something still looks
-  wrong, message us on WhatsApp or email support@gymflow.sbs.
-- **How do I contact GymFlow?** Email support@gymflow.sbs, or phone / WhatsApp
+  wrong, message us on WhatsApp or email support@thegymflow.in.
+- **How do I contact GymFlow?** Email support@thegymflow.in, or phone / WhatsApp
   +91 93848 86895.
 
 ## Pricing
@@ -63,7 +63,7 @@ Short, quotable answers to what people most often ask. Each matches the website.
 - **14-day free trial** with every feature unlocked and no credit card required.
 - Cancel at any time. Plans are paid by hand and never renew on their own.
 
-Full details: https://www.gymflow.sbs/pricing
+Full details: https://www.thegymflow.in/pricing
 
 ## Features
 
@@ -87,23 +87,23 @@ expiring soon, and total outstanding dues on one screen.
 
 One page per feature, each explaining what it does and how it works:
 
-- [All features](https://www.gymflow.sbs/features): overview of every GymFlow feature.
-- [Member management](https://www.gymflow.sbs/members): member records, plans, expiry dates, renewals, search and filters.
-- [Fees and dues](https://www.gymflow.sbs/fees-and-dues): cash, UPI and card payments, part payments, pending dues and UPI QR codes.
-- [Attendance tracking](https://www.gymflow.sbs/attendance): front-desk check-in kiosk or fingerprint and face devices, check-out times, attendance log and Excel export.
-- [Member app and workouts](https://www.gymflow.sbs/member-app): digital membership card, workout programs, streaks, leaderboards and rewards.
-- [Workout programs](https://www.gymflow.sbs/workout-programs): build day-by-day programs with sets, reps and rest, assign them to members, who follow them in the app.
-- [WhatsApp reminders](https://www.gymflow.sbs/whatsapp): automatic welcome, renewal, expiry, payment due and birthday messages.
-- [Reports and analytics](https://www.gymflow.sbs/reports): members, money, dues, expiries and attendance reports, with a PDF download.
-- [Import and export](https://www.gymflow.sbs/import-export): import members from Excel or CSV, export data to Excel.
-- [Pricing](https://www.gymflow.sbs/pricing): all four options, the free trial, how activation works and support.
-- [Gym software vs Excel](https://www.gymflow.sbs/gym-software-vs-excel): an honest guide to when a register or spreadsheet is enough and when it is not.
-- [How to track gym attendance](https://www.gymflow.sbs/gym-attendance-tracking-guide): register, Excel or check-in kiosk, what to record and how to spot members who have stopped coming.
-- [WhatsApp automation for gyms](https://www.gymflow.sbs/gym-whatsapp-automation-guide): which messages to automate, the reminder schedule, a set-up checklist and what automation cannot do.
-- [Gym membership renewal reminders](https://www.gymflow.sbs/gym-membership-renewal-reminders): who is expiring, when to remind them, what to say and how to make renewing quick.
-- [Fitness studio management software](https://www.gymflow.sbs/fitness-studio-management-software): what GymFlow does and does not do for yoga, Zumba, dance and CrossFit-style studios.
-- [Gymnastics academy and kids club software](https://www.gymflow.sbs/gymnastics-academy-management-software): how a gymnastics academy, martial arts school or kids sports club can use GymFlow, and where it falls short.
-- [Biometric attendance setup](https://www.gymflow.sbs/biometric-attendance-setup): connect a fingerprint or face device so check-ins are recorded automatically, match members and fix common problems.
+- [All features](https://www.thegymflow.in/features): overview of every GymFlow feature.
+- [Member management](https://www.thegymflow.in/members): member records, plans, expiry dates, renewals, search and filters.
+- [Fees and dues](https://www.thegymflow.in/fees-and-dues): cash, UPI and card payments, part payments, pending dues and UPI QR codes.
+- [Attendance tracking](https://www.thegymflow.in/attendance): front-desk check-in kiosk or fingerprint and face devices, check-out times, attendance log and Excel export.
+- [Member app and workouts](https://www.thegymflow.in/member-app): digital membership card, workout programs, streaks, leaderboards and rewards.
+- [Workout programs](https://www.thegymflow.in/workout-programs): build day-by-day programs with sets, reps and rest, assign them to members, who follow them in the app.
+- [WhatsApp reminders](https://www.thegymflow.in/whatsapp): automatic welcome, renewal, expiry, payment due and birthday messages.
+- [Reports and analytics](https://www.thegymflow.in/reports): members, money, dues, expiries and attendance reports, with a PDF download.
+- [Import and export](https://www.thegymflow.in/import-export): import members from Excel or CSV, export data to Excel.
+- [Pricing](https://www.thegymflow.in/pricing): all four options, the free trial, how activation works and support.
+- [Gym software vs Excel](https://www.thegymflow.in/gym-software-vs-excel): an honest guide to when a register or spreadsheet is enough and when it is not.
+- [How to track gym attendance](https://www.thegymflow.in/gym-attendance-tracking-guide): register, Excel or check-in kiosk, what to record and how to spot members who have stopped coming.
+- [WhatsApp automation for gyms](https://www.thegymflow.in/gym-whatsapp-automation-guide): which messages to automate, the reminder schedule, a set-up checklist and what automation cannot do.
+- [Gym membership renewal reminders](https://www.thegymflow.in/gym-membership-renewal-reminders): who is expiring, when to remind them, what to say and how to make renewing quick.
+- [Fitness studio management software](https://www.thegymflow.in/fitness-studio-management-software): what GymFlow does and does not do for yoga, Zumba, dance and CrossFit-style studios.
+- [Gymnastics academy and kids club software](https://www.thegymflow.in/gymnastics-academy-management-software): how a gymnastics academy, martial arts school or kids sports club can use GymFlow, and where it falls short.
+- [Biometric attendance setup](https://www.thegymflow.in/biometric-attendance-setup): connect a fingerprint or face device so check-ins are recorded automatically, match members and fix common problems.
 
 ## Member app
 
@@ -132,7 +132,7 @@ No installation, no IT team and no consultant are required.
 - Data is encrypted in transit.
 - Owners can export members, attendance and payments to Excel, and delete their
   gym's data from account settings.
-- Details: https://www.gymflow.sbs/privacy and https://www.gymflow.sbs/terms
+- Details: https://www.thegymflow.in/privacy and https://www.thegymflow.in/terms
 
 ## Who builds GymFlow
 
@@ -150,8 +150,8 @@ Direct support from the person who builds GymFlow. We reply within 24 hours,
 in English and Tamil. Available over WhatsApp, phone and email; it is included
 in the plan rather than sold as an add-on.
 
-- Status: https://status.gymflow.sbs
-- Email: support@gymflow.sbs
+- Status: https://status.thegymflow.in
+- Email: support@thegymflow.in
 - Phone: +91 93848 86895
 - Registered address: No. 126, Anbu Nagar, Achariyapuram, Villianur,
   Puducherry 605110, India
@@ -175,11 +175,11 @@ not be inferred:
 
 ## Links
 
-- [Home page](https://www.gymflow.sbs/): the full product page, including pricing and FAQ.
-- [Pricing](https://www.gymflow.sbs/pricing)
-- [Frequently asked questions](https://www.gymflow.sbs/#faq)
-- [Product film, one minute](https://www.gymflow.sbs/video/gymflow-launch.mp4)
-- [System status](https://status.gymflow.sbs): live service status and incidents.
-- [Privacy Policy](https://www.gymflow.sbs/privacy)
-- [Terms of Service](https://www.gymflow.sbs/terms)
-- [Start a free trial](https://app.gymflow.sbs)
+- [Home page](https://www.thegymflow.in/): the full product page, including pricing and FAQ.
+- [Pricing](https://www.thegymflow.in/pricing)
+- [Frequently asked questions](https://www.thegymflow.in/#faq)
+- [Product film, one minute](https://www.thegymflow.in/video/gymflow-launch.mp4)
+- [System status](https://status.thegymflow.in): live service status and incidents.
+- [Privacy Policy](https://www.thegymflow.in/privacy)
+- [Terms of Service](https://www.thegymflow.in/terms)
+- [Start a free trial](https://app.thegymflow.in)

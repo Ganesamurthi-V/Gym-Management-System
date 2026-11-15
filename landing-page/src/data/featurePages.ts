@@ -1498,7 +1498,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
   },
   {
     slug: 'gym-membership-renewal-reminders',
-    title: 'Gym Membership Renewal Reminders: When and How to Send Them',
+    title: 'Automated WhatsApp Gym Renewal Reminders: When and How to Send Them',
     description: 'How to get gym members to renew on time: track expiry dates, a reminder timeline, what to say, handling dues at renewal, and how GymFlow automates the repeating part.',
     h1: 'Gym membership renewals: a reminder routine that does not depend on memory',
     eyebrow: 'Guide',
@@ -1822,8 +1822,8 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
   },
   {
     slug: 'biometric-attendance-setup',
-    title: 'Biometric Attendance Setup: Connect a Fingerprint or Face Device to GymFlow',
-    description: 'Connect a fingerprint or face attendance device to GymFlow so member check-ins are recorded automatically. Step-by-step setup, matching members and troubleshooting.',
+    title: 'Biometric ADMS Gym Attendance Software in India: Device Setup | GymFlow',
+    description: 'Biometric ADMS gym attendance in India: connect a fingerprint or face device (ZKTeco, eSSL) to GymFlow so member check-ins are recorded automatically. Step-by-step setup, matching members and troubleshooting.',
     h1: 'Biometric attendance setup',
     eyebrow: 'Guide',
     intro: 'A fingerprint or face device at your door can record every visit without anyone typing at the desk. This guide shows how to connect one to GymFlow, match each device ID to a member and fix the usual problems.',
@@ -2138,6 +2138,450 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
             ],
           },
           { type: 'p', text: 'Also see [how to track gym attendance](/gym-attendance-tracking-guide) and the [attendance feature](/attendance).' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'free-gym-management-software-india',
+    title: 'Free Gym Management Software in India: Up to 50 Members | GymFlow',
+    description: 'GymFlow has a free forever plan for gyms in India with up to 50 members: member records, fees and dues, attendance and Excel import. What is included, what is not, and when to upgrade.',
+    h1: 'Free gym management software for up to 50 members in India',
+    eyebrow: 'Guide',
+    intro: `A small gym does not need to pay to stop running on a notebook. GymFlow has a free forever plan for up to ${FREE_MEMBER_LIMIT} members. This guide says plainly what the free plan includes, what it leaves out, how to move your records across and when it makes sense to move to a paid plan.`,
+    breadcrumb: 'Free gym software',
+    cardTitle: 'Free gym management software',
+    cardText: `What the free plan for up to ${FREE_MEMBER_LIMIT} members includes and when to upgrade.`,
+    icon: 'tag',
+    group: 'Guides',
+    topLevel: true,
+    related: ['pricing', 'import-export', 'members'],
+    sections: [
+      {
+        heading: 'Who the free plan is for',
+        blocks: [
+          { type: 'p', text: `Owners of small, independent gyms in India with ${FREE_MEMBER_LIMIT} members or fewer who still keep records in a notebook, a spreadsheet or a WhatsApp group. If that is you, the free plan replaces the notebook with member records, payments, dues and attendance in one place, reachable from a browser on a phone or a computer. There is nothing to install and no hardware to buy.` },
+        ],
+      },
+      {
+        heading: 'What the free plan includes',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Member management: records, plans and expiry dates. See [member management](/members).',
+              'Fees and dues: record cash, UPI or card payments and see what is pending. See [fees and dues](/fees-and-dues).',
+              'Attendance tracking: mark attendance in one tap, or let members check in at a kiosk with their member ID. See [attendance](/attendance).',
+              'Member import from Excel or CSV. See [import and export](/import-export).',
+              `Up to ${FREE_MEMBER_LIMIT} members, with no time limit.`,
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What it leaves out',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'The member app is not part of the free plan.',
+              `Automatic WhatsApp messages need the add-on, which costs ${formatINR(WHATSAPP_ADDON_PRICE)} per month on the free plan. That is ${formatINR(WHATSAPP_ADDON_PRICE * 12)} over twelve months if you use it all year.`,
+            ],
+          },
+          { type: 'p', text: 'Every feature is included on both paid plans. See [pricing](/pricing) for the exact prices.' },
+        ],
+      },
+      {
+        heading: 'Move your notebook into GymFlow',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Start the 14-day free trial. Every feature is unlocked and no credit card is needed.',
+              'Put your members in a spreadsheet, one row per member, and save it as Excel or CSV.',
+              'Upload the file. GymFlow normalises the phone numbers and matches your plans, then shows a preview.',
+              'Check the preview. Nothing is written until you confirm.',
+              `After the trial you can stay on the free plan while you have ${FREE_MEMBER_LIMIT} members or fewer.`,
+            ],
+          },
+          { type: 'p', text: 'The step-by-step version is on the [import and export](/import-export) page. If your records are only on paper, [gym software vs Excel](/gym-software-vs-excel) explains how to type them into a sheet first.' },
+        ],
+      },
+      {
+        heading: 'A typical week on the free plan',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Add a new member and record the first payment.',
+              'Mark attendance when members arrive, or let them check in at the kiosk.',
+              'Open the dashboard to see active members, the day\'s collection, memberships expiring soon and outstanding dues.',
+              'Open the member list, filter by Expiring, and ask those members to renew yourself, since automatic reminders need the add-on.',
+              'Record a renewal when a member pays.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Free plan, WhatsApp add-on or paid plan',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              `**Free:** ${formatINR(0)}. Up to ${FREE_MEMBER_LIMIT} members. Member records, fees and dues, attendance and import.`,
+              `**Free plus WhatsApp add-on:** ${formatINR(WHATSAPP_ADDON_PRICE)} per month. The same, plus automatic WhatsApp reminders.`,
+              `**Paid plans:** ${formatINR(MONTHLY.price)} per month or ${formatINR(YEARLY.price)} for a year. Unlimited members, every feature, the member app and unlimited WhatsApp reminders.`,
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'When to move to a paid plan',
+        blocks: [
+          { type: 'p', text: `When you pass ${FREE_MEMBER_LIMIT} members, or when you want the member app, or automatic WhatsApp reminders for renewals and dues without paying for the add-on separately. Paid plans have unlimited members and no per-member or per-message charge. See [WhatsApp reminders](/whatsapp) and [what GymFlow costs under ₹1,000 a month](/gym-management-software-under-1000-india). If you are close to the limit and unsure, message support first.` },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Is the free plan really free?' },
+          { type: 'p', text: 'Yes. It costs nothing, and no card is stored.' },
+          { type: 'h3', text: 'Is there a catch after the trial?' },
+          { type: 'p', text: 'After the 14-day trial you choose a plan. The free plan stays free, with the limits above.' },
+          { type: 'h3', text: 'Do I need to buy any hardware?' },
+          { type: 'p', text: 'No. GymFlow runs in a web browser. The check-in kiosk is a web page. If you later want fingerprint or face attendance, see [biometric attendance setup](/biometric-attendance-setup); those devices are bought separately.' },
+          { type: 'h3', text: 'Can I take my data out again?' },
+          { type: 'p', text: 'Yes. You can export members, attendance and payments to Excel, and delete your gym\'s data from account settings.' },
+          { type: 'h3', text: 'How do I pay when I upgrade?' },
+          { type: 'p', text: 'Pay with any UPI app using the QR code on the subscription page, upload a screenshot of the payment, and the account is switched on after it is verified, usually within a few hours. Nothing is charged automatically and plans never renew on their own.' },
+          { type: 'h3', text: 'Is my gym\'s data kept separate from other gyms?' },
+          { type: 'p', text: 'Yes. Each gym\'s data is kept separate and you sign in with your own account. See the [privacy policy](/privacy).' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gym-management-software-india',
+    title: 'Gym Management Software for Indian Gyms: UPI, WhatsApp and INR | GymFlow',
+    description: 'GymFlow is gym management software built for independent gyms across India: member records, fees in rupees, UPI payments, attendance and WhatsApp reminders. Free for up to 50 members.',
+    h1: 'Gym management software built for gyms across India',
+    eyebrow: 'Guide',
+    intro: `GymFlow is gym management software for independent gym owners anywhere in India. Prices are in rupees, payments are recorded by cash, UPI or card, reminders go out on WhatsApp, and every date follows Indian time. This page explains how GymFlow fits the way Indian gyms actually run, and where to start.`,
+    breadcrumb: 'Gym software for India',
+    cardTitle: 'Gym software for India',
+    cardText: 'Rupees, UPI, WhatsApp and Indian time: how GymFlow fits Indian gyms.',
+    icon: 'users',
+    group: 'Guides',
+    topLevel: true,
+    related: ['features', 'pricing', 'members'],
+    sections: [
+      {
+        heading: 'Who GymFlow is for',
+        blocks: [
+          { type: 'p', text: 'Owners of independent, single-location gyms and fitness studios in India who currently track members in notebooks, spreadsheets or WhatsApp groups. It works the same in any city or state, because it runs in a web browser on a phone or a computer. There is nothing to install and no hardware to buy.' },
+          { type: 'p', text: 'It is not aimed at multi-location chains or franchises. For other kinds of studio, see [fitness studio software](/fitness-studio-management-software) and [gymnastics academy and kids club software](/gymnastics-academy-management-software).' },
+        ],
+      },
+      {
+        heading: 'Built around how Indian gyms work',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '**Rupees.** Fees, dues, revenue and prices are all in INR.',
+              '**UPI, cash and card.** Record how each member paid, and see what is still pending. See [fees and dues](/fees-and-dues).',
+              '**WhatsApp.** Welcome messages, renewal and expiry reminders, payment due alerts and birthday messages go to members on WhatsApp. See [WhatsApp reminders](/whatsapp).',
+              '**Indian time.** Dates, expiries and attendance follow Indian Standard Time.',
+              '**Excel in, Excel out.** Bring your members over from an Excel or CSV sheet and export data back out. See [import and export](/import-export).',
+              '**Monthly, quarterly and annual plans.** Plans can be any length from 1 to 24 months.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What you can run from one place',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              '[Member management](/members): records, plans, expiry dates, renewals, search and filters.',
+              '[Fees and dues](/fees-and-dues): payments, part payments and pending dues.',
+              '[Attendance](/attendance): a front-desk kiosk, or fingerprint and face devices. See [biometric attendance setup](/biometric-attendance-setup).',
+              '[Member app](/member-app) and [workout programs](/workout-programs): members see their plan and workouts on their own phone.',
+              '[Reports](/reports): members, money, dues, expiries and attendance.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What it costs',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              `**Free forever:** ${formatINR(0)} for up to ${FREE_MEMBER_LIMIT} members. See [free gym software](/free-gym-management-software-india).`,
+              `**Paid plans:** ${formatINR(MONTHLY.price)} a month or ${formatINR(YEARLY.price)} for a year, with unlimited members and unlimited WhatsApp reminders.`,
+              `**WhatsApp add-on:** ${formatINR(WHATSAPP_ADDON_PRICE)} a month for gyms on the free plan.`,
+            ],
+          },
+          { type: 'p', text: 'No GST is added. See [pricing](/pricing) and [gym software under ₹1,000 a month](/gym-management-software-under-1000-india).' },
+        ],
+      },
+      {
+        heading: 'Start in four steps',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Create your gym account. The 14-day free trial unlocks every feature and needs no credit card.',
+              'Import your member list from Excel or CSV and check the preview.',
+              'Set up your plans, prices and payment details.',
+              'Start recording payments and attendance. Reminders can go out automatically.',
+            ],
+          },
+          { type: 'p', text: 'If you get stuck, see [support for gyms across India](/gym-software-india-support).' },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Does GymFlow work in my city or state?' },
+          { type: 'p', text: 'Yes. It runs in a web browser, so it works wherever you have an internet connection.' },
+          { type: 'h3', text: 'Do I need any hardware or installation?' },
+          { type: 'p', text: 'No. Fingerprint and face attendance devices are optional and bought separately.' },
+          { type: 'h3', text: 'Can I pay in rupees by UPI?' },
+          { type: 'p', text: 'Yes. You pay for GymFlow with any UPI app, and you can record your members\' UPI, cash and card payments inside it.' },
+          { type: 'h3', text: 'Is GymFlow for chains with many branches?' },
+          { type: 'p', text: 'No. It is built for independent, single-location gyms and no multi-location tooling is advertised.' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gym-software-india-support',
+    title: 'Gym Software Support for Gyms Across India | GymFlow',
+    description: 'GymFlow support for gym owners across India: replies within 24 hours in English and Tamil, over WhatsApp, phone and email, from the person who builds the software.',
+    h1: 'Support for gym owners across India',
+    eyebrow: 'Guide',
+    intro: 'Switching from a notebook to software is easier with someone to ask. GymFlow support is for gym owners anywhere in India. You reach the person who builds the software, we reply within 24 hours, and you can write in English or Tamil. This page says what support covers and how to get a quick answer.',
+    breadcrumb: 'Support across India',
+    cardTitle: 'Support across India',
+    cardText: 'Direct support within 24 hours, in English and Tamil.',
+    icon: 'message',
+    group: 'Guides',
+    topLevel: true,
+    related: ['pricing', 'import-export', 'whatsapp'],
+    sections: [
+      {
+        heading: 'How support works',
+        blocks: [
+          { type: 'p', text: 'Support is direct. You write or call, and the person who builds GymFlow replies, usually the same day and always within 24 hours. It is included in every plan, including the free plan, and is not sold as an add-on.' },
+          { type: 'p', text: 'You can write in English or Tamil. The GymFlow app and this website are in English, and the automatic WhatsApp messages use templates approved by Meta, whose wording is fixed.' },
+        ],
+      },
+      {
+        heading: 'How to reach us',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'WhatsApp or phone: +91 93848 86895',
+              'Email: [support@thegymflow.in](mailto:support@thegymflow.in)',
+              'Service status: [status.thegymflow.in](https://status.thegymflow.in) shows whether GymFlow is running normally and lists any issues we are working on.',
+            ],
+          },
+          { type: 'p', text: 'Check the status page first if something looks wrong. If it shows all clear and the problem is still there, message us.' },
+        ],
+      },
+      {
+        heading: 'What we can help with',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Setting up your gym, plans and payment details.',
+              'Importing your members from Excel or CSV. See [import and export](/import-export).',
+              'Understanding the WhatsApp reminders and when they go out. See [WhatsApp reminders](/whatsapp).',
+              'Recording payments, part payments and dues. See [fees and dues](/fees-and-dues).',
+              'Connecting a fingerprint or face attendance device. See [biometric attendance setup](/biometric-attendance-setup).',
+              'Questions about pricing, the free trial and how to activate a plan. See [pricing](/pricing).',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'How to get a faster answer',
+        blocks: [
+          { type: 'p', text: 'A short message with the right details saves a round trip. Please send:' },
+          {
+            type: 'ul',
+            items: [
+              'Your gym\'s name and the phone number or email you sign in with.',
+              'What you were trying to do and what happened instead.',
+              'A screenshot of the screen, if you can.',
+              'For a biometric device, the model and, if you know it, the firmware version.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Who builds GymFlow',
+        blocks: [
+          { type: 'p', text: 'GymFlow is built in Villianur, Puducherry by Ganesamurthi V, founder and developer, a Computer Science engineering student building it to help Indian gyms replace manual record-keeping with digital management. You deal with the person who writes the software, not a call centre.' },
+          { type: 'p', text: 'Registered address: No. 126, Anbu Nagar, Achariyapuram, Villianur, Puducherry 605110, India.' },
+        ],
+      },
+      {
+        heading: 'Getting started',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Start the 14-day free trial with every feature unlocked and no credit card.',
+              'Import your members from Excel or CSV and check the preview before confirming.',
+              'Message us on WhatsApp if you get stuck at any step.',
+            ],
+          },
+          { type: 'p', text: 'There is also a free forever plan for up to 50 members. See [free gym management software](/free-gym-management-software-india) and [gym software for India](/gym-management-software-india).' },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Is support only for gyms near Puducherry?' },
+          { type: 'p', text: 'No. Support is for gym owners anywhere in India, over WhatsApp, phone and email.' },
+          { type: 'h3', text: 'Which languages can I write in?' },
+          { type: 'p', text: 'English and Tamil. The app and website are in English.' },
+          { type: 'h3', text: 'Do I pay extra for support?' },
+          { type: 'p', text: 'No. Support is included in the plan, including the free plan.' },
+          { type: 'h3', text: 'How fast will I get a reply?' },
+          { type: 'p', text: 'We reply within 24 hours.' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gym-management-software-under-1000-india',
+    title: 'Gym Management Software in India Under ₹1,000 a Month | GymFlow',
+    description: 'GymFlow costs ₹999 a month or ₹9,999 a year, with a free forever plan for up to 50 members. What the price includes, with no per-member or per-message charges.',
+    h1: 'Gym management software in India under ₹1,000 a month',
+    eyebrow: 'Guide',
+    intro: `If you run an independent gym, the price of software matters as much as the features. GymFlow costs ${formatINR(MONTHLY.price)} a month, or ${formatINR(YEARLY.price)} for a year, which is about ${formatINR(perMonth(YEARLY))} a month. There is also a free forever plan for up to ${FREE_MEMBER_LIMIT} members. This page says exactly what you pay, what you get and how the cost works out for different gym sizes.`,
+    breadcrumb: 'Gym software under ₹1,000',
+    cardTitle: 'Gym software under ₹1,000 a month',
+    cardText: 'What GymFlow costs, what the price includes and what is not charged.',
+    icon: 'tag',
+    group: 'Guides',
+    topLevel: true,
+    related: ['pricing', 'free-gym-management-software-india', 'whatsapp'],
+    sections: [
+      {
+        heading: 'What you pay',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              `**Free forever:** ${formatINR(0)} for up to ${FREE_MEMBER_LIMIT} members, without the member app.`,
+              `**Monthly:** ${formatINR(MONTHLY.price)} a month.`,
+              `**Yearly:** ${formatINR(YEARLY.price)} for a year, about ${savingPercent(YEARLY)}% less than twelve monthly payments.`,
+              `**WhatsApp add-on:** ${formatINR(WHATSAPP_ADDON_PRICE)} a month, only for gyms on the free plan.`,
+            ],
+          },
+          { type: 'p', text: 'No GST is added. The price you see is the price you pay.' },
+        ],
+      },
+      {
+        heading: 'What the price includes',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              'Every feature on both paid plans: members, fees and dues, attendance, reports, the member app and workout programs.',
+              'Unlimited members, with no per-member or per-seat charge.',
+              'Unlimited automatic WhatsApp reminders, with no per-message fee.',
+              'No setup fee and no modules held back to unlock later.',
+              'Support from the person who builds GymFlow, in English and Tamil.',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'How the cost works out',
+        blocks: [
+          { type: 'p', text: 'This is plain arithmetic from the monthly price, to show how the flat price behaves as a gym grows. It is an illustration, not a quote.' },
+          {
+            type: 'ul',
+            items: [
+              `**Monthly plan, 12 months:** 12 x ${formatINR(MONTHLY.price)} = ${formatINR(MONTHLY.price * 12)}.`,
+              `**Yearly plan:** ${formatINR(YEARLY.price)}, which is ${formatINR(MONTHLY.price * 12 - YEARLY.price)} less than twelve monthly payments.`,
+              `**With 50 members:** ${formatINR(MONTHLY.price)} a month is about ${formatINR(Math.round(MONTHLY.price / 50))} per member per month.`,
+              `**With 100 members:** about ${formatINR(Math.round(MONTHLY.price / 100))} per member per month.`,
+              `**With 200 members:** about ${formatINR(Math.round(MONTHLY.price / 200))} per member per month.`,
+            ],
+          },
+          { type: 'p', text: 'Because members and WhatsApp messages are unlimited, the price does not rise when you add members or send more reminders.' },
+        ],
+      },
+      {
+        heading: 'Which option fits your gym',
+        blocks: [
+          {
+            type: 'ul',
+            items: [
+              `**${FREE_MEMBER_LIMIT} members or fewer and you will send reminders yourself:** the free plan. See [free gym software](/free-gym-management-software-india).`,
+              `**${FREE_MEMBER_LIMIT} members or fewer and you want automatic WhatsApp reminders:** the free plan with the ${formatINR(WHATSAPP_ADDON_PRICE)} a month add-on.`,
+              `**More than ${FREE_MEMBER_LIMIT} members, or you want the member app:** a paid plan. Monthly if you want to start small, yearly to pay less over the year.`,
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'What to check in any gym software price',
+        blocks: [
+          { type: 'p', text: 'This is general advice, not a claim about any other product. Before you choose, ask:' },
+          {
+            type: 'ul',
+            items: [
+              'Is the price per member, per branch or per message?',
+              'Are WhatsApp reminders included, or an extra charge?',
+              'Is GST added at checkout?',
+              'Does the plan renew by itself? GymFlow plans never renew on their own.',
+              'Is there a setup fee, or features locked behind a higher tier?',
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'How paying works',
+        blocks: [
+          {
+            type: 'ol',
+            items: [
+              'Open the subscription page in the app and pay with any UPI app using the QR code shown there.',
+              'Upload a screenshot of the payment on the same page.',
+              'Your account is switched on after the payment is verified, usually within a few hours.',
+            ],
+          },
+          { type: 'p', text: 'No card is stored and nothing is charged automatically. You can cancel at any time. See [pricing](/pricing) for the full details.' },
+        ],
+      },
+      {
+        heading: 'How to try it',
+        blocks: [
+          { type: 'p', text: 'Start the 14-day free trial with every feature and no credit card, then import your members from Excel. See [pricing](/pricing), [free gym software](/free-gym-management-software-india), [import and export](/import-export) and [WhatsApp reminders](/whatsapp).' },
+        ],
+      },
+      {
+        heading: 'Common questions',
+        blocks: [
+          { type: 'h3', text: 'Is ₹999 a month the full price?' },
+          { type: 'p', text: 'Yes. No GST is added, there is no setup fee and there are no per-member or per-message charges.' },
+          { type: 'h3', text: 'Do I need a card?' },
+          { type: 'p', text: 'No. You pay by UPI, and no card is stored.' },
+          { type: 'h3', text: 'What if I have fewer than 50 members?' },
+          { type: 'p', text: `You can stay on the free plan at no cost. Add the ${formatINR(WHATSAPP_ADDON_PRICE)} a month WhatsApp add-on if you want automatic reminders.` },
+          { type: 'h3', text: 'Does the yearly plan renew automatically?' },
+          { type: 'p', text: 'No. Plans are paid by hand and never renew on their own.' },
         ],
       },
     ],

@@ -89,8 +89,8 @@ android {
         applicationId "com.gymflowAdminMobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 237
+        versionName "1.1.237"
     }
     signingConfigs {
         debug {

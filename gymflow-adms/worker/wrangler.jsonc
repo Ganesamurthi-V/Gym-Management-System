@@ -5,7 +5,12 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   // custom_domain makes Cloudflare create the proxied DNS record for bio.thegymflow.in itself.
-  "routes": [{ "pattern": "bio.thegymflow.in", "custom_domain": true }],
+  // Both hosts stay bound until every device has been re-pointed by hand: a device keeps whatever
+  // address was typed into it, and dropping the old host would silently stop its punches.
+  "routes": [
+    { "pattern": "bio.thegymflow.in", "custom_domain": true },
+    { "pattern": "bio.gymflow.sbs", "custom_domain": true }
+  ],
   "vars": {
     "APP_INGEST_URL": "https://app.thegymflow.in/api/devices/punches",
     // Seconds between device polls. Each poll is one Worker request, so keep this high enough for the quota

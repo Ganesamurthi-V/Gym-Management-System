@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import { KeyRound, Check, Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function PasswordResetForm({ userId }: { userId: string }) {
   const [password, setPassword] = useState('')
@@ -41,40 +46,36 @@ export default function PasswordResetForm({ userId }: { userId: string }) {
   }
 
   return (
-    <form onSubmit={handleReset} className="admin-card p-5 space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <KeyRound className="w-5 h-5 text-indigo-400" />
-        <h2 className="text-sm font-semibold text-white">Reset Account Password</h2>
-      </div>
-      
-      <div>
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-          New Password
-        </label>
-        <div className="flex gap-3">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter new secure password"
-            className="admin-input flex-1"
-            required
-            minLength={8}
-          />
-          <button 
-            type="submit"
-            disabled={loading || !password}
-            className="admin-btn-primary whitespace-nowrap min-w-[140px] justify-center"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 
-             success ? <Check className="w-4 h-4" /> : <KeyRound className="w-4 h-4" />}
-            {loading ? 'Saving...' : success ? 'Updated' : 'Update Password'}
-          </button>
-        </div>
-        <p className="text-xs text-slate-500 mt-2">
-          This will immediately change the gym owner's password. They will be logged out of active sessions.
-        </p>
-      </div>
-    </form>
+    <Card>
+      <form onSubmit={handleReset} className="contents">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="size-4" />
+            Reset Account Password
+          </CardTitle>
+          <CardDescription>
+            This will immediately change the gym owner&apos;s password. They will be logged out of active sessions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label htmlFor="new-password">New Password</Label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="new-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter new secure password"
+              required
+              minLength={8}
+            />
+            <Button type="submit" disabled={loading || !password} className="sm:min-w-36">
+              {loading ? <Loader2 className="animate-spin" /> : success ? <Check /> : <KeyRound />}
+              {loading ? 'Saving...' : success ? 'Updated' : 'Update Password'}
+            </Button>
+          </div>
+        </CardContent>
+      </form>
+    </Card>
   )
 }

@@ -52,6 +52,27 @@ export default $config({
       domain: { name: 'admin.thegymflow.in', cert, dns: false },
       environment,
       server: { timeout: '60 seconds', memory: '1024 MB', architecture: 'x86_64' },
+      // Read-only access for the AWS Monitor page (CloudWatch, inventory, cost, budget). Nothing here mutates.
+      permissions: [
+        {
+          actions: [
+            'cloudwatch:GetMetricData', 'cloudwatch:ListMetrics', 'lambda:ListFunctions',
+            'cloudfront:ListDistributions', 'dynamodb:ListTables', 'dynamodb:DescribeTable',
+            's3:ListAllMyBuckets', 'ce:GetCostAndUsage', 'ce:GetCostForecast',
+            'budgets:ViewBudget', 'budgets:DescribeBudgetActionsForBudget', 'sts:GetCallerIdentity',
+            'lambda:GetFunctionConfiguration', 'lambda:GetFunctionConcurrency', 'cloudfront:GetDistribution',
+          ],
+          resources: ['*'],
+        },
+        // Recent ERROR/WARN lines on the Lambda detail page; scoped to Lambda log groups only.
+        {
+          actions: ['logs:FilterLogEvents'],
+          resources: [
+            'arn:aws:logs:ap-south-1:*:log-group:/aws/lambda/*',
+            'arn:aws:logs:ap-south-1:*:log-group:/aws/lambda/*:*',
+          ],
+        },
+      ],
     })
   },
 })

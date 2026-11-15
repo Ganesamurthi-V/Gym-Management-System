@@ -4,6 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
 export default function AuthPage() {
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
@@ -41,31 +46,20 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
-      {/* Background glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-purple-600/8 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-sm animate-fade-in">
-        {/* Logo */}
-        <div className="text-center mb-8">
+    <div className="bg-background flex min-h-screen items-center justify-center p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="items-center text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/favicon-192.png" alt="GymFlow" width={56} height={56} className="w-14 h-14 rounded-full mx-auto mb-4 shadow-xl shadow-indigo-500/30" />
-          <h1 className="text-2xl font-bold text-white">GymFlow Admin</h1>
-          <p className="text-slate-500 text-sm mt-1">Super Admin Panel — Restricted Access</p>
-        </div>
-
-        {/* Card */}
-        <div className="admin-card p-6">
+          <img src="/favicon-192.png" alt="GymFlow" width={48} height={48} className="mb-2 size-12 rounded-full" />
+          <CardTitle className="text-xl">GymFlow Super Admin</CardTitle>
+          <CardDescription>Restricted access. Enter the admin password to continue.</CardDescription>
+        </CardHeader>
+        <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                Admin Password
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="admin_password_field">Admin Password</Label>
               <div className="relative">
-                <input
+                <Input
                   type={show ? 'text' : 'password'}
                   id="admin_password_field"
                   name="admin_password_field"
@@ -73,42 +67,32 @@ export default function AuthPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Enter admin secret"
-                  className="admin-input pr-10"
+                  className="pr-10"
                   required
                   autoFocus
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => setShow(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  aria-label={show ? 'Hide password' : 'Show password'}
+                  className="text-muted-foreground absolute top-1/2 right-1 -translate-y-1/2"
                 >
-                  {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                  {show ? <EyeOff /> : <Eye />}
+                </Button>
               </div>
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                <div className="w-1.5 h-1.5 bg-red-400 rounded-full flex-shrink-0" />
-                {error}
-              </div>
-            )}
+            {error && <p className="text-destructive text-sm">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="admin-btn-primary w-full justify-center py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? <Loader2 className="animate-spin" /> : <Shield />}
               {loading ? 'Authenticating...' : 'Access Admin Panel'}
-            </button>
+            </Button>
           </form>
-        </div>
-
-        <p className="text-center text-xs text-slate-600 mt-4">
-          Unauthorized access is strictly prohibited and monitored.
-        </p>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

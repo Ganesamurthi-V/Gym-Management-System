@@ -1,8 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, MessageCircle, Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Star, MessageCircle } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface Props {
   gymId: string
@@ -22,7 +26,7 @@ function StarRow({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map(n => (
         <Star
           key={n}
-          className={`w-4 h-4 ${n <= rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`}
+          className={cn('size-4', n <= rating ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground/40')}
         />
       ))}
     </span>
@@ -59,41 +63,45 @@ export default function GymFeedbackPanel({ gymId }: Props) {
     : null
 
   return (
-    <div className="admin-card p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <MessageCircle className="w-5 h-5 text-amber-400" />
-          <h2 className="text-base font-semibold text-white">Owner Feedback</h2>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageCircle className="size-4" />
+          Owner Feedback
+        </CardTitle>
         {avg != null && (
-          <div className="flex items-center gap-1.5">
+          <CardAction className="flex items-center gap-1.5">
             <StarRow rating={Math.round(avg)} />
-            <span className="text-sm font-bold text-amber-400">{avg.toFixed(1)}</span>
-            <span className="text-xs text-slate-500">({rated.length})</span>
+            <span className="text-sm font-medium">{avg.toFixed(1)}</span>
+            <span className="text-muted-foreground text-xs">({rated.length})</span>
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ) : feedback.length === 0 ? (
+          <p className="text-muted-foreground py-6 text-center text-sm">No feedback submitted by this gym yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {feedback.map(f => (
+              <div key={f.id} className="bg-muted/30 rounded-lg border p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  {f.rating != null ? <StarRow rating={f.rating} /> : <span className="text-muted-foreground text-xs">No rating</span>}
+                  <span className="text-muted-foreground text-xs">
+                    {new Date(f.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+                {f.subject && <h3 className="mb-1 text-sm font-medium">{f.subject}</h3>}
+                <p className="text-muted-foreground text-sm whitespace-pre-wrap">{f.message}</p>
+              </div>
+            ))}
           </div>
         )}
-      </div>
-
-      {loading ? (
-        <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 text-indigo-400 animate-spin" /></div>
-      ) : feedback.length === 0 ? (
-        <p className="text-sm text-slate-500 text-center py-6">No feedback submitted by this gym yet.</p>
-      ) : (
-        <div className="space-y-3">
-          {feedback.map(f => (
-            <div key={f.id} className="p-4 bg-[#0F172A] rounded-xl border border-[#1f2937]">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                {f.rating != null ? <StarRow rating={f.rating} /> : <span className="text-xs text-slate-500">No rating</span>}
-                <span className="text-xs text-slate-500">
-                  {new Date(f.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </span>
-              </div>
-              {f.subject && <h3 className="text-sm font-semibold text-white mb-1">{f.subject}</h3>}
-              <p className="text-sm text-slate-300 whitespace-pre-wrap">{f.message}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

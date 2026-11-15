@@ -2,7 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { Megaphone, Loader2, Send, PowerOff, X } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
+
+import { PageToolbar } from '@/components/dashboard/page-toolbar'
+import { StatusBadge } from '@/components/dashboard/status-badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 
 type Level = 'info' | 'warning' | 'critical'
 type Announcement = {
@@ -92,156 +102,163 @@ export default function AnnouncementsPage() {
   const style = LEVEL_STYLE[level]
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Announcements</h1>
-        <p className="text-slate-500 text-sm mt-0.5">One site-wide strip shown at the top of every gym owner&apos;s app</p>
-      </div>
+    <div className="space-y-6">
+      <PageToolbar
+        title="Announcements"
+        description="One site-wide strip shown at the top of every gym owner's app"
+      />
 
-      <div className="admin-card p-6 space-y-5">
-        <div className="flex items-center justify-between gap-3 pb-4 border-b border-[#1f2937]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
-              <Megaphone className="w-5 h-5 text-indigo-400" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-white">
-                {loading ? 'Loading...' : live?.is_active ? 'Currently live' : 'Currently off'}
-              </h2>
-              <p className="text-xs text-slate-400">
-                {live && live.updated_at
-                  ? `Version ${live.version}, last updated ${new Date(live.updated_at).toLocaleString()}`
-                  : 'Never published'}
-              </p>
-            </div>
-          </div>
-          <span className={`px-2 py-0.5 text-xs font-bold rounded-md uppercase tracking-wider border ${
-            live?.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-          }`}>
-            {live?.is_active ? 'Active' : 'Off'}
-          </span>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Message</label>
-            <span className={`text-xs font-semibold ${overLimit ? 'text-red-400' : nearLimit ? 'text-amber-400' : 'text-slate-500'}`}>
-              {message.length}/{MESSAGE_MAX}
-            </span>
-          </div>
-          <textarea
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            rows={3}
-            disabled={loading}
-            placeholder="e.g. We are investigating a technical issue. Follow the status page for updates."
-            className="admin-input resize-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Level</label>
-          <select value={level} onChange={e => setLevel(e.target.value as Level)} className="admin-input" disabled={loading}>
-            <option value="info">Info</option>
-            <option value="warning">Warning</option>
-            <option value="critical">Critical</option>
-          </select>
-          <p className="text-xs text-slate-500 mt-1.5">Critical cannot be closed by owners.</p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Link URL (optional)</label>
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={e => setLinkUrl(e.target.value)}
-              placeholder="https://status.thegymflow.in"
-              className="admin-input"
-              disabled={loading}
-            />
-            {linkError && <p className="text-xs text-red-400 mt-1.5">{linkError}</p>}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Link label</label>
-            <input
-              type="text"
-              value={linkLabel}
-              onChange={e => setLinkLabel(e.target.value.slice(0, LABEL_MAX))}
-              placeholder="Learn more"
-              className="admin-input"
-              disabled={loading || !linkTrim}
-            />
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Text after the link (optional)</label>
-            <span className="text-xs font-semibold text-slate-500">{messageAfter.length}/{AFTER_MAX}</span>
-          </div>
-          <input
-            type="text"
-            value={messageAfter}
-            onChange={e => setMessageAfter(e.target.value.slice(0, AFTER_MAX))}
-            className="admin-input"
-            disabled={loading}
-          />
-          <p className="text-xs text-slate-500 mt-1.5">Shown after the link, on the same line.</p>
-        </div>
-
-        <div className="pt-4 border-t border-[#1f2937] flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => save(false)}
-            disabled={!!saving || loading || !live?.is_active}
-            className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving === 'off' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PowerOff className="w-4 h-4" />}
-            Turn off
-          </button>
-          <button
-            type="button"
-            onClick={() => save(true)}
-            disabled={!canPublish || loading}
-            className="admin-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving === 'publish' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {saving === 'publish' ? 'Publishing...' : 'Publish'}
-          </button>
-        </div>
-      </div>
-
-      <div className="admin-card p-6 space-y-3">
-        <h2 className="text-base font-semibold text-white">How owners will see it</h2>
-        {/* Always the light look. Faux page top: the strip is the first child, a decorative skeleton header sits beneath it.
-            The strip mirrors the owner banner: centered content, X absolutely at the right edge so the text stays centered. */}
-        <div className="rounded-xl overflow-hidden border" style={{ background: '#F8FAFC', borderColor: '#E2E8F0' }}>
-          <div
-            className="relative flex items-center justify-center px-10 py-2 border-b text-sm font-medium text-center"
-            style={{ background: style.bg, borderColor: style.border, color: style.text }}
-          >
-            <span className="min-w-0 break-words">
-              {message.trim() ? (
-                <>
-                  {message}
-                  {linkTrim && !linkError && (
-                    <span className="underline ml-1">{linkLabel.trim() || 'Learn more'}</span>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Megaphone className="size-4" />
+              {loading ? 'Loading...' : live?.is_active ? 'Currently live' : 'Currently off'}
+            </CardTitle>
+            <CardDescription>
+              {live && live.updated_at
+                ? `Version ${live.version}, last updated ${new Date(live.updated_at).toLocaleString()}`
+                : 'Never published'}
+            </CardDescription>
+            <CardAction>
+              <StatusBadge tone={live?.is_active ? 'success' : 'neutral'}>
+                {live?.is_active ? 'Active' : 'Off'}
+              </StatusBadge>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ann-message">Message</Label>
+                <span
+                  className={cn(
+                    'text-xs font-medium',
+                    overLimit ? 'text-destructive' : 'text-muted-foreground',
+                    nearLimit && !overLimit && 'text-foreground',
                   )}
-                  {messageAfter.trim() && <span className="ml-1">{messageAfter.trim()}</span>}
-                </>
-              ) : (
-                <span style={{ opacity: 0.6 }}>Your message appears here</span>
-              )}
-            </span>
-            {level !== 'critical' && <X className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2" aria-hidden />}
-          </div>
-          <div className="flex items-center gap-3 px-4 py-3" aria-hidden>
-            <div className="h-6 w-6 rounded-full" style={{ background: '#E2E8F0' }} />
-            <div className="h-3 w-28 rounded" style={{ background: '#E2E8F0' }} />
-            <div className="h-3 w-16 rounded ml-auto" style={{ background: '#E2E8F0' }} />
-          </div>
-        </div>
+                >
+                  {message.length}/{MESSAGE_MAX}
+                </span>
+              </div>
+              <Textarea
+                id="ann-message"
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                rows={3}
+                disabled={loading}
+                placeholder="e.g. We are investigating a technical issue. Follow the status page for updates."
+                className="resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ann-level">Level</Label>
+              <Select value={level} onValueChange={v => setLevel(v as Level)} disabled={loading}>
+                <SelectTrigger id="ann-level" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">Critical cannot be closed by owners.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="ann-link">Link URL (optional)</Label>
+                <Input
+                  id="ann-link"
+                  type="url"
+                  value={linkUrl}
+                  onChange={e => setLinkUrl(e.target.value)}
+                  placeholder="https://status.thegymflow.in"
+                  disabled={loading}
+                />
+                {linkError && <p className="text-destructive text-xs">{linkError}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ann-label">Link label</Label>
+                <Input
+                  id="ann-label"
+                  type="text"
+                  value={linkLabel}
+                  onChange={e => setLinkLabel(e.target.value.slice(0, LABEL_MAX))}
+                  placeholder="Learn more"
+                  disabled={loading || !linkTrim}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ann-after">Text after the link (optional)</Label>
+                <span className="text-muted-foreground text-xs font-medium">{messageAfter.length}/{AFTER_MAX}</span>
+              </div>
+              <Input
+                id="ann-after"
+                type="text"
+                value={messageAfter}
+                onChange={e => setMessageAfter(e.target.value.slice(0, AFTER_MAX))}
+                disabled={loading}
+              />
+              <p className="text-muted-foreground text-xs">Shown after the link, on the same line.</p>
+            </div>
+          </CardContent>
+          <CardFooter className="justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => save(false)}
+              disabled={!!saving || loading || !live?.is_active}
+            >
+              {saving === 'off' ? <Loader2 className="animate-spin" /> : <PowerOff />}
+              Turn off
+            </Button>
+            <Button type="button" onClick={() => save(true)} disabled={!canPublish || loading}>
+              {saving === 'publish' ? <Loader2 className="animate-spin" /> : <Send />}
+              {saving === 'publish' ? 'Publishing...' : 'Publish'}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card className="self-start">
+          <CardHeader>
+            <CardTitle>How owners will see it</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Always the light look. Faux page top: the strip is the first child, a decorative skeleton header sits beneath it.
+                The strip mirrors the owner banner: centered content, X absolutely at the right edge so the text stays centered. */}
+            <div className="rounded-xl overflow-hidden border" style={{ background: '#F8FAFC', borderColor: '#E2E8F0' }}>
+              <div
+                className="relative flex items-center justify-center px-10 py-2 border-b text-sm font-medium text-center"
+                style={{ background: style.bg, borderColor: style.border, color: style.text }}
+              >
+                <span className="min-w-0 break-words">
+                  {message.trim() ? (
+                    <>
+                      {message}
+                      {linkTrim && !linkError && (
+                        <span className="underline ml-1">{linkLabel.trim() || 'Learn more'}</span>
+                      )}
+                      {messageAfter.trim() && <span className="ml-1">{messageAfter.trim()}</span>}
+                    </>
+                  ) : (
+                    <span style={{ opacity: 0.6 }}>Your message appears here</span>
+                  )}
+                </span>
+                {level !== 'critical' && <X className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2" aria-hidden />}
+              </div>
+              <div className="flex items-center gap-3 px-4 py-3" aria-hidden>
+                <div className="h-6 w-6 rounded-full" style={{ background: '#E2E8F0' }} />
+                <div className="h-3 w-28 rounded" style={{ background: '#E2E8F0' }} />
+                <div className="h-3 w-16 rounded ml-auto" style={{ background: '#E2E8F0' }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

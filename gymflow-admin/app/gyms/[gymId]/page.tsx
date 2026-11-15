@@ -2,6 +2,12 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Mail, User, ShieldCheck, Database, CalendarClock, BadgeCheck, Phone } from 'lucide-react'
 import Link from 'next/link'
+import { BreadcrumbLabel } from '@/components/layout/breadcrumb-context'
+import { MetricCards } from '@/components/dashboard/metric-cards'
+import { PageToolbar } from '@/components/dashboard/page-toolbar'
+import { StatusBadge } from '@/components/dashboard/status-badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PasswordResetForm from './PasswordResetForm'
 import GymStatusToggle from './GymStatusToggle'
 import SubscriptionPanel from './SubscriptionPanel'
@@ -45,124 +51,107 @@ export default async function GymDetailPage({ params }: { params: Promise<{ gymI
   const gymPhone = gym.phone?.trim() || onboardingPhone || null
   const ownerPhone = owner?.user_metadata?.mobile_number || owner?.phone || null
 
+  const registered = new Date(gym.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/gyms" className="admin-btn-ghost -ml-2">
-          <ArrowLeft className="w-4 h-4" />
+    <div className="space-y-4">
+      <BreadcrumbLabel label={gym.name} />
+      <Button variant="ghost" size="sm" asChild className="-ml-2">
+        <Link href="/gyms">
+          <ArrowLeft />
           Back
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-white">{gym.name}</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            Registered {new Date(gym.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-      </div>
+      </Button>
+
+      <PageToolbar title={gym.name} description={`Registered ${registered}`}>
+        {gym.is_active ? <StatusBadge tone="success">Active</StatusBadge> : <StatusBadge tone="error">Banned</StatusBadge>}
+      </PageToolbar>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="admin-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <User className="w-4 h-4 text-sky-400" />
-            <span className="text-xs text-slate-500">Owner ID</span>
-          </div>
-          <p className="text-xs font-mono font-medium text-slate-300 mt-1 break-all">{gym.owner_id}</p>
-        </div>
-        <div className="admin-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Database className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs text-slate-500">Database ID (Gym)</span>
-          </div>
-          <p className="text-xs font-mono font-medium text-slate-300 mt-1 break-all">{gym.id}</p>
-        </div>
-        <div className="admin-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <CalendarClock className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs text-slate-500">Account Created</span>
-          </div>
-          <p className="text-sm font-bold text-white mt-1">
-            {owner?.created_at ? new Date(owner.created_at).toLocaleDateString('en-IN') : 'Unknown'}
-          </p>
-        </div>
-        <div className="admin-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <BadgeCheck className={`w-4 h-4 ${owner?.email_confirmed_at ? 'text-purple-400' : 'text-amber-400'}`} />
-            <span className="text-xs text-slate-500">Email Verified</span>
-          </div>
-          <p className="text-sm font-bold text-white mt-1">
-            {owner?.email_confirmed_at ? 'Yes, Verified' : 'Pending'}
-          </p>
-        </div>
-      </div>
+      <MetricCards
+        items={[
+          { icon: User, label: 'Owner ID', value: gym.owner_id.slice(0, 8), footnote: gym.owner_id },
+          { icon: Database, label: 'Database ID (Gym)', value: gym.id.slice(0, 8), footnote: gym.id },
+          {
+            icon: CalendarClock,
+            label: 'Account Created',
+            value: owner?.created_at ? new Date(owner.created_at).toLocaleDateString('en-IN') : 'Unknown',
+          },
+          {
+            icon: BadgeCheck,
+            label: 'Email Verified',
+            value: owner?.email_confirmed_at ? 'Yes, Verified' : 'Pending',
+          },
+        ]}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Account Details */}
-        <div className="admin-card p-5 space-y-6">
-          <div className="flex items-center gap-2 border-b border-[#1f2937] pb-3">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-base font-semibold text-white">Gym Owner Details</h2>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Primary Email</p>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Mail className="w-4 h-4 text-slate-400" />
-                <span>{owner?.email ?? 'No email found'}</span>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="size-4" />
+              Gym Owner Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-4 text-sm">
+              <div className="space-y-1">
+                <dt className="text-muted-foreground text-xs">Primary Email</dt>
+                <dd className="flex items-center gap-2 break-all">
+                  <Mail className="text-muted-foreground size-4 shrink-0" />
+                  {owner?.email ?? 'No email found'}
+                </dd>
               </div>
-            </div>
 
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Gym Phone</p>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Phone className="w-4 h-4 text-slate-400" />
-                <span>{gymPhone ?? 'Not provided'}</span>
+              <div className="space-y-1">
+                <dt className="text-muted-foreground text-xs">Gym Phone</dt>
+                <dd className="flex items-center gap-2">
+                  <Phone className="text-muted-foreground size-4 shrink-0" />
+                  {gymPhone ?? 'Not provided'}
+                </dd>
               </div>
-            </div>
 
-            {/*
-              Only when it differs. The owner's signup number and the gym's contact line are
-              usually the same person's phone, and printing one number twice under two labels
-              reads as a rendering fault rather than as two facts. Shown when they genuinely
-              diverge, because then which is which matters for support.
-            */}
-            {ownerPhone && ownerPhone !== gymPhone && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Account Phone</p>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <Phone className="w-4 h-4 text-slate-500" />
-                  <span>{ownerPhone}</span>
+              {/*
+                Only when it differs. The owner's signup number and the gym's contact line are
+                usually the same person's phone, and printing one number twice under two labels
+                reads as a rendering fault rather than as two facts. Shown when they genuinely
+                diverge, because then which is which matters for support.
+              */}
+              {ownerPhone && ownerPhone !== gymPhone && (
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground text-xs">Account Phone</dt>
+                  <dd className="text-muted-foreground flex items-center gap-2">
+                    <Phone className="size-4 shrink-0" />
+                    {ownerPhone}
+                  </dd>
                 </div>
+              )}
+
+              <div className="space-y-1">
+                <dt className="text-muted-foreground text-xs">Owner Name</dt>
+                <dd>{owner?.user_metadata?.full_name || owner?.user_metadata?.name || 'Not provided'}</dd>
               </div>
-            )}
 
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Owner Name</p>
-              <p className="text-sm text-slate-300">
-                {owner?.user_metadata?.full_name || owner?.user_metadata?.name || 'Not provided'}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Auth Status</p>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Active Account
+              <div className="space-y-1">
+                <dt className="text-muted-foreground text-xs">Auth Status</dt>
+                <dd>
+                  <StatusBadge tone="success">Active Account</StatusBadge>
+                </dd>
               </div>
-            </div>
 
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Last Sign In</p>
-              <p className="text-sm text-slate-400">
-                {owner?.last_sign_in_at ? new Date(owner.last_sign_in_at).toLocaleString('en-IN') : 'Never'}
-              </p>
-            </div>
-          </div>
-        </div>
+              <div className="space-y-1">
+                <dt className="text-muted-foreground text-xs">Last Sign In</dt>
+                <dd className="text-muted-foreground">
+                  {owner?.last_sign_in_at ? new Date(owner.last_sign_in_at).toLocaleString('en-IN') : 'Never'}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
 
         {/* Security & Password */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <PasswordResetForm userId={gym.owner_id} />
           <GymStatusToggle gymId={gym.id} isActive={gym.is_active} gymName={gym.name} />
         </div>

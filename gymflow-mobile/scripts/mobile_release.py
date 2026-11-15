@@ -96,7 +96,7 @@ def notes(version: str, build: str, apk: str) -> str:
         link = f"[`{sha_c}`](https://github.com/{repo}/commit/{sha_c})" if repo else f"`{sha_c}`"
         return f"- {label}{text} ({link})"
 
-    out = [f"## GymFlow Admin v{version}", "", f"Android build {build} of the GymFlow Admin app, built from commit `{sha}`.", ""]
+    out = [f"## Admin v{version}", "", f"Android build {build} of the GymFlow Admin app, built from commit `{sha}`.", ""]
     used = set()
     for ctype, title in SECTIONS:
         group = [c for c in commits if c[1] == ctype]

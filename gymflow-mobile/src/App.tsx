@@ -30,6 +30,8 @@ import NotificationsScreen from './screens/NotificationsScreen';
 import AnnouncementScreen from './screens/AnnouncementScreen';
 import EmailThreadScreen from './screens/EmailThreadScreen';
 import EmailComposeScreen from './screens/EmailComposeScreen';
+import AwsMonitorScreen from './screens/AwsMonitorScreen';
+import AwsResourceScreen from './screens/AwsResourceScreen';
 
 import type { RootStackParamList, TabParamList } from './navigation/types';
 
@@ -389,6 +391,30 @@ export default function App() {
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
                 }}
+              />
+              <Stack.Screen
+                name="AwsMonitor"
+                component={AwsMonitorScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: 'AWS Monitor',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="AwsResource"
+                component={AwsResourceScreen}
+                options={({ route }) => ({
+                  headerShown: true,
+                  headerStyle: { backgroundColor: Colors.bg },
+                  headerTintColor: Colors.textPrimary,
+                  headerTitle: route.params.title.length > 28 ? `${route.params.title.slice(0, 27)}…` : route.params.title,
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                })}
               />
             </>
           )}

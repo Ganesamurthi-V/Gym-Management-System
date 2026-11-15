@@ -1,36 +1,32 @@
 import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import AppShell from '@/components/layout/AppShell'
-import { Toaster } from 'react-hot-toast'
+import { ThemeProvider } from '@/components/layout/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 export const metadata: Metadata = {
   title: 'GymFlow Admin',
-  description: 'Super Admin Panel — GymFlow',
+  description: 'Super Admin Panel - GymFlow',
 }
 
 /*
-  The shell decision moved out of here and into AppShell (a client component keyed on
-  the pathname). This layout previously chose the shell from the session cookie alone,
-  which drew the sidebar over the /auth login page and left it out of sync across the
-  client-side navigations that login and logout perform. Access control still lives in
-  middleware.ts; this layout now only provides the document shell and the toaster.
+  The shell decision lives in AppShell (a client component keyed on the pathname).
+  Access control lives in proxy.ts; this layout only provides the document shell,
+  the theme provider and the toaster.
 */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-[#0a0f1e] text-slate-100 antialiased">
-        <AppShell>{children}</AppShell>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: '#111827',
-              color: '#f1f5f9',
-              border: '1px solid #1f2937',
-              fontSize: '13px',
-            },
-          }}
-        />
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="antialiased">
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <TooltipProvider>
+            <AppShell>{children}</AppShell>
+          </TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -1,14 +1,17 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchDashboardStats, type DashboardStats } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { CacheKeys } from '@/lib/cache';
 import { StatCard } from '@/components/StatCard';
 import { Badge } from '@/components/Badge';
+import type { RootStackParamList } from '../../navigation/types';
 
 function ErrorRow({ error }: { error: DashboardStats['recentErrors'][0] }) {
   return (
@@ -47,6 +50,7 @@ function MessageRow({ msg }: { msg: DashboardStats['recentMessages'][0] }) {
 
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const { data: stats, loading, error, refresh } = useCachedQuery<DashboardStats>({
     key: CacheKeys.dashboard,
@@ -113,6 +117,15 @@ export default function DashboardScreen() {
         </View>
       </View>
 
+      <TouchableOpacity style={styles.awsCard} activeOpacity={0.7} onPress={() => navigation.navigate('AwsMonitor')}>
+        <Feather name="cloud" size={18} color={Colors.indigo} />
+        <View style={styles.awsCardText}>
+          <Text style={styles.sectionTitle}>AWS Monitor</Text>
+          <Text style={styles.errorCulprit}>Lambda, CloudFront, DynamoDB, S3 and cost</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+      </TouchableOpacity>
+
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
@@ -169,6 +182,11 @@ const styles = StyleSheet.create({
     padding: Spacing.md, borderWidth: 1, borderColor: Colors.amberBorder,
   },
   errorBannerText: { fontSize: 13, color: Colors.amber, flex: 1 },
+  awsCard: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.lg,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.bgCardBorder,
+  },
+  awsCardText: { flex: 1, gap: 2 },
   statsGrid: { gap: Spacing.sm },
   statsRow: { flexDirection: 'row', gap: Spacing.sm },
   section: {

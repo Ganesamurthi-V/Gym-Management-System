@@ -3,11 +3,31 @@
 import { useState, useEffect } from 'react'
 import {
   CreditCard, Clock, CheckCircle2, XCircle, AlertTriangle, Loader2,
-  CalendarDays, Shield, ShieldAlert, Zap, FileText, ExternalLink,
-  RefreshCw, Trash2, Ban, Unlock, Star, MessageCircle
+  CalendarDays, Zap, FileText, ExternalLink, Trash2, Ban, Unlock,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { isPaidPlan } from '@/lib/plan'
+
+import { StatusBadge, type StatusTone } from '@/components/dashboard/status-badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ConfirmDialog } from './_components/ConfirmDialog'
 
 interface Props {
   gymId: string
@@ -27,12 +47,36 @@ type PlanType = 'monthly' | 'yearly' | 'lifetime'
 // Approve-only: the add-on never becomes plan_type, it just extends whatsapp_addon_until.
 type ApprovePlanType = PlanType | 'whatsapp_addon'
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  trial: { label: 'Trial', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  active: { label: 'Active', cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  expired: { label: 'Expired', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-  cancelled: { label: 'Cancelled', cls: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
-  suspended: { label: 'Suspended', cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+const STATUS_BADGE: Record<string, { label: string; tone: StatusTone }> = {
+  trial: { label: 'Trial', tone: 'info' },
+  active: { label: 'Active', tone: 'success' },
+  expired: { label: 'Expired', tone: 'error' },
+  cancelled: { label: 'Cancelled', tone: 'neutral' },
+  suspended: { label: 'Suspended', tone: 'warning' },
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <dt className="text-muted-foreground text-xs">{label}</dt>
+      <dd className="text-sm font-medium">{children}</dd>
+    </div>
+  )
+}
+
+function PlanSelect({ value, onChange }: { value: PlanType; onChange: (v: PlanType) => void }) {
+  return (
+    <Select value={value} onValueChange={v => onChange(v as PlanType)}>
+      <SelectTrigger size="sm" className="w-36" aria-label="Plan">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="monthly">Monthly</SelectItem>
+        <SelectItem value="yearly">Yearly</SelectItem>
+        <SelectItem value="lifetime">Lifetime</SelectItem>
+      </SelectContent>
+    </Select>
+  )
 }
 
 export default function SubscriptionPanel({ gymId, gymName }: Props) {
@@ -46,6 +90,8 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
   const [rejectReason, setRejectReason] = useState('')
   // null = follow the pending request's stored plan_requested; set once the admin picks a plan.
   const [approvePlanChoice, setApprovePlanChoice] = useState<ApprovePlanType | null>(null)
+  // Typed gym name for the delete confirmation (was window.prompt).
+  const [deleteTyped, setDeleteTyped] = useState('')
 
   async function fetchDetail() {
     setLoading(true)
@@ -84,15 +130,16 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Skeleton className="h-48 w-full rounded-xl" />
+        <Skeleton className="h-48 w-full rounded-xl" />
       </div>
     )
   }
 
-  if (!data) return <div className="text-slate-500 text-sm text-center py-8">Unable to load subscription data.</div>
+  if (!data) return <div className="text-muted-foreground py-8 text-center text-sm">Unable to load subscription data.</div>
 
-  const { gym, pendingRequest, lastApprovedRequest, timeline } = data
+  const { gym, pendingRequest, timeline } = data
   const badge = STATUS_BADGE[gym.subscription_status] ?? STATUS_BADGE.expired
   // The server decides add-on vs plan from the stored request; this only mirrors it in the UI.
   const isAddonRequest = pendingRequest?.plan_requested === 'whatsapp_addon'
@@ -101,253 +148,279 @@ export default function SubscriptionPanel({ gymId, gymName }: Props) {
     : approvePlanChoice ?? (pendingRequest?.plan_requested === 'yearly' ? 'yearly' : 'monthly')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Status Overview */}
-      <div className="admin-card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <CreditCard className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-base font-semibold text-white">Subscription Status</h2>
-          </div>
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${badge.cls}`}>
-            {badge.label}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-slate-500">Plan</p>
-            <p className="font-bold text-white capitalize">{gym.plan_type || 'None'}</p>
-            {gym.whatsapp_addon_until && (
-              <p className="text-xs text-slate-400 mt-0.5">
-                WhatsApp add-on {new Date(gym.whatsapp_addon_until) > new Date() ? 'until' : 'expired'} {new Date(gym.whatsapp_addon_until).toLocaleDateString('en-IN')}
-              </p>
-            )}
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Started</p>
-            <p className="font-medium text-slate-300">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="size-4" />
+            Subscription Status
+          </CardTitle>
+          <CardAction>
+            <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Field label="Plan">
+              <span className="capitalize">{gym.plan_type || 'None'}</span>
+              {gym.whatsapp_addon_until && (
+                <span className="text-muted-foreground mt-0.5 block text-xs font-normal">
+                  WhatsApp add-on {new Date(gym.whatsapp_addon_until) > new Date() ? 'until' : 'expired'} {new Date(gym.whatsapp_addon_until).toLocaleDateString('en-IN')}
+                </span>
+              )}
+            </Field>
+            <Field label="Started">
               {gym.subscription_started_at ? new Date(gym.subscription_started_at).toLocaleDateString('en-IN') : gym.trial_started_at ? new Date(gym.trial_started_at).toLocaleDateString('en-IN') : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Expires</p>
-            <p className="font-medium text-slate-300">
+            </Field>
+            <Field label="Expires">
               {gym.subscription_ends_at ? new Date(gym.subscription_ends_at).toLocaleDateString('en-IN') : gym.trial_ends_at ? new Date(gym.trial_ends_at).toLocaleDateString('en-IN') : 'Never (Lifetime)'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">VIP</p>
-            <p className="font-medium text-slate-300">{gym.is_vip ? 'Yes' : 'No'}</p>
-          </div>
-        </div>
-      </div>
+            </Field>
+            <Field label="VIP">{gym.is_vip ? 'Yes' : 'No'}</Field>
+          </dl>
+        </CardContent>
+      </Card>
 
       {/* Pending Payment Request */}
       {pendingRequest && (
-        <div className="admin-card p-5 border-amber-500/30">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-5 h-5 text-amber-400" />
-            <h3 className="text-sm font-semibold text-amber-300">Pending Payment Proof</h3>
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-            <div>
-              <p className="text-xs text-slate-500">Transaction ID</p>
-              <p className="font-mono text-slate-300">{pendingRequest.transaction_id || '—'}</p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4" />
+              Pending Payment Proof
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <dl className="grid grid-cols-2 gap-4">
+              <Field label="Transaction ID">
+                <span className="font-mono break-all">{pendingRequest.transaction_id || '—'}</span>
+              </Field>
+              <Field label="Submitted">{new Date(pendingRequest.submitted_at).toLocaleString('en-IN')}</Field>
+              {pendingRequest.expected_amount_inr != null && (
+                <Field label="Expected">Rs {Number(pendingRequest.expected_amount_inr).toLocaleString('en-IN')}</Field>
+              )}
+              {pendingRequest.notes && (
+                <div className="col-span-2 space-y-1">
+                  <dt className="text-muted-foreground text-xs">Notes</dt>
+                  <dd className="text-sm">{pendingRequest.notes}</dd>
+                </div>
+              )}
+            </dl>
+
+            {pendingRequest.uploaded_file_url && (
+              <Button variant="link" size="sm" className="h-auto p-0" asChild>
+                <a href={pendingRequest.uploaded_file_url} target="_blank" rel="noopener noreferrer">
+                  <FileText /> View Payment Proof <ExternalLink />
+                </a>
+              </Button>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+              {isAddonRequest ? (
+                <Badge variant="secondary">
+                  WhatsApp add-on{pendingRequest.expected_amount_inr != null ? `, ₹${Number(pendingRequest.expected_amount_inr).toLocaleString('en-IN')}` : ''} / 30 days
+                </Badge>
+              ) : (
+                <PlanSelect value={approvePlan as PlanType} onChange={setApprovePlanChoice} />
+              )}
+              <Button
+                size="sm"
+                onClick={() => callAction('payment/approve', { request_id: pendingRequest.id, plan: approvePlan }, 'Payment approved!')}
+                disabled={!!actionLoading}
+              >
+                {actionLoading === 'payment/approve' ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+                Approve
+              </Button>
+
+              <Input
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="Rejection reason..."
+                aria-label="Rejection reason"
+                className="h-7 min-w-40 flex-1"
+              />
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  if (!rejectReason.trim()) { toast.error('Reason required'); return }
+                  callAction('payment/reject', { request_id: pendingRequest.id, rejection_reason: rejectReason }, 'Payment rejected')
+                }}
+                disabled={!!actionLoading}
+              >
+                {actionLoading === 'payment/reject' ? <Loader2 className="animate-spin" /> : <XCircle />}
+                Reject
+              </Button>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Submitted</p>
-              <p className="text-slate-300">{new Date(pendingRequest.submitted_at).toLocaleString('en-IN')}</p>
-            </div>
-            {pendingRequest.expected_amount_inr != null && (
-              <div>
-                <p className="text-xs text-slate-500">Expected</p>
-                <p className="text-slate-300">Rs {Number(pendingRequest.expected_amount_inr).toLocaleString('en-IN')}</p>
-              </div>
-            )}
-            {pendingRequest.notes && (
-              <div className="col-span-2">
-                <p className="text-xs text-slate-500">Notes</p>
-                <p className="text-slate-300 text-xs">{pendingRequest.notes}</p>
-              </div>
-            )}
-          </div>
-
-          {pendingRequest.uploaded_file_url && (
-            <a href={pendingRequest.uploaded_file_url} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 mb-4">
-              <FileText className="w-3.5 h-3.5" /> View Payment Proof <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
-
-          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#1f2937]">
-            {isAddonRequest ? (
-              <span className="px-2 py-1.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
-                WhatsApp add-on{pendingRequest.expected_amount_inr != null ? `, ₹${Number(pendingRequest.expected_amount_inr).toLocaleString('en-IN')}` : ''} / 30 days
-              </span>
-            ) : (
-              <select value={approvePlan} onChange={e => setApprovePlanChoice(e.target.value as ApprovePlanType)}
-                className="admin-input w-40 text-xs py-1.5">
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="lifetime">Lifetime</option>
-              </select>
-            )}
-            <button
-              onClick={() => callAction('payment/approve', { request_id: pendingRequest.id, plan: approvePlan }, 'Payment approved!')}
-              disabled={!!actionLoading}
-              className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {actionLoading === 'payment/approve' ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-              Approve
-            </button>
-
-            <input value={rejectReason} onChange={e => setRejectReason(e.target.value)}
-              placeholder="Rejection reason..."
-              className="admin-input flex-1 min-w-[150px] text-xs py-1.5" />
-            <button
-              onClick={() => {
-                if (!rejectReason.trim()) { toast.error('Reason required'); return }
-                callAction('payment/reject', { request_id: pendingRequest.id, rejection_reason: rejectReason }, 'Payment rejected')
-              }}
-              disabled={!!actionLoading}
-              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {actionLoading === 'payment/reject' ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
-              Reject
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Quick Actions */}
-      <div className="admin-card p-5">
-        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-indigo-400" /> Quick Actions
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="size-4" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Activate Plan */}
-          <div className="bg-[#0F172A] rounded-xl p-4 border border-[#1f2937] space-y-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Activate Plan</p>
+          <div className="bg-muted/30 space-y-3 rounded-lg border p-4">
+            <Label className="text-muted-foreground text-xs uppercase">Activate Plan</Label>
             <div className="flex items-center gap-2">
-              <select value={activatePlan} onChange={e => setActivatePlan(e.target.value as PlanType)}
-                className="admin-input flex-1 text-xs py-1.5">
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="lifetime">Lifetime</option>
-              </select>
-              <button
+              <PlanSelect value={activatePlan} onChange={setActivatePlan} />
+              <Button
+                size="sm"
                 onClick={() => callAction('activate', { plan: activatePlan }, `${activatePlan} plan activated!`)}
                 disabled={!!actionLoading}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
               >
-                {actionLoading === 'activate' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Activate'}
-              </button>
+                {actionLoading === 'activate' ? <Loader2 className="animate-spin" /> : 'Activate'}
+              </Button>
             </div>
           </div>
 
           {/* Trial Management: hidden on paid plans, the trial route refuses them (would downgrade the gym) */}
           {!isPaidPlan(gym.plan_type) && (
-            <div className="bg-[#0F172A] rounded-xl p-4 border border-[#1f2937] space-y-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trial Management</p>
-              <div className="flex items-center gap-2">
-                <input type="number" value={trialDays} onChange={e => setTrialDays(e.target.value)}
-                  className="admin-input w-16 text-xs py-1.5 text-center" min="1" max="90" />
-                <span className="text-xs text-slate-500">days</span>
-                <button
+            <div className="bg-muted/30 space-y-3 rounded-lg border p-4">
+              <Label htmlFor="trial-days" className="text-muted-foreground text-xs uppercase">Trial Management</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="trial-days"
+                  type="number"
+                  value={trialDays}
+                  onChange={e => setTrialDays(e.target.value)}
+                  className="h-7 w-16 text-center"
+                  min="1"
+                  max="90"
+                />
+                <span className="text-muted-foreground text-xs">days</span>
+                <Button
+                  size="sm"
                   onClick={() => callAction('trial', { action: 'extend', days: parseInt(trialDays) || 7 }, `Trial extended by ${trialDays} days`)}
                   disabled={!!actionLoading}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   Extend
-                </button>
-                <button
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={() => callAction('trial', { action: 'reset' }, 'Trial reset to 14 days')}
                   disabled={!!actionLoading}
-                  className="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   Reset
-                </button>
+                </Button>
               </div>
             </div>
           )}
 
           {/* Expire */}
-          <div className="bg-[#0F172A] rounded-xl p-4 border border-[#1f2937] space-y-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Expire Subscription</p>
-            <button
-              onClick={() => {
-                if (!confirm(`Expire subscription for "${gymName}"?`)) return
-                callAction('expire', {}, 'Subscription expired')
-              }}
-              disabled={!!actionLoading}
-              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5"
-            >
-              <Clock className="w-3 h-3" /> Mark as Expired
-            </button>
+          <div className="bg-muted/30 space-y-3 rounded-lg border p-4">
+            <Label className="text-muted-foreground text-xs uppercase">Expire Subscription</Label>
+            <div>
+              <ConfirmDialog
+                trigger={
+                  <Button size="sm" variant="destructive" disabled={!!actionLoading}>
+                    <Clock /> Mark as Expired
+                  </Button>
+                }
+                title="Expire subscription"
+                description={`Expire subscription for "${gymName}"?`}
+                confirmLabel="Expire"
+                onConfirm={() => callAction('expire', {}, 'Subscription expired')}
+              />
+            </div>
           </div>
 
           {/* Danger Zone */}
-          <div className="bg-[#0F172A] rounded-xl p-4 border border-red-900/30 space-y-3">
-            <p className="text-xs font-bold text-red-400 uppercase tracking-wider">Danger Zone</p>
+          <div className="border-destructive/30 space-y-3 rounded-lg border p-4">
+            <Label className="text-destructive text-xs uppercase">Danger Zone</Label>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  if (!confirm(`Ban "${gymName}"? They will be logged out immediately.`)) return
-                  callAction('danger', { action: 'ban' }, 'Account banned')
-                }}
-                disabled={!!actionLoading}
-                className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1"
-              >
-                <Ban className="w-3 h-3" /> Ban
-              </button>
-              <button
+              <ConfirmDialog
+                trigger={
+                  <Button size="sm" variant="destructive" disabled={!!actionLoading}>
+                    <Ban /> Ban
+                  </Button>
+                }
+                title="Ban gym"
+                description={`Ban "${gymName}"? They will be logged out immediately.`}
+                confirmLabel="Ban"
+                onConfirm={() => callAction('danger', { action: 'ban' }, 'Account banned')}
+              />
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => callAction('danger', { action: 'unban' }, 'Account unbanned')}
                 disabled={!!actionLoading}
-                className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1"
               >
-                <Unlock className="w-3 h-3" /> Unban
-              </button>
-              <button
-                onClick={() => {
-                  if (!confirm(`PERMANENTLY DELETE "${gymName}" and ALL its data? This cannot be undone.`)) return
-                  const typed = window.prompt(`FINAL WARNING: Type the gym name "${gymName}" to confirm deletion.`)
-                  if (typed === null) return
-                  if (typed.trim() !== gymName) { alert('Name does not match. Deletion cancelled.'); return }
-                  callAction('danger', { action: 'delete_gym', confirm_gym_name: typed.trim() }, 'Gym deleted')
-                }}
-                disabled={!!actionLoading}
-                className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" /> Delete Gym
-              </button>
+                <Unlock /> Unban
+              </Button>
+              <AlertDialog onOpenChange={() => setDeleteTyped('')}>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="destructive" disabled={!!actionLoading}>
+                    <Trash2 /> Delete Gym
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete gym permanently</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {`PERMANENTLY DELETE "${gymName}" and ALL its data? This cannot be undone. FINAL WARNING: Type the gym name "${gymName}" to confirm deletion.`}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Input
+                    value={deleteTyped}
+                    onChange={e => setDeleteTyped(e.target.value)}
+                    placeholder={gymName}
+                    aria-label="Type the gym name to confirm"
+                  />
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => {
+                        const typed = deleteTyped
+                        if (typed.trim() !== gymName) { toast.error('Name does not match. Deletion cancelled.'); return }
+                        callAction('danger', { action: 'delete_gym', confirm_gym_name: typed.trim() }, 'Gym deleted')
+                      }}
+                    >
+                      Delete Gym
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Audit Timeline */}
       {timeline.length > 0 && (
-        <div className="admin-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-indigo-400" /> Audit Timeline
-          </h3>
-          <div className="space-y-3 max-h-64 overflow-y-auto">
-            {timeline.slice(0, 20).map((entry: any, i: number) => (
-              <div key={entry.id || i} className="flex items-start gap-3 text-xs">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-300 font-medium">{entry.action}</p>
-                  {entry.notes && <p className="text-slate-500 mt-0.5 truncate">{entry.notes}</p>}
-                  <p className="text-slate-600 mt-0.5">
-                    {new Date(entry.created_at).toLocaleString('en-IN')} &middot; {entry.performed_by}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="size-4" />
+              Audit Timeline
+            </CardTitle>
+            <CardDescription>Most recent 20 entries</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="max-h-64 space-y-3 overflow-y-auto">
+              {timeline.slice(0, 20).map((entry: any, i: number) => (
+                <li key={entry.id || i} className="flex items-start gap-3 text-xs">
+                  <span className="bg-muted-foreground mt-1.5 size-1.5 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{entry.action}</p>
+                    {entry.notes && <p className="text-muted-foreground mt-0.5 truncate">{entry.notes}</p>}
+                    <p className="text-muted-foreground mt-0.5">
+                      {new Date(entry.created_at).toLocaleString('en-IN')} &middot; {entry.performed_by}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

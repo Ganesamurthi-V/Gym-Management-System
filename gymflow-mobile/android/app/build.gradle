@@ -89,8 +89,10 @@ android {
         applicationId "com.gymflowAdminMobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 237
-        versionName "1.1.237"
+        // CI (.github/workflows/mobile-release.yml) passes the next build number with -PGYMFLOW_VERSION_CODE and
+        // -PGYMFLOW_VERSION_NAME, so a release never needs a version commit. These defaults are for local builds.
+        versionCode((project.findProperty('GYMFLOW_VERSION_CODE') ?: 237) as Integer)
+        versionName((project.findProperty('GYMFLOW_VERSION_NAME') ?: "1.1.237").toString())
     }
     signingConfigs {
         debug {

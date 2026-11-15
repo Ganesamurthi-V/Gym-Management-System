@@ -52,9 +52,10 @@ export default $config({
       domain:
         $app.stage === 'production'
           ? {
-              name: 'app.gymflow.sbs',
-              aliases: ['gymflow.sbs', 'graph.gymflow.sbs', 'member.gymflow.sbs'],
-              cert: 'arn:aws:acm:us-east-1:296214943025:certificate/2b7e1129-ecab-4808-ab28-f1b4bd57e887',
+              name: 'app.thegymflow.in',
+              aliases: ['thegymflow.in', 'graph.thegymflow.in', 'member.thegymflow.in'],
+              // Wildcard thegymflow.in + *.thegymflow.in; the admin distribution uses the same certificate.
+              cert: 'arn:aws:acm:us-east-1:296214943025:certificate/dd87c204-b9be-4ee5-bc3a-b3f7057cd267',
               dns: false,
             }
           : undefined,

@@ -35,11 +35,51 @@ beforeEach(() => {
   db = createFakeDb()
   m.db = db
   db.tables.attendance_devices.push({ id: 'dev1', gym_id: 'gym1', serial_number: 'SN123', timezone: 'Asia/Kolkata', is_active: true, last_seen_at: null })
+  db.tables.gyms.push({ id: 'gym1', plan_type: 'monthly', subscription_status: 'active', is_active: true, trial_ends_at: null, subscription_ends_at: null })
   db.tables.device_user_map.push({ device_id: 'dev1', pin: '7', member_id: 'mem1' })
 })
 afterEach(() => { vi.useRealTimers(); delete process.env[SECRET_VAR]; delete process.env.ADMS_INGEST_SECRET_PREVIOUS })
 
 describe('POST /api/devices/punches', () => {
+  // Plan gate: answered like an unregistered device (it drops the punch), and nothing is written or deleted.
+  for (const [label, gym] of [
+    ['a Free gym', { plan_type: 'free', subscription_status: 'active' }],
+    ['a trial that has ended', { plan_type: 'trial', subscription_status: 'trial', trial_ends_at: '2026-11-01T00:00:00Z' }],
+    ['a deactivated gym', { is_active: false }],
+  ] as const) {
+    it(`records no attendance for ${label} and keeps its device and links`, async () => {
+      Object.assign(db.tables.gyms[0], gym)
+      const res = await post({ serial: 'SN123', punches: [{ pin: '7', time: '2026-11-09 10:00:00' }] })
+      expect(res.status).toBe(200)
+      expect((await res.json()).data).toEqual({ known: false, accepted: 0 })
+      expect(db.tables.attendance).toHaveLength(0)
+      expect(db.tables.device_punches).toHaveLength(0)
+      expect(db.tables.attendance_devices[0].last_seen_at).toBeNull()
+      expect(db.tables.attendance_devices).toHaveLength(1)
+      expect(db.tables.device_user_map).toHaveLength(1)
+    })
+  }
+  it('still records attendance for a running trial', async () => {
+    Object.assign(db.tables.gyms[0], { plan_type: 'trial', subscription_status: 'trial', trial_ends_at: '2026-11-20T00:00:00Z' })
+    const res = await post({ serial: 'SN123', punches: [{ pin: '7', time: '2026-11-09 10:00:00' }] })
+    expect((await res.json()).data).toEqual({ known: true, accepted: 1 })
+  })
+  it('on a trial only the first registered device is served; a later one stays saved but idle', async () => {
+    Object.assign(db.tables.gyms[0], { plan_type: 'trial', subscription_status: 'trial', trial_ends_at: '2026-11-20T00:00:00Z' })
+    db.tables.attendance_devices[0].created_at = '2026-11-01T00:00:00Z'
+    db.tables.attendance_devices.push({ id: 'dev2', gym_id: 'gym1', serial_number: 'SN999', timezone: 'Asia/Kolkata', is_active: true, last_seen_at: null, created_at: '2026-11-05T00:00:00Z' })
+    db.tables.device_user_map.push({ device_id: 'dev2', pin: '7', member_id: 'mem1' })
+    const second = await post({ serial: 'SN999', punches: [{ pin: '7', time: '2026-11-09 10:00:00' }] })
+    expect((await second.json()).data).toEqual({ known: false, accepted: 0 })
+    expect(db.tables.attendance).toHaveLength(0)
+    expect(db.tables.attendance_devices).toHaveLength(2)
+    const first = await post({ serial: 'SN123', punches: [{ pin: '7', time: '2026-11-09 10:00:00' }] })
+    expect((await first.json()).data).toEqual({ known: true, accepted: 1 })
+  })
+  it('answers 500 (device retries) when the plan lookup fails', async () => {
+    db.failOn = (table) => table === 'gyms'
+    expect((await post({ serial: 'SN123', punches: [] })).status).toBe(500)
+  })
   it('rejects a missing or wrong secret with 401', async () => {
     expect((await post({ serial: 'SN123', punches: [] }, null)).status).toBe(401)
     expect((await post({ serial: 'SN123', punches: [] }, 'Bearer nope')).status).toBe(401)

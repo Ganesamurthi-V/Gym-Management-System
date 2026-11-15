@@ -6,7 +6,7 @@
  * ── What actually arrives here ───────────────────────────────────────────────
  * Verified against the live project: Supabase's /auth/v1/verify responds 303 to
  *
- *     https://member.gymflow.sbs/api/activate/callback#access_token=...
+ *     https://member.thegymflow.in/api/activate/callback#access_token=...
  *
  * The tokens are in the URL **fragment**, which is never sent to the server. So
  * on the normal path this route has nothing to read and must hand off to a

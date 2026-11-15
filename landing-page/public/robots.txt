@@ -1,4 +1,4 @@
-# robots.txt for the GymFlow marketing site — https://www.gymflow.sbs
+# robots.txt for the GymFlow marketing site — https://www.thegymflow.in
 #
 # ─── WHY THIS IS A STATIC FILE AND NOT robots.ts ────────────────────────────
 # `app/robots.ts` is a Next.js App Router convention. This project is Vite +
@@ -21,15 +21,15 @@
 # Disallow rules above).
 #
 # IF AI CRAWLERS OR THE SITEMAP LINE EVER VANISH AGAIN, that setting has been
-# re-enabled. Check: Cloudflare dashboard -> gymflow.sbs zone -> AI Crawl Control
+# re-enabled. Check: Cloudflare dashboard -> thegymflow.in zone -> AI Crawl Control
 # (older accounts: Security -> Bots, or Settings -> Manage robots.txt), turn the
 # managed robots.txt / "Block AI bots" setting OFF, then Caching -> Purge cache
 # for /robots.txt. Verify with:
-#   curl -s https://www.gymflow.sbs/robots.txt
+#   curl -s https://www.thegymflow.in/robots.txt
 #
 # ─── HOST: www, NOT THE APEX ────────────────────────────────────────────────
-# https://gymflow.sbs/* returns 301 -> https://www.gymflow.sbs/* (observed with
-# `curl -sI https://gymflow.sbs/`), so www is the canonical host.
+# https://thegymflow.in/* returns 301 -> https://www.thegymflow.in/* (observed with
+# `curl -sI https://thegymflow.in/`), so www is the canonical host.
 # The Sitemap URL below must use www: Google Search Console does not follow
 # redirects for sitemap URLs and reports a redirecting one as
 # "Sitemap could not be read".
@@ -37,8 +37,8 @@
 # ─── THIS DOMAIN IS THE ONE THAT SHOULD RANK ────────────────────────────────
 # The two hosts have deliberately opposite policies:
 #
-#   gymflow.sbs      (this site)  public marketing page  -> index everything
-#   app.gymflow.sbs  (the app)    owner/member console   -> disallow everything
+#   thegymflow.in      (this site)  public marketing page  -> index everything
+#   app.thegymflow.in  (the app)    owner/member console   -> disallow everything
 #
 # The app host is fully disallowed because every route there is auth-gated or
 # carries a one-time token, and its `/` only redirects to login. All search
@@ -228,7 +228,7 @@ Allow: /
 
 # ─── /llms.txt ──────────────────────────────────────────────────────────────
 # A plain-language summary of the product for language models, served at
-# https://www.gymflow.sbs/llms.txt (source: public/llms.txt).
+# https://www.thegymflow.in/llms.txt (source: public/llms.txt).
 #
 # This is a comment, not a directive. robots.txt has no field for declaring an
 # llms.txt, and inventing one like `Llms:` would just be an unparsed line — the
@@ -240,4 +240,4 @@ Allow: /
 # an earlier version carried one that included literal loc and lastmod tag text,
 # which is valid XML but invites lenient parsers to match the comment instead of
 # the real element.
-Sitemap: https://www.gymflow.sbs/sitemap.xml
+Sitemap: https://www.thegymflow.in/sitemap.xml

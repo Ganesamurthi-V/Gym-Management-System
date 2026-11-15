@@ -8,15 +8,15 @@ Self-contained: nothing in the main app imports it. Edit URLs and thresholds in 
 
 | Probe | URL | Expect | Class |
 |-------|-----|--------|-------|
-| www-site | https://www.gymflow.sbs/ | 200, body contains `GymFlow` | critical |
-| www-sitemap | https://www.gymflow.sbs/sitemap.xml | 200 | warning |
-| app-login-page | https://app.gymflow.sbs/auth/login | 200 | critical |
-| api-health | https://app.gymflow.sbs/api/health | 200, body contains `"status":"healthy"` | critical |
+| www-site | https://www.thegymflow.in/ | 200, body contains `GymFlow` | critical |
+| www-sitemap | https://www.thegymflow.in/sitemap.xml | 200 | warning |
+| app-login-page | https://app.thegymflow.in/auth/login | 200 | critical |
+| api-health | https://app.thegymflow.in/api/health | 200, body contains `"status":"healthy"` | critical |
 | api-health-deep | /api/health/deep + `x-health-secret` | 200 (503 = unhealthy) | critical |
 | api-watchdog | /api/health/watchdog + `x-health-secret` | 200 and JSON (the app sends its own alerts; the Worker only checks the call works) | critical |
 | guard-members, guard-payments, guard-expiring | /api/members, POST /api/dues/collect, /api/dashboard/expiring (no cookie) | exactly 401 (200 or 500 is a failure) | critical |
-| graph-proxy | https://graph.gymflow.sbs/api/health | 200 | warning |
-| status-page | https://status.gymflow.sbs | any 2xx or 3xx | warning |
+| graph-proxy | https://graph.thegymflow.in/api/health | 200 | warning |
+| status-page | https://status.thegymflow.in | any 2xx or 3xx | warning |
 
 Each probe has an 8 s timeout and at most 2 attempts (one retry after 2 s, only on a network error, timeout or 5xx).
 
@@ -53,7 +53,7 @@ Run every command in PowerShell inside the `monitoring-worker` folder. You need 
    ```
    `HEALTH_CHECK_SECRET` must equal the `HEALTH_CHECK_SECRET` SST secret of the production stage (`npx sst secret list --stage production` in `infra`). `BETTERSTACK_HEARTBEAT_URL` is optional: in Better Stack create a heartbeat with period 10 minutes and grace 10 minutes and paste its URL. Never commit these values.
 7. `npx wrangler deploy`
-8. Test it: edit one probe URL in `src/config.ts` to a bad one (for example `https://www.gymflow.sbs/does-not-exist` for a `status: 200` probe), run `npx wrangler deploy`, wait one or two runs (5 to 10 minutes) and a Telegram message should arrive. Put the URL back and deploy again to get the `[RECOVERED]` message.
+8. Test it: edit one probe URL in `src/config.ts` to a bad one (for example `https://www.thegymflow.in/does-not-exist` for a `status: 200` probe), run `npx wrangler deploy`, wait one or two runs (5 to 10 minutes) and a Telegram message should arrive. Put the URL back and deploy again to get the `[RECOVERED]` message.
 9. Logs: `npx wrangler tail`. You can also open `https://gymflow-monitoring.<your-subdomain>.workers.dev/health` (needs the workers.dev route enabled): it returns `ok` and the last run time (refreshed hourly) and nothing else; every other URL is 404.
 10. **Disable**: remove the `triggers` block (or the whole Worker with `npx wrangler delete`) and deploy. Alerts stop and Better Stack will email that the heartbeat is missing, which is expected.
 
@@ -123,7 +123,7 @@ It was down for about 25 min.
 No action needed.
 ```
 
-When more than 2 alerts fire in one run (or work was skipped) you get ONE summary instead: a list of what is failing, the shared cause once (for example "5 checks on app.gymflow.sbs fail the same way, so the whole app is probably affected"), then the first step for each remaining check.
+When more than 2 alerts fire in one run (or work was skipped) you get ONE summary instead: a list of what is failing, the shared cause once (for example "5 checks on app.thegymflow.in fail the same way, so the whole app is probably affected"), then the first step for each remaining check.
 
 ### Editing the help text
 

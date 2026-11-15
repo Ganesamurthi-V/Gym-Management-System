@@ -12,7 +12,54 @@ on:
         options: [app, admin]
         default: app
 
+# SST holds a state lock for the whole deploy; two overlapping runs fail with "Locked", and cancelling
+# one mid-deploy leaves the lock behind. Queue them, never cancel.
+concurrency:
+  group: aws-deploy-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: false
+
 jobs:
+  # Decides which deploys a push needs. Docs, markdown, lint-only folders and sibling projects that
+  # are not deployed here change nothing. gymflow-admin/ deploys the admin app. infra/ (the SST
+  # config both apps share) and this workflow deploy both, so they are conservative: the app is
+  # deployed for anything that is not admin-only.
+  changes:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      admin: ${{ steps.filter.outputs.admin }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          # A new branch or rewritten history has no usable "before": treat every file as changed.
+          if ! files=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null); then
+            files=$(git ls-tree -r --name-only "$AFTER")
+          fi
+          app=false
+          admin=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              *.md|*.tsbuildinfo|docs/*|graphify-out/*|output/*|_archived/*|gymflow-mobile/*|landing-page/*) continue ;;
+            esac
+            case "$f" in
+              gymflow-admin/*|infra/*|.github/workflows/aws-deploy.yml) admin=true ;;
+            esac
+            case "$f" in
+              gymflow-admin/*) ;;
+              *) app=true ;;
+            esac
+          done <<< "$files"
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "admin=$admin" >> "$GITHUB_OUTPUT"
+
   check:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -26,10 +73,15 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm test
 
-  # Manual only: start it from Actions -> aws-deploy -> Run workflow, on main. Vercel stays the live
-  # host until the cutover, so a deploy here does not change what users see yet.
+  # Pushes to main deploy the app when `changes` says it is affected. Manual runs (Actions -> aws-deploy
+  # -> Run workflow, on main) pick the target. Both deploy jobs wait for the checks: they run only when
+  # check passed or was skipped (manual runs skip it), never when it failed.
   deploy:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.target == 'app'
+    needs: [check, changes]
+    if: >-
+      ${{ !cancelled() && needs.check.result != 'failure' && needs.changes.result != 'failure' && github.ref == 'refs/heads/main' &&
+          ((github.event_name == 'push' && needs.changes.outputs.app == 'true') ||
+           (github.event_name == 'workflow_dispatch' && inputs.target == 'app')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -68,7 +120,11 @@ jobs:
   # Separate SST app (infra/sst.admin.config.ts) for the admin panel. Secrets live in that app's own
   # SST stage; only public values and the ACM certificate ARN come from repository variables.
   deploy-admin:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.target == 'admin'
+    needs: [check, changes]
+    if: >-
+      ${{ !cancelled() && needs.check.result != 'failure' && needs.changes.result != 'failure' && github.ref == 'refs/heads/main' &&
+          ((github.event_name == 'push' && needs.changes.outputs.admin == 'true') ||
+           (github.event_name == 'workflow_dispatch' && inputs.target == 'admin')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write

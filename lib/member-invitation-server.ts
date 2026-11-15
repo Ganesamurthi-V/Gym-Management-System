@@ -53,7 +53,7 @@ export async function prepareMemberInvitation(
 
   // If member doesn't have an Auth identity yet, create one
   if (!authUserId) {
-    const email = member.email || `member-${memberId.slice(0, 8)}@gymflow.sbs`
+    const email = member.email || `member-${memberId.slice(0, 8)}@thegymflow.in`
     const tempPassword = randomBytes(16).toString('base64url')
 
     const { data: authData, error: authCreateErr } = await serviceSupabase.auth.admin.createUser({

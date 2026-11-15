@@ -2,7 +2,7 @@
  * WhatsApp Cloud API Configuration
  *
  * All outbound WhatsApp API calls route through the GymFlow transparent proxy:
- *   https://graph.gymflow.sbs/api/graph  →  https://graph.facebook.com
+ *   https://graph.thegymflow.in/api/graph  →  https://graph.facebook.com
  *
  * The proxy URL is controlled by WHATSAPP_BASE_URL (in .env.local / Vercel).
  * The upstream destination is controlled by GRAPH_API_BASE_URL (read by the proxy route).
@@ -59,7 +59,7 @@ const whatsappEnvSchema = z.object({
   WHATSAPP_BASE_URL: z
     .string()
     .url()
-    .default('https://graph.gymflow.sbs/api/graph'),
+    .default('https://graph.thegymflow.in/api/graph'),
 })
 
 export type WhatsAppEnv = z.infer<typeof whatsappEnvSchema>
@@ -117,7 +117,7 @@ export function validateWhatsAppConfig(): void {
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 
-/** https://graph.gymflow.sbs/api/graph/v21.0 */
+/** https://graph.thegymflow.in/api/graph/v21.0 */
 export function getWhatsAppApiUrl(): string {
   const cfg = getWhatsAppConfig()
   return `${cfg.WHATSAPP_BASE_URL.replace(/\/$/, '')}/${cfg.WHATSAPP_API_VERSION}`
@@ -125,14 +125,14 @@ export function getWhatsAppApiUrl(): string {
 
 /**
  * Full messages endpoint for the configured phone number.
- * https://graph.gymflow.sbs/api/graph/v21.0/<phone_number_id>/messages
+ * https://graph.thegymflow.in/api/graph/v21.0/<phone_number_id>/messages
  */
 export function getWhatsAppMessagesUrl(): string {
   const cfg = getWhatsAppConfig()
   return `${getWhatsAppApiUrl()}/${cfg.WHATSAPP_PHONE_NUMBER_ID}/messages`
 }
 
-/** https://graph.gymflow.sbs/api/graph/v21.0/<media_id> */
+/** https://graph.thegymflow.in/api/graph/v21.0/<media_id> */
 export function getWhatsAppMediaUrl(mediaId: string): string {
   return `${getWhatsAppApiUrl()}/${mediaId}`
 }

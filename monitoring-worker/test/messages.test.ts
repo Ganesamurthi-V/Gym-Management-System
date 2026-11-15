@@ -99,7 +99,7 @@ describe('message formatting', () => {
     const names = ['app-login-page', 'api-health', 'api-health-deep', 'api-watchdog', 'guard-members']
     const s = formatSummary([...names.map((n) => alert(n)), alert('graph-proxy', { level: 'WARNING', status: 404 })], 0, NOW)
     expect(s).toContain('Likely shared cause')
-    expect(s).toContain('5 checks on app.gymflow.sbs fail the same way')
+    expect(s).toContain('5 checks on app.thegymflow.in fail the same way')
     expect(s.match(/CloudWatch &gt; Log groups/g)!.length).toBeLessThanOrEqual(2)
     expect(s).toContain('<b>First step per check</b>')
     expect(s).toContain('- graph-proxy:')

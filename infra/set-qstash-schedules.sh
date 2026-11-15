@@ -4,7 +4,7 @@
 # need no change. Upsert is keyed on the schedule id, so re-running never duplicates a schedule.
 #
 # Reads QSTASH_TOKEN, QSTASH_URL (regional endpoint, blank = EU default) and CRON_SECRET from ../.env.local,
-# or from the shell if already exported. Override the target with APP_URL=https://... (default app.gymflow.sbs).
+# or from the shell if already exported. Override the target with APP_URL=https://... (default app.thegymflow.in).
 #
 # Do not run this while the Vercel crons in vercel.json are still live: WhatsApp automation would run twice.
 set -euo pipefail
@@ -24,7 +24,7 @@ read_env() {
 QSTASH_TOKEN=$(read_env QSTASH_TOKEN)
 QSTASH_URL=$(read_env QSTASH_URL)
 CRON_SECRET=$(read_env CRON_SECRET)
-APP_URL="${APP_URL:-https://app.gymflow.sbs}"
+APP_URL="${APP_URL:-https://app.thegymflow.in}"
 BASE="${QSTASH_URL:-https://qstash.upstash.io}"; BASE="${BASE%/}"
 
 for n in QSTASH_TOKEN CRON_SECRET; do

@@ -8,6 +8,7 @@ import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import type { CommandDialect } from '@/lib/devices/commandLines'
+import { deviceGymMayUseBiometric } from '@/lib/devices/gymGate'
 
 /** A device polls for commands every few seconds; the cap only stops a runaway or hostile caller. */
 const DEVICE_RPM = 120
@@ -75,12 +76,20 @@ export async function authenticateDeviceRequest<T extends { serial: string }>(
 
   const db = createAdminClient()
   const { data: device, error } = await db
-    .from('attendance_devices').select('id, is_active, command_dialect').eq('serial_number', serial).maybeSingle()
+    .from('attendance_devices').select('id, gym_id, is_active, command_dialect').eq('serial_number', serial).maybeSingle()
   if (error) {
     log.error('device lookup failed', error)
     return { res: apiError(500, 'DATABASE_ERROR', 'Database error') }
   }
   if (!device || !device.is_active) return { unknown: true, body }
+
+  // Plan gate: no commands for a device while the gym is on Free, lapsed or deactivated.
+  try {
+    if (!(await deviceGymMayUseBiometric(db, device.gym_id as string, device.id as string))) return { unknown: true, body }
+  } catch (err) {
+    log.error('device gym plan lookup failed', err)
+    return { res: apiError(500, 'DATABASE_ERROR', 'Database error') }
+  }
 
   const { error: seenError } = await db
     .from('attendance_devices').update({ last_seen_at: new Date().toISOString() }).eq('id', device.id)

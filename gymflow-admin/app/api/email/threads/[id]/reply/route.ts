@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic'
  * Sends the admin's reply and stores it in the thread. Two rules are fixed here so the
  * app cannot bend them:
  *   - the recipient is always the thread's other party. The request carries no address,
- *     so this route cannot be used to mail someone arbitrary from support@gymflow.sbs;
+ *     so this route cannot be used to mail someone arbitrary from support@thegymflow.in;
  *   - the reply carries In-Reply-To and References, so Gmail, Outlook and Apple Mail
  *     file it in the same conversation as the mail it answers.
  *
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       : bodyPlain
 
     const subject = `Re: ${normalizeSubject(thread.subject)}`
-    const domain = mailbox.address.split('@')[1] ?? 'gymflow.sbs'
+    const domain = mailbox.address.split('@')[1] ?? 'thegymflow.in'
 
     // Reuse a failed row on retry, otherwise write a new 'sending' row.
     let messageRowId: string

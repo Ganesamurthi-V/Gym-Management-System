@@ -21,7 +21,7 @@ import { DocsSearch } from './DocsSearch';
 import { DocsToc, TocDisclosure } from './DocsToc';
 import '../styles/feature.css';
 
-const APP_URL = 'https://app.gymflow.sbs';
+const APP_URL = 'https://app.thegymflow.in';
 
 const LINK_CLASS =
   'font-medium text-accent-text underline underline-offset-4 transition-colors hover:text-foreground';

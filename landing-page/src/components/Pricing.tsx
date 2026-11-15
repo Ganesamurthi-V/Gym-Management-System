@@ -10,7 +10,7 @@ import {
   savingPercent,
 } from '../data/plans';
 
-const APP_URL = 'https://app.gymflow.sbs';
+const APP_URL = 'https://app.thegymflow.in';
 
 const [MONTHLY, YEARLY] = PLANS;
 

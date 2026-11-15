@@ -88,7 +88,7 @@ export async function middleware(request: NextRequest) {
 
   // ══════════════════════════════════════════════════════════════════════════════
   // ── BARE DOMAIN REDIRECT ──────────────────────────────────────────────────────
-  // gymflow.sbs (no subdomain) should never serve the app directly — redirect
+  // thegymflow.in (no subdomain) should never serve the app directly — redirect
   // to the canonical app subdomain to prevent content duplication and ensure
   // all auth cookies are scoped correctly.
   // ══════════════════════════════════════════════════════════════════════════════
@@ -101,7 +101,7 @@ export async function middleware(request: NextRequest) {
 
   // ══════════════════════════════════════════════════════════════════════════════
   // ── RETIRED MEMBER DOMAIN ─────────────────────────────────────────────────────
-  // member.gymflow.sbs used to be its own deployment with member routes at the
+  // member.thegymflow.in used to be its own deployment with member routes at the
   // domain root. Activation links already sent over WhatsApp, installed PWAs and
   // bookmarks still point there, so those URLs are mapped onto the unified app
   // rather than 404ing. 308 preserves the method and lets the browser cache it.
@@ -124,7 +124,7 @@ export async function middleware(request: NextRequest) {
 
   // ══════════════════════════════════════════════════════════════════════════════
   // ── GRAPH DOMAIN ISOLATION ────────────────────────────────────────────────────
-  // graph.gymflow.sbs serves ONLY whitelisted API routes — no frontend pages,
+  // graph.thegymflow.in serves ONLY whitelisted API routes — no frontend pages,
   // no static assets, no React pages, no internal APIs.
   // ══════════════════════════════════════════════════════════════════════════════
   if (hostname.includes(GRAPH_HOSTNAME)) {
@@ -154,7 +154,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // ── UNIFIED APP DOMAIN (app.gymflow.sbs) ──────────────────────────────────────
+  // ── UNIFIED APP DOMAIN (app.thegymflow.in) ──────────────────────────────────────
   // Serves BOTH the owner console (/owner/*) and the member PWA (/m/*) from one
   // origin, so role enforcement happens here rather than at the DNS layer.
   // ══════════════════════════════════════════════════════════════════════════════
@@ -336,5 +336,10 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon\.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|json|html|txt|xml|webmanifest)$).*)',
+    // The extension skip above is for files in public/. No static file lives under these two page
+    // namespaces, so they always run middleware: otherwise `/owner/members/x.json` would reach the
+    // layout with a client-supplied `x-pathname` and skip the expired / banned redirect.
+    '/owner/:path*',
+    '/m/:path*',
   ],
 }

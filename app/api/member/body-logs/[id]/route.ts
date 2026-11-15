@@ -23,7 +23,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const { data: deleted, error } = await supabase.rpc('delete_body_log', { p_id: id } as never)
   if (error) {
-    if (error.message === 'NOT_MEMBER') return apiError(403, 'FORBIDDEN', 'Forbidden')
+    if (error.message === 'NOT_MEMBER' || error.message === 'MEMBER_APP_BLOCKED') return apiError(403, 'FORBIDDEN', 'Forbidden')
     logger.error('body_log_delete_failed', { error: error.message })
     return apiError(500, 'SERVER_ERROR', 'Could not delete. Please try again.')
   }

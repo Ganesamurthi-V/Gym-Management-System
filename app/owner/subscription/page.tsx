@@ -66,6 +66,7 @@ export default async function SubscriptionPage() {
         trialEndsAt: gym.trial_ends_at ?? null,
         subscriptionEndsAt: gym.subscription_ends_at ?? null,
         isFree: free,
+        isTrial: gym.plan_type === 'trial',
         trialEnded,
         whatsappAddonUntil: gym.whatsapp_addon_until ?? null,
       }}

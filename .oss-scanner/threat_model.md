@@ -6,7 +6,7 @@ member personal data (names, phone numbers, payments). We assume all input from 
 - HTTP requests to `app/api/*` (owner console, member PWA, activation flow at `/activate`), and Server Actions.
 - Bulk import: Excel/CSV files parsed with ExcelJS in `lib/import/` and committed via `/api/import/confirm`.
 - QR codes and UPI links parsed in `lib/upi/` and by jsQR in the browser.
-- The WhatsApp Graph reverse proxy (`graph.gymflow.sbs`, allowlist in `lib/graph-domain.ts`) and inbound webhooks.
+- The WhatsApp Graph reverse proxy (`graph.thegymflow.in`, allowlist in `lib/graph-domain.ts`) and inbound webhooks.
 - Cron and queue routes under `app/api/cron/*` and `app/api/whatsapp/queue/*`, which must reject requests without
   `CRON_SECRET` or a valid QStash signature.
 
@@ -29,7 +29,7 @@ bug, not a feature.
   cheapest way to check business rules and the tenant-safety tests in `__tests__/security/`.
 - `npm run build` compiles every route and checks the types, so the build alone surfaces many issues.
 - The app itself needs live Supabase and Upstash services and is not run by the image. Test live behaviour only
-  against your own deployment, never against the hosted service at `gymflow.sbs`.
+  against your own deployment, never against the hosted service at `thegymflow.in`.
 - Import parsing can be exercised with crafted Excel and CSV files through `lib/import/`.
 
 ## How you rate severity

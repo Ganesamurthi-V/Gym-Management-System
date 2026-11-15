@@ -2,7 +2,7 @@
   "name": "gymflow-bio-worker",
   "version": "0.1.0",
   "private": true,
-  "description": "ADMS push receiver for biometric devices as a Cloudflare Worker (bio.gymflow.sbs)",
+  "description": "ADMS push receiver for biometric devices as a Cloudflare Worker (bio.thegymflow.in)",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

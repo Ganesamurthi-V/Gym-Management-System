@@ -110,11 +110,29 @@ export async function POST(req: NextRequest) {
       logger.error('subscription_request_plan_lookup_failed', { error: gymPlanError?.message })
       return NextResponse.json({ error: 'Could not verify your plan. Please try again.' }, { status: 500 })
     }
-    if (gymPlan.plan_type !== 'free') {
+    if (gymPlan.plan_type !== 'free' && gymPlan.plan_type !== 'trial') {
       return NextResponse.json(
         { error: 'The WhatsApp add-on is only available on the free forever plan. WhatsApp is included in paid plans.' },
         { status: 403 }
       )
+    }
+    // Approval moves a trial gym onto the free plan, which is capped at 50 members. Refuse up front
+    // so the owner does not pay and then wait for an approval that can never go through.
+    if (gymPlan.plan_type === 'trial') {
+      const { count, error: countError } = await supabase
+        .from('members')
+        .select('id', { count: 'exact', head: true })
+        .eq('gym_id', gym.id)
+      if (countError) {
+        logger.error('subscription_request_member_count_failed', { error: countError.message })
+        return NextResponse.json({ error: 'Could not verify your plan. Please try again.' }, { status: 500 })
+      }
+      if ((count ?? 0) > 50) {
+        return NextResponse.json(
+          { error: 'The free forever plan allows up to 50 members. Choose a Monthly or Yearly plan instead.' },
+          { status: 409 }
+        )
+      }
     }
   }
 

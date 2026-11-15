@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       .single()
     if (threadError || !thread) throw threadError ?? new Error('Could not create the conversation')
 
-    const domain = mailbox.address.split('@')[1] ?? 'gymflow.sbs'
+    const domain = mailbox.address.split('@')[1] ?? 'thegymflow.in'
     const messageId = newMessageId(domain)
     const attachmentMeta = files.map(f => ({
       id: crypto.randomUUID(), filename: f.filename, content_type: f.contentType, size: f.buffer.length,

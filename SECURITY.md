@@ -7,7 +7,7 @@ deployment serves many gyms. Reports of security problems are taken seriously an
 
 **Please do not open a public issue, pull request or discussion for a security problem.**
 
-Email **support@gymflow.sbs** with the subject line `Security report`. If the repository host
+Email **support@thegymflow.in** with the subject line `Security report`. If the repository host
 offers private vulnerability reporting (GitHub: Security → Report a vulnerability), you can use
 that instead.
 
@@ -32,7 +32,7 @@ problem before you publish anything about it.
 
 ## Testing rules
 
-- Test against **your own deployment**, not the hosted service at `gymflow.sbs`, unless you have
+- Test against **your own deployment**, not the hosted service at `thegymflow.in`, unless you have
   written permission.
 - Do not access, change or delete data that is not yours.
 - No denial-of-service testing, spam, or social engineering.

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { PLAN_MEMBER_LIMIT } from '@/lib/subscription-utils'
+import { PLAN_MEMBER_LIMIT, biometricDeviceLimit } from '@/lib/subscription-utils'
 
 // Source-level guard for the subscription hardening migration: one gym per owner,
 // the member app gate in the database, atomic paid approval, the expected amount on
@@ -131,5 +131,34 @@ describe('plan_member_limit() matches PLAN_MEMBER_LIMIT', () => {
     const m = fnSource(SCHEMA, 'plan_member_limit').match(/SELECT\s+(\d+)/)
     expect(m).not.toBeNull()
     expect(Number(m![1])).toBe(PLAN_MEMBER_LIMIT)
+  })
+})
+
+describe('biometric device limit lives in the database', () => {
+  const BIO_MIGRATION = read('supabase/migrations/20261113100000_biometric_plan_limits.sql')
+  for (const [label, sql] of [['canonical', SCHEMA], ['migration', BIO_MIGRATION]] as const) {
+    it(`${label}: biometric_device_limit() matches biometricDeviceLimit()`, () => {
+      const m = fnSource(sql, 'biometric_device_limit').match(/WHEN p_plan = 'trial' THEN (\d+) ELSE (\d+) END/)
+      expect(m).not.toBeNull()
+      expect(Number(m![1])).toBe(biometricDeviceLimit('trial'))
+      expect(Number(m![2])).toBe(biometricDeviceLimit('monthly'))
+    })
+    it(`${label}: every device insert is counted under the gym row lock, and Free is refused`, () => {
+      const body = stripComments(fnSource(sql, 'enforce_biometric_device_limit'))
+      expect(body).toMatch(/SECURITY DEFINER\s+SET search_path = ''/)
+      expect(body).toMatch(/FROM public\.gyms\s+WHERE id = NEW\.gym_id\s+FOR UPDATE/)
+      expect(body).toContain("IF v_plan = 'free' THEN")
+      expect(body).toContain('public.biometric_device_limit(v_plan)')
+      expect(body).not.toMatch(/>=\s*\d/)
+      expect(sql).toMatch(/CREATE TRIGGER trg_enforce_biometric_device_limit\s+BEFORE INSERT ON public\.attendance_devices/)
+      expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.enforce_biometric_device_limit\(\)\s+FROM PUBLIC, anon, authenticated/)
+    })
+  }
+  it('delete_body_log is behind the member app gate in both files', () => {
+    for (const sql of [SCHEMA, BIO_MIGRATION]) {
+      const start = sql.indexOf('FUNCTION public.delete_body_log(p_id UUID)')
+      expect(start).toBeGreaterThan(-1)
+      expect(sql.slice(start, sql.indexOf('\n$$;', start))).toContain('IF NOT public.member_app_allowed() THEN')
+    }
   })
 })

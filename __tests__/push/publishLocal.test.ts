@@ -8,7 +8,7 @@ describe('isLocalAppUrl', () => {
     }
   })
   it('treats real hosts and missing or invalid URLs as not local', () => {
-    for (const u of ['https://app.gymflow.sbs', 'https://172.15.0.1', undefined, 'not a url']) {
+    for (const u of ['https://app.thegymflow.in', 'https://172.15.0.1', undefined, 'not a url']) {
       expect(isLocalAppUrl(u)).toBe(false)
     }
   })

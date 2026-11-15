@@ -1,4 +1,4 @@
-// Public front door for biometric devices (bio.gymflow.sbs). Cloudflare answers on port 80 and 443, so old
+// Public front door for biometric devices (bio.thegymflow.in). Cloudflare answers on port 80 and 443, so old
 // devices that only speak plain HTTP and new ones that speak HTTPS both work, and the real receiver address
 // stays private: it lives only in the ORIGIN_URL secret, never in the repo or in anything a device can see.
 // Only the paths a device needs are forwarded; everything else is a bare 404.

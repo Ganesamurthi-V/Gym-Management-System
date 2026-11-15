@@ -23,8 +23,8 @@ export interface ProbeConfig {
   expect: Expect
 }
 
-const APP = 'https://app.gymflow.sbs'
-const WWW = 'https://www.gymflow.sbs'
+const APP = 'https://app.thegymflow.in'
+const WWW = 'https://www.thegymflow.in'
 
 export const PROBES: ProbeConfig[] = [
   { name: 'www-site', url: `${WWW}/`, critical: true, expect: { status: 200, bodyIncludes: 'GymFlow' } },
@@ -39,8 +39,8 @@ export const PROBES: ProbeConfig[] = [
   // /api/payments was removed from the app; dues/collect is the payment-recording route (POST only).
   { name: 'guard-payments', url: `${APP}/api/dues/collect`, method: 'POST', critical: true, expect: { status: 401 } },
   { name: 'guard-expiring', url: `${APP}/api/dashboard/expiring`, critical: true, expect: { status: 401 } },
-  { name: 'graph-proxy', url: 'https://graph.gymflow.sbs/api/health', critical: false, expect: { status: 200 } },
-  { name: 'status-page', url: 'https://status.gymflow.sbs', critical: false, expect: { statusMin: 200, statusMax: 399 } },
+  { name: 'graph-proxy', url: 'https://graph.thegymflow.in/api/health', critical: false, expect: { status: 200 } },
+  { name: 'status-page', url: 'https://status.thegymflow.in', critical: false, expect: { statusMin: 200, statusMax: 399 } },
 ]
 
 export const TIMEOUT_MS = 8000

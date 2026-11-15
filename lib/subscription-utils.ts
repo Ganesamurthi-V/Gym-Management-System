@@ -174,6 +174,30 @@ export function planAllowsMemberApp(plan: string | null | undefined): boolean {
   return plan !== 'free'
 }
 
+// ── Biometric attendance ─────────────────────────────────────────────────────
+/** A trial may register this many devices; paid plans get BIOMETRIC_DEVICE_LIMIT_PAID. */
+export const BIOMETRIC_DEVICE_LIMIT_TRIAL = 1
+export const BIOMETRIC_DEVICE_LIMIT_PAID = 5
+export const BIOMETRIC_NOT_INCLUDED_MESSAGE = 'Biometric attendance is not included in your plan. Upgrade to a paid plan.'
+
+/** Biometric attendance is off for Free gyms. Their devices and links stay in the database, untouched. */
+export function planAllowsBiometric(plan: string | null | undefined): boolean {
+  return plan !== 'free'
+}
+
+export function biometricDeviceLimit(plan: string | null | undefined): number {
+  return plan === 'trial' ? BIOMETRIC_DEVICE_LIMIT_TRIAL : BIOMETRIC_DEVICE_LIMIT_PAID
+}
+
+/**
+ * Whether biometric may run for this gym right now: owner actions, device punches and device
+ * commands all use it. Off on Free and while the gym is read-only (lapsed or deactivated). Nothing
+ * is deleted when it is off, so everything resumes as soon as the gym is on a paid plan.
+ */
+export function gymMayUseBiometric(gym: (GymSubscriptionFields & { is_active?: boolean | null }) | null | undefined): boolean {
+  return !!gym && planAllowsBiometric(gym.plan_type) && gymIsWritable(gym)
+}
+
 /** Free gyms send WhatsApp only while the paid add-on is running. */
 export function planAllowsWhatsApp(
   plan: string | null | undefined,

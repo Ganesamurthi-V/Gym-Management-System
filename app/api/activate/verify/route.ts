@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
     const gymRow = (member as unknown as { gyms?: { name?: string } | null }).gyms
 
     // Only prefill a real address. The owner app assigns a synthetic
-    // `member-<id8>@gymflow.sbs` placeholder when creating the auth identity;
+    // `member-<id8>@thegymflow.in` placeholder when creating the auth identity;
     // prefilling that meant a member who tapped straight through sent the
     // verification email to a mailbox that does not exist, then waited forever.
     const candidateEmail = member.email ?? authUser.email ?? null

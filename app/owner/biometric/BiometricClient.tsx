@@ -437,7 +437,7 @@ export function BiometricClient({
         <div className="flex items-center gap-1">
           {/* Public guide on the marketing site; opens in a new tab so the owner keeps this page open while following the steps. */}
           <a
-            href="https://www.gymflow.sbs/biometric-attendance-setup"
+            href="https://www.thegymflow.in/biometric-attendance-setup"
             target="_blank"
             rel="noopener noreferrer"
             className="min-h-[44px] px-3 flex items-center gap-1.5 rounded-lg text-sm font-medium text-brand-500 active:bg-slate-100"

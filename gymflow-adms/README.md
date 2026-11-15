@@ -80,7 +80,7 @@ options only if your firmware needs them. Then register the device's serial numb
 Config keys come from the ZKTeco PUSH SDK and vary by firmware. The Push 3.x endpoints are best effort and
 unverified against real hardware.
 
-## Public hostname (bio.gymflow.sbs): the Cloudflare Worker
+## Public hostname (bio.thegymflow.in): the Cloudflare Worker
 
 `worker/` is the production receiver: one Cloudflare Worker (`gymflow-bio`) that speaks the same ADMS protocol as the
 Fastify app and forwards punches straight to the GymFlow app. There is no server to run. The Fastify server in `src/`
@@ -91,10 +91,10 @@ The Worker imports `src/parser.ts`, so the punch parser stays in one place.
 2. `npx wrangler secret put ADMS_INGEST_SECRET` and paste the same secret the app uses. Never commit it.
 3. Vars live in `worker/wrangler.jsonc`: `APP_INGEST_URL`, `POLL_DELAY_SECONDS` (device poll interval, default 60; every
    poll is a Worker request, so do not lower it without checking the quota) and `DEVICE_TZ_MINUTES` (default 330).
-4. In the Cloudflare dashboard, for `bio.gymflow.sbs` only, turn OFF "Always Use HTTPS" and "Automatic HTTPS
+4. In the Cloudflare dashboard, for `bio.thegymflow.in` only, turn OFF "Always Use HTTPS" and "Automatic HTTPS
    Rewrites" (Rules > Configuration Rules). Older devices speak plain HTTP on port 80 and would otherwise be
-   redirected to HTTPS and fail. Also make sure no redirect rule sends `bio.gymflow.sbs` to HTTPS.
-5. Devices: Server address `bio.gymflow.sbs`, port `80` (or `443` with HTTPS enabled on the device), Domain Name on.
+   redirected to HTTPS and fail. Also make sure no redirect rule sends `bio.thegymflow.in` to HTTPS.
+5. Devices: Server address `bio.thegymflow.in`, port `80` (or `443` with HTTPS enabled on the device), Domain Name on.
 
 ### Abuse protection
 
@@ -106,7 +106,7 @@ The endpoint is public and the device serial is the only identity, so abuse and 
 - **Request caps.** A request over 1 MB (declared or streamed) or with more than 2,000 punches gets an empty 400/413;
   punches reach the app in chunks of 100. Lines over 512 characters are skipped by the parser.
 - **WAF rate limit (set once in the Cloudflare dashboard).** Security > WAF > Rate limiting rules (the free plan allows
-  one): hostname equals `bio.gymflow.sbs`, 30 requests per 10 seconds per IP, action Block for 10 seconds. A gym with
+  one): hostname equals `bio.thegymflow.in`, 30 requests per 10 seconds per IP, action Block for 10 seconds. A gym with
   several devices behind one IP polls only a few times per minute, so this is safe for real devices.
 - **Poll delay and quota.** `POLL_DELAY_SECONDS` is 60, about 1,440 polls per day per device plus punches. The free
   plan allows 100,000 Worker requests per day, so plan Workers Paid before roughly 50 devices.
@@ -114,9 +114,9 @@ The endpoint is public and the device serial is the only identity, so abuse and 
 - Logs carry only a short SHA-256 tag of the serial, never PINs, bodies, URLs or secrets.
 
 Checks: `cd worker && npm test`, `npm run typecheck`, `npx wrangler deploy --dry-run`. To exercise a deployed Worker, run
-the simulator against `bio.gymflow.sbs`.
+the simulator against `bio.thegymflow.in`.
 
-## Cloudflare Worker (bio.gymflow.sbs)
+## Cloudflare Worker (bio.thegymflow.in)
 
 The live receiver is `worker/` (Worker `gymflow-bio`); the Node server above is the legacy implementation. Both share
 `src/parser.ts`.

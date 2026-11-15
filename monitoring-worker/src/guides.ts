@@ -29,7 +29,7 @@ const AWS_DEPLOYS = 'GitHub > Actions > aws-deploy: did the latest run finish gr
 const AWS_STATUS = 'Open health.aws.amazon.com and look for an incident in Asia Pacific (Mumbai).'
 const SUPABASE_STATUS = 'Open status.supabase.com: is the database having an incident?'
 const CF_STATUS = 'Open www.cloudflarestatus.com for a Cloudflare incident.'
-const DOMAINS = 'AWS Console > CloudFront > the GymFlow distribution: is its status Deployed and app.gymflow.sbs listed under alternate domain names?'
+const DOMAINS = 'AWS Console > CloudFront > the GymFlow distribution: is its status Deployed and app.thegymflow.in listed under alternate domain names?'
 const ROLLBACK = 'If it started after a deploy: GitHub > Actions > open the last good aws-deploy run > Re-run all jobs.'
 const REDEPLOY = 'If everything looks fine, run the aws-deploy workflow again from GitHub > Actions.'
 const OPEN_IN_BROWSER = 'Open the page in your phone browser to see what a visitor sees.'
@@ -57,7 +57,7 @@ function appVariants(impact: string): Entry['variants'] {
     network: {
       happening: 'The Worker could not connect to the address at all (DNS, certificate or network problem).',
       failing: impact,
-      check: [OPEN_IN_BROWSER, DOMAINS, 'Cloudflare dashboard > your domain > DNS (if gymflow.sbs DNS is managed there): is the record still present?', AWS_STATUS],
+      check: [OPEN_IN_BROWSER, DOMAINS, 'Cloudflare dashboard > your domain > DNS (if thegymflow.in DNS is managed there): is the record still present?', AWS_STATUS],
       fix: ['Restore the missing DNS record or domain mapping.', 'If the domain expired, renew it at your registrar.'],
     },
   }
@@ -96,7 +96,7 @@ const GUARD_VARIANTS: Entry['variants'] = {
 const GUIDES: Record<string, Entry> = {
   'www-site': {
     label: 'Marketing website',
-    happening: 'The public website www.gymflow.sbs is not loading correctly.',
+    happening: 'The public website www.thegymflow.in is not loading correctly.',
     failing: 'New visitors cannot see GymFlow. The app itself may still work.',
     check: [OPEN_IN_BROWSER, 'Cloudflare dashboard > Workers & Pages > gymflow-landing-page > Deployments: latest deploy fine?', CF_STATUS],
     fix: ['Redeploy the landing page (deploy from the landing-page folder) or roll back in Cloudflare.', 'If DNS changed, restore the www record in Cloudflare > DNS.'],
@@ -113,13 +113,13 @@ const GUIDES: Record<string, Entry> = {
     label: 'Website sitemap',
     happening: 'The sitemap file (sitemap.xml) is not available.',
     failing: 'Only search engines are affected (Google may not see new pages). No user impact.',
-    check: ['Open www.gymflow.sbs/sitemap.xml in a browser.', 'Cloudflare dashboard > Workers & Pages > gymflow-landing-page > Deployments.'],
+    check: ['Open www.thegymflow.in/sitemap.xml in a browser.', 'Cloudflare dashboard > Workers & Pages > gymflow-landing-page > Deployments.'],
     fix: ['Redeploy the landing page so the sitemap file is included.', 'Low urgency: fix within a day or two.'],
     variants: appVariants('Only search engines are affected. Low urgency.'),
   },
   'app-login-page': {
     label: 'App login page',
-    happening: 'The login page of app.gymflow.sbs is not loading.',
+    happening: 'The login page of app.thegymflow.in is not loading.',
     failing: 'Gym owners and members cannot sign in. This is the most visible kind of outage.',
     check: [OPEN_IN_BROWSER, AWS_DEPLOYS, AWS_STATUS],
     fix: [ROLLBACK, REDEPLOY],
@@ -135,7 +135,7 @@ const GUIDES: Record<string, Entry> = {
       ...appVariants('The app server is down or unhealthy, so most screens will fail.'),
       keyword: {
         happening: 'The health check answered, but not with "healthy". Open it in a browser to read the message.',
-        check: ['Open app.gymflow.sbs/api/health in your phone browser.', AWS_LOGS],
+        check: ['Open app.thegymflow.in/api/health in your phone browser.', AWS_LOGS],
         fix: [ROLLBACK, REDEPLOY],
       },
     },
@@ -184,15 +184,15 @@ const GUIDES: Record<string, Entry> = {
   'guard-expiring': guardEntry('Expiring memberships login guard', 'the expiring memberships list'),
   'graph-proxy': {
     label: 'WhatsApp proxy',
-    happening: 'graph.gymflow.sbs, the relay used to send WhatsApp messages, is not answering.',
+    happening: 'graph.thegymflow.in, the relay used to send WhatsApp messages, is not answering.',
     failing: 'WhatsApp reminders and OTP messages may fail to send. The app itself works.',
-    check: [DOMAINS + ' (look for graph.gymflow.sbs)', AWS_LOGS, 'Open metastatus.com for a WhatsApp / Meta incident.'],
-    fix: [ROLLBACK, 'Re-add the graph.gymflow.sbs domain in Settings > Domains if it is missing.', 'Queued messages are retried automatically once it is back.'],
+    check: [DOMAINS + ' (look for graph.thegymflow.in)', AWS_LOGS, 'Open metastatus.com for a WhatsApp / Meta incident.'],
+    fix: [ROLLBACK, 'Re-add the graph.thegymflow.in domain in Settings > Domains if it is missing.', 'Queued messages are retried automatically once it is back.'],
     variants: appVariants('WhatsApp messages may fail to send. The app itself works.'),
   },
   'status-page': {
     label: 'Public status page',
-    happening: 'status.gymflow.sbs, the public status page, is not reachable.',
+    happening: 'status.thegymflow.in, the public status page, is not reachable.',
     failing: 'Customers cannot see the status page. The app is not affected.',
     check: ['Better Stack dashboard > Status pages: is the page published?', 'Better Stack: custom domain still verified?'],
     fix: ['Re-publish the page in Better Stack.', 'Fix the status DNS record in Cloudflare > DNS if Better Stack asks for it.'],
@@ -202,7 +202,7 @@ const GUIDES: Record<string, Entry> = {
     label: 'Test login (canary)',
     happening: 'The test owner account could not log in to the app.',
     failing: 'Real owners may be unable to log in too, or the test account itself is wrong.',
-    check: ['Try the same email and password on app.gymflow.sbs in your browser.', 'Is the app login page alert also firing?', AWS_LOGS],
+    check: ['Try the same email and password on app.thegymflow.in in your browser.', 'Is the app login page alert also firing?', AWS_LOGS],
     fix: ['If the browser login works, update the Worker: `npx wrangler secret put CANARY_PASSWORD` (and CANARY_EMAIL).', 'If real logins fail too, follow the login page alert.'],
     variants: {
       ...appVariants('Real owners may be unable to log in.'),

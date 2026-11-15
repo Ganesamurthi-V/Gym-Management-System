@@ -398,7 +398,7 @@ export default function ShellGuard({ children, initialUser, shellData, memberCap
           />
         )}
 
-        <main className="flex-1 w-full bg-slate-50 min-w-0">
+        <main className="flex-1 w-full bg-surface-secondary min-w-0">
           <div className="w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 pb-24 md:pb-8">
             {children}
           </div>

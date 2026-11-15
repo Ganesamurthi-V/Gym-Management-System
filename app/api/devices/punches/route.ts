@@ -6,6 +6,7 @@ import { timingSafeSecretEqual } from '@/lib/monitoring/health'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { apiLogger } from '@/lib/logger'
 import { ingestPunches } from '@/lib/devices/processPunch'
+import { deviceGymMayUseBiometric } from '@/lib/devices/gymGate'
 import { deleteCache } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
@@ -92,6 +93,14 @@ export async function POST(req: NextRequest) {
     return apiError(500, 'DATABASE_ERROR', 'Database error')
   }
   if (!device || !device.is_active) return apiSuccess({ known: false, accepted: 0 })
+
+  // Plan gate: no attendance from a device while the gym is on Free, lapsed or deactivated.
+  try {
+    if (!(await deviceGymMayUseBiometric(db, device.gym_id, device.id))) return apiSuccess({ known: false, accepted: 0 })
+  } catch (err) {
+    log.error('device gym plan lookup failed', err)
+    return apiError(500, 'DATABASE_ERROR', 'Database error')
+  }
 
   const { error: seenError } = await db
     .from('attendance_devices').update({ last_seen_at: new Date().toISOString() }).eq('id', device.id)

@@ -17,7 +17,7 @@ import type { TabScreenProps } from '../../navigation/types';
 type Props = TabScreenProps<'Inbox'>;
 
 /**
- * The support inbox: mail sent to support@gymflow.sbs, newest activity first.
+ * The support inbox: mail sent to support@thegymflow.in, newest activity first.
  *
  * The first page of each list comes from the shared cache, so switching to this tab paints
  * at once and a new message arrives through the single realtime subscription in
@@ -196,7 +196,7 @@ export default function InboxScreen({ navigation }: Props) {
               <Text style={styles.emptyTitle}>{status === 'open' ? 'No emails yet' : 'Nothing archived'}</Text>
               <Text style={styles.emptyText}>
                 {status === 'open'
-                  ? 'Mail sent to support@gymflow.sbs appears here, and you can reply from the app.'
+                  ? 'Mail sent to support@thegymflow.in appears here, and you can reply from the app.'
                   : 'Archived conversations are kept here. A new message from the sender brings one back.'}
               </Text>
             </View>

@@ -16,7 +16,8 @@ export function Hero() {
       <div className="wrap hero__wrap">
         <div className="hero__head">
           <h1 id="hero-title" className="hero__h1">
-            GymFlow: gym management software made effortless
+            <span className="hero__line">GymFlow: gym management</span>{' '}
+            <span className="hero__line">software made effortless</span>
           </h1>
 
           <div className="hero__side">

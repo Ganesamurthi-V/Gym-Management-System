@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Layout } from './components/Layout';
 import { Navbar } from './components/Navbar';
+import { Facts } from './components/Facts';
 import { Hero } from './components/Hero';
 import { CookieBanner } from './components/CookieBanner';
 import { afterFirstPaint } from './lib/afterFirstPaint';
@@ -75,6 +76,7 @@ function App() {
       <Navbar />
       <main id="main-content">
         <Hero />
+        <Facts />
         {ready && (
           <Suspense fallback={null}>
             <BelowFoldSections onDone={onSectionsDone} />

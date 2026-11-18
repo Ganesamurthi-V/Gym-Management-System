@@ -590,11 +590,14 @@
   text-align: center;
 }
 .hero__h1 {
-  font-size: clamp(2.375rem, 5.2vw, 4.25rem);
-  line-height: 1.04;
+  /* Two fixed lines at every width: the size scales with the viewport so the longer line (~25 chars) always fits. */
+  font-size: clamp(1.4rem, 6.1vw, 4.25rem);
+  line-height: 1.08;
   letter-spacing: -0.032em;
-  max-width: 20ch;
-  text-wrap: balance;
+}
+.hero__line {
+  display: block;
+  white-space: nowrap;
 }
 .hero__lead {
   max-width: 52ch;
@@ -637,6 +640,39 @@
   font-size: 15px;
   font-weight: 500;
   color: var(--muted-foreground);
+}
+.facts {
+  padding: 56px 0;
+  /* --muted is white in light and a step lighter in dark, so it reads apart from the grey film section below. */
+  background: var(--muted);
+  border-top: 1px solid var(--border);
+}
+.hero__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin: 0;
+  text-align: center;
+}
+.hero__stat dt {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.hero__stat dd {
+  margin: 6px auto 0;
+  max-width: 22ch;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+@media (max-width: 767px) {
+  .hero__stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px 16px;
+  }
 }
 .hero__product {
   position: relative;

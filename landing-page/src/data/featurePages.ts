@@ -310,7 +310,15 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardText: 'Record cash, UPI and card payments, collect part payments and see who owes what.',
     icon: 'rupee',
     related: ['members', 'whatsapp', 'reports'],
-    tutorial: tutorialSlot('fees-and-dues', 'How fees and dues work in GymFlow'),
+    tutorial: {
+      ...tutorialSlot('fees-and-dues', 'How payments and dues work in GymFlow'),
+      src: '/features/fees-and-dues/tutorial.mp4',
+      width: 1920,
+      height: 1080,
+      description: 'A walkthrough of the GymFlow Payments page: membership payments, inventory sales, due payments and totals by cash, UPI and card.',
+      uploadDate: '2026-11-18',
+      duration: 'PT2M2S',
+    },
     screenshots: [],
     sections: [
       {
@@ -917,7 +925,15 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     cardText: 'Move your members in from Excel or CSV with a preview, and export your data to Excel.',
     icon: 'upload',
     related: ['members', 'whatsapp', 'reports'],
-    tutorial: tutorialSlot('import-export', 'How to import members from Excel into GymFlow'),
+    tutorial: {
+      ...tutorialSlot('import-export', 'How to import members from Excel into GymFlow'),
+      src: '/features/import-export/tutorial.mp4',
+      width: 1920,
+      height: 1080,
+      description: 'A walkthrough of importing members into GymFlow from an Excel or CSV file, with a preview before anything is saved.',
+      uploadDate: '2026-11-18',
+      duration: 'PT54S',
+    },
     screenshots: [],
     sections: [
       {

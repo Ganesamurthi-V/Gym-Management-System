@@ -46,7 +46,10 @@ vi.mock('@supabase/supabase-js', () => ({
 }))
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/dal', () => ({ getAuthUser: vi.fn(), getGym: vi.fn() }))
+vi.mock('@/lib/dal', () => ({
+  getAuthUser: vi.fn(async () => ({ user: { id: 'owner' }, error: null })),
+  getGym: vi.fn(),
+}))
 
 describe('owner member-app invitation', () => {
   it('passes the server-resolved gym id into sendWhatsAppTemplate', async () => {

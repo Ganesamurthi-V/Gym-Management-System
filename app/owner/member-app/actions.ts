@@ -61,13 +61,13 @@ type OwnerGymRow = {
 
 async function getOwnerGymRow(): Promise<OwnerGymRow | null> {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) return null
+  const { user } = await getAuthUser()
+  if (!user) return null
 
   const { data: gym } = await supabase
     .from('gyms')
     .select('id, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
-    .eq('owner_id', session.user.id)
+    .eq('owner_id', user.id)
     .single()
 
   return (gym as OwnerGymRow | null) ?? null

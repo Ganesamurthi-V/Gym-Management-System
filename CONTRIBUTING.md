@@ -1,110 +1,93 @@
 # Contributing to GymFlow
 
-Thanks for wanting to help. This page covers how to get a change in, and the handful of rules
-that matter because GymFlow is multi-tenant software holding gym members' personal data.
+Thanks for wanting to help. GymFlow is multi-tenant software that holds gym members' personal data. This page explains how to get a change in and the few rules that matter most.
 
 ## Before you start
 
-- **Bugs and small fixes:** open a pull request directly.
-- **Larger changes or new features:** open an issue first and describe what you want to do, so
-  nobody builds something that will not be merged.
-- **Security problems:** do not open a public issue. See [SECURITY.md](SECURITY.md).
+- **Bug or small fix:** open a pull request.
+- **Large change or new feature:** open an issue first. Describe what you want to do, so nobody builds something that cannot be merged.
+- **Security problem:** do not open a public issue. See [SECURITY.md](SECURITY.md).
 
-## Setting up
+## 1. Set up locally
 
-Follow the [Quick start](README.md#quick-start) in the README. You only need the root app and a
-Supabase project unless your change is in one of the other projects.
+Follow the [Quick start](README.md#quick-start) in the README. For most changes you only need the root app and a Supabase project.
 
-The repository holds four separate projects. Run commands from the folder of the project you
-are changing; each has its own `node_modules`.
+## 2. Where things live
+
+The repo holds four separate projects. Run commands from the folder of the project you change. Each has its own `node_modules`.
 
 | Folder | Project |
 |---|---|
-| `/` | Owner console and member PWA (Next.js) |
+| `/` (root) | Owner console and member PWA (Next.js) |
 | `gymflow-admin/` | Super-admin panel (Next.js) |
 | `gymflow-mobile/` | Admin mobile app (React Native) |
 | `landing-page/` | Marketing site (Vite + React) |
 
-`_archived/` is dead code kept for reference. Do not import from it or add to it.
+`_archived/` is old code kept for reference. Do not import from it or add to it.
 
-## Checks to run
+## 3. Rules that matter
 
-There is no CI and no pre-commit hook, so these are the gate. Run them before you open a pull
-request.
+Reviewers check these first.
 
-**Root app**
+- **Never trust a `gym_id` from the request.** Owner API routes use `withAuth(routeName, handler)` from `lib/api/withAuth.ts`. It finds the gym from the session on the server.
+- **The browser never talks to Supabase.** There is no browser Supabase client. Do not add `NEXT_PUBLIC_SUPABASE_*` variables or `createBrowserClient`. Client components call our API through `lib/api/client.ts`, or use Server Actions.
+- **`createAdminClient()` skips Row Level Security.** Use it only when the caller is already verified and RLS cannot serve the query. Always scope by a gym id resolved on the server.
+- **New tables need RLS policies** in the same migration.
+- **Never cache access-control state** such as `gyms.is_active` or subscription columns.
+- **Mutations must clear the cache keys they affect.** Keys are in `lib/cache-keys.ts`.
+- **No secrets or personal data in logs.** Use `lib/logger.ts`, not `console.log`.
+- **Dark mode uses colour tokens, not `dark:` classes.** Use `bg-surface`, `border-surface-border` and similar, not `bg-white`. Check UI changes in light and dark.
+- **Icons come from `lucide-react`. No emojis in the UI.**
+- **TypeScript is strict.** Check external input with zod.
+- **Server Components by default.** Use `'use client'` only where you need interactivity.
+- **Comments explain why, not what.** Match the style of the code around you.
+
+WhatsApp changes: template names and parameters must match the Meta-approved templates exactly. A mistake sends wrong messages to real people. Run `__tests__/whatsapp/` and say what you tested.
+
+## 4. Test your change
+
+Run these before you open a pull request. There is no automatic test run, so these are the gate.
+
+Root app:
 
 ```bash
-npm run build          # production build; this is the real typecheck
-npm test               # vitest
+npm test               # unit tests (vitest)
+npx tsc --noEmit       # type check
 npm run lint
-npm run verify:tour      # only if you touched UI the onboarding tours point at
-npm run verify:whatsapp  # only if you touched WhatsApp code
+npm run build          # production build
 ```
 
-**gymflow-admin**: `npx tsc --noEmit` and `npm run build`
+Only when relevant:
 
-**gymflow-mobile**: `npx tsc --noEmit` and `npm run lint`
+```bash
+npm run verify:tour      # you changed UI that the onboarding tours point at
+npm run verify:whatsapp  # you changed WhatsApp code
+```
 
-**landing-page**: `npx tsc -b`, `npm run lint` and `npm run build`
+Do not run `npm run build` while `npm run dev` is running. They share the `.next` folder.
 
-## Rules that keep tenants isolated
+Other projects:
 
-These are the ones a reviewer will check first.
+- `gymflow-admin`: `npx tsc --noEmit` and `npm run build`
+- `gymflow-mobile`: `npx tsc --noEmit` and `npm run lint`
+- `landing-page`: `npx tsc -b`, `npm run lint` and `npm run build`
 
-1. **Never trust a `gym_id` from the request.** Owner API routes are wrapped in
-   `withAuth(routeName, handler)` from `lib/api/withAuth.ts`, which resolves the gym from the
-   session on the server.
-2. **The browser never talks to Supabase.** There is no browser Supabase client. Do not add
-   `NEXT_PUBLIC_SUPABASE_*` variables or `createBrowserClient`. Client components call our own
-   API through `lib/api/client.ts`, or use Server Actions.
-3. **`createAdminClient()` bypasses Row Level Security.** Use it only where the caller has
-   already been verified and RLS cannot serve the query, and always scope by a server-resolved
-   `gym_id`.
-4. **New tables need RLS policies in the same migration.**
-5. **Never cache access-control state** (`gyms.is_active`, subscription columns). Caching these
-   caused paywall-bypass bugs in the past.
-6. **Mutations must invalidate the cache keys they affect** (`lib/cache-keys.ts`).
-7. **No secrets or personal data in logs.** Use `lib/logger.ts`, which redacts, not `console.log`.
+## 5. Database changes
 
-`CLAUDE.md` has the full, current description of the architecture and conventions.
+1. Add a new file in `supabase/migrations/` with a timestamp prefix, for example `20260928150000_short_name.sql`.
+2. Make it safe to run twice: `create table if not exists`, `add column if not exists`, `drop policy if exists` before `create policy`, `create or replace` for functions.
+3. **Also update `supabase-schema.sql`.** It is the canonical final state of the database. Edit the matching object in place, in the right section. Do not append at the end. A fresh install runs only this file, so a missing change means new installs lack it.
+4. Say in your pull request that a migration must be run. Migrations are applied by hand.
+5. Do not edit a migration that is already merged. Add a new one.
 
-## Database changes
+## 6. Commits and pull requests
 
-- Add a new file under `supabase/migrations/`, prefixed with a timestamp:
-  `20260928150000_short_name.sql`.
-- Write it so it is safe to run twice (`create table if not exists`, `add column if not exists`,
-  `drop policy if exists` before `create policy`). Migrations are applied by hand.
-- **Also append the same SQL to Part 2 of `supabase-schema.sql`**, under a
-  `-- MIGRATION: <file name>` heading, after the last one. A fresh install runs only that file, so
-  a migration missing from it means new installs silently lack your change.
-- Say in the pull request that a migration needs to be run.
-- Do not edit a migration that has already been merged; add a new one.
-
-## Code style
-
-- TypeScript strict. Validate external input with zod.
-- Server Components by default; `'use client'` only where there is interactivity.
-- Styling uses Tailwind with colour tokens wired to CSS variables, so dark mode works without
-  `dark:` variants. Use the tokens (`bg-surface`, `border-surface-border`, …), not `bg-white`.
-  Check a UI change in both light and dark.
-- Comments explain *why*, not *what*. Keep the existing ones when you edit around them.
-- Match the code around you: naming, structure, comment density.
-
-## WhatsApp changes
-
-Template names and parameters must match the templates approved in Meta exactly, and a mistake
-sends wrong messages to real people. Run the tests in `__tests__/whatsapp/` after any change
-and say in the pull request what you tested.
-
-## Pull requests
-
-- One change per pull request. Small ones get reviewed faster.
+- Make one change per pull request. Small ones get reviewed faster.
 - Say what the change does, why, and how you tested it. Add screenshots for UI changes.
-- Never include real member data, phone numbers, or keys in code, tests, screenshots or logs.
+- Never include real member data, phone numbers or keys in code, tests, screenshots or logs.
+- A pre-commit hook (`.husky/pre-commit`, which runs `scripts/check-secrets.js`) blocks commits that contain credential files, Google API keys or private keys. Never bypass it with `--no-verify`.
 - Do not commit `.env.local`, `google-services.json`, service-account keys or keystores.
 
 ## License of contributions
 
-By contributing you agree that your contribution is licensed under the
-[GNU AGPL v3.0](LICENSE), the same license as the project.
+By contributing, you agree that your work is licensed under the [GNU AGPL v3.0](LICENSE), the same license as the project.

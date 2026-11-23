@@ -1,8 +1,22 @@
 # GymFlow monitoring worker
 
-An independent watcher that runs on a **free Cloudflare cron trigger every 10 minutes**. It checks the public site and APIs, calls the app's watchdog endpoints and sends **Telegram** messages directly when something is wrong, even if the whole app on AWS is down. It also pings a Better Stack heartbeat after every complete run, so you get an email if the Worker itself stops.
+## What this is
 
-Self-contained: nothing in the main app imports it. Edit URLs and thresholds in `src/config.ts`.
+An independent watcher on a **free Cloudflare cron trigger that runs every 10 minutes** (Worker name `gymflow-monitoring`). It does four things:
+
+- Checks the public site and APIs.
+- Calls the app's watchdog endpoints.
+- Sends **Telegram** messages directly when something is wrong, even if the whole app on AWS is down.
+- Pings a Better Stack heartbeat after every complete run, so you get an email if the Worker itself stops.
+
+Self-contained: nothing in the main app imports it. Edit URLs and thresholds in `src/config.ts`. The URLs in that file are GymFlow's own; change them if you host elsewhere.
+
+## What you need
+
+- A Cloudflare account (free plan is enough) and Node.js.
+- A Telegram bot token and chat id (steps below).
+- The app's `HEALTH_CHECK_SECRET` value.
+- Optional: a Better Stack heartbeat URL.
 
 ## What it checks
 
@@ -30,7 +44,7 @@ Each probe has an 8 s timeout and at most 2 attempts (one retry after 2 s, only 
 ## Free-tier math
 
 - 144 runs per day (limit: 100,000 requests per day).
-- Normal run: 12 outbound requests (11 probes + heartbeat). Worst case (every probe failing and retried = 22, canary 3, one batched Telegram summary 1, heartbeat 1) is 27.
+- Normal run: 12 outbound requests (11 probes + heartbeat), plus 3 when the canary is on. Worst case (every probe failing and retried = 22, canary 3, one batched Telegram summary 1, heartbeat 1) is 27.
 - Hard budget `MAX_SUBREQUESTS = 45` (the free plan allows 50): the heartbeat and one Telegram summary are reserved up front, critical probes run first, retries stop once 30 are used, and more than 2 alerts in a run go out as ONE summary message. Any probe that does not fit is skipped, keeps its previous state (neither failed nor recovered) and the summary says "N probes skipped (subrequest budget)".
 - KV: 1 read per run = 144 reads per day (free: 100,000). Writes only when something changes, plus an hourly "last run" stamp: about 24 per day plus alert changes (free: 1,000). With the canary on add at most 144 per day (login time stored every 10 minutes).
 - CPU: almost all time is waiting on the network, which is not counted as CPU. `limits.cpu_ms` is deliberately not set: the free plan has a fixed 10 ms and does not accept custom limits.
@@ -43,7 +57,7 @@ Run every command in PowerShell inside the `monitoring-worker` folder. You need 
 2. **Chat id**: open your new bot and press Start, then send it any message. In a browser open `https://api.telegram.org/bot<TOKEN>/getUpdates` (replace `<TOKEN>`). Find `"chat":{"id":123456789` and copy the number. To alert a **group** instead: add the bot to the group, send a message in the group, run getUpdates again and use the group's id (it is negative, such as `-1001234567890`).
 3. `npm install`
 4. `npx wrangler login` (opens a browser; log in to Cloudflare).
-5. `npx wrangler kv namespace create STATE`, then paste the printed `id` into `wrangler.jsonc` in place of `REPLACE_WITH_KV_NAMESPACE_ID`.
+5. `npx wrangler kv namespace create STATE`, then paste the printed `id` into the `kv_namespaces` entry in `wrangler.jsonc`. The file already holds an id for the GymFlow account; replace it with yours.
 6. Set the secrets (each command asks you to paste the value):
    ```
    npx wrangler secret put TELEGRAM_BOT_TOKEN
@@ -53,7 +67,7 @@ Run every command in PowerShell inside the `monitoring-worker` folder. You need 
    ```
    `HEALTH_CHECK_SECRET` must equal the `HEALTH_CHECK_SECRET` SST secret of the production stage (`npx sst secret list --stage production` in `infra`). `BETTERSTACK_HEARTBEAT_URL` is optional: in Better Stack create a heartbeat with period 10 minutes and grace 10 minutes and paste its URL. Never commit these values.
 7. `npx wrangler deploy`
-8. Test it: edit one probe URL in `src/config.ts` to a bad one (for example `https://www.thegymflow.in/does-not-exist` for a `status: 200` probe), run `npx wrangler deploy`, wait one or two runs (5 to 10 minutes) and a Telegram message should arrive. Put the URL back and deploy again to get the `[RECOVERED]` message.
+8. Verify it works (test alert): edit one probe URL in `src/config.ts` to a bad one (for example `https://www.thegymflow.in/does-not-exist` for a `status: 200` probe), run `npx wrangler deploy`, wait one or two runs (5 to 10 minutes) and a Telegram message should arrive. Put the URL back and deploy again to get the `[RECOVERED]` message.
 9. Logs: `npx wrangler tail`. You can also open `https://gymflow-monitoring.<your-subdomain>.workers.dev/health` (needs the workers.dev route enabled): it returns `ok` and the last run time (refreshed hourly) and nothing else; every other URL is 404.
 10. **Disable**: remove the `triggers` block (or the whole Worker with `npx wrangler delete`) and deploy. Alerts stop and Better Stack will email that the heartbeat is missing, which is expected.
 
@@ -61,7 +75,7 @@ Run the tests any time with `npm test` and the type check with `npm run typechec
 
 ## Optional authenticated canary
 
-Off by default (`CANARY_ENABLED = false` in `src/config.ts`). When on, at most every 10 minutes it logs in as a dedicated owner account through `POST /api/auth/login` (with the `X-Requested-With` CSRF header, keeping the `sb-*` cookies itself), reads `GET /api/dashboard/expiring`, then calls `POST /api/auth/signout` with `{"scope":"local"}`. Alert names are `canary:login`, `canary:read` (critical) and `canary:logout` (warning), with the same de-duplication. One login every 10 minutes is far below the app's limits (10 per minute per IP, 5 per 5 minutes per email). Cookies, passwords and tokens are never logged; failure reasons are only status codes.
+Controlled by `CANARY_ENABLED` in `src/config.ts`, which is currently `true`. Without `CANARY_EMAIL` and `CANARY_PASSWORD` it reports a non-critical `canary:login` failure, so set them or change the flag to `false`. When on, at most every 10 minutes it logs in as a dedicated owner account through `POST /api/auth/login` (with the `X-Requested-With` CSRF header, keeping the `sb-*` cookies itself), reads `GET /api/dashboard/expiring`, then calls `POST /api/auth/signout` with `{"scope":"local"}`. Alert names are `canary:login`, `canary:read` (critical) and `canary:logout` (warning; `canary:login` is also a warning when the two secrets are missing), with the same de-duplication. One login every 10 minutes is far below the app's limits (10 per minute per IP, 5 per 5 minutes per email). Cookies, passwords and tokens are never logged; failure reasons are only status codes.
 
 Secrets: `npx wrangler secret put CANARY_EMAIL` and `CANARY_PASSWORD`.
 

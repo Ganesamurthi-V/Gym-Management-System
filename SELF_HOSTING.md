@@ -1,89 +1,93 @@
 # Self-hosting GymFlow
 
-This guide takes you from a clone to a running deployment of your own. Local development only
-needs steps 1 to 3.
+This guide takes you from a fresh clone to a deployment of your own. Local development only
+needs steps 1 to 4.
 
-GymFlow was written for one deployment (`thegymflow.in`), not as a configurable product, so some
-values are in the code instead of in environment variables. [Section 9](#9-things-that-are-specific-to-gymflowsbs)
-lists them. Read it before going live.
+GymFlow was written for one deployment (`thegymflow.in`). It is not a configurable product. So some
+values live in the code instead of in environment variables. [Step 10](#10-things-that-are-specific-to-thegymflowin)
+lists them. Read it before you go live.
 
-> This guide was written from the code. A full install on an empty Supabase project has not
-> been re-tested end to end, so expect to fix a small thing or two in step 2, and please send
-> a pull request for whatever you had to change.
+> This guide was written from the code. A full install on an empty Supabase project has not been
+> tested end to end again, so expect to fix a small thing or two in step 2. Please send a pull
+> request for whatever you had to change.
 
 ## Contents
 
 1. [What you need](#1-what-you-need)
-2. [Database](#2-database)
-3. [Root app: owner console and member app](#3-root-app-owner-console-and-member-app)
-4. [Production hosting](#4-production-hosting)
-5. [Email (Resend)](#5-email-resend)
-6. [WhatsApp](#6-whatsapp)
-7. [Admin panel](#7-admin-panel)
-8. [Admin mobile app and marketing site](#8-admin-mobile-app-and-marketing-site)
-9. [Things that are specific to thegymflow.in](#9-things-that-are-specific-to-gymflowsbs)
+2. [Set up the database](#2-set-up-the-database)
+3. [Run the app locally](#3-run-the-app-locally)
+4. [Check that it works](#4-check-that-it-works)
+5. [Deploy to production](#5-deploy-to-production)
+6. [Optional: email with Resend](#6-optional-email-with-resend)
+7. [Optional: WhatsApp](#7-optional-whatsapp)
+8. [Schedule the daily jobs](#8-schedule-the-daily-jobs)
+9. [Optional: admin panel, mobile app and marketing site](#9-optional-admin-panel-mobile-app-and-marketing-site)
+10. [Things that are specific to thegymflow.in](#10-things-that-are-specific-to-thegymflowin)
+11. [Troubleshooting](#11-troubleshooting)
 
 ---
 
 ## 1. What you need
 
-| | Required | Notes |
+| | Required? | Notes |
 |---|---|---|
-| Node.js 20+ and npm | yes | each project installs its own `node_modules` |
-| A Supabase project | yes | free tier works; pick a region near your users |
-| A host for Next.js | for production | the hosted version uses Vercel; cron schedules are in `vercel.json` |
-| Upstash Redis | recommended | cache and rate limiting; the app runs without it |
-| Resend, Meta WhatsApp, QStash, Google Maps, Sentry, Firebase, Groq | optional | one feature each; see the table in the root [README](README.md#which-services-do-i-need) |
+| Node.js 20+ and npm | Yes | Each project installs its own `node_modules` |
+| A Supabase project | Yes | The free tier works. Pick a region near your users |
+| A host for Next.js 15 | For production only | Vercel works out of the box. The hosted version uses AWS (see [step 5](#5-deploy-to-production)) |
+| Upstash Redis | Recommended | Cache and rate limiting. The app runs without it |
+| Resend, Meta WhatsApp, QStash, Google Maps, Sentry, Firebase, Groq | Optional | Each one switches on one feature. See the table in the [README](README.md#which-services-do-i-need) |
 
-## 2. Database
+---
 
-The whole schema is **one file**, `supabase-schema.sql`. You run it once, unchanged, and then set
-a few values of your own with a short SQL snippet. Follow the steps in order.
+## 2. Set up the database
 
-> **Do not edit `supabase-schema.sql`.** Nothing inside it needs to be changed for a new
-> install. Your own values go in with the snippet in step 4, so the file stays identical to the
-> project's and can be run again later without undoing your settings.
+The whole schema is **one file**, `supabase-schema.sql`. You run it once, unchanged. Then you set a few
+values of your own with a short SQL snippet.
 
-### Step 1. Create the Supabase project
+> **Do not edit `supabase-schema.sql`.** Nothing in it needs to change for a new install. Your own
+> values go in with the snippet in step 2.4. That way the file stays identical to the project's and
+> can be run again later without undoing your settings.
 
-1. Sign in at [supabase.com](https://supabase.com) → **New project**.
-2. Pick a region close to your users and set a database password (save it somewhere safe).
-3. Wait for the project to finish provisioning (about two minutes).
+### 2.1 Create the Supabase project
 
-### Step 2. Check the extensions (usually nothing to do)
+1. Sign in at [supabase.com](https://supabase.com) and choose **New project**.
+2. Pick a region close to your users. Set a database password and save it somewhere safe.
+3. Wait for the project to finish setting up (about two minutes).
 
-The file enables the extensions it needs: `uuid-ossp`, `pg_trgm` and `pg_net`. On Supabase this
-normally just works. If the run in step 3 stops with an error that mentions an extension, enable
-it by hand and run again: **Database → Extensions**, search for `pg_net` (or the one named in the
-error) and switch it on.
+### 2.2 Check the extensions (usually nothing to do)
 
-### Step 3. Run the schema
+The file turns on the extensions it needs: `uuid-ossp`, `pg_trgm` and `pg_net`. On Supabase this
+normally just works. If the run in step 2.3 stops with an error that mentions an extension, turn it
+on by hand and run again. Go to **Database → Extensions**, search for `pg_net` (or the one named in
+the error) and switch it on.
+
+### 2.3 Run the schema
 
 1. Open **SQL Editor → New query**.
-2. Open `supabase-schema.sql` from this repository, select everything, and paste it into the
-   editor. It is about 3,700 lines, so give it a moment.
+2. Open `supabase-schema.sql` from this repository, select everything, and paste it into the editor.
+   It is about 7,300 lines, so give it a moment.
 3. Click **Run**. It takes a few seconds and should end with **Success. No rows returned.**
 
-If it stops with an error, the message names the failing statement. Fix the cause (usually a
-missing extension, step 2) and click Run again. The file is idempotent, so running it again is
-safe and picks up where the failure left things.
+If it stops with an error, the message names the failing statement. Fix the cause (usually a missing
+extension, step 2.2) and click Run again. The file is idempotent (safe to run more than once), so
+running it again picks up where the failure left things.
 
-Check that it worked, in a new query:
+Check that it worked. Run this in a new query:
 
 ```sql
 select count(*) as tables from information_schema.tables
-where table_schema = 'public' and table_type = 'BASE TABLE';      -- expect 29
+where table_schema = 'public' and table_type = 'BASE TABLE';      -- expect about 50 (51 when this was written)
 
 select id, public from storage.buckets;                           -- expect: Payments_proof, false
 
 select key from app_config order by key;                          -- expect: push_cron_secret, push_dispatch_url
 
-select price_monthly, price_yearly from platform_settings;   -- 999, 9999
+select price_monthly, price_yearly from platform_settings;        -- 999, 9999
 ```
 
-### Step 4. Set your own values (this is the part you change)
+### 2.4 Set your own values
 
-Run this in a new SQL Editor query, **after** replacing every `<…>` placeholder. Each block says
+Run this in a new SQL Editor query, **after** replacing every `<...>` placeholder. Each block says
 when you can skip it.
 
 ```sql
@@ -111,29 +115,28 @@ where key = 'push_dispatch_url';
 
 What each value does:
 
-| Value | Where it comes from | What happens if you leave it |
+| Value | Where it comes from | If you leave it |
 |---|---|---|
-| `platform_settings.upi_id`, `upi_name` | your own UPI ID and business name | Owners cannot pay: the subscription page shows no QR |
-| `platform_settings.price_*` | your own prices | Defaults of ₹999 / ₹9,999 apply |
-| `app_config.push_cron_secret` | a random secret you generate | Push dispatch stays off (it ignores the placeholder) |
-| `app_config.push_dispatch_url` | your admin app's URL | Pushes are sent to `admin.thegymflow.in`, which is not yours |
+| `platform_settings.upi_id`, `upi_name` | Your own UPI ID and business name | Owners cannot pay: the subscription page shows no QR |
+| `platform_settings.price_*` | Your own prices | The defaults apply (₹999 per month, ₹9,999 per year) |
+| `app_config.push_cron_secret` | A random secret you generate | Push dispatch stays off (it ignores the placeholder) |
+| `app_config.push_dispatch_url` | Your admin app's URL | Pushes are sent to `admin.thegymflow.in`, which is not yours |
 
-Re-running `supabase-schema.sql` later will **not** overwrite these values.
+Running `supabase-schema.sql` again later will **not** overwrite these values.
 
-### Step 5. Supabase Auth settings
+### 2.5 Set the Supabase Auth settings
 
-In the dashboard, under **Authentication → URL Configuration**:
+In the dashboard, go to **Authentication → URL Configuration**:
 
-- **Site URL**: your app's address (`http://localhost:3004` for local development, your real
-  domain in production).
+- **Site URL**: your app's address (`http://localhost:3004` for local development, your real domain in production).
 - **Redirect URLs**: add the same address, and `<address>/**`.
 
-To test locally without a mail provider, turn off **Authentication → Providers → Email →
-Confirm email**, or confirm users by hand under **Authentication → Users**.
+To test locally without a mail provider, turn off **Authentication → Providers → Email → Confirm
+email**. Or confirm users by hand under **Authentication → Users**.
 
-### Step 6. Copy the API keys into the app
+### 2.6 Copy the API keys
 
-In **Project Settings → API** copy three values into the root `.env.local`:
+Go to **Project Settings → API**. You will paste these into `.env.local` in step 3.
 
 | Supabase shows | Goes into |
 |---|---|
@@ -141,75 +144,91 @@ In **Project Settings → API** copy three values into the root `.env.local`:
 | `anon` `public` key | `SUPABASE_ANON_KEY` |
 | `service_role` `secret` key | `SUPABASE_SERVICE_ROLE_KEY` (server only; never share it) |
 
-For `gymflow-admin`, the same project: Project URL → `NEXT_PUBLIC_SUPABASE_URL`, the anon key →
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`, the service-role key → `SUPABASE_SERVICE_ROLE_KEY`.
-
-### Step 7. First run
-
-```bash
-npm run dev          # http://localhost:3004
-```
-
-Create an account at `/auth/create-account`. The new gym appears in the database:
-
-```sql
-select name, subscription_status, trial_ends_at from gyms;       -- status 'trial'
-```
+`gymflow-admin` uses the same project, but with different variable names: Project URL →
+`NEXT_PUBLIC_SUPABASE_URL`, anon key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`, service-role key →
+`SUPABASE_SERVICE_ROLE_KEY`.
 
 ### Updating an existing database later
 
-A database you already created does not need the whole file again. When the project adds a new
-file under `supabase/migrations/`, run just that file in the SQL Editor. Running the whole of
+A database you already created does not need the whole file again. When the project adds a new file
+under `supabase/migrations/`, run just that file in the SQL Editor. Running all of
 `supabase-schema.sql` also works, because it is idempotent, but the single migration is smaller.
 
-### Troubleshooting
+---
 
-| Symptom | Likely cause |
-|---|---|
-| `permission denied for schema …` or an extension error | Enable the extension under Database → Extensions (step 2), run again |
-| `relation "…" does not exist` partway through | The run was cut off or edited. Run the unmodified file again from the top |
-| Query runs forever or the editor freezes | Very large paste. Run it in two halves: split at the `-- 5 — FUNCTIONS` section header, and run the first half first, then the second |
-| App says the database is unreachable | `SUPABASE_URL` or a key in `.env.local` is wrong, or the dev server was not restarted after editing it |
-| Signup email never arrives | Resend is not set up. Confirm the user by hand (step 5) |
-
-## 3. Root app: owner console and member app
+## 3. Run the app locally
 
 ```bash
 npm install
-cp .env.example .env.local      # fill in the REQUIRED block
+cp .env.example .env.local      # then fill in the REQUIRED block
 npm run dev                     # http://localhost:3004
 ```
 
-`.env.example` explains every variable. To boot you need `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_URL`.
+`.env.example` explains every variable. To start the app you need these five:
 
-In Supabase, under Authentication → URL Configuration, set the Site URL to your app's origin
-(`http://localhost:3004` in development) and add it to the redirect URLs.
+| Variable | Value |
+|----------|-------|
+| `SUPABASE_URL` | From step 2.6 |
+| `SUPABASE_ANON_KEY` | From step 2.6 |
+| `SUPABASE_SERVICE_ROLE_KEY` | From step 2.6 |
+| `NEXT_PUBLIC_APP_URL` | The app's own address, `http://localhost:3004` locally |
+| `NEXT_PUBLIC_API_URL` | Keep it equal to `NEXT_PUBLIC_APP_URL` |
 
-Create an account at `/auth/create-account`. Without Resend configured the set-password email
-is not sent; confirm the user under Authentication → Users instead.
+Restart the dev server after you edit `.env.local`.
 
-## 4. Production hosting
+---
 
-The hosted version runs the root app on Vercel:
+## 4. Check that it works
 
-- Connect the repository; the project root is the repository root.
-- Add every variable from `.env.local` to the project's environment variables.
-- `vercel.json` registers two daily crons (`/api/cron/whatsapp`, `/api/cron/subscription`).
-  Vercel sends `CRON_SECRET` with them automatically when that variable is set.
-- `vercel.json` also sets an `ignoreCommand` (`scripts/vercel-ignore-root.sh`) that skips the
-  root build when a commit only touches the sibling projects or `docs/`.
+1. Open http://localhost:3004/auth/create-account and create an account. Without Resend, the
+   set-password email is not sent. Confirm the user under **Authentication → Users** instead.
+2. Sign in and go through the onboarding wizard.
+3. Check that the new gym exists in the database:
 
-Any host that runs Next.js 15 works. If it has no cron feature, call the two cron routes daily
-yourself, sending the header `x-cron-secret: <CRON_SECRET>`.
+   ```sql
+   select name, subscription_status, trial_ends_at from gyms;       -- status 'trial'
+   ```
 
-Use different secrets for development and production, and never reuse `ADMIN_PASSWORD` as
+4. Before you deploy, run the checks:
+
+   ```bash
+   npm run build
+   npm test
+   ```
+
+---
+
+## 5. Deploy to production
+
+GymFlow runs on any host that can run Next.js 15.
+
+**Vercel (works out of the box)**
+
+1. Connect the repository. The project root is the repository root.
+2. Add every variable from `.env.local` to the project's environment variables.
+3. `vercel.json` sets an `ignoreCommand` (`scripts/vercel-ignore-root.sh`). It skips the root build
+   when a commit only touches the sibling projects or `docs/`.
+4. `vercel.json` does **not** define crons. Do [step 8](#8-schedule-the-daily-jobs).
+
+**Other hosts**
+
+Any Node host for Next.js 15 works. You must run the daily jobs yourself ([step 8](#8-schedule-the-daily-jobs)).
+
+**The hosted version (AWS)**
+
+The hosted version runs on AWS: SST v4 + OpenNext, CloudFront to Lambda, in `ap-south-1`. The config is
+`infra/sst.config.ts` and the guide is [infra/README.md](infra/README.md). You do not need it to
+self-host.
+
+Use different secrets for development and production. Never reuse `ADMIN_PASSWORD` as
 `ADMIN_PANEL_SECRET`.
 
-## 5. Email (Resend)
+---
 
-Transactional email is sent through three **published Resend templates**, referenced by alias
-in `lib/email/resend.ts`:
+## 6. Optional: email with Resend
+
+Transactional email is sent through three **published Resend templates**. They are referenced by
+alias in `lib/email/resend.ts`:
 
 | Alias | Source in this repo | Variables |
 |---|---|---|
@@ -217,64 +236,85 @@ in `lib/email/resend.ts`:
 | `gymflow-confirm-email` | `emails/confirm-email.html` | `action_url`, `year`, `logo_url` |
 | `gymflow-delete-account-otp` | `emails/delete-account-otp.html` | `otp_code`, `expiry_label`, `year`, `logo_url` |
 
-To set it up:
-
-1. Verify a sending domain in Resend and set `RESEND_API_KEY` and `RESEND_FROM`.
-2. Create the three templates in Resend from the HTML files, keeping the aliases above (or
-   change `EMAIL_TEMPLATES` in `lib/email/resend.ts` to yours), and publish them.
+1. Verify a sending domain in Resend. Set `RESEND_API_KEY` and `RESEND_FROM`.
+2. Create the three templates in Resend from the HTML files and publish them. Keep the aliases above,
+   or change `EMAIL_TEMPLATES` in `lib/email/resend.ts` to yours.
 3. Each template declares a default for `logo_url`. Point it at your own logo, hosted as a PNG
-   (Gmail and Outlook do not render SVG in email).
+   (Gmail and Outlook do not show SVG in email).
 
-## 6. WhatsApp
+---
 
-WhatsApp is the largest optional piece. You need a Meta Business account, a WhatsApp Business
-phone number, and message templates approved by Meta whose **names and parameters match the
-code exactly**. Start with the guide in
-[lib/whatsapp/README.md](lib/whatsapp/README.md); the template definitions are in `config/whatsapp.ts`
-and `lib/whatsapp/`.
+## 7. Optional: WhatsApp
 
-- Set `WHATSAPP_BASE_URL=https://graph.facebook.com` to call Meta directly. The hosted version
-  routes through its own reverse proxy on a dedicated hostname; you do not need that.
-- Register the webhook URL `https://<your-app>/api/webhook` with Meta, using the value of
-  `WHATSAPP_VERIFY_TOKEN`.
-- Scheduled sends go through a queue drained by QStash. Without QStash, call
-  `/api/whatsapp/queue/drain` yourself with the `x-cron-secret` header.
-- After any change in this area run `npm test` and `npm run verify:whatsapp`.
+WhatsApp is the largest optional piece. You need:
 
-## 7. Admin panel
+- a Meta Business account,
+- a WhatsApp Business phone number,
+- message templates approved by Meta, whose **names and parameters match the code exactly**.
 
-`gymflow-admin/` is a separate Next.js app for the platform operator: approving subscription
-payments, the support inbox, logs. See [gymflow-admin/README.md](gymflow-admin/README.md).
+Start with [lib/whatsapp/README.md](lib/whatsapp/README.md). The template definitions are in
+`config/whatsapp.ts` and `lib/whatsapp/`.
+
+1. Set `WHATSAPP_BASE_URL=https://graph.facebook.com` to call Meta directly. The hosted version goes
+   through its own reverse proxy on a dedicated hostname. You do not need that.
+2. Register the webhook URL `https://<your-app>/api/webhook` with Meta. Use the value of `WHATSAPP_VERIFY_TOKEN`.
+3. Scheduled sends go through a queue that QStash drains. Without QStash, call
+   `/api/whatsapp/queue/drain` yourself with the `x-cron-secret` header.
+4. After any change in this area, run `npm test` and `npm run verify:whatsapp`.
+
+---
+
+## 8. Schedule the daily jobs
+
+Three routes need to run once a day. Each one is protected by `CRON_SECRET`: send it in the
+`x-cron-secret` header.
+
+| Time (UTC) | Route | What it does |
+|------------|-------|--------------|
+| 03:30 (09:00 IST) | `/api/cron/whatsapp` | Scheduled WhatsApp reminders |
+| 00:00 | `/api/cron/subscription` | Expires lapsed trials and subscriptions |
+| 13:30 (19:00 IST) | `/api/cron/push-evening` | Evening member push nudge. Off unless `PUSH_EVENING_ENABLED=true` |
+
+Pick one way to run them:
+
+- **QStash.** From `infra/`, run `./set-qstash-schedules.sh`. It reads `QSTASH_TOKEN`, `QSTASH_URL` and
+  `CRON_SECRET` from `../.env.local` (or your shell). Set `APP_URL=https://<your-app>` to point it at
+  your own deployment, because the default is `https://app.thegymflow.in`.
+- **Your host's scheduler**, or any cron service. Send a `POST` to each route with the `x-cron-secret` header.
+
+---
+
+## 9. Optional: admin panel, mobile app and marketing site
+
+**Admin panel.** `gymflow-admin/` is a separate Next.js app for the platform operator: approving
+subscription payments, the support inbox and logs. See [gymflow-admin/README.md](gymflow-admin/README.md).
 
 It uses the Supabase **service-role key** for every query, so it bypasses Row Level Security by
-design. Protect it accordingly: a long random `ADMIN_PANEL_SECRET`, HTTPS only, and ideally an
-extra layer in front of it (IP allowlist, VPN, or your host's access control).
+design. Protect it. Use a long random `ADMIN_PANEL_SECRET`, HTTPS only, and ideally another layer in
+front (an IP allowlist, a VPN, or your host's access control).
 
-For push notifications to the admin mobile app, after the schema has run:
+For push notifications to the admin mobile app, run block B from [step 2.4](#24-set-your-own-values)
+after the schema has run. The full push setup is in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#set-up-the-admin-mobile-app-and-push).
 
-```sql
-update app_config set value = '<your CRON_SECRET for the admin app>' where key = 'push_cron_secret';
-update app_config set value = 'https://<your-admin-host>/api/push/dispatch' where key = 'push_dispatch_url';
-```
-
-## 8. Admin mobile app and marketing site
-
-Both are optional and documented in their own READMEs:
+**Admin mobile app and marketing site.** Both are optional and have their own READMEs:
 
 - [gymflow-mobile/README.md](gymflow-mobile/README.md): React Native app for the operator.
 - [landing-page/README.md](landing-page/README.md): the public marketing site.
 
-## 9. Things that are specific to thegymflow.in
+---
 
-These are in the code, not in environment variables. Search for `thegymflow.in` to find them all
-(`git grep -n "gymflow\.sbs"`).
+## 10. Things that are specific to thegymflow.in
+
+These values are in the code, not in environment variables. Search for `thegymflow.in` to find them
+all (`git grep -n "thegymflow\.in"`).
 
 **Change before you take real payments**
 
 | What | Where | Why it matters |
 |---|---|---|
-| Your UPI ID and business name | `platform_settings` table (step 4 of section 2) | There is no hard-coded fallback: until `upi_id` is set, owners cannot pay. |
-| Subscription prices | `platform_settings` table; also quoted in `landing-page/` and `gymflow-admin/lib/support-knowledge.ts` | Keep the three in step. |
+| Your UPI ID and business name | `platform_settings` table ([step 2.4](#24-set-your-own-values)) | There is no hard-coded fallback. Until `upi_id` is set, owners cannot pay |
+| Subscription prices | `platform_settings` table. Also quoted in `landing-page/` and `gymflow-admin/lib/support-knowledge.ts` | Keep the three in step |
 
 **Change for your own domain**
 
@@ -284,19 +324,32 @@ These are in the code, not in environment variables. Search for `thegymflow.in` 
 | Site metadata, `robots`, service worker scope | `app/layout.tsx`, `app/robots.ts`, `app/sw.ts` |
 | Links placed in emails and WhatsApp messages | `lib/member/activation-email.ts`, `app/api/activate/*`, `app/api/member-app/invite/route.ts`, `lib/whatsapp/sender.ts` |
 | Support address, sender name, reply email design and logo | `gymflow-admin/lib/email.ts`, `gymflow-admin/lib/email-html.ts` (logo URL; override with `SUPPORT_EMAIL_LOGO_URL`) |
-| What the AI reply drafts are allowed to say | `gymflow-admin/lib/support-knowledge.ts`, and the allowed link hosts in `gymflow-admin/lib/ai-draft.ts` |
-| Mobile app's production API host and Supabase project fallback | `gymflow-mobile/lib/api/client.ts`, `gymflow-mobile/lib/supabase-realtime.ts` |
+| What the AI reply drafts may say | `gymflow-admin/lib/support-knowledge.ts`, and the allowed link hosts in `gymflow-admin/lib/ai-draft.ts` |
+| The mobile app's production API host and Supabase project fallback | `gymflow-mobile/lib/api/client.ts`, `gymflow-mobile/lib/supabase-realtime.ts` |
 | App links, contact details, legal pages, SEO files | `landing-page/src/components/*`, `landing-page/index.html`, `landing-page/public/` |
 
 **Analytics on the marketing site**
 
 `landing-page/index.html` loads Google Analytics with a measurement ID that belongs to
-thegymflow.in. It only runs when the page is served from `thegymflow.in`, so a fork does not report
-to it, but replace the ID (and the hostname check) with your own. Microsoft Clarity is set by
+thegymflow.in. It only runs when the page is served from `thegymflow.in`, so a fork does not report to
+it. Still, replace the ID (and the hostname check) with your own. Microsoft Clarity is set by
 `VITE_CLARITY_PROJECT_ID`.
 
 **Branding**
 
-The name "GymFlow", the logo and the files in `public/` and `landing-page/public/` identify
-the original project. The license covers the code; please use your own name and logo for a
-service you run.
+The name "GymFlow", the logo and the files in `public/` and `landing-page/public/` identify the
+original project. The license covers the code. Please use your own name and logo for a service you run.
+
+---
+
+## 11. Troubleshooting
+
+| Symptom | Likely cause and fix |
+|---|---|
+| `permission denied for schema ...` or an extension error | Turn the extension on under Database → Extensions ([step 2.2](#22-check-the-extensions-usually-nothing-to-do)), then run again |
+| `relation "..." does not exist` partway through | The run was cut off or edited. Run the unmodified file again from the top |
+| The query runs forever or the editor freezes | The paste is very large. Run it in two halves: split at the `-- 5 — FUNCTIONS` section header, and run the first half first |
+| The app says the database is unreachable | `SUPABASE_URL` or a key in `.env.local` is wrong, or you did not restart the dev server after editing it |
+| The signup email never arrives | Resend is not set up. Confirm the user by hand ([step 2.5](#25-set-the-supabase-auth-settings)) |
+| Owners see "Payment details are not set up yet" | `platform_settings.upi_id` is empty ([step 2.4](#24-set-your-own-values)) |
+| WhatsApp reminders never go out | The daily jobs are not scheduled ([step 8](#8-schedule-the-daily-jobs)), or the queue is not being drained ([step 7](#7-optional-whatsapp)) |

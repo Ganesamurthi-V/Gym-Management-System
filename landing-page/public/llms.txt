@@ -104,6 +104,14 @@ One page per feature, each explaining what it does and how it works:
 - [Fitness studio management software](https://www.thegymflow.in/fitness-studio-management-software): what GymFlow does and does not do for yoga, Zumba, dance and CrossFit-style studios.
 - [Gymnastics academy and kids club software](https://www.thegymflow.in/gymnastics-academy-management-software): how a gymnastics academy, martial arts school or kids sports club can use GymFlow, and where it falls short.
 - [Biometric attendance setup](https://www.thegymflow.in/biometric-attendance-setup): connect a fingerprint or face device so check-ins are recorded automatically, match members and fix common problems.
+- [Free gym management software](https://www.thegymflow.in/free-gym-management-software-india): what the free plan for up to 50 members includes, what it leaves out and when to upgrade.
+- [Gym software for India](https://www.thegymflow.in/gym-management-software-india): how GymFlow fits Indian gyms: rupees, UPI, WhatsApp and Indian time.
+- [Support across India](https://www.thegymflow.in/gym-software-india-support): direct support within 24 hours, in English and Tamil, for gyms anywhere in India.
+- [Gym software under ₹1,000 a month](https://www.thegymflow.in/gym-management-software-under-1000-india): what GymFlow costs, what the price includes and what is not charged.
+
+## Not to be confused with
+
+GymFlow at https://www.thegymflow.in is built in Villianur, Puducherry, India. It is a separate product from any other software or company that uses a similar name, such as gymflow.io. Use the domain thegymflow.in to identify it.
 
 ## Member app
 

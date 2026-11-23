@@ -1,22 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import {
   View,
-  Text,
-  StyleSheet,
   ScrollView,
   FlatList,
-  TouchableOpacity,
-  TextInput,
+  Pressable,
   ActivityIndicator,
   RefreshControl,
-  Modal,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Feather from 'react-native-vector-icons/Feather';
 import type { RootStackParamList } from '../../navigation/types';
-import { Colors, Radius, Spacing } from '@/constants/theme';
 import {
   fetchGyms, fetchTickets, sendSupportMessage, resolveTicket, clearTickets, draftTicketReply,
   type Gym, type SupportTicket,
@@ -24,25 +17,33 @@ import {
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { CacheKeys } from '@/lib/cache';
-import { AdminInput } from '@/components/AdminInput';
-import { AdminButton } from '@/components/AdminButton';
+import { useAppTheme } from '@/lib/theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Icon } from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Text } from '@/components/ui/text';
+import { Textarea } from '@/components/ui/textarea';
+import { Toggle } from '@/components/ui/toggle';
+import { SectionCard } from '@/components/dashboard/SectionCard';
+import { useConfirm } from '@/components/dashboard/ConfirmDialog';
+import { toast } from '@/components/dashboard/Toast';
 import { TicketCard } from '@/components/TicketCard';
 import { KeyboardSafeView } from '@/components/KeyboardSafeView';
+import { useDialogKeyboardLift } from '../_email/useDialogKeyboardLift';
 
 type Tab = 'send' | 'tickets';
 
-function TabButton({ label, active, onPress, badge }: {
-  label: string; active: boolean; onPress: () => void; badge?: boolean;
-}) {
-  return (
-    <TouchableOpacity style={[styles.tabBtn, active && styles.tabBtnActive]} onPress={onPress}>
-      <Text style={[styles.tabBtnText, active && styles.tabBtnTextActive]}>{label}</Text>
-      {badge && <View style={styles.tabDot} />}
-    </TouchableOpacity>
-  );
-}
-
 function SendMessageTab() {
+  const { colors } = useAppTheme();
   const [selectedGymIds, setSelectedGymIds] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -78,123 +79,117 @@ function SendMessageTab() {
     setSending(true);
     try {
       await sendSupportMessage({ gym_ids: selectedGymIds, subject: subject.trim(), body: body.trim(), type });
-      Alert.alert('✓ Sent', selectedGymIds.length === 1
+      toast.show(selectedGymIds.length === 1
         ? 'Message sent to gym owner successfully!'
-        : `Message sent to ${selectedGymIds.length} gym owners successfully!`);
+        : `Message sent to ${selectedGymIds.length} gym owners successfully!`, 'success');
       setSubject('');
       setBody('');
       setSelectedGymIds([]);
       setType('info');
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to send message');
+    } catch (e) {
+      toast.show(e instanceof Error && e.message ? e.message : 'Failed to send message', 'error');
     } finally {
       setSending(false);
     }
   }
 
+  const canSend = selectedGymIds.length > 0 && !!subject.trim() && !!body.trim();
+
   return (
-    <KeyboardSafeView style={styles.flex1}>
+    <KeyboardSafeView>
       <ScrollView
-        style={styles.tabContent}
-        contentContainerStyle={styles.tabContentInner}
+        className="flex-1"
+        contentContainerClassName="gap-4 p-4 pb-8"
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.formCard}>
-          <View style={styles.formCardHeader}>
-            <View style={styles.formIconBox}>
-              <Feather name="headphones" size={18} color={Colors.indigo} />
-            </View>
-            <View>
-              <Text style={styles.formCardTitle}>New Message</Text>
-              <Text style={styles.formCardSub}>Broadcast updates, warnings, or support replies.</Text>
-            </View>
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>
-              Select Recipient Gyms{selectedGymIds.length > 0 ? ` (${selectedGymIds.length})` : ''}
-            </Text>
-            {loadingGyms ? (
-              <ActivityIndicator color={Colors.indigo} />
-            ) : (
-              <View style={styles.typePills}>
-                <TouchableOpacity
-                  style={[styles.gymPill, allSelected && styles.gymPillActive]}
-                  onPress={() => setSelectedGymIds(allSelected ? [] : gyms.map(g => g.id))}
-                >
-                  <Text style={[styles.gymPillText, allSelected && styles.gymPillTextActive]}>
-                    {allSelected ? 'Clear all' : 'Select all'}
-                  </Text>
-                </TouchableOpacity>
-                {gyms.map(gym => {
-                  const active = selectedGymIds.includes(gym.id);
-                  return (
-                    <TouchableOpacity
+        <SectionCard
+          title="New Message"
+          description="Broadcast updates, warnings, or support replies."
+          action={<Icon name="headphones" size={18} className="text-muted-foreground" />}
+        >
+          <View className="gap-5">
+            <View className="gap-2">
+              <Label>
+                Select Recipient Gyms{selectedGymIds.length > 0 ? ` (${selectedGymIds.length})` : ''}
+              </Label>
+              {loadingGyms ? (
+                <ActivityIndicator color={colors.mutedForeground} />
+              ) : (
+                <View className="flex-row flex-wrap gap-2">
+                  <Toggle
+                    variant="outline"
+                    size="sm"
+                    pressed={allSelected}
+                    onPressedChange={() => setSelectedGymIds(allSelected ? [] : gyms.map(g => g.id))}
+                  >
+                    <Text>{allSelected ? 'Clear all' : 'Select all'}</Text>
+                  </Toggle>
+                  {gyms.map(gym => (
+                    <Toggle
                       key={gym.id}
-                      style={[styles.gymPill, active && styles.gymPillActive]}
-                      onPress={() => toggleGym(gym.id)}
+                      variant="outline"
+                      size="sm"
+                      pressed={selectedGymIds.includes(gym.id)}
+                      onPressedChange={() => toggleGym(gym.id)}
                     >
-                      <Text style={[styles.gymPillText, active && styles.gymPillTextActive]}>
-                        {gym.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Message Type</Text>
-            <View style={styles.typePills}>
-              {typeOptions.map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.typePill, type === opt.value && styles.typePillActive]}
-                  onPress={() => setType(opt.value)}
-                >
-                  <Text style={[styles.typePillText, type === opt.value && styles.typePillTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                      <Text>{gym.name}</Text>
+                    </Toggle>
+                  ))}
+                </View>
+              )}
             </View>
+
+            <View className="gap-2">
+              <Label>Message Type</Label>
+              <Select
+                value={typeOptions.find(o => o.value === type)}
+                onValueChange={opt => { if (opt) setType(opt.value); }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value} label={opt.label} />
+                  ))}
+                </SelectContent>
+              </Select>
+            </View>
+
+            <View className="gap-2">
+              <Label>Message Subject</Label>
+              <Input
+                value={subject}
+                onChangeText={setSubject}
+                placeholder="e.g. Action Required: Subscription Renewal"
+              />
+            </View>
+
+            <View className="gap-2">
+              <Label>Message Body</Label>
+              <Textarea
+                value={body}
+                onChangeText={setBody}
+                placeholder="Write your message here..."
+                numberOfLines={5}
+                className="min-h-28"
+              />
+            </View>
+
+            <Button onPress={handleSend} disabled={sending || !canSend}>
+              {sending ? <ActivityIndicator size="small" color={colors.primaryForeground} /> : null}
+              <Text>Send Message</Text>
+            </Button>
           </View>
-
-          <AdminInput
-            label="Message Subject"
-            value={subject}
-            onChangeText={setSubject}
-            placeholder="e.g. Action Required: Subscription Renewal"
-            containerStyle={styles.field}
-          />
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Message Body</Text>
-            <TextInput
-              value={body}
-              onChangeText={setBody}
-              placeholder="Write your message here..."
-              placeholderTextColor={Colors.textMuted}
-              multiline
-              numberOfLines={5}
-              style={styles.textarea}
-            />
-          </View>
-
-          <AdminButton
-            label="Send Message"
-            onPress={handleSend}
-            loading={sending}
-            disabled={selectedGymIds.length === 0 || !subject.trim() || !body.trim()}
-          />
-        </View>
+        </SectionCard>
       </ScrollView>
     </KeyboardSafeView>
   );
 }
 
 function TicketsTab() {
+  const { colors } = useAppTheme();
+  const confirm = useConfirm();
   const [refreshing, setRefreshing] = useState(false);
   const [resolvingTicket, setResolvingTicket] = useState<SupportTicket | null>(null);
   const [replySubject, setReplySubject] = useState('');
@@ -203,6 +198,7 @@ function TicketsTab() {
   const [drafting, setDrafting] = useState(false);
   const [needsHuman, setNeedsHuman] = useState(false);
   const [view, setView] = useState<'issues' | 'feedback'>('issues');
+  const lift = useDialogKeyboardLift(!!resolvingTicket);
 
   /*
     This tab was the worst offender of the set. Its loader ran `else setLoading(true)`
@@ -246,7 +242,7 @@ function TicketsTab() {
       setReplyMessage(draft.body);
       setNeedsHuman(draft.needsHuman);
     } catch (e) {
-      Alert.alert('AI draft failed', e instanceof Error ? e.message : 'Could not write a draft');
+      toast.show(`AI draft failed: ${e instanceof Error ? e.message : 'Could not write a draft'}`, 'error');
     } finally {
       setDrafting(false);
     }
@@ -255,67 +251,70 @@ function TicketsTab() {
   async function submitResolve() {
     if (!resolvingTicket) return;
     if (!replySubject.trim() || !replyMessage.trim()) {
-      Alert.alert('Required', 'Reply subject and message cannot be empty');
+      toast.show('Reply subject and message cannot be empty', 'error');
       return;
     }
     setResolving(true);
     try {
       await resolveTicket({ ticketId: resolvingTicket.id, replySubject: replySubject.trim(), replyMessage: replyMessage.trim() });
-      Alert.alert('✓ Resolved', 'Ticket resolved and reply sent!');
+      toast.show('Ticket resolved and reply sent!', 'success');
       setResolvingTicket(null);
       load();
     } catch {
-      Alert.alert('Error', 'Failed to resolve ticket');
+      toast.show('Failed to resolve ticket', 'error');
     } finally {
       setResolving(false);
     }
   }
 
   async function handleClearResolved() {
-    Alert.alert('Clear Resolved', 'Remove all resolved tickets?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await clearTickets();
-          } catch {
-            Alert.alert('Error', 'Failed to clear resolved tickets');
-          }
-          load();
-        },
-      },
-    ]);
+    const ok = await confirm({
+      title: 'Clear Resolved',
+      description: 'Remove all resolved tickets?',
+      confirmText: 'Clear',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await clearTickets();
+    } catch {
+      toast.show('Failed to clear resolved tickets', 'error');
+    }
+    load();
   }
 
   const hasResolved = allTickets.some(t => t.status === 'resolved');
 
   if (loading) {
-    return <View style={styles.centered}><ActivityIndicator color={Colors.indigo} /></View>;
+    return (
+      <View className="flex-1 items-center justify-center p-8">
+        <ActivityIndicator color={colors.mutedForeground} />
+      </View>
+    );
   }
 
   return (
-    <>
-      <View style={styles.viewToggle}>
-        {(['issues', 'feedback'] as const).map(v => (
-          <TouchableOpacity
-            key={v}
-            style={[styles.typePill, view === v && styles.typePillActive]}
-            onPress={() => setView(v)}
-          >
-            <Text style={[styles.typePillText, view === v && styles.typePillTextActive]}>
-              {v === 'issues' ? `Tickets (${allTickets.length - feedbackCount})` : `Feedback (${feedbackCount})`}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+    <View className="flex-1">
+      <Tabs
+        value={view}
+        onValueChange={v => setView(v === 'feedback' ? 'feedback' : 'issues')}
+        className="px-4 pt-4"
+      >
+        <TabsList className="w-full">
+          <TabsTrigger value="issues" className="flex-1">
+            <Text>{`Tickets (${allTickets.length - feedbackCount})`}</Text>
+          </TabsTrigger>
+          <TabsTrigger value="feedback" className="flex-1">
+            <Text>{`Feedback (${feedbackCount})`}</Text>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {hasResolved && (
-        <TouchableOpacity style={styles.clearBtn} onPress={handleClearResolved}>
-          <Feather name="trash-2" size={13} color={Colors.textMuted} />
-          <Text style={styles.clearBtnText}>Clear Resolved</Text>
-        </TouchableOpacity>
+        <Button variant="ghost" size="sm" className="mx-3 mt-2 self-end" onPress={handleClearResolved}>
+          <Icon name="trash-2" size={13} className="text-muted-foreground" />
+          <Text className="text-muted-foreground">Clear Resolved</Text>
+        </Button>
       )}
 
       <FlatList
@@ -324,69 +323,77 @@ function TicketsTab() {
         renderItem={({ item }) => (
           <TicketCard ticket={item} onResolve={() => openResolve(item)} />
         )}
-        contentContainerStyle={styles.ticketList}
+        contentContainerClassName="gap-3 p-4 pb-8"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.mutedForeground} />
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Feather name="inbox" size={36} color={Colors.bgCardBorder} />
-            <Text style={styles.emptyText}>{view === 'feedback' ? 'No feedback yet.' : 'No support tickets found.'}</Text>
+          <View className="items-center justify-center gap-3 p-16">
+            <Icon name="inbox" size={36} className="text-muted-foreground" />
+            <Text className="text-center text-sm text-muted-foreground">
+              {view === 'feedback' ? 'No feedback yet.' : 'No support tickets found.'}
+            </Text>
           </View>
         }
       />
 
-      <Modal visible={!!resolvingTicket} transparent animationType="slide" onRequestClose={() => setResolvingTicket(null)}>
-        <KeyboardSafeView style={styles.modalOverlay} safeBottom>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Resolve Ticket</Text>
-            <Text style={styles.modalSub}>Send a confirmation message to {resolvingTicket?.gyms?.name}</Text>
+      <Dialog open={!!resolvingTicket} onOpenChange={open => { if (!open) setResolvingTicket(null); }}>
+        <DialogContent className="max-h-[90%]" style={lift.style}>
+          <View ref={lift.ref} collapsable={false} className="gap-4">
+            <DialogHeader>
+              <DialogTitle>Resolve Ticket</DialogTitle>
+              <DialogDescription>
+                Send a confirmation message to {resolvingTicket?.gyms?.name}
+              </DialogDescription>
+            </DialogHeader>
 
-            <TouchableOpacity
-              style={styles.aiDraftBtn}
-              onPress={handleAiDraft}
-              disabled={drafting || resolving}
-            >
-              {drafting
-                ? <ActivityIndicator size="small" color={Colors.indigo} />
-                : <Feather name="zap" size={13} color={Colors.indigo} />}
-              <Text style={styles.aiDraftBtnText}>{drafting ? 'Writing...' : 'AI draft'}</Text>
-            </TouchableOpacity>
-            {needsHuman && (
-              <Text style={styles.needsHumanText}>Needs a personal reply: review before sending</Text>
-            )}
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-4">
+              <View className="items-start gap-2">
+                <Button variant="outline" size="sm" onPress={handleAiDraft} disabled={drafting || resolving}>
+                  {drafting
+                    ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    : <Icon name="zap" size={13} />}
+                  <Text>{drafting ? 'Writing...' : 'AI draft'}</Text>
+                </Button>
+                {needsHuman && (
+                  <View className="flex-row items-center gap-1.5">
+                    <View className="size-1.5 rounded-full bg-warning" />
+                    <Text className="flex-1 text-xs text-muted-foreground">
+                      Needs a personal reply: review before sending
+                    </Text>
+                  </View>
+                )}
+              </View>
 
-            <AdminInput label="Reply Subject" value={replySubject} onChangeText={setReplySubject} containerStyle={styles.field} />
+              <View className="gap-2">
+                <Label>Reply Subject</Label>
+                <Input value={replySubject} onChangeText={setReplySubject} />
+              </View>
 
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Reply Message</Text>
-              <TextInput
-                value={replyMessage}
-                onChangeText={setReplyMessage}
-                multiline
-                numberOfLines={4}
-                style={styles.textarea}
-                placeholderTextColor={Colors.textMuted}
-              />
-            </View>
+              <View className="gap-2">
+                <Label>Reply Message</Label>
+                <Textarea
+                  value={replyMessage}
+                  onChangeText={setReplyMessage}
+                  numberOfLines={4}
+                  className="min-h-28"
+                />
+              </View>
+            </ScrollView>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setResolvingTicket(null)} style={styles.cancelBtn}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <AdminButton
-                label="Resolve & Send"
-                onPress={submitResolve}
-                loading={resolving}
-                variant="success"
-                style={styles.resolveActionBtn}
-              />
-            </View>
+            <DialogFooter>
+              <Button onPress={submitResolve} disabled={resolving}>
+                {resolving ? <ActivityIndicator size="small" color={colors.primaryForeground} /> : null}
+                <Text>Resolve & Send</Text>
+              </Button>
+              <Button variant="outline" onPress={() => setResolvingTicket(null)}>
+                <Text>Cancel</Text>
+              </Button>
+            </DialogFooter>
           </View>
-        </KeyboardSafeView>
-      </Modal>
-    </>
+        </DialogContent>
+      </Dialog>
+    </View>
   );
 }
 
@@ -394,109 +401,38 @@ export default function SupportScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('send');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
-    <View style={styles.root}>
-      <TouchableOpacity style={styles.bannerCard} onPress={() => navigation.navigate('Announcements')}>
-        <View style={styles.bannerText}>
-          <Text style={styles.formCardTitle}>Site-wide banner</Text>
-          <Text style={styles.formCardSub}>Show a message at the top of every owner app</Text>
+    <View className="flex-1 bg-background">
+      <Pressable onPress={() => navigation.navigate('Announcements')} className="m-4 mb-0">
+        <Card className="flex-row items-center gap-3 px-4 py-3">
+          <View className="flex-1 gap-0.5">
+            <Text className="text-sm font-medium">Site-wide banner</Text>
+            <Text className="text-xs text-muted-foreground">Show a message at the top of every owner app</Text>
+          </View>
+          <Icon name="chevron-right" size={18} className="text-muted-foreground" />
+        </Card>
+      </Pressable>
+      <Tabs
+        value={activeTab}
+        onValueChange={v => setActiveTab(v === 'tickets' ? 'tickets' : 'send')}
+        className="flex-1 gap-0"
+      >
+        <View className="px-4 pt-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="send" className="flex-1">
+              <Text>Send Message</Text>
+            </TabsTrigger>
+            <TabsTrigger value="tickets" className="flex-1">
+              <Text>Incoming Tickets</Text>
+            </TabsTrigger>
+          </TabsList>
         </View>
-        <Feather name="chevron-right" size={18} color={Colors.textMuted} />
-      </TouchableOpacity>
-      <View style={styles.tabBar}>
-        <TabButton label="Send Message" active={activeTab === 'send'} onPress={() => setActiveTab('send')} />
-        <TabButton label="Incoming Tickets" active={activeTab === 'tickets'} onPress={() => setActiveTab('tickets')} />
-      </View>
-      {activeTab === 'send' ? <SendMessageTab /> : <TicketsTab />}
+        <TabsContent value="send" className="flex-1">
+          <SendMessageTab />
+        </TabsContent>
+        <TabsContent value="tickets" className="flex-1">
+          <TicketsTab />
+        </TabsContent>
+      </Tabs>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  flex1: { flex: 1 },
-  bannerCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    margin: Spacing.lg, marginBottom: 0, padding: Spacing.lg, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard,
-  },
-  bannerText: { flex: 1 },
-  root: { flex: 1, backgroundColor: Colors.bg },
-  tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard },
-  tabBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: Spacing.lg, gap: Spacing.xs,
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
-  },
-  tabBtnActive: { borderBottomColor: Colors.indigo },
-  tabBtnText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
-  tabBtnTextActive: { color: Colors.indigo },
-  tabDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.red },
-  tabContent: { flex: 1 },
-  tabContentInner: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Spacing.xxxl },
-  formCard: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, padding: Spacing.xl, gap: Spacing.lg,
-  },
-  formCardHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingBottom: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
-  },
-  formIconBox: {
-    width: 44, height: 44, borderRadius: Radius.md,
-    backgroundColor: Colors.indigoBg, alignItems: 'center', justifyContent: 'center',
-  },
-  formCardTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  formCardSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  field: { gap: Spacing.xs },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.7 },
-  gymPill: {
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgInput,
-  },
-  gymPillActive: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder },
-  gymPillText: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-  gymPillTextActive: { color: Colors.indigo },
-  typePills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  typePill: {
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgInput,
-  },
-  typePillActive: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder },
-  typePillText: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-  typePillTextActive: { color: Colors.indigo },
-  textarea: {
-    backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.bgCardBorder,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    color: Colors.textPrimary, fontSize: 14, textAlignVertical: 'top', minHeight: 110,
-  },
-  viewToggle: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg },
-  ticketList: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxxl },
-  clearBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    alignSelf: 'flex-end', margin: Spacing.md,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.sm,
-  },
-  aiDraftBtn: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: Spacing.xs,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.indigoBorder, backgroundColor: Colors.indigoBg,
-  },
-  aiDraftBtnText: { fontSize: 12, fontWeight: '700', color: Colors.indigo },
-  needsHumanText: { fontSize: 12, color: Colors.amber },
-  clearBtnText: { fontSize: 12, color: Colors.textMuted },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl },
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl * 2, gap: Spacing.md },
-  emptyText: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-  modalSheet: {
-    backgroundColor: Colors.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    borderWidth: 1, borderColor: Colors.bgCardBorder,
-    padding: Spacing.xxl, gap: Spacing.lg, paddingBottom: Spacing.xxxl,
-  },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.bgCardBorder, alignSelf: 'center', marginBottom: Spacing.sm },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  modalSub: { fontSize: 13, color: Colors.textSecondary, marginTop: -Spacing.sm },
-  modalActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, justifyContent: 'flex-end' },
-  cancelBtn: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
-  resolveActionBtn: { flex: 1 },
-});

@@ -9,40 +9,40 @@ const hl = (text: string) => <b className="cmp__hl">{text}</b>;
 
 const ROWS: { job: string; icon: LucideIcon; before: string; fix: ReactNode }[] = [
   {
-    job: 'Gym membership management',
+    job: 'Memberships',
     icon: User,
-    before: 'Manually track joining dates, membership plans and expiry dates.',
-    fix: <>Manage all gym members and track {hl('Active, Expiring and Expired')} memberships automatically.</>,
+    before: 'Track expiry dates by hand',
+    fix: <>{hl('Active, Expiring, Expired')} shown for you</>,
   },
   {
-    job: 'Gym fee and payment tracking',
+    job: 'Fees and dues',
     icon: IndianRupee,
-    before: 'Maintain payment records and calculate pending fees manually.',
-    fix: 'Track gym fees, partial payments, outstanding dues and member payment history.',
+    before: 'Work out pending fees by hand',
+    fix: 'Part payments and dues tracked',
   },
   {
-    job: 'WhatsApp reminders for gym members',
+    job: 'WhatsApp reminders',
     icon: MessageCircle,
-    before: 'Manually send membership renewal and payment reminders.',
-    fix: 'Automate WhatsApp welcome messages, renewal reminders, expiry alerts, payment reminders and birthday wishes.',
+    before: 'Message every member yourself',
+    fix: 'Renewal and payment reminders sent for you',
   },
   {
-    job: 'Gym attendance tracking',
+    job: 'Attendance',
     icon: CalendarCheck,
-    before: 'Search through attendance registers to identify members who stopped visiting.',
-    fix: <>Track daily attendance and identify inactive members who haven&apos;t visited for {hl('7 or more days')}.</>,
+    before: 'Flip through the register',
+    fix: <>See who has been away {hl('7+ days')}</>,
   },
   {
-    job: 'Gym member data management',
+    job: 'Member data',
     icon: Users,
-    before: 'Manually maintain member records and clean spreadsheet data.',
-    fix: 'Import existing member records using Excel or CSV with data preview and automatic phone number formatting.',
+    before: 'Clean up spreadsheet rows',
+    fix: 'Import from Excel with a preview',
   },
   {
-    job: 'Gym reports and analytics',
+    job: 'Reports',
     icon: ChartColumn,
-    before: 'Calculate monthly revenue, membership and attendance totals manually.',
-    fix: <>Generate reports for members, revenue, pending dues, membership expiry and attendance, with {hl('PDF downloads')}.</>,
+    before: 'Add up totals by hand',
+    fix: <>Reports ready, with {hl('PDF download')}</>,
   },
 ];
 

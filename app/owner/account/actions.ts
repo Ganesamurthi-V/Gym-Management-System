@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/dal'
 import { deleteCache, invalidatePattern } from '@/lib/cache'
 import { cacheKeys } from '@/lib/cache-keys'
 import { todayIST } from '@/lib/utils'
@@ -12,15 +13,15 @@ import { todayIST } from '@/lib/utils'
  */
 export async function invalidateAllGymCaches(gymId: string): Promise<void> {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) return
+  const { user } = await getAuthUser()
+  if (!user) return
 
   // Verify ownership before busting cache
   const { data: gym } = await supabase
     .from('gyms')
     .select('id')
     .eq('id', gymId)
-    .eq('owner_id', session.user.id)
+    .eq('owner_id', user.id)
     .single()
   if (!gym) return
 

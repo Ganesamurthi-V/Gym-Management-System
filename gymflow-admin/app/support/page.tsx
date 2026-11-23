@@ -1,41 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { HeadphonesIcon, Send, Loader2, CheckCircle2, X, Trash2, Wifi, WifiOff, Star, Sparkles } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Wifi, WifiOff } from 'lucide-react'
+import { toast } from 'sonner'
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation'
-
-type Gym = { id: string; name: string; owner: { email: string } }
-type Ticket = {
-  id: string;
-  gym_id: string;
-  subject: string;
-  message: string;
-  type: string;
-  status: string;
-  rating: number | null;
-  created_at: string;
-  gyms: { name: string; owner_id: string };
-}
-
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <Star
-          key={n}
-          className={`w-4 h-4 ${n <= rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`}
-        />
-      ))}
-      <span className="ml-1.5 text-xs font-bold text-amber-400">{rating}.0</span>
-    </span>
-  )
-}
+import { PageToolbar } from '@/components/dashboard/page-toolbar'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ComposeForm } from './_components/compose-form'
+import { ResolveDialog } from './_components/resolve-dialog'
+import { TicketList, type TicketFilter } from './_components/ticket-list'
+import type { Gym, Ticket } from './_components/types'
 
 export default function SupportPage() {
   const [activeTab, setActiveTab] = useState<'send' | 'tickets'>('send')
   // Distinguish owner feedback (type='feedback', carries a star rating) from support tickets.
-  const [ticketFilter, setTicketFilter] = useState<'all' | 'tickets' | 'feedback'>('all')
+  const [ticketFilter, setTicketFilter] = useState<TicketFilter>('all')
   
   // Existing state
   const [gyms, setGyms] = useState<Gym[]>([])
@@ -215,297 +194,68 @@ export default function SupportPage() {
   const hasResolvedTickets = tickets.some(t => t.status === 'resolved')
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Support & Messaging</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Manage incoming gym requests or send broadcast notifications</p>
-      </div>
+    <div className="space-y-6">
+      <PageToolbar
+        title="Support & Messaging"
+        description="Manage incoming gym requests or send broadcast notifications"
+      />
 
-      <div className="flex items-center gap-2 border-b border-[#1f2937] pb-px">
-        <button 
-          onClick={() => setActiveTab('send')}
-          className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'send' ? 'text-indigo-400 border-indigo-400' : 'text-slate-400 border-transparent hover:text-white'}`}
-        >
-          Send Message
-        </button>
-        <button 
-          onClick={() => setActiveTab('tickets')}
-          className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'tickets' ? 'text-indigo-400 border-indigo-400' : 'text-slate-400 border-transparent hover:text-white'}`}
-        >
-          Incoming Tickets
-          {tickets.filter(t => t.status === 'open').length > 0 && activeTab !== 'tickets' && (
-            <span className="w-2 h-2 rounded-full bg-red-500"></span>
-          )}
-          <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${isRealtimeConnected ? 'text-emerald-400' : 'text-slate-500'}`}>
-            {isRealtimeConnected ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
-          </span>
-        </button>
-      </div>
-
-      {activeTab === 'send' ? (
-        <form onSubmit={handleSend} className="admin-card p-6 space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-[#1f2937]">
-          <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
-            <HeadphonesIcon className="w-5 h-5 text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-white">New Message</h2>
-            <p className="text-xs text-slate-400">Broadcast updates, warnings, or support replies.</p>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Select Recipient Gym
-          </label>
-          <select 
-            value={selectedGym}
-            onChange={e => setSelectedGym(e.target.value)}
-            required
-            className="admin-input"
-            disabled={loading}
-          >
-            <option value="" disabled>-- Select a gym --</option>
-            {gyms.map(g => (
-              <option key={g.id} value={g.id}>{g.name} ({g.owner?.email})</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Message Subject
-            </label>
-            <input 
-              type="text"
-              value={subject}
-              onChange={e => setSubject(e.target.value)}
-              placeholder="e.g. Action Required: Subscription Renewal"
-              required
-              className="admin-input"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Message Type
-            </label>
-            <select 
-              value={type}
-              onChange={e => setType(e.target.value)}
-              className="admin-input"
-            >
-              <option value="info">Information</option>
-              <option value="warning">Warning</option>
-              <option value="error">Critical Error</option>
-              <option value="success">Success Note</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Message Body
-          </label>
-          <textarea 
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder="Write your message here. The gym owner will see this on their dashboard notifications..."
-            required
-            rows={6}
-            className="admin-input resize-none"
-          />
-        </div>
-
-        <div className="pt-4 border-t border-[#1f2937] flex justify-end">
-          <button 
-            type="submit"
-            disabled={sending || !selectedGym || !subject || !body}
-            className="admin-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {sending ? 'Sending...' : 'Send Message'}
-          </button>
-        </div>
-      </form>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="inline-flex items-center gap-1 p-1 bg-[#0F172A] border border-[#1f2937] rounded-xl">
-              {([
-                { key: 'all', label: 'All' },
-                { key: 'tickets', label: 'Tickets' },
-                { key: 'feedback', label: 'Feedback' },
-              ] as const).map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setTicketFilter(f.key)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                    ticketFilter === f.key ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {f.label}
-                  {f.key === 'feedback' && tickets.some(t => t.type === 'feedback') && (
-                    <span className="ml-1.5 text-[10px] text-amber-400">
-                      {tickets.filter(t => t.type === 'feedback').length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {hasResolvedTickets && (
-              <button 
-                onClick={() => handleClear()}
-                className="text-xs font-semibold text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-500/10"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Clear Resolved Tickets
-              </button>
+      <Tabs value={activeTab} onValueChange={v => setActiveTab(v as 'send' | 'tickets')}>
+        <TabsList>
+          <TabsTrigger value="send">Send Message</TabsTrigger>
+          <TabsTrigger value="tickets">
+            Incoming Tickets
+            {tickets.filter(t => t.status === 'open').length > 0 && activeTab !== 'tickets' && (
+              <span className="bg-destructive size-2 rounded-full" />
             )}
-          </div>
+            {isRealtimeConnected ? <Wifi className="size-3" /> : <WifiOff className="text-muted-foreground size-3" />}
+          </TabsTrigger>
+        </TabsList>
 
-          {(() => {
-            const filteredTickets = tickets.filter(t =>
-              ticketFilter === 'all' ? true :
-              ticketFilter === 'feedback' ? t.type === 'feedback' :
-              t.type !== 'feedback'
-            )
-            return loadingTickets ? (
-            <div className="p-8 flex justify-center"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
-          ) : filteredTickets.length === 0 ? (
-            <div className="admin-card p-12 text-center text-slate-500">
-              {ticketFilter === 'feedback' ? 'No feedback received yet.' : 'No support tickets found.'}
-            </div>
-          ) : (
-            filteredTickets.map(ticket => (
-              <div key={ticket.id} className="admin-card p-5 group relative overflow-hidden">
-                <div className="flex items-start justify-between gap-4 relative z-10">
-                  <div className="flex-1 min-w-0 pr-8">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-2 py-0.5 text-xs font-bold rounded-md uppercase tracking-wider ${
-                        ticket.type === 'feedback' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                        ticket.type === 'high_priority' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                        ticket.type === 'bug' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                        'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                      }`}>
-                        {ticket.type.replace('_', ' ')}
-                      </span>
-                      <span className={`px-2 py-0.5 text-xs font-bold rounded-md uppercase tracking-wider ${
-                        ticket.status === 'open' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
-                      }`}>
-                        {ticket.status}
-                      </span>
-                      {ticket.type === 'feedback' && ticket.rating != null && (
-                        <StarRating rating={ticket.rating} />
-                      )}
-                      <span className="text-xs text-slate-500">
-                        {new Date(ticket.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <h3 className={`text-lg font-bold text-white mb-1 ${ticket.status === 'resolved' ? 'line-through opacity-50' : ''}`}>{ticket.subject}</h3>
-                    <p className="text-sm font-medium text-slate-400 mb-3">From: {ticket.gyms?.name}</p>
-                    <div className={`p-4 bg-[#0F172A] rounded-xl border border-[#1f2937] text-slate-300 text-sm whitespace-pre-wrap ${ticket.status === 'resolved' ? 'opacity-50' : ''}`}>
-                      {ticket.message}
-                    </div>
-                  </div>
-                  
-                  {ticket.status === 'open' && (
-                    <button 
-                      onClick={() => openResolveModal(ticket)}
-                      className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-sm font-bold transition-colors flex-shrink-0 flex items-center gap-2"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Resolve
-                    </button>
-                  )}
+        <TabsContent value="send">
+          <ComposeForm
+            gyms={gyms}
+            loading={loading}
+            sending={sending}
+            selectedGym={selectedGym}
+            subject={subject}
+            body={body}
+            type={type}
+            onGymChange={setSelectedGym}
+            onSubjectChange={setSubject}
+            onBodyChange={setBody}
+            onTypeChange={setType}
+            onSubmit={handleSend}
+          />
+        </TabsContent>
 
-                  {ticket.status === 'resolved' && (
-                    <button 
-                      onClick={() => handleClear(ticket.id)}
-                      className="absolute top-0 right-0 p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      title="Clear ticket"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )
-          })()}
-        </div>
-      )}
+        <TabsContent value="tickets">
+          <TicketList
+            tickets={tickets}
+            filter={ticketFilter}
+            loading={loadingTickets}
+            hasResolved={hasResolvedTickets}
+            onFilterChange={setTicketFilter}
+            onClearResolved={() => handleClear()}
+            onClearOne={id => handleClear(id)}
+            onResolve={openResolveModal}
+          />
+        </TabsContent>
+      </Tabs>
 
-      {/* Resolve Ticket Modal */}
-      {resolvingTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-[#0F172A] border border-[#1f2937] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-[#1f2937]">
-              <h3 className="text-lg font-bold text-white">Resolve Ticket</h3>
-              <p className="text-sm text-slate-400 mt-1">Send a confirmation message to {resolvingTicket.gyms?.name}</p>
-            </div>
-            <form onSubmit={submitResolve} className="p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleAiDraft}
-                  disabled={drafting || resolving}
-                  className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                >
-                  {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                  {drafting ? 'Writing...' : 'AI draft'}
-                </button>
-                {needsHuman && (
-                  <span className="text-xs text-amber-400">Needs a personal reply: review before sending</span>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Reply Subject
-                </label>
-                <input 
-                  type="text"
-                  value={replySubject}
-                  onChange={e => setReplySubject(e.target.value)}
-                  required
-                  className="admin-input"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Reply Message
-                </label>
-                <textarea 
-                  value={replyMessage}
-                  onChange={e => setReplyMessage(e.target.value)}
-                  required
-                  rows={4}
-                  className="admin-input resize-none"
-                />
-              </div>
-              <div className="pt-4 flex justify-end gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setResolvingTicket(null)}
-                  className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={resolving || !replySubject || !replyMessage}
-                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {resolving ? 'Resolving...' : 'Resolve & Send'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ResolveDialog
+        ticket={resolvingTicket}
+        subject={replySubject}
+        message={replyMessage}
+        drafting={drafting}
+        resolving={resolving}
+        needsHuman={needsHuman}
+        onSubjectChange={setReplySubject}
+        onMessageChange={setReplyMessage}
+        onAiDraft={handleAiDraft}
+        onSubmit={submitResolve}
+        onCancel={() => setResolvingTicket(null)}
+      />
     </div>
   )
 }
-

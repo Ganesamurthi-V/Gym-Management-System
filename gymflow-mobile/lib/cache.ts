@@ -169,4 +169,6 @@ export const CacheKeys = {
   notifications: 'notifications',
   emailThreads: (status: 'open' | 'archived') => `email:threads:${status}`,
   emailThread: (id: string) => `email:thread:${id}`,
+  awsOverview: (range: string) => `aws:overview:${range}`,
+  awsResource: (type: string, id: string, range: string) => `aws:resource:${type}:${id}:${range}`,
 } as const;

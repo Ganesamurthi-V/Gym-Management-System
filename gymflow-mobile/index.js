@@ -1,6 +1,7 @@
 // Must be first: installs URL + TextEncoder/TextDecoder globals before any module
 // (App -> Supabase realtime) is evaluated. See polyfills.js for why.
 import './polyfills';
+import './global.css';
 
 import {AppRegistry} from 'react-native';
 import {getApp} from '@react-native-firebase/app';

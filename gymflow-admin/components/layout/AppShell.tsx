@@ -1,10 +1,13 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import Sidebar from './Sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { AppSidebar } from './app-sidebar'
+import { BreadcrumbProvider } from './breadcrumb-context'
+import { SiteHeader } from './site-header'
 
 /**
- * Decides whether the admin chrome (sidebar + offset main column) wraps the page.
+ * Decides whether the admin chrome (sidebar + header + inset content) wraps the page.
  *
  * Why this is a client component keyed on the pathname, not just the server session:
  *
@@ -41,13 +44,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 ml-60 min-h-screen bg-[#0a0f1e]">
-        <div className="p-6 md:p-8 max-w-7xl mx-auto animate-fade-in">
-          {children}
-        </div>
-      </main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="min-w-0 overflow-x-clip">
+        <BreadcrumbProvider>
+          <SiteHeader />
+          <div className="flex flex-1 flex-col p-4 md:p-6">{children}</div>
+        </BreadcrumbProvider>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

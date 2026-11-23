@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens copied from gymflow-admin/app/globals.css (shadcn neutral). The web file uses oklch();
+   converted to HSL channels so Tailwind opacity modifiers (bg-primary/20) work. Dark border/input
+   were white-at-alpha on the web; flattened onto the dark background here. */
+@layer base {
+  :root {
+    --radius: 0.625rem;
+    --background: 0 0% 100.0%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100.0%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100.0%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9.1%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.2%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9.1%;
+    --destructive: 357 100.0% 45.3%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 63.0%;
+    --chart-1: 211 91.1% 53.7%;
+    --chart-2: 359 86.1% 60.5%;
+    --chart-3: 40 88.1% 49.7%;
+    --chart-4: 157 79.2% 39.3%;
+    --chart-5: 260 75.3% 64.0%;
+    --success: 160 84% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 40%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 38%;
+    --info-foreground: 0 0% 100%;
+    --violet: 262 83% 52%;
+  }
+
+  .dark:root {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98.0%;
+    --card: 0 0% 9.1%;
+    --card-foreground: 0 0% 98.0%;
+    --popover: 0 0% 9.1%;
+    --popover-foreground: 0 0% 98.0%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98.0%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.0%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98.0%;
+    --destructive: 359 100.0% 69.6%;
+    --border: 0 0% 13.5%;
+    --input: 0 0% 18.3%;
+    --ring: 0 0% 45.2%;
+    --chart-1: 213 100.0% 66.2%;
+    --chart-2: 359 99.4% 69.3%;
+    --chart-3: 40 91.6% 60.4%;
+    --chart-4: 154 57.3% 51.6%;
+    --chart-5: 257 94.4% 75.4%;
+    --success: 158 64% 52%;
+    --success-foreground: 0 0% 9.1%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 0 0% 9.1%;
+    --info: 199 89% 60%;
+    --info-foreground: 0 0% 9.1%;
+    --violet: 258 90% 70%;
+  }
+}

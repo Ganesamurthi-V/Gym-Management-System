@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server'
+import { Facts } from './components/Facts'
 import { Hero } from './components/Hero'
 import { Film } from './components/Film'
 import { Features } from './components/Features'
@@ -21,6 +22,7 @@ export function renderHomeSections(): string {
   return renderToStaticMarkup(
     <>
       <Hero />
+      <Facts />
       <Film />
       <Features />
       <Problems />

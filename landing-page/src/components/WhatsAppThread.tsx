@@ -35,7 +35,7 @@ function renderBold(line: string) {
 /**
  * CSS-drawn WhatsApp conversation on a phone, mirroring the message GymFlow
  * actually sends: branded header image, the details block with bold values, and
- * the "Powered by Gym Flow" sign-off.
+ * the "Powered by GymFlow" sign-off.
  *
  * Drawn rather than shipped as a screenshot so it stays crisp at any DPI and the
  * copy stays real text, editable in one place rather than baked into pixels.
@@ -51,7 +51,7 @@ function renderBold(line: string) {
  * content — and the message types are already described in prose beside this.
  */
 const DEFAULT_LABEL =
-  "A new member's phone showing the automated WhatsApp message from their gym: a branded confirmation that their annual membership is active, listing their member ID, plan and start date, and signed Powered by Gym Flow.";
+  "A new member's phone showing the automated WhatsApp message from their gym: a branded confirmation that their annual membership is active, listing their member ID, plan and start date, and signed Powered by GymFlow.";
 
 export function WhatsAppThread({
   messages,
@@ -111,7 +111,7 @@ export function WhatsAppThread({
             </span>
             <span className="min-w-0 flex-1 text-left">
               <span className="block truncate text-[12px] font-medium text-[var(--wa-ink)]">
-                Gym Flow
+                GymFlow
               </span>
               <span className="block text-[11px] text-[var(--wa-ink)]">Business account</span>
             </span>

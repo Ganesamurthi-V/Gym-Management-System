@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
+import type { AwsRange, AwsResourceType } from '@/types/aws';
 
 // Root stack: Login → Main (tabs) → GymDetail
 export type RootStackParamList = {
@@ -13,6 +14,8 @@ export type RootStackParamList = {
   GymActivity: { gymId: string; gymName?: string };
   Notifications: undefined;
   Announcements: undefined;
+  AwsMonitor: undefined;
+  AwsResource: { type: AwsResourceType; id: string; title: string; range: AwsRange };
   // An email conversation in the support inbox. Push taps and the inbox list open it.
   EmailThread: { threadId: string };
   // Writing a reply: Gmail-style composer with formatting and attachments. `initialText`

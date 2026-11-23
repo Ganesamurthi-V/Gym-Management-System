@@ -1,225 +1,214 @@
-# GymFlow Admin — Mobile App
+# GymFlow Admin: mobile app
 
-React Native 0.75 app (plain Metro, **no Expo**) for the GymFlow super-admin panel.
-Talks to the `gymflow-admin` Next.js backend and receives lock-screen push notifications
-via Firebase Cloud Messaging.
+The admin app for the GymFlow super-admin panel. It is a bare React Native app (plain Metro, **no
+Expo**). It talks to the [`gymflow-admin`](../gymflow-admin) backend and shows lock-screen push
+notifications through Firebase Cloud Messaging (FCM).
 
-## Stack
+Release builds are Android only, for `arm64-v8a`. There is no `ios/` folder in this repo (see
+"iOS" below).
 
-| Layer | Package |
-|---|---|
-| Navigation | `@react-navigation/native` + native-stack + bottom-tabs |
-| HTTP | `axios` (Bearer token interceptor) |
-| Push | `@react-native-firebase/app` + `/messaging`, `@notifee/react-native` |
-| Realtime | `@supabase/supabase-js` (payload-free broadcast hints only) |
-| Icons | `react-native-vector-icons/Feather` |
-| Storage | `@react-native-async-storage/async-storage` |
-| Safe area | `react-native-safe-area-context` |
-| Env | `react-native-dotenv` (`@env` imports) |
-| Polyfills | `react-native-url-polyfill`, `text-encoding` |
-| Bundler | Metro (`@react-native/metro-config`) |
+## What you need
 
-## Project layout
-
-```
-gymflow-mobile/
-├── index.js                  # Polyfills FIRST, then FCM background handler, then AppRegistry
-├── polyfills.js              # URL + TextEncoder/TextDecoder globals (Hermes lacks them)
-├── app.json                  # RN app name config
-├── babel.config.js           # @react-native/babel-preset + module-resolver + dotenv
-├── metro.config.js           # @react-native/metro-config
-├── tsconfig.json             # @react-native/typescript-config + paths
-│
-├── android/
-│   └── app/
-│       ├── google-services.json   # Firebase config — GITIGNORED, add manually
-│       └── build.gradle           # google-services plugin + firebase-bom
-│
-├── src/
-│   ├── App.tsx               # Auth gate, navigator, push init, deep-link routing
-│   ├── navigation/
-│   │   └── types.ts          # RootStackParamList, TabParamList
-│   └── screens/
-│       ├── LoginScreen.tsx
-│       ├── GymDetailScreen.tsx
-│       ├── GymSubscriptionScreen.tsx   # Tabs + Owner Feedback card
-│       ├── NotificationsScreen.tsx     # In-app notification centre
-│       └── tabs/
-│           ├── DashboardScreen.tsx
-│           ├── GymsScreen.tsx
-│           ├── LogsScreen.tsx
-│           └── SupportScreen.tsx       # Tickets + feedback (star ratings)
-│
-├── components/
-│   ├── AdminButton.tsx
-│   ├── AdminInput.tsx
-│   ├── Badge.tsx
-│   ├── GymRow.tsx
-│   ├── LogRow.tsx
-│   ├── NotificationBell.tsx  # Header bell + unread badge
-│   ├── StatCard.tsx
-│   └── TicketCard.tsx        # Renders stars when type === 'feedback'
-│
-├── constants/
-│   └── theme.ts              # Colors, Fonts, Spacing, Radius
-│
-└── lib/
-    ├── api/
-    │   ├── index.ts          # Barrel — re-exports every *.api module
-    │   ├── client.ts         # axios instance, base URL, Bearer interceptor
-    │   ├── error-handler.ts  # parseApiError
-    │   ├── auth.api.ts
-    │   ├── dashboard.api.ts
-    │   ├── gyms.api.ts
-    │   ├── logs.api.ts
-    │   ├── notifications.api.ts   # List/mark-read + register/unregister push token
-    │   ├── subscription.api.ts
-    │   └── support.api.ts         # Tickets, feedback (fetchGymFeedback)
-    ├── auth.ts               # AsyncStorage token helpers
-    ├── cache.ts              # Stale-while-revalidate cache + AsyncStorage persistence
-    ├── push.ts               # FCM permissions, token lifecycle, listeners, deep links
-    ├── supabase-realtime.ts  # Anon client for broadcast hints only
-    ├── use-cached-query.ts   # Cache-first screen data (focus-aware)
-    └── use-realtime-invalidation.ts  # Subscribes to admin:* invalidation hints
-```
+- Node.js 22.11 or newer (`engines` in `package.json`).
+- JDK and the Android SDK (Android Studio is the easiest way to get both), plus an emulator or a
+  phone with USB debugging.
+- A running `gymflow-admin` backend. See [`../gymflow-admin`](../gymflow-admin).
+- A Firebase project with an Android app (for push; see step 3).
+- Your Supabase project URL and anon (public) key.
 
 ## Setup
 
 ### 1. Install dependencies
 
 ```bash
+cd gymflow-mobile
 npm install
 ```
 
-### 2. Environment
+### 2. Set environment variables
 
-Copy `.env.example` to `.env.local` in `gymflow-mobile/` (the path configured for
-`react-native-dotenv` in `babel.config.js`) and fill it in:
+Copy `.env.example` to `.env.local` in `gymflow-mobile/`. `babel.config.js` tells
+`react-native-dotenv` to read that file.
 
-```bash
-ADMIN_API_BASE=http://192.168.x.x:3001     # dev only; release builds force production
-SUPABASE_URL=https://<project>.supabase.co
-SUPABASE_ANON_KEY=<anon key>
-```
+| Variable | What it is |
+|---|---|
+| `ADMIN_API_BASE` | Where `gymflow-admin` runs, for **development builds only**. Use your computer's LAN address (for example `http://192.168.x.x:3001`), not `localhost`: on a phone or emulator, `localhost` is the device itself. |
+| `SUPABASE_URL` | Your Supabase project URL. |
+| `SUPABASE_ANON_KEY` | Your Supabase anon (public) key. |
 
-`lib/api/client.ts` only honours `ADMIN_API_BASE` when `__DEV__` is true — release builds
-always use `https://admin.thegymflow.in`, so a stale localhost value cannot ship.
+These values are compiled into the app, so anyone with the APK can read them. Put only public values
+here. Never use a service-role key or a password.
 
-> **Running your own deployment?** Two values in the code point at thegymflow.in and must be
-> changed for a release build: `defaultBaseUrl` in `lib/api/client.ts` (your admin panel's
-> URL) and the fallback Supabase URL in `lib/supabase-realtime.ts`. These values are compiled
-> into the app, so keep them public ones only: never a service-role key.
+Release builds ignore `ADMIN_API_BASE`. They use `defaultBaseUrl` in `lib/api/client.ts`, so a
+leftover local address cannot ship.
 
-### 3. Firebase / push notifications
+**Running your own deployment?** Change these two values in the code before a release build:
 
-- Create a Firebase project and add an **Android app** with package name
-  `com.gymflowAdminMobile`
-- Download `google-services.json` → place at `android/app/google-services.json`
-  (gitignored; restrict the API key to the package + SHA-1 in Google Cloud Console)
-- iOS: add an iOS app and upload an APNs Auth Key (needs a paid Apple Developer account)
+- `defaultBaseUrl` in `lib/api/client.ts` (your admin panel's URL).
+- The fallback Supabase URL in `lib/supabase-realtime.ts`.
 
-The Gradle side is already wired: the `com.google.gms.google-services` plugin, the Firebase
-BoM, `POST_NOTIFICATIONS` permission, and the `admin-alerts` default channel meta-data.
-
-Server-side credentials (`FIREBASE_*`, `CRON_SECRET`) live in the `gymflow-admin`
-environment — see the root README.
-
-### 4. iOS — link vector icons
-
-In `ios/Podfile` add (inside the target block if not already present):
-
-```ruby
-pod 'RNVectorIcons', :path => '../node_modules/react-native-vector-icons'
-```
-
-Then:
-
-```bash
-cd ios && pod install && cd ..
-```
-
-Also add to `ios/<AppName>/Info.plist`:
-
-```xml
-<key>UIAppFonts</key>
-<array>
-  <string>Feather.ttf</string>
-</array>
-```
-
-### 5. Android — link vector icons
-
-Already applied in `android/app/build.gradle`:
-
-```gradle
-apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
-```
-
-### 6. Run
-
-```bash
-npm run android      # or: npm run ios
-```
-
-After adding or upgrading native modules, a JS reload is not enough — do a full rebuild,
-and reset the bundler cache when polyfills or env vars change:
+After you change `.env.local`, restart Metro with a clean cache:
 
 ```bash
 npx react-native start --reset-cache
 ```
 
-## Auth flow
+### 3. Firebase and push notifications
 
-A single admin password acts as the Bearer token. `LoginScreen` POSTs it to `/api/auth`;
-on success the password itself is stored in AsyncStorage as the token, matching the
-backend's `verifyRequestAuth` check (`bearer === ADMIN_PANEL_SECRET`). There is no
-per-admin identity, which is why push tokens are keyed per **device**.
+1. Create a Firebase project and add an **Android app** with the package name
+   `com.gymflowAdminMobile`.
+2. Download `google-services.json` and put it at `android/app/google-services.json`.
+3. Restrict the API key to the package name and your signing SHA-1 in Google Cloud Console.
 
-## Push notifications
+`google-services.json` is gitignored. **Never commit it**, and never commit `GoogleService-Info.plist`,
+service-account keys or signing keystores. A pre-commit hook in the repo root rejects them.
 
-| App state | Who renders the notification |
+The Gradle side is already set up: the `com.google.gms.google-services` plugin, the Firebase BoM,
+the `POST_NOTIFICATIONS` permission, and the `admin-alerts` default channel.
+
+The server-side credentials (`FIREBASE_*`, `CRON_SECRET`) belong to the `gymflow-admin`
+environment, not to this app. See [`../gymflow-admin`](../gymflow-admin/README.md#push-notifications).
+
+### 4. Run on Android
+
+```bash
+npm start            # Metro bundler (react-native start)
+npm run android      # build and install the debug app
+```
+
+A JS reload is not enough after you add or upgrade native modules. Do a full rebuild with
+`npm run android`.
+
+### iOS
+
+`package.json` has an `ios` script and the code handles iOS push tokens, but this repo has no
+`ios/` project. If you want to build for iOS, you need to generate the native project yourself,
+link `react-native-vector-icons` (`Feather.ttf` in `Info.plist`), and upload an APNs key to
+Firebase (needs a paid Apple Developer account). This path is not tested here.
+
+## Scripts
+
+| Command | What it does |
 |---|---|
-| Background | Android/iOS, via FCM and the `admin-alerts` channel |
-| Quit | Android/iOS, via FCM (handler registered in `index.js`) |
-| Foreground | Notifee (`onMessage` in `lib/push.ts`) — FCM does not draw one |
+| `npm start` | Start Metro |
+| `npm run android` | Build and run on an Android device or emulator |
+| `npm run ios` | Build and run on iOS (see the note above) |
+| `npm run lint` | ESLint |
 
-- `initPushNotifications()` runs once the admin is signed in: creates the channel, requests
-  permission, then registers the FCM token with `POST /api/push/register-token`.
-- Permission is requested **per platform** — Notifee on Android (the only thing that
-  actually prompts for `POST_NOTIFICATIONS` on 13+), `requestPermission` on iOS.
-- `onTokenRefresh` re-registers rotated tokens; without it a device silently stops
-  receiving push.
-- Sign-out calls `unregisterPushDevice()` **before** clearing the auth token, so a
-  signed-out phone stops receiving admin alerts.
-- Tapping a notification deep-links to the relevant gym, including from a cold start
-  (the handler retries until the navigator is ready and the session is confirmed).
+## Building a release APK
 
-## Email: Gmail-style inbox and composer
+The repo has a Windows helper, `scripts/release.ps1`. It builds the signed APK with Gradle
+(`assembleRelease`), verifies the signature with `apksigner`, and publishes a GitHub release.
+It needs the `gh` CLI, Python, and the Android SDK build-tools.
+
+```powershell
+.\gymflow-mobile\scripts\release.ps1 -DryRun    # build and verify only, publish nothing
+.\gymflow-mobile\scripts\release.ps1            # build, verify and publish
+```
+
+Signing:
+
+- Put your release key in `%USERPROFILE%\.gradle\gradle.properties`, never in the repo:
+  `GYMFLOW_RELEASE_STORE_FILE`, `GYMFLOW_RELEASE_STORE_PASSWORD`, `GYMFLOW_RELEASE_KEY_ALIAS`,
+  `GYMFLOW_RELEASE_KEY_PASSWORD`.
+- Use the **same key** for every release, or Android will refuse to update an installed app.
+- Without that key, Gradle signs with the public debug key. The script refuses to publish in that case.
+- Release builds target `arm64-v8a` only (`reactNativeArchitectures` in `android/gradle.properties`).
+
+The script's header documents the version scheme and its other options (`-Clean`, `-Ask`, `-Notes`).
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| App cannot reach the backend in dev | `ADMIN_API_BASE` must be your computer's LAN address, and the phone must be on the same network. Restart Metro with `--reset-cache`. |
+| Env change has no effect | Restart Metro with `npx react-native start --reset-cache`. |
+| Build fails: `google-services.json` missing | Add the file (step 3). |
+| Gradle fails with `Imported target ReactAndroid::jsi includes non-existent path` | Stale native caches. Run `release.ps1 -Clean`, or delete `android/app/.cxx` and `android/app/build`. Do not run `gradlew clean`. |
+| `Property 'TextDecoder' doesn't exist` | `polyfills.js` is no longer the first import in `index.js`. |
+| Device stops receiving push | Check that `onTokenRefresh` still re-registers the token, and that the server has `FIREBASE_*` set. |
+
+## How it works
+
+### Auth
+
+`LoginScreen` sends the admin password once to `POST /api/auth` with `client: 'mobile'`. The server
+returns a signed token that lasts 30 days. Only the token is stored (AsyncStorage). The password is
+never kept on the phone. When the server rejects the token (expired, or revoked by an
+`ADMIN_SESSION_VERSION` bump), the user is signed out. There is one shared password, so there is no
+per-admin identity. That is why push tokens are keyed per **device**.
+
+### Push notifications
+
+| App state | Who shows the notification |
+|---|---|
+| Background | The OS, through FCM and the `admin-alerts` channel |
+| Quit | The OS, through FCM (the handler is registered in `index.js`) |
+| Foreground | Notifee (`onMessage` in `lib/push.ts`); FCM does not draw one |
+
+- `initPushNotifications()` runs after sign-in. It creates the channel, asks for permission, then
+  registers the FCM token with `POST /api/push/register-token`.
+- Permission is requested **per platform**: Notifee on Android (the only thing that prompts for
+  `POST_NOTIFICATIONS` on Android 13+), `requestPermission` on iOS.
+- `onTokenRefresh` re-registers rotated tokens. Without it a device silently stops receiving push.
+- Sign-out calls `unregisterPushDevice()` **before** clearing the auth token, so a signed-out phone
+  stops receiving admin alerts.
+- Tapping a notification opens the relevant gym, also from a cold start.
+
+### Email inbox and composer
 
 - **Inbox** (`InboxScreen`, `EmailRow`): coloured sender circles, bold unread, swipe right to delete.
 - **Conversation** (`EmailThreadScreen`): full-width message cards, older ones folded, a Reply button.
-- **Composer** (`EmailComposeScreen`): To / Subject, formatting bar (bold, italic, underline,
+- **Composer** (`EmailComposeScreen`): To and Subject, a formatting bar (bold, italic, underline,
   bullets, numbers, link), Preview, and attachments (up to 5 files, 3 MB each, 4 MB in total).
 - Formatting is written as markers (`**bold**`, `_italic_`, `++underline++`, `[text](url)`) by
-  `lib/email-markup.ts`; `gymflow-admin/lib/email-format.ts` turns the same markers into the
-  HTML email. Keep the two grammars in step.
-- Attachments need the native `react-native-document-picker`: rebuild the app after pulling.
+  `lib/email-markup.ts`. `gymflow-admin/lib/email-format.ts` turns the same markers into the HTML
+  email. Keep the two in step.
+- Attachments use the native `@react-native-documents/picker`. Rebuild the app after pulling.
 
-## Notes
+## Project layout
 
-- **No Expo dependencies** — all screens live under `src/screens/`.
-- **`polyfills.js` must stay the first import in `index.js`.** Hermes has no
-  `TextEncoder`/`TextDecoder`, which `@supabase/realtime-js` needs to encode broadcast
-  frames; loading it later throws `Property 'TextDecoder' doesn't exist` on every
-  websocket heartbeat.
-- **Use the RN Firebase modular API** (`getMessaging(getApp())` + standalone functions).
-  The namespaced `messaging()` form is deprecated in v21+ and logs a warning on every call.
-- Realtime carries **no data** — `admin:*` broadcasts are payload-free hints; every event
-  triggers a debounced re-fetch through the authenticated admin API.
-- Screens read through `useCachedQuery` so navigation paints from cache instead of a
-  spinner. `NotificationBell` deliberately avoids it: that hook uses `useFocusEffect`,
-  which needs a screen navigation context the header does not have.
-- Path alias `@/` maps to the project root (configured in babel + tsconfig).
+```
+gymflow-mobile/
+├── index.js              # Polyfills first, then the FCM background handler, then AppRegistry
+├── polyfills.js          # URL and TextEncoder/TextDecoder globals (Hermes lacks them)
+├── babel.config.js       # RN preset, module-resolver (@/ alias), react-native-dotenv
+├── metro.config.js
+├── android/              # Native Android project (google-services.json goes in android/app/)
+├── scripts/              # release.ps1 and mobile_release.py (release helpers)
+├── src/
+│   ├── App.tsx           # Auth gate, navigator, push init, deep links
+│   ├── navigation/       # Route and tab types
+│   └── screens/          # Login, gym detail, subscription, notifications, email, AWS monitor,
+│                         #   announcements, and tabs/ (Dashboard, Gyms, Inbox, Logs, Support)
+├── components/           # Shared UI (ui/, dashboard/, charts/, email and ticket components)
+├── constants/            # Theme values
+└── lib/
+    ├── api/              # axios client with Bearer interceptor, plus one *.api.ts per area
+    ├── auth.ts           # Token storage in AsyncStorage
+    ├── cache.ts          # Stale-while-revalidate cache with AsyncStorage persistence
+    ├── push.ts           # FCM permissions, token lifecycle, listeners, deep links
+    ├── supabase-realtime.ts          # Anon client, broadcast hints only
+    ├── use-cached-query.ts           # Cache-first screen data (focus-aware)
+    └── use-realtime-invalidation.ts  # Subscribes to admin:* invalidation hints
+```
+
+Main libraries: React Native 0.88, React Navigation, axios, NativeWind (Tailwind for RN),
+`@react-native-firebase/app` and `/messaging`, `@notifee/react-native`, `@supabase/supabase-js`,
+`react-native-vector-icons` (Feather). The `@/` alias maps to the project root (Babel and tsconfig).
+
+## Rules worth knowing
+
+- **`polyfills.js` must stay the first import in `index.js`.** Hermes has no `TextEncoder` or
+  `TextDecoder`, which `@supabase/realtime-js` needs. Loading it later throws
+  `Property 'TextDecoder' doesn't exist` on every websocket heartbeat.
+- **Use the React Native Firebase modular API** (`getMessaging(getApp())` plus standalone
+  functions). The namespaced `messaging()` form is deprecated and logs a warning on every call.
+- Realtime carries **no data**. `admin:*` broadcasts are payload-free hints. Each one triggers a
+  debounced re-fetch through the authenticated admin API.
+- Screens read through `useCachedQuery`, so navigation paints from cache instead of a spinner.
+  `NotificationBell` deliberately avoids it: that hook uses `useFocusEffect`, which needs a screen
+  navigation context the header does not have.
 
 ## License
 

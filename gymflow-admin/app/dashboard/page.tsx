@@ -3,23 +3,16 @@ import { getSentryIssues } from '@/lib/sentry-api'
 import { Building2, Users, AlertTriangle, Bug, ShieldCheck, Activity } from 'lucide-react'
 import Link from 'next/link'
 import ResolveButton from '@/components/errors/ResolveButton'
+import { MetricCards } from '@/components/dashboard/metric-cards'
+import { PageToolbar } from '@/components/dashboard/page-toolbar'
+import { StatusBadge, type StatusTone } from '@/components/dashboard/status-badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 
 export const dynamic = 'force-dynamic'
 
-function StatCard({ icon, label, value, sub, color }: {
-  icon: React.ReactNode, label: string, value: string | number, sub?: string, color: string
-}) {
-  return (
-    <div className="admin-card p-5">
-      <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center mb-3`}>
-        {icon}
-      </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-sm text-slate-400 mt-0.5">{label}</p>
-      {sub && <p className="text-xs text-slate-600 mt-1">{sub}</p>}
-    </div>
-  )
-}
+const MSG_TONE: Record<string, StatusTone> = { error: 'error', warning: 'warning', success: 'success' }
 
 export default async function DashboardPage() {
   const supabase = createAdminClient()
@@ -47,92 +40,105 @@ export default async function DashboardPage() {
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{today}</p>
-        </div>
-        <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse-dot" />
-          System Online
-        </div>
-      </div>
+    <div className="flex flex-col gap-4 md:gap-6">
+      <PageToolbar title="Dashboard" description={today} />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard icon={<Building2 className="w-5 h-5 text-indigo-400" />} label="Total Gyms" value={gymCount ?? '—'} color="bg-indigo-500/15" />
-        <StatCard icon={<Users className="w-5 h-5 text-sky-400" />} label="Total Members" value={memberCount ?? '—'} color="bg-sky-500/15" />
-        <StatCard icon={<Activity className="w-5 h-5 text-emerald-400" />} label="Today's Attendance" value={(attendanceToday as any)?.count ?? '—'} color="bg-emerald-500/15" />
-        <StatCard icon={<Bug className="w-5 h-5 text-red-400" />} label="Open Errors" value={errors.length} sub="Unresolved in Sentry" color="bg-red-500/15" />
-        <StatCard icon={<AlertTriangle className="w-5 h-5 text-amber-400" />} label="Warnings" value={warnings.length} sub="Unresolved in Sentry" color="bg-amber-500/15" />
-        <StatCard icon={<ShieldCheck className="w-5 h-5 text-purple-400" />} label="Messages Sent" value={recentMsgs.length} sub="Recent support msgs" color="bg-purple-500/15" />
-      </div>
+      <MetricCards
+        className="xl:grid-cols-3"
+        items={[
+          { icon: Building2, label: 'Total Gyms', value: String(gymCount ?? '—'), tone: 'blue', valueTone: 'blue' },
+          { icon: Users, label: 'Total Members', value: String(memberCount ?? '—'), tone: 'sky', valueTone: 'sky' },
+          { icon: Activity, label: "Today's Attendance", value: String((attendanceToday as any)?.count ?? '—'), tone: 'emerald', valueTone: 'emerald' },
+          {
+            icon: Bug,
+            label: 'Open Errors',
+            value: String(errors.length),
+            tone: errors.length > 0 ? 'red' : 'emerald',
+            valueTone: errors.length > 0 ? 'red' : 'emerald',
+            footnote: 'Unresolved in Sentry',
+            href: '/errors',
+            badge: errors.length > 0 ? { text: 'Needs attention', variant: 'destructive' } : undefined,
+          },
+          {
+            icon: AlertTriangle,
+            label: 'Warnings',
+            value: String(warnings.length),
+            tone: warnings.length > 0 ? 'amber' : 'neutral',
+            valueTone: warnings.length > 0 ? 'amber' : 'neutral',
+            footnote: 'Unresolved in Sentry',
+            badge: warnings.length > 0 ? { text: 'Review', variant: 'warning' } : undefined,
+          },
+          { icon: ShieldCheck, label: 'Messages Sent', value: String(recentMsgs.length), footnote: 'Recent support msgs', href: '/support', tone: 'violet', valueTone: 'violet' },
+        ]}
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Sentry Errors */}
-        <div className="admin-card">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f2937]">
-            <div className="flex items-center gap-2">
-              <Bug className="w-4 h-4 text-red-400" />
-              <h2 className="text-sm font-semibold text-white">Recent Errors</h2>
-            </div>
-            <Link href="/errors" className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">View all</Link>
-          </div>
-          <div className="divide-y divide-[#1f2937]">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent errors</CardTitle>
+            <CardDescription>Latest unresolved errors from Sentry</CardDescription>
+            <CardAction>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/errors">View all</Link>
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
             {errors.slice(0, 5).length === 0 ? (
-              <div className="px-5 py-8 text-center text-slate-600 text-sm">
-                <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-emerald-600" />
-                No open errors 🎉
-              </div>
-            ) : errors.slice(0, 5).map((e: any) => (
-              <div key={e.id} className="px-5 py-3 hover:bg-white/[0.02] transition-colors flex justify-between items-start gap-4">
-                <div className="min-w-0">
-                  <p className="text-xs text-red-400 font-medium truncate">{e.title}</p>
-                  <p className="text-xs text-slate-600 mt-0.5 truncate">{e.culprit}</p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[10px] text-slate-600">{new Date(e.lastSeen).toLocaleString('en-IN')}</span>
-                    <span className="text-[10px] text-slate-600">{e.count} events</span>
+              <p className="text-muted-foreground text-sm">No open errors</p>
+            ) : (
+              errors.slice(0, 5).map((e: any, i: number) => (
+                <div key={e.id} className="flex flex-col gap-3">
+                  {i > 0 && <Separator />}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="grid min-w-0 gap-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <StatusBadge tone="error">error</StatusBadge>
+                        <p className="truncate text-sm font-medium" title={e.title}>{e.title}</p>
+                      </div>
+                      <p className="text-muted-foreground truncate text-xs">{e.culprit}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {new Date(e.lastSeen).toLocaleString('en-IN')} · {e.count} events
+                      </p>
+                    </div>
+                    <ResolveButton issueId={e.id} />
                   </div>
                 </div>
-                <div className="flex-shrink-0 mt-1">
-                  <ResolveButton issueId={e.id} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Recent Support Messages */}
-        <div className="admin-card">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f2937]">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-indigo-400" />
-              <h2 className="text-sm font-semibold text-white">Recent Messages Sent</h2>
-            </div>
-            <Link href="/support" className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Send message</Link>
-          </div>
-          <div className="divide-y divide-[#1f2937]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent messages</CardTitle>
+            <CardDescription>Latest support messages sent to gyms</CardDescription>
+            <CardAction>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/support">Send message</Link>
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
             {recentMsgs.length === 0 ? (
-              <div className="px-5 py-8 text-center text-slate-600 text-sm">No messages sent yet</div>
-            ) : recentMsgs.map((m: any) => (
-              <div key={m.id} className="px-5 py-3 hover:bg-white/[0.02] transition-colors">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-white font-medium truncate">{m.subject}</p>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
-                    m.type === 'error' ? 'bg-red-500/20 text-red-400' :
-                    m.type === 'warning' ? 'bg-amber-500/20 text-amber-400' :
-                    m.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' :
-                    'bg-blue-500/20 text-blue-400'
-                  }`}>{m.type}</span>
+              <p className="text-muted-foreground text-sm">No messages sent yet</p>
+            ) : (
+              recentMsgs.map((m: any, i: number) => (
+                <div key={m.id} className="flex flex-col gap-3">
+                  {i > 0 && <Separator />}
+                  <div className="grid gap-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-sm font-medium">{m.subject}</p>
+                      <StatusBadge tone={MSG_TONE[m.type] ?? 'info'}>{m.type}</StatusBadge>
+                    </div>
+                    <p className="text-muted-foreground text-xs">{m.gym?.name ?? 'Unknown gym'}</p>
+                    <p className="text-muted-foreground text-xs">{new Date(m.created_at).toLocaleString('en-IN')}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">{m.gym?.name ?? 'Unknown gym'}</p>
-                <p className="text-[10px] text-slate-600 mt-1">{new Date(m.created_at).toLocaleString('en-IN')}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

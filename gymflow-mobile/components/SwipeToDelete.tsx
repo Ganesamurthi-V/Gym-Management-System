@@ -1,8 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, StyleSheet, Text } from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
+import { Animated, PanResponder, StyleSheet } from 'react-native';
 
-import { Colors, Radius } from '@/constants/theme';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { useAppTheme } from '@/lib/theme';
+
+const DEFAULT_RADIUS = 12;
 
 type Props = {
   children: React.ReactNode;
@@ -46,8 +49,11 @@ const FLICK_VELOCITY = 0.9;
  */
 export function SwipeToDelete({
   children, onDelete, onSwipeLeft, leftLabel = 'Archive', leftIcon = 'archive',
-  leftColor = Colors.indigo, leftBg = Colors.indigoBg, disabled, radius = Radius.lg, mode = 'dismiss', leftMode,
+  leftColor, leftBg, disabled, radius = DEFAULT_RADIUS, mode = 'dismiss', leftMode,
 }: Props) {
+  const { colors } = useAppTheme();
+  const leftFg = leftColor ?? colors.primary;
+  const leftFill = leftBg ?? colors.muted;
   const x = useRef(new Animated.Value(0)).current;
   const collapse = useRef(new Animated.Value(1)).current;
   const widthRef = useRef(0);
@@ -120,10 +126,10 @@ export function SwipeToDelete({
       {/* Revealed behind the row as it slides right: delete, on the left edge. */}
       <Animated.View
         pointerEvents="none"
-        style={[styles.behind, { borderRadius: radius, opacity: x.interpolate({ inputRange: [0, 24], outputRange: [0, 1], extrapolate: 'clamp' }) }]}
+        style={[styles.behind, { borderRadius: radius, backgroundColor: colors.destructive + '1A', borderColor: colors.destructive + '55', opacity: x.interpolate({ inputRange: [0, 24], outputRange: [0, 1], extrapolate: 'clamp' }) }]}
       >
-        <Feather name="trash-2" size={18} color={Colors.red} />
-        <Text style={styles.behindText}>Delete</Text>
+        <Icon name="trash-2" size={18} color={colors.destructive} />
+        <Text className="text-destructive text-sm font-bold">Delete</Text>
       </Animated.View>
 
       {/* Revealed as it slides left: the second action, on the right edge. */}
@@ -133,13 +139,13 @@ export function SwipeToDelete({
           style={[
             styles.behind, styles.behindLeft,
             {
-              borderRadius: radius, backgroundColor: leftBg, borderColor: leftColor + '55',
+              borderRadius: radius, backgroundColor: leftFill, borderColor: leftFg + '55',
               opacity: x.interpolate({ inputRange: [-24, 0], outputRange: [1, 0], extrapolate: 'clamp' }),
             },
           ]}
         >
-          <Text style={[styles.behindText, { color: leftColor }]}>{leftLabel}</Text>
-          <Feather name={leftIcon as any} size={18} color={leftColor} />
+          <Text className="text-sm font-bold" style={{ color: leftFg }}>{leftLabel}</Text>
+          <Icon name={leftIcon} size={18} color={leftFg} />
         </Animated.View>
       )}
 
@@ -151,18 +157,15 @@ export function SwipeToDelete({
 }
 
 const styles = StyleSheet.create({
-  wrap: { overflow: 'hidden', borderRadius: Radius.lg },
+  wrap: { overflow: 'hidden', borderRadius: DEFAULT_RADIUS },
   behind: {
     ...StyleSheet.absoluteFill,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingLeft: 20,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.redBg,
+    borderRadius: DEFAULT_RADIUS,
     borderWidth: 1,
-    borderColor: Colors.redBorder,
   },
-  behindText: { fontSize: 13, fontWeight: '800', color: Colors.red },
   behindLeft: { justifyContent: 'flex-end', paddingLeft: 0, paddingRight: 20 },
 });

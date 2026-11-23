@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/dal'
 import { gymIsWritable } from '@/lib/subscription-utils'
 import { SUBSCRIPTION_ENDED_MESSAGE } from '@/lib/subscriptionGuard'
 
@@ -22,13 +23,13 @@ export interface UPIConfig {
  */
 export async function getUPIConfig(): Promise<UPIConfig | null> {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) return null
+  const { user } = await getAuthUser()
+  if (!user) return null
 
   const { data: gym } = await supabase
     .from('gyms')
     .select('id')
-    .eq('owner_id', session.user.id)
+    .eq('owner_id', user.id)
     .single()
   if (!gym) return null
 
@@ -53,13 +54,13 @@ export async function saveUPIConfig(params: {
   rawParams: Record<string, string>
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) return { success: false, error: 'Unauthorized' }
+  const { user } = await getAuthUser()
+  if (!user) return { success: false, error: 'Unauthorized' }
 
   const { data: gym } = await supabase
     .from('gyms')
     .select('id, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
-    .eq('owner_id', session.user.id)
+    .eq('owner_id', user.id)
     .single()
   if (!gym) return { success: false, error: 'Gym not found' }
   // A lapsed gym is read-only on the server; the UI paywall is not the only gate.
@@ -92,13 +93,13 @@ export async function saveUPIConfig(params: {
  */
 export async function deleteUPIConfig(): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) return { success: false, error: 'Unauthorized' }
+  const { user } = await getAuthUser()
+  if (!user) return { success: false, error: 'Unauthorized' }
 
   const { data: gym } = await supabase
     .from('gyms')
     .select('id, is_active, subscription_status, plan_type, trial_ends_at, subscription_ends_at')
-    .eq('owner_id', session.user.id)
+    .eq('owner_id', user.id)
     .single()
   if (!gym) return { success: false, error: 'Gym not found' }
   // A lapsed gym is read-only on the server; the UI paywall is not the only gate.

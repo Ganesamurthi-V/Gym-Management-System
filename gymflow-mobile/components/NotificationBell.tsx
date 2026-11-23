@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
+import { TouchableOpacity } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Badge } from '@/components/ui/badge';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 import { CacheKeys, hydrate, peek, revalidate, subscribe } from '@/lib/cache';
 import { useRealtimeInvalidation } from '@/lib/use-realtime-invalidation';
 import { fetchNotifications, type NotificationsResponse } from '@/lib/api';
@@ -60,27 +61,17 @@ export function NotificationBell({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.btn}
+      className="mr-2 p-1"
       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       accessibilityRole="button"
       accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
     >
-      <Feather name="bell" size={18} color={Colors.textMuted} />
+      <Icon name="bell" size={18} className="text-muted-foreground" />
       {unread > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
-        </View>
+        <Badge variant="destructive" className="absolute -right-1 -top-1 h-4 min-w-4 px-1 py-0">
+          <Text className="text-[10px] font-bold leading-none">{unread > 99 ? '99+' : unread}</Text>
+        </Badge>
       )}
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  btn: { marginRight: 8, padding: 4 },
-  badge: {
-    position: 'absolute', top: -2, right: -2,
-    minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3,
-    backgroundColor: Colors.red, alignItems: 'center', justifyContent: 'center',
-  },
-  badgeText: { fontSize: 9, fontWeight: '800', color: '#fff' },
-});

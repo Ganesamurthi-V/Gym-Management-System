@@ -1,8 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
-import { Colors, Radius, Spacing } from '@/constants/theme';
-import { Badge } from './Badge';
+import { View } from 'react-native';
+
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { StatusBadge, type StatusTone } from '@/components/dashboard/StatusBadge';
+import { cn } from '@/lib/utils';
 import type { SupportTicket } from '@/lib/api';
 
 type TicketCardProps = {
@@ -10,23 +14,22 @@ type TicketCardProps = {
   onResolve?: () => void;
 };
 
-const typeVariant = (type: string): 'error' | 'warning' | 'info' => {
+const typeTone = (type: string): StatusTone => {
   if (type === 'high_priority') return 'error';
   if (type === 'bug') return 'warning';
-  if (type === 'feedback') return 'warning';
+  if (type === 'feedback') return 'info';
   return 'info';
 };
 
 function StarRow({ rating }: { rating: number }) {
   return (
-    <View style={styles.stars}>
+    <View className="ml-0.5 flex-row gap-px">
       {[1, 2, 3, 4, 5].map(n => (
-        <Feather
+        <Icon
           key={n}
           name="star"
           size={13}
-          color={n <= rating ? Colors.amber : Colors.textMuted}
-          style={n <= rating ? styles.starFilled : undefined}
+          className={n <= rating ? 'text-warning' : 'text-muted-foreground'}
         />
       ))}
     </View>
@@ -37,118 +40,33 @@ export function TicketCard({ ticket, onResolve }: TicketCardProps) {
   const isOpen = ticket.status === 'open';
   const isFeedback = ticket.type === 'feedback';
   return (
-    <View style={[styles.card, !isOpen && styles.resolvedCard]}>
-      <View style={styles.header}>
-        <View style={styles.badges}>
-          <Badge
-            label={ticket.type.replace('_', ' ')}
-            variant={typeVariant(ticket.type)}
-          />
-          <Badge
-            label={ticket.status}
-            variant={isOpen ? 'success' : 'muted'}
-          />
+    <Card className={cn('gap-3 px-4 py-4', !isOpen && 'opacity-70')}>
+      <View className="flex-row items-center justify-between gap-2">
+        <View className="flex-1 flex-row flex-wrap items-center gap-1.5">
+          <StatusBadge tone={typeTone(ticket.type)}>{ticket.type.replace('_', ' ')}</StatusBadge>
+          <StatusBadge tone={isOpen ? 'warning' : 'success'}>{ticket.status}</StatusBadge>
           {isFeedback && ticket.rating != null && <StarRow rating={ticket.rating} />}
         </View>
-        <Text style={styles.time}>
+        <Text className="text-xs text-muted-foreground">
           {new Date(ticket.created_at).toLocaleDateString('en-IN')}
         </Text>
       </View>
 
-      <Text style={[styles.subject, !isOpen && styles.resolvedText]}>
-        {ticket.subject}
-      </Text>
-      <Text style={styles.gymName}>From: {ticket.gyms?.name}</Text>
+      <View className="gap-0.5">
+        <Text className={cn('text-base font-semibold', !isOpen && 'line-through')}>{ticket.subject}</Text>
+        <Text className="text-xs text-muted-foreground">From: {ticket.gyms?.name}</Text>
+      </View>
 
-      <View style={[styles.messageBox, !isOpen && styles.resolvedMsg]}>
-        <Text style={styles.messageText}>{ticket.message}</Text>
+      <View className="rounded-md border border-border bg-muted p-3">
+        <Text className="text-sm leading-5 text-muted-foreground">{ticket.message}</Text>
       </View>
 
       {isOpen && onResolve && (
-        <TouchableOpacity style={styles.resolveBtn} onPress={onResolve} activeOpacity={0.75}>
-          <Feather name="check-circle" size={14} color={Colors.emerald} />
-          <Text style={styles.resolveBtnText}>Resolve</Text>
-        </TouchableOpacity>
+        <Button variant="outline" size="sm" className="self-end" onPress={onResolve}>
+          <Icon name="check-circle" size={14} />
+          <Text>Resolve</Text>
+        </Button>
       )}
-    </View>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.bgCardBorder,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  resolvedCard: {
-    opacity: 0.65,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  badges: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  stars: {
-    flexDirection: 'row',
-    gap: 1,
-    marginLeft: 2,
-  },
-  starFilled: {},
-  time: {
-    fontSize: 11,
-    color: Colors.textMuted,
-  },
-  subject: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  resolvedText: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
-  gymName: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  messageBox: {
-    backgroundColor: Colors.bgInput,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.bgCardBorder,
-    padding: Spacing.md,
-  },
-  resolvedMsg: {
-    opacity: 0.5,
-  },
-  messageText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
-  resolveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    alignSelf: 'flex-end',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.emeraldBg,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.emeraldBorder,
-  },
-  resolveBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.emerald,
-  },
-});

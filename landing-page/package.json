@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "check:copy": "node scripts/check-copy-sync.mjs",
+    "indexnow": "node scripts/indexnow.mjs",
     "build": "npm run check:copy && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

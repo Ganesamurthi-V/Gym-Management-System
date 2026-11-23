@@ -1,14 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, SectionList, RefreshControl, ActivityIndicator, TouchableOpacity,
-} from 'react-native';
+import { View, SectionList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Feather from 'react-native-vector-icons/Feather';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { Colors, Radius, Spacing } from '@/constants/theme';
 import { fetchGymActivity, type ActivityEvent, type ActivityKind } from '@/lib/api';
 import { groupByDay, formatTime } from '@/lib/activity-format';
+import { useAppTheme } from '@/lib/theme';
+import { TONE_TILE, toneColor, type Tone } from '@/components/dashboard/tone';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Text } from '@/components/ui/text';
+import { ListRow } from '@/components/dashboard/ListRow';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GymActivity'>;
@@ -21,15 +26,22 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'action', label: 'Actions' },
 ];
 
-const KIND_META: Record<ActivityKind, { icon: string; color: string; bg: string }> = {
-  app_open: { icon: 'log-in', color: Colors.emerald, bg: Colors.emeraldBg },
-  page_view: { icon: 'file-text', color: Colors.sky, bg: Colors.skyBg },
-  action: { icon: 'zap', color: Colors.amber, bg: Colors.amberBg },
+const KIND_ICON: Record<ActivityKind, string> = {
+  app_open: 'log-in',
+  page_view: 'file-text',
+  action: 'zap',
+};
+
+const KIND_TONE: Record<ActivityKind, Tone> = {
+  app_open: 'blue',
+  page_view: 'sky',
+  action: 'violet',
 };
 
 export default function GymActivityScreen({ route, navigation }: Props) {
   const { gymId, gymName } = route.params;
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
   const [filter, setFilter] = useState<Filter>('all');
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
@@ -94,128 +106,93 @@ export default function GymActivityScreen({ route, navigation }: Props) {
   const sections = groupByDay(events);
 
   const footer = (
-    <View style={styles.footer}>
-      {loadingMore && <ActivityIndicator color={Colors.indigo} />}
-      <Text style={styles.footerNote}>Activity is kept for 15 days</Text>
+    <View className="items-center gap-3 p-6">
+      {loadingMore && <ActivityIndicator color={colors.mutedForeground} />}
+      <Text className="text-muted-foreground text-xs">Activity is kept for 15 days</Text>
     </View>
   );
 
   return (
-    <View style={styles.root}>
-      <View style={styles.chips}>
-        {FILTERS.map(f => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.chip, filter === f.key && styles.chipActive]}
-            onPress={() => setFilter(f.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: filter === f.key }}
-          >
-            <Text style={[styles.chipText, filter === f.key && styles.chipTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
+    <View className="bg-background flex-1">
+      <View className="p-4">
+        <Tabs value={filter} onValueChange={v => setFilter(v as Filter)}>
+          <TabsList>
+            {FILTERS.map(f => (
+              <TabsTrigger key={f.key} value={f.key}>
+                <Text>{f.label}</Text>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </View>
 
       {loading ? (
-        <View style={styles.centered}><ActivityIndicator color={Colors.indigo} size="large" /></View>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.mutedForeground} size="large" />
+        </View>
       ) : error && events.length === 0 ? (
-        <View style={styles.centered}>
-          <Feather name="alert-circle" size={32} color={Colors.red} />
-          <Text style={styles.stateText}>{error}</Text>
-          <TouchableOpacity
+        <View className="flex-1 items-center justify-center gap-3 p-12">
+          <Icon name="alert-circle" size={32} className="text-destructive" />
+          <Text className="text-muted-foreground text-center text-sm">{error}</Text>
+          <Button
+            variant="outline"
             onPress={() => { setLoading(true); loadFirst(filter); }}
-            accessibilityRole="button"
           >
-            <Text style={styles.retry}>Retry</Text>
-          </TouchableOpacity>
+            <Text>Retry</Text>
+          </Button>
         </View>
       ) : (
         <SectionList
           sections={sections}
           keyExtractor={e => e.id}
           stickySectionHeadersEnabled
-          contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xxl }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.mutedForeground} />
           }
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           renderSectionHeader={({ section }) => (
-            <Text style={styles.dayHeader}>{section.label}</Text>
+            <Text className="bg-background text-muted-foreground px-4 py-2 text-xs font-semibold uppercase tracking-wide">
+              {section.label}
+            </Text>
           )}
-          renderItem={({ item }) => {
-            const meta = KIND_META[item.kind];
-            return (
-              <View style={styles.row}>
-                <View style={[styles.iconBox, { backgroundColor: meta.bg }]}>
-                  <Feather name={meta.icon as any} size={14} color={meta.color} />
-                </View>
-                <View style={styles.rowBody}>
-                  <Text style={styles.rowTitle}>{item.title}</Text>
-                  <View style={styles.subRow}>
-                    {item.kind === 'page_view' && item.path ? (
-                      <Text style={styles.subText} numberOfLines={1}>{item.path}</Text>
-                    ) : null}
+          renderItem={({ item, index, section }) => (
+            <View className="px-4">
+              <ListRow
+                last={index === section.data.length - 1}
+                title={item.title}
+                subtitle={item.kind === 'page_view' && item.path ? item.path : undefined}
+                left={
+                  <View className={cn('size-8 items-center justify-center rounded-lg border', TONE_TILE[KIND_TONE[item.kind]])}>
+                    <Icon name={KIND_ICON[item.kind]} size={14} color={toneColor(KIND_TONE[item.kind], colors)} />
+                  </View>
+                }
+                right={
+                  <View className="items-end gap-1">
+                    <Text className="text-muted-foreground text-xs">{formatTime(item.createdAt)}</Text>
                     {item.platform ? (
-                      <View style={styles.platformChip}>
-                        <Text style={styles.platformText}>{item.platform}</Text>
-                      </View>
+                      <Badge variant="outline">
+                        <Text>{item.platform}</Text>
+                      </Badge>
                     ) : null}
                   </View>
-                </View>
-                <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
-              </View>
-            );
-          }}
+                }
+              />
+            </View>
+          )}
           ListEmptyComponent={
-            <View style={styles.centered}>
-              <Feather name="activity" size={32} color={Colors.textMuted} />
-              <Text style={styles.stateText}>No activity in the last 15 days</Text>
+            <View className="items-center justify-center gap-3 p-12">
+              <Icon name="activity" size={32} className="text-muted-foreground" />
+              <Text className="text-muted-foreground text-center text-sm">No activity in the last 15 days</Text>
             </View>
           }
           ListFooterComponent={footer}
         />
       )}
-      {error && events.length > 0 ? <Text style={styles.inlineError}>{error}</Text> : null}
+      {error && events.length > 0 ? (
+        <Text className="text-destructive p-2 text-center text-xs">{error}</Text>
+      ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  chips: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.lg },
-  chip: {
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.bgCardBorder,
-  },
-  chipActive: { backgroundColor: Colors.indigoBg, borderColor: Colors.indigoBorder },
-  chipText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  chipTextActive: { color: Colors.indigo },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.xxxl },
-  stateText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
-  retry: { fontSize: 14, fontWeight: '700', color: Colors.indigo },
-  dayHeader: {
-    fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase',
-    letterSpacing: 0.5, backgroundColor: Colors.bg,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
-  },
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
-  },
-  iconBox: { width: 30, height: 30, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
-  rowBody: { flex: 1, gap: 3 },
-  rowTitle: { fontSize: 14, color: Colors.textPrimary },
-  subRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  subText: { flexShrink: 1, fontSize: 11, color: Colors.textMuted },
-  platformChip: {
-    paddingHorizontal: 6, paddingVertical: 1, borderRadius: Radius.sm,
-    backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.bgCardBorder,
-  },
-  platformText: { fontSize: 10, color: Colors.textSecondary },
-  time: { fontSize: 12, color: Colors.textSecondary },
-  footer: { alignItems: 'center', gap: Spacing.md, padding: Spacing.xl },
-  footerNote: { fontSize: 11, color: Colors.textMuted },
-  inlineError: { fontSize: 12, color: Colors.red, textAlign: 'center', padding: Spacing.sm },
-});

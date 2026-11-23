@@ -1,13 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, ActivityIndicator, StatusBar, Alert } from 'react-native';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { View, ActivityIndicator, StatusBar } from 'react-native';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+  DefaultTheme,
+  DarkTheme,
+  type Theme,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { PortalHost } from '@rn-primitives/portal';
+import { ThemeProvider, useAppTheme } from '@/lib/theme';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Icon } from '@/components/ui/icon';
+import { ConfirmProvider, useConfirm } from '@/components/dashboard/ConfirmDialog';
+import { ToastHost } from '@/components/dashboard/Toast';
 import { isAuthenticated, clearToken, setSessionExpiredHandler } from '@/lib/auth';
 import { invalidate } from '@/lib/cache';
 import {
@@ -30,6 +41,8 @@ import NotificationsScreen from './screens/NotificationsScreen';
 import AnnouncementScreen from './screens/AnnouncementScreen';
 import EmailThreadScreen from './screens/EmailThreadScreen';
 import EmailComposeScreen from './screens/EmailComposeScreen';
+import AwsMonitorScreen from './screens/AwsMonitorScreen';
+import AwsResourceScreen from './screens/AwsResourceScreen';
 
 import type { RootStackParamList, TabParamList } from './navigation/types';
 
@@ -40,11 +53,16 @@ const Tab = createBottomTabNavigator<TabParamList>();
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 function LogoutButton({ onLogout }: { onLogout: () => void }) {
-  function confirmLogout() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: onLogout },
-    ]);
+  const confirm = useConfirm();
+  const { colors } = useAppTheme();
+  async function confirmLogout() {
+    const ok = await confirm({
+      title: 'Sign Out',
+      description: 'Are you sure you want to sign out?',
+      confirmText: 'Sign Out',
+      destructive: true,
+    });
+    if (ok) onLogout();
   }
   return (
     <TouchableOpacity
@@ -54,7 +72,7 @@ function LogoutButton({ onLogout }: { onLogout: () => void }) {
       accessibilityRole="button"
       accessibilityLabel="Sign out"
     >
-      <Feather name="log-out" size={18} color={Colors.textMuted} />
+      <Feather name="log-out" size={18} color={colors.mutedForeground} />
     </TouchableOpacity>
   );
 }
@@ -62,19 +80,20 @@ function LogoutButton({ onLogout }: { onLogout: () => void }) {
 const styles = StyleSheet.create({
   logoutBtn: { marginRight: 16, padding: 4 },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
-  splash: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
+  splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
 
 // Built outside TabNavigator so the icon/header components are not defined during render.
 const tabIcon = (name: string) =>
   function TabIcon({ color, size }: { color: string; size: number }) {
-    return <Feather name={name} size={size} color={color} />;
+    return <Icon name={name} size={size} color={color} />;
   };
 
 const makeHeaderRight = (onLogout: () => void) =>
   function HeaderRight() {
     return (
       <View style={styles.headerRight}>
+        <ThemeToggle />
         <NotificationBell onPress={() => navigationRef.navigate('Notifications')} />
         <LogoutButton onLogout={onLogout} />
       </View>
@@ -83,6 +102,7 @@ const makeHeaderRight = (onLogout: () => void) =>
 
 function TabNavigator({ onLogout }: { onLogout: () => void }) {
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
   // Unread mail across the open inbox, for the tab badge. Shares its cache with the
   // Inbox screen, so this costs no extra request.
   const unreadMail = useOpenEmailThreads().data?.unreadTotal ?? 0;
@@ -97,21 +117,23 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         // already a dependency, so this costs nothing to switch on.
         freezeOnBlur: true,
         tabBarStyle: {
-          backgroundColor: Colors.bgCard,
-          borderTopColor: Colors.bgCardBorder,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           height: 60 + insets.bottom,
           paddingBottom: 8 + insets.bottom,
         },
-        tabBarActiveTintColor: Colors.indigo,
-        tabBarInactiveTintColor: Colors.textMuted,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerStyle: {
-          backgroundColor: Colors.bg,
+          backgroundColor: colors.background,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
         },
         headerShadowVisible: false,
-        headerTintColor: Colors.textPrimary,
-        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+        headerTintColor: colors.foreground,
+        headerTitleStyle: { fontWeight: '600', fontSize: 17, color: colors.foreground },
         headerRight: makeHeaderRight(onLogout),
       }}
     >
@@ -141,7 +163,7 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
         component={InboxScreen}
         options={{
           tabBarBadge: unreadMail > 0 ? (unreadMail > 99 ? '99+' : unreadMail) : undefined,
-          tabBarBadgeStyle: { backgroundColor: Colors.indigo, color: '#fff', fontSize: 10 },
+          tabBarBadgeStyle: { backgroundColor: colors.destructive, color: colors.background, fontSize: 10 },
           tabBarIcon: tabIcon('mail'),
         }}
       />
@@ -159,7 +181,22 @@ function TabNavigator({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-export default function App() {
+function AppContent() {
+  const { colors, scheme } = useAppTheme();
+  const baseTheme = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const navTheme: Theme = {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.card,
+      text: colors.foreground,
+      border: colors.border,
+      notification: colors.destructive,
+    },
+  };
+  const barStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
 
@@ -283,17 +320,17 @@ export default function App() {
 
   if (checking) {
     return (
-      <View style={styles.splash}>
-        <StatusBar barStyle="light-content" />
-        <ActivityIndicator color={Colors.indigo} />
+      <View style={[styles.splash, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={barStyle} />
+        <ActivityIndicator color={colors.foreground} />
       </View>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" />
-      <NavigationContainer ref={navigationRef}>
+    <>
+      <StatusBar barStyle={barStyle} />
+      <NavigationContainer ref={navigationRef} theme={navTheme}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!authed ? (
             <Stack.Screen name="Login">
@@ -309,8 +346,8 @@ export default function App() {
                 component={GymDetailScreen}
                 options={{
                   headerShown: true,
-                  headerStyle: { backgroundColor: Colors.bg },
-                  headerTintColor: Colors.textPrimary,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
                   headerTitle: 'Gym Details',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
@@ -321,8 +358,8 @@ export default function App() {
                 component={GymSubscriptionScreen}
                 options={{
                   headerShown: true,
-                  headerStyle: { backgroundColor: Colors.bg },
-                  headerTintColor: Colors.textPrimary,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
                   headerTitle: 'Manage Subscription',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
@@ -333,8 +370,8 @@ export default function App() {
                 component={GymActivityScreen}
                 options={{
                   headerShown: true,
-                  headerStyle: { backgroundColor: Colors.bg },
-                  headerTintColor: Colors.textPrimary,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
                   headerTitle: 'Activity',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
@@ -345,8 +382,8 @@ export default function App() {
                 component={EmailThreadScreen}
                 options={{
                   headerShown: true,
-                  headerStyle: { backgroundColor: Colors.bg },
-                  headerTintColor: Colors.textPrimary,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
                   headerTitle: 'Conversation',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
@@ -357,8 +394,8 @@ export default function App() {
                 component={EmailComposeScreen}
                 options={{
                   headerShown: true,
-                  headerStyle: { backgroundColor: Colors.bg },
-                  headerTintColor: Colors.textPrimary,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
                   headerTitle: 'Reply',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
@@ -371,8 +408,8 @@ export default function App() {
                 component={NotificationsScreen}
                 options={{
                   headerShown: true,
-                  headerStyle: { backgroundColor: Colors.bg },
-                  headerTintColor: Colors.textPrimary,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
                   headerTitle: 'Notifications',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
@@ -383,17 +420,56 @@ export default function App() {
                 component={AnnouncementScreen}
                 options={{
                   headerShown: true,
-                  headerStyle: { backgroundColor: Colors.bg },
-                  headerTintColor: Colors.textPrimary,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
                   headerTitle: 'Site-wide banner',
                   headerBackTitle: 'Back',
                   headerShadowVisible: false,
                 }}
               />
+              <Stack.Screen
+                name="AwsMonitor"
+                component={AwsMonitorScreen}
+                options={{
+                  headerShown: true,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
+                  headerTitle: 'AWS Monitor',
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="AwsResource"
+                component={AwsResourceScreen}
+                options={({ route }) => ({
+                  headerShown: true,
+                  headerStyle: { backgroundColor: colors.background },
+                  headerTintColor: colors.foreground,
+                  headerTitle: route.params.title.length > 28 ? `${route.params.title.slice(0, 27)}…` : route.params.title,
+                  headerBackTitle: 'Back',
+                  headerShadowVisible: false,
+                })}
+              />
             </>
           )}
         </Stack.Navigator>
       </NavigationContainer>
+      {/* Last, so dialogs/selects render above everything else; toasts go above those so an error raised inside a dialog is visible. */}
+      <PortalHost />
+      <ToastHost />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <ConfirmProvider>
+          <AppContent />
+        </ConfirmProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

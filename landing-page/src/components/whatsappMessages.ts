@@ -18,7 +18,7 @@ export const MESSAGE_TYPES = [
     message: {
       banner: true,
       time: '11:50',
-      footer: 'Powered by Gym Flow',
+      footer: 'Powered by GymFlow',
       body: `Hi Ganesh! 👋
 
 Your membership has been successfully *activated*.
@@ -40,7 +40,7 @@ Thank you for choosing *Fit zone gym*. We're excited to be part of your fitness 
     message: {
       banner: true,
       time: '09:39',
-      footer: 'Powered by Gym Flow',
+      footer: 'Powered by GymFlow',
       body: `Hi Ganesh! 👋
 
 Your membership with *Vivi gym* has expired.
@@ -61,7 +61,7 @@ To continue uninterrupted access to the gym, please *renew* your membership at y
     message: {
       banner: true,
       time: '09:40',
-      footer: 'Powered by Gym Flow',
+      footer: 'Powered by GymFlow',
       body: `Hi Ganesh! 👋
 
 This is a reminder that your membership payment is *due*.

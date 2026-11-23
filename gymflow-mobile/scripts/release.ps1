@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Version is 1.1.<build>: one more than the highest existing release, and also the Android versionCode, so it only
-  goes up. Tag admin-v1.1.<build>, title "GymFlow Admin v1.1.<build>", notes built from the commits that touched
+  goes up. Tag admin-v1.1.<build>, title "Admin v1.1.<build>", notes built from the commits that touched
   gymflow-mobile/ since the previous release (gymflow-mobile/scripts/mobile_release.py).
 
   The release is built from the commit you have checked out, and that commit must already be on origin/main, so
@@ -184,13 +184,13 @@ if ($DryRun) {
 }
 
 if ($Ask) {
-  $answer = Read-Host "`nPublish release '$tag' (GymFlow Admin v$version) to $repo? [y/N]"
+  $answer = Read-Host "`nPublish release '$tag' (Admin v$version) to $repo? [y/N]"
   if ($answer -notmatch '^(y|yes)$') { Write-Host 'Cancelled. Nothing was published.'; exit 0 }
 }
 
 Step 'Publishing to GitHub'
 Run-Native 'gh release create' {
-  gh release create $tag "$apk#GymFlow Admin v$version (Android APK)" "$sumFile#SHA-256 checksum" `
-    -R $repo --target $head --title "GymFlow Admin v$version" --notes-file $notesFile --latest
+  gh release create $tag "$apk#Admin v$version (Android APK)" "$sumFile#SHA-256 checksum" `
+    -R $repo --target $head --title "Admin v$version" --notes-file $notesFile --latest
 }
 Write-Host "`nReleased: https://github.com/$repo/releases/tag/$tag" -ForegroundColor Green

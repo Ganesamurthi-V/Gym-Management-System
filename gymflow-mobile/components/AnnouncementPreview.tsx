@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { StyleSheet, View } from 'react-native';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 
 type Level = 'info' | 'warning' | 'critical';
 
@@ -19,22 +19,22 @@ export function AnnouncementPreview({ message, messageAfter, level, linkLabel, h
   const empty = !message.trim();
   const after = messageAfter?.trim();
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.caption}>How owners will see it</Text>
+    <View className="gap-2">
+      <Text className="text-muted-foreground text-xs">How owners will see it</Text>
       {/* Mini page: the banner is a full-width bar above everything, like the owner console. */}
       <View style={styles.page}>
         <View style={[styles.strip, { backgroundColor: c.bg, borderColor: c.border }]}>
-          <Text style={[styles.text, empty ? styles.placeholder : { color: c.text }]}>
+          <Text style={[styles.text, { color: empty ? '#94A3B8' : c.text }]}>
             {empty ? 'Your message appears here' : message}
             {hasLink && !empty ? (
-              <Text style={styles.link}>{' '}{linkLabel?.trim() || 'Learn more'}</Text>
+              <Text style={[styles.text, styles.link, { color: c.text }]}>{' '}{linkLabel?.trim() || 'Learn more'}</Text>
             ) : null}
             {!empty && after ? ` ${after}` : ''}
           </Text>
           {/* Absolute so the centered text is not pushed off-centre by the X. */}
           {level !== 'critical' && (
             <View style={styles.close}>
-              <Feather name="x" size={14} color={c.text} />
+              <Icon name="x" size={14} color={c.text} />
             </View>
           )}
         </View>
@@ -48,19 +48,16 @@ export function AnnouncementPreview({ message, messageAfter, level, linkLabel, h
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: Spacing.xs },
-  caption: { fontSize: 12, color: Colors.textMuted },
-  page: { backgroundColor: '#F8FAFC', borderRadius: Radius.md, overflow: 'hidden' },
+  page: { backgroundColor: '#F8FAFC', borderRadius: 8, overflow: 'hidden' },
   strip: {
     justifyContent: 'center', alignItems: 'center',
-    paddingHorizontal: 32, paddingVertical: Spacing.sm,
+    paddingHorizontal: 32, paddingVertical: 8,
     borderBottomWidth: 1,
   },
   text: { fontSize: 13, lineHeight: 18, textAlign: 'center' },
-  placeholder: { color: '#94A3B8' },
   link: { textDecorationLine: 'underline', fontWeight: '600' },
-  close: { position: 'absolute', right: Spacing.sm, top: 0, bottom: 0, justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md },
+  close: { position: 'absolute', right: 8, top: 0, bottom: 0, justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
   headerDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E2E8F0' },
   headerBar: { height: 8, width: '40%', borderRadius: 4, backgroundColor: '#E2E8F0' },
 });
